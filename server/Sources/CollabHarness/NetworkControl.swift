@@ -49,9 +49,6 @@ public final class NetworkControl: @unchecked Sendable {
             await toxi.setToxic(proxy: proxy, name: "stall-down", type: "timeout", stream: "downstream",
                                 attributes: ["timeout": 0], toxicity: c.downStallFraction)
         }
-        if c.resetAfterMs > 0 {
-            await toxi.setToxic(proxy: proxy, name: "reset", type: "reset_peer", stream: "downstream", attributes: ["timeout": c.resetAfterMs])
-        }
     }
 
     /// Starts the timed behaviour of the profile.
@@ -101,6 +98,19 @@ public final class NetworkControl: @unchecked Sendable {
                         try? await Task.sleep(for: .milliseconds(rng.int(15000...30000)))
                         await toxi.removeToxic(proxy: p.events, name: "half-open")
                         try? await Task.sleep(for: .milliseconds(rng.int(10000...25000)))
+                    }
+                }
+            }
+        case .eventsLifetimeCap:
+            for (i, p) in pairs.enumerated() {
+                spawn(seed: 400 + i) { [self] rng in
+                    try? await Task.sleep(for: .milliseconds(rng.int(0...8000)))
+                    while !Task.isCancelled {
+                        // Disabling a proxy closes its open connections; re-enabling lets the client reconnect at once.
+                        await toxi.setEnabled(p.events, false)
+                        await toxi.setEnabled(p.events, true)
+                        bump("lifetimeCut")
+                        try? await Task.sleep(for: .seconds(8))
                     }
                 }
             }

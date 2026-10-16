@@ -1,0 +1,190 @@
+{
+  "injected" : {
+    "clientKill" : 4,
+    "clientPause" : 3,
+    "flap" : 4285,
+    "serverKill" : 3
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 93"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 6335,
+      "max" : 9132,
+      "p50" : 74,
+      "p95" : 2223,
+      "p99" : 3952
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 1036,
+        "conflict" : 1313,
+        "issued" : 2354,
+        "lost" : 5,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 2685,
+        "conflict" : 0,
+        "issued" : 2690,
+        "lost" : 5,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 332,
+        "conflict" : 0,
+        "issued" : 332,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2282,
+        "conflict" : 0,
+        "issued" : 2284,
+        "lost" : 2,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 417408,
+      "postFailures" : 100,
+      "postMillis" : [
+
+      ],
+      "posts" : 6072,
+      "snapshots" : 100,
+      "streamsLost" : 2813,
+      "streamsOpened" : 2913
+    },
+    "committed" : 6335,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 678,
+    "finalDivergence" : 0,
+    "head" : 6335,
+    "issued" : 7660,
+    "lost" : 12,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 5018,
+      "max" : 4573,
+      "p50" : 7,
+      "p95" : 1997,
+      "p99" : 2595
+    },
+    "rejectedConflict" : 1313,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 12,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 5,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 6335,
+      "max" : 13570,
+      "p50" : 3221,
+      "p95" : 7770,
+      "p99" : 9690
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 5866,
+      "max" : 13570,
+      "p50" : 3273,
+      "p95" : 7823,
+      "p99" : 9793
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 34.63643561558907,
+    "peakCpuPercent" : 83.9864441679791,
+    "peakRssMB" : 90.67578125,
+    "samples" : 117
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 20,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        10,
+        20
+      ],
+      "clientKills" : true,
+      "clientPauses" : true,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0.1,
+      "networkCuts" : false,
+      "replayOldRate" : 0.05,
+      "serverKillEverySec" : [
+        25,
+        40
+      ],
+      "serverKills" : true
+    },
+    "name" : "storm-c-100c-flapping",
+    "pingSeconds" : 3,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "flapping",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "flapping",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "link up\/down every 0.3-2.5 s"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 9000
+    },
+    "volatileFraction" : 0.3,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-flapping"
+  },
+  "wallSeconds" : 130.75188395900003
+}

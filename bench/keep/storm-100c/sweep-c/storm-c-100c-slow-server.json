@@ -1,0 +1,189 @@
+{
+  "injected" : {
+    "clientKill" : 4,
+    "clientPause" : 3,
+    "serverKill" : 3
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 93"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 5527,
+      "max" : 7325,
+      "p50" : 2761,
+      "p95" : 4498,
+      "p99" : 5929
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 223,
+        "conflict" : 2110,
+        "issued" : 2345,
+        "lost" : 12,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 2646,
+        "conflict" : 0,
+        "issued" : 2653,
+        "lost" : 7,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 333,
+        "conflict" : 0,
+        "issued" : 333,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2325,
+        "conflict" : 0,
+        "issued" : 2331,
+        "lost" : 6,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 369280,
+      "postFailures" : 287,
+      "postMillis" : [
+
+      ],
+      "posts" : 5347,
+      "snapshots" : 100,
+      "streamsLost" : 324,
+      "streamsOpened" : 424
+    },
+    "committed" : 5527,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 2101,
+    "finalDivergence" : 0,
+    "head" : 5527,
+    "issued" : 7662,
+    "lost" : 25,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 3768,
+      "max" : 4145,
+      "p50" : 1881,
+      "p95" : 2105,
+      "p99" : 2822
+    },
+    "rejectedConflict" : 2110,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 25,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 12,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 5527,
+      "max" : 7634,
+      "p50" : 2985,
+      "p95" : 5602,
+      "p99" : 6728
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 5090,
+      "max" : 7634,
+      "p50" : 3054,
+      "p95" : 5566,
+      "p99" : 6602
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 12.739844276679168,
+    "peakCpuPercent" : 66.77713545061597,
+    "peakRssMB" : 95.45703125,
+    "samples" : 119
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 20,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        10,
+        20
+      ],
+      "clientKills" : true,
+      "clientPauses" : true,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0.1,
+      "networkCuts" : false,
+      "replayOldRate" : 0.05,
+      "serverKillEverySec" : [
+        25,
+        40
+      ],
+      "serverKills" : true
+    },
+    "name" : "storm-c-100c-slow-server",
+    "pingSeconds" : 3,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "slow-server",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 800,
+      "summary" : "every commit takes an extra 800 ms"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 9000
+    },
+    "volatileFraction" : 0.3,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-slow-server"
+  },
+  "wallSeconds" : 132.54141946000001
+}

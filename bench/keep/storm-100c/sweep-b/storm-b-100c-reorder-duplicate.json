@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 7726,
+      "max" : 1079,
+      "p50" : 7,
+      "p95" : 64,
+      "p99" : 478
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 2251,
+        "conflict" : 197,
+        "issued" : 2448,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 2764,
+        "conflict" : 0,
+        "issued" : 2764,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 355,
+        "conflict" : 0,
+        "issued" : 355,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2356,
+        "conflict" : 0,
+        "issued" : 2356,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 772600,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 7923,
+      "snapshots" : 100,
+      "streamsLost" : 400,
+      "streamsOpened" : 500
+    },
+    "committed" : 7726,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 122,
+    "finalDivergence" : 0,
+    "head" : 7726,
+    "issued" : 7923,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 7923,
+      "max" : 815,
+      "p50" : 7,
+      "p95" : 61,
+      "p99" : 99
+    },
+    "rejectedConflict" : 197,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 7726,
+      "max" : 1312,
+      "p50" : 63,
+      "p95" : 121,
+      "p99" : 985
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 7159,
+      "max" : 1097,
+      "p50" : 63,
+      "p95" : 119,
+      "p99" : 982
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 29.239003156547895,
+    "peakCpuPercent" : 39.99264527254894,
+    "peakRssMB" : 96.19140625,
+    "samples" : 127
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 100,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-100c-reorder-duplicate",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "reorder-duplicate",
+      "netem" : {
+        "delayMs" : 40,
+        "duplicatePercent" : 5,
+        "jitterMs" : 20,
+        "lossPercent" : 0,
+        "reorderPercent" : 25
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "25% packet reordering + 5% duplication (netem), 20-60 ms delay"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-061314\/work-storm-b-100c-reorder-duplicate"
+  },
+  "wallSeconds" : 134.693961411
+}

@@ -1,0 +1,190 @@
+{
+  "injected" : {
+    "clientKill" : 4,
+    "clientPause" : 3,
+    "halfOpen" : 334,
+    "serverKill" : 3
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 93"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 6633,
+      "max" : 42608,
+      "p50" : 632,
+      "p95" : 25467,
+      "p99" : 31966
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 1073,
+        "conflict" : 1395,
+        "issued" : 2494,
+        "lost" : 26,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 2768,
+        "conflict" : 0,
+        "issued" : 2768,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 358,
+        "conflict" : 0,
+        "issued" : 358,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2434,
+        "conflict" : 0,
+        "issued" : 2434,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 430190,
+      "postFailures" : 115,
+      "postMillis" : [
+
+      ],
+      "posts" : 56229,
+      "snapshots" : 104,
+      "streamsLost" : 556,
+      "streamsOpened" : 832
+    },
+    "committed" : 6633,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 41,
+    "finalDivergence" : 0,
+    "head" : 6633,
+    "issued" : 8054,
+    "lost" : 26,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 42198,
+      "max" : 1970,
+      "p50" : 2,
+      "p95" : 7,
+      "p99" : 15
+    },
+    "rejectedConflict" : 1395,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 26,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 26,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 6633,
+      "max" : 43644,
+      "p50" : 31337,
+      "p95" : 38694,
+      "p99" : 42334
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 6114,
+      "max" : 43644,
+      "p50" : 31171,
+      "p95" : 38963,
+      "p99" : 42462
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 78.52476933467335,
+    "peakCpuPercent" : 165.97273847978647,
+    "peakRssMB" : 137.98046875,
+    "samples" : 132
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 20,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        10,
+        20
+      ],
+      "clientKills" : true,
+      "clientPauses" : true,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0.1,
+      "networkCuts" : false,
+      "replayOldRate" : 0.05,
+      "serverKillEverySec" : [
+        25,
+        40
+      ],
+      "serverKills" : true
+    },
+    "name" : "storm-c-100c-half-open-sse",
+    "pingSeconds" : 3,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "halfOpenStream",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "half-open-sse",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "SSE direction silently stalls (socket stays open) for 15-30 s windows"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 9000
+    },
+    "volatileFraction" : 0.3,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-half-open-sse"
+  },
+  "wallSeconds" : 145.61402997599998
+}

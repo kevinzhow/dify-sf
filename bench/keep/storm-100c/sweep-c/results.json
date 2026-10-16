@@ -1,0 +1,3597 @@
+[
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 7513,
+        "max" : 2922,
+        "p50" : 7,
+        "p95" : 44,
+        "p99" : 1407
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2180,
+          "conflict" : 194,
+          "issued" : 2374,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2668,
+          "conflict" : 0,
+          "issued" : 2668,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 332,
+          "conflict" : 0,
+          "issued" : 332,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2333,
+          "conflict" : 0,
+          "issued" : 2333,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 497265,
+        "postFailures" : 109,
+        "postMillis" : [
+
+        ],
+        "posts" : 6078,
+        "snapshots" : 100,
+        "streamsLost" : 323,
+        "streamsOpened" : 423
+      },
+      "committed" : 7513,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 1,
+      "earlyWarnings" : 132,
+      "finalDivergence" : 0,
+      "head" : 7513,
+      "issued" : 7707,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 5130,
+        "max" : 1701,
+        "p50" : 7,
+        "p95" : 17,
+        "p99" : 110
+      },
+      "rejectedConflict" : 194,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 7513,
+        "max" : 4558,
+        "p50" : 9,
+        "p95" : 2230,
+        "p99" : 3656
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 6938,
+        "max" : 4558,
+        "p50" : 9,
+        "p95" : 2331,
+        "p99" : 3686
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 31.663769566742587,
+      "peakCpuPercent" : 73.97517260052219,
+      "peakRssMB" : 96.7109375,
+      "samples" : 117
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-baseline",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "baseline",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "no impairment (through the proxy)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-baseline"
+    },
+    "wallSeconds" : 130.740557243
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 9600,
+        "max" : 4120,
+        "p50" : 207,
+        "p95" : 243,
+        "p99" : 1623
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1981,
+          "conflict" : 1417,
+          "issued" : 3398,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3813,
+          "conflict" : 0,
+          "issued" : 3813,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 456,
+          "conflict" : 0,
+          "issued" : 456,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3350,
+          "conflict" : 0,
+          "issued" : 3350,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 738220,
+        "postFailures" : 131,
+        "postMillis" : [
+
+        ],
+        "posts" : 9994,
+        "snapshots" : 100,
+        "streamsLost" : 515,
+        "streamsOpened" : 615
+      },
+      "committed" : 9600,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 2,
+      "earlyWarnings" : 1318,
+      "finalDivergence" : 0,
+      "head" : 9600,
+      "issued" : 11017,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 8459,
+        "max" : 2183,
+        "p50" : 207,
+        "p95" : 213,
+        "p99" : 255
+      },
+      "rejectedConflict" : 1417,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 9600,
+        "max" : 4865,
+        "p50" : 209,
+        "p95" : 2101,
+        "p99" : 3689
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 9076,
+        "max" : 4865,
+        "p50" : 209,
+        "p95" : 2177,
+        "p99" : 3782
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 28.696653789233046,
+      "peakCpuPercent" : 78.98529601830793,
+      "peakRssMB" : 98.7265625,
+      "samples" : 168
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-latency-200ms",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 100,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 100
+        },
+        "name" : "latency-200ms",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 100,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 100
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "fixed latency, RTT +200 ms (100 ms each way)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-latency-200ms"
+    },
+    "wallSeconds" : 182.981445852
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 8725,
+        "max" : 4898,
+        "p50" : 807,
+        "p95" : 1289,
+        "p99" : 2834
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1121,
+          "conflict" : 2229,
+          "issued" : 3355,
+          "lost" : 5,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3821,
+          "conflict" : 0,
+          "issued" : 3821,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 458,
+          "conflict" : 0,
+          "issued" : 458,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3325,
+          "conflict" : 0,
+          "issued" : 3325,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 675060,
+        "postFailures" : 196,
+        "postMillis" : [
+
+        ],
+        "posts" : 10165,
+        "snapshots" : 100,
+        "streamsLost" : 464,
+        "streamsOpened" : 564
+      },
+      "committed" : 8725,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 2131,
+      "finalDivergence" : 0,
+      "head" : 8725,
+      "issued" : 10959,
+      "lost" : 5,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 8419,
+        "max" : 2767,
+        "p50" : 806,
+        "p95" : 814,
+        "p99" : 895
+      },
+      "rejectedConflict" : 2229,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 5,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 5,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 8725,
+        "max" : 5775,
+        "p50" : 810,
+        "p95" : 3123,
+        "p99" : 4659
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 8250,
+        "max" : 5775,
+        "p50" : 810,
+        "p95" : 3208,
+        "p99" : 4735
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 27.784744219482512,
+      "peakCpuPercent" : 82.9852374241736,
+      "peakRssMB" : 104.04296875,
+      "samples" : 168
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-latency-800ms",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 400,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 400
+        },
+        "name" : "latency-800ms",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 400,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 400
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "fixed latency, RTT +800 ms (400 ms each way)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-latency-800ms"
+    },
+    "wallSeconds" : 183.056648036
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 8231,
+        "max" : 7502,
+        "p50" : 2718,
+        "p95" : 4356,
+        "p99" : 5981
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 727,
+          "conflict" : 2564,
+          "issued" : 3304,
+          "lost" : 13,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3748,
+          "conflict" : 0,
+          "issued" : 3754,
+          "lost" : 6,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 448,
+          "conflict" : 0,
+          "issued" : 448,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3308,
+          "conflict" : 0,
+          "issued" : 3313,
+          "lost" : 5,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 643940,
+        "postFailures" : 225,
+        "postMillis" : [
+
+        ],
+        "posts" : 8672,
+        "snapshots" : 100,
+        "streamsLost" : 440,
+        "streamsOpened" : 540
+      },
+      "committed" : 8231,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 2458,
+      "finalDivergence" : 0,
+      "head" : 8231,
+      "issued" : 10819,
+      "lost" : 24,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 6507,
+        "max" : 3973,
+        "p50" : 2008,
+        "p95" : 2035,
+        "p99" : 2238
+      },
+      "rejectedConflict" : 2564,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 24,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 13,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 8231,
+        "max" : 9540,
+        "p50" : 2920,
+        "p95" : 6264,
+        "p99" : 7900
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 7792,
+        "max" : 8735,
+        "p50" : 2925,
+        "p95" : 5893,
+        "p99" : 7401
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 24.139575756650792,
+      "peakCpuPercent" : 206.89134625101534,
+      "peakRssMB" : 96.8671875,
+      "samples" : 168
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-latency-2s",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 1000,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 1000
+        },
+        "name" : "latency-2s",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 1000,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 1000
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "fixed latency, RTT +2000 ms (1000 ms each way)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-latency-2s"
+    },
+    "wallSeconds" : 183.02300074000001
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 9449,
+        "max" : 4114,
+        "p50" : 260,
+        "p95" : 387,
+        "p99" : 1731
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1812,
+          "conflict" : 1581,
+          "issued" : 3393,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3826,
+          "conflict" : 0,
+          "issued" : 3826,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 461,
+          "conflict" : 0,
+          "issued" : 461,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3350,
+          "conflict" : 0,
+          "issued" : 3350,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 726092,
+        "postFailures" : 136,
+        "postMillis" : [
+
+        ],
+        "posts" : 10045,
+        "snapshots" : 100,
+        "streamsLost" : 509,
+        "streamsOpened" : 609
+      },
+      "committed" : 9449,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 1303,
+      "finalDivergence" : 0,
+      "head" : 9449,
+      "issued" : 11030,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 8457,
+        "max" : 2157,
+        "p50" : 220,
+        "p95" : 361,
+        "p99" : 389
+      },
+      "rejectedConflict" : 1581,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 9449,
+        "max" : 4967,
+        "p50" : 330,
+        "p95" : 1964,
+        "p99" : 3772
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 8942,
+        "max" : 4967,
+        "p50" : 329,
+        "p95" : 2065,
+        "p99" : 3804
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 28.624615597239437,
+      "peakCpuPercent" : 63.984019543230914,
+      "peakRssMB" : 103.78515625,
+      "samples" : 168
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-jitter",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 100,
+          "downLatencyMs" : 100,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 100,
+          "upLatencyMs" : 100
+        },
+        "name" : "jitter",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 100,
+          "downLatencyMs" : 100,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 100,
+          "upLatencyMs" : 100
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "100 ms each way with +-100 ms jitter"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-jitter"
+    },
+    "wallSeconds" : 182.853255645
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 8691,
+        "max" : 4473,
+        "p50" : 857,
+        "p95" : 1269,
+        "p99" : 2492
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1091,
+          "conflict" : 2286,
+          "issued" : 3381,
+          "lost" : 4,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3809,
+          "conflict" : 0,
+          "issued" : 3809,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 452,
+          "conflict" : 0,
+          "issued" : 452,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3339,
+          "conflict" : 0,
+          "issued" : 3339,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 671740,
+        "postFailures" : 132,
+        "postMillis" : [
+
+        ],
+        "posts" : 10054,
+        "snapshots" : 100,
+        "streamsLost" : 440,
+        "streamsOpened" : 540
+      },
+      "committed" : 8691,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 2187,
+      "finalDivergence" : 0,
+      "head" : 8691,
+      "issued" : 10981,
+      "lost" : 4,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 8439,
+        "max" : 2833,
+        "p50" : 856,
+        "p95" : 864,
+        "p99" : 942
+      },
+      "rejectedConflict" : 2286,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 4,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 4,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 8691,
+        "max" : 5722,
+        "p50" : 859,
+        "p95" : 2834,
+        "p99" : 4539
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 8217,
+        "max" : 5722,
+        "p50" : 859,
+        "p95" : 2915,
+        "p99" : 4558
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 27.12422158530622,
+      "peakCpuPercent" : 84.98817321579162,
+      "peakRssMB" : 99.3203125,
+      "samples" : 168
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-asymmetric",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 800,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 50
+        },
+        "name" : "asymmetric",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 800,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 50
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "uplink 50 ms, downlink 800 ms (one way)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-asymmetric"
+    },
+    "wallSeconds" : 182.966593598
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 9343,
+        "max" : 4243,
+        "p50" : 87,
+        "p95" : 269,
+        "p99" : 1552
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2227,
+          "conflict" : 960,
+          "issued" : 3187,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3574,
+          "conflict" : 0,
+          "issued" : 3574,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 436,
+          "conflict" : 0,
+          "issued" : 436,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3106,
+          "conflict" : 0,
+          "issued" : 3106,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 698088,
+        "postFailures" : 109,
+        "postMillis" : [
+
+        ],
+        "posts" : 9230,
+        "snapshots" : 100,
+        "streamsLost" : 506,
+        "streamsOpened" : 606
+      },
+      "committed" : 9343,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 843,
+      "finalDivergence" : 0,
+      "head" : 9343,
+      "issued" : 10303,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 7742,
+        "max" : 2057,
+        "p50" : 87,
+        "p95" : 209,
+        "p99" : 374
+      },
+      "rejectedConflict" : 960,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 9343,
+        "max" : 4972,
+        "p50" : 142,
+        "p95" : 2170,
+        "p99" : 3806
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 8779,
+        "max" : 4972,
+        "p50" : 142,
+        "p95" : 2238,
+        "p99" : 3874
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 27.558470642350454,
+      "peakCpuPercent" : 74.98574416023472,
+      "peakRssMB" : 98.9921875,
+      "samples" : 157
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-loss-1pct",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "loss-1pct",
+        "netem" : {
+          "delayMs" : 40,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 1,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "1% packet loss (netem) + 40 ms delay"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-loss-1pct"
+    },
+    "wallSeconds" : 171.276027945
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 10152,
+        "max" : 4169,
+        "p50" : 88,
+        "p95" : 384,
+        "p99" : 1667
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2343,
+          "conflict" : 1132,
+          "issued" : 3475,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3926,
+          "conflict" : 0,
+          "issued" : 3926,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 468,
+          "conflict" : 0,
+          "issued" : 468,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3415,
+          "conflict" : 0,
+          "issued" : 3415,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 782428,
+        "postFailures" : 106,
+        "postMillis" : [
+
+        ],
+        "posts" : 10424,
+        "snapshots" : 100,
+        "streamsLost" : 500,
+        "streamsOpened" : 600
+      },
+      "committed" : 10152,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 966,
+      "finalDivergence" : 0,
+      "head" : 10152,
+      "issued" : 11284,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 8729,
+        "max" : 3200,
+        "p50" : 87,
+        "p95" : 372,
+        "p99" : 622
+      },
+      "rejectedConflict" : 1132,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 10152,
+        "max" : 5860,
+        "p50" : 216,
+        "p95" : 2601,
+        "p99" : 4177
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 9609,
+        "max" : 5860,
+        "p50" : 216,
+        "p95" : 2664,
+        "p99" : 4196
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 27.39576489372094,
+      "peakCpuPercent" : 79.96835851974276,
+      "peakRssMB" : 99.84375,
+      "samples" : 172
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-loss-5pct",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "loss-5pct",
+        "netem" : {
+          "delayMs" : 40,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 5,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "5% packet loss (netem) + 40 ms delay"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-loss-5pct"
+    },
+    "wallSeconds" : 186.565341837
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 14182,
+        "max" : 8980,
+        "p50" : 127,
+        "p95" : 742,
+        "p99" : 2198
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2970,
+          "conflict" : 1998,
+          "issued" : 4971,
+          "lost" : 3,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 5664,
+          "conflict" : 0,
+          "issued" : 5664,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 663,
+          "conflict" : 0,
+          "issued" : 663,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 4885,
+          "conflict" : 0,
+          "issued" : 4885,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 1190799,
+        "postFailures" : 91,
+        "postMillis" : [
+
+        ],
+        "posts" : 16091,
+        "snapshots" : 100,
+        "streamsLost" : 684,
+        "streamsOpened" : 780
+      },
+      "committed" : 14182,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 1,
+      "earlyWarnings" : 1576,
+      "finalDivergence" : 0,
+      "head" : 14182,
+      "issued" : 16183,
+      "lost" : 3,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 13621,
+        "max" : 8094,
+        "p50" : 90,
+        "p95" : 623,
+        "p99" : 1199
+      },
+      "rejectedConflict" : 1998,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 3,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 3,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 14182,
+        "max" : 10347,
+        "p50" : 1034,
+        "p95" : 5086,
+        "p99" : 7733
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 13670,
+        "max" : 10347,
+        "p50" : 1076,
+        "p95" : 5161,
+        "p99" : 7768
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 27.010812435399377,
+      "peakCpuPercent" : 62.983953200339414,
+      "peakRssMB" : 114.765625,
+      "samples" : 246
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-loss-15pct",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "loss-15pct",
+        "netem" : {
+          "delayMs" : 40,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 15,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "15% packet loss (netem) + 40 ms delay"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-loss-15pct"
+    },
+    "wallSeconds" : 261.775027496
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 7578,
+        "max" : 2991,
+        "p50" : 8,
+        "p95" : 89,
+        "p99" : 1436
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2159,
+          "conflict" : 262,
+          "issued" : 2421,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2710,
+          "conflict" : 0,
+          "issued" : 2710,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 334,
+          "conflict" : 0,
+          "issued" : 334,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2375,
+          "conflict" : 0,
+          "issued" : 2375,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 505890,
+        "postFailures" : 115,
+        "postMillis" : [
+
+        ],
+        "posts" : 6235,
+        "snapshots" : 100,
+        "streamsLost" : 325,
+        "streamsOpened" : 425
+      },
+      "committed" : 7578,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 154,
+      "finalDivergence" : 0,
+      "head" : 7578,
+      "issued" : 7840,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 5258,
+        "max" : 1990,
+        "p50" : 7,
+        "p95" : 62,
+        "p99" : 111
+      },
+      "rejectedConflict" : 262,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 7578,
+        "max" : 4567,
+        "p50" : 64,
+        "p95" : 2271,
+        "p99" : 3694
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 7014,
+        "max" : 4567,
+        "p50" : 64,
+        "p95" : 2368,
+        "p99" : 3708
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 32.60175813162102,
+      "peakCpuPercent" : 76.95200426541966,
+      "peakRssMB" : 95.921875,
+      "samples" : 119
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-reorder-duplicate",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "reorder-duplicate",
+        "netem" : {
+          "delayMs" : 40,
+          "duplicatePercent" : 5,
+          "jitterMs" : 20,
+          "lossPercent" : 0,
+          "reorderPercent" : 25
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "25% packet reordering + 5% duplication (netem), 20-60 ms delay"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-reorder-duplicate"
+    },
+    "wallSeconds" : 133.086525353
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 9521,
+        "max" : 11012,
+        "p50" : 22,
+        "p95" : 322,
+        "p99" : 2511
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2618,
+          "conflict" : 456,
+          "issued" : 3074,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3482,
+          "conflict" : 0,
+          "issued" : 3482,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 421,
+          "conflict" : 0,
+          "issued" : 421,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 3000,
+          "conflict" : 0,
+          "issued" : 3000,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 747097,
+        "postFailures" : 125,
+        "postMillis" : [
+
+        ],
+        "posts" : 9297,
+        "snapshots" : 100,
+        "streamsLost" : 507,
+        "streamsOpened" : 607
+      },
+      "committed" : 9521,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 270,
+      "finalDivergence" : 0,
+      "head" : 9521,
+      "issued" : 9977,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 7801,
+        "max" : 1688,
+        "p50" : 19,
+        "p95" : 26,
+        "p99" : 55
+      },
+      "rejectedConflict" : 456,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 9521,
+        "max" : 14756,
+        "p50" : 41,
+        "p95" : 11650,
+        "p99" : 13671
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 8978,
+        "max" : 14756,
+        "p50" : 35,
+        "p95" : 11327,
+        "p99" : 13691
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 28.371378870224078,
+      "peakCpuPercent" : 82.98092036294275,
+      "peakRssMB" : 98.3828125,
+      "samples" : 168
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-bandwidth-256kbps",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 32,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "bandwidth-256kbps",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 32,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "256 kbit\/s per direction (a 500-node snapshot takes many seconds)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-bandwidth-256kbps"
+    },
+    "wallSeconds" : 182.736280712
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "disconnect" : 723,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 40"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 7078,
+        "max" : 5978,
+        "p50" : 7,
+        "p95" : 2435,
+        "p99" : 3701
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1756,
+          "conflict" : 597,
+          "issued" : 2354,
+          "lost" : 1,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2647,
+          "conflict" : 0,
+          "issued" : 2648,
+          "lost" : 1,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 332,
+          "conflict" : 0,
+          "issued" : 332,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2343,
+          "conflict" : 0,
+          "issued" : 2344,
+          "lost" : 1,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 467980,
+        "postFailures" : 111,
+        "postMillis" : [
+
+        ],
+        "posts" : 6008,
+        "snapshots" : 100,
+        "streamsLost" : 694,
+        "streamsOpened" : 794
+      },
+      "committed" : 7078,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 356,
+      "finalDivergence" : 0,
+      "head" : 7078,
+      "issued" : 7678,
+      "lost" : 3,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 4928,
+        "max" : 4321,
+        "p50" : 7,
+        "p95" : 2040,
+        "p99" : 3364
+      },
+      "rejectedConflict" : 597,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 3,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 1,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 7078,
+        "max" : 11968,
+        "p50" : 3888,
+        "p95" : 6836,
+        "p99" : 8261
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 6545,
+        "max" : 9987,
+        "p50" : 3869,
+        "p95" : 6454,
+        "p99" : 7922
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 31.37984583432643,
+      "peakCpuPercent" : 69.98971718074154,
+      "peakRssMB" : 94.5390625,
+      "samples" : 117
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-clean-disconnects",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "cleanDisconnects",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "clean-disconnects",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "connections closed for 2-4 s every 8-20 s"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-clean-disconnects"
+    },
+    "wallSeconds" : 130.778401517
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "halfOpen" : 334,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 6633,
+        "max" : 42608,
+        "p50" : 632,
+        "p95" : 25467,
+        "p99" : 31966
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1073,
+          "conflict" : 1395,
+          "issued" : 2494,
+          "lost" : 26,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2768,
+          "conflict" : 0,
+          "issued" : 2768,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 358,
+          "conflict" : 0,
+          "issued" : 358,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2434,
+          "conflict" : 0,
+          "issued" : 2434,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 430190,
+        "postFailures" : 115,
+        "postMillis" : [
+
+        ],
+        "posts" : 56229,
+        "snapshots" : 104,
+        "streamsLost" : 556,
+        "streamsOpened" : 832
+      },
+      "committed" : 6633,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 41,
+      "finalDivergence" : 0,
+      "head" : 6633,
+      "issued" : 8054,
+      "lost" : 26,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 42198,
+        "max" : 1970,
+        "p50" : 2,
+        "p95" : 7,
+        "p99" : 15
+      },
+      "rejectedConflict" : 1395,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 26,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 26,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 6633,
+        "max" : 43644,
+        "p50" : 31337,
+        "p95" : 38694,
+        "p99" : 42334
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 6114,
+        "max" : 43644,
+        "p50" : 31171,
+        "p95" : 38963,
+        "p99" : 42462
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 78.52476933467335,
+      "peakCpuPercent" : 165.97273847978647,
+      "peakRssMB" : 137.98046875,
+      "samples" : 132
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-half-open-sse",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "halfOpenStream",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "half-open-sse",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "SSE direction silently stalls (socket stays open) for 15-30 s windows"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-half-open-sse"
+    },
+    "wallSeconds" : 145.61402997599998
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "flap" : 4285,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 6335,
+        "max" : 9132,
+        "p50" : 74,
+        "p95" : 2223,
+        "p99" : 3952
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1036,
+          "conflict" : 1313,
+          "issued" : 2354,
+          "lost" : 5,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2685,
+          "conflict" : 0,
+          "issued" : 2690,
+          "lost" : 5,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 332,
+          "conflict" : 0,
+          "issued" : 332,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2282,
+          "conflict" : 0,
+          "issued" : 2284,
+          "lost" : 2,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 417408,
+        "postFailures" : 100,
+        "postMillis" : [
+
+        ],
+        "posts" : 6072,
+        "snapshots" : 100,
+        "streamsLost" : 2813,
+        "streamsOpened" : 2913
+      },
+      "committed" : 6335,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 678,
+      "finalDivergence" : 0,
+      "head" : 6335,
+      "issued" : 7660,
+      "lost" : 12,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 5018,
+        "max" : 4573,
+        "p50" : 7,
+        "p95" : 1997,
+        "p99" : 2595
+      },
+      "rejectedConflict" : 1313,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 12,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 5,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 6335,
+        "max" : 13570,
+        "p50" : 3221,
+        "p95" : 7770,
+        "p99" : 9690
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 5866,
+        "max" : 13570,
+        "p50" : 3273,
+        "p95" : 7823,
+        "p99" : 9793
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 34.63643561558907,
+      "peakCpuPercent" : 83.9864441679791,
+      "peakRssMB" : 90.67578125,
+      "samples" : 117
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-flapping",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "flapping",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "flapping",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "link up\/down every 0.3-2.5 s"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-flapping"
+    },
+    "wallSeconds" : 130.75188395900003
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "longOffline" : 25,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 7297,
+        "max" : 48731,
+        "p50" : 7,
+        "p95" : 1824,
+        "p99" : 30664
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2015,
+          "conflict" : 315,
+          "issued" : 2336,
+          "lost" : 6,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2637,
+          "conflict" : 0,
+          "issued" : 2641,
+          "lost" : 4,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 337,
+          "conflict" : 0,
+          "issued" : 337,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2308,
+          "conflict" : 0,
+          "issued" : 2312,
+          "lost" : 4,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 480624,
+        "postFailures" : 139,
+        "postMillis" : [
+
+        ],
+        "posts" : 5859,
+        "snapshots" : 104,
+        "streamsLost" : 343,
+        "streamsOpened" : 443
+      },
+      "committed" : 7297,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 208,
+      "finalDivergence" : 0,
+      "head" : 7297,
+      "issued" : 7626,
+      "lost" : 14,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 4900,
+        "max" : 4563,
+        "p50" : 7,
+        "p95" : 20,
+        "p99" : 109
+      },
+      "rejectedConflict" : 315,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 14,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 6,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 7297,
+        "max" : 50063,
+        "p50" : 625,
+        "p95" : 41499,
+        "p99" : 45201
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 6733,
+        "max" : 49377,
+        "p50" : 375,
+        "p95" : 37620,
+        "p99" : 42695
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 29.994224376886002,
+      "peakCpuPercent" : 70.9881152407345,
+      "peakRssMB" : 96.125,
+      "samples" : 117
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-long-offline",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "longOffline",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "long-offline",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "25% of clients offline for 20-35 s, then return"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-long-offline"
+    },
+    "wallSeconds" : 130.869200039
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 5527,
+        "max" : 7325,
+        "p50" : 2761,
+        "p95" : 4498,
+        "p99" : 5929
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 223,
+          "conflict" : 2110,
+          "issued" : 2345,
+          "lost" : 12,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2646,
+          "conflict" : 0,
+          "issued" : 2653,
+          "lost" : 7,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 333,
+          "conflict" : 0,
+          "issued" : 333,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2325,
+          "conflict" : 0,
+          "issued" : 2331,
+          "lost" : 6,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 369280,
+        "postFailures" : 287,
+        "postMillis" : [
+
+        ],
+        "posts" : 5347,
+        "snapshots" : 100,
+        "streamsLost" : 324,
+        "streamsOpened" : 424
+      },
+      "committed" : 5527,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 2101,
+      "finalDivergence" : 0,
+      "head" : 5527,
+      "issued" : 7662,
+      "lost" : 25,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 3768,
+        "max" : 4145,
+        "p50" : 1881,
+        "p95" : 2105,
+        "p99" : 2822
+      },
+      "rejectedConflict" : 2110,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 25,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 12,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 5527,
+        "max" : 7634,
+        "p50" : 2985,
+        "p95" : 5602,
+        "p99" : 6728
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 5090,
+        "max" : 7634,
+        "p50" : 3054,
+        "p95" : 5566,
+        "p99" : 6602
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 12.739844276679168,
+      "peakCpuPercent" : 66.77713545061597,
+      "peakRssMB" : 95.45703125,
+      "samples" : 119
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-slow-server",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "slow-server",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 800,
+        "summary" : "every commit takes an extra 800 ms"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-slow-server"
+    },
+    "wallSeconds" : 132.54141946000001
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 8890,
+        "max" : 65672,
+        "p50" : 7,
+        "p95" : 5943,
+        "p99" : 16932
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2431,
+          "conflict" : 463,
+          "issued" : 2902,
+          "lost" : 8,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3216,
+          "conflict" : 0,
+          "issued" : 3222,
+          "lost" : 6,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 397,
+          "conflict" : 0,
+          "issued" : 397,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2846,
+          "conflict" : 0,
+          "issued" : 2851,
+          "lost" : 5,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 647604,
+        "postFailures" : 213,
+        "postMillis" : [
+
+        ],
+        "posts" : 7288,
+        "snapshots" : 100,
+        "streamsLost" : 426,
+        "streamsOpened" : 526
+      },
+      "committed" : 8890,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 422,
+      "finalDivergence" : 0,
+      "head" : 8890,
+      "issued" : 9372,
+      "lost" : 19,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 5949,
+        "max" : 1124,
+        "p50" : 7,
+        "p95" : 19,
+        "p99" : 84
+      },
+      "rejectedConflict" : 463,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 19,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 8,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 8890,
+        "max" : 20900,
+        "p50" : 9,
+        "p95" : 5356,
+        "p99" : 11021
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 8363,
+        "max" : 20900,
+        "p50" : 9,
+        "p95" : 4527,
+        "p99" : 10621
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 29.981579304300244,
+      "peakCpuPercent" : 81.98482182199685,
+      "peakRssMB" : 100.3515625,
+      "samples" : 142
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-post-response-lost",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "post-response-lost",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0.3,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "30% of POST connections swallow the response after the server committed (client times out and resends)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-post-response-lost"
+    },
+    "wallSeconds" : 156.60369584400001
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 6555,
+        "max" : 11433,
+        "p50" : 4657,
+        "p95" : 7903,
+        "p99" : 9653
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 382,
+          "conflict" : 2317,
+          "issued" : 2710,
+          "lost" : 11,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 3068,
+          "conflict" : 0,
+          "issued" : 3068,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 380,
+          "conflict" : 0,
+          "issued" : 380,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2725,
+          "conflict" : 0,
+          "issued" : 2725,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 483820,
+        "postFailures" : 108,
+        "postMillis" : [
+
+        ],
+        "posts" : 29975,
+        "snapshots" : 100,
+        "streamsLost" : 300,
+        "streamsOpened" : 400
+      },
+      "committed" : 6555,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 20,
+      "finalDivergence" : 0,
+      "head" : 6555,
+      "issued" : 8883,
+      "lost" : 11,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 23088,
+        "max" : 224,
+        "p50" : 4,
+        "p95" : 9,
+        "p99" : 22
+      },
+      "rejectedConflict" : 2317,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 11,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 11,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 6555,
+        "max" : 13699,
+        "p50" : 4999,
+        "p95" : 11143,
+        "p99" : 12564
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 6144,
+        "max" : 12661,
+        "p50" : 4998,
+        "p95" : 10666,
+        "p99" : 12143
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 40.37289734438997,
+      "peakCpuPercent" : 148.9740515507268,
+      "peakRssMB" : 111.49609375,
+      "samples" : 143
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-sse-buffered",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 2000,
+          "downLatencyMs" : 3000,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "sse-buffered",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "a buffering proxy delays the SSE stream by 3-5 s"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-sse-buffered"
+    },
+    "wallSeconds" : 156.536452601
+  },
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "serverKill" : 3
+    },
+    "notes" : [
+      "WARN toxiproxy admin API calls that failed after retries: 93"
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 5049,
+        "max" : 963,
+        "p50" : 6,
+        "p95" : 10,
+        "p99" : 334
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 1519,
+          "conflict" : 40,
+          "issued" : 1559,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 1730,
+          "conflict" : 0,
+          "issued" : 1730,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 215,
+          "conflict" : 0,
+          "issued" : 215,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 1585,
+          "conflict" : 0,
+          "issued" : 1585,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 292585,
+        "postFailures" : 0,
+        "postMillis" : [
+
+        ],
+        "posts" : 5986,
+        "snapshots" : 100,
+        "streamsLost" : 1369,
+        "streamsOpened" : 1466
+      },
+      "committed" : 5049,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 24,
+      "finalDivergence" : 0,
+      "head" : 5049,
+      "issued" : 5089,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 5092,
+        "max" : 44,
+        "p50" : 5,
+        "p95" : 9,
+        "p99" : 14
+      },
+      "rejectedConflict" : 40,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 5049,
+        "max" : 196523,
+        "p50" : 65473,
+        "p95" : 156002,
+        "p99" : 176560
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 5034,
+        "max" : 185449,
+        "p50" : 65311,
+        "p95" : 155019,
+        "p99" : 173779
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 14.89010785141378,
+      "peakCpuPercent" : 115.96140016065135,
+      "peakRssMB" : 98.6796875,
+      "samples" : 312
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-sse-lifetime-cap",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "none",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 8000,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "sse-lifetime-cap",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "resetAfterMs" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "SSE connections are reset 8 s after they start (NAT \/ proxy lifetime cap)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-sse-lifetime-cap"
+    },
+    "wallSeconds" : 325.440386952
+  }
+]

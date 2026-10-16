@@ -1,0 +1,185 @@
+{
+  "injected" : {
+    "lifetimeCut" : 1500
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 7555,
+      "max" : 1018,
+      "p50" : 7,
+      "p95" : 367,
+      "p99" : 758
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 2181,
+        "conflict" : 230,
+        "issued" : 2411,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 2738,
+        "conflict" : 0,
+        "issued" : 2738,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 347,
+        "conflict" : 0,
+        "issued" : 347,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2289,
+        "conflict" : 0,
+        "issued" : 2289,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 755207,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 7785,
+      "snapshots" : 100,
+      "streamsLost" : 1500,
+      "streamsOpened" : 1600
+    },
+    "committed" : 7555,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 56,
+    "finalDivergence" : 0,
+    "head" : 7555,
+    "issued" : 7785,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 7785,
+      "max" : 786,
+      "p50" : 6,
+      "p95" : 11,
+      "p99" : 44
+    },
+    "rejectedConflict" : 230,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 7555,
+      "max" : 1718,
+      "p50" : 806,
+      "p95" : 982,
+      "p99" : 1028
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 6989,
+      "max" : 1055,
+      "p50" : 807,
+      "p95" : 978,
+      "p99" : 1019
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 30.385156142471946,
+    "peakCpuPercent" : 38.992154817442945,
+    "peakRssMB" : 94.4140625,
+    "samples" : 125
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 100,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-100c-sse-lifetime-cap",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "eventsLifetimeCap",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "sse-lifetime-cap",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "SSE connections are cut every 8 s (NAT \/ proxy lifetime cap)"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/cap100-b\/work-storm-b-100c-sse-lifetime-cap"
+  },
+  "wallSeconds" : 132.527789739
+}

@@ -1,0 +1,189 @@
+{
+  "injected" : {
+    "clientKill" : 4,
+    "clientPause" : 3,
+    "serverKill" : 3
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 93"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 6555,
+      "max" : 11433,
+      "p50" : 4657,
+      "p95" : 7903,
+      "p99" : 9653
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 382,
+        "conflict" : 2317,
+        "issued" : 2710,
+        "lost" : 11,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 3068,
+        "conflict" : 0,
+        "issued" : 3068,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 380,
+        "conflict" : 0,
+        "issued" : 380,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2725,
+        "conflict" : 0,
+        "issued" : 2725,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 483820,
+      "postFailures" : 108,
+      "postMillis" : [
+
+      ],
+      "posts" : 29975,
+      "snapshots" : 100,
+      "streamsLost" : 300,
+      "streamsOpened" : 400
+    },
+    "committed" : 6555,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 20,
+    "finalDivergence" : 0,
+    "head" : 6555,
+    "issued" : 8883,
+    "lost" : 11,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 23088,
+      "max" : 224,
+      "p50" : 4,
+      "p95" : 9,
+      "p99" : 22
+    },
+    "rejectedConflict" : 2317,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 11,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 11,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 6555,
+      "max" : 13699,
+      "p50" : 4999,
+      "p95" : 11143,
+      "p99" : 12564
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 6144,
+      "max" : 12661,
+      "p50" : 4998,
+      "p95" : 10666,
+      "p99" : 12143
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 40.37289734438997,
+    "peakCpuPercent" : 148.9740515507268,
+    "peakRssMB" : 111.49609375,
+    "samples" : 143
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 20,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        10,
+        20
+      ],
+      "clientKills" : true,
+      "clientPauses" : true,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0.1,
+      "networkCuts" : false,
+      "replayOldRate" : 0.05,
+      "serverKillEverySec" : [
+        25,
+        40
+      ],
+      "serverKills" : true
+    },
+    "name" : "storm-c-100c-sse-buffered",
+    "pingSeconds" : 3,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 2000,
+        "downLatencyMs" : 3000,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "sse-buffered",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "a buffering proxy delays the SSE stream by 3-5 s"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 9000
+    },
+    "volatileFraction" : 0.3,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-sse-buffered"
+  },
+  "wallSeconds" : 156.536452601
+}

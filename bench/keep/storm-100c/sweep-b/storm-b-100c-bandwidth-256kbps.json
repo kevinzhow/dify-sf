@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 10323,
+      "max" : 1135,
+      "p50" : 22,
+      "p95" : 37,
+      "p99" : 595
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 2999,
+        "conflict" : 322,
+        "issued" : 3321,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 3766,
+        "conflict" : 0,
+        "issued" : 3766,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 459,
+        "conflict" : 0,
+        "issued" : 459,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 3099,
+        "conflict" : 0,
+        "issued" : 3099,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 1032300,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 10645,
+      "snapshots" : 100,
+      "streamsLost" : 500,
+      "streamsOpened" : 600
+    },
+    "committed" : 10323,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 222,
+    "finalDivergence" : 0,
+    "head" : 10323,
+    "issued" : 10645,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 10645,
+      "max" : 502,
+      "p50" : 19,
+      "p95" : 23,
+      "p99" : 48
+    },
+    "rejectedConflict" : 322,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 10323,
+      "max" : 1169,
+      "p50" : 23,
+      "p95" : 374,
+      "p99" : 1072
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 9740,
+      "max" : 1169,
+      "p50" : 23,
+      "p95" : 390,
+      "p99" : 1078
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 26.58286332700055,
+    "peakCpuPercent" : 37.98585702973923,
+    "peakRssMB" : 103.0078125,
+    "samples" : 176
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 100,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-100c-bandwidth-256kbps",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 32,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "bandwidth-256kbps",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 32,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "256 kbit\/s per direction (a 500-node snapshot takes many seconds)"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-061314\/work-storm-b-100c-bandwidth-256kbps"
+  },
+  "wallSeconds" : 184.754173402
+}

@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 9511,
+      "max" : 1595,
+      "p50" : 262,
+      "p95" : 374,
+      "p99" : 863
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 1887,
+        "conflict" : 1602,
+        "issued" : 3489,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 3901,
+        "conflict" : 0,
+        "issued" : 3901,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 460,
+        "conflict" : 0,
+        "issued" : 460,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 3263,
+        "conflict" : 0,
+        "issued" : 3263,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 951100,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 11113,
+      "snapshots" : 100,
+      "streamsLost" : 500,
+      "streamsOpened" : 600
+    },
+    "committed" : 9511,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 1366,
+    "finalDivergence" : 0,
+    "head" : 9511,
+    "issued" : 11113,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 11113,
+      "max" : 971,
+      "p50" : 230,
+      "p95" : 362,
+      "p99" : 388
+    },
+    "rejectedConflict" : 1602,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 9511,
+      "max" : 1707,
+      "p50" : 325,
+      "p95" : 759,
+      "p99" : 1514
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 9035,
+      "max" : 1707,
+      "p50" : 324,
+      "p95" : 817,
+      "p99" : 1521
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 26.098881075214592,
+    "peakCpuPercent" : 36.99140767281727,
+    "peakRssMB" : 105.21875,
+    "samples" : 176
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 100,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-100c-jitter",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 100,
+        "downLatencyMs" : 100,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 100,
+        "upLatencyMs" : 100
+      },
+      "name" : "jitter",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 100,
+        "downLatencyMs" : 100,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 100,
+        "upLatencyMs" : 100
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "100 ms each way with +-100 ms jitter"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-061314\/work-storm-b-100c-jitter"
+  },
+  "wallSeconds" : 184.809556325
+}

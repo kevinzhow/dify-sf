@@ -171,7 +171,7 @@ enum Storm {
             results.append(r)
             say(Report.line(r))
             if let data = try? JSONEncoder.pretty.encode(r) { FileManager.default.createFile(atPath: "\(out)/\(s.name).json", contents: data) }
-            if r.passed { try? FileManager.default.removeItem(atPath: s.workDir) }
+            if r.passed, ProcessInfo.processInfo.environment["HARNESS_KEEP_WORK"] != "1" { try? FileManager.default.removeItem(atPath: s.workDir) }
         }
         await toxi?.shutdown()
         let md = Report.stormTable(results)

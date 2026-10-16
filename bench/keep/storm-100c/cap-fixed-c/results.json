@@ -1,0 +1,190 @@
+[
+  {
+    "injected" : {
+      "clientKill" : 4,
+      "clientPause" : 3,
+      "lifetimeCut" : 1500,
+      "serverKill" : 3
+    },
+    "notes" : [
+
+    ],
+    "report" : {
+      "ackLatencyMs" : {
+        "count" : 7397,
+        "max" : 3855,
+        "p50" : 7,
+        "p95" : 587,
+        "p99" : 1503
+      },
+      "byClass" : {
+        "diffValue" : {
+          "committed" : 2067,
+          "conflict" : 318,
+          "issued" : 2385,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "disjoint" : {
+          "committed" : 2669,
+          "conflict" : 0,
+          "issued" : 2669,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "layout" : {
+          "committed" : 333,
+          "conflict" : 0,
+          "issued" : 333,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        },
+        "sameValue" : {
+          "committed" : 2328,
+          "conflict" : 0,
+          "issued" : 2328,
+          "lost" : 0,
+          "noTerminal" : 0,
+          "otherRejected" : 0
+        }
+      },
+      "clientStats" : {
+        "commits" : 489040,
+        "postFailures" : 114,
+        "postMillis" : [
+
+        ],
+        "posts" : 6123,
+        "snapshots" : 100,
+        "streamsLost" : 1214,
+        "streamsOpened" : 1314
+      },
+      "committed" : 7397,
+      "conflictNoticesMissingInLog" : 0,
+      "diffRegistersChecked" : 5,
+      "disjointFinalMismatch" : 0,
+      "duplicateTerminals" : 0,
+      "earlyWarnings" : 113,
+      "finalDivergence" : 0,
+      "head" : 7397,
+      "issued" : 7715,
+      "lost" : 0,
+      "lostDisjointEdits" : 0,
+      "lostSameValueEdits" : 0,
+      "postRoundTripMs" : {
+        "count" : 5127,
+        "max" : 1197,
+        "p50" : 6,
+        "p95" : 17,
+        "p99" : 93
+      },
+      "rejectedConflict" : 318,
+      "rejectedOther" : {
+
+      },
+      "reportedLostEdits" : 0,
+      "silentOverwrites" : 0,
+      "unexplainedDiffRejects" : 0,
+      "unresolved" : 0,
+      "violationKinds" : {
+
+      },
+      "violations" : [
+
+      ],
+      "visibilityLatencyMs" : {
+        "count" : 7397,
+        "max" : 5410,
+        "p50" : 852,
+        "p95" : 2706,
+        "p99" : 3712
+      },
+      "visibilityLatencySteadyMs" : {
+        "count" : 6832,
+        "max" : 5410,
+        "p50" : 858,
+        "p95" : 2750,
+        "p99" : 3749
+      }
+    },
+    "server" : {
+      "avgCpuPercent" : 33.90458323195309,
+      "peakCpuPercent" : 81.98678364848911,
+      "peakRssMB" : 96.13671875,
+      "samples" : 117
+    },
+    "spec" : {
+      "clients" : 100,
+      "clientsPerWorker" : 20,
+      "durationSec" : 120,
+      "editMaxMs" : 2000,
+      "editMinMs" : 1000,
+      "faults" : {
+        "clientFaultEverySec" : [
+          10,
+          20
+        ],
+        "clientKills" : true,
+        "clientPauses" : true,
+        "dbCuts" : false,
+        "duplicatePostRate" : 0.1,
+        "networkCuts" : false,
+        "replayOldRate" : 0.05,
+        "serverKillEverySec" : [
+          25,
+          40
+        ],
+        "serverKills" : true
+      },
+      "name" : "storm-c-100c-sse-lifetime-cap",
+      "pingSeconds" : 3,
+      "plan" : "stormMixed",
+      "profile" : {
+        "dynamics" : "eventsLifetimeCap",
+        "events" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "name" : "sse-lifetime-cap",
+        "netem" : {
+          "delayMs" : 0,
+          "duplicatePercent" : 0,
+          "jitterMs" : 0,
+          "lossPercent" : 0,
+          "reorderPercent" : 0
+        },
+        "post" : {
+          "bandwidthKBps" : 0,
+          "downJitterMs" : 0,
+          "downLatencyMs" : 0,
+          "downStallFraction" : 0,
+          "upJitterMs" : 0,
+          "upLatencyMs" : 0
+        },
+        "serverCommitDelayMs" : 0,
+        "summary" : "SSE connections are cut every 8 s (NAT \/ proxy lifetime cap)"
+      },
+      "seed" : 4242,
+      "settleSec" : 120,
+      "slot" : 0,
+      "timings" : {
+        "maxBatch" : 50,
+        "postTimeoutMs" : 10000,
+        "reconnectBaseMs" : 500,
+        "reconnectMaxMs" : 15000,
+        "retransmitAfterMs" : 10000,
+        "streamSilenceMs" : 9000
+      },
+      "volatileFraction" : 0.3,
+      "workDir" : "\/repo\/bench\/storm\/results\/cap100-c\/work-storm-c-100c-sse-lifetime-cap"
+    },
+    "wallSeconds" : 130.749217564
+  }
+]

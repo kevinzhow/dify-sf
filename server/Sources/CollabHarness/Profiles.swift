@@ -11,9 +11,6 @@ public struct NetworkProfile: Codable, Sendable {
         /// Fraction (0...1) of new connections whose server->client direction is stalled forever (half-open: the
         /// connection stays up but nothing comes through) - for POST this is "the server committed, the response never arrives".
         public var downStallFraction = 0.0
-        /// Kill each connection (TCP RST) this many ms after it starts to carry data (0 = never). Emulates a NAT /
-        /// proxy that drops long-lived connections.
-        public var resetAfterMs = 0
         public init() {}
     }
 
@@ -28,6 +25,10 @@ public struct NetworkProfile: Codable, Sendable {
         case longOffline
         /// The SSE direction server->client silently stops (socket stays open) for windows of 15-30 s, then recovers.
         case halfOpenStream
+        /// Every client's event stream is cut every 8 s (random phase per client) while the POST channel is untouched:
+        /// a NAT or proxy that caps connection lifetime. (Toxiproxy's `reset_peer` cannot model this: it swallows the
+        /// first chunk it sees and resets after the timeout, so no data would ever reach the client.)
+        case eventsLifetimeCap
     }
 
     public var name: String
@@ -113,8 +114,8 @@ public struct NetworkProfile: Codable, Sendable {
         var buf = NetworkProfile(name: "sse-buffered", summary: "a buffering proxy delays the SSE stream by 3-5 s")
         buf.events.downLatencyMs = 3000; buf.events.downJitterMs = 2000
         all.append(buf)
-        var cap = NetworkProfile(name: "sse-lifetime-cap", summary: "SSE connections are reset 8 s after they start (NAT / proxy lifetime cap)")
-        cap.events.resetAfterMs = 8000
+        var cap = NetworkProfile(name: "sse-lifetime-cap", summary: "SSE connections are cut every 8 s (NAT / proxy lifetime cap)")
+        cap.dynamics = .eventsLifetimeCap
         all.append(cap)
         return all
     }()

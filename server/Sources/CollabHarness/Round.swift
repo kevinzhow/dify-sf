@@ -198,8 +198,10 @@ public final class RoundRunner: @unchecked Sendable {
         try? await Task.sleep(for: .seconds(spec.durationSec))
         faultTask.cancel()
         await faultTask.value
-        await net?.restore()
+        // Clear netem first: it also shapes the harness's own calls to the fault proxy, and restoring 200 proxies through
+        // a 15%-loss link kept the editors running for minutes past the window.
         if spec.profile.usesNetem, Netem.available { Netem.clear(device: env.netemDevice) }
+        await net?.restore()
         if useProxy, spec.faults.dbCuts { await toxi?.ensureClean(proxy: pgProxy) }
         // Heal everything: server up, workers alive and resumed.
         if server.pid == nil { try server.start(); try await server.waitHealthy() }

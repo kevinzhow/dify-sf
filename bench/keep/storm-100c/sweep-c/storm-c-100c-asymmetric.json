@@ -1,0 +1,189 @@
+{
+  "injected" : {
+    "clientKill" : 4,
+    "clientPause" : 3,
+    "serverKill" : 3
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 8691,
+      "max" : 4473,
+      "p50" : 857,
+      "p95" : 1269,
+      "p99" : 2492
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 1091,
+        "conflict" : 2286,
+        "issued" : 3381,
+        "lost" : 4,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 3809,
+        "conflict" : 0,
+        "issued" : 3809,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 452,
+        "conflict" : 0,
+        "issued" : 452,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 3339,
+        "conflict" : 0,
+        "issued" : 3339,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 671740,
+      "postFailures" : 132,
+      "postMillis" : [
+
+      ],
+      "posts" : 10054,
+      "snapshots" : 100,
+      "streamsLost" : 440,
+      "streamsOpened" : 540
+    },
+    "committed" : 8691,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 2187,
+    "finalDivergence" : 0,
+    "head" : 8691,
+    "issued" : 10981,
+    "lost" : 4,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 8439,
+      "max" : 2833,
+      "p50" : 856,
+      "p95" : 864,
+      "p99" : 942
+    },
+    "rejectedConflict" : 2286,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 4,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 4,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 8691,
+      "max" : 5722,
+      "p50" : 859,
+      "p95" : 2834,
+      "p99" : 4539
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 8217,
+      "max" : 5722,
+      "p50" : 859,
+      "p95" : 2915,
+      "p99" : 4558
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 27.12422158530622,
+    "peakCpuPercent" : 84.98817321579162,
+    "peakRssMB" : 99.3203125,
+    "samples" : 168
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 20,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        10,
+        20
+      ],
+      "clientKills" : true,
+      "clientPauses" : true,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0.1,
+      "networkCuts" : false,
+      "replayOldRate" : 0.05,
+      "serverKillEverySec" : [
+        25,
+        40
+      ],
+      "serverKills" : true
+    },
+    "name" : "storm-c-100c-asymmetric",
+    "pingSeconds" : 3,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 800,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 50
+      },
+      "name" : "asymmetric",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 800,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 50
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "uplink 50 ms, downlink 800 ms (one way)"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 9000
+    },
+    "volatileFraction" : 0.3,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-asymmetric"
+  },
+  "wallSeconds" : 182.966593598
+}

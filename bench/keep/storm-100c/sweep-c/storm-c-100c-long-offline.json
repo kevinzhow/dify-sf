@@ -1,0 +1,190 @@
+{
+  "injected" : {
+    "clientKill" : 4,
+    "clientPause" : 3,
+    "longOffline" : 25,
+    "serverKill" : 3
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 93"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 7297,
+      "max" : 48731,
+      "p50" : 7,
+      "p95" : 1824,
+      "p99" : 30664
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 2015,
+        "conflict" : 315,
+        "issued" : 2336,
+        "lost" : 6,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 2637,
+        "conflict" : 0,
+        "issued" : 2641,
+        "lost" : 4,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 337,
+        "conflict" : 0,
+        "issued" : 337,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 2308,
+        "conflict" : 0,
+        "issued" : 2312,
+        "lost" : 4,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 480624,
+      "postFailures" : 139,
+      "postMillis" : [
+
+      ],
+      "posts" : 5859,
+      "snapshots" : 104,
+      "streamsLost" : 343,
+      "streamsOpened" : 443
+    },
+    "committed" : 7297,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 208,
+    "finalDivergence" : 0,
+    "head" : 7297,
+    "issued" : 7626,
+    "lost" : 14,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 4900,
+      "max" : 4563,
+      "p50" : 7,
+      "p95" : 20,
+      "p99" : 109
+    },
+    "rejectedConflict" : 315,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 14,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 6,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 7297,
+      "max" : 50063,
+      "p50" : 625,
+      "p95" : 41499,
+      "p99" : 45201
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 6733,
+      "max" : 49377,
+      "p50" : 375,
+      "p95" : 37620,
+      "p99" : 42695
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 29.994224376886002,
+    "peakCpuPercent" : 70.9881152407345,
+    "peakRssMB" : 96.125,
+    "samples" : 117
+  },
+  "spec" : {
+    "clients" : 100,
+    "clientsPerWorker" : 20,
+    "durationSec" : 120,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        10,
+        20
+      ],
+      "clientKills" : true,
+      "clientPauses" : true,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0.1,
+      "networkCuts" : false,
+      "replayOldRate" : 0.05,
+      "serverKillEverySec" : [
+        25,
+        40
+      ],
+      "serverKills" : true
+    },
+    "name" : "storm-c-100c-long-offline",
+    "pingSeconds" : 3,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "longOffline",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "long-offline",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "25% of clients offline for 20-35 s, then return"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 9000
+    },
+    "volatileFraction" : 0.3,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-051703\/work-storm-c-100c-long-offline"
+  },
+  "wallSeconds" : 130.869200039
+}
