@@ -24,10 +24,10 @@ class HttpTransport implements CollabTransport {
     http.Client? client,
     this.connectTimeout = const Duration(seconds: 10),
     bool? lastEventIdInQuery,
-  })  : _base = baseUrl,
-        _client = client ?? http.Client(),
-        _ownsClient = client == null,
-        lastEventIdInQuery = lastEventIdInQuery ?? _isWeb;
+  }) : _base = baseUrl,
+       _client = client ?? http.Client(),
+       _ownsClient = client == null,
+       lastEventIdInQuery = lastEventIdInQuery ?? _isWeb;
 
   /// `dart.library.js_interop` is defined exactly when compiling for the web.
   static const bool _isWeb = bool.fromEnvironment('dart.library.js_interop');
@@ -45,9 +45,10 @@ class HttpTransport implements CollabTransport {
   final bool lastEventIdInQuery;
 
   Uri _url(String suffix, [Map<String, String>? query]) => _base.replace(
-        path: '${_base.path.endsWith('/') ? _base.path.substring(0, _base.path.length - 1) : _base.path}/v1/docs/$docId$suffix',
-        queryParameters: query,
-      );
+    path:
+        '${_base.path.endsWith('/') ? _base.path.substring(0, _base.path.length - 1) : _base.path}/v1/docs/$docId$suffix',
+    queryParameters: query,
+  );
 
   @override
   Future<SubmitResponse> submit(SubmitRequest request, {required Duration timeout}) async {
@@ -93,32 +94,35 @@ class HttpTransport implements CollabTransport {
           if (open.from != null) 'from': '${open.from}',
           if (open.lastEventId != null && lastEventIdInQuery) 'lastEventId': '${open.lastEventId}',
         };
-        final req = http.AbortableRequest('GET', _url('/events', query.isEmpty ? null : query), abortTrigger: abort.future)
-          ..headers['Accept'] = 'text/event-stream'
-          ..headers['Cache-Control'] = 'no-store';
+        final req =
+            http.AbortableRequest('GET', _url('/events', query.isEmpty ? null : query), abortTrigger: abort.future)
+              ..headers['Accept'] = 'text/event-stream'
+              ..headers['Cache-Control'] = 'no-store';
         if (open.lastEventId != null && !lastEventIdInQuery) req.headers['Last-Event-ID'] = '${open.lastEventId}';
         final res = await _client.send(req).timeout(connectTimeout);
         if (res.statusCode != 200) throw _errorFrom(res.statusCode, await res.stream.bytesToString());
         final parser = SseParser();
-        sub = utf8.decoder.bind(res.stream).listen(
-          (text) {
-            if (out.isClosed) return;
-            out.add(const PingEvent()); // any inbound byte proves the connection is alive
-            try {
-              for (final m in parser.add(text)) {
-                final e = StreamEvent.parse(m.event, m.data);
-                if (e != null) out.add(e);
-              }
-            } on FormatException catch (e) {
-              _fail(out, TransportException('bad event from server: ${e.message}'));
-            }
-          },
-          onError: (Object e) => _fail(out, TransportException('stream error: $e')),
-          onDone: () {
-            if (!out.isClosed) unawaited(out.close());
-          },
-          cancelOnError: true,
-        );
+        sub = utf8.decoder
+            .bind(res.stream)
+            .listen(
+              (text) {
+                if (out.isClosed) return;
+                out.add(const PingEvent()); // any inbound byte proves the connection is alive
+                try {
+                  for (final m in parser.add(text)) {
+                    final e = StreamEvent.parse(m.event, m.data);
+                    if (e != null) out.add(e);
+                  }
+                } on FormatException catch (e) {
+                  _fail(out, TransportException('bad event from server: ${e.message}'));
+                }
+              },
+              onError: (Object e) => _fail(out, TransportException('stream error: $e')),
+              onDone: () {
+                if (!out.isClosed) unawaited(out.close());
+              },
+              cancelOnError: true,
+            );
       } on TransportException catch (e) {
         _fail(out, e);
       } on TimeoutException {

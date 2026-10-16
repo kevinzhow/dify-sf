@@ -4,14 +4,12 @@ import 'value.dart';
 
 Never _bad(String what, Object? json) => throw FormatException('bad $what: $json');
 
-Map<String, Object?> _obj(Object? json, String what) =>
-    json is Map<String, Object?> ? json : _bad(what, json);
+Map<String, Object?> _obj(Object? json, String what) => json is Map<String, Object?> ? json : _bad(what, json);
 
 String _str(Map<String, Object?> m, String key, String what) =>
     m[key] is String ? m[key]! as String : _bad('$what.$key', m);
 
-int _int(Map<String, Object?> m, String key, String what) =>
-    m[key] is int ? m[key]! as int : _bad('$what.$key', m);
+int _int(Map<String, Object?> m, String key, String what) => m[key] is int ? m[key]! as int : _bad('$what.$key', m);
 
 List<String> _path(Map<String, Object?> m, String key, String what) {
   final v = m[key];
@@ -54,22 +52,22 @@ final class Node {
   final Map<String, Value> config;
 
   Node copyWith({String? title, int? x, int? y, Map<String, Value>? config}) => Node(
-        id: id,
-        type: type,
-        title: title ?? this.title,
-        x: x ?? this.x,
-        y: y ?? this.y,
-        config: config ?? this.config,
-      );
+    id: id,
+    type: type,
+    title: title ?? this.title,
+    x: x ?? this.x,
+    y: y ?? this.y,
+    config: config ?? this.config,
+  );
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'type': type,
-        'title': title,
-        'x': x,
-        'y': y,
-        'config': {for (final k in config.keys.toList()..sort()) k: config[k]!.toJson()},
-      };
+    'id': id,
+    'type': type,
+    'title': title,
+    'x': x,
+    'y': y,
+    'config': {for (final k in config.keys.toList()..sort()) k: config[k]!.toJson()},
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -115,12 +113,12 @@ final class Edge {
   final String targetHandle;
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'source': source,
-        'sourceHandle': sourceHandle,
-        'target': target,
-        'targetHandle': targetHandle,
-      };
+    'id': id,
+    'source': source,
+    'sourceHandle': sourceHandle,
+    'target': target,
+    'targetHandle': targetHandle,
+  };
 
   bool sameConnection(Edge o) =>
       source == o.source && sourceHandle == o.sourceHandle && target == o.target && targetHandle == o.targetHandle;
@@ -182,14 +180,14 @@ sealed class FieldKey {
   /// of the other (`model` vs `model.name`); a config path overlaps every item of a list located at or below
   /// it; items overlap only when identical.
   bool overlaps(FieldKey other) => switch ((this, other)) {
-        (TitleKey(), TitleKey()) => true,
-        (ConfigKey(path: final a), ConfigKey(path: final b)) => _prefixRelated(a, b),
-        (ConfigKey(path: final a), ItemKey(path: final b)) => _prefixRelated(a, b),
-        (ItemKey(path: final a), ConfigKey(path: final b)) => _prefixRelated(a, b),
-        (ItemKey(path: final p, id: final i), ItemKey(path: final q, id: final j)) =>
-          i == j && const ListEquality<String>().equals(p, q),
-        _ => false,
-      };
+    (TitleKey(), TitleKey()) => true,
+    (ConfigKey(path: final a), ConfigKey(path: final b)) => _prefixRelated(a, b),
+    (ConfigKey(path: final a), ItemKey(path: final b)) => _prefixRelated(a, b),
+    (ItemKey(path: final a), ConfigKey(path: final b)) => _prefixRelated(a, b),
+    (ItemKey(path: final p, id: final i), ItemKey(path: final q, id: final j)) =>
+      i == j && const ListEquality<String>().equals(p, q),
+    _ => false,
+  };
 
   /// Human readable label: `title`, `model.name`, `outputs[<id>]`.
   String get label;
@@ -403,8 +401,13 @@ final class InsertItem extends Op {
   final Item item;
   final String? after;
   @override
-  Map<String, Object?> toJson() =>
-      {'t': 'insertItem', 'node': node, 'path': path, 'item': item.toJson(), 'after': after};
+  Map<String, Object?> toJson() => {
+    't': 'insertItem',
+    'node': node,
+    'path': path,
+    'item': item.toJson(),
+    'after': after,
+  };
   @override
   String? get nodeId => node;
   @override
@@ -449,8 +452,13 @@ final class UpdateItem extends Op {
   final String itemId;
   final Value value;
   @override
-  Map<String, Object?> toJson() =>
-      {'t': 'updateItem', 'node': node, 'path': path, 'itemId': itemId, 'value': value.toJson()};
+  Map<String, Object?> toJson() => {
+    't': 'updateItem',
+    'node': node,
+    'path': path,
+    'itemId': itemId,
+    'value': value.toJson(),
+  };
   @override
   String? get nodeId => node;
   @override
@@ -519,9 +527,9 @@ sealed class RejectReason {
 
   /// Reasons that are certain to repeat on the server, so a client may warn the user early.
   bool get isStaleBased => switch (this) {
-        Conflict() || NodeDeleted() || DanglingReference() || ItemDeleted() => true,
-        _ => false,
-      };
+    Conflict() || NodeDeleted() || DanglingReference() || ItemDeleted() => true,
+    _ => false,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -547,8 +555,7 @@ final class Conflict extends RejectReason {
   @override
   String get name => 'conflict';
   @override
-  Map<String, Object?> toJson() =>
-      {'type': name, 'node': node, 'field': field?.toJson(), 'seq': seq, 'by': by};
+  Map<String, Object?> toJson() => {'type': name, 'node': node, 'field': field?.toJson(), 'seq': seq, 'by': by};
 }
 
 final class NodeDeleted extends RejectReason {

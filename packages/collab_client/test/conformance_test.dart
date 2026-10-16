@@ -20,7 +20,8 @@ import 'support/helpers.dart';
 
 final String? _url = Platform.environment['DIFYSF_URL'];
 
-String _docId() => 'conf-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 20).toRadixString(36)}';
+String _docId() =>
+    'conf-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 20).toRadixString(36)}';
 
 void main() {
   if (_url == null) {
@@ -43,16 +44,15 @@ void main() {
     api.close();
   });
 
-  Future<SubmitResponse> post(String client, List<(int, int, Op)> ops, {int? floor, int? resolveFrom}) =>
-      t.submit(
-        SubmitRequest(
-          client: client,
-          floor: floor,
-          resolveFrom: resolveFrom,
-          ops: [for (final (c, b, o) in ops) OutgoingOp(cseq: c, base: b, op: o)],
-        ),
-        timeout: const Duration(seconds: 10),
-      );
+  Future<SubmitResponse> post(String client, List<(int, int, Op)> ops, {int? floor, int? resolveFrom}) => t.submit(
+    SubmitRequest(
+      client: client,
+      floor: floor,
+      resolveFrom: resolveFrom,
+      ops: [for (final (c, b, o) in ops) OutgoingOp(cseq: c, base: b, op: o)],
+    ),
+    timeout: const Duration(seconds: 10),
+  );
 
   group('document endpoints', () {
     test('healthz, create, ensure, info, snapshot', () async {
@@ -81,7 +81,11 @@ void main() {
     });
 
     test('malformed bodies are 400, not 5xx', () async {
-      final res = await http.post(base.replace(path: '/v1/docs/$doc/ops'), headers: {'content-type': 'application/json'}, body: '{nope');
+      final res = await http.post(
+        base.replace(path: '/v1/docs/$doc/ops'),
+        headers: {'content-type': 'application/json'},
+        body: '{nope',
+      );
       expect(res.statusCode, 400);
       expect((jsonDecode(res.body) as Map<String, Object?>)['error'], isA<Map<String, Object?>>());
     });
@@ -138,17 +142,30 @@ void main() {
     });
 
     test('keyed lists: concurrent inserts and item edits do not conflict', () async {
-      final a = await post('cli-a', [(1, 0, const InsertItem('code', ['outputs'], Item('i-a', VString('a')), 'o-result'))]);
-      final b = await post('cli-b', [(1, 0, const InsertItem('code', ['outputs'], Item('i-b', VString('b')), 'o-result'))]);
+      final a = await post('cli-a', [
+        (1, 0, const InsertItem('code', ['outputs'], Item('i-a', VString('a')), 'o-result')),
+      ]);
+      final b = await post('cli-b', [
+        (1, 0, const InsertItem('code', ['outputs'], Item('i-b', VString('b')), 'o-result')),
+      ]);
       expect(a.results.single, isA<AckResult>());
       expect(b.results.single, isA<AckResult>());
-      final ids = ((await api.snapshot(doc)).doc.nodes['code']!.config['outputs']! as VItems).items.map((i) => i.id).toList();
+      final ids = ((await api.snapshot(doc)).doc.nodes['code']!.config['outputs']! as VItems).items
+          .map((i) => i.id)
+          .toList();
       expect(ids, ['o-result', 'i-b', 'i-a']);
-      final c = await post('cli-c', [(1, 0, const UpdateItem('code', ['outputs'], 'i-a', VString('c')))]);
+      final c = await post('cli-c', [
+        (1, 0, const UpdateItem('code', ['outputs'], 'i-a', VString('c'))),
+      ]);
       expect((c.results.single as RejectResult).reason, isA<Conflict>());
-      final removed = await post('cli-c', [(2, 2, const RemoveItem('code', ['outputs'], 'i-a')), (3, 2, const RemoveItem('code', ['outputs'], 'i-a'))]);
+      final removed = await post('cli-c', [
+        (2, 2, const RemoveItem('code', ['outputs'], 'i-a')),
+        (3, 2, const RemoveItem('code', ['outputs'], 'i-a')),
+      ]);
       expect(removed.results.map((r) => r.runtimeType), [AckResult, AckResult], reason: 'removing twice is fine');
-      final late = await post('cli-c', [(4, 4, const UpdateItem('code', ['outputs'], 'i-a', VString('x')))]);
+      final late = await post('cli-c', [
+        (4, 4, const UpdateItem('code', ['outputs'], 'i-a', VString('x'))),
+      ]);
       expect((late.results.single as RejectResult).reason, const ItemDeleted('i-a'));
     });
 
@@ -194,12 +211,19 @@ void main() {
           post(client, [for (var i = 1; i <= n; i++) (i, 0, MoveNode('llm', i, i))]);
       final ok = await many('cli-100', 100);
       expect(ok.results.whereType<AckResult>(), hasLength(100));
-      await expectLater(many('cli-101', 101), throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 400)));
+      await expectLater(
+        many('cli-101', 101),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 400)),
+      );
     });
   });
 
   group('the event stream', () {
-    Future<List<StreamEvent>> read(StreamOpen open, {int? until, Duration timeout = const Duration(seconds: 10)}) async {
+    Future<List<StreamEvent>> read(
+      StreamOpen open, {
+      int? until,
+      Duration timeout = const Duration(seconds: 10),
+    }) async {
       final out = <StreamEvent>[];
       await for (final e in t.openStream(open).timeout(timeout)) {
         if (e is PingEvent) continue;
@@ -261,10 +285,10 @@ void main() {
   group('the client against the server', () {
     test('two sessions converge and a conflict is reported with the winner', () async {
       CollabSession open(String id) => CollabSession(
-            clientId: id,
-            transport: HttpTransport(baseUrl: base, docId: doc),
-            store: MemoryStore(),
-          );
+        clientId: id,
+        transport: HttpTransport(baseUrl: base, docId: doc),
+        store: MemoryStore(),
+      );
       final a = open('cli-s1');
       final b = open('cli-s2');
       await a.start();
@@ -290,15 +314,17 @@ void main() {
     });
 
     test('a short storm with crashes holds every guarantee', () async {
-      final report = await StormRunner(StormConfig(
-        url: base,
-        doc: doc,
-        clients: 6,
-        duration: const Duration(seconds: 6),
-        ratePerClient: 8,
-        seed: 42,
-        crashesPerClientPerMinute: 10,
-      )).run();
+      final report = await StormRunner(
+        StormConfig(
+          url: base,
+          doc: doc,
+          clients: 6,
+          duration: const Duration(seconds: 6),
+          ratePerClient: 8,
+          seed: 42,
+          crashesPerClientPerMinute: 10,
+        ),
+      ).run();
       expect(report.violations, isEmpty);
       expect(report.counts['pending'], isNull);
       expect(report.counts['committed'], greaterThan(50));

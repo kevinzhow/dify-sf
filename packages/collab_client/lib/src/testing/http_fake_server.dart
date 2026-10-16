@@ -85,7 +85,9 @@ class HttpFakeServer {
         if (seg.length == 3 && req.method == 'PUT') return await _createDoc(req, seg[2]);
         if (seg.length == 3 && req.method == 'GET') {
           final d = docs[seg[2]];
-          return d == null ? await _error(req, 404, 'not_found', 'unknown document') : await _json(req, 200, {'id': seg[2], 'head': d.head});
+          return d == null
+              ? await _error(req, 404, 'not_found', 'unknown document')
+              : await _json(req, 200, {'id': seg[2], 'head': d.head});
         }
         if (seg.length == 4 && seg[3] == 'snapshot' && req.method == 'GET') {
           final d = docs[seg[2]];
@@ -131,8 +133,7 @@ class HttpFakeServer {
       floor: json['floor'] as int?,
       resolveFrom: json['resolveFrom'] as int?,
       ops: [
-        for (final o in ops)
-          OutgoingOp(cseq: o['cseq']! as int, base: o['base']! as int, op: Op.fromJson(o['op'])),
+        for (final o in ops) OutgoingOp(cseq: o['cseq']! as int, base: o['base']! as int, op: Op.fromJson(o['op'])),
       ],
     );
     final response = d.submit(request);
@@ -154,11 +155,13 @@ class HttpFakeServer {
     // Take over the socket: SSE is a raw `Connection: close` body, and a detached socket can be reset or
     // left silent (half-open) at will.
     final socket = await req.response.detachSocket(writeHeaders: false);
-    socket.write('HTTP/1.1 200 OK\r\n'
-        'Content-Type: text/event-stream; charset=utf-8\r\n'
-        'Cache-Control: no-store\r\n'
-        'X-Accel-Buffering: no\r\n'
-        'Connection: close\r\n\r\n');
+    socket.write(
+      'HTTP/1.1 200 OK\r\n'
+      'Content-Type: text/event-stream; charset=utf-8\r\n'
+      'Cache-Control: no-store\r\n'
+      'X-Accel-Buffering: no\r\n'
+      'Connection: close\r\n\r\n',
+    );
     _streams.add(socket);
     unawaited(socket.done.then<void>((_) {}, onError: (Object _) {})); // write errors after a reset are expected
     final gone = Completer<void>();
@@ -197,11 +200,13 @@ class HttpFakeServer {
     for (final ev in d.catchUp(lastEventId: last, client: req.uri.queryParameters['client'], from: from)) {
       switch (ev) {
         case SnapshotEvent():
-          write(_frame('snapshot', ev.seq, {
-            'seq': ev.seq,
-            'doc': ev.doc.toJson(),
-            'committed': {for (final e in ev.committed.entries) '${e.key}': e.value},
-          }));
+          write(
+            _frame('snapshot', ev.seq, {
+              'seq': ev.seq,
+              'doc': ev.doc.toJson(),
+              'committed': {for (final e in ev.committed.entries) '${e.key}': e.value},
+            }),
+          );
         case CommitEvent(:final entry):
           onCommit(entry);
         case ReadyEvent(:final head):
@@ -236,6 +241,7 @@ class HttpFakeServer {
     await req.response.close();
   }
 
-  Future<void> _error(HttpRequest req, int status, String code, String message) =>
-      _json(req, status, {'error': {'code': code, 'message': message}});
+  Future<void> _error(HttpRequest req, int status, String code, String message) => _json(req, status, {
+    'error': {'code': code, 'message': message},
+  });
 }

@@ -17,13 +17,13 @@ import 'value.dart';
 /// so [clone] is a cheap shallow copy.
 class Document {
   Document({Iterable<Node> nodes = const [], Iterable<Edge> edges = const []})
-      : nodes = {for (final n in nodes) n.id: n},
-        edges = {for (final e in edges) e.id: e},
-        deletedNodes = {},
-        deletedEdges = {},
-        deletedItems = {},
-        fieldStamps = {},
-        touches = {};
+    : nodes = {for (final n in nodes) n.id: n},
+      edges = {for (final e in edges) e.id: e},
+      deletedNodes = {},
+      deletedEdges = {},
+      deletedItems = {},
+      fieldStamps = {},
+      touches = {};
 
   Document._(
     this.nodes,
@@ -82,14 +82,14 @@ class Document {
   final Map<String, Map<String, int>> touches;
 
   Document clone() => Document._(
-        Map.of(nodes),
-        Map.of(edges),
-        Map.of(deletedNodes),
-        Map.of(deletedEdges),
-        Map.of(deletedItems),
-        Map.of(fieldStamps),
-        Map.of(touches),
-      );
+    Map.of(nodes),
+    Map.of(edges),
+    Map.of(deletedNodes),
+    Map.of(deletedEdges),
+    Map.of(deletedItems),
+    Map.of(fieldStamps),
+    Map.of(touches),
+  );
 
   /// Canonical JSON (sorted), identical to the server's snapshot encoding.
   Map<String, Object?> toJson() {
@@ -107,8 +107,8 @@ class Document {
       }
     }
     Map<String, Object?> stamps(Map<String, Stamp> m) => {
-          for (final k in m.keys.toList()..sort()) k: m[k]!.toJson(),
-        };
+      for (final k in m.keys.toList()..sort()) k: m[k]!.toJson(),
+    };
     return {
       'nodes': [for (final k in nodes.keys.toList()..sort()) nodes[k]!.toJson()],
       'edges': [for (final k in edges.keys.toList()..sort()) edges[k]!.toJson()],
@@ -121,10 +121,10 @@ class Document {
   }
 
   static String _keyOrder(FieldKey k) => switch (k) {
-        TitleKey() => '0',
-        ConfigKey(:final path) => '1/${path.join('\u0001')}',
-        ItemKey(:final path, :final id) => '2/${path.join('\u0001')}\u0002$id',
-      };
+    TitleKey() => '0',
+    ConfigKey(:final path) => '1/${path.join('\u0001')}',
+    ItemKey(:final path, :final id) => '2/${path.join('\u0001')}\u0002$id',
+  };
 
   @override
   bool operator ==(Object other) {
@@ -137,8 +137,7 @@ class Document {
         deepStamps.equals(deletedItems, other.deletedItems) &&
         const MapEquality<String, Map<FieldKey, Stamp>>(values: MapEquality<FieldKey, Stamp>())
             .equals(fieldStamps, other.fieldStamps) &&
-        const MapEquality<String, Map<String, int>>(values: MapEquality<String, int>())
-            .equals(touches, other.touches);
+        const MapEquality<String, Map<String, int>>(values: MapEquality<String, int>()).equals(touches, other.touches);
   }
 
   @override
@@ -320,8 +319,14 @@ class Document {
           case _ItemPresent(value: final existing):
             final bad = _checkValue(value, selfNode: null);
             if (bad != null) return bad;
-            return _checkStale(node, ItemKey(path, itemId), base, client,
-                sameValue: existing == value, enabled: checkConflicts);
+            return _checkStale(
+              node,
+              ItemKey(path, itemId),
+              base,
+              client,
+              sameValue: existing == value,
+              enabled: checkConflicts,
+            );
         }
     }
   }
@@ -335,8 +340,14 @@ class Document {
     return _ItemMissing(ItemNotFound(id));
   }
 
-  RejectReason? _checkStale(String node, FieldKey key, int base, String client,
-      {required bool sameValue, required bool enabled}) {
+  RejectReason? _checkStale(
+    String node,
+    FieldKey key,
+    int base,
+    String client, {
+    required bool sameValue,
+    required bool enabled,
+  }) {
     if (!enabled) return null;
     final c = _fieldConflict(node, key, base, client);
     if (c == null || sameValue) return null;
@@ -519,11 +530,13 @@ class Document {
     if (key is ConfigKey) {
       // Rewriting an ancestor subsumes (and makes redundant) the stamps of its descendants.
       final path = key.path;
-      stamps.removeWhere((k, _) => switch (k) {
-            ConfigKey(path: final q) => q.length > path.length && _hasPrefix(q, path),
-            ItemKey(path: final q) => q.length >= path.length && _hasPrefix(q, path),
-            TitleKey() => false,
-          });
+      stamps.removeWhere(
+        (k, _) => switch (k) {
+          ConfigKey(path: final q) => q.length > path.length && _hasPrefix(q, path),
+          ItemKey(path: final q) => q.length >= path.length && _hasPrefix(q, path),
+          TitleKey() => false,
+        },
+      );
     }
     stamps[key] = stamp;
     fieldStamps[node] = stamps;

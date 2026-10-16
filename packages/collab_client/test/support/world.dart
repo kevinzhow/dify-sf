@@ -10,8 +10,8 @@ import 'package:fake_async/fake_async.dart';
 /// from whatever the store holds.
 class Participant {
   Participant(this.world, this.id, {required this.journaled, Random? random})
-      : net = FakeNetwork(random: random ?? Random(id.hashCode)),
-        _random = random ?? Random(id.hashCode ^ 0x5bd1) {
+    : net = FakeNetwork(random: random ?? Random(id.hashCode)),
+      _random = random ?? Random(id.hashCode ^ 0x5bd1) {
     transport = FakeTransport(world.server, network: net);
   }
 
@@ -77,11 +77,13 @@ class Participant {
     if (cseq == null) return null;
     _awaitingPersist.add(cseq);
     final inc = incarnation;
-    unawaited(t.persisted.then((_) {
-      if (inc != incarnation) return;
-      promised[cseq] = op;
-      _awaitingPersist.remove(cseq);
-    }, onError: (Object _) {}));
+    unawaited(
+      t.persisted.then((_) {
+        if (inc != incarnation) return;
+        promised[cseq] = op;
+        _awaitingPersist.remove(cseq);
+      }, onError: (Object _) {}),
+    );
     return cseq;
   }
 
@@ -105,7 +107,7 @@ class Participant {
 /// A fake-time world: one [FakeServer], any number of participants, time moves only through [elapse].
 class World {
   World(this.async, {Document? initial, int maxReplay = 2000})
-      : server = FakeServer(initial: initial, maxReplay: maxReplay);
+    : server = FakeServer(initial: initial, maxReplay: maxReplay);
 
   final FakeAsync async;
   final FakeServer server;
@@ -141,14 +143,18 @@ class World {
     throw StateError('not settled after $limit:\n${describe()}');
   }
 
-  bool get isSettled => participants.values.where((p) => p.running).every((p) =>
-      p.session.machine.isQuiescent && p.session.lastSeq == server.head && p.session.machine.unresolvedCount == 0);
+  bool get isSettled => participants.values
+      .where((p) => p.running)
+      .every(
+        (p) =>
+            p.session.machine.isQuiescent && p.session.lastSeq == server.head && p.session.machine.unresolvedCount == 0,
+      );
 
   String describe() => [
-        'server head ${server.head}',
-        for (final p in participants.values)
-          '${p.id} running=${p.running} ${p.running ? p.session.machine.debug.join(' | ') : ''}',
-      ].join('\n');
+    'server head ${server.head}',
+    for (final p in participants.values)
+      '${p.id} running=${p.running} ${p.running ? p.session.machine.debug.join(' | ') : ''}',
+  ].join('\n');
 }
 
 /// Runs [body] inside fake time.

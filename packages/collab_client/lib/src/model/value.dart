@@ -234,7 +234,9 @@ final class VItems extends Value {
   const VItems(this.items);
   final List<Item> items;
   @override
-  Object? toJson() => {r'$items': [for (final i in items) i.toJson()]};
+  Object? toJson() => {
+    r'$items': [for (final i in items) i.toJson()],
+  };
   @override
   Iterable<OutputRef> get liveRefs => items.expand((i) => i.value.liveRefs);
   @override
@@ -337,10 +339,10 @@ abstract final class ConfigTree {
 
   /// The keyed list at [path]: null if absent; `notAList` if something else lives there.
   static ListLookup list(Map<String, Value> cfg, List<String> path) => switch (get(cfg, path)) {
-        null => const ListAbsent(),
-        VItems(:final items) => ListFound(items),
-        _ => const ListNotAList(),
-      };
+    null => const ListAbsent(),
+    VItems(:final items) => ListFound(items),
+    _ => const ListNotAList(),
+  };
 }
 
 sealed class ListLookup {

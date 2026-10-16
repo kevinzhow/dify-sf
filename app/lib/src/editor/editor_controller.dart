@@ -16,12 +16,15 @@ class EditorController extends ChangeNotifier {
     _rememberTitles();
     final recovered = session.pending.where((p) => p.op != null).length;
     if (recovered > 0) {
-      _addNotice(Notice(
-        id: _nextNoticeId++,
-        kind: NoticeKind.info,
-        message: 'Recovered $recovered unsent edit${recovered == 1 ? '' : 's'} from your last session — sending '
-            '${recovered == 1 ? 'it' : 'them'} now.',
-      ));
+      _addNotice(
+        Notice(
+          id: _nextNoticeId++,
+          kind: NoticeKind.info,
+          message:
+              'Recovered $recovered unsent edit${recovered == 1 ? '' : 's'} from your last session — sending '
+              '${recovered == 1 ? 'it' : 'them'} now.',
+        ),
+      );
     }
   }
 
@@ -168,31 +171,35 @@ class EditorController extends ChangeNotifier {
         break;
       case ConflictDetected(:final cseq, :final op, :final reason):
         final d = describeRefusal(op, reason, titleOf);
-        _addNotice(Notice(
-          id: _nextNoticeId++,
-          kind: NoticeKind.conflict,
-          message: d.message,
-          detail: d.detail,
-          op: op,
-          reason: reason,
-          cseq: cseq,
-          awaitingVerdict: true,
-        ));
+        _addNotice(
+          Notice(
+            id: _nextNoticeId++,
+            kind: NoticeKind.conflict,
+            message: d.message,
+            detail: d.detail,
+            op: op,
+            reason: reason,
+            cseq: cseq,
+            awaitingVerdict: true,
+          ),
+        );
       case OpRejected(:final cseq, :final op, :final reason):
         final d = describeRefusal(op, reason, titleOf);
         final existing = _byCseq[cseq];
         if (existing != null) {
           existing.update(message: d.message, detail: d.detail, awaitingVerdict: false);
         } else {
-          _addNotice(Notice(
-            id: _nextNoticeId++,
-            kind: reason is Conflict ? NoticeKind.conflict : NoticeKind.refused,
-            message: d.message,
-            detail: d.detail,
-            op: op,
-            reason: reason,
-            cseq: cseq,
-          ));
+          _addNotice(
+            Notice(
+              id: _nextNoticeId++,
+              kind: reason is Conflict ? NoticeKind.conflict : NoticeKind.refused,
+              message: d.message,
+              detail: d.detail,
+              op: op,
+              reason: reason,
+              cseq: cseq,
+            ),
+          );
         }
       case OpLost():
         _noteLost();
@@ -200,14 +207,16 @@ class EditorController extends ChangeNotifier {
         // A stale edit refused on the spot (it began before a newer remote write) or an edit of something
         // that is gone: say so, and keep the op for "re-apply" when that makes sense.
         final d = describeRefusal(op, reason, titleOf);
-        _addNotice(Notice(
-          id: _nextNoticeId++,
-          kind: reason is Conflict ? NoticeKind.conflict : NoticeKind.refused,
-          message: d.message,
-          detail: d.detail,
-          op: op,
-          reason: reason,
-        ));
+        _addNotice(
+          Notice(
+            id: _nextNoticeId++,
+            kind: reason is Conflict ? NoticeKind.conflict : NoticeKind.refused,
+            message: d.message,
+            detail: d.detail,
+            op: op,
+            reason: reason,
+          ),
+        );
     }
   }
 
@@ -222,12 +231,13 @@ class EditorController extends ChangeNotifier {
     }
     n.lostCount++;
     n.update(
-      message: '${n.lostCount} edit${n.lostCount == 1 ? ' was' : 's were'} lost — they had not reached the server '
+      message:
+          '${n.lostCount} edit${n.lostCount == 1 ? ' was' : 's were'} lost — they had not reached the server '
           'when the app closed.',
       detail: journaled
           ? null
           : 'This session runs without a local journal (volatile mode), so unsent edits cannot be recovered. '
-              'Switch to journaled mode to keep them across crashes.',
+                'Switch to journaled mode to keep them across crashes.',
     );
     notifyListeners();
   }

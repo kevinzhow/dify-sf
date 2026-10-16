@@ -27,39 +27,50 @@ class StatusBar extends StatelessWidget {
       child: Container(
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(children: [
-          Tooltip(
-            message: s.lastError ?? 'connected to $serverLabel',
-            child: Row(children: [
-              Icon(Icons.circle, size: 10, color: color, key: const Key('link-dot')),
-              const SizedBox(width: 6),
-              Text(label, key: const Key('link-state'), style: small.copyWith(fontWeight: FontWeight.w600)),
-            ]),
-          ),
-          if (s.link != LinkState.live)
-            TextButton(
-              key: const Key('reconnect-now'),
-              style: TextButton.styleFrom(minimumSize: const Size(0, 24), padding: const EdgeInsets.symmetric(horizontal: 8)),
-              onPressed: controller.reconnectNow,
-              child: const Text('Reconnect now'),
+        child: Row(
+          children: [
+            Tooltip(
+              message: s.lastError ?? 'connected to $serverLabel',
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 10, color: color, key: const Key('link-dot')),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    key: const Key('link-state'),
+                    style: small.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
-          const SizedBox(width: 20),
-          Text(
-            s.pending == 0 ? 'All edits saved' : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
-            key: const Key('pending-count'),
-            style: small.copyWith(
-              color: s.pending == 0 ? null : Colors.amber.shade900,
-              fontWeight: s.pending == 0 ? null : FontWeight.w600,
+            if (s.link != LinkState.live)
+              TextButton(
+                key: const Key('reconnect-now'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: controller.reconnectNow,
+                child: const Text('Reconnect now'),
+              ),
+            const SizedBox(width: 20),
+            Text(
+              s.pending == 0 ? 'All edits saved' : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
+              key: const Key('pending-count'),
+              style: small.copyWith(
+                color: s.pending == 0 ? null : Colors.amber.shade900,
+                fontWeight: s.pending == 0 ? null : FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(width: 20),
-          Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: small),
-          const Spacer(),
-          Text(
-            '${controller.journaled ? 'journaled' : 'volatile'} · $clientId · ${controller.docId}',
-            style: small.copyWith(color: Colors.black54),
-          ),
-        ]),
+            const SizedBox(width: 20),
+            Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: small),
+            const Spacer(),
+            Text(
+              '${controller.journaled ? 'journaled' : 'volatile'} · $clientId · ${controller.docId}',
+              style: small.copyWith(color: Colors.black54),
+            ),
+          ],
+        ),
       ),
     );
   }

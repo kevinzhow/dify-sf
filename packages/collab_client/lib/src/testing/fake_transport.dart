@@ -106,27 +106,36 @@ class FakeTransport implements CollabTransport {
       return done.future;
     }
     if (network.chance(network.dropRequest)) return done.future;
-    timers.add(_timer(network.latency(), () {
-      if (done.isCompleted) return; // the client gave up before the request arrived: it never reaches the server
-      if (network.chance(network.serverError)) {
-        if (network.chance(network.commitBefore503)) {
-          postsReceived++;
-          server.submit(request);
+    timers.add(
+      _timer(network.latency(), () {
+        if (done.isCompleted) return; // the client gave up before the request arrived: it never reaches the server
+        if (network.chance(network.serverError)) {
+          if (network.chance(network.commitBefore503)) {
+            postsReceived++;
+            server.submit(request);
+          }
+          timers.add(
+            _timer(
+              network.latency(),
+              () => fail(const TransportException('unavailable', statusCode: 503, code: 'unavailable')),
+            ),
+          );
+          return;
         }
-        timers.add(_timer(network.latency(), () => fail(const TransportException('unavailable', statusCode: 503, code: 'unavailable'))));
-        return;
-      }
-      postsReceived++;
-      final response = server.submit(request);
-      if (network.partitioned || network.chance(network.dropResponse)) return;
-      timers.add(_timer(network.latency(), () {
-        if (network.partitioned || done.isCompleted) return;
-        done.complete(response);
-        for (final t in timers) {
-          t.cancel();
-        }
-      }));
-    }));
+        postsReceived++;
+        final response = server.submit(request);
+        if (network.partitioned || network.chance(network.dropResponse)) return;
+        timers.add(
+          _timer(network.latency(), () {
+            if (network.partitioned || done.isCompleted) return;
+            done.complete(response);
+            for (final t in timers) {
+              t.cancel();
+            }
+          }),
+        );
+      }),
+    );
     return done.future;
   }
 
@@ -174,7 +183,9 @@ class _FakeStream {
 
   void _start() {
     net._streams.add(this);
-    if (net.partitioned || net.blockStreams) return; // half-open before it even connected: the client's watchdog must fire
+    if (net.partitioned || net.blockStreams) {
+      return; // half-open before it even connected: the client's watchdog must fire
+    }
     if (net.refused) {
       _openTimer = transport._timer(net.latency(), () => fail(const TransportException('connection refused')));
       return;

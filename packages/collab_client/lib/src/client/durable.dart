@@ -45,10 +45,10 @@ final class ClientDurable {
   final List<JournalEntry> journal;
 
   Map<String, Object?> toJson() => {
-        'v': 1,
-        'id': id,
-        'nextCseq': nextCseq,
-        'unresolvedFrom': unresolvedFrom,
-        'journal': [for (final e in journal) e.toJson()],
-      };
+    'v': 1,
+    'id': id,
+    'nextCseq': nextCseq,
+    'unresolvedFrom': unresolvedFrom,
+    'journal': [for (final e in journal) e.toJson()],
+  };
 }

@@ -14,7 +14,8 @@ void main() {
       'id: 7\nevent: commit\ndata: {"seq":7}\n\n',
       'event: ready\ndata: {"head":7}\n\n',
     ]);
-    expect(msgs.map((m) => (m.event, m.data, m.id)), [('commit', '{"seq":7}', '7'), ('ready', '{"head":7}', null)]);
+    // The last event id sticks to later messages, as the SSE spec says.
+    expect(msgs.map((m) => (m.event, m.data, m.id)), [('commit', '{"seq":7}', '7'), ('ready', '{"head":7}', '7')]);
   });
 
   test('is independent of how the bytes are chunked', () {
@@ -22,7 +23,9 @@ void main() {
     final whole = parseAll([text]);
     expect(whole.map((m) => m.data), ['a\nb', '{}']);
     for (var size = 1; size < 12; size++) {
-      final chunks = [for (var i = 0; i < text.length; i += size) text.substring(i, i + size > text.length ? text.length : i + size)];
+      final chunks = [
+        for (var i = 0; i < text.length; i += size) text.substring(i, i + size > text.length ? text.length : i + size),
+      ];
       expect(parseAll(chunks).map((m) => (m.event, m.data)), whole.map((m) => (m.event, m.data)), reason: 'size $size');
     }
   });

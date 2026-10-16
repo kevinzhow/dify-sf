@@ -55,11 +55,11 @@ class Notice extends ChangeNotifier {
 }) {
   final when = ago(at ?? DateTime.now());
   String? valuePreview() => switch (op) {
-        SetField(:final value) => 'Your value: ${previewValue(value)}',
-        UpdateItem(:final value) => 'Your value: ${previewValue(value)}',
-        MoveNode(:final x, :final y) => 'Your position: $x, $y',
-        _ => null,
-      };
+    SetField(:final value) => 'Your value: ${previewValue(value)}',
+    UpdateItem(:final value) => 'Your value: ${previewValue(value)}',
+    MoveNode(:final x, :final y) => 'Your position: $x, $y',
+    _ => null,
+  };
   switch (reason) {
     case Conflict(:final field, :final by, :final node):
       final who = clientDisplayName(by);
@@ -67,7 +67,8 @@ class Notice extends ChangeNotifier {
         final what = op is RemoveNode ? 'delete' : 'change';
         return (
           message: '$who changed ${titleOf(node)} $when — your $what wasn\'t applied',
-          detail: 'Their changes are kept. Re-apply to ${op is RemoveNode ? 'delete it anyway' : 'try again'} on the latest version.',
+          detail:
+              'Their changes are kept. Re-apply to ${op is RemoveNode ? 'delete it anyway' : 'try again'} on the latest version.',
         );
       }
       return (

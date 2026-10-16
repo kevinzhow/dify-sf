@@ -30,7 +30,16 @@ class RandomEditor {
     if (r < 25) return MoveNode(n, rng.nextInt(2000), rng.nextInt(2000));
     if (r < 45) return SetField(n, const ConfigKey(['prompt']), VString(_pick(['x', 'y', 'z'])));
     if (r < 50) return SetField(n, const TitleKey(), VString(_pick(['t1', 't2', 't3'])));
-    if (r < 56) return SetField(n, ConfigKey(['model', _pick(['name', 'temp'])]), VString(_pick(['m1', 'm2'])));
+    if (r < 56) {
+      return SetField(
+        n,
+        ConfigKey([
+          'model',
+          _pick(['name', 'temp']),
+        ]),
+        VString(_pick(['m1', 'm2'])),
+      );
+    }
     if (r < 60) return SetField(n, const ConfigKey(['model']), VString(_pick(['m1', 'm2'])));
     final outs = node.config['outs'];
     final items = outs is VItems ? outs.items : const <Item>[];
@@ -50,7 +59,16 @@ class RandomEditor {
       return AddEdge(Edge(id: _id('e'), source: n, target: _pick(ids), sourceHandle: _pick(['out', 'out2'])));
     }
     if (r < 91 && view.edges.isNotEmpty) return RemoveEdge(_pick(view.edges.keys.toList()..sort()));
-    if (r < 96) return SetField(n, ConfigKey(['in', _pick(['p', 'q'])]), VRef(OutputRef(_pick(ids), 'o')));
+    if (r < 96) {
+      return SetField(
+        n,
+        ConfigKey([
+          'in',
+          _pick(['p', 'q']),
+        ]),
+        VRef(OutputRef(_pick(ids), 'o')),
+      );
+    }
     return SetField(n, const ConfigKey(['prompt']), VString(_pick(['x', 'y'])));
   }
 }

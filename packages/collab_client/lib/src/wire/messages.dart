@@ -15,7 +15,8 @@ Map<int, V> _intMap<V>(Object? json, V Function(Object?) value) {
   if (json == null) return {};
   final m = _obj(json, 'map');
   return {
-    for (final e in m.entries) (int.tryParse(e.key) ?? (throw FormatException('non-integer key ${e.key}'))): value(e.value),
+    for (final e in m.entries)
+      (int.tryParse(e.key) ?? (throw FormatException('non-integer key ${e.key}'))): value(e.value),
   };
 }
 
@@ -85,14 +86,15 @@ final class SubmitRequest {
   final List<OutgoingOp> ops;
 
   Map<String, Object?> toJson() => {
-        'client': client,
-        if (floor != null) 'floor': floor,
-        if (resolveFrom != null) 'resolveFrom': resolveFrom,
-        'ops': [for (final o in ops) o.toJson()],
-      };
+    'client': client,
+    if (floor != null) 'floor': floor,
+    if (resolveFrom != null) 'resolveFrom': resolveFrom,
+    'ops': [for (final o in ops) o.toJson()],
+  };
 
   @override
-  String toString() => 'SubmitRequest($client floor=$floor resolveFrom=$resolveFrom '
+  String toString() =>
+      'SubmitRequest($client floor=$floor resolveFrom=$resolveFrom '
       'cseqs=${ops.map((o) => o.cseq).toList()})';
 }
 
@@ -152,9 +154,9 @@ final class KnownOutcomes {
   final Map<int, RejectReason> rejected;
 
   Map<String, Object?> toJson() => {
-        'committed': {for (final e in committed.entries) '${e.key}': e.value},
-        'rejected': {for (final e in rejected.entries) '${e.key}': e.value.toJson()},
-      };
+    'committed': {for (final e in committed.entries) '${e.key}': e.value},
+    'rejected': {for (final e in rejected.entries) '${e.key}': e.value.toJson()},
+  };
 }
 
 final class SubmitResponse {
@@ -183,11 +185,11 @@ final class SubmitResponse {
   final KnownOutcomes? known;
 
   Map<String, Object?> toJson() => {
-        'head': head,
-        'high': high,
-        'results': [for (final r in results) r.toJson()],
-        if (known != null) 'known': known!.toJson(),
-      };
+    'head': head,
+    'high': high,
+    'results': [for (final r in results) r.toJson()],
+    if (known != null) 'known': known!.toJson(),
+  };
 }
 
 /// What the SSE stream carries.

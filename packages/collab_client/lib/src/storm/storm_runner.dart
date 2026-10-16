@@ -108,30 +108,30 @@ class StormReport {
   }
 
   Map<String, Object?> toJson() => {
-        'meta': {
-          'url': config.url.toString(),
-          'doc': config.doc,
-          'clients': config.clients,
-          'durationMs': config.duration.inMilliseconds,
-          'ratePerClient': config.ratePerClient,
-          'seed': config.seed,
-          'volatileFraction': config.volatileFraction,
-          'crashesPerClientPerMinute': config.crashesPerClientPerMinute,
-          'elapsedMs': elapsed.inMilliseconds,
-        },
-        'clients': {for (final e in clientModes.entries) e.key: e.value ? 'journaled' : 'volatile'},
-        'summary': {
-          'ok': ok,
-          'head': headAtEnd,
-          'intended': ledger.length,
-          'counts': counts,
-          'crashes': crashes,
-          'latencyMs': latencyMs,
-          'violations': violations,
-          'notes': notes,
-        },
-        'ledger': [for (final e in ledger) e.toJson()],
-      };
+    'meta': {
+      'url': config.url.toString(),
+      'doc': config.doc,
+      'clients': config.clients,
+      'durationMs': config.duration.inMilliseconds,
+      'ratePerClient': config.ratePerClient,
+      'seed': config.seed,
+      'volatileFraction': config.volatileFraction,
+      'crashesPerClientPerMinute': config.crashesPerClientPerMinute,
+      'elapsedMs': elapsed.inMilliseconds,
+    },
+    'clients': {for (final e in clientModes.entries) e.key: e.value ? 'journaled' : 'volatile'},
+    'summary': {
+      'ok': ok,
+      'head': headAtEnd,
+      'intended': ledger.length,
+      'counts': counts,
+      'crashes': crashes,
+      'latencyMs': latencyMs,
+      'violations': violations,
+      'notes': notes,
+    },
+    'ledger': [for (final e in ledger) e.toJson()],
+  };
 }
 
 /// N independent clients, one process: each with its own session, transport, journal file and random
@@ -158,19 +158,23 @@ class StormRunner {
     final api = DocsApi(config.url);
     final info = await api.ensure(config.doc, template: config.template);
     _log('document ${info.id} at head ${info.head}');
+    final auditor = config.verifyLog ? _LogAuditor(config.url, config.doc) : null;
+    unawaited(auditor?.start());
 
     final dir = config.journalDir ?? Directory.systemTemp.createTempSync('collab_storm').path;
     final nonce = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     for (var i = 0; i < config.clients; i++) {
       final id = 's${config.seed}-$nonce-c$i';
-      _clients.add(_StormClient(
-        runner: this,
-        id: id,
-        journaled: rng.nextDouble() >= config.volatileFraction,
-        store: FileStore('$dir/$id.json'),
-        editor: RandomEditor(Random(rng.nextInt(1 << 31)), idPrefix: id),
-        rng: Random(rng.nextInt(1 << 31)),
-      ));
+      _clients.add(
+        _StormClient(
+          runner: this,
+          id: id,
+          journaled: rng.nextDouble() >= config.volatileFraction,
+          store: FileStore('$dir/$id.json'),
+          editor: RandomEditor(Random(rng.nextInt(1 << 31)), idPrefix: id),
+          rng: Random(rng.nextInt(1 << 31)),
+        ),
+      );
     }
     for (final c in _clients) {
       await c.boot();
@@ -188,8 +192,10 @@ class StormRunner {
       }
       if (_now - lastReport >= 5000) {
         lastReport = _now;
-        _log('t=${_now ~/ 1000}s intended=${_ledger.length} committed=${_count(LedgerStatus.committed)} '
-            'rejected=${_count(LedgerStatus.rejected)} pending=${_clients.fold<int>(0, (a, c) => a + c.pending)}');
+        _log(
+          't=${_now ~/ 1000}s intended=${_ledger.length} committed=${_count(LedgerStatus.committed)} '
+          'rejected=${_count(LedgerStatus.rejected)} pending=${_clients.fold<int>(0, (a, c) => a + c.pending)}',
+        );
       }
     }
 
@@ -203,16 +209,19 @@ class StormRunner {
     try {
       await Future.wait(_clients.map((c) => c.session!.settled())).timeout(config.settleTimeout);
     } on TimeoutException {
-      violations.add('not settled within ${config.settleTimeout.inSeconds}s: '
-          '${_clients.where((c) => c.pending > 0).map((c) => '${c.id} pending=${c.pending}').join(', ')}');
+      violations.add(
+        'not settled within ${config.settleTimeout.inSeconds}s: '
+        '${_clients.where((c) => c.pending > 0).map((c) => '${c.id} pending=${c.pending}').join(', ')}',
+      );
     }
     await Future<void>.delayed(const Duration(milliseconds: 300)); // let the last events drain
 
-    await _verify(api, violations, notes);
+    await _verify(api, auditor, violations, notes);
     final head = _clients.map((c) => c.session!.lastSeq).fold(0, max);
     for (final c in _clients) {
       await c.stop();
     }
+    await auditor?.stop();
     api.close();
     return StormReport(
       config: config,
@@ -230,7 +239,7 @@ class StormRunner {
 
   // ---- verification ------------------------------------------------------------------------------
 
-  Future<void> _verify(DocsApi api, List<String> violations, List<String> notes) async {
+  Future<void> _verify(DocsApi api, _LogAuditor? auditor, List<String> violations, List<String> notes) async {
     // 1. Every ledger entry has a terminal outcome.
     for (final e in _ledger) {
       if (e.status == LedgerStatus.pending) {
@@ -243,20 +252,28 @@ class StormRunner {
     for (final c in _clients) {
       final s = c.session!;
       if (s.lastSeq != snap.seq) violations.add('${c.id} lastSeq ${s.lastSeq} != server head ${snap.seq}');
-      if (jsonEncode(s.confirmed.toJson()) != server) violations.add('${c.id} confirmed document differs from the server (I3)');
-      if (jsonEncode(s.view.toJson()) != server) violations.add('${c.id} view differs from the server after settling (I3)');
+      if (jsonEncode(s.confirmed.toJson()) != server) {
+        violations.add('${c.id} confirmed document differs from the server (I3)');
+      }
+      if (jsonEncode(s.view.toJson()) != server) {
+        violations.add('${c.id} view differs from the server after settling (I3)');
+      }
       if (s.machine.violations.isNotEmpty) violations.addAll(s.machine.violations.map((v) => '${c.id}: $v'));
     }
     final problems = snap.doc.integrityProblems;
     if (problems.isNotEmpty) violations.add('server document has integrity problems (I4): $problems');
 
-    // 3. Ledger vs. the server's log (I1/I5): needs the full log, i.e. a replay from seq 0.
-    if (!config.verifyLog) return;
-    final log = await _fetchLog(snap.seq);
-    if (log == null) {
-      notes.add('log verification skipped: the server answered with a snapshot instead of a replay from seq 0');
+    // 3. Ledger vs. the server's log (I1/I5): the auditor watched every commit of the run, live.
+    if (auditor == null) return;
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    while (auditor.lastSeq < snap.seq && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (auditor.lastSeq < snap.seq) {
+      notes.add('log verification skipped: the auditor stopped at seq ${auditor.lastSeq} of ${snap.seq}');
       return;
     }
+    final log = auditor.log;
     final byKey = {for (final e in log) (e.client, e.cseq): e};
     for (final e in _ledger) {
       final entry = e.cseq == null ? null : byKey[(e.client, e.cseq!)];
@@ -270,55 +287,89 @@ class StormRunner {
             violations.add('${e.client}/${e.cseq} log entry differs from the edit the user made');
           }
         case LedgerStatus.rejected || LedgerStatus.lost:
-          if (entry != null) violations.add('${e.client}/${e.cseq} reported ${e.status.name} but is in the log at ${entry.seq} (I5)');
+          if (entry != null) {
+            violations.add('${e.client}/${e.cseq} reported ${e.status.name} but is in the log at ${entry.seq} (I5)');
+          }
         case LedgerStatus.unpersisted:
           // Never promised an outcome, so it must never have left the process (write-ahead rule).
           if (entry != null && entry.op == e.op) {
-            violations.add('${e.client}/${e.cseq} was not in the journal at the crash but reached the server (write-ahead)');
+            violations.add(
+              '${e.client}/${e.cseq} was not in the journal at the crash but reached the server (write-ahead)',
+            );
           }
         case LedgerStatus.localInvalid || LedgerStatus.pending:
           break;
       }
     }
-    final known = {for (final e in _ledger) if (e.cseq != null) (e.client, e.cseq!)};
+    final known = {
+      for (final e in _ledger)
+        if (e.cseq != null) (e.client, e.cseq!),
+    };
     final mine = _clients.map((c) => c.id).toSet();
     for (final entry in log) {
       if (mine.contains(entry.client) && !known.contains((entry.client, entry.cseq))) {
         violations.add('log entry #${entry.seq} ${entry.client}/${entry.cseq} has no ledger entry');
       }
     }
-    for (var i = 0; i < log.length; i++) {
-      if (log[i].seq != i + 1) {
-        violations.add('log has a gap or duplicate at index $i (seq ${log[i].seq})');
+    for (var i = 1; i < log.length; i++) {
+      if (log[i].seq != log[i - 1].seq + 1) {
+        violations.add('log has a gap or duplicate at seq ${log[i].seq}');
         break;
       }
     }
-    notes.add('log verified: ${log.length} entries');
+    notes.add('log verified: ${log.length} commits observed live (seq ${auditor.startSeq + 1}..${auditor.lastSeq})');
+  }
+}
+
+/// A read-only observer that records every committed op of the run as it happens, reconnecting with
+/// `Last-Event-ID` like any client. It is how the ledger is checked against the server's real log even when
+/// the log is far longer than the server will replay.
+class _LogAuditor {
+  _LogAuditor(this.url, this.doc);
+
+  final Uri url;
+  final String doc;
+  final List<LogEntry> log = [];
+  int startSeq = 0;
+  int lastSeq = 0;
+  bool _stopped = false;
+  bool _started = false;
+  HttpTransport? _transport;
+
+  Future<void> start() async {
+    while (!_stopped) {
+      final t = _transport = HttpTransport(baseUrl: url, docId: doc);
+      try {
+        await for (final e in t.openStream(StreamOpen(lastEventId: _started ? lastSeq : null))) {
+          switch (e) {
+            case SnapshotEvent(:final seq):
+              if (!_started) {
+                startSeq = lastSeq = seq;
+                _started = true;
+              } else {
+                // Fell too far behind to be replayed: the observed log has a hole; the check will say so.
+                lastSeq = seq;
+              }
+            case CommitEvent(:final entry):
+              if (entry.seq == lastSeq + 1) {
+                log.add(entry);
+                lastSeq = entry.seq;
+              }
+            case ReadyEvent() || PingEvent():
+              break;
+          }
+        }
+      } on Object {
+        // connection lost: resume below
+      }
+      t.close();
+      if (!_stopped) await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
   }
 
-  /// The whole committed log, or null if the server will only send a snapshot.
-  Future<List<LogEntry>?> _fetchLog(int head) async {
-    final t = HttpTransport(baseUrl: config.url, docId: config.doc);
-    final log = <LogEntry>[];
-    try {
-      await for (final e in t.openStream(const StreamOpen(lastEventId: 0)).timeout(const Duration(seconds: 30))) {
-        switch (e) {
-          case SnapshotEvent():
-            return head == 0 ? log : null;
-          case CommitEvent(:final entry):
-            log.add(entry);
-          case ReadyEvent():
-            return log;
-          case PingEvent():
-            break;
-        }
-      }
-    } on Object {
-      return null;
-    } finally {
-      t.close();
-    }
-    return null;
+  Future<void> stop() async {
+    _stopped = true;
+    _transport?.close();
   }
 }
 
@@ -432,9 +483,11 @@ class _StormClient {
     entry.cseq = ticket.cseq;
     _byCseq[ticket.cseq!] = entry;
     final inc = incarnation;
-    unawaited(ticket.persisted.then((_) {
-      if (inc == incarnation) entry.persistedMs = runner._now;
-    }, onError: (Object _) {}));
+    unawaited(
+      ticket.persisted.then((_) {
+        if (inc == incarnation) entry.persistedMs = runner._now;
+      }, onError: (Object _) {}),
+    );
   }
 
   void _onEvent(ClientEvent e) {

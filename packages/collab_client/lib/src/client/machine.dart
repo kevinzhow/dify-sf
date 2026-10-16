@@ -46,12 +46,12 @@ final class ClientConfig {
   final int maxBatch;
 
   ClientConfig copyWith({int? maxBatch}) => ClientConfig(
-        retransmitAfter: retransmitAfter,
-        streamSilence: streamSilence,
-        reconnectBase: reconnectBase,
-        reconnectMax: reconnectMax,
-        maxBatch: maxBatch ?? this.maxBatch,
-      );
+    retransmitAfter: retransmitAfter,
+    streamSilence: streamSilence,
+    reconnectBase: reconnectBase,
+    reconnectMax: reconnectMax,
+    maxBatch: maxBatch ?? this.maxBatch,
+  );
 }
 
 /// Final fate of one client op.
@@ -203,32 +203,32 @@ class ClientMachine {
   bool get isQuiescent => _outbox.isEmpty && hasState && streamActive && streamReady;
 
   List<PendingOpInfo> get pending => [
-        for (final p in _outbox)
-          if (p.outcome == null)
-            PendingOpInfo(cseq: p.cseq, op: p.op, acked: p.ackedSeq != null, doomed: p.conflictNotified),
-      ];
+    for (final p in _outbox)
+      if (p.outcome == null)
+        PendingOpInfo(cseq: p.cseq, op: p.op, acked: p.ackedSeq != null, doomed: p.conflictNotified),
+  ];
 
   /// Human-readable state, for diagnostics.
   List<String> get debug => [
-        for (final p in _outbox)
-          'cseq ${p.cseq} op=${p.op == null ? 'abandoned' : 'set'} acked=${p.ackedSeq} outcome=${p.outcome}',
-        'lastSeq=$lastSeq hasState=$hasState streamActive=$streamActive ready=$streamReady '
-            'inFlight=$_inFlightSince blockedUntil=$_submitBlockedUntil',
-      ];
+    for (final p in _outbox)
+      'cseq ${p.cseq} op=${p.op == null ? 'abandoned' : 'set'} acked=${p.ackedSeq} outcome=${p.outcome}',
+    'lastSeq=$lastSeq hasState=$hasState streamActive=$streamActive ready=$streamReady '
+        'inFlight=$_inFlightSince blockedUntil=$_submitBlockedUntil',
+  ];
 
   // ---- persistence -------------------------------------------------------------------------------
 
   ClientDurable get durable => ClientDurable(
-        id: id,
-        nextCseq: nextCseq,
-        unresolvedFrom: _outbox.isEmpty ? nextCseq : _outbox.first.cseq,
-        journal: journaled
-            ? [
-                for (final p in _outbox)
-                  if (p.op != null) JournalEntry(cseq: p.cseq, base: p.base, op: p.op!),
-              ]
-            : const [],
-      );
+    id: id,
+    nextCseq: nextCseq,
+    unresolvedFrom: _outbox.isEmpty ? nextCseq : _outbox.first.cseq,
+    journal: journaled
+        ? [
+            for (final p in _outbox)
+              if (p.op != null) JournalEntry(cseq: p.cseq, base: p.base, op: p.op!),
+          ]
+        : const [],
+  );
 
   List<ClientEvent> drainEvents() {
     final out = List.of(_events);
@@ -329,12 +329,14 @@ class ClientMachine {
     streamReady = false;
     generation++;
     _lastStreamActivity = now;
-    return OpenStreamAction(StreamOpen(
-      client: id,
-      lastEventId: hasState ? lastSeq : null,
-      from: _outbox.isEmpty ? null : _outbox.first.cseq,
-      generation: generation,
-    ));
+    return OpenStreamAction(
+      StreamOpen(
+        client: id,
+        lastEventId: hasState ? lastSeq : null,
+        from: _outbox.isEmpty ? null : _outbox.first.cseq,
+        generation: generation,
+      ),
+    );
   }
 
   /// `delay = cap/2 + random(0 ... cap/2)` with `cap = min(reconnectMax, reconnectBase * 2^attempts)`.

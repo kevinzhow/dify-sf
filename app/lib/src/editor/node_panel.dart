@@ -52,18 +52,21 @@ class _EdgeDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Connection', style: Theme.of(context).textTheme.titleMedium),
-      const SizedBox(height: 8),
-      Text('${controller.titleOf(edge.source)}  →  ${controller.titleOf(edge.target)}'),
-      const SizedBox(height: 16),
-      OutlinedButton.icon(
-        key: const Key('delete-edge'),
-        icon: const Icon(Icons.link_off),
-        label: const Text('Delete connection'),
-        onPressed: () => controller.deleteEdge(edge.id),
-      ),
-    ]);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('Connection', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text('${controller.titleOf(edge.source)}  →  ${controller.titleOf(edge.target)}'),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          key: const Key('delete-edge'),
+          icon: const Icon(Icons.link_off),
+          label: const Text('Delete connection'),
+          onPressed: () => controller.deleteEdge(edge.id),
+        ),
+      ],
+    );
   }
 }
 
@@ -75,37 +78,46 @@ class _NodeDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final broken = _brokenIn(node);
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Row(children: [
-        Chip(label: Text(node.type), visualDensity: VisualDensity.compact),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(node.id, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.black45)),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            Chip(label: Text(node.type), visualDensity: VisualDensity.compact),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                node.id,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Colors.black45),
+              ),
+            ),
+            IconButton(
+              key: const Key('delete-node'),
+              tooltip: 'Delete node',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _confirmDelete(context),
+            ),
+          ],
         ),
-        IconButton(
-          key: const Key('delete-node'),
-          tooltip: 'Delete node',
-          icon: const Icon(Icons.delete_outline),
-          onPressed: () => _confirmDelete(context),
+        const SizedBox(height: 8),
+        SyncedTextField(
+          key: ValueKey('title-${node.id}'),
+          value: node.title,
+          label: 'Title',
+          currentVersion: () => controller.seenVersion,
+          onCommit: (text, base) => controller.setTitle(node.id, text, base: base),
         ),
-      ]),
-      const SizedBox(height: 8),
-      SyncedTextField(
-        key: ValueKey('title-${node.id}'),
-        value: node.title,
-        label: 'Title',
-        currentVersion: () => controller.seenVersion,
-        onCommit: (text, base) => controller.setTitle(node.id, text, base: base),
-      ),
-      if (broken.isNotEmpty) ...[
-        const SizedBox(height: 12),
-        _BrokenSummary(controller: controller, broken: broken),
+        if (broken.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _BrokenSummary(controller: controller, broken: broken),
+        ],
+        const SizedBox(height: 16),
+        Text('Configuration', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        ConfigEditor(controller: controller, node: node),
       ],
-      const SizedBox(height: 16),
-      Text('Configuration', style: Theme.of(context).textTheme.titleSmall),
-      const SizedBox(height: 8),
-      ConfigEditor(controller: controller, node: node),
-    ]);
+    );
   }
 
   static List<OutputRef> _brokenIn(Node n) => [for (final v in n.config.values) ...v.brokenRefs];
@@ -118,16 +130,24 @@ class _NodeDetails extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         key: const Key('delete-dialog'),
         title: Text('Delete $title?'),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(refs.isEmpty
-              ? 'Its connections will be removed.'
-              : 'Its connections will be removed, and ${refs.length} reference${refs.length == 1 ? '' : 's'} to it '
-                  'will be marked as broken:'),
-          const SizedBox(height: 8),
-          for (final r in refs)
-            Text('• ${controller.titleOf(r.node)} › ${fieldLabel(r.field)}  (${r.ref.node}.${r.ref.output})',
-                style: const TextStyle(fontSize: 13)),
-        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              refs.isEmpty
+                  ? 'Its connections will be removed.'
+                  : 'Its connections will be removed, and ${refs.length} reference${refs.length == 1 ? '' : 's'} to it '
+                        'will be marked as broken:',
+            ),
+            const SizedBox(height: 8),
+            for (final r in refs)
+              Text(
+                '• ${controller.titleOf(r.node)} › ${fieldLabel(r.field)}  (${r.ref.node}.${r.ref.output})',
+                style: const TextStyle(fontSize: 13),
+              ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
@@ -159,18 +179,21 @@ class _BrokenSummary extends StatelessWidget {
         border: Border.all(color: red.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.link_off, color: red, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '${broken.length} broken reference${broken.length == 1 ? '' : 's'}: the node'
-            '${broken.map((r) => r.node).toSet().length == 1 ? '' : 's'} they pointed to '
-            '${broken.map((r) => r.node).toSet().length == 1 ? 'was' : 'were'} deleted. Pick new variables below.',
-            style: TextStyle(color: red, fontSize: 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.link_off, color: red, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${broken.length} broken reference${broken.length == 1 ? '' : 's'}: the node'
+              '${broken.map((r) => r.node).toSet().length == 1 ? '' : 's'} they pointed to '
+              '${broken.map((r) => r.node).toSet().length == 1 ? 'was' : 'were'} deleted. Pick new variables below.',
+              style: TextStyle(color: red, fontSize: 13),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }

@@ -42,7 +42,8 @@ class SimStats {
   }
 
   @override
-  String toString() => 'runs=$runs edits=$edits localInvalid=$localInvalid committed=$committed rejected=$rejected '
+  String toString() =>
+      'runs=$runs edits=$edits localInvalid=$localInvalid committed=$committed rejected=$rejected '
       '$rejectedBy lost=$lost earlyWarnings=$warnings reapplied=$reapplied crashes=$crashes '
       'partitions=$partitions snapshotJoins=$snapshots replays=$replays';
 }
@@ -68,8 +69,7 @@ void _run(FakeAsync async, int seed, Profile profile, int? stepsOverride, SimSta
   final w = World(async, initial: initial, maxReplay: 6 + rng.nextInt(120));
   final clientCount = 2 + rng.nextInt(4);
   final ps = [
-    for (var i = 0; i < clientCount; i++)
-      w.add('c$i', journaled: rng.nextDouble() > 0.4, seed: seed * 31 + i),
+    for (var i = 0; i < clientCount; i++) w.add('c$i', journaled: rng.nextDouble() > 0.4, seed: seed * 31 + i),
   ];
   for (final p in ps) {
     p.store.latency = () => Duration(milliseconds: rng.nextInt(40));
@@ -188,7 +188,11 @@ void _check(World w, List<Participant> ps, SimStats stats) {
     final fates = <int, Object>{};
     void fate(int cseq, Object f, String what) {
       final prev = fates[cseq];
-      expect(prev == null || prev == f, isTrue, reason: '${p.id} cseq $cseq reported twice with different fates: $prev vs $what');
+      expect(
+        prev == null || prev == f,
+        isTrue,
+        reason: '${p.id} cseq $cseq reported twice with different fates: $prev vs $what',
+      );
       fates[cseq] = f;
     }
 
@@ -205,7 +209,11 @@ void _check(World w, List<Participant> ps, SimStats stats) {
           // After a crash a volatile client may report an already-reported rejection again as "lost" (the
           // content is gone): both mean "not saved", which is all that must stay consistent.
           fate(cseq, 'not saved', 'rejected $reason');
-          expect(byKey.containsKey((p.id, cseq)), isFalse, reason: '${p.id}/$cseq told rejected ($reason) but it is in the log: $op');
+          expect(
+            byKey.containsKey((p.id, cseq)),
+            isFalse,
+            reason: '${p.id}/$cseq told rejected ($reason) but it is in the log: $op',
+          );
           stats.rejected++;
           stats.rejectedBy[reason.name] = (stats.rejectedBy[reason.name] ?? 0) + 1;
         case OpLost(:final cseq):
@@ -221,13 +229,19 @@ void _check(World w, List<Participant> ps, SimStats stats) {
     }
     // Everything the server has from this client, the client knows is saved.
     for (final e in server.log.where((e) => e.client == p.id)) {
-      expect(fates[e.cseq], 'committed@${e.seq}', reason: '${p.id}/${e.cseq} is in the log but the client never reported it saved (I5)');
+      expect(
+        fates[e.cseq],
+        'committed@${e.seq}',
+        reason: '${p.id}/${e.cseq} is in the log but the client never reported it saved (I5)',
+      );
     }
     // Every edit the user was promised an outcome for got one.
     for (final cseq in p.promised.keys) {
       expect(fates.containsKey(cseq), isTrue, reason: '${p.id}/$cseq was promised but has no outcome');
       final entry = byKey[(p.id, cseq)];
-      if (entry != null) expect(entry.op, p.promised[cseq], reason: '${p.id}/$cseq committed a different op than promised');
+      if (entry != null) {
+        expect(entry.op, p.promised[cseq], reason: '${p.id}/$cseq committed a different op than promised');
+      }
     }
   }
   stats.snapshots += server.snapshotsServed;

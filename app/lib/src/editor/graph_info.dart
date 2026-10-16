@@ -28,11 +28,11 @@ String clientDisplayName(String clientId) {
 
 /// A label for a register, as the user thinks of it: `title`, `prompt`, `model.name`, `outputs`.
 String fieldLabel(FieldKey? key) => switch (key) {
-      null => 'this node',
-      TitleKey() => 'title',
-      ConfigKey(:final path) => path.join('.'),
-      ItemKey(:final path) => path.join('.'),
-    };
+  null => 'this node',
+  TitleKey() => 'title',
+  ConfigKey(:final path) => path.join('.'),
+  ItemKey(:final path) => path.join('.'),
+};
 
 /// Short single-line preview of a value for notices and chips.
 String previewValue(Value v, {int max = 60}) {
@@ -41,8 +41,7 @@ String previewValue(Value v, {int max = 60}) {
     VRef(:final ref) => '{{${ref.node}.${ref.output}}}',
     VBroken(:final ref) => '(broken ${ref.node}.${ref.output})',
     _ => '${v.toJson()}',
-  }
-      .replaceAll('\n', ' ');
+  }.replaceAll('\n', ' ');
   return text.length <= max ? text : '${text.substring(0, max - 1)}…';
 }
 

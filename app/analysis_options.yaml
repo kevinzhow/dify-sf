@@ -5,3 +5,7 @@ analyzer:
     - build/**
     - web/**
     - linux/**
+
+formatter:
+  page_width: 120
+  trailing_commas: preserve

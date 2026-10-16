@@ -38,26 +38,32 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
       final node = doc.nodes[id]!;
       final outputs = outputNames(node);
       if (outputs.isEmpty) continue;
-      options.add(PopupMenuItem<OutputRef>(
-        enabled: false,
-        height: 28,
-        child: Text(
-          node.title.isEmpty ? node.id : node.title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+      options.add(
+        PopupMenuItem<OutputRef>(
+          enabled: false,
+          height: 28,
+          child: Text(
+            node.title.isEmpty ? node.id : node.title,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          ),
         ),
-      ));
+      );
       for (final o in outputs) {
-        options.add(PopupMenuItem<OutputRef>(
-          key: ValueKey('var-${node.id}-$o'),
-          value: OutputRef(node.id, o),
-          height: 32,
-          child: Row(children: [
-            const SizedBox(width: 12),
-            const Icon(Icons.subdirectory_arrow_right, size: 14),
-            const SizedBox(width: 6),
-            Text(o),
-          ]),
-        ));
+        options.add(
+          PopupMenuItem<OutputRef>(
+            key: ValueKey('var-${node.id}-$o'),
+            value: OutputRef(node.id, o),
+            height: 32,
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                const Icon(Icons.subdirectory_arrow_right, size: 14),
+                const SizedBox(width: 6),
+                Text(o),
+              ],
+            ),
+          ),
+        );
       }
     }
     return PopupMenuButton<OutputRef>(

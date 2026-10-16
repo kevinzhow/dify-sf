@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import 'demo/demo_backend.dart';
 import 'editor/editor_controller.dart';
 import 'editor/editor_page.dart';
+import 'launch_options.dart';
 import 'session_factory.dart';
 import 'settings.dart';
 
 /// Start screen: server, name, mode, and the document to open or create.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.settings, this.backendFor});
+  const HomePage({super.key, required this.settings, this.backendFor, this.launch});
 
   final AppSettings settings;
+
+  /// Command line options; with `--doc` / `--demo` the editor opens right away.
+  final LaunchOptions? launch;
 
   /// Test hook: supplies the backend instead of an HTTP one.
   final Backend Function(Uri url)? backendFor;
@@ -26,6 +30,15 @@ class _HomePageState extends State<HomePage> {
   late bool _journaled = widget.settings.journaled;
   String? _error;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final l = widget.launch;
+    if (l != null && l.autoOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => l.demo ? _demo() : _open(create: true));
+    }
+  }
 
   @override
   void dispose() {
@@ -89,16 +102,18 @@ class _HomePageState extends State<HomePage> {
     setState(() => _error = null);
     await _remember();
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => EditorPage(
-        backend: backend,
-        docId: id,
-        clientId: widget.settings.clientId,
-        journaled: _journaled,
-        create: create,
-        extraActions: extra,
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => EditorPage(
+          backend: backend,
+          docId: id,
+          clientId: widget.settings.clientId,
+          journaled: _journaled,
+          create: create,
+          extraActions: extra,
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -141,9 +156,11 @@ class _HomePageState extends State<HomePage> {
                 key: const Key('journal-switch'),
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Keep a local journal'),
-                subtitle: Text(_journaled
-                    ? 'Unsent edits survive a crash or reload and are resent.'
-                    : 'Volatile: unsent edits are lost if the app closes, and you will be told.'),
+                subtitle: Text(
+                  _journaled
+                      ? 'Unsent edits survive a crash or reload and are resent.'
+                      : 'Volatile: unsent edits are lost if the app closes, and you will be told.',
+                ),
                 value: _journaled,
                 onChanged: (v) => setState(() => _journaled = v),
               ),
@@ -153,21 +170,23 @@ class _HomePageState extends State<HomePage> {
                   child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 ),
               const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                  child: FilledButton(
-                    key: const Key('open-button'),
-                    onPressed: _busy ? null : () => _open(create: true),
-                    child: const Text('Open / create'),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      key: const Key('open-button'),
+                      onPressed: _busy ? null : () => _open(create: true),
+                      child: const Text('Open / create'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  key: const Key('new-button'),
-                  onPressed: _busy ? null : _newDocument,
-                  child: const Text('New document'),
-                ),
-              ]),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    key: const Key('new-button'),
+                    onPressed: _busy ? null : _newDocument,
+                    child: const Text('New document'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               TextButton(
                 key: const Key('demo-button'),
@@ -183,10 +202,9 @@ class _HomePageState extends State<HomePage> {
 }
 
 /// Used by tests to build the same widget tree as `main`.
-Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor}) => MaterialApp(
-      title: 'dify-sf',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: const Color(0xFF3F51B5), useMaterial3: true),
-      home: HomePage(settings: settings, backendFor: backendFor),
-    );
-
+Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, LaunchOptions? launch}) => MaterialApp(
+  title: 'dify-sf',
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData(colorSchemeSeed: const Color(0xFF3F51B5), useMaterial3: true),
+  home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
+);

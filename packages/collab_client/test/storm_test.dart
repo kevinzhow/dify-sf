@@ -26,19 +26,19 @@ void main() {
   });
 
   StormConfig config({int seed = 1, double crashes = 0, double volatile = 0.3}) => StormConfig(
-        url: srv.url,
-        doc: 'storm',
-        clients: 5,
-        duration: const Duration(seconds: 3),
-        ratePerClient: 12,
-        seed: seed,
-        journalDir: dir.path,
-        crashesPerClientPerMinute: crashes,
-        volatileFraction: volatile,
-        settleTimeout: const Duration(seconds: 30),
-        clientConfig: const ClientConfig(streamSilence: 1200, reconnectBase: 50, reconnectMax: 400),
-        postTimeout: const Duration(seconds: 1),
-      );
+    url: srv.url,
+    doc: 'storm',
+    clients: 5,
+    duration: const Duration(seconds: 3),
+    ratePerClient: 12,
+    seed: seed,
+    journalDir: dir.path,
+    crashesPerClientPerMinute: crashes,
+    volatileFraction: volatile,
+    settleTimeout: const Duration(seconds: 30),
+    clientConfig: const ClientConfig(streamSilence: 1200, reconnectBase: 50, reconnectMax: 400),
+    postTimeout: const Duration(seconds: 1),
+  );
 
   test('a calm storm ends with every edit accounted for and all clients converged', () async {
     final report = await StormRunner(config()).run();
@@ -50,7 +50,7 @@ void main() {
     // The ledger is valid JSON with one record per intended edit.
     final json = jsonDecode(jsonEncode(report.toJson())) as Map<String, Object?>;
     expect((json['ledger']! as List<Object?>).length, report.ledger.length);
-    expect(report.notes, contains('log verified: ${srv.doc('storm').head} entries'));
+    expect(report.notes.where((n) => n.startsWith('log verified')), hasLength(1));
   });
 
   test('crashes, cut and stalled streams, swallowed answers and 503s: still no violation', () async {

@@ -12,8 +12,8 @@ import '../session_factory.dart';
 /// tests. "Go offline" cuts the user's network; Bo's edits then conflict with the user's.
 class DemoBackend implements Backend {
   DemoBackend({FakeServer? server, bool withBo = true})
-      : server = server ?? FakeServer(),
-        net = FakeNetwork(random: Random(3)) {
+    : server = server ?? FakeServer(),
+      net = FakeNetwork(random: Random(3)) {
     net
       ..minLatency = const Duration(milliseconds: 10)
       ..maxLatency = const Duration(milliseconds: 60);

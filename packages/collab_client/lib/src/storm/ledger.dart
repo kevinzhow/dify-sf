@@ -53,17 +53,17 @@ class LedgerEntry {
   bool warned = false;
 
   Map<String, Object?> toJson() => {
-        'client': client,
-        'incarnation': incarnation,
-        'cseq': cseq,
-        'op': op.toJson(),
-        'intentMs': intentMs,
-        if (persistedMs != null) 'persistedMs': persistedMs,
-        'status': status.name,
-        if (seq != null) 'seq': seq,
-        if (reason != null) 'reason': reason!.toJson(),
-        if (outcomeMs != null) 'outcomeMs': outcomeMs,
-        if (warned) 'warned': true,
-        if (reappliesCseq != null) 'reappliesCseq': reappliesCseq,
-      };
+    'client': client,
+    'incarnation': incarnation,
+    'cseq': cseq,
+    'op': op.toJson(),
+    'intentMs': intentMs,
+    if (persistedMs != null) 'persistedMs': persistedMs,
+    'status': status.name,
+    if (seq != null) 'seq': seq,
+    if (reason != null) 'reason': reason!.toJson(),
+    if (outcomeMs != null) 'outcomeMs': outcomeMs,
+    if (warned) 'warned': true,
+    if (reappliesCseq != null) 'reappliesCseq': reappliesCseq,
+  };
 }

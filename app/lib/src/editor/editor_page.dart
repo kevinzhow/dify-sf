@@ -30,7 +30,7 @@ class EditorPage extends StatefulWidget {
 
   /// Demo/debug actions for the app bar, built with the live controller.
   final List<Widget> Function(BuildContext context, EditorController controller, VoidCallback crashAndRestart)?
-      extraActions;
+  extraActions;
 
   @override
   State<EditorPage> createState() => _EditorPageState();
@@ -134,7 +134,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         key: const Key('add-node-menu'),
         tooltip: 'Add node',
         icon: const Icon(Icons.add_box_outlined),
-        onSelected: (type) => c.addNode(type, x: 120 + (c.doc.nodes.length % 5) * 40, y: 280 + (c.doc.nodes.length % 4) * 40),
+        onSelected: (type) =>
+            c.addNode(type, x: 120 + (c.doc.nodes.length % 5) * 40, y: 280 + (c.doc.nodes.length % 4) * 40),
         itemBuilder: (_) => [
           for (final t in const ['start', 'llm', 'code', 'answer']) PopupMenuItem(value: t, child: Text('Add $t node')),
         ],
@@ -147,48 +148,69 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   Widget _body(BuildContext context, EditorController? c) {
     if (_error != null) {
       return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.cloud_off, size: 48, color: Colors.black38),
-          const SizedBox(height: 12),
-          Text('Could not open "${widget.docId}"', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          SizedBox(width: 420, child: Text('$_error', textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54))),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: _open, child: const Text('Retry')),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 48, color: Colors.black38),
+            const SizedBox(height: 12),
+            Text('Could not open "${widget.docId}"', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: 420,
+              child: Text(
+                '$_error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.black54),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: _open, child: const Text('Retry')),
+          ],
+        ),
       );
     }
     if (c == null) return const Center(child: CircularProgressIndicator());
-    return Column(children: [
-      Expanded(
-        child: Row(children: [
-          Expanded(
-            child: Stack(children: [
-              if (c.ready)
-                CanvasView(controller: c)
-              else
-                const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 12),
-                  Text('Loading the document…'),
-                ])),
-              if (c.selectedEdgeId != null && c.ready)
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Chip(
-                    avatar: const Icon(Icons.timeline, size: 16),
-                    label: const Text('Connection selected — details on the right'),
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  ),
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    if (c.ready)
+                      CanvasView(controller: c)
+                    else
+                      const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 12),
+                            Text('Loading the document…'),
+                          ],
+                        ),
+                      ),
+                    if (c.selectedEdgeId != null && c.ready)
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Chip(
+                          avatar: const Icon(Icons.timeline, size: 16),
+                          label: const Text('Connection selected — details on the right'),
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        ),
+                      ),
+                    NoticeOverlay(controller: c),
+                  ],
                 ),
-              NoticeOverlay(controller: c),
-            ]),
+              ),
+              NodePanel(controller: c),
+            ],
           ),
-          NodePanel(controller: c),
-        ]),
-      ),
-      StatusBar(controller: c, clientId: widget.clientId, serverLabel: widget.backend.label),
-    ]);
+        ),
+        StatusBar(controller: c, clientId: widget.clientId, serverLabel: widget.backend.label),
+      ],
+    );
   }
 }

@@ -77,8 +77,8 @@ class CollabSession {
     this.postTimeout = const Duration(seconds: 10),
     Random? random,
     int Function()? clock,
-  })  : _random = random ?? Random(),
-        _clock = clock ?? _monotonicClock();
+  }) : _random = random ?? Random(),
+       _clock = clock ?? _monotonicClock();
 
   final String clientId;
   final CollabTransport transport;
@@ -135,12 +135,12 @@ class CollabSession {
   ClientMachine get machine => _machine;
 
   SessionStatus get status => SessionStatus(
-        link: link,
-        pending: _machine.unresolvedCount,
-        lastSeq: _machine.lastSeq,
-        hasState: _machine.hasState,
-        lastError: _lastError,
-      );
+    link: link,
+    pending: _machine.unresolvedCount,
+    lastSeq: _machine.lastSeq,
+    hasState: _machine.hasState,
+    lastError: _lastError,
+  );
 
   LinkState get link {
     final m = _machine;
@@ -271,7 +271,9 @@ class CollabSession {
       });
     }
 
-    _streamSub = transport.openStream(open).listen(
+    _streamSub = transport
+        .openStream(open)
+        .listen(
           (e) => _feed(() => _machine.receiveStream(e, gen, _clock())),
           onError: closed,
           onDone: () => closed(null),

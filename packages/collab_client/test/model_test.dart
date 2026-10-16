@@ -50,21 +50,30 @@ void main() {
 
     test('deleting a node breaks references explicitly and removes its edges', () {
       final r = ref('a');
-      final d = Document(nodes: [
-        node('a'),
-        node('b', {
-          'in': r,
-          'deep': VMap({'l': VList([r, const VInt(1)])}),
-          'items': VItems([Item('i', r)]),
-        }),
-      ], edges: const [
-        Edge(id: 'e', source: 'a', target: 'b'),
-      ])
-        ..apply(const RemoveNode('a'), stamp(1, 'x'));
+      final d = Document(
+        nodes: [
+          node('a'),
+          node('b', {
+            'in': r,
+            'deep': VMap({
+              'l': VList([r, const VInt(1)]),
+            }),
+            'items': VItems([Item('i', r)]),
+          }),
+        ],
+        edges: const [
+          Edge(id: 'e', source: 'a', target: 'b'),
+        ],
+      )..apply(const RemoveNode('a'), stamp(1, 'x'));
       const broken = OutputRef('a', 'o');
       expect(d.nodes['b']!.config['in'], const VBroken(broken));
       expect(d.nodes['b']!.config['items'], const VItems([Item('i', VBroken(broken))]));
-      expect(d.nodes['b']!.config['deep'], const VMap({'l': VList([VBroken(broken), VInt(1)])}));
+      expect(
+        d.nodes['b']!.config['deep'],
+        const VMap({
+          'l': VList([VBroken(broken), VInt(1)]),
+        }),
+      );
       expect(d.edges, isEmpty);
       expect(d.integrityProblems, isEmpty);
       expect(d.deletedNodes.containsKey('a'), isTrue);
@@ -74,11 +83,14 @@ void main() {
 
     test('dangling and broken references cannot be written', () {
       final d = Document(nodes: [node('a')]);
-      expect(d.validate(SetField('a', const ConfigKey(['r']), ref('ghost')), base: 0, client: 'x'),
-          isA<DanglingReference>());
       expect(
-          d.validate(const SetField('a', ConfigKey(['r']), VBroken(OutputRef('a', 'o'))), base: 0, client: 'x'),
-          isA<Invalid>());
+        d.validate(SetField('a', const ConfigKey(['r']), ref('ghost')), base: 0, client: 'x'),
+        isA<DanglingReference>(),
+      );
+      expect(
+        d.validate(const SetField('a', ConfigKey(['r']), VBroken(OutputRef('a', 'o'))), base: 0, client: 'x'),
+        isA<Invalid>(),
+      );
     });
 
     test('ids are never reused', () {
@@ -105,16 +117,40 @@ void main() {
 
     test('edges: endpoints must exist, duplicates and ids are checked', () {
       final d = baseDoc()..apply(const AddEdge(Edge(id: 'e1', source: 'a', target: 'b')), stamp(1, 'x'));
-      expect(d.validate(const AddEdge(Edge(id: 'e2', source: 'a', target: 'b')), base: 1, client: 'y'),
-          const DuplicateEdge('e1'));
-      expect(d.validate(const AddEdge(Edge(id: 'e1', source: 'b', target: 'a')), base: 1, client: 'y'),
-          const EdgeExists('e1'));
-      expect(d.validate(const AddEdge(Edge(id: 'e3', source: 'a', target: 'zz')), base: 1, client: 'y'),
-          const NodeNotFound('zz'));
+      expect(
+        d.validate(
+          const AddEdge(Edge(id: 'e2', source: 'a', target: 'b')),
+          base: 1,
+          client: 'y',
+        ),
+        const DuplicateEdge('e1'),
+      );
+      expect(
+        d.validate(
+          const AddEdge(Edge(id: 'e1', source: 'b', target: 'a')),
+          base: 1,
+          client: 'y',
+        ),
+        const EdgeExists('e1'),
+      );
+      expect(
+        d.validate(
+          const AddEdge(Edge(id: 'e3', source: 'a', target: 'zz')),
+          base: 1,
+          client: 'y',
+        ),
+        const NodeNotFound('zz'),
+      );
       expect(d.validate(const RemoveEdge('nope'), base: 1, client: 'y'), const EdgeNotFound('nope'));
       d.apply(const RemoveEdge('e1'), stamp(2, 'x'));
-      expect(d.validate(const AddEdge(Edge(id: 'e1', source: 'a', target: 'b')), base: 2, client: 'y'),
-          const EdgeExists('e1'));
+      expect(
+        d.validate(
+          const AddEdge(Edge(id: 'e1', source: 'a', target: 'b')),
+          base: 2,
+          client: 'y',
+        ),
+        const EdgeExists('e1'),
+      );
     });
   });
 
@@ -146,16 +182,20 @@ void main() {
         ..apply(const RemoveItem('a', ['outs'], 'x'), stamp(2, 'bob'));
       // Removing again: the intended end state holds already, success.
       expect(d.validate(const RemoveItem('a', ['outs'], 'x'), base: 0, client: 'alice'), isNull);
-      expect(d.validate(const UpdateItem('a', ['outs'], 'x', VInt(1)), base: 2, client: 'alice'),
-          const ItemDeleted('x'));
+      expect(
+        d.validate(const UpdateItem('a', ['outs'], 'x', VInt(1)), base: 2, client: 'alice'),
+        const ItemDeleted('x'),
+      );
       expect(d.validate(const RemoveItem('a', ['outs'], 'nope'), base: 2, client: 'alice'), const ItemNotFound('nope'));
       expect(d.validate(ins('a', 'x'), base: 2, client: 'alice'), const ItemExists('x'));
     });
 
     test('a whole-list replace is stale-protected against item inserts', () {
       final d = Document(nodes: [node('a')])..apply(ins('a', 'x'), stamp(1, 'bob'));
-      expect(d.validate(const SetField('a', ConfigKey(['outs']), VItems([])), base: 0, client: 'alice'),
-          isA<Conflict>());
+      expect(
+        d.validate(const SetField('a', ConfigKey(['outs']), VItems([])), base: 0, client: 'alice'),
+        isA<Conflict>(),
+      );
     });
 
     test('rewriting an ancestor prunes the stamps of its descendants', () {
@@ -163,7 +203,9 @@ void main() {
         ..apply(ins('a', 'x'), stamp(1, 'bob'))
         ..apply(const SetField('a', ConfigKey(['outs']), VItems([])), stamp(2, 'bob'));
       // Rewriting an ancestor prunes descendant stamps.
-      expect(d.fieldStamps['a']!.keys, [const ConfigKey(['outs'])]);
+      expect(d.fieldStamps['a']!.keys, [
+        const ConfigKey(['outs']),
+      ]);
     });
   });
 
@@ -202,8 +244,10 @@ void main() {
         expect(Op.fromJson(jsonDecode(jsonEncode(op.toJson()))), op);
       }
       expect(jsonEncode(canonical(const MoveNode('n', 3, 4).toJson())), '{"node":"n","t":"moveNode","x":3,"y":4}');
-      expect(jsonEncode(canonical(ins('n', 'i').toJson())),
-          '{"after":null,"item":{"id":"i","value":"i"},"node":"n","path":["outs"],"t":"insertItem"}');
+      expect(
+        jsonEncode(canonical(ins('n', 'i').toJson())),
+        '{"after":null,"item":{"id":"i","value":"i"},"node":"n","path":["outs"],"t":"insertItem"}',
+      );
     });
 
     test('reject reasons round trip', () {
@@ -253,8 +297,16 @@ void main() {
       final parsed = StreamEvent.parse('commit', jsonEncode(e.toJson()))! as CommitEvent;
       expect(parsed.entry, e);
       expect((StreamEvent.parse('ready', '{"head":3}')! as ReadyEvent).head, 3);
-      final snap = StreamEvent.parse(
-          'snapshot', jsonEncode({'seq': 4, 'doc': Templates.example().toJson(), 'committed': {'2': 3}}))! as SnapshotEvent;
+      final snap =
+          StreamEvent.parse(
+                'snapshot',
+                jsonEncode({
+                  'seq': 4,
+                  'doc': Templates.example().toJson(),
+                  'committed': {'2': 3},
+                }),
+              )!
+              as SnapshotEvent;
       expect(snap.seq, 4);
       expect(snap.committed, {2: 3});
       expect(StreamEvent.parse('future-event', '{}'), isNull);
@@ -264,7 +316,7 @@ void main() {
 
 /// Recursively sorts map keys (the server's canonical output) so strings can be compared.
 Object? canonical(Object? j) => switch (j) {
-      final Map<String, Object?> m => {for (final k in m.keys.toList()..sort()) k: canonical(m[k])},
-      final List<Object?> l => [for (final x in l) canonical(x)],
-      _ => j,
-    };
+  final Map<String, Object?> m => {for (final k in m.keys.toList()..sort()) k: canonical(m[k])},
+  final List<Object?> l => [for (final x in l) canonical(x)],
+  _ => j,
+};

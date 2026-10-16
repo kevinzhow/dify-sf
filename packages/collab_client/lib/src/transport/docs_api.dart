@@ -22,7 +22,7 @@ final class DocInfo {
 /// The document-level endpoints (everything except ops and events).
 class DocsApi {
   DocsApi(this.baseUrl, {http.Client? client, this.timeout = const Duration(seconds: 10)})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final Uri baseUrl;
   final Duration timeout;

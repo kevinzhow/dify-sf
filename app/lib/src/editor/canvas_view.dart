@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:collab_client/collab_client.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'editor_controller.dart';
 
@@ -26,6 +28,9 @@ class CanvasView extends StatefulWidget {
 
 class _CanvasViewState extends State<CanvasView> {
   Offset _pan = const Offset(40, 60);
+  double _scale = 1;
+  Size _viewport = Size.zero;
+  bool _fitted = false;
   final Map<String, Offset> _dragPos = {};
   Timer? _moveTimer;
   final Map<String, Offset> _unsentMoves = {};
@@ -42,7 +47,7 @@ class _CanvasViewState extends State<CanvasView> {
   /// Canvas coordinates of a global pointer position.
   Offset _toCanvas(Offset global) {
     final box = _areaKey.currentContext!.findRenderObject()! as RenderBox;
-    return box.globalToLocal(global) - _pan;
+    return (box.globalToLocal(global) - _pan) / _scale;
   }
 
   // ---- dragging nodes ----------------------------------------------------------------------------
@@ -53,7 +58,9 @@ class _CanvasViewState extends State<CanvasView> {
   }
 
   void _dragUpdate(Node n, Offset delta) {
-    final p = (_dragPos[n.id] ?? Offset(n.x.toDouble(), n.y.toDouble())) + delta;
+    final p =
+        (_dragPos[n.id] ?? Offset(n.x.toDouble(), n.y.toDouble())) +
+        delta; // already in canvas units: the node sits inside a scaled FittedBox
     setState(() => _dragPos[n.id] = p);
     // Live collaboration without flooding the log: at most ~8 small moveNode ops per second.
     _unsentMoves[n.id] = p;
@@ -78,9 +85,9 @@ class _CanvasViewState extends State<CanvasView> {
   // ---- connecting --------------------------------------------------------------------------------
 
   void _connectStart(Node n) => setState(() {
-        _connectFrom = n.id;
-        _ghostTo = _outHandle(_pos(n));
-      });
+    _connectFrom = n.id;
+    _ghostTo = _outHandle(_pos(n));
+  });
 
   void _connectUpdate(Offset global) {
     final p = _toCanvas(global);
@@ -113,9 +120,9 @@ class _CanvasViewState extends State<CanvasView> {
   // ---- tapping connections -----------------------------------------------------------------------
 
   void _tapBackground(Offset local) {
-    final p = local - _pan;
+    final p = (local - _pan) / _scale;
     String? best;
-    var bestDist = 10.0;
+    var bestDist = 10.0 / _scale;
     for (final e in c.doc.edges.values) {
       final s = c.doc.nodes[e.source];
       final t = c.doc.nodes[e.target];
@@ -133,6 +140,37 @@ class _CanvasViewState extends State<CanvasView> {
     }
   }
 
+  // ---- zoom --------------------------------------------------------------------------------------
+
+  /// Scales and centres the graph in the viewport (never zooms in beyond 100%).
+  void _fit() {
+    final nodes = c.doc.nodes.values;
+    if (nodes.isEmpty || _viewport.isEmpty) return;
+    var rect = Rect.fromLTWH(nodes.first.x.toDouble(), nodes.first.y.toDouble(), kNodeWidth, kNodeHeight);
+    for (final n in nodes) {
+      rect = rect.expandToInclude(Rect.fromLTWH(n.x.toDouble(), n.y.toDouble(), kNodeWidth, kNodeHeight));
+    }
+    final s = math.min(1.0, math.min((_viewport.width - 80) / rect.width, (_viewport.height - 120) / rect.height));
+    setState(() {
+      _scale = s.clamp(0.25, 1.0);
+      _pan = Offset(
+        (_viewport.width - rect.width * _scale) / 2 - rect.left * _scale,
+        math.max(60, (_viewport.height - rect.height * _scale) / 2 - rect.top * _scale),
+      );
+    });
+  }
+
+  /// Zooms by [factor] keeping the canvas point under [focal] (viewport coordinates) fixed.
+  void _zoom(double factor, [Offset? focal]) {
+    final f = focal ?? Offset(_viewport.width / 2, _viewport.height / 2);
+    final next = (_scale * factor).clamp(0.25, 2.0);
+    final canvasPoint = (f - _pan) / _scale;
+    setState(() {
+      _scale = next;
+      _pan = f - canvasPoint * next;
+    });
+  }
+
   @override
   void dispose() {
     _moveTimer?.cancel();
@@ -146,64 +184,127 @@ class _CanvasViewState extends State<CanvasView> {
     final doc = c.doc;
     final scheme = Theme.of(context).colorScheme;
     final nodes = doc.nodes.values.toList()..sort((a, b) => a.id.compareTo(b.id));
-    return ClipRect(
-      child: Stack(key: _areaKey, children: [
-        Positioned.fill(
-          child: GestureDetector(
-            key: const Key('canvas-background'),
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (d) => _tapBackground(d.localPosition),
-            onPanUpdate: (d) => setState(() => _pan += d.delta),
-            child: CustomPaint(painter: _GridPainter(_pan, scheme.outlineVariant.withValues(alpha: 0.5))),
-          ),
-        ),
-        Positioned.fill(
-          child: IgnorePointer(
-            child: CustomPaint(
-              painter: _EdgePainter(
-                pan: _pan,
-                edges: [
-                  for (final e in doc.edges.values)
-                    if (doc.nodes[e.source] != null && doc.nodes[e.target] != null)
-                      (
-                        id: e.id,
-                        from: _outHandle(_pos(doc.nodes[e.source]!)),
-                        to: _inHandle(_pos(doc.nodes[e.target]!)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _viewport = constraints.biggest;
+        if (!_fitted && nodes.isNotEmpty && !_viewport.isEmpty) {
+          _fitted = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _fit() : null);
+        }
+        return Listener(
+          // Ctrl/Cmd + wheel (or a trackpad pinch reported as such) zooms around the pointer.
+          onPointerSignal: (e) {
+            if (e is PointerScrollEvent &&
+                (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
+              final box = _areaKey.currentContext!.findRenderObject()! as RenderBox;
+              _zoom(e.scrollDelta.dy < 0 ? 1.1 : 1 / 1.1, box.globalToLocal(e.position));
+            }
+          },
+          child: ClipRect(
+            child: Stack(
+              key: _areaKey,
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    key: const Key('canvas-background'),
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (d) => _tapBackground(d.localPosition),
+                    onPanUpdate: (d) => setState(() => _pan += d.delta),
+                    child: CustomPaint(painter: _GridPainter(_pan, scheme.outlineVariant.withValues(alpha: 0.5))),
+                  ),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _EdgePainter(
+                        pan: _pan,
+                        scale: _scale,
+                        edges: [
+                          for (final e in doc.edges.values)
+                            if (doc.nodes[e.source] != null && doc.nodes[e.target] != null)
+                              (
+                                id: e.id,
+                                from: _outHandle(_pos(doc.nodes[e.source]!)),
+                                to: _inHandle(_pos(doc.nodes[e.target]!)),
+                              ),
+                        ],
+                        selected: c.selectedEdgeId,
+                        ghost: _connectFrom == null || _ghostTo == null || doc.nodes[_connectFrom] == null
+                            ? null
+                            : (from: _outHandle(_pos(doc.nodes[_connectFrom]!)), to: _ghostTo!),
+                        color: scheme.outline,
+                        selectedColor: scheme.primary,
                       ),
-                ],
-                selected: c.selectedEdgeId,
-                ghost: _connectFrom == null || _ghostTo == null || doc.nodes[_connectFrom] == null
-                    ? null
-                    : (from: _outHandle(_pos(doc.nodes[_connectFrom]!)), to: _ghostTo!),
-                color: scheme.outline,
-                selectedColor: scheme.primary,
-              ),
+                    ),
+                  ),
+                ),
+                for (final n in nodes)
+                  // The box is wider than the card so the handles that stick out of it can still be hit.
+                  Positioned(
+                    left: _pos(n).dx * _scale + _pan.dx - _handleSize / 2 * _scale,
+                    top: _pos(n).dy * _scale + _pan.dy,
+                    width: (kNodeWidth + _handleSize) * _scale,
+                    height: kNodeHeight * _scale,
+                    child: FittedBox(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                        width: kNodeWidth + _handleSize,
+                        height: kNodeHeight,
+                        child: _NodeCard(
+                          key: ValueKey('node-${n.id}'),
+                          node: n,
+                          selected: c.selectedNodeId == n.id,
+                          hovered: _hoverTarget == n.id,
+                          brokenCount: [for (final v in n.config.values) ...v.brokenRefs].length,
+                          onTap: () => c.selectNode(n.id),
+                          onDragStart: () => _dragStart(n),
+                          onDragUpdate: (d) => _dragUpdate(n, d),
+                          onDragEnd: () => _dragEnd(n),
+                          onConnectStart: () => _connectStart(n),
+                          onConnectUpdate: _connectUpdate,
+                          onConnectEnd: _connectEnd,
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Material(
+                    elevation: 1,
+                    borderRadius: BorderRadius.circular(8),
+                    color: scheme.surface,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          key: const Key('zoom-out'),
+                          tooltip: 'Zoom out',
+                          icon: const Icon(Icons.remove, size: 18),
+                          onPressed: () => _zoom(1 / 1.2),
+                        ),
+                        Text('${(_scale * 100).round()}%', style: const TextStyle(fontSize: 12)),
+                        IconButton(
+                          key: const Key('zoom-in'),
+                          tooltip: 'Zoom in',
+                          icon: const Icon(Icons.add, size: 18),
+                          onPressed: () => _zoom(1.2),
+                        ),
+                        IconButton(
+                          key: const Key('zoom-fit'),
+                          tooltip: 'Fit to window',
+                          icon: const Icon(Icons.fit_screen, size: 18),
+                          onPressed: _fit,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        for (final n in nodes)
-          Positioned(
-            // The box is wider than the card so the handles that stick out of it can still be hit.
-            left: _pos(n).dx + _pan.dx - _handleSize / 2,
-            top: _pos(n).dy + _pan.dy,
-            width: kNodeWidth + _handleSize,
-            height: kNodeHeight,
-            child: _NodeCard(
-              key: ValueKey('node-${n.id}'),
-              node: n,
-              selected: c.selectedNodeId == n.id,
-              hovered: _hoverTarget == n.id,
-              brokenCount: [for (final v in n.config.values) ...v.brokenRefs].length,
-              onTap: () => c.selectNode(n.id),
-              onDragStart: () => _dragStart(n),
-              onDragUpdate: (d) => _dragUpdate(n, d),
-              onDragEnd: () => _dragEnd(n),
-              onConnectStart: () => _connectStart(n),
-              onConnectUpdate: _connectUpdate,
-              onConnectEnd: _connectEnd,
-            ),
-          ),
-      ]),
+        );
+      },
     );
   }
 }
@@ -237,12 +338,12 @@ class _NodeCard extends StatelessWidget {
   final VoidCallback onConnectEnd;
 
   static Color typeColor(String type) => switch (type) {
-        'start' => Colors.green.shade600,
-        'llm' => Colors.indigo.shade500,
-        'code' => Colors.orange.shade700,
-        'answer' => Colors.teal.shade600,
-        _ => Colors.blueGrey,
-      };
+    'start' => Colors.green.shade600,
+    'llm' => Colors.indigo.shade500,
+    'code' => Colors.orange.shade700,
+    'answer' => Colors.teal.shade600,
+    _ => Colors.blueGrey,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -251,77 +352,98 @@ class _NodeCard extends StatelessWidget {
     final border = selected
         ? scheme.primary
         : hovered
-            ? Colors.green
-            : scheme.outlineVariant;
-    return Stack(children: [
-      Positioned.fill(
-        left: _handleSize / 2,
-        right: _handleSize / 2,
-        child: GestureDetector(
-          onTap: onTap,
-          onPanStart: (_) => onDragStart(),
-          onPanUpdate: (d) => onDragUpdate(d.delta),
-          onPanEnd: (_) => onDragEnd(),
-          onPanCancel: onDragEnd,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.grab,
-            child: Material(
-              elevation: selected ? 4 : 1,
-              color: scheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: BorderSide(color: border, width: selected || hovered ? 2 : 1),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Row(children: [
-                Container(width: 6, color: accent),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text(
-                        node.title.isEmpty ? '(untitled)' : node.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        Text(node.type, style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w500)),
-                        if (brokenCount > 0) ...[
-                          const SizedBox(width: 8),
-                          Icon(Icons.link_off, size: 14, color: scheme.error, key: Key('broken-badge-${node.id}')),
-                          const SizedBox(width: 2),
-                          Text('$brokenCount broken', style: TextStyle(color: scheme.error, fontSize: 12)),
-                        ],
-                      ]),
-                    ]),
-                  ),
+        ? Colors.green
+        : scheme.outlineVariant;
+    return Stack(
+      children: [
+        Positioned.fill(
+          left: _handleSize / 2,
+          right: _handleSize / 2,
+          child: GestureDetector(
+            onTap: onTap,
+            onPanStart: (_) => onDragStart(),
+            onPanUpdate: (d) => onDragUpdate(d.delta),
+            onPanEnd: (_) => onDragEnd(),
+            onPanCancel: onDragEnd,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.grab,
+              child: Material(
+                elevation: selected ? 4 : 1,
+                color: scheme.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: border, width: selected || hovered ? 2 : 1),
                 ),
-              ]),
+                clipBehavior: Clip.antiAlias,
+                child: Row(
+                  children: [
+                    Container(width: 6, color: accent),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              node.title.isEmpty ? '(untitled)' : node.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  node.type,
+                                  style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w500),
+                                ),
+                                if (brokenCount > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.link_off,
+                                    size: 14,
+                                    color: scheme.error,
+                                    key: Key('broken-badge-${node.id}'),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text('$brokenCount broken', style: TextStyle(color: scheme.error, fontSize: 12)),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
-      // Input handle (left) and output handle (right).
-      Positioned(
-        left: 0,
-        top: kNodeHeight / 2 - _handleSize / 2,
-        child: _Handle(key: Key('in-${node.id}'), color: hovered ? Colors.green : scheme.outline),
-      ),
-      Positioned(
-        right: 0,
-        top: kNodeHeight / 2 - _handleSize / 2,
-        child: GestureDetector(
-          key: Key('out-${node.id}'),
-          onPanStart: (_) => onConnectStart(),
-          onPanUpdate: (d) => onConnectUpdate(d.globalPosition),
-          onPanEnd: (_) => onConnectEnd(),
-          onPanCancel: onConnectEnd,
-          child: MouseRegion(cursor: SystemMouseCursors.precise, child: _Handle(color: accent)),
+        // Input handle (left) and output handle (right).
+        Positioned(
+          left: 0,
+          top: kNodeHeight / 2 - _handleSize / 2,
+          child: _Handle(key: Key('in-${node.id}'), color: hovered ? Colors.green : scheme.outline),
         ),
-      ),
-    ]);
+        Positioned(
+          right: 0,
+          top: kNodeHeight / 2 - _handleSize / 2,
+          child: GestureDetector(
+            key: Key('out-${node.id}'),
+            onPanStart: (_) => onConnectStart(),
+            onPanUpdate: (d) => onConnectUpdate(d.globalPosition),
+            onPanEnd: (_) => onConnectEnd(),
+            onPanCancel: onConnectEnd,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.precise,
+              child: _Handle(color: accent),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -331,14 +453,14 @@ class _Handle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: _handleSize,
-        height: _handleSize,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 3),
-        ),
-      );
+    width: _handleSize,
+    height: _handleSize,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+      border: Border.all(color: color, width: 3),
+    ),
+  );
 }
 
 class _GridPainter extends CustomPainter {
@@ -368,6 +490,7 @@ typedef _EdgeSpec = ({String id, Offset from, Offset to});
 class _EdgePainter extends CustomPainter {
   _EdgePainter({
     required this.pan,
+    required this.scale,
     required this.edges,
     required this.selected,
     required this.ghost,
@@ -376,6 +499,7 @@ class _EdgePainter extends CustomPainter {
   });
 
   final Offset pan;
+  final double scale;
   final List<_EdgeSpec> edges;
   final String? selected;
   final ({Offset from, Offset to})? ghost;
@@ -384,7 +508,9 @@ class _EdgePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.translate(pan.dx, pan.dy);
+    canvas
+      ..translate(pan.dx, pan.dy)
+      ..scale(scale);
     for (final e in edges) {
       final isSel = e.id == selected;
       final paint = Paint()

@@ -33,6 +33,7 @@ class TransportException implements Exception {
   bool get payloadTooLarge => statusCode == 413;
 
   @override
-  String toString() => 'TransportException($message${statusCode == null ? '' : ', HTTP $statusCode'}'
+  String toString() =>
+      'TransportException($message${statusCode == null ? '' : ', HTTP $statusCode'}'
       '${code == null ? '' : ', $code'}${timeout ? ', timeout' : ''})';
 }

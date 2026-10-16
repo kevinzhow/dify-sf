@@ -29,20 +29,27 @@ void editorTest(String name, Future<void> Function(WidgetTester t) body) {
   });
 }
 
-Future<DemoBackend> openEditor(WidgetTester t, {bool journaled = true, bool withBo = true}) async {
-  t.view.physicalSize = const Size(1600, 900);
+Future<DemoBackend> openEditor(
+  WidgetTester t, {
+  bool journaled = true,
+  bool withBo = true,
+  Size size = const Size(1600, 900),
+}) async {
+  t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
   final demo = DemoBackend(withBo: withBo);
-  await t.pumpWidget(MaterialApp(
-    home: EditorPage(
-      backend: demo,
-      docId: 'demo',
-      clientId: _me,
-      journaled: journaled,
-      extraActions: demo.actions,
+  await t.pumpWidget(
+    MaterialApp(
+      home: EditorPage(
+        backend: demo,
+        docId: 'demo',
+        clientId: _me,
+        journaled: journaled,
+        extraActions: demo.actions,
+      ),
     ),
-  ));
+  );
   await settle(t);
   _current = demo;
   return demo;
@@ -81,8 +88,25 @@ void main() {
     expect(text(t, 'pending-count'), 'All edits saved');
   });
 
-  editorTest('dragging from an output handle to another node creates a connection; it can be deleted',
-      (t) async {
+  editorTest('zoomed out, a drag still moves the node by the distance the pointer travelled', (t) async {
+    final demo = await openEditor(t, withBo: false, size: const Size(1000, 700));
+    final label = t.widget<Text>(find.textContaining('%'));
+    final scale = int.parse(label.data!.replaceAll('%', '')) / 100;
+    expect(scale, lessThan(0.8), reason: 'the graph is wider than the viewport, so it was fitted');
+    // The first pixels of a drag are swallowed by the gesture slop, so compare two drags of different length.
+    Future<int> dragBy(double dx) async {
+      final before = demo.server.doc.nodes['llm']!.x;
+      await t.drag(find.byKey(const ValueKey('node-llm')), Offset(dx, 0));
+      await settle(t);
+      return demo.server.doc.nodes['llm']!.x - before;
+    }
+
+    final short = await dragBy(100);
+    final long = await dragBy(200);
+    expect(long - short, closeTo(100 / scale, 10));
+  });
+
+  editorTest('dragging from an output handle to another node creates a connection; it can be deleted', (t) async {
     final demo = await openEditor(t, withBo: false);
     expect(demo.server.doc.edges.length, 3);
     final from = t.getCenter(find.byKey(const Key('out-start')));
@@ -99,7 +123,11 @@ void main() {
     // Select it by tapping the curve, then delete.
     final edge = added.single;
     expect(demo.server.doc.edges.containsKey(edge.id), isTrue);
-    final c = Offset.lerp(t.getCenter(find.byKey(const Key('out-start'))), t.getCenter(find.byKey(const Key('in-answer'))), 0.5)!;
+    final c = Offset.lerp(
+      t.getCenter(find.byKey(const Key('out-start'))),
+      t.getCenter(find.byKey(const Key('in-answer'))),
+      0.5,
+    )!;
     await t.tapAt(Offset(c.dx, c.dy));
     await settle(t, const Duration(milliseconds: 300));
     final deleteButton = find.byKey(const Key('delete-edge'));
@@ -122,13 +150,19 @@ void main() {
     expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('Say hi'));
     await t.enterText(find.byKey(const ValueKey('cfg-llm-model.name')), 'gpt-5');
     await settle(t, const Duration(seconds: 2));
-    expect(demo.server.doc.nodes['llm']!.config['model'],
-        const VMap({'provider': VString('openai'), 'name': VString('gpt-5')}));
+    expect(
+      demo.server.doc.nodes['llm']!.config['model'],
+      const VMap({'provider': VString('openai'), 'name': VString('gpt-5')}),
+    );
 
     final ops = demo.server.log.map((e) => e.op).toList();
     expect(ops, hasLength(3));
     expect(ops, everyElement(isA<SetField>()));
-    expect((ops.last as SetField).field, const ConfigKey(['model', 'name']), reason: 'a nested path, not the whole model object');
+    expect(
+      (ops.last as SetField).field,
+      const ConfigKey(['model', 'name']),
+      reason: 'a nested path, not the whole model object',
+    );
   });
 
   editorTest('the keyed outputs list: add, edit and remove items by id', (t) async {
@@ -192,8 +226,7 @@ void main() {
     expect(demo.server.doc.nodes['code']!.config['inputs'], const VBroken(OutputRef('llm', 'text')));
   });
 
-  editorTest('offline edits are counted, then rejected with a clear conflict notice; re-apply works',
-      (t) async {
+  editorTest('offline edits are counted, then rejected with a clear conflict notice; re-apply works', (t) async {
     final demo = await openEditor(t);
     await select(t, 'llm');
     demo.setOffline(true);
@@ -291,4 +324,6 @@ void main() {
   });
 }
 
-String fieldText(WidgetTester t, String key) => (t.widget(find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText))) as EditableText).controller.text;
+String fieldText(WidgetTester t, String key) => (t.widget(
+  find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText)),
+) as EditableText).controller.text;
