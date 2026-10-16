@@ -218,6 +218,130 @@ void main() {
     });
   });
 
+  group('protocol 1.1 and 1.2', () {
+    test('POST /clients issues unique client ids (404 for an unknown document)', () async {
+      final ids = {for (var i = 0; i < 5; i++) await t.issueClientId()};
+      expect(ids, hasLength(5));
+      expect(ids, everyElement(matches(RegExp(r'^s-[0-9a-f]{32}$'))));
+      expect(await api.issueClientId(doc), matches(RegExp(r'^s-')));
+      await expectLater(
+        HttpTransport(baseUrl: base, docId: 'ghost-${_docId()}').issueClientId(),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
+      );
+    });
+
+    test('a (client, cseq) reused for a different op is clientIdInUse and applies nothing', () async {
+      final id = await t.issueClientId();
+      final first = await post(id, [(1, 0, setPrompt('llm', 'one'))]);
+      expect(first.results.single, isA<AckResult>());
+      final other = await post(id, [(1, 0, setPrompt('llm', 'two'))]);
+      expect((other.results.single as RejectResult).reason, const ClientIdInUse());
+      final otherBase = await post(id, [(1, 1, setPrompt('llm', 'one'))]);
+      expect(
+        (otherBase.results.single as RejectResult).reason,
+        const ClientIdInUse(),
+        reason: 'base is part of the fingerprint',
+      );
+      final again = await post(id, [(1, 0, setPrompt('llm', 'one'))]);
+      expect((again.results.single as AckResult).seq, 1, reason: 'a genuine retransmit is still the original ack');
+      expect((await api.snapshot(doc)).seq, 1);
+    });
+
+    test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
+      final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
+        ..headers['Origin'] = 'http://localhost:5555'
+        ..headers['Access-Control-Request-Method'] = 'POST'
+        ..headers['Access-Control-Request-Headers'] = 'content-type, last-event-id';
+      final res = await pre.send();
+      expect(res.statusCode, inInclusiveRange(200, 204));
+      expect(res.headers['access-control-allow-origin'], 'http://localhost:5555');
+      expect(
+        res.headers['access-control-allow-headers']!.toLowerCase(),
+        allOf(contains('last-event-id'), contains('content-type')),
+      );
+      expect(res.headers['access-control-allow-methods'], allOf(contains('POST'), contains('PUT')));
+      final get = http.Request('GET', base.replace(path: '/v1/docs/$doc'))..headers['Origin'] = 'http://localhost:5555';
+      expect((await get.send()).headers['access-control-allow-origin'], 'http://localhost:5555');
+      final foreign = http.Request('GET', base.replace(path: '/v1/docs/$doc'))
+        ..headers['Origin'] = 'http://evil.example';
+      expect((await foreign.send()).headers.containsKey('access-control-allow-origin'), isFalse);
+    });
+
+    test('bases may decrease from one op to the next', () async {
+      final id = await t.issueClientId();
+      await post('cli-other', [(1, 0, const MoveNode('llm', 1, 1))]);
+      final r = await post(id, [
+        (1, 1, setPrompt('code', 'based on 1')),
+        (2, 0, setPrompt('answer', 'based on 0')),
+      ]);
+      expect(r.results.map((x) => x.runtimeType), [AckResult, AckResult]);
+    });
+
+    test(
+      '1.2: an accepted equal-value stale write is a pure no-op for conflict tracking (the formal-model trace)',
+      () async {
+        // c2 writes f := v1 first. c1 then sends f := v1 (equal: accepted, must not take the stamp) and f := v2
+        // (still stale: must be refused, naming c2). Both with base 0.
+        final c1 = await t.issueClientId();
+        final c2 = await t.issueClientId();
+        final first = await post(c2, [(1, 0, setPrompt('llm', 'v1'))]);
+        expect(first.results.single, isA<AckResult>());
+        final r = await post(c1, [(1, 0, setPrompt('llm', 'v1')), (2, 0, setPrompt('llm', 'v2'))]);
+        expect(r.results[0], isA<AckResult>(), reason: 'equal value: accepted');
+        final reason = (r.results[1] as RejectResult).reason;
+        expect(reason, isA<Conflict>().having((c) => c.by, 'by', c2), reason: 'c1 must not be exempted by the no-op');
+        final snap = await api.snapshot(doc);
+        expect(cfg(snap.doc, 'llm', 'prompt'), 'v1');
+        expect(
+          snap.doc.fieldStamps['llm']![const ConfigKey(['prompt'])],
+          Stamp(1, c2),
+          reason: 'stamp is still the first writer\'s',
+        );
+        expect(snap.doc.touches['llm']!.containsKey(c1), isFalse, reason: 'c1 is not "touched" by the no-op');
+        expect(snap.doc.touches['llm']![c2], 1);
+        // The same for titles and list items.
+        await post(c2, [(2, 2, const SetField('code', TitleKey(), VString('T')))]);
+        final t2 = await post(c1, [
+          (3, 0, const SetField('code', TitleKey(), VString('T'))),
+          (4, 0, const SetField('code', TitleKey(), VString('U'))),
+        ]);
+        expect(t2.results[0], isA<AckResult>());
+        expect((t2.results[1] as RejectResult).reason, isA<Conflict>());
+      },
+    );
+
+    test('two processes sharing one id: the second moves to a new id and its edit lands exactly once', () async {
+      final shared = await t.issueClientId();
+      CollabSession open() => CollabSession(
+        clientId: shared,
+        transport: HttpTransport(baseUrl: base, docId: doc),
+        store: MemoryStore(),
+      );
+      final a = open();
+      final b = open();
+      await a.start();
+      await b.start();
+      await Future.wait([a.settled(), b.settled()]);
+      final bEvents = <ClientEvent>[];
+      b.events.listen(bEvents.add);
+      a.edit(setPrompt('llm', 'from a'));
+      await a.settled();
+      b.edit(setPrompt('code', 'from b')); // (shared, 1) already holds a's op
+      await b.settled().timeout(const Duration(seconds: 20));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(bEvents.whereType<ClientIdReplaced>(), hasLength(1));
+      expect(b.clientId, isNot(shared));
+      expect(bEvents.whereType<OpRejected>(), isEmpty);
+      final snap = await api.snapshot(doc);
+      expect(cfg(snap.doc, 'llm', 'prompt'), 'from a');
+      expect(cfg(snap.doc, 'code', 'prompt'), 'from b');
+      expect(a.view, snap.doc);
+      expect(b.view, snap.doc);
+      await a.stop();
+      await b.stop();
+    });
+  });
+
   group('the event stream', () {
     Future<List<StreamEvent>> read(
       StreamOpen open, {

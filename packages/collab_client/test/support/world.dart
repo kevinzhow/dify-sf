@@ -39,6 +39,9 @@ class Participant {
   /// Intended edits whose journal write completed (the user was promised an outcome), keyed by cseq.
   final Map<int, Op> promised = {};
 
+  /// Every edit that was promised an outcome, in order, regardless of later cseq renumbering.
+  final List<Op> promisedOps = [];
+
   /// Edits that were accepted locally but never became durable before a crash.
   int unpersistedAtCrash = 0;
   final Set<int> _awaitingPersist = {};
@@ -47,7 +50,8 @@ class Participant {
     incarnation++;
     transport = FakeTransport(world.server, network: net);
     session = CollabSession(
-      clientId: serverIssuedId ? null : (wireId ?? id),
+      // After a first start the journal knows the id (it may have changed since: ClientIdReplaced).
+      clientId: serverIssuedId || store.saved != null ? null : (wireId ?? id),
       transport: transport,
       store: store,
       journaled: journaled,
@@ -88,6 +92,7 @@ class Participant {
       t.persisted.then((_) {
         if (inc != incarnation) return;
         promised[cseq] = op;
+        promisedOps.add(op);
         _awaitingPersist.remove(cseq);
       }, onError: (Object _) {}),
     );

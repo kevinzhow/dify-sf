@@ -50,15 +50,28 @@ app/                           Flutter app (Linux + web)
    **write-behind journal** and the `LinkState` (connecting / live / reconnecting / offline) for the UI.
    *Write-ahead rule:* every POST awaits the journal write that contains its ops and the counters; a failed
    journal write means nothing is sent. `edit(op, {base})` returns an `EditTicket` whose `persisted` future
-   completes when the op is on disk.
-4. **Transport** (`transport/`). `CollabTransport` is two methods (`submit`, `openStream`). `HttpTransport` uses
+   completes when the op is on disk. **Client id (protocol 1.1):** the id is not chosen by the app: `start()` uses
+   the id saved in the journal, or asks `POST /v1/docs/{doc}/clients` for a fresh one and saves it before anything
+   is sent (an explicit `clientId:` exists for tests and tools). If the id turns out to be shared with another live
+   process (`reject clientIdInUse`, or a commit under our `(client, cseq)` whose content differs from our pending
+   op, which the stream shows even before the server answers us), the machine suspends sending, waits until the
+   stream has caught up (so that any of its own ops that did commit under the old id are recognised), the session
+   fetches a new id, and `adoptClientId` re-creates every unsaved op under it: same content and **same `base`**,
+   cseq restarting at 1. Ops whose content was lost in a crash are reported `OpLost`. A `ClientIdReplaced` event
+   carries the old-to-new cseq map; `clientIdInUse` never surfaces as an error or as a generic `Invalid`.
+4. **Transport** (`transport/`). `CollabTransport` is three methods (`submit`, `openStream`, `issueClientId`). `HttpTransport` uses
    `package:http` (POST with an abort trigger on timeout; the SSE GET streamed through `fetch` on the web).
    `SseParser` is ~80 lines, chunk-boundary and CR/LF safe. Every inbound chunk is surfaced as a `PingEvent`, so
    the silence watchdog sees partial frames and keep-alive comments alike. The resume point goes in the
-   `Last-Event-ID` header (VM) or the `lastEventId` query parameter (web: avoids a CORS preflight).
+   `Last-Event-ID` header on every platform: since 1.1 the server answers CORS preflights and allows that header,
+   so the `?lastEventId=` fallback (`HttpTransport(lastEventIdInQuery: true)`) is only for servers older than 1.1.
 5. **Stores** (`store/`). `FileStore`: temp file + fsync + atomic rename, a corrupt file is an error (never an
    empty outbox). `LocalStorageStore` on the web (synchronous). `MemoryStore` for tests, with injectable latency and
-   crash semantics (an in-flight write may land or vanish).
+   crash semantics (an in-flight write may land or vanish). **Journal slots:** because the client id lives in the
+   journal and an id may be used by one live process only, a journal is claimed per instance
+   (`acquirePlatformJournal`): on the VM the lowest free `<doc>.slot-<n>.json`, held by an exclusive OS lock on
+   `<doc>.slot-<n>.lock` (a dead process's lock disappears, so a restarted window finds its crashed predecessor's
+   journal); in the browser one `localStorage` entry per tab, named by an id kept in `sessionStorage`.
 6. **Testing infrastructure** (`testing/`). `FakeServer` is an in-memory implementation of the server rules
    (sequencer with idempotency/gap/floor/resolveFrom, resume rules). `FakeTransport` + `FakeNetwork` add latency,
    request/response loss, 503 after commit, lost stream events, half-open streams, partitions. `HttpFakeServer`
@@ -76,6 +89,12 @@ app/                           Flutter app (Linux + web)
   `setField` on its path, an `outputs` item = `insertItem` / `updateItem` (the item's value, one register) /
   `removeItem`, a drag = throttled `moveNode` (about 8/s), a connection = `addEdge`, a variable pick = one
   `setField` with a `$ref`.
+* **A snapshot's `committed` map is a claim about the id, not about our op.** For an op whose content the client
+  holds, it is not taken as proof of commit: the op stays unresolved (and out of the view, so it is neither applied
+  twice nor warned about) and is re-sent; the server answers a genuine duplicate with the original `ack` and a
+  foreign one with `clientIdInUse`. Only ops whose content is gone (volatile restart) are settled from the map.
+  This costs one extra POST after a journaled restart and closes the hole in which a process sharing the id would
+  be told its edits were saved because the other process's were (found by the seeded shared-id test).
 * **Volatile "rejected" after a crash is reported as `lost`.** If a volatile client crashes after a rejection was
   reported but before its counters were persisted, the restart learns the verdict from `known.rejected` but has no
   op content, so it reports `OpLost`. Both mean "not saved".
@@ -100,8 +119,10 @@ client id, "Reconnect now"), `NoticeOverlay` (non-modal notices). Notices:
 Deleting a node asks first and lists the references it will break; afterwards the broken references are shown
 explicitly (card badge, summary in the panel, red chip in the field with a picker to repair it).
 
-Client ids are `<name>-<6 hex>` (suffix chosen once per install). The name is shown to others ("Bo"); two windows
-that edit the same document need different names.
+Client ids come from the server (`s-` + 32 hex digits) and live in the journal slot, so any number of windows can
+edit one document. They carry no user name, so notices say "User 3fa2 changed prompt just now..." (the demo's Bo uses
+a `bo-<hex>` id and shows as "Bo"). If the server tells a window its id is shared, it switches ids by itself and says
+so in a notice ("...switched to a new one and re-sent your N unsaved edits").
 
 ## How to run
 
@@ -123,17 +144,18 @@ dart run bin/storm.dart --chaos --crashes-per-minute 6 -d 20      # no --url: se
 
 # app
 cd app && flutter analyze && flutter test
-flutter run -d linux --  --server http://127.0.0.1:8080 --doc demo1 --name Alice     # a second window: --name Bo
+flutter run -d linux -- --server http://127.0.0.1:8080 --doc demo1     # start it twice for two collaborators
 flutter run -d linux -- --demo                    # in-memory server with a simulated collaborator, no setup
 flutter build linux && flutter build web          # both are checked in this branch
 ```
 
-The web build must be served from the same origin as the server, or the server must answer CORS (see below).
-Desktop journals live in the application-support directory (`journals/<doc>.<client>.json`); the web uses
-`localStorage` (`dify-sf/<doc>.<client>`).
+The web build talks to the server cross-origin; that relies on the server's CORS support (1.1: default allowed
+origins are `http://localhost:*`, `http://127.0.0.1:*`, `http://[::1]:*`, configurable with
+`COLLAB_CORS_ALLOWED_ORIGINS`). Desktop journals live in the application-support directory
+(`journals/<doc>.slot-<n>.json`); the web uses `localStorage` (`dify-sf/<doc>/<tab slot>`).
 
-The Swift server's docker compose file needed two local patches to build and run at commit 16264c9 (see
-"Protocol and server notes"); the numbers below were taken against that build.
+The numbers below were taken against the server built from `9bfa9af` (docker compose from a clean
+`git archive` of that commit, host ports moved to avoid clashes).
 
 `bin/storm.dart` exit code: 0 = every guarantee held, 1 = violation(s) (listed in the summary), 2 = bad usage.
 Each ledger entry: client, incarnation (process lifetime), cseq, the op, timestamps, `status`
@@ -147,7 +169,7 @@ reached the server.
 
 ## Test results
 
-All of the following pass (package: 96 tests with the real server configured, 77 without; app: 15), and `dart analyze` / `flutter analyze` report no issues.
+All of the following pass (package: 180 tests with the real server configured, 155 without; app: 16), and `dart analyze` / `flutter analyze` report no issues.
 
 | Suite | What it covers | Result |
 |---|---|---|
@@ -157,26 +179,23 @@ All of the following pass (package: 96 tests with the real server configured, 77
 | `sse_test` (5), `store_test` (4) | SSE framing at every chunk size, CR/LF; atomic file journal, corrupt file | pass |
 | `http_test` (9) | real sockets: convergence, byte-fragmented frames, cut stream resumes with `Last-Event-ID`, silent stream detected by the watchdog, swallowed answers, 503s, journal restart, dead server | pass |
 | `storm_test` (2) | the CLI runner on real sockets, calm and with cuts/stalls/swallowed answers/503s/crashes | pass |
-| `conformance_test` (19) | against the real Swift server: endpoints, idempotent retransmit, gap, reject reasons, conflict naming the winner, same-value rule, LWW layout, keyed lists, delete cascade, floor/resolveFrom, 100-op limit, snapshot/replay/beyond-head resume, ordering, pings within 11 s, two `CollabSession`s, a short storm | pass (server built from commit 16264c9) |
-| app `home_test` (3) | start screen: id validation, settings remembered, well-formed client ids, command line options | pass |
-| app `editor_test` (12) | widget tests on an in-memory server: status bar, node drag at 100% and zoomed out, connect by dragging handle to node, title/config edits are single `setField`s on paths, outputs list add/edit/remove, variable picker, delete dialog + broken refs, offline edit -> conflict notice -> re-apply / discard, volatile crash -> "lost" notice, journaled crash -> recovered and sent | pass |
+| `client_ids_test` (72) | protocol 1.1 ids: `clientIdInUse` parsing and fake-server fingerprint check, server-issued ids saved in the journal and reused after a restart, offline restart with a journal id, two processes sharing an id (POST rejection, noticed from the stream alone, several edits keep order and bases, lost content reported lost), decreasing bases accepted, and 60 seeded runs of 2-3 tabs sharing an id plus others with crashes and partitions in which every promised edit must appear exactly once | pass |
+| `conformance_test` (25) | against the real Swift server: endpoints, idempotent retransmit, gap, reject reasons, conflict naming the winner, same-value rule, LWW layout, keyed lists, delete cascade, floor/resolveFrom, 100-op limit, snapshot/replay/beyond-head resume, ordering, pings within 11 s, two `CollabSession`s, a short storm; 1.1: `POST /clients`, `clientIdInUse` (base is part of the fingerprint), CORS preflight and origin allow-list, decreasing bases, two sessions sharing an id; 1.2: the formal model's equal-value trace (stamp and touched set unchanged) | pass (server built from commit `9bfa9af`) |
+| app `home_test` (3) | start screen: id validation, settings remembered, the session gets a server-issued id, command line options | pass |
+| app `editor_test` (13) | widget tests on an in-memory server: status bar, node drag at 100% and zoomed out, connect by dragging handle to node, title/config edits are single `setField`s on paths, outputs list add/edit/remove, variable picker, delete dialog + broken refs, offline edit -> conflict notice -> re-apply / discard, volatile crash -> "lost" notice, journaled crash -> recovered and sent, a second window with the same id -> id replaced, edit re-sent, notice | pass |
 
-Randomized simulation, `SIM_RUNS=1000` per profile (5000 runs, about 2 minutes):
-1,815,385 intended edits, of which 1,612,652 committed, 129,717 rejected (68,365 conflict, 47,720 nodeDeleted,
-6,370 edgeNotFound, 4,219 invalid, 2,024 danglingReference, 720 itemDeleted, 299 duplicateEdge), 65,909 reported
-lost by volatile clients after 37,429 simulated crashes (every one of them confirmed absent from the log), 30,060
-refused locally, 81,738 early conflict warnings, 23,347 re-applies, 20,089 partitions, 45,618 snapshot joins and
-32,920 log replays. **0 violations.** Mutation checks were done by hand (each of these makes the suite fail within a few seeds): sending before the journal write
+Randomized simulation, `SIM_RUNS=1000` per profile (5000 runs, about 3 minutes): 1,816,019 intended edits, of which 1,613,067 committed, 129,989 rejected (68,619 conflict, 47,640 nodeDeleted, 6,450 edgeNotFound, 4,195 invalid, 2,049 danglingReference, 726 itemDeleted, 310 duplicateEdge), 65,746 reported lost by volatile clients after 37,433 simulated crashes (every one confirmed absent from the log), 30,193 refused locally, 82,011 early conflict warnings, 23,242 re-applies, 20,115 partitions, 45,568 snapshot joins and 32,831 log replays. **0 violations.** Mutation checks were done by hand (each of these makes the suite fail within a few seeds): sending before the journal write
 completed, not reconnecting on a stream hole, no `floor` after losing the outbox, not journaling the cseq counter
 on edit, no silence watchdog, finishing ops on `ack` instead of on the stream.
 
-Against the real server (docker compose from commit 16264c9, local patches), storm runner:
+Against the real server (docker compose from commit `9bfa9af`, group commit and protocol 1.2), storm runner with server-issued ids:
 
 | Run | Result |
 |---|---|
-| 8 clients, 10 s, 8 edits/s each, crashes | 236 committed, 5 rejected, 0 violations |
-| 20 clients, 30 s, 15 edits/s each, 4 crashes/min each, 30% volatile | 4991 committed, 94 rejected, 90 refused locally, 6 lost (volatile crashes), 28 crashes; latency p50 140 ms, p95 290 ms; 0 violations |
-| same, seed 8 | 5590 commits observed live by the auditor and matched against the ledger; 0 violations |
+| 20 clients, 30 s, 15 edits/s each, 4 crashes/min each, 30% volatile | 6598 commits observed live by the auditor and matched against the ledger, 24 rejected, 154 refused locally, 1 lost (volatile crash), 29 crashes; latency p50 21 ms, p95 70 ms, p99 104 ms; 0 violations |
+| 12 clients, 25 s, 12 edits/s each, 20 crashes/min each, 50% volatile | 2655 commits matched, 10 rejected, 88 crashes; p50 17 ms; 0 violations |
+
+(With the previous server build, commit 16264c9: 4991 and 5590 commits, p50 140 ms, also 0 violations.)
 
 Builds: `flutter build linux --release` and `flutter build web --release` succeed (a wasm dry run also succeeds).
 
@@ -190,8 +209,15 @@ Builds: `flutter build linux --release` and `flutter build web --release` succee
   lose precision in the browser client. Positions and seqs are far below that.
 * **No offline start.** The last confirmed document is not cached, so a reload while offline shows nothing until a
   snapshot arrives (the journal still resends the unsent edits afterwards).
-* **One window per name.** The journal is keyed by the client id; two live instances with the same id would
-  interleave cseqs. The app does not detect this (a lock file or server-assigned ids would).
+* **Shared ids are handled, not prevented, in the browser.** Desktop windows cannot share an id (journal slots are
+  locked). A browser tab gets its slot from `sessionStorage`; a *duplicated* tab copies it and shares the journal key.
+  The server's `clientIdInUse` check and the stream content check then make one of them move to a new id, but a
+  Web Locks based claim would prevent it, and would also let a new tab adopt the journal of a closed tab (today the
+  unsent edits of a closed browser tab stay in `localStorage` unclaimed). Not built: no browser here to test it.
+* **A volatile client cannot detect a shared id for ops it lost.** After a crash it only has counters; if another
+  process used the same cseqs, `known.committed` makes it believe those ops were its own and it reports them
+  committed. Journaled clients compare content and are not fooled.
+* **No names in conflict notices for real users** (see note 4 below).
 * **Large documents.** Every stream event rebuilds the view (O(document) when there are pending ops) and snapshot
   JSON is decoded on the UI isolate. Fine for hundreds of nodes; a big-document run was not made.
 * **UI.** No undo/redo, no multi-select, no minimap, one edge style, node types are plain strings with no schema
@@ -207,33 +233,24 @@ Builds: `flutter build linux --release` and `flutter build web --release` succee
 
 ## Protocol and server notes
 
-Nothing here needed a protocol change to build the client; these are findings and questions.
+Protocol 1.1 and 1.2 (as published in `protocol-ready.md`) resolved the items found while building step 1; they are
+implemented and tested here. What is left:
 
-1. **Web needs CORS (or same origin).** The server sends no `Access-Control-*` headers and does not answer
-   `OPTIONS`. A browser app on another origin cannot POST `application/json` (preflight) or `PUT`, and
-   `Last-Event-ID` as a header is also non-simple (the client therefore sends `?lastEventId=` on the web, which the
-   spec allows). Needed: `Access-Control-Allow-Origin`, `Allow-Methods: GET, POST, PUT, OPTIONS`,
-   `Allow-Headers: content-type, last-event-id`, a 204 on `OPTIONS`, and `Access-Control-Expose-Headers` is not
-   required. Alternatively serve the Flutter web build from the server.
-2. **`base` for slow edits.** Section 4 says `base` is what the client "had applied when the user made the edit".
-   The app uses the version at the *start* of a typing draft, so one client's bases can go down (an older draft
-   committed after a newer op). I believe this is safe: a client's own stamp can only hide a foreign write that
-   the client already knew about when it made that earlier op (otherwise that op would have conflicted), but the
-   comment in `Document.validate` argues "bases are non-decreasing". Worth stating in the spec that non-monotonic
-   bases are legal, or that clients must not do this.
-3. **Reporting after a crash.** Section 9 says an outcome "may be reported again" after a crash. A volatile client
-   can report `rejected` first and `lost` after the restart (it only learns the verdict from `known.rejected`, not
-   the op). Both mean "not saved"; the spec could say "the same outcome, or `lost` for a rejection".
-4. **Integers on the web** (see gaps): consider limiting document integers to +-(2^53-1) or sending large ones as
-   strings, so browser clients are lossless.
-5. **Client id uniqueness.** Two tabs or processes sharing a client id silently corrupt each other's cseq stream
-   (`gap` / rejected duplicates). A server-issued client id (or a documented rule that ids are per-process) would
-   remove the need for client-side locks.
-6. **Server image at 16264c9** (for whoever owns `docker/`): `docker compose up --build` fails twice. (a)
-   `docker/Dockerfile.server` copies only `Package.swift`, `Vendor` and `Sources`, but `Package.swift` declares a
-   test target, so `swift build` stops with "target 'CollabTests' has overlapping sources" (copy `server/Tests`
-   too). (b) The resulting binary is built on `swift:6.4` (glibc 2.43) but the runtime stage is `ubuntu:24.04`:
-   `GLIBC_2.43 not found` at start. I ran it with the runtime stage `FROM swift:6.4`. Both were patched only in a
-   private copy under `/tmp`.
-7. Everything else in the conformance suite matched the written protocol, including the `committed` map in
-   snapshots, `known`, `floor`, `notCommitted`, the 100-op limit (`400`), the replay window, and keep-alive pings.
+1. **Resolved: CORS** (1.1). The web client now relies on it; the conformance suite checks preflight, allowed
+   headers and that foreign origins get no headers. It was not exercised from a real browser.
+2. **Resolved: non-monotone `base`** (1.1). Documented as legal in `ClientMachine.edit`; a conformance test sends
+   decreasing bases.
+3. **Resolved: `rejected`/`lost` wording** (1.1). The client matches it: a volatile client reports `lost` for what
+   the server rejected before the crash.
+4. **Open: user names.** Server-issued ids carry no name, so a conflict notice cannot say "Bo changed prompt"; it
+   says "User 3fa2". Suggestion: let `POST /v1/docs/{doc}/clients` take an optional display name and either embed a
+   sanitised form in the id (`bo-<hex>`, which the app already renders as "Bo") or serve a small
+   `GET /v1/docs/{doc}/clients` directory. (The id syntax allows `bo-<hex>`; uniqueness stays the server's job.)
+5. **Open: integers on the web** (see gaps): consider limiting document integers to +-(2^53-1) or sending large
+   ones as strings, so browser clients are lossless.
+6. **Resolved: client id uniqueness** (1.1, `POST /clients`, `clientIdInUse`), with the two limits listed under known
+   gaps (duplicated browser tab, volatile client with lost ops).
+7. **Resolved: same-value rule** (1.2). The Dart `Document.apply` already treated an equal-value write as a pure
+   no-op; the formal model's three-step trace is a named regression test at the document level, through a
+   `CollabSession` over the fake server, and against the real server.
+8. **Resolved: docker build** (server commit after 16264c9 fixed both problems I reported).

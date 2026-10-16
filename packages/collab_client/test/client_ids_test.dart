@@ -3,6 +3,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
@@ -250,6 +251,61 @@ void main() {
       expect(m.durable.id, 'fresh');
       expect(m.durable.unresolvedFrom, 1);
     });
+  });
+
+  group('randomized: processes sharing ids', () {
+    // Every user edit is an insertItem with a unique item id, so "exactly once" is visible in the final list:
+    // missing = lost, and a duplicate would have been refused (itemExists) and shown up as a rejection.
+    for (var seed = 1; seed <= 60; seed++) {
+      test('seed $seed: nothing lost, nothing applied twice, everybody converges', () {
+        inWorld((w) {
+          final rng = Random(seed);
+          final tabs = 2 + rng.nextInt(2);
+          final ps = [
+            for (var i = 0; i < tabs; i++) w.add('tab$i', wireId: 'shared', seed: seed * 10 + i),
+            w.add('other', seed: seed * 10 + 9),
+            if (rng.nextBool()) w.add('issued', serverIssuedId: true, seed: seed * 10 + 8),
+          ];
+          w.settle();
+          var n = 0;
+          for (var step = 0; step < 120; step++) {
+            w.elapse(Duration(milliseconds: rng.nextInt(400)));
+            final p = ps[rng.nextInt(ps.length)];
+            switch (rng.nextInt(10)) {
+              case 0:
+                p.net.dropRequest = p.net.dropRequest == 0 ? 1 : 0; // partition POSTs only
+              case 1:
+                if (p.running && rng.nextInt(3) == 0) p.crash();
+              case 2:
+                if (!p.running) p.start();
+              default:
+                if (p.running) p.edit(InsertItem('a', const ['outs'], Item('i-${p.id}-${n++}', VInt(n)), null));
+            }
+          }
+          for (final p in ps) {
+            p.heal();
+            if (!p.running) p.start();
+          }
+          w.settle(limit: const Duration(minutes: 20));
+          final ids = {
+            for (final i in (w.server.doc.nodes['a']!.config['outs'] as VItems? ?? const VItems([])).items) i.id,
+          };
+          for (final p in ps) {
+            for (final op in p.promisedOps) {
+              final id = (op as InsertItem).item.id;
+              expect(ids, contains(id), reason: '${p.id}: $id was promised but is not in the document');
+            }
+            expect(p.rejected, isEmpty, reason: '${p.id}: a duplicate or failed re-send would show up here');
+            expect(p.lost, isEmpty);
+            expect(p.session.machine.violations, isEmpty);
+            expect(p.session.view, w.server.doc);
+          }
+          // No two live processes ended up with the same id.
+          final live = ps.map((p) => p.session.clientId).toList();
+          expect(live.toSet(), hasLength(live.length), reason: 'ids at the end: $live');
+        }, initial: threeNodes());
+      });
+    }
   });
 
   group('non-monotone bases are legal (protocol 1.1)', () {

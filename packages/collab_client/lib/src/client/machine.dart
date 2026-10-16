@@ -87,6 +87,12 @@ class _Pending {
   /// null = abandoned (content lost in a crash).
   final Op? op;
   int? ackedSeq;
+
+  /// A snapshot said the server committed `(client, cseq)` at this seq. For an op whose content we hold this is
+  /// only a claim about the *id*, not about our op (if another process shares the id, the entry is theirs), so
+  /// the op stays unresolved and is re-sent: the server answers a genuine duplicate with the original `ack` and a
+  /// different one with `clientIdInUse`.
+  int? claimedSeq;
   _Outcome? outcome;
   bool conflictNotified = false;
 
@@ -221,7 +227,12 @@ class ClientMachine {
   List<PendingOpInfo> get pending => [
     for (final p in _outbox)
       if (p.outcome == null)
-        PendingOpInfo(cseq: p.cseq, op: p.op, acked: p.ackedSeq != null, doomed: p.conflictNotified),
+        PendingOpInfo(
+          cseq: p.cseq,
+          op: p.op,
+          acked: p.ackedSeq != null || p.claimedSeq != null,
+          doomed: p.conflictNotified,
+        ),
   ];
 
   /// Human-readable state, for diagnostics.
@@ -480,7 +491,13 @@ class ClientMachine {
     reconnectAttempts = 0;
     for (final cseq in s.committed.keys.toList()..sort()) {
       final seq = s.committed[cseq]!;
-      if (seq <= s.seq) _settle(cseq, _Committed(seq));
+      if (seq > s.seq) continue;
+      final mine = _find(cseq);
+      if (mine != null && mine.op != null && mine.outcome == null) {
+        mine.claimedSeq = seq; // verified by the server's answer to our re-send, see _Pending.claimedSeq
+      } else {
+        _settle(cseq, _Committed(seq)); // no content to compare (abandoned op): the server's word is all we have
+      }
     }
   }
 
@@ -598,7 +615,8 @@ class ClientMachine {
   /// view = confirmed + every unresolved op that is still valid on top of it. Ops that became invalid
   /// (stale conflict, node deleted remotely, ...) are hidden; stale-based ones raise an early warning once.
   void _rebuildView() {
-    final live = _outbox.where((p) => p.outcome == null && p.op != null).toList();
+    // Ops the snapshot claims are already in `confirmed` are not applied again (nor warned about).
+    final live = _outbox.where((p) => p.outcome == null && p.op != null && p.claimedSeq == null).toList();
     if (live.isEmpty) {
       _view = _confirmed;
       viewRevision++;

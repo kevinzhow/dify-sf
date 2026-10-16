@@ -188,7 +188,10 @@ class CollabSession {
   EditTicket edit(Op op, {int? base}) {
     final r = _machine.edit(op, _clock(), base: base);
     _afterMachine();
-    final persisted = _persistedFuture();
+    // Nothing to persist for an edit that never became an op; and a caller that ignores `persisted` must not
+    // turn a failed journal write into an uncaught error (the write failure already blocks the send).
+    final persisted = r.cseq == null ? Future<void>.value() : _persistedFuture()
+      ..ignore();
     _execute(r.requests);
     return EditTicket(cseq: r.cseq, persisted: persisted, refusal: r.refusal);
   }
