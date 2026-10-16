@@ -45,6 +45,6 @@ docker run --rm --name "$DEV" --network "$NET" --cap-add NET_ADMIN --user root \
   -e HOME=/tmp \
   -e HARNESS_DB_HOST="$PG" -e HARNESS_DB_PORT=5432 -e HARNESS_DB_USER=collab -e HARNESS_DB_PASSWORD=collab -e HARNESS_DB_NAME=collab \
   -e HARNESS_TOXIPROXY_API="http://$TOXI:8474" -e HARNESS_TOXIPROXY_HOST="$TOXI" -e HARNESS_SELF_HOST="$DEV" \
-  -e HARNESS_BIN_DIR=.build/release \
+  -e HARNESS_BIN_DIR=.build/release -e HARNESS_SERVER_DEFECT="${HARNESS_SERVER_DEFECT:-}" \
   -v "$repo/server":/work -v "$repo/bench":/repo/bench -w /work "$DEV_IMAGE" \
   sh -c 'ulimit -n 65536 2>/dev/null; .build/release/collab-bench "$@"; rc=$?; chown -R '"$uid:$gid"' /repo/bench 2>/dev/null; exit $rc' sh "$@"

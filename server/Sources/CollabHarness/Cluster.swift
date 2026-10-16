@@ -129,6 +129,7 @@ public final class ServerProcess: @unchecked Sendable {
         e["COLLAB_DB_PASSWORD"] = env.dbPassword
         e["COLLAB_DB_NAME"] = env.dbName
         e["COLLAB_LOG_LEVEL"] = e["COLLAB_LOG_LEVEL"] ?? "warning"
+        if let d = ProcessInfo.processInfo.environment["HARNESS_SERVER_DEFECT"], !d.isEmpty { e["COLLAB_TEST_DEFECT"] = d }
         proc = try ManagedProcess(name: "server", executable: env.serverBinary, arguments: [], environment: e,
                                   logPath: "\(dir)/server.\(generation).log")
     }

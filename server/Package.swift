@@ -50,6 +50,10 @@ let package = Package(
             .product(name: "PostgresNIO", package: "postgres-nio"),
         ]),
         .executableTarget(name: "collab-bench", dependencies: ["CollabHarness"]),
-        .testTarget(name: "CollabTests", dependencies: ["CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit"]),
+        .testTarget(name: "CollabTests", dependencies: [
+            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer",
+            .product(name: "PostgresNIO", package: "postgres-nio"),
+            .product(name: "Configuration", package: "swift-configuration"),
+        ]),
     ]
 )

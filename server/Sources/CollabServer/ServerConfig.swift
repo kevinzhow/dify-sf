@@ -20,6 +20,9 @@ public struct ServerConfig: Sendable {
     /// Fault injection for tests: extra delay (milliseconds) before every commit. 0 in production.
     public var testCommitDelayMillis: Int
     public var logLevel: String
+    /// TEST ONLY: deliberately break the server so that the harness can prove it notices
+    /// (`ackBeforeCommit`, `skipStaleCheck`). Empty in every real deployment.
+    public var testDefect: String
 
     public init(reader: ConfigReader) {
         httpHost = reader.string(forKey: "collab.http.host", default: "127.0.0.1")
@@ -35,5 +38,11 @@ public struct ServerConfig: Sendable {
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
         testCommitDelayMillis = reader.int(forKey: "collab.test.commitDelayMillis", default: 0)
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
+        testDefect = reader.string(forKey: "collab.test.defect", default: "")
     }
+}
+
+extension ServerConfig {
+    /// All defaults (no environment, no arguments): for tests.
+    public static var defaults: ServerConfig { ServerConfig(reader: ConfigReader(provider: InMemoryProvider(values: [:]))) }
 }

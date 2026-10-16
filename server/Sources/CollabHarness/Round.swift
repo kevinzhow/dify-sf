@@ -102,7 +102,7 @@ public final class RoundRunner: @unchecked Sendable {
 
         // --- database + seed document
         var logger = Logger(label: "harness")
-        logger.logLevel = .warning
+        logger.logLevel = .error
         var pgConfig = PostgresClient.Configuration(host: env.dbHost, port: env.dbPort, username: env.dbUser, password: env.dbPassword,
                                                     database: env.dbName, tls: .disable)
         pgConfig.options.maximumConnections = 4

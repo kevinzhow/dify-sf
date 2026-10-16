@@ -94,7 +94,8 @@ actor DocumentSequencer {
         guard let loaded else { throw ServerError.notFound }
         let core: Sequencer
         do {
-            core = try Sequencer(snapshot: loaded.snapshot, tail: loaded.tail)
+            core = try Sequencer(snapshot: loaded.snapshot, tail: loaded.tail,
+                                 defects: config.testDefect == "skipStaleCheck" ? .skipStaleCheck : [])
         } catch {
             logger.critical("document \(docId): durable log is not replayable: \(error)")
             throw ServerError.internalError("durable log is not replayable")
@@ -127,7 +128,9 @@ actor DocumentSequencer {
                     // Someone else wrote this document: forget our state, reload, re-plan.
                     state = nil
                     logger.warning("document \(docId): revision changed under us, reloading (attempt \(attempts))")
-                    if attempts >= 5 { throw ServerError.unavailable("document is contended") }
+                    if attempts >= 25 { throw ServerError.unavailable("document is contended") }
+                    // Back off a little (randomised) so that two processes do not keep invalidating each other in lockstep.
+                    try? await Task.sleep(for: .milliseconds(Int.random(in: 1...(5 * attempts))))
                 }
             }
         }
@@ -153,6 +156,21 @@ actor DocumentSequencer {
 
         let snapshot = Sequencer.snapshotDue(oldSeq: live.core.seq, newSeq: working.seq, every: config.snapshotEvery) ? working.snapshot : nil
         if config.testCommitDelayMillis > 0 { try? await Task.sleep(for: .milliseconds(config.testCommitDelayMillis)) }
+        if config.testDefect == "ackBeforeCommit" {
+            // TEST ONLY defect: answer first, persist a moment later (a kill -9 in between loses acknowledged ops).
+            let store = self.store, docId = self.docId, rev = live.rev, client = req.client, head = working.seq
+            Task {
+                try? await Task.sleep(for: .milliseconds(40))
+                _ = try? await store.commit(doc: docId, expectedRev: rev, client: client, batch: batch, newHead: head, snapshot: snapshot)
+            }
+            live.core = working
+            live.rev = live.rev + 1
+            live.highs[req.client] = batch.newHigh
+            state = live
+            for e in batch.entries { broadcast(e) }
+            published = working.seq
+            return batch.response
+        }
         let newRev: Int
         do {
             newRev = try await store.commit(doc: docId, expectedRev: live.rev, client: req.client, batch: batch,

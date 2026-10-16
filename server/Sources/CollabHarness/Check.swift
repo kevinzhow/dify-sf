@@ -35,8 +35,11 @@ public struct CheckReport: Codable, Sendable {
     public var duplicateTerminals = 0
     // storm classification (ground truth)
     public var byClass: [String: ClassStats] = [:]
+    /// Disjoint (and layout) edits that were not committed and not explicitly reported lost: must be 0.
     public var lostDisjointEdits = 0
     public var lostSameValueEdits = 0
+    /// Edits explicitly reported `lost` (a non-journaled client crashed before the server saw them): not silent.
+    public var reportedLostEdits = 0
     public var silentOverwrites = 0
     public var finalDivergence = 0
     public var disjointFinalMismatch = 0
@@ -44,6 +47,8 @@ public struct CheckReport: Codable, Sendable {
     public var conflictNoticesMissingInLog = 0
     public var diffRegistersChecked = 0
     public var visibilityLatencyMs = Percentiles()
+    /// Same, excluding the first 10 s of the round (connection storm while 100 clients download the snapshot).
+    public var visibilityLatencySteadyMs = Percentiles()
     public var ackLatencyMs = Percentiles()
     public var clientStats = DriverStatsDump()
     public var passed: Bool { violations.isEmpty && unresolved == 0 }
@@ -141,9 +146,11 @@ public enum Checker {
             if Set(terms).count < terms.count { report.duplicateTerminals += 1 }
             report.byClass[cls.rawValue] = cs
             let committed: Bool = { if case .committed? = terms.first { return true }; return false }()
+            let reportedLost: Bool = { if case .lost? = terms.first { return true }; return false }()
+            if reportedLost { report.reportedLostEdits += 1 }
             switch cls {
-            case .disjoint, .layout: if !committed { report.lostDisjointEdits += 1 }
-            case .sameValue: if !committed { report.lostSameValueEdits += 1 }
+            case .disjoint, .layout: if !committed && !reportedLost { report.lostDisjointEdits += 1 }
+            case .sameValue: if !committed && !reportedLost { report.lostSameValueEdits += 1 }
             case .diffValue:
                 if case .rejected(let r)? = terms.first {
                     if case .conflict(let c) = r {
@@ -163,6 +170,8 @@ public enum Checker {
         // Latency: issue -> (acked) and issue -> visible on every client.
         var ack: [Double] = []
         var visible: [Double] = []
+        var visibleSteady: [Double] = []
+        let firstIssue = ledger.issuedAt.values.min() ?? 0
         let applied = loadApplied(dir: dir, clientIds: clientIds)
         var allVisibleAt = [Int64](repeating: 0, count: head + 1)
         if !applied.isEmpty {
@@ -176,10 +185,15 @@ public enum Checker {
         for (key, terms) in ledger.terminals {
             guard case .committed(let seq)? = terms.first, let t0 = ledger.issuedAt[key] else { continue }
             if let t1 = ledger.terminalAt[key] { ack.append(Double(t1 - t0)) }
-            if seq <= head, allVisibleAt[seq] > 0 { visible.append(Double(max(0, allVisibleAt[seq] - t0))) }
+            if seq <= head, allVisibleAt[seq] > 0 {
+                let l = Double(max(0, allVisibleAt[seq] - t0))
+                visible.append(l)
+                if t0 - firstIssue > 10_000 { visibleSteady.append(l) }
+            }
         }
         report.ackLatencyMs = Percentiles(ack)
         report.visibilityLatencyMs = Percentiles(visible)
+        report.visibilityLatencySteadyMs = Percentiles(visibleSteady)
         return report
     }
 

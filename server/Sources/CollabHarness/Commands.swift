@@ -1,6 +1,9 @@
 import CollabCore
 import Foundation
 
+/// Unbuffered line output (stdout is a pipe/file in the harness, where print() would be fully buffered).
+func say(_ s: String) { FileHandle.standardOutput.write(Data((s + "\n").utf8)) }
+
 struct Args {
     var positional: [String] = []
     var options: [String: String] = [:]
@@ -76,7 +79,7 @@ enum Chaos {
         let toxi = env.toxiproxyAPI.isEmpty ? nil : Toxiproxy(api: env.toxiproxyAPI)
         let slots = SlotPool(count: parallel)
 
-        print("chaos: \(runs) runs, seeds \(baseSeed)..<\(baseSeed + UInt64(runs)), \(parallel) in parallel, fault proxy: \(toxi == nil ? "NONE (direct)" : env.toxiproxyAPI)")
+        say("chaos: \(runs) runs, seeds \(baseSeed)..<\(baseSeed + UInt64(runs)), \(parallel) in parallel, fault proxy: \(toxi == nil ? "NONE (direct)" : env.toxiproxyAPI)")
         let results = await withTaskGroup(of: RoundResult.self, returning: [RoundResult].self) { group in
             for n in 0..<runs {
                 let seed = baseSeed + UInt64(n)
@@ -86,7 +89,7 @@ enum Chaos {
                     let r = await RoundRunner(spec: spec, env: env, toxi: toxi).run()
                     await slots.give(slot)
                     let status = r.passed ? "ok  " : "FAIL"
-                    print("\(status) \(spec.name) clients=\(spec.clients) head=\(r.report.head) issued=\(r.report.issued) conflicts=\(r.report.rejectedConflict) lost=\(r.report.lost) faults=\(r.injected.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")) \(r.passed ? "" : String(describing: r.report.violations.prefix(3) + r.notes.prefix(2)))")
+                    say("\(status) \(spec.name) clients=\(spec.clients) head=\(r.report.head) issued=\(r.report.issued) conflicts=\(r.report.rejectedConflict) lost=\(r.report.lost) faults=\(r.injected.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")) \(r.passed ? "" : String(describing: r.report.violations.prefix(3) + r.notes.prefix(2)))")
                     if r.passed { try? FileManager.default.removeItem(atPath: spec.workDir) }
                     if let data = try? JSONEncoder.pretty.encode(r) { FileManager.default.createFile(atPath: "\(out)/\(spec.name).json", contents: data) }
                     return r
@@ -99,7 +102,7 @@ enum Chaos {
         await toxi?.shutdown()
         let summary = Report.chaosSummary(results)
         FileManager.default.createFile(atPath: "\(out)/summary.md", contents: Data(summary.utf8))
-        print("\n" + summary)
+        say("\n" + summary)
         exit(results.allSatisfy(\.passed) ? 0 : 1)
     }
 
@@ -118,7 +121,7 @@ enum Chaos {
         t.retransmitAfterMs = 2500; t.streamSilenceMs = 6000; t.reconnectBaseMs = 150; t.reconnectMaxMs = 2000; t.postTimeoutMs = 3000
         return RoundSpec(name: "chaos-\(seed)", plan: .chaos, clients: rng.int(3...5), clientsPerWorker: 1, durationSec: rng.int(6...9),
                          editMinMs: 60, editMaxMs: 260, profile: NetworkProfile.baseline, faults: faults, timings: t, pingSeconds: 2,
-                         seed: seed, slot: slot, volatileFraction: 0.4, workDir: "\(out)/work-\(seed)")
+                         seed: seed, slot: slot, volatileFraction: 0.4, workDir: "\(out)/work-\(seed)", settleSec: 25)
     }
 }
 
@@ -157,10 +160,10 @@ enum Storm {
         }
         var results: [RoundResult] = []
         for s in specs {
-            print("== round \(s.name): \(s.clients) clients, \(s.durationSec)s, profile \(s.profile.name)")
+            say("== round \(s.name): \(s.clients) clients, \(s.durationSec)s, profile \(s.profile.name)")
             let r = await RoundRunner(spec: s, env: env, toxi: toxi).run()
             results.append(r)
-            print(Report.line(r))
+            say(Report.line(r))
             if let data = try? JSONEncoder.pretty.encode(r) { FileManager.default.createFile(atPath: "\(out)/\(s.name).json", contents: data) }
             if r.passed { try? FileManager.default.removeItem(atPath: s.workDir) }
         }
@@ -168,7 +171,7 @@ enum Storm {
         let md = Report.stormTable(results)
         FileManager.default.createFile(atPath: "\(out)/results.md", contents: Data(md.utf8))
         if let data = try? JSONEncoder.pretty.encode(results) { FileManager.default.createFile(atPath: "\(out)/results.json", contents: data) }
-        print("\n" + md)
+        say("\n" + md)
         exit(results.allSatisfy(\.passed) ? 0 : 1)
     }
 
