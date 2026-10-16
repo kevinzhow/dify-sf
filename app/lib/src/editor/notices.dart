@@ -61,8 +61,8 @@ class Notice extends ChangeNotifier {
     _ => null,
   };
   switch (reason) {
-    case Conflict(:final field, :final by, :final node):
-      final who = clientDisplayName(by);
+    case Conflict(:final field, :final by, :final byName, :final node):
+      final who = byName ?? clientDisplayName(by);
       if (field == null) {
         final what = op is RemoveNode ? 'delete' : 'change';
         return (

@@ -6,6 +6,7 @@ import 'package:clock/clock.dart';
 import '../model/document.dart';
 import '../model/ops.dart';
 import '../wire/messages.dart';
+import 'display_name.dart';
 import 'durable.dart';
 import 'events.dart';
 import 'machine.dart';
@@ -78,13 +79,19 @@ class CollabSession {
     this.config = const ClientConfig(),
     this.tickInterval = const Duration(milliseconds: 200),
     this.postTimeout = const Duration(seconds: 10),
+    String? displayName,
     Random? random,
     int Function()? clock,
   }) : _explicitId = clientId,
+       displayName = displayName == null ? null : normalizeDisplayName(displayName),
        _random = random ?? Random(),
        _clock = clock ?? _monotonicClock();
 
   final String? _explicitId;
+
+  /// Shown to others in conflict notices (protocol 1.3), already normalized; null = unnamed. Registered with a
+  /// freshly issued id, or best-effort (`PUT /clients/{id}`) for an id that came from the journal or the caller.
+  final String? displayName;
 
   /// The id this session sends under. Empty until [start] completes when it has to be issued by the server;
   /// can change once if the id turns out to be shared ([ClientIdReplaced]).
@@ -171,7 +178,8 @@ class CollabSession {
     if (saved != null && _explicitId != null && saved.id != _explicitId) {
       throw StateError('journal belongs to client ${saved.id}, not $_explicitId');
     }
-    final id = saved?.id ?? _explicitId ?? await transport.issueClientId();
+    final reused = saved?.id ?? _explicitId;
+    final id = reused ?? await transport.issueClientId(name: displayName);
     _machine = saved == null
         ? ClientMachine(id: id, journaled: journaled, config: config, random: _random)
         : ClientMachine.restore(saved, journaled: journaled, config: config, random: _random);
@@ -181,6 +189,25 @@ class CollabSession {
     if (saved == null) _journal?.write(_machine.durable);
     _feed(() => _machine.tick(_clock()));
     _ticker = Timer.periodic(tickInterval, (_) => _feed(() => _machine.tick(_clock())));
+    if (reused != null && displayName != null) unawaited(_registerName(reused, displayName!));
+  }
+
+  /// Names an id this session did not get from `POST /clients` just now. Retries while the server is unreachable;
+  /// a refusal or a stopped session ends it. A missing name only affects how others see this client.
+  Future<void> _registerName(String id, String name) async {
+    var attempt = 0;
+    while (_running && _machine.id == id) {
+      try {
+        await transport.setClientName(id, name);
+        return;
+      } on TransportException catch (e) {
+        if (e.statusCode != null && e.statusCode! < 500) return;
+        attempt++;
+        await Future<void>.delayed(Duration(milliseconds: min(15000, 500 << min(attempt, 5))));
+      } on Object {
+        return;
+      }
+    }
   }
 
   /// Applies a user edit locally (optimistic) and queues it for the server. [base] is the version the user
@@ -308,7 +335,7 @@ class CollabSession {
     var attempt = 0;
     while (_running) {
       try {
-        final id = await transport.issueClientId();
+        final id = await transport.issueClientId(name: displayName);
         if (!_running) return;
         _feed(() => _machine.adoptClientId(id, _clock()));
         return;

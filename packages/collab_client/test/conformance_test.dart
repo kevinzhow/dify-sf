@@ -247,6 +247,37 @@ void main() {
       expect((await api.snapshot(doc)).seq, 1);
     });
 
+    test('1.3 display names: issue named, rename, directory, byName on conflicts', () async {
+      final bo = await t.issueClientId(name: 'Bo');
+      final anon = await api.issueClientId(doc);
+      expect(await api.clientNames(doc), {bo: 'Bo'});
+      await post(bo, [(1, 0, setPrompt('llm', 'bo'))]); // seq 1
+      await post(anon, [
+        (1, 0, setStr('llm', ['model', 'name'], 'anon')),
+      ]); // seq 2
+      final x = await t.issueClientId();
+      final r = await post(x, [
+        (1, 0, setPrompt('llm', 'x')),
+        (2, 0, setStr('llm', ['model', 'name'], 'x')),
+      ]);
+      final named = (r.results[0] as RejectResult).reason as Conflict;
+      final plain = (r.results[1] as RejectResult).reason as Conflict;
+      expect((named.by, named.byName), (bo, 'Bo'));
+      expect((plain.by, plain.byName), (anon, null));
+      // A name registered later shows up on the retransmitted answer.
+      await t.setClientName(anon, 'Ann');
+      final again = await post(x, [
+        (2, 0, setStr('llm', ['model', 'name'], 'x')),
+      ]);
+      expect(((again.results.single as RejectResult).reason as Conflict).byName, 'Ann');
+      await api.setClientName(doc, bo, 'Bob');
+      expect(await api.clientNames(doc), {bo: 'Bob', anon: 'Ann'});
+      await expectLater(
+        t.issueClientId(name: 'a\nb'),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 400)),
+      );
+    });
+
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'

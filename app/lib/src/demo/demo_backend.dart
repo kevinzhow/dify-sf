@@ -41,13 +41,19 @@ class DemoBackend implements Backend {
   Future<String> createDocument() async => 'demo';
 
   @override
-  Future<OpenedSession> openSession(String docId, {String? clientId, required bool journaled}) async {
+  Future<OpenedSession> openSession(
+    String docId, {
+    String? clientId,
+    required bool journaled,
+    String? displayName,
+  }) async {
     return OpenedSession(
       CollabSession(
         clientId: clientId,
         transport: FakeTransport(server, network: net),
         store: store,
         journaled: journaled,
+        displayName: displayName,
         tickInterval: const Duration(milliseconds: 100),
         postTimeout: const Duration(seconds: 3),
       ),

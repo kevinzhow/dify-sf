@@ -140,9 +140,15 @@ class FakeTransport implements CollabTransport {
   }
 
   @override
-  Future<String> issueClientId() async {
+  Future<String> issueClientId({String? name}) async {
     if (network.refused || network.partitioned) throw const TransportException('connection refused');
-    return server.issueClientId();
+    return server.issueClientId(name: name);
+  }
+
+  @override
+  Future<void> setClientName(String client, String name) async {
+    if (network.refused || network.partitioned) throw const TransportException('connection refused');
+    server.setClientName(client, name);
   }
 
   @override

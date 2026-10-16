@@ -26,7 +26,8 @@ abstract interface class Backend {
 
   /// A new, not yet started session for [docId]. Normally [clientId] is null: the session takes the id from its
   /// journal or gets a fresh one from the server (protocol 1.1). An explicit id is for tests and demos.
-  Future<OpenedSession> openSession(String docId, {String? clientId, required bool journaled});
+  /// [displayName] is registered for the id (protocol 1.3); null = unnamed.
+  Future<OpenedSession> openSession(String docId, {String? clientId, required bool journaled, String? displayName});
 
   /// Creates a document with a server-generated id.
   Future<String> createDocument();
@@ -66,7 +67,12 @@ class HttpBackend implements Backend {
   }
 
   @override
-  Future<OpenedSession> openSession(String docId, {String? clientId, required bool journaled}) async {
+  Future<OpenedSession> openSession(
+    String docId, {
+    String? clientId,
+    required bool journaled,
+    String? displayName,
+  }) async {
     // One journal per live window: the id inside it is used by exactly one process at a time (protocol 1.1).
     final dir = kIsWeb ? null : '${(await getApplicationSupportDirectory()).path}/journals';
     final slot = await acquirePlatformJournal(docId, directory: dir);
@@ -76,6 +82,7 @@ class HttpBackend implements Backend {
         transport: HttpTransport(baseUrl: baseUrl, docId: docId),
         store: slot,
         journaled: journaled,
+        displayName: displayName,
       ),
       slot.release,
     );

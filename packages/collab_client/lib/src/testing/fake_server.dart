@@ -26,8 +26,30 @@ class FakeServer {
   final Map<String, Map<int, String>> _fingerprints = {};
   int _issued = 0;
 
-  /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits.
-  String issueClientId() => 's-${(++_issued).toRadixString(16).padLeft(32, '0')}';
+  /// Display names by client id (protocol 1.3).
+  final Map<String, String> names = {};
+
+  /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits, optionally named (protocol 1.3).
+  String issueClientId({String? name}) {
+    final id = 's-${(++_issued).toRadixString(16).padLeft(32, '0')}';
+    if (name != null) names[id] = name;
+    return id;
+  }
+
+  /// `PUT /v1/docs/{doc}/clients/{client}` (protocol 1.3).
+  void setClientName(String client, String name) => names[client] = name;
+
+  /// Fills in `byName` at answer time, like the reference server: a retransmit may carry a name registered later.
+  RejectReason _named(RejectReason r) => switch (r) {
+    Conflict(:final node, :final field, :final seq, :final by) when names[by] != null => Conflict(
+      node: node,
+      field: field,
+      seq: seq,
+      by: by,
+      byName: names[by],
+    ),
+    _ => r,
+  };
   final Map<String, Map<int, int>> _committed = {};
   final Map<String, Map<int, RejectReason>> _rejected = {};
 
@@ -65,7 +87,9 @@ class FakeServer {
         }
         // Retransmit of something already handled: answer from durable facts, never apply twice.
         final s = committed[cseq];
-        results.add(s != null ? AckResult(cseq, s) : RejectResult(cseq, rejected[cseq] ?? const NotCommitted()));
+        results.add(
+          s != null ? AckResult(cseq, s) : RejectResult(cseq, _named(rejected[cseq] ?? const NotCommitted())),
+        );
         continue;
       }
       if (cseq > high + 1) {
@@ -89,7 +113,7 @@ class FakeServer {
         results.add(AckResult(cseq, entry.seq));
       } else {
         rejected[cseq] = bad;
-        results.add(RejectResult(cseq, bad));
+        results.add(RejectResult(cseq, _named(bad)));
       }
       high = cseq;
     }
@@ -104,7 +128,7 @@ class FakeServer {
         },
         rejected: {
           for (final e in rejected.entries)
-            if (e.key >= from && e.key <= high) e.key: e.value,
+            if (e.key >= from && e.key <= high) e.key: _named(e.value),
         },
       );
     }

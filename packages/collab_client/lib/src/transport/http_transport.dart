@@ -79,11 +79,11 @@ class HttpTransport implements CollabTransport {
   }
 
   @override
-  Future<String> issueClientId() async {
+  Future<String> issueClientId({String? name}) async {
     final abort = Completer<void>();
     final req = http.AbortableRequest('POST', _url('/clients'), abortTrigger: abort.future)
       ..headers['Content-Type'] = 'application/json'
-      ..body = '{}';
+      ..body = jsonEncode({'name': ?name});
     try {
       final res = await _client.send(req).timeout(connectTimeout);
       final body = await res.stream.bytesToString();
@@ -98,6 +98,27 @@ class HttpTransport implements CollabTransport {
       throw const TransportException('client id request timed out', timeout: true);
     } on Object catch (e) {
       throw TransportException('client id request failed: $e');
+    }
+  }
+
+  @override
+  Future<void> setClientName(String client, String name) async {
+    final abort = Completer<void>();
+    final req =
+        http.AbortableRequest('PUT', _url('/clients/${Uri.encodeComponent(client)}'), abortTrigger: abort.future)
+          ..headers['Content-Type'] = 'application/json'
+          ..body = jsonEncode({'name': name});
+    try {
+      final res = await _client.send(req).timeout(connectTimeout);
+      final body = await res.stream.bytesToString();
+      if (res.statusCode != 200) throw _errorFrom(res.statusCode, body);
+    } on TransportException {
+      rethrow;
+    } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
+      throw const TransportException('client name request timed out', timeout: true);
+    } on Object catch (e) {
+      throw TransportException('client name request failed: $e');
     }
   }
 

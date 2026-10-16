@@ -128,7 +128,24 @@ class HttpFakeServer {
         if (seg.length == 4 && seg[3] == 'clients' && req.method == 'POST') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
-          return await _json(req, 201, {'client': d.issueClientId()});
+          final (:name, :bad) = _name(await utf8.decoder.bind(req).join());
+          if (bad) return await _error(req, 400, 'bad_request', 'name must be 1-64 bytes without control characters');
+          return await _json(req, 201, {'client': d.issueClientId(name: name), 'name': ?name});
+        }
+        if (seg.length == 4 && seg[3] == 'clients' && req.method == 'GET') {
+          final d = docs[seg[2]];
+          if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+          return await _json(req, 200, {'clients': d.names});
+        }
+        if (seg.length == 5 && seg[3] == 'clients' && req.method == 'PUT') {
+          final d = docs[seg[2]];
+          if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+          final (:name, :bad) = _name(await utf8.decoder.bind(req).join());
+          if (bad || name == null) {
+            return await _error(req, 400, 'bad_request', 'name must be 1-64 bytes without control characters');
+          }
+          d.setClientName(seg[4], name);
+          return await _json(req, 200, {'client': seg[4], 'name': name});
         }
         if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2]);
       }
@@ -268,6 +285,18 @@ class HttpFakeServer {
 
   static String _frame(String event, int? id, Object? data) =>
       '${id == null ? '' : 'id: $id\n'}event: $event\ndata: ${jsonEncode(data)}\n\n';
+
+  /// The optional `name` of a clients request body (protocol 1.3), validated like the reference server.
+  static ({String? name, bool bad}) _name(String body) {
+    if (body.trim().isEmpty) return (name: null, bad: false);
+    final m = jsonDecode(body);
+    final n = m is Map<String, Object?> ? m['name'] : null;
+    if (n == null) return (name: null, bad: false);
+    if (n is! String || n.isEmpty || utf8.encode(n).length > 64 || n.runes.any((r) => r < 0x20 || r == 0x7f)) {
+      return (name: null, bad: true);
+    }
+    return (name: n, bad: false);
+  }
 
   Future<void> _json(HttpRequest req, int status, Object? body) async {
     req.response

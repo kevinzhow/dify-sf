@@ -1,6 +1,7 @@
 /// Pure-Dart client for the dify-sf collaboration protocol (docs/protocol.md).
 library;
 
+export 'src/client/display_name.dart';
 export 'src/client/durable.dart';
 export 'src/client/events.dart';
 export 'src/client/machine.dart';

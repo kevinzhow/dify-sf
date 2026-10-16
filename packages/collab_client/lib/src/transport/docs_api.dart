@@ -57,14 +57,36 @@ class DocsApi {
     return DocInfo.fromJson(jsonDecode(res.body));
   }
 
-  /// `POST /v1/docs/{id}/clients` (protocol 1.1): a fresh unique client id for one client instance.
-  Future<String> issueClientId(String id) async {
+  /// `POST /v1/docs/{id}/clients` (protocol 1.1): a fresh unique client id for one client instance, optionally
+  /// with a display name (protocol 1.3).
+  Future<String> issueClientId(String id, {String? name}) async {
     final req = http.Request('POST', _url('/v1/docs/$id/clients'))
       ..headers['Content-Type'] = 'application/json'
-      ..body = '{}';
+      ..body = jsonEncode({'name': ?name});
     final res = await _guard(() async => http.Response.fromStream(await _client.send(req).timeout(timeout)));
     if (res.statusCode != 201 && res.statusCode != 200) throw _error(res);
     return (jsonDecode(res.body) as Map<String, Object?>)['client']! as String;
+  }
+
+  /// `PUT /v1/docs/{id}/clients/{client}` (protocol 1.3): names or renames a client id.
+  Future<void> setClientName(String id, String client, String name) async {
+    final req = http.Request('PUT', _url('/v1/docs/$id/clients/${Uri.encodeComponent(client)}'))
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'name': name});
+    final res = await _guard(() async => http.Response.fromStream(await _client.send(req).timeout(timeout)));
+    if (res.statusCode != 200) throw _error(res);
+  }
+
+  /// `GET /v1/docs/{id}/clients` (protocol 1.3): display names of the clients that registered one.
+  Future<Map<String, String>> clientNames(String id) async {
+    final res = await _guard(() => _client.get(_url('/v1/docs/$id/clients')).timeout(timeout));
+    if (res.statusCode != 200) throw _error(res);
+    final clients = (jsonDecode(res.body) as Map<String, Object?>)['clients'];
+    if (clients is! Map<String, Object?>) return const {};
+    return {
+      for (final e in clients.entries)
+        if (e.value is String) e.key: e.value! as String,
+    };
   }
 
   /// `GET /v1/docs/{id}/snapshot`: the full document at the current head.

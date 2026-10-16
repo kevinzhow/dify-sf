@@ -1,3 +1,4 @@
+import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
 import 'demo/demo_backend.dart';
@@ -26,6 +27,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final _url = TextEditingController(text: widget.settings.serverUrl);
   late final _doc = TextEditingController(text: widget.settings.lastDoc);
+  late final _name = TextEditingController(text: widget.settings.userName);
   late bool _journaled = widget.settings.journaled;
   String? _error;
   bool _busy = false;
@@ -43,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _url.dispose();
     _doc.dispose();
+    _name.dispose();
     super.dispose();
   }
 
@@ -55,7 +58,8 @@ class _HomePageState extends State<HomePage> {
     widget.settings
       ..serverUrl = _url.text.trim()
       ..journaled = _journaled
-      ..lastDoc = _doc.text.trim();
+      ..lastDoc = _doc.text.trim()
+      ..userName = _name.text.trim();
     await widget.settings.save();
   }
 
@@ -104,6 +108,7 @@ class _HomePageState extends State<HomePage> {
         builder: (_) => EditorPage(
           backend: backend,
           docId: id,
+          displayName: normalizeDisplayName(_name.text),
           journaled: _journaled,
           create: create,
           extraActions: extra,
@@ -137,6 +142,16 @@ class _HomePageState extends State<HomePage> {
                 controller: _doc,
                 decoration: const InputDecoration(labelText: 'Document id', border: OutlineInputBorder()),
                 onSubmitted: (_) => _open(create: true),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('name-field'),
+                controller: _name,
+                decoration: const InputDecoration(
+                  labelText: 'Your name (optional)',
+                  helperText: 'Shown to others when your change and theirs collide.',
+                  border: OutlineInputBorder(),
+                ),
               ),
               SwitchListTile(
                 key: const Key('journal-switch'),

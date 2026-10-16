@@ -17,6 +17,7 @@ class EditorPage extends StatefulWidget {
     required this.backend,
     required this.docId,
     this.clientId,
+    this.displayName,
     required this.journaled,
     this.create = true,
     this.extraActions,
@@ -27,6 +28,9 @@ class EditorPage extends StatefulWidget {
 
   /// Explicit client id (tests, demo); null = issued by the server and kept in the journal.
   final String? clientId;
+
+  /// Shown to others in conflict notices (protocol 1.3); null = unnamed.
+  final String? displayName;
   final bool journaled;
   final bool create;
 
@@ -68,6 +72,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         widget.docId,
         clientId: widget.clientId,
         journaled: widget.journaled,
+        displayName: widget.displayName,
       );
       final session = opened.session;
       try {

@@ -489,6 +489,7 @@ sealed class RejectReason {
           field: m['field'] == null ? null : FieldKey.fromJson(m['field']),
           seq: _int(m, 'seq', 'reason'),
           by: _str(m, 'by', 'reason'),
+          byName: m['byName'] is String ? m['byName']! as String : null,
         );
       case 'nodeDeleted':
         return NodeDeleted(_str(m, 'node', 'reason'));
@@ -548,16 +549,33 @@ sealed class RejectReason {
 
 /// Someone else wrote this field/node after the op's base version (with a different value); the newer value
 /// is kept. [field] null = the whole node (delete vs. any modification).
+///
+/// [byName] is the author's display name (protocol 1.3), present only when [by] registered one by the time the
+/// server answered. It is presentation only: two conflicts that differ only in [byName] are equal.
 final class Conflict extends RejectReason {
-  const Conflict({required this.node, required this.field, required this.seq, required this.by});
+  const Conflict({required this.node, required this.field, required this.seq, required this.by, this.byName});
   final String node;
   final FieldKey? field;
   final int seq;
   final String by;
+  final String? byName;
   @override
   String get name => 'conflict';
   @override
-  Map<String, Object?> toJson() => {'type': name, 'node': node, 'field': field?.toJson(), 'seq': seq, 'by': by};
+  Map<String, Object?> toJson() => {
+    'type': name,
+    'node': node,
+    'field': field?.toJson(),
+    'seq': seq,
+    'by': by,
+    'byName': ?byName,
+  };
+  Map<String, Object?> get _identity => toJson()..remove('byName');
+  @override
+  bool operator ==(Object other) =>
+      other is Conflict && const DeepCollectionEquality().equals(other._identity, _identity);
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(_identity);
 }
 
 final class NodeDeleted extends RejectReason {

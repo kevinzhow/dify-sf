@@ -13,7 +13,11 @@ abstract interface class CollabTransport {
   Stream<StreamEvent> openStream(StreamOpen open);
 
   /// `POST /v1/docs/{doc}/clients` (protocol 1.1): a fresh, unique client id. Use one per client instance.
-  Future<String> issueClientId();
+  /// [name] registers a display name for it (protocol 1.3).
+  Future<String> issueClientId({String? name});
+
+  /// `PUT /v1/docs/{doc}/clients/{client}` (protocol 1.3): names or renames [client].
+  Future<void> setClientName(String client, String name);
 
   /// Releases resources (open connections).
   void close();

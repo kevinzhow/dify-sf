@@ -35,6 +35,7 @@ void main() {
     final demo = DemoBackend(withBo: false);
     await t.pumpWidget(buildApp(settings, backendFor: (_) => demo));
     await t.enterText(find.byKey(const Key('doc-field')), 'wf-1');
+    await t.enterText(find.byKey(const Key('name-field')), ' Kim ');
     await t.tap(find.byKey(const Key('journal-switch')));
     await t.tap(find.byKey(const Key('open-button')));
     await settle(t);
@@ -44,6 +45,8 @@ void main() {
     final saved = await SharedPreferences.getInstance();
     expect(saved.getString('lastDoc'), 'wf-1');
     expect(saved.getBool('journaled'), isFalse);
+    expect(saved.getString('userName'), 'Kim');
+    expect(demo.server.names.values, ['Kim'], reason: 'the issued id is registered with the name (protocol 1.3)');
 
     await t.pageBack();
     await t.pumpWidget(const SizedBox());
@@ -56,5 +59,10 @@ void main() {
     expect((o.server, o.doc, o.volatile, o.demo, o.autoOpen), ('http://x:1', 'd', true, false, true));
     expect(LaunchOptions.parse(const []).autoOpen, isFalse);
     expect(LaunchOptions.parse(['--demo']).autoOpen, isTrue);
+    final named = LaunchOptions.parse(['--name', 'Kim']);
+    expect(named.name, 'Kim');
+    final s = AppSettings(serverUrl: '', journaled: true, lastDoc: '');
+    named.applyTo(s);
+    expect(s.userName, 'Kim');
   });
 }
