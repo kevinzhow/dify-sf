@@ -266,7 +266,7 @@ final class VMap extends Value {
   const VMap(this.entries);
   final Map<String, Value> entries;
   @override
-  Object? toJson() => {for (final e in entries.entries) e.key: e.value.toJson()};
+  Object? toJson() => {for (final k in _sortedKeys(entries)) k: entries[k]!.toJson()}; // canonical: sorted
   @override
   Iterable<OutputRef> get liveRefs => _sortedKeys(entries).expand((k) => entries[k]!.liveRefs);
   @override

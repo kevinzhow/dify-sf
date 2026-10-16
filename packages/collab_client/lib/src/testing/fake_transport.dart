@@ -69,6 +69,19 @@ class FakeTransport implements CollabTransport {
   final FakeServer server;
   final FakeNetwork network;
 
+  final Set<Timer> _timers = {};
+
+  /// A timer that [close] cancels, so a closed client leaves nothing pending (widget tests insist).
+  Timer _timer(Duration d, void Function() f) {
+    late final Timer t;
+    t = Timer(d, () {
+      _timers.remove(t);
+      f();
+    });
+    _timers.add(t);
+    return t;
+  }
+
   /// Number of POSTs that reached the server (for assertions about retransmits).
   int postsReceived = 0;
 
@@ -86,27 +99,27 @@ class FakeTransport implements CollabTransport {
       }
     }
 
-    timers.add(Timer(timeout, () => fail(const TransportException('POST timed out', timeout: true))));
+    timers.add(_timer(timeout, () => fail(const TransportException('POST timed out', timeout: true))));
     if (network.partitioned) return done.future;
     if (network.refused) {
-      timers.add(Timer(network.latency(), () => fail(const TransportException('connection refused'))));
+      timers.add(_timer(network.latency(), () => fail(const TransportException('connection refused'))));
       return done.future;
     }
     if (network.chance(network.dropRequest)) return done.future;
-    timers.add(Timer(network.latency(), () {
+    timers.add(_timer(network.latency(), () {
       if (done.isCompleted) return; // the client gave up before the request arrived: it never reaches the server
       if (network.chance(network.serverError)) {
         if (network.chance(network.commitBefore503)) {
           postsReceived++;
           server.submit(request);
         }
-        timers.add(Timer(network.latency(), () => fail(const TransportException('unavailable', statusCode: 503, code: 'unavailable'))));
+        timers.add(_timer(network.latency(), () => fail(const TransportException('unavailable', statusCode: 503, code: 'unavailable'))));
         return;
       }
       postsReceived++;
       final response = server.submit(request);
       if (network.partitioned || network.chance(network.dropResponse)) return;
-      timers.add(Timer(network.latency(), () {
+      timers.add(_timer(network.latency(), () {
         if (network.partitioned || done.isCompleted) return;
         done.complete(response);
         for (final t in timers) {
@@ -126,6 +139,10 @@ class FakeTransport implements CollabTransport {
 
   @override
   void close() {
+    for (final t in List.of(_timers)) {
+      t.cancel();
+    }
+    _timers.clear();
     for (final s in List.of(network._streams)) {
       s.close();
     }
@@ -159,10 +176,10 @@ class _FakeStream {
     net._streams.add(this);
     if (net.partitioned || net.blockStreams) return; // half-open before it even connected: the client's watchdog must fire
     if (net.refused) {
-      _openTimer = Timer(net.latency(), () => fail(const TransportException('connection refused')));
+      _openTimer = transport._timer(net.latency(), () => fail(const TransportException('connection refused')));
       return;
     }
-    _openTimer = Timer(net.latency(), _connect);
+    _openTimer = transport._timer(net.latency(), _connect);
   }
 
   void _connect() {
@@ -197,7 +214,7 @@ class _FakeStream {
     final last = _lastDelivery;
     if (last != null && at.isBefore(last)) at = last;
     _lastDelivery = at;
-    Timer(at.difference(now), () {
+    transport._timer(at.difference(now), () {
       if (_closed || _dead) return;
       if (_blackholed) {
         // Bytes vanished into the blackhole. A real TCP connection would stall and eventually reset; until
@@ -221,7 +238,8 @@ class _FakeStream {
   Future<void> close() async {
     if (_closed) return;
     _teardown();
-    if (!controller.isClosed) await controller.close();
+    // Not awaited: this runs inside the controller's own onCancel, whose completion `close()` would wait for.
+    if (!controller.isClosed) unawaited(controller.close());
   }
 
   void _teardown() {

@@ -556,6 +556,30 @@ void main() {
           expect(bob.session.machine.nextCseq, 1);
         }, initial: threeNodes()));
 
+    test('a slow edit keeps the version it started from, so it cannot silently overwrite a newer write',
+        () => inWorld((w) {
+              final alice = w.add('alice');
+              final bob = w.add('bob');
+              w.settle();
+              final startedAt = bob.session.lastSeq; // bob starts typing into the prompt here
+              alice.edit(setPrompt('a', 'alice'));
+              w.settle();
+              // Bob finishes typing later. With base = lastSeq it would overwrite alice's value; with the
+              // version he actually saw, it is refused on the spot and carries the op for "re-apply".
+              final t = bob.session.edit(setPrompt('a', 'bob'), base: startedAt);
+              expect(t.cseq, isNull);
+              expect(t.refusal, isA<Conflict>());
+              expect((t.refusal! as Conflict).by, 'alice');
+              expect(cfg(bob.session.view, 'a', 'prompt'), 'alice');
+              // Same value is fine even from an old version.
+              expect(bob.session.edit(setPrompt('a', 'alice'), base: startedAt).cseq, isNotNull);
+              // The deliberate re-apply uses the latest version and wins.
+              expect(bob.session.edit(setPrompt('a', 'bob')).cseq, isNotNull);
+              w.settle();
+              expect(cfg(w.server.doc, 'a', 'prompt'), 'bob');
+              expectConverged(w);
+            }, initial: threeNodes()));
+
     test('batches are limited and a single POST is outstanding', () => inWorld((w) {
           final bob = w.add('bob');
           w.settle();

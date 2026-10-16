@@ -68,7 +68,7 @@ final class Node {
         'title': title,
         'x': x,
         'y': y,
-        'config': {for (final e in config.entries) e.key: e.value.toJson()},
+        'config': {for (final k in config.keys.toList()..sort()) k: config[k]!.toJson()},
       };
 
   @override

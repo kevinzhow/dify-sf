@@ -1,0 +1,24 @@
+name: dify_sf_app
+description: Collaborative workflow editor client for dify-sf (step 1).
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  collab_client:
+    path: ../packages/collab_client
+  path_provider: ^2.1.0
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  meta: ^1.19.0
+
+flutter:
+  uses-material-design: true

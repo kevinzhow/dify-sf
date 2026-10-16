@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:clock/clock.dart';
+
 import '../model/document.dart';
 import '../model/ops.dart';
 import '../wire/messages.dart';
@@ -106,7 +108,7 @@ class CollabSession {
   late final _WriteBehind? _journal = store == null ? null : _WriteBehind(store!);
 
   static int Function() _monotonicClock() {
-    final sw = Stopwatch()..start();
+    final sw = clock.stopwatch()..start(); // `clock` is the system clock unless a test fakes time
     return () => sw.elapsedMilliseconds;
   }
 
@@ -165,9 +167,10 @@ class CollabSession {
     _ticker = Timer.periodic(tickInterval, (_) => _feed(() => _machine.tick(_clock())));
   }
 
-  /// Applies a user edit locally (optimistic) and queues it for the server.
-  EditTicket edit(Op op) {
-    final r = _machine.edit(op, _clock());
+  /// Applies a user edit locally (optimistic) and queues it for the server. [base] is the version the user
+  /// saw when they began the edit (see [ClientMachine.edit]); omit it for instantaneous edits.
+  EditTicket edit(Op op, {int? base}) {
+    final r = _machine.edit(op, _clock(), base: base);
     _afterMachine();
     final persisted = _persistedFuture();
     _execute(r.requests);

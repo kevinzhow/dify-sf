@@ -239,19 +239,25 @@ class ClientMachine {
   // ---- user edits --------------------------------------------------------------------------------
 
   /// Optimistically applies a local edit and queues it.
-  EditResult edit(Op op, int now) {
+  ///
+  /// [base] is the server version the user was looking at when they *started* the edit (a text draft that
+  /// took seconds to type); it defaults to [lastSeq] and is clamped to it. Using the older version is what
+  /// keeps a slow edit from silently overwriting a write that landed meanwhile: the stale-write rule then
+  /// refuses it (locally at once, as [LocalInvalid] with a [Conflict]).
+  EditResult edit(Op op, int now, {int? base}) {
     if (!hasState) {
       const reason = Invalid('not synced yet');
       _events.add(LocalInvalid(op: op, reason: reason));
       return const EditResult(null, [], reason);
     }
-    final bad = _view.validate(op, base: lastSeq, client: id);
+    final editBase = base == null ? lastSeq : max(0, min(base, lastSeq));
+    final bad = _view.validate(op, base: editBase, client: id);
     if (bad != null) {
       _events.add(LocalInvalid(op: op, reason: bad));
       return EditResult(null, const [], bad);
     }
     final cseq = nextCseq++;
-    _outbox.add(_Pending(cseq, lastSeq, op));
+    _outbox.add(_Pending(cseq, editBase, op));
     durableRevision++;
     if (identical(_view, _confirmed)) _view = _confirmed.clone();
     _view.apply(op, _localStamp);
