@@ -4,3 +4,12 @@
 /bench/storm/results/
 /bench/chaos/results/
 /server/.swiftpm/
+
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.fvm/
+/packages/*/pubspec.lock
