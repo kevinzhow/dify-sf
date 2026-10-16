@@ -24,7 +24,19 @@ let package = Package(
         // Deterministic simulator: seeded PRNG, lossy network, fault injection.
         .target(name: "CollabSim", dependencies: ["CollabCore", "CollabInvariants"]),
         .executableTarget(name: "collab-sim", dependencies: ["CollabSim"]),
-        .executableTarget(name: "collab-server", dependencies: ["CollabCore"]),
+        // Postgres persistence (plain SQL via postgres-nio).
+        .target(name: "CollabStore", dependencies: [
+            "CollabCore",
+            .product(name: "PostgresNIO", package: "postgres-nio"),
+        ]),
+        // The Vapor application: HTTP routes, per-document sequencer actors, SSE hub, configuration.
+        .target(name: "CollabServer", dependencies: [
+            "CollabCore", "CollabStore",
+            .product(name: "Vapor", package: "vapor"),
+            .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
+            .product(name: "Configuration", package: "swift-configuration"),
+        ]),
+        .executableTarget(name: "collab-server", dependencies: ["CollabServer"]),
         .testTarget(name: "CollabTests", dependencies: ["CollabCore", "CollabInvariants", "CollabSim"]),
     ]
 )

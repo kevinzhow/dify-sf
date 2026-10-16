@@ -1,0 +1,14 @@
+# Production-ish image: release build of collab-server on the pinned Swift toolchain.
+FROM swift:6.4 AS build
+WORKDIR /src
+COPY server/Package.swift server/Package.resolved ./
+COPY server/Vendor ./Vendor
+COPY server/Sources ./Sources
+RUN swift build -c release --product collab-server --static-swift-stdlib
+
+FROM ubuntu:24.04
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates libcurl4 libxml2 tzdata && rm -rf /var/lib/apt/lists/*
+COPY --from=build /src/.build/release/collab-server /usr/local/bin/collab-server
+USER nobody
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/collab-server"]

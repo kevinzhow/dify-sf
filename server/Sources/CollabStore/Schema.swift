@@ -1,0 +1,61 @@
+/// Database schema. Applied idempotently at startup (`PostgresStore.migrate`).
+///
+/// * `documents.rev` is the fencing token: it is incremented by every transaction that writes anything for
+///   the document, and every write transaction first locks the row (`SELECT ... FOR UPDATE`) and checks that
+///   `rev` is what the writer's in-memory state was built from.
+/// * `ops` is the append-only op log (the source of truth). `(doc_id, seq)` and `(doc_id, client_id, cseq)`
+///   are unique: the database itself refuses a second op for the same sequence slot or the same idempotency key.
+/// * `rejections` and `client_state.high` make the per-client cseq high-water mark durable, so a retransmit of
+///   a rejected op gets the original reason, also after a restart.
+/// * `snapshots` are checkpoints of the materialised document; recovery = latest snapshot + replay of `ops`.
+public enum Schema {
+    public static let statements: [String] = [
+        """
+        CREATE TABLE IF NOT EXISTS documents (
+            id          text        PRIMARY KEY,
+            rev         bigint      NOT NULL DEFAULT 0,
+            head        bigint      NOT NULL DEFAULT 0,
+            created_at  timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS snapshots (
+            doc_id  text   NOT NULL REFERENCES documents(id),
+            seq     bigint NOT NULL,
+            state   jsonb  NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (doc_id, seq)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS ops (
+            doc_id       text   NOT NULL REFERENCES documents(id),
+            seq          bigint NOT NULL,
+            client_id    text   NOT NULL,
+            cseq         bigint NOT NULL,
+            base         bigint NOT NULL,
+            op           jsonb  NOT NULL,
+            committed_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (doc_id, seq),
+            UNIQUE (doc_id, client_id, cseq)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS rejections (
+            doc_id    text   NOT NULL REFERENCES documents(id),
+            client_id text   NOT NULL,
+            cseq      bigint NOT NULL,
+            reason    jsonb  NOT NULL,
+            PRIMARY KEY (doc_id, client_id, cseq)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS client_state (
+            doc_id    text   NOT NULL REFERENCES documents(id),
+            client_id text   NOT NULL,
+            high      bigint NOT NULL,
+            PRIMARY KEY (doc_id, client_id)
+        )
+        """,
+    ]
+}

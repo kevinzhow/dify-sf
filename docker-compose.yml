@@ -1,0 +1,39 @@
+# Local development stack: Postgres + the collab server. Everything is bound to localhost only.
+#   docker compose up --build
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: collab
+      POSTGRES_PASSWORD: collab
+      POSTGRES_DB: collab
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collab -d collab"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      COLLAB_HTTP_HOST: 0.0.0.0
+      COLLAB_HTTP_PORT: "8080"
+      COLLAB_DB_HOST: postgres
+      COLLAB_DB_PORT: "5432"
+      COLLAB_DB_USER: collab
+      COLLAB_DB_PASSWORD: collab
+      COLLAB_DB_NAME: collab
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  pgdata:
