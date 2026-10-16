@@ -60,7 +60,7 @@ public enum Bench {
         collab-bench chaos  --runs N [--seed S] [--parallel P] [--out DIR]
         collab-bench storm  --mix a|b|c [--clients N] [--duration SEC] [--profile NAME] [--out DIR]
         collab-bench storm  --ladder --mix a|b|c [--duration SEC] [--out DIR]       (10, 25, 50, 100 clients)
-        collab-bench storm  --sweep [--clients N] [--duration SEC] [--out DIR]       (every network profile, mix b)
+        collab-bench storm  --sweep [--mix a|b|c] [--clients N] [--duration SEC] [--out DIR]  (every network profile, default mix b)
         collab-bench report --dir DIR                                                  (merge round JSON into markdown)
         """)
     }
@@ -160,7 +160,7 @@ enum Storm {
         if a.flags.contains("ladder") {
             for n in [10, 25, 50, 100] { specs.append(spec(mix: mix, clients: n, duration: duration, profile: .baseline, out: out)) }
         } else if a.flags.contains("sweep") {
-            for p in NetworkProfile.catalogue { specs.append(spec(mix: "b", clients: a.int("clients", 25), duration: duration, profile: p, out: out)) }
+            for p in NetworkProfile.catalogue { specs.append(spec(mix: mix, clients: a.int("clients", 25), duration: duration, profile: p, out: out)) }
         } else {
             for p in profiles { specs.append(spec(mix: mix, clients: a.int("clients", 100), duration: duration, profile: p, out: out)) }
         }
