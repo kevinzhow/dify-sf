@@ -1,0 +1,6 @@
+# Dev/test image: the pinned Swift toolchain plus iproute2 (tc/netem) for network fault injection.
+FROM swift:6.4
+USER root
+RUN apt-get update -qq \
+ && apt-get install -y -qq --no-install-recommends iproute2 procps ca-certificates \
+ && rm -rf /var/lib/apt/lists/*

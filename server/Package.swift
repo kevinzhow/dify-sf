@@ -1,0 +1,30 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DifySF",
+    products: [
+        .library(name: "CollabCore", targets: ["CollabCore"]),
+        .executable(name: "collab-server", targets: ["collab-server"]),
+        .executable(name: "collab-sim", targets: ["collab-sim"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", exact: "5.0.0-beta.4"),
+        // Vendored copy of postgres-nio 1.33.1 with a one-line Swift 6.4 build fix (see Vendor/postgres-nio/PATCHES.md).
+        .package(path: "Vendor/postgres-nio"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", exact: "2.13.0"),
+        .package(url: "https://github.com/apple/swift-configuration.git", exact: "1.2.2"),
+        .package(url: "https://github.com/swift-server/async-http-client.git", exact: "1.35.0"),
+    ],
+    targets: [
+        // Pure protocol logic: document model, ops, wire format, sequencer, client state machine. No I/O.
+        .target(name: "CollabCore"),
+        // Independent oracle + invariant checks (I1-I5) over plain evidence; used by the simulator and the chaos harness.
+        .target(name: "CollabInvariants", dependencies: ["CollabCore"]),
+        // Deterministic simulator: seeded PRNG, lossy network, fault injection.
+        .target(name: "CollabSim", dependencies: ["CollabCore", "CollabInvariants"]),
+        .executableTarget(name: "collab-sim", dependencies: ["CollabSim"]),
+        .executableTarget(name: "collab-server", dependencies: ["CollabCore"]),
+        .testTarget(name: "CollabTests", dependencies: ["CollabCore", "CollabInvariants", "CollabSim"]),
+    ]
+)

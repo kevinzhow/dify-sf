@@ -1,0 +1,6 @@
+.build/
+*.swp
+.DS_Store
+/bench/storm/results/
+/bench/chaos/results/
+/server/.swiftpm/
