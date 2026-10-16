@@ -3,6 +3,8 @@
 services:
   postgres:
     image: postgres:15-alpine
+    mem_limit: 1536m
+    cpus: 1
     environment:
       POSTGRES_USER: collab
       POSTGRES_PASSWORD: collab
@@ -18,6 +20,8 @@ services:
       retries: 30
 
   server:
+    mem_limit: 1536m
+    cpus: 2
     build:
       context: .
       dockerfile: docker/Dockerfile.server

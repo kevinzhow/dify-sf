@@ -96,11 +96,14 @@ public struct Conflict: Hashable, Sendable {
     public var field: FieldKey?
     public var seq: Int
     public var by: ClientID
-    public init(node: NodeID, field: FieldKey?, seq: Int, by: ClientID) {
+    /// Display name of `by`, when the author registered one (protocol 1.3). Filled in by the server's HTTP layer only.
+    public var byName: String?
+    public init(node: NodeID, field: FieldKey?, seq: Int, by: ClientID, byName: String? = nil) {
         self.node = node
         self.field = field
         self.seq = seq
         self.by = by
+        self.byName = byName
     }
 }
 

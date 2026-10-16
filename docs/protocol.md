@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.2
+# dify-sf collaboration protocol, version 1.3
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,15 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.3 (additive and optional; old clients are unaffected): **display names**.
+  * `POST /v1/docs/{doc}/clients` accepts an optional body `{"name":"Bo"}` (1-64 bytes, no control characters) and answers
+    `201 {"client":"s-...","name":"Bo"}` (`name` only if given).
+  * `PUT /v1/docs/{doc}/clients/{client}` with `{"name":"Bo"}` names (or renames) a client id the client chose itself:
+    `200 {"client","name"}`. `GET /v1/docs/{doc}/clients` returns the directory `200 {"clients":{"<client id>":"<name>", ...}}`
+    (only clients that registered a name; refetch it when you see an unknown author id).
+  * `conflict` reject reasons gain an optional field `byName` (the author's display name, present only when `by` registered one at
+    the time the response is produced: a retransmit may carry a name that was registered later). `by` is unchanged.
+  * Commit events keep carrying only the client id; resolve names through the directory.
 * 1.2 (**clarification of the same-value rule; clients that keep their own conflict tracking, e.g. the Dart port, must apply it**):
   An accepted equal-value write is a **pure no-op for conflict tracking**. It is committed (acked, it gets a `seq`, it is in the log)
   but applying it changes *nothing* in the document's version metadata: no register stamp, no last-writer, no per-client "touched"
@@ -71,7 +80,9 @@ Transport conventions:
 | PUT | `/v1/docs/{doc}` | Create the document if absent (idempotent). Body optional as above. `201` if created, `200` if it existed: `{"id","head","created":bool}`. |
 | GET | `/v1/docs/{doc}` | Metadata: `200 {"id","head"}`, `404` if unknown. |
 | GET | `/v1/docs/{doc}/snapshot` | Full document at the current head: `200 {"seq":N,"doc":Document}`. For bootstrapping/debugging; the stream also delivers snapshots. |
-| POST | `/v1/docs/{doc}/clients` | Issue a fresh unique client id: `201 {"client":"s-<32 hex>"}`, `404` if the document is unknown. Use one id per client *instance* (section 9). |
+| POST | `/v1/docs/{doc}/clients` | Issue a fresh unique client id: `201 {"client":"s-<32 hex>"}`, `404` if the document is unknown. Optional body `{"name":"Bo"}` registers a display name (1.3). Use one id per client *instance* (section 9). |
+| PUT | `/v1/docs/{doc}/clients/{client}` | Name (or rename) a client id: body `{"name":"Bo"}` (1.3). |
+| GET | `/v1/docs/{doc}/clients` | Name directory: `{"clients":{"<id>":"<name>"}}` (1.3). |
 | POST | `/v1/docs/{doc}/ops` | Submit a batch of ops (section 4). |
 | GET | `/v1/docs/{doc}/events` | SSE stream (section 5). |
 
@@ -370,7 +381,7 @@ into `$broken` markers and removes its edges, identically on every replica. New 
 
 | `type` | Extra fields | Meaning |
 |---|---|---|
-| `conflict` | `node`, `field` (FieldKey or `null` = whole node), `seq`, `by` | Stale write with a different value; the newer write at `seq` by `by` is kept. UI: show the winning value and offer "re-apply mine" (re-send as a new op based on the latest version). |
+| `conflict` | `node`, `field` (FieldKey or `null` = whole node), `seq`, `by`, optional `byName` | Stale write with a different value; the newer write at `seq` by `by` is kept. UI: show the winning value and offer "re-apply mine" (re-send as a new op based on the latest version). |
 | `nodeDeleted` | `node` | The node was deleted. |
 | `nodeNotFound` | `node` | Unknown node id. |
 | `nodeExists` | `node` | Node id already used (even if deleted). |

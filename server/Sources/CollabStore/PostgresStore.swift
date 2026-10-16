@@ -47,6 +47,27 @@ public struct PostgresStore: Sendable {
 
     // MARK: - Public API (every operation is bounded by `operationTimeout`)
 
+    /// Registers (or renames) the display name of a client id.
+    public func setClientName(_ id: String, client c: ClientID, name: String) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                INSERT INTO clients (doc_id, client_id, name) VALUES (\(id), \(c), \(name))
+                ON CONFLICT (doc_id, client_id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
+                """, logger: self.logger)
+        }
+    }
+
+    /// client id -> display name for every client of the document that registered one.
+    public func clientNames(_ id: String) async throws -> [ClientID: String] {
+        try await bounded {
+            var out: [ClientID: String] = [:]
+            for try await (c, n) in try await self.client.query("SELECT client_id, name FROM clients WHERE doc_id = \(id)", logger: self.logger).decode((String, String).self) {
+                out[c] = n
+            }
+            return out
+        }
+    }
+
     public func migrate() async throws { try await bounded { try await self.migrateImpl() } }
     public func ping() async throws { try await bounded { try await self.pingImpl() } }
     public func createDocument(id: String, initial: Document) async throws -> Bool {

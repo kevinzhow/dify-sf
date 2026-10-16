@@ -197,6 +197,9 @@ public enum Invariants {
             v.append("LOG: \(key.client)#\(key.cseq) in log but never issued by a user")
         }
         for (key, terms) in ev.terminals where ev.issued[key] == nil {
+            // A real process can die after it consumed a cseq but before the harness' issued-line was written; the
+            // restarted volatile client then (correctly) reports that cseq `lost`. Anything else is a bug.
+            if ev.allowRepeatedIdenticalTerminals, terms.allSatisfy({ $0 == .lost }) { continue }
             v.append("I5: outcome \(terms) for unknown op \(key.client)#\(key.cseq)")
         }
         for key in inLog.keys.sorted() {

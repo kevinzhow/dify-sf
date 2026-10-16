@@ -27,13 +27,13 @@ trap cleanup EXIT
 docker network inspect "$NET" >/dev/null 2>&1 || docker network create "$NET" >/dev/null
 docker rm -f "$PG" "$TOXI" "$DEV" >/dev/null 2>&1 || true
 
-docker run -d --name "$PG" --network "$NET" \
+docker run -d --name "$PG" --network "$NET" --memory 1536m --cpus 1 \
   -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab \
   "$PG_IMAGE" -c max_connections=400 >/dev/null
-docker run -d --name "$TOXI" --network "$NET" "$TOXI_IMAGE" -host 0.0.0.0 >/dev/null
+docker run -d --name "$TOXI" --network "$NET" --memory 256m --cpus 1 "$TOXI_IMAGE" -host 0.0.0.0 >/dev/null
 
 # Build as the invoking user (so .build stays user-owned), then run as root.
-docker run --rm --user "$uid:$gid" -e HOME=/tmp -v "$repo/server":/work -w /work "$DEV_IMAGE" \
+docker run --rm --memory 4g --cpus 4 --user "$uid:$gid" -e HOME=/tmp -v "$repo/server":/work -w /work "$DEV_IMAGE" \
   swift build -c release 2>&1 | grep -E "error|Build" | tail -5
 
 for _ in $(seq 1 60); do
@@ -41,7 +41,7 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-docker run --rm --name "$DEV" --network "$NET" --cap-add NET_ADMIN --user root \
+docker run --rm --name "$DEV" --network "$NET" --memory "${DEV_MEM:-3g}" --cpus "${DEV_CPUS:-3}" --cap-add NET_ADMIN --user root \
   -e HOME=/tmp \
   -e HARNESS_DB_HOST="$PG" -e HARNESS_DB_PORT=5432 -e HARNESS_DB_USER=collab -e HARNESS_DB_PASSWORD=collab -e HARNESS_DB_NAME=collab \
   -e HARNESS_TOXIPROXY_API="http://$TOXI:8474" -e HARNESS_TOXIPROXY_HOST="$TOXI" -e HARNESS_SELF_HOST="$DEV" \

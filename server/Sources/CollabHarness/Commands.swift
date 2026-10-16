@@ -197,7 +197,7 @@ enum Storm {
             ping = 3
         }
         let name = "storm-\(mix)-\(clients)c-\(profile.name)"
-        return RoundSpec(name: name, plan: plan, clients: clients, clientsPerWorker: mix == "c" ? 5 : 10, durationSec: duration,
+        return RoundSpec(name: name, plan: plan, clients: clients, clientsPerWorker: mix == "c" ? 20 : 100, durationSec: duration,
                          editMinMs: 1000, editMaxMs: 2000, profile: profile, faults: faults, timings: timings, pingSeconds: ping,
                          seed: 4242, slot: 0, volatileFraction: mix == "c" ? 0.3 : 0.0, workDir: "\(out)/work-\(name)", settleSec: 120)
     }

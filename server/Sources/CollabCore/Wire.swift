@@ -195,7 +195,7 @@ extension Op: Codable {
 // MARK: - RejectReason
 
 extension RejectReason: Codable {
-    enum CodingKeys: String, CodingKey { case type, node, edge, item, field, seq, by, message }
+    enum CodingKeys: String, CodingKey { case type, node, edge, item, field, seq, by, byName, message }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -206,6 +206,7 @@ extension RejectReason: Codable {
             try c.encode(x.field, forKey: .field)
             try c.encode(x.seq, forKey: .seq)
             try c.encode(x.by, forKey: .by)
+            if let n = x.byName { try c.encode(n, forKey: .byName) }
         case .nodeDeleted(let n), .nodeNotFound(let n), .nodeExists(let n), .danglingReference(let n):
             try c.encode(n, forKey: .node)
         case .edgeNotFound(let e), .edgeExists(let e), .duplicateEdge(let e):
@@ -223,7 +224,8 @@ extension RejectReason: Codable {
         case "conflict":
             self = .conflict(Conflict(node: try c.decode(String.self, forKey: .node),
                                       field: try c.decodeIfPresent(FieldKey.self, forKey: .field),
-                                      seq: try c.decode(Int.self, forKey: .seq), by: try c.decode(String.self, forKey: .by)))
+                                      seq: try c.decode(Int.self, forKey: .seq), by: try c.decode(String.self, forKey: .by),
+                                      byName: try c.decodeIfPresent(String.self, forKey: .byName)))
         case "nodeDeleted": self = .nodeDeleted(try c.decode(String.self, forKey: .node))
         case "nodeNotFound": self = .nodeNotFound(try c.decode(String.self, forKey: .node))
         case "nodeExists": self = .nodeExists(try c.decode(String.self, forKey: .node))

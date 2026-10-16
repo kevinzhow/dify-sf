@@ -142,7 +142,7 @@ public final class ServerProcess: @unchecked Sendable {
     }
 
     /// Polls /healthz until the server answers (or throws after `timeout`).
-    public func waitHealthy(timeout: Duration = .seconds(30)) async throws {
+    public func waitHealthy(timeout: Duration = .seconds(90)) async throws {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
             if proc?.isRunning != true { throw HarnessError("server process exited during startup (see \(dir)/server.\(generation).log)") }

@@ -195,10 +195,20 @@ struct WireTests {
         let reasons: [RejectReason] = [
             .conflict(Conflict(node: "n", field: .item(["outs"], "i"), seq: 3, by: "c")),
             .conflict(Conflict(node: "n", field: nil, seq: 3, by: "c")),
+            .conflict(Conflict(node: "n", field: .title, seq: 3, by: "c", byName: "Bo")),
             .nodeDeleted("n"), .nodeNotFound("n"), .nodeExists("n"), .edgeNotFound("e"), .edgeExists("e"), .duplicateEdge("e"),
             .danglingReference("n"), .itemNotFound("i"), .itemDeleted("i"), .itemExists("i"), .invalid("why"), .notCommitted, .clientIdInUse,
         ]
         for r in reasons { try roundTrip(r) }
+    }
+
+    @Test func conflictNameIsOptionalOnTheWire() throws {
+        let plain = try WireJSON.encodeString(RejectReason.conflict(Conflict(node: "n", field: nil, seq: 3, by: "c")))
+        #expect(!plain.contains("byName"))
+        let named = try WireJSON.encodeString(RejectReason.conflict(Conflict(node: "n", field: nil, seq: 3, by: "c", byName: "Bo")))
+        #expect(named.contains(#""byName":"Bo""#))
+        // Old payloads (no byName) still decode.
+        #expect(try WireJSON.decode(RejectReason.self, from: plain) == .conflict(Conflict(node: "n", field: nil, seq: 3, by: "c")))
     }
 
     @Test func documentSnapshotRoundTripKeepsStamps() throws {

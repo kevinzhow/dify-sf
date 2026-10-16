@@ -130,13 +130,59 @@ actor DocumentSequencer {
     /// transaction (group commit): one round of row lock + insert + COMMIT for many clients, which is what keeps the
     /// write path flat when commits are slow or many clients are active. Nobody is answered before its transaction committed.
     func submit(_ req: SubmitRequest) async throws -> SubmitResponse {
-        try await withCheckedThrowingContinuation { cont in
+        let response = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<SubmitResponse, Error>) in
             pending.append(Pending(req: req, cont: cont))
             if !draining {
                 draining = true
                 Task { await self.drain() }
             }
         }
+        return await annotated(response)
+    }
+
+    // MARK: - Client display names (protocol 1.3)
+
+    private var names: [ClientID: String] = [:]
+    private var namesRefreshedAt: ContinuousClock.Instant?
+
+    /// Display names of this document's clients (refreshed from the database at most every 2 s unless forced).
+    func clientNames(force: Bool = false) async throws -> [ClientID: String] {
+        if force || namesRefreshedAt == nil || ContinuousClock.now - namesRefreshedAt! > .seconds(2) {
+            do { names = try await store.clientNames(docId) } catch { throw ServerError.unavailable("\(error)") }
+            namesRefreshedAt = ContinuousClock.now
+        }
+        return names
+    }
+
+    func setName(client: ClientID, name: String) async throws {
+        do { try await store.setClientName(docId, client: client, name: name) } catch { throw ServerError.unavailable("\(error)") }
+        names[client] = name
+    }
+
+    /// Adds `byName` to conflict notices whose author registered a name. Never fails the request.
+    private func annotated(_ r: SubmitResponse) async -> SubmitResponse {
+        func author(_ reason: RejectReason) -> ClientID? { if case .conflict(let c) = reason { return c.by }; return nil }
+        var any = false
+        for res in r.results { if case .reject(_, let reason) = res, author(reason) != nil { any = true } }
+        for reason in (r.known?.rejected.values.map { $0 } ?? []) where author(reason) != nil { any = true }
+        guard any else { return r }
+        let table = (try? await clientNames()) ?? names
+        func named(_ reason: RejectReason) -> RejectReason {
+            guard case .conflict(var c) = reason, let n = table[c.by] else { return reason }
+            c.byName = n
+            return .conflict(c)
+        }
+        var out = r
+        out.results = r.results.map { res in
+            if case .reject(let cs, let reason) = res { return .reject(cseq: cs, reason: named(reason)) }
+            return res
+        }
+        if let k = r.known {
+            var kk = k
+            kk.rejected = k.rejected.mapValues(named)
+            out.known = kk
+        }
+        return out
     }
 
     private func drain() async {

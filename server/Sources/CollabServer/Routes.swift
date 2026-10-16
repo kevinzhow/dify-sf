@@ -24,7 +24,9 @@ struct Routes: Sendable {
         }
         r.get("v1", "docs", ":doc") { req in await handle(req) { try await docInfo(try docId(req)) } }
         r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(try docId(req)) } }
-        r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(try docId(req)) } }
+        r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(req, try docId(req)) } }
+        r.get("v1", "docs", ":doc", "clients") { req in await handle(req) { try await clientDirectory(try docId(req)) } }
+        r.put("v1", "docs", ":doc", "clients", ":client") { req in await handle(req) { try await nameClient(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "ops") { req in await handle(req) { try await submit(req, doc: try docId(req)) } }
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
     }
@@ -134,13 +136,52 @@ struct Routes: Sendable {
         return try json(Info(id: id, head: head))
     }
 
-    /// Hands out a fresh, unique client id (a UUID): the safe way to avoid two tabs/processes sharing one cseq stream.
-    private func issueClientId(_ doc: String) async throws -> Response {
+    private struct NameBody: Decodable { var name: String? }
+
+    private func displayName(_ req: Request, required: Bool) async throws -> String? {
+        let data = try await body(req)
+        let name = data.isEmpty ? nil : (try? WireJSON.decode(NameBody.self, from: data))?.name
+        if let n = name {
+            guard !n.isEmpty, n.utf8.count <= 64, !n.unicodeScalars.contains(where: { $0.value < 32 || $0.value == 127 }) else {
+                throw ServerError.badRequest("name must be 1-64 bytes without control characters")
+            }
+        } else if required { throw ServerError.badRequest("missing name") }
+        return name
+    }
+
+    private func requireDoc(_ doc: String) async throws {
         let head: Int?
         do { head = try await store.documentHead(doc) } catch { throw ServerError.unavailable("\(error)") }
         guard head != nil else { throw ServerError.notFound }
-        struct Issued: Encodable { var client: String }
-        return try json(Issued(client: "s-" + UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "")), status: .created)
+    }
+
+    /// Hands out a fresh, unique client id (a UUID): the safe way to avoid two tabs/processes sharing one cseq stream.
+    /// Optional body `{"name": "Bo"}` registers a display name for it (protocol 1.3).
+    private func issueClientId(_ req: Request, _ doc: String) async throws -> Response {
+        let name = try await displayName(req, required: false)
+        try await requireDoc(doc)
+        let id = "s-" + UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "")
+        if let name { try await registry.sequencer(doc).setName(client: id, name: name) }
+        struct Issued: Encodable { var client: String; var name: String? }
+        return try json(Issued(client: id, name: name), status: .created)
+    }
+
+    /// `PUT /clients/{client}` `{"name": ...}`: names (or renames) a client id the client chose itself.
+    private func nameClient(_ req: Request, _ doc: String) async throws -> Response {
+        guard let client = req.parameters.get("client"), Self.validClientId(client) else { throw ServerError.badRequest("invalid client id") }
+        let name = try await displayName(req, required: true)!
+        try await requireDoc(doc)
+        try await registry.sequencer(doc).setName(client: client, name: name)
+        struct Named: Encodable { var client: String; var name: String }
+        return try json(Named(client: client, name: name))
+    }
+
+    /// `GET /clients`: every registered display name of the document.
+    private func clientDirectory(_ doc: String) async throws -> Response {
+        try await requireDoc(doc)
+        let names = try await registry.sequencer(doc).clientNames(force: true)
+        struct Directory: Encodable { var clients: [String: String] }
+        return try json(Directory(clients: names))
     }
 
     private func snapshot(_ id: String) async throws -> Response {

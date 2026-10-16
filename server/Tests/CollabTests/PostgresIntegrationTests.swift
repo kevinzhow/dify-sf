@@ -103,6 +103,20 @@ struct PostgresIntegrationTests {
         }
     }
 
+    @Test func conflictNoticesCarryTheAuthorsDisplayName() async throws {
+        try await withStore { store, logger in
+            let doc = try await freshDoc(store)
+            let seqr = DocumentSequencer(docId: doc, store: store, config: ServerConfig.defaults, logger: logger)
+            try await seqr.setName(client: "alice", name: "Alice")
+            _ = try await seqr.submit(req("alice", [(1, 0, prompt("a", "A"))]))
+            let r = try await seqr.submit(req("bob", [(1, 0, prompt("a", "B"))]))
+            guard case .reject(_, .conflict(let c)) = r.results[0] else { Issue.record("expected a conflict"); return }
+            #expect(c.by == "alice" && c.byName == "Alice")
+            try await seqr.setName(client: "bob", name: "Bob")
+            #expect(try await seqr.clientNames(force: true) == ["alice": "Alice", "bob": "Bob"])
+        }
+    }
+
     @Test func staleRevisionWritesNothing() async throws {
         try await withStore { store, _ in
             let doc = try await freshDoc(store)
