@@ -33,9 +33,14 @@ public struct PostgresStore: Sendable {
 
     // MARK: - Setup
 
+    /// Idempotent. Serialised with an advisory lock so that several processes starting at once do not race
+    /// inside `CREATE TABLE IF NOT EXISTS` (which is not safe against concurrent creators).
     public func migrate() async throws {
-        for sql in Schema.statements {
-            _ = try await client.query(PostgresQuery(unsafeSQL: sql), logger: logger)
+        try await client.withTransaction(logger: logger) { tx in
+            _ = try await tx.query("SELECT pg_advisory_xact_lock(7318004)", logger: logger)
+            for sql in Schema.statements {
+                _ = try await tx.query(PostgresQuery(unsafeSQL: sql), logger: logger)
+            }
         }
     }
 

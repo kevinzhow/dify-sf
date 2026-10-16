@@ -7,6 +7,7 @@ let package = Package(
         .library(name: "CollabCore", targets: ["CollabCore"]),
         .executable(name: "collab-server", targets: ["collab-server"]),
         .executable(name: "collab-sim", targets: ["collab-sim"]),
+        .executable(name: "collab-bench", targets: ["collab-bench"]),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", exact: "5.0.0-beta.4"),
@@ -37,6 +38,18 @@ let package = Package(
             .product(name: "Configuration", package: "swift-configuration"),
         ]),
         .executableTarget(name: "collab-server", dependencies: ["CollabServer"]),
-        .testTarget(name: "CollabTests", dependencies: ["CollabCore", "CollabInvariants", "CollabSim"]),
+        // Real HTTP/SSE driver around the pure client state machine (used by the chaos/storm harness).
+        .target(name: "CollabClientKit", dependencies: [
+            "CollabCore",
+            .product(name: "AsyncHTTPClient", package: "async-http-client"),
+        ]),
+        // Chaos + storm harness: real processes, fault proxy, ground-truth ledgers, invariant checks.
+        .target(name: "CollabHarness", dependencies: [
+            "CollabCore", "CollabInvariants", "CollabClientKit", "CollabStore",
+            .product(name: "AsyncHTTPClient", package: "async-http-client"),
+            .product(name: "PostgresNIO", package: "postgres-nio"),
+        ]),
+        .executableTarget(name: "collab-bench", dependencies: ["CollabHarness"]),
+        .testTarget(name: "CollabTests", dependencies: ["CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit"]),
     ]
 )

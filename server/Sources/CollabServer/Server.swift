@@ -30,8 +30,14 @@ public enum CollabServerMain {
     public static func run() async throws {
         let reader = ConfigReader(providers: [CommandLineArgumentsProvider(), EnvironmentVariablesProvider()])
         let config = ServerConfig(reader: reader)
+        let level = Logger.Level(rawValue: config.logLevel) ?? .info
+        LoggingSystem.bootstrap { label in
+            var handler = StreamLogHandler.standardError(label: label)
+            handler.logLevel = level
+            return handler
+        }
         var logger = Logger(label: "collab-server")
-        logger.logLevel = Logger.Level(rawValue: config.logLevel) ?? .info
+        logger.logLevel = level
 
         var pgConfig = PostgresClient.Configuration(host: config.dbHost, port: config.dbPort, username: config.dbUser,
                                                     password: config.dbPassword, database: config.dbName, tls: .disable)

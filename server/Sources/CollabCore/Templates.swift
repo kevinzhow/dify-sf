@@ -1,4 +1,4 @@
-import CollabCore
+
 
 /// Seed documents for new workflows.
 public enum Templates {
