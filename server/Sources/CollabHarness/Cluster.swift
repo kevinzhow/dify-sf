@@ -70,28 +70,46 @@ public final class ManagedProcess: @unchecked Sendable {
     }
 
     public var pid: Int32 { process.processIdentifier }
-    public var isRunning: Bool { process.isRunning }
+
+    /// Foundation's `Process.isRunning` only turns false once Foundation itself has reaped the child, and on Linux it
+    /// can miss one (chaos runs 25 and 122 of 2026-10-17: a killed worker stayed a zombie, `isRunning` stayed true
+    /// and `waitUntilExit()`, which polls a run loop without sources, spun at 100% CPU for good). So a zombie, or a
+    /// pid that is gone, counts as exited here, and nothing below waits without a deadline.
+    public var isRunning: Bool { process.isRunning && !Self.hasExited(pid) }
+
+    /// True if `/proc` says the process is a zombie or gone. (A zombie's pid cannot be reused until it is reaped.)
+    static func hasExited(_ pid: Int32) -> Bool {
+        #if os(Linux)
+        guard let stat = try? String(contentsOfFile: "/proc/\(pid)/stat", encoding: .utf8) else { return true }
+        guard let close = stat.lastIndex(of: ")"),
+              let state = stat[stat.index(after: close)...].split(separator: " ").first else { return false }
+        return state == "Z" || state == "X"
+        #else
+        return false
+        #endif
+    }
 
     public func send(_ line: String) {
         try? stdinPipe?.fileHandleForWriting.write(contentsOf: Data((line + "\n").utf8))
     }
 
     public func kill9() {
-        if process.isRunning { kill(process.processIdentifier, SIGKILL) }
-        process.waitUntilExit()
+        if isRunning { kill(pid, SIGKILL) }
+        let deadline = ContinuousClock.now + .seconds(10)
+        while isRunning, ContinuousClock.now < deadline { usleep(10_000) }
     }
 
     public func terminate() {
-        if process.isRunning { kill(process.processIdentifier, SIGTERM) }
+        if isRunning { kill(pid, SIGTERM) }
     }
 
-    public func pause() { if process.isRunning { kill(process.processIdentifier, SIGSTOP) } }
-    public func resume() { if process.isRunning { kill(process.processIdentifier, SIGCONT) } }
+    public func pause() { if isRunning { kill(pid, SIGSTOP) } }
+    public func resume() { if isRunning { kill(pid, SIGCONT) } }
 
     public func waitExit(timeout: Duration) async -> Bool {
         let deadline = ContinuousClock.now + timeout
-        while process.isRunning, ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(50)) }
-        return !process.isRunning
+        while isRunning, ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(50)) }
+        return !isRunning
     }
 }
 
@@ -308,8 +326,10 @@ public struct Netem: Sendable {
         p.arguments = args
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
-        try? p.run()
-        p.waitUntilExit()
+        guard (try? p.run()) != nil else { return }
+        // Bounded for the same reason as `ManagedProcess.isRunning`; tc finishes in milliseconds.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while p.isRunning, !ManagedProcess.hasExited(p.processIdentifier), ContinuousClock.now < deadline { usleep(10_000) }
     }
 
     public static func clear(device: String) { tc(["qdisc", "del", "dev", device, "root"]) }
