@@ -3,6 +3,9 @@ description: Pure-Dart client for the dify-sf collaboration protocol (document m
 version: 0.1.0
 publish_to: none
 
+executables:
+  storm:
+
 environment:
   sdk: ^3.13.0
 

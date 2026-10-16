@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../online_events.dart';
 import '../session_factory.dart';
 import 'canvas_view.dart';
 import 'editor_controller.dart';
@@ -41,11 +42,13 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   CollabSession? _session;
   Object? _error;
   var _generation = 0;
+  void Function()? _stopOnlineListener;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _stopOnlineListener = listenForOnline(() => _controller?.reconnectNow());
     unawaited(_open());
   }
 
@@ -107,6 +110,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _stopOnlineListener?.call();
     _generation++;
     _controller?.removeListener(_rebuild);
     _controller?.dispose();

@@ -1,11 +1,11 @@
 {
-    "name": "dify_sf_app",
-    "short_name": "dify_sf_app",
+    "name": "dify-sf",
+    "short_name": "dify-sf",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Collaborative workflow editor",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

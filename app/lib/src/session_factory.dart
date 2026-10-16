@@ -56,7 +56,7 @@ class HttpBackend implements Backend {
     return CollabSession(
       clientId: clientId,
       transport: HttpTransport(baseUrl: baseUrl, docId: docId),
-      store: createPlatformStore(name: '$docId.$clientId', directory: dir),
+      store: createPlatformStore(name: '$docId.$clientId'.replaceAll(':', '_'), directory: dir),
       journaled: journaled,
     );
   }
