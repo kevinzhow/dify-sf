@@ -65,6 +65,7 @@ public final class RoundRunner: @unchecked Sendable {
     let env: HarnessEnv
     let toxi: Toxiproxy?
     var notes: [String] = []
+    var diagStore: PostgresStore?
     var injected: [String: Int] = [:]
     let lock = NSLock()
 
@@ -110,6 +111,7 @@ public final class RoundRunner: @unchecked Sendable {
         let pgTask = Task { await pg.run() }
         defer { pgTask.cancel() }
         let store = PostgresStore(client: pg, logger: logger)
+        diagStore = store
         var migrated = false
         for _ in 0..<50 where !migrated {
             do { try await store.migrate(); migrated = true } catch { try await Task.sleep(for: .milliseconds(200)) }
@@ -223,6 +225,17 @@ public final class RoundRunner: @unchecked Sendable {
         return result
     }
 
+    func diagnose() async -> String {
+        guard let c = diagStore?.client else { return "n/a" }
+        var rows: [String] = []
+        do {
+            for try await r in try await c.query("SELECT pid, state, wait_event_type, wait_event, now() - state_change, left(query, 70) FROM pg_stat_activity WHERE datname = current_database()", logger: Logger(label: "diag")).decode((Int, String?, String?, String?, String?, String?).self) {
+                rows.append("\(r)")
+            }
+        } catch { return "query failed: \(error)" }
+        return rows.joined(separator: " | ")
+    }
+
     // MARK: - server metrics
 
     private func sampleServer(_ server: ServerProcess) async -> ServerMetrics {
@@ -266,7 +279,7 @@ public final class RoundRunner: @unchecked Sendable {
                     server.kill9()
                     self.bump("serverKill")
                     try? await Task.sleep(for: .milliseconds(r.int(200...1500)))
-                    do { try server.start(); try await server.waitHealthy() } catch { self.note("FAIL server restart: \(error)") }
+                    do { try server.start(); try await server.waitHealthy() } catch { self.note("FAIL server restart: \(error)"); self.note("DIAG pg_stat_activity: \(await self.diagnose())") }
                 }
             })
         }

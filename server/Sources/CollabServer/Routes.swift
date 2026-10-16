@@ -24,15 +24,18 @@ struct Routes: Sendable {
         }
         r.get("v1", "docs", ":doc") { req in await handle(req) { try await docInfo(try docId(req)) } }
         r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(try docId(req)) } }
+        r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(try docId(req)) } }
         r.post("v1", "docs", ":doc", "ops") { req in await handle(req) { try await submit(req, doc: try docId(req)) } }
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
     }
 
     // MARK: - Plumbing
 
-    private func handle(_ req: Request, _ body: () async throws -> Response) async -> Response {
+    /// Runs the handler in its own unstructured task: a client that hangs up (timeout, reset, retry) must not
+    /// cancel work that is half-way through the database (a cancelled COMMIT is an uncertain commit).
+    private func handle(_ req: Request, _ body: @escaping @Sendable () async throws -> Response) async -> Response {
         do {
-            return try await body()
+            return try await Task { try await body() }.value
         } catch let e as ServerError {
             switch e {
             case .badRequest(let m): return error(.badRequest, "bad_request", m)
@@ -103,7 +106,7 @@ struct Routes: Sendable {
         do {
             try await store.ping()
         } catch {
-            throw ServerError.unavailable("database: \(error)")
+            throw ServerError.unavailable("database: \(String(reflecting: error))")
         }
         struct Health: Encodable { var status = "ok" }
         return try json(Health())
@@ -129,6 +132,15 @@ struct Routes: Sendable {
         guard let head else { throw ServerError.notFound }
         struct Info: Encodable { var id: String; var head: Int }
         return try json(Info(id: id, head: head))
+    }
+
+    /// Hands out a fresh, unique client id (a UUID): the safe way to avoid two tabs/processes sharing one cseq stream.
+    private func issueClientId(_ doc: String) async throws -> Response {
+        let head: Int?
+        do { head = try await store.documentHead(doc) } catch { throw ServerError.unavailable("\(error)") }
+        guard head != nil else { throw ServerError.notFound }
+        struct Issued: Encodable { var client: String }
+        return try json(Issued(client: "s-" + UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "")), status: .created)
     }
 
     private func snapshot(_ id: String) async throws -> Response {

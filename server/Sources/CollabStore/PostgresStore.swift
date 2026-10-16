@@ -124,15 +124,17 @@ public struct PostgresStore: Sendable {
         guard let range else { return KnownOutcomes() }
         var k = KnownOutcomes()
         let lo = range.lowerBound, hi = range.upperBound
-        for try await (cseq, seq) in try await client.query(
-            "SELECT cseq, seq FROM ops WHERE doc_id = \(id) AND client_id = \(c) AND cseq BETWEEN \(lo) AND \(hi)", logger: logger
-        ).decode((Int, Int).self) {
+        for try await (cseq, seq, fp) in try await client.query(
+            "SELECT cseq, seq, fp FROM ops WHERE doc_id = \(id) AND client_id = \(c) AND cseq BETWEEN \(lo) AND \(hi)", logger: logger
+        ).decode((Int, Int, Int64).self) {
             k.committed[cseq] = seq
+            if fp != 0 { k.fingerprints[cseq] = fp }
         }
-        for try await (cseq, reason) in try await client.query(
-            "SELECT cseq, reason::text FROM rejections WHERE doc_id = \(id) AND client_id = \(c) AND cseq BETWEEN \(lo) AND \(hi)", logger: logger
-        ).decode((Int, String).self) {
+        for try await (cseq, reason, fp) in try await client.query(
+            "SELECT cseq, reason::text, fp FROM rejections WHERE doc_id = \(id) AND client_id = \(c) AND cseq BETWEEN \(lo) AND \(hi)", logger: logger
+        ).decode((Int, String, Int64).self) {
             k.rejected[cseq] = try WireJSON.decode(RejectReason.self, from: reason)
+            if fp != 0 { k.fingerprints[cseq] = fp }
         }
         return k
     }
@@ -162,11 +164,13 @@ public struct PostgresStore: Sendable {
         let cseqs = batch.entries.map(\.cseq)
         let bases = batch.entries.map(\.base)
         let ops = try batch.entries.map { try WireJSON.encodeString($0.op) }
+        let fps = batch.entries.map { batch.fingerprints[$0.cseq] ?? 0 }
+        let rejectedFps = batch.rejections.keys.sorted().map { batch.fingerprints[$0] ?? 0 }
         let rejected = batch.rejections.keys.sorted()
         let reasons = try rejected.map { try WireJSON.encodeString(batch.rejections[$0]!) }
 
         do {
-            return try await commitTransaction(id, expectedRev, c, batch, newHead, snapshot, snapshotJSON, seqs, cseqs, bases, ops, rejected, reasons)
+            return try await commitTransaction(id, expectedRev, c, batch, newHead, snapshot, snapshotJSON, seqs, cseqs, bases, ops, fps, rejected, reasons, rejectedFps)
         } catch let e as PostgresTransactionError {
             if e.commitError != nil { throw StoreError.uncertain("\(e.commitError!)") }
             if let closure = e.closureError as? StoreError { throw closure }
@@ -176,7 +180,7 @@ public struct PostgresStore: Sendable {
 
     private func commitTransaction(_ id: String, _ expectedRev: Int, _ c: ClientID, _ batch: SequencerBatch, _ newHead: Int,
                                    _ snapshot: Snapshot?, _ snapshotJSON: String?, _ seqs: [Int], _ cseqs: [Int], _ bases: [Int],
-                                   _ ops: [String], _ rejected: [Int], _ reasons: [String]) async throws -> Int {
+                                   _ ops: [String], _ fps: [Int64], _ rejected: [Int], _ reasons: [String], _ rejectedFps: [Int64]) async throws -> Int {
         let newHigh = batch.newHigh
         return try await client.withTransaction(logger: logger) { tx in
             var current: Int?
@@ -187,16 +191,16 @@ public struct PostgresStore: Sendable {
 
             if !seqs.isEmpty {
                 _ = try await tx.query("""
-                    INSERT INTO ops (doc_id, seq, client_id, cseq, base, op)
-                    SELECT \(id), u.seq, \(c), u.cseq, u.base, u.op::jsonb
-                    FROM unnest(\(seqs)::bigint[], \(cseqs)::bigint[], \(bases)::bigint[], \(ops)::text[]) AS u(seq, cseq, base, op)
+                    INSERT INTO ops (doc_id, seq, client_id, cseq, base, op, fp)
+                    SELECT \(id), u.seq, \(c), u.cseq, u.base, u.op::jsonb, u.fp
+                    FROM unnest(\(seqs)::bigint[], \(cseqs)::bigint[], \(bases)::bigint[], \(ops)::text[], \(fps)::bigint[]) AS u(seq, cseq, base, op, fp)
                     """, logger: logger)
             }
             if !rejected.isEmpty {
                 _ = try await tx.query("""
-                    INSERT INTO rejections (doc_id, client_id, cseq, reason)
-                    SELECT \(id), \(c), u.cseq, u.reason::jsonb
-                    FROM unnest(\(rejected)::bigint[], \(reasons)::text[]) AS u(cseq, reason)
+                    INSERT INTO rejections (doc_id, client_id, cseq, reason, fp)
+                    SELECT \(id), \(c), u.cseq, u.reason::jsonb, u.fp
+                    FROM unnest(\(rejected)::bigint[], \(reasons)::text[], \(rejectedFps)::bigint[]) AS u(cseq, reason, fp)
                     """, logger: logger)
             }
             if batch.highChanged {

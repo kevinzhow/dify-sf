@@ -7,6 +7,7 @@ struct SimDisk: Sendable {
     var log: [LogEntry] = []
     var highs: [ClientID: Int] = [:]
     var rejections: [ClientID: [Int: RejectReason]] = [:]
+    var fingerprints: [ClientID: [Int: Int64]] = [:]
 
     init(initial: Document) { snapshot = Snapshot(seq: 0, doc: initial) }
 
@@ -15,12 +16,14 @@ struct SimDisk: Sendable {
         var k = KnownOutcomes()
         for e in log where e.client == client && range.contains(e.cseq) { k.committed[e.cseq] = e.seq }
         for (c, r) in rejections[client] ?? [:] where range.contains(c) { k.rejected[c] = r }
+        for (c, f) in fingerprints[client] ?? [:] where range.contains(c) { k.fingerprints[c] = f }
         return k
     }
 
     mutating func commit(_ batch: SequencerBatch, client: ClientID, snapshot snap: Snapshot?) {
         log += batch.entries
         for (c, r) in batch.rejections { rejections[client, default: [:]][c] = r }
+        for (c, f) in batch.fingerprints { fingerprints[client, default: [:]][c] = f }
         if batch.highChanged { highs[client] = batch.newHigh }
         if let snap { snapshot = snap }
     }

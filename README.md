@@ -19,14 +19,14 @@ Docker. Everything builds and runs in containers (Swift 6.4.1, PostgreSQL 15, To
 
 ```sh
 docker build -t dify-sf-dev:local -f docker/Dockerfile.dev docker   # toolchain image (once)
-docker compose up --build                                           # Postgres + server on 127.0.0.1:8080
+docker compose up --build                                           # Postgres + server on 127.0.0.1:8080 (COLLAB_PORT=... to change)
 curl -s -X PUT localhost:8080/v1/docs/demo                          # create a document with the example workflow
 curl -N localhost:8080/v1/docs/demo/events                          # watch the event stream
 ```
 
 Configuration is read with swift-configuration from environment variables or `--collab.*` arguments:
 `COLLAB_HTTP_HOST` / `COLLAB_HTTP_PORT`, `COLLAB_DB_HOST` / `PORT` / `USER` / `PASSWORD` / `NAME`, `COLLAB_DB_POOL_SIZE`,
-`COLLAB_SSE_PING_SECONDS` (10), `COLLAB_MAX_REPLAY` (2000), `COLLAB_SNAPSHOT_EVERY` (200), `COLLAB_LOG_LEVEL`.
+`COLLAB_CORS_ALLOWED_ORIGINS` (default: localhost dev origins), `COLLAB_SSE_PING_SECONDS` (10), `COLLAB_MAX_REPLAY` (2000), `COLLAB_SNAPSHOT_EVERY` (200), `COLLAB_LOG_LEVEL`.
 
 ## Test
 

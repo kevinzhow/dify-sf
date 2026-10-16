@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1
+# dify-sf collaboration protocol, version 1.1
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,15 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.1 (additive; no existing field or behaviour changed for conforming clients):
+  * **CORS** is supported (section 2).
+  * **`base` may be non-monotone**: successive ops of one client may carry decreasing bases (a typing draft keeps the version it
+    started from). This is explicitly legal and the server does not assume otherwise (section 4).
+  * **Outcome semantics** for crashed/volatile clients are spelled out: `rejected` and `lost` both mean "not saved"; which one a
+    client reports is defined in section 9 ("Finishing").
+  * **Client id collisions**: new `POST /v1/docs/{doc}/clients` issues unique client ids, and the server now refuses a retransmit whose
+    content differs from the op first stored under the same `(client, cseq)` with the new reject reason `clientIdInUse`
+    (sections 2, 4, 7, 9). Existing clients are unaffected (a genuine retransmit is byte-identical).
 * 1.0: initial version.
 
 ## 1. Overview
@@ -53,12 +62,24 @@ Transport conventions:
 | PUT | `/v1/docs/{doc}` | Create the document if absent (idempotent). Body optional as above. `201` if created, `200` if it existed: `{"id","head","created":bool}`. |
 | GET | `/v1/docs/{doc}` | Metadata: `200 {"id","head"}`, `404` if unknown. |
 | GET | `/v1/docs/{doc}/snapshot` | Full document at the current head: `200 {"seq":N,"doc":Document}`. For bootstrapping/debugging; the stream also delivers snapshots. |
+| POST | `/v1/docs/{doc}/clients` | Issue a fresh unique client id: `201 {"client":"s-<32 hex>"}`, `404` if the document is unknown. Use one id per client *instance* (section 9). |
 | POST | `/v1/docs/{doc}/ops` | Submit a batch of ops (section 4). |
 | GET | `/v1/docs/{doc}/events` | SSE stream (section 5). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
 node.
+
+### CORS
+
+Browser clients on another origin are supported. The server answers `OPTIONS` preflights itself and adds
+`Access-Control-Allow-Origin: <origin>` (never `*` unless configured so) and `Vary: Origin` to every response for an allowed origin.
+Allowed methods: `GET, POST, PUT, OPTIONS`; allowed request headers: `Content-Type, Accept, Last-Event-ID, Cache-Control`
+(so `fetch`-based SSE with `Last-Event-ID` works; the native `EventSource` cannot send custom headers, use `?lastEventId=`);
+exposed response headers: `Content-Type`; preflight cache `Access-Control-Max-Age: 600`. Allowed origins are configured with
+`COLLAB_CORS_ALLOWED_ORIGINS` (comma separated; entries are exact origins, `scheme://host:*` for any port, or `*`). The default is
+`http://localhost:*,http://127.0.0.1:*,http://[::1]:*` (local development). Requests from other origins get no CORS headers, so the
+browser blocks them. There are no cookies or credentials in this protocol.
 
 ### Error responses
 
@@ -169,8 +190,10 @@ Request:
 
 * `client` + `cseq` is the **idempotency key**. `cseq` starts at 1 for a client id and increases by exactly 1 per op.
   Ops in one request must have strictly increasing `cseq`. At most 100 ops per request.
-* `base` is the server `seq` the client had applied (its `lastSeq`) when the user made the edit. It **never changes on
-  retransmission**; it is what the stale-write rule compares against.
+* `base` is the server `seq` the client had applied (its `lastSeq`) when the user made the edit - or, for an edit that grows out
+  of a longer-lived draft, the version the draft *started* from (older bases make stale writes easier to detect, never harder).
+  It **never changes on retransmission**; it is what the stale-write rule compares against. **Bases need not be monotone**: a
+  client's later op may carry a smaller `base` than an earlier one. The only constraint is `0 <= base <= head`.
 
 Response `200`:
 
@@ -207,6 +230,9 @@ Processing rules (server):
    its `cseq`).
 4. For `cseq > high + 1`: `gap`.
 5. `base` must satisfy `0 <= base <= head`; otherwise `reject invalid`.
+5b. A duplicate (`cseq <= high`) is recognised by the idempotency key *and* a fingerprint of `(base, op)`. If the same
+   `(client, cseq)` arrives with a different op than the one first stored, it is answered `reject clientIdInUse` and nothing is
+   applied: it means two processes are using one client id (see section 9, "Client ids").
 6. The whole request is committed in **one database transaction** (log rows, rejections, `high`). The response is
    sent only after the transaction committed. Retrying after any failure (timeout, 5xx, connection reset) is safe
    and returns the original outcome.
@@ -345,6 +371,7 @@ into `$broken` markers and removes its edges, identically on every replica. New 
 | `itemExists` | `item` | Item id already used (even if removed). |
 | `invalid` | `message` | Malformed op / bad path / forbidden value (e.g. `$broken`, reserved key, float). |
 | `notCommitted` | none | The cseq was handled (abandoned below a `floor`) but never committed. |
+| `clientIdInUse` | none | This `(client, cseq)` was already used for a *different* op: another process shares your client id. Nothing was applied. Stop using this id (section 9). |
 
 `conflict`, `nodeDeleted`, `danglingReference`, `itemDeleted` are *stale-based*: they will certainly repeat on the server, so a
 client may warn the user as soon as a newer remote commit makes a pending op doomed (and hide it from the local view) before the
@@ -383,14 +410,29 @@ committed. On `snapshot`, replace `confirmed`, set `lastSeq`, finish ops listed 
 a pending op that no longer validates because of a newer remote commit raises an early `conflictDetected` warning (once) and is hidden
 until the server's verdict arrives. On stream error/EOF, silence watchdog, or a hole: reconnect with backoff.
 
-**Finishing.** Report each op's outcome exactly once, in cseq order: `committed(seq)`, `rejected(reason)`, or `lost`. (After a process
-crash the same outcome may be reported again: reporting is at-least-once across crashes.)
+**Finishing.** Report each op's outcome exactly once, in cseq order: `committed(seq)`, `rejected(reason)`, or `lost`.
+`rejected` and `lost` **both mean "not saved"**; the UI should treat them alike (`lost` just cannot offer "re-apply", because the
+content is gone). Which one is reported is deterministic: a client that still has the op's content reports `rejected(reason)` when
+the server says so; a client that lost the content (volatile crash) reports `lost` for everything the server did not commit
+- including ops the server had rejected (it has no content to show with the reason). An op never changes from `committed` to anything
+else, and never from `rejected` to `committed`: the server's durable record is the single source of truth and the same query always
+returns the same answer. After a process crash an outcome may be reported again (at-least-once); a journaled client repeats the same
+outcome, a volatile client may turn an earlier `rejected` into `lost` (still "not saved"). Never treat `lost`/`rejected` as final
+for the *user's intent*: only `committed` means saved.
 
 **Crash recovery.**
 * *Journaled client:* reload `outbox`/`nextCseq` from the journal, open the stream (no state: you get a snapshot with `committed` for your
   `from`), resend the outbox. Idempotency makes duplicates safe; ops the server already committed come back as `ack`.
 * *Volatile client:* persist only `nextCseq` and the oldest unresolved cseq. After a crash send `{"client","floor":nextCseq,"resolveFrom":oldestUnresolved,"ops":[]}`;
   from `known` report committed ops as committed and everything else in the range as `lost`.
+
+**Client ids.** A client id names one cseq stream, so it must be used by exactly one live process at a time. Two browser tabs
+or two app instances must not share an id (they would overwrite each other's counters and acknowledge each other's ops). Recommended:
+call `POST /v1/docs/{doc}/clients` once per client *instance* (tab/process start) and keep the id (and its counters/journal) in
+per-instance storage; or generate a UUID yourself. With a shared store (e.g. IndexedDB), guard the id with a lock (Web Locks API)
+and take a new id if the lock is held. The server detects most violations: if an op arrives with a `(client, cseq)` that is already
+used for a *different* op it answers `reject clientIdInUse` (and applies nothing). On `clientIdInUse` the client must stop using the id:
+obtain a new one, start again at `cseq = 1`, and re-create (re-send as new ops) the user's unsaved edits.
 
 **Never** reuse a `cseq` for a different op, and never reuse a client id after losing its counters (use a new id instead).
 

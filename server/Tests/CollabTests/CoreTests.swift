@@ -184,7 +184,7 @@ struct WireTests {
             .conflict(Conflict(node: "n", field: .item(["outs"], "i"), seq: 3, by: "c")),
             .conflict(Conflict(node: "n", field: nil, seq: 3, by: "c")),
             .nodeDeleted("n"), .nodeNotFound("n"), .nodeExists("n"), .edgeNotFound("e"), .edgeExists("e"), .duplicateEdge("e"),
-            .danglingReference("n"), .itemNotFound("i"), .itemDeleted("i"), .itemExists("i"), .invalid("why"), .notCommitted,
+            .danglingReference("n"), .itemNotFound("i"), .itemDeleted("i"), .itemExists("i"), .invalid("why"), .notCommitted, .clientIdInUse,
         ]
         for r in reasons { try roundTrip(r) }
     }
@@ -240,6 +240,29 @@ struct SequencerTests {
         let b = s.process(req("c", [(1, 0, set("ghost", ["p"], "v")), (2, 0, set("a", ["p"], "ok"))]), clientHigh: 0, known: KnownOutcomes())
         #expect(b.response.results == [.reject(cseq: 1, reason: .nodeNotFound("ghost")), .ack(cseq: 2, seq: 1)])
         #expect(b.rejections[1] == .nodeNotFound("ghost") && b.newHigh == 2)
+    }
+
+    @Test func reusedIdempotencyKeyWithADifferentOpIsRefused() {
+        var s = Sequencer(initial: Document(nodes: [node("a")]))
+        let first = s.process(req("c", [(1, 0, set("a", ["p"], "mine"))]), clientHigh: 0, known: KnownOutcomes())
+        let known = KnownOutcomes(committed: [1: 1], fingerprints: first.fingerprints)
+        // A genuine retransmit (same op, same base) is acknowledged again ...
+        let again = s.process(req("c", [(1, 0, set("a", ["p"], "mine"))]), clientHigh: 1, known: known)
+        #expect(again.response.results == [.ack(cseq: 1, seq: 1)])
+        // ... but another process that also uses client id "c" and its own cseq 1 for a different edit must be told so,
+        // instead of being handed an ack for somebody else's op.
+        let other = s.process(req("c", [(1, 0, set("a", ["p"], "theirs"))]), clientHigh: 1, known: known)
+        #expect(other.response.results == [.reject(cseq: 1, reason: .clientIdInUse)] && other.isEmpty && s.seq == 1)
+    }
+
+    @Test func basesNeedNotBeMonotone() throws {
+        // A client's later op may carry an older base (a typing draft keeps the version it started from).
+        var d = Document(nodes: [node("a")])
+        d.apply(set("a", ["p"], "foreign"), at: stamp(5, "bob"))
+        d.apply(set("a", ["p"], "mine1"), at: stamp(6, "alice"))   // alice saw bob's write (base >= 5) and replaced it
+        try d.validate(set("a", ["p"], "mine2"), base: 2, by: "alice")  // older draft base: only her own write is last
+        d.apply(set("a", ["p"], "carol"), at: stamp(7, "carol"))
+        #expect(throws: RejectReason.self) { try d.validate(set("a", ["p"], "late"), base: 6, by: "alice") }
     }
 
     @Test func gapIsNotProcessed() {

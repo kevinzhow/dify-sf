@@ -119,6 +119,8 @@ public enum RejectReason: Error, Hashable, Sendable {
     case itemDeleted(ItemID)
     case itemExists(ItemID)
     case invalid(String)
+    /// The idempotency key (client, cseq) was already used for a DIFFERENT op: another process is using this client id.
+    case clientIdInUse
     /// Duplicate of a cseq the server handled but never committed (abandoned below a client's `floor`).
     case notCommitted
 
@@ -145,6 +147,7 @@ public enum RejectReason: Error, Hashable, Sendable {
         case .itemDeleted: return "itemDeleted"
         case .itemExists: return "itemExists"
         case .invalid: return "invalid"
+        case .clientIdInUse: return "clientIdInUse"
         case .notCommitted: return "notCommitted"
         }
     }

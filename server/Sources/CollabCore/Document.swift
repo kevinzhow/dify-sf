@@ -64,9 +64,9 @@ public struct Document: Hashable, Sendable {
     /// always wins; the stale writer gets a `.conflict` notice. Writing the value that is already
     /// there is a success (no-op) even on a stale base.
     ///
-    /// Writes by the same client never conflict with themselves: its ops are processed in order and
-    /// each op's base is >= the previous one's, so by induction no foreign write can hide behind the
-    /// client's own last write.
+    /// Writes by the same client never conflict with their own earlier writes. This does NOT assume bases are
+    /// monotone: a register records only its LAST write, and a client's earlier write to it passed this very check
+    /// against everything foreign before it, so whatever it overwrote had already been seen by that client.
     ///
     /// Delete vs. edit: deleting a node conflicts with any content modification of that node by someone
     /// else after `base`, and with any such write to a field that references it (the delete would rewrite

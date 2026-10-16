@@ -297,10 +297,10 @@ public struct World: Sendable {
     // MARK: - User actions (public for scripted scenarios)
 
     @discardableResult
-    public mutating func userEdit(_ i: Int, _ op: Op, sameValue: Bool = false) -> Int? {
+    public mutating func userEdit(_ i: Int, _ op: Op, base requested: Int? = nil, sameValue: Bool = false) -> Int? {
         guard slots[i].client != nil else { return nil }
-        let base = slots[i].client!.lastSeq
-        let r = slots[i].client!.edit(op, now: now)
+        let base = min(max(requested ?? slots[i].client!.lastSeq, 0), slots[i].client!.lastSeq)
+        let r = slots[i].client!.edit(op, base: base, now: now)
         if let cseq = r.cseq {
             let key = OpKey(client: slots[i].id, cseq: cseq)
             rec.issued[key] = Issued(op: op, base: base)
@@ -406,7 +406,15 @@ public struct World: Sendable {
         if rng.chance(cfg.editRate) {
             let n = rng.chance(cfg.burstRate) ? rng.int(2...5) : 1
             if let i = rng.pick(slots.indices.filter { slots[$0].client?.hasState == true }) {
-                for _ in 0..<n { if let (op, same) = genOp(i) { userEdit(i, op, sameValue: same) } }
+                for _ in 0..<n {
+                    if let (op, same) = genOp(i) {
+                        // A typing draft keeps the version it started from: sometimes the base is older than the client's head
+                        // (and then not monotone across this client's ops).
+                        let last = slots[i].client!.lastSeq
+                        let base = rng.chance(0.2) ? max(0, last - rng.int(1...10)) : nil
+                        userEdit(i, op, base: base, sameValue: same)
+                    }
+                }
             }
         }
         if let i = rng.pick(slots.indices.filter { !slots[$0].reapplyQueue.isEmpty && slots[$0].client != nil }) {

@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: collab
       POSTGRES_DB: collab
     ports:
-      - "127.0.0.1:55432:5432"
+      - "127.0.0.1:${COLLAB_PG_PORT:-55432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
       COLLAB_DB_PASSWORD: collab
       COLLAB_DB_NAME: collab
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${COLLAB_PORT:-8080}:8080"
 
 volumes:
   pgdata:

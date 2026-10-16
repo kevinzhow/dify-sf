@@ -1,13 +1,11 @@
-# Production-ish image: release build of collab-server on the pinned Swift toolchain.
+# Release build of collab-server. Build and runtime stages use the same Swift 6.4 / Ubuntu base (same glibc).
 FROM swift:6.4 AS build
 WORKDIR /src
-COPY server/Package.swift server/Package.resolved ./
-COPY server/Vendor ./Vendor
-COPY server/Sources ./Sources
-RUN swift build -c release --product collab-server --static-swift-stdlib
+# The whole package: SwiftPM validates every target directory (incl. Tests) even for a single product.
+COPY server/ ./
+RUN swift build -c release --product collab-server
 
-FROM ubuntu:24.04
-RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates libcurl4 libxml2 tzdata && rm -rf /var/lib/apt/lists/*
+FROM swift:6.4-slim
 COPY --from=build /src/.build/release/collab-server /usr/local/bin/collab-server
 USER nobody
 EXPOSE 8080

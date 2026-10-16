@@ -124,9 +124,17 @@ public enum Invariants {
                 for t in touches[e.seq - 1] {
                     for u in touches[later.seq - 1] where u.node == t.node {
                         let hit = t.field == nil || (u.field != nil && u.field!.overlaps(t.field!))
-                        if hit {
-                            v.append("I2: seq \(e.seq) (\(e.client), base \(e.base)) overwrote unseen seq \(later.seq) (\(later.client)) on \(t.node)")
+                        guard hit else { continue }
+                        // A register keeps only its last write. If the writer itself wrote an overlapping register after the
+                        // foreign write (its own op passed the check against everything before it), the foreign value
+                        // had already been seen and deliberately replaced: bases need not be monotone.
+                        if let tf = t.field {
+                            let shadowed = log[later.seq..<(e.seq - 1)].enumerated().contains { (i, mine) in
+                                mine.client == e.client && touches[later.seq + i].contains { $0.node == t.node && $0.field?.overlaps(tf) == true }
+                            }
+                            if shadowed { continue }
                         }
+                        v.append("I2: seq \(e.seq) (\(e.client), base \(e.base)) overwrote unseen seq \(later.seq) (\(later.client)) on \(t.node)")
                     }
                 }
             }

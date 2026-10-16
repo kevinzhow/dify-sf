@@ -50,15 +50,16 @@ public enum CollabServerMain {
         let app = try Application(.production,
                                   configuration: ServerConfiguration(address: .hostname(config.httpHost, port: config.httpPort)),
                                   configReader: reader.scoped(to: "collab.http"))
+        app.middleware.use(CORSPolicy(allowedOrigins: config.corsAllowedOrigins), at: .beginning)
         Routes(registry: registry, store: store, config: config, logger: logger).register(on: app)
 
         let group = ServiceGroup(
             configuration: .init(
                 services: [
-                    .init(service: pg),
-                    .init(service: Migrator(store: store, logger: logger)),
-                    .init(service: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds)),
-                    .init(service: app),
+                    .init(service: Named(name: "postgres", base: pg, logger: logger)),
+                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger), logger: logger)),
+                    .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
+                    .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
                 gracefulShutdownSignals: [.sigterm, .sigint],
                 logger: logger))
@@ -87,5 +88,22 @@ struct Migrator: Service {
         }
         // Stay alive until shutdown: a finished service would not stop the group, but keep the lifecycle simple.
         try await gracefulShutdown()
+    }
+}
+
+/// Logs when a service of the group stops (and why): a service that ends early takes its neighbours down with it.
+struct Named<S: Service>: Service {
+    let name: String
+    let base: S
+    let logger: Logger
+
+    func run() async throws {
+        do {
+            try await base.run()
+            logger.warning("service \(name) finished")
+        } catch {
+            logger.warning("service \(name) failed: \(String(reflecting: error))")
+            throw error
+        }
     }
 }

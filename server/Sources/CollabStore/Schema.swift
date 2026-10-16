@@ -35,6 +35,7 @@ public enum Schema {
             cseq         bigint NOT NULL,
             base         bigint NOT NULL,
             op           jsonb  NOT NULL,
+            fp           bigint NOT NULL DEFAULT 0,
             committed_at timestamptz NOT NULL DEFAULT now(),
             PRIMARY KEY (doc_id, seq),
             UNIQUE (doc_id, client_id, cseq)
@@ -46,6 +47,7 @@ public enum Schema {
             client_id text   NOT NULL,
             cseq      bigint NOT NULL,
             reason    jsonb  NOT NULL,
+            fp        bigint NOT NULL DEFAULT 0,
             PRIMARY KEY (doc_id, client_id, cseq)
         )
         """,
@@ -57,5 +59,8 @@ public enum Schema {
             PRIMARY KEY (doc_id, client_id)
         )
         """,
+        // Databases created before the idempotency-key fingerprint existed.
+        "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
+        "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
     ]
 }

@@ -1,4 +1,6 @@
 .build
 **/.build
 .git
-bench/storm/results
+bench
+server/.build
+server/.swiftpm

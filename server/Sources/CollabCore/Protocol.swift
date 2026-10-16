@@ -73,9 +73,25 @@ public enum OpResult: Hashable, Sendable {
 public struct KnownOutcomes: Hashable, Sendable {
     public var committed: [Int: Int] = [:]
     public var rejected: [Int: RejectReason] = [:]
-    public init(committed: [Int: Int] = [:], rejected: [Int: RejectReason] = [:]) {
+    /// Server-internal (never on the wire): fingerprint of the op each handled cseq was first used for. A retransmit
+    /// with a different fingerprint means two processes share one client id.
+    public var fingerprints: [Int: Int64] = [:]
+    public init(committed: [Int: Int] = [:], rejected: [Int: RejectReason] = [:], fingerprints: [Int: Int64] = [:]) {
         self.committed = committed
         self.rejected = rejected
+        self.fingerprints = fingerprints
+    }
+}
+
+extension IncomingOp {
+    /// Stable 64-bit fingerprint of (base, op) used to recognise a genuine retransmission (FNV-1a over the canonical JSON).
+    /// Never 0 (0 means "unknown" in storage).
+    public var fingerprint: Int64 {
+        let text = op.flatMap { try? WireJSON.encodeString($0) } ?? ""
+        var h: UInt64 = 0xcbf2_9ce4_8422_2325
+        for b in ("\(base)|" + text + (decodeError ?? "")).utf8 { h = (h ^ UInt64(b)) &* 0x100_0000_01b3 }
+        let v = Int64(bitPattern: h >> 1)
+        return v == 0 ? 1 : v
     }
 }
 

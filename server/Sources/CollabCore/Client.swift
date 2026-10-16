@@ -168,20 +168,25 @@ public struct Client: Sendable {
     // MARK: - User edits
 
     /// Optimistically applies a local edit and queues it. Returns the cseq (nil if refused locally).
-    public mutating func edit(_ op: Op, now: Int) -> EditResult {
+    ///
+    /// `base` defaults to the client's `lastSeq`. A UI that keeps a draft open for a while (typing into a prompt field)
+    /// should pass the version the draft STARTED from, so that anything written in the meantime is detected as a
+    /// conflict. Bases need not be monotone across successive ops of one client.
+    public mutating func edit(_ op: Op, base requested: Int? = nil, now: Int) -> EditResult {
         guard hasState else {
             events.append(.localInvalid(op: op, reason: .invalid("not synced yet")))
             return EditResult(cseq: nil, requests: [])
         }
+        let base = min(max(requested ?? lastSeq, 0), lastSeq)
         do {
-            try view.validate(op, base: lastSeq, by: id)
+            try view.validate(op, base: base, by: id)
         } catch {
             events.append(.localInvalid(op: op, reason: error))
             return EditResult(cseq: nil, requests: [])
         }
         let cseq = nextCseq
         nextCseq += 1
-        outbox.append(PendingOp(cseq: cseq, base: lastSeq, op: op))
+        outbox.append(PendingOp(cseq: cseq, base: base, op: op))
         view.apply(op, at: localStamp, defects: defects)
         return EditResult(cseq: cseq, requests: flushIfIdle(now: now))
     }

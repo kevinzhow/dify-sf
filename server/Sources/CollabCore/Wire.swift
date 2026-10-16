@@ -213,7 +213,7 @@ extension RejectReason: Codable {
         case .itemNotFound(let i), .itemDeleted(let i), .itemExists(let i):
             try c.encode(i, forKey: .item)
         case .invalid(let m): try c.encode(m, forKey: .message)
-        case .notCommitted: break
+        case .notCommitted, .clientIdInUse: break
         }
     }
 
@@ -236,6 +236,7 @@ extension RejectReason: Codable {
         case "itemExists": self = .itemExists(try c.decode(String.self, forKey: .item))
         case "invalid": self = .invalid(try c.decode(String.self, forKey: .message))
         case "notCommitted": self = .notCommitted
+        case "clientIdInUse": self = .clientIdInUse
         case let other: throw bad(.init(codingPath: c.codingPath, debugDescription: "unknown reject type \(other)"))
         }
     }

@@ -1,4 +1,5 @@
 import Configuration
+import Foundation
 
 /// Runtime configuration, read through swift-configuration from environment variables and command-line
 /// arguments (`--collab.http.port 8080` or `COLLAB_HTTP_PORT=8080`).
@@ -20,6 +21,8 @@ public struct ServerConfig: Sendable {
     /// Fault injection for tests: extra delay (milliseconds) before every commit. 0 in production.
     public var testCommitDelayMillis: Int
     public var logLevel: String
+    /// Browser origins allowed to call the API (CORS). Entries: exact origin, `scheme://host:*` (any port), or `*`.
+    public var corsAllowedOrigins: [String]
     /// TEST ONLY: deliberately break the server so that the harness can prove it notices
     /// (`ackBeforeCommit`, `skipStaleCheck`). Empty in every real deployment.
     public var testDefect: String
@@ -38,6 +41,8 @@ public struct ServerConfig: Sendable {
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
         testCommitDelayMillis = reader.int(forKey: "collab.test.commitDelayMillis", default: 0)
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
+        corsAllowedOrigins = reader.string(forKey: "collab.cors.allowedOrigins", default: "http://localhost:*,http://127.0.0.1:*,http://[::1]:*")
+            .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         testDefect = reader.string(forKey: "collab.test.defect", default: "")
     }
 }

@@ -15,6 +15,8 @@ public struct SequencerBatch: Sendable {
     public var entries: [LogEntry]
     /// New rejections to remember durably (so a retransmit gets the original reason).
     public var rejections: [Int: RejectReason]
+    /// Fingerprint of every op handled as new in this batch (cseq -> fp), for durable storage.
+    public var fingerprints: [Int: Int64]
     public var newHigh: Int
     public var highChanged: Bool
     /// True when there is nothing to persist (pure duplicates / gaps / empty request).
@@ -80,12 +82,19 @@ public struct Sequencer: Sendable {
         var results: [OpResult] = []
         var entries: [LogEntry] = []
         var rejections: [Int: RejectReason] = [:]
+        var fingerprints: [Int: Int64] = [:]
         var merged = known
 
         for inc in req.ops {
             let cseq = inc.cseq
             if cseq <= high && !defects.contains(.noDedup) {
                 // Retransmit of something already handled: answer from durable facts, never apply twice.
+                if let fp = merged.fingerprints[cseq], fp != inc.fingerprint {
+                    // The same idempotency key now carries a different op: a second process is using this client id.
+                    // The new op is NOT applied (and the original outcome is untouched).
+                    results.append(.reject(cseq: cseq, reason: .clientIdInUse))
+                    continue
+                }
                 if let s = merged.committed[cseq] {
                     results.append(.ack(cseq: cseq, seq: s))
                 } else {
@@ -98,8 +107,11 @@ public struct Sequencer: Sendable {
                 continue
             }
             // A new op, in order. Whatever happens, it advances the client's cseq.
+            fingerprints[cseq] = inc.fingerprint
+            merged.fingerprints[cseq] = inc.fingerprint
             do throws(RejectReason) {
                 guard let op = inc.op else { throw RejectReason.invalid(inc.decodeError ?? "malformed op") }
+                // `base` need not be monotone across a client's ops (a typing draft keeps the version it started from).
                 guard inc.base >= 0, inc.base <= seq else { throw RejectReason.invalid("base \(inc.base) is outside 0...\(seq)") }
                 try doc.validate(op, base: inc.base, by: req.client,
                                  checkConflicts: !defects.contains(.skipStaleCheck), defects: defects)
@@ -125,7 +137,7 @@ public struct Sequencer: Sendable {
                                      rejected: merged.rejected.filter { $0.key >= from && $0.key <= high })
         }
         return SequencerBatch(response: SubmitResponse(head: seq, high: high, results: results, known: knownOut),
-                              entries: entries, rejections: rejections, newHigh: high, highChanged: highChanged)
+                              entries: entries, rejections: rejections, fingerprints: fingerprints, newHigh: high, highChanged: highChanged)
     }
 
     /// True when a snapshot should be written because `newSeq` crossed a multiple of `every` after `oldSeq`.
