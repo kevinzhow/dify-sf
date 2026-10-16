@@ -3,3 +3,4 @@ library;
 
 export 'src/testing/fake_server.dart';
 export 'src/testing/fake_transport.dart';
+export 'src/testing/random_edits.dart';

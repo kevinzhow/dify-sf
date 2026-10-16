@@ -103,11 +103,14 @@ final class PendingOpInfo {
 }
 
 final class EditResult {
-  const EditResult(this.cseq, this.requests);
+  const EditResult(this.cseq, this.requests, [this.refusal]);
 
   /// null if the edit was refused locally (a [LocalInvalid] event was queued).
   final int? cseq;
   final List<ClientRequest> requests;
+
+  /// Why the edit was refused locally (set iff [cseq] is null).
+  final RejectReason? refusal;
 }
 
 /// Optimistic client state machine (docs/protocol.md section 9).
@@ -238,13 +241,14 @@ class ClientMachine {
   /// Optimistically applies a local edit and queues it.
   EditResult edit(Op op, int now) {
     if (!hasState) {
-      _events.add(LocalInvalid(op: op, reason: const Invalid('not synced yet')));
-      return const EditResult(null, []);
+      const reason = Invalid('not synced yet');
+      _events.add(LocalInvalid(op: op, reason: reason));
+      return const EditResult(null, [], reason);
     }
     final bad = _view.validate(op, base: lastSeq, client: id);
     if (bad != null) {
       _events.add(LocalInvalid(op: op, reason: bad));
-      return const EditResult(null, []);
+      return EditResult(null, const [], bad);
     }
     final cseq = nextCseq++;
     _outbox.add(_Pending(cseq, lastSeq, op));

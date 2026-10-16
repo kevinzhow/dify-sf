@@ -40,7 +40,9 @@ class MemoryStore implements DurableStore {
     final epoch = _epoch;
     final lat = latency?.call();
     if (lat != null) await Future<void>.delayed(lat);
-    if (epoch != _epoch && !_landInFlight) return; // the process died before the bytes reached the disk
+    if (epoch != _epoch && !_landInFlight) {
+      throw StateError('process died before the write reached the disk'); // nobody is left to see this
+    }
     _saved = copy;
     writes++;
   }

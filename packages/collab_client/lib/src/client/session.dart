@@ -46,10 +46,13 @@ final class SessionStatus {
 
 /// Returned by [CollabSession.edit].
 final class EditTicket {
-  const EditTicket({required this.cseq, required this.persisted});
+  const EditTicket({required this.cseq, required this.persisted, this.refusal});
 
   /// null if the edit was refused locally (a [LocalInvalid] event was emitted).
   final int? cseq;
+
+  /// Why the edit was refused locally (set iff [cseq] is null).
+  final RejectReason? refusal;
 
   /// Completes when the op is in the write-ahead journal (and may therefore be sent).
   final Future<void> persisted;
@@ -87,7 +90,7 @@ class CollabSession {
   final Random _random;
   final int Function() _clock;
 
-  late ClientMachine _machine;
+  late ClientMachine _machine = ClientMachine(id: clientId, journaled: journaled, config: config, random: _random);
   Timer? _ticker;
   StreamSubscription<StreamEvent>? _streamSub;
   int _postSeq = 0;
@@ -168,7 +171,7 @@ class CollabSession {
     _afterMachine();
     final persisted = _persistedFuture();
     _execute(r.requests);
-    return EditTicket(cseq: r.cseq, persisted: persisted);
+    return EditTicket(cseq: r.cseq, persisted: persisted, refusal: r.refusal);
   }
 
   /// The OS says connectivity is back: reconnect immediately and resend.

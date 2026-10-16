@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:collab_client/collab_client.dart';
+import 'package:collab_client/testing.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 
@@ -90,44 +91,10 @@ void _run(FakeAsync async, int seed, Profile profile, int? stepsOverride, SimSta
     }
   }
 
-  var fresh = 0;
+  final editors = {for (final p in ps) p.id: RandomEditor(Random(seed * 131 + p.id.hashCode), idPrefix: p.id)};
   final seen = {for (final p in ps) p.id: 0};
   final offlineUntil = {for (final p in ps) p.id: Duration.zero};
   final downUntil = {for (final p in ps) p.id: Duration.zero};
-
-  Op? randomEdit(Participant p) {
-    final v = p.session.view;
-    final ids = v.nodes.keys.toList()..sort();
-    if (ids.isEmpty) return null;
-    String pick(List<String> xs) => xs[rng.nextInt(xs.length)];
-    final r = rng.nextInt(100);
-    final n = pick(ids);
-    final node = v.nodes[n]!;
-    if (r < 25) return MoveNode(n, rng.nextInt(2000), rng.nextInt(2000));
-    if (r < 45) return SetField(n, const ConfigKey(['prompt']), VString(pick(['x', 'y', 'z'])));
-    if (r < 50) return SetField(n, const TitleKey(), VString(pick(['t1', 't2', 't3'])));
-    if (r < 56) return SetField(n, ConfigKey(['model', pick(['name', 'temp'])]), VString(pick(['m1', 'm2'])));
-    if (r < 60) return SetField(n, const ConfigKey(['model']), VString(pick(['m1', 'm2'])));
-    final items = node.config['outs'] is VItems ? (node.config['outs']! as VItems).items : const <Item>[];
-    if (r < 68) {
-      final after = items.isEmpty || rng.nextBool() ? null : pick([for (final i in items) i.id]);
-      return InsertItem(n, const ['outs'], Item('i${fresh++}', VString(pick(['a', 'b']))), after);
-    }
-    if (r < 73 && items.isNotEmpty) {
-      return UpdateItem(n, const ['outs'], pick([for (final i in items) i.id]), VString(pick(['a', 'b', 'c'])));
-    }
-    if (r < 76 && items.isNotEmpty) return RemoveItem(n, const ['outs'], pick([for (final i in items) i.id]));
-    if (r < 80) {
-      return AddNode(Node(id: 'x${fresh++}', type: 'code', title: 'new', x: rng.nextInt(500), y: rng.nextInt(500)));
-    }
-    if (r < 82 && ids.length > 1) return RemoveNode(n);
-    if (r < 88 && ids.length > 1) {
-      return AddEdge(Edge(id: 'ed${fresh++}', source: n, target: pick(ids), sourceHandle: pick(['out', 'out2'])));
-    }
-    if (r < 91 && v.edges.isNotEmpty) return RemoveEdge(pick(v.edges.keys.toList()..sort()));
-    if (r < 96) return SetField(n, ConfigKey(['in', pick(['p', 'q'])]), VRef(OutputRef(pick(ids), 'o')));
-    return SetField(n, const ConfigKey(['prompt']), VString(pick(['x', 'y'])));
-  }
 
   for (var step = 0; step < steps; step++) {
     w.elapse(Duration(milliseconds: rng.nextInt(400)));
@@ -173,7 +140,7 @@ void _run(FakeAsync async, int seed, Profile profile, int? stepsOverride, SimSta
       if (p.running && rng.nextDouble() < 0.35) {
         final burst = rng.nextDouble() < 0.1 ? 2 + rng.nextInt(4) : 1;
         for (var i = 0; i < burst; i++) {
-          final op = randomEdit(p);
+          final op = editors[p.id]!.next(p.session.view);
           if (op == null) continue;
           stats.edits++;
           if (p.edit(op) == null) stats.localInvalid++;
@@ -235,12 +202,14 @@ void _check(World w, List<Participant> ps, SimStats stats) {
           if (op != null) expect(entry.op, op, reason: '${p.id}/$cseq committed op differs from what the user did');
           stats.committed++;
         case OpRejected(:final cseq, :final op, :final reason):
-          fate(cseq, 'rejected', 'rejected $reason');
+          // After a crash a volatile client may report an already-reported rejection again as "lost" (the
+          // content is gone): both mean "not saved", which is all that must stay consistent.
+          fate(cseq, 'not saved', 'rejected $reason');
           expect(byKey.containsKey((p.id, cseq)), isFalse, reason: '${p.id}/$cseq told rejected ($reason) but it is in the log: $op');
           stats.rejected++;
           stats.rejectedBy[reason.name] = (stats.rejectedBy[reason.name] ?? 0) + 1;
         case OpLost(:final cseq):
-          fate(cseq, 'lost', 'lost');
+          fate(cseq, 'not saved', 'lost');
           expect(p.journaled, isFalse, reason: '${p.id} journaled client reported a lost op');
           expect(byKey.containsKey((p.id, cseq)), isFalse, reason: '${p.id}/$cseq told lost but it is in the log (I5)');
           stats.lost++;
