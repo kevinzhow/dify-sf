@@ -39,6 +39,18 @@ struct DocumentRuleTests {
         #expect(throws: RejectReason.self) { try d.validate(.setField("a", .title, .string("U")), base: 0, by: "alice") }
     }
 
+    @Test func equalValueWriteLeavesStampAuthorAndTouchesUntouched() throws {
+        // The 3-step trace of the formal model: c2 writes v1 (seq 1); c1's equal-value write (base 0) is accepted but must not
+        // become the register's last writer, otherwise c1's next stale write (v2, base 0) would be exempt and overwrite c2.
+        var d = Document(nodes: [node("a")])
+        d.apply(set("a", ["f1"], "v1"), at: stamp(1, "c2"))
+        try d.validate(set("a", ["f1"], "v1"), base: 0, by: "c1")
+        let before = d
+        d.apply(set("a", ["f1"], "v1"), at: stamp(2, "c1"))
+        #expect(d == before)  // stamps, last writer and per-client touches are all unchanged
+        #expect(throws: RejectReason.self) { try d.validate(set("a", ["f1"], "v2"), base: 0, by: "c1") }
+    }
+
     @Test func overlappingPathsConflictSiblingsDoNot() throws {
         var d = Document(nodes: [node("a")])
         d.apply(set("a", ["model", "name"], "x"), at: stamp(2, "bob"))

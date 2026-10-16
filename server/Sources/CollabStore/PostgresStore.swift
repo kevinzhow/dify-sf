@@ -188,26 +188,47 @@ public struct PostgresStore: Sendable {
 
     // MARK: - The commit
 
-    /// Atomically persists one processed batch. Throws `StoreError.revisionMismatch` (without writing) if the
-    /// document row's revision differs from `expectedRev`. Returns the new revision.
-    ///
-    /// Any other thrown error means the outcome is UNKNOWN to the caller (the transaction may or may not have
-    /// committed); the caller must re-read durable state before doing anything else.
+    /// One client's processed request inside a group commit.
+    public struct CommitGroup: Sendable {
+        public var client: ClientID
+        public var batch: SequencerBatch
+        public init(client: ClientID, batch: SequencerBatch) {
+            self.client = client
+            self.batch = batch
+        }
+    }
+
+    /// Convenience for a single request.
     public func commit(doc id: String, expectedRev: Int, client c: ClientID, batch: SequencerBatch,
                        newHead: Int, snapshot: Snapshot?) async throws -> Int {
-        let snapshotJSON = try snapshot.map { try WireJSON.encodeString($0.doc) }
-        let seqs = batch.entries.map(\.seq)
-        let cseqs = batch.entries.map(\.cseq)
-        let bases = batch.entries.map(\.base)
-        let ops = try batch.entries.map { try WireJSON.encodeString($0.op) }
-        let fps = batch.entries.map { batch.fingerprints[$0.cseq] ?? 0 }
-        let rejectedFps = batch.rejections.keys.sorted().map { batch.fingerprints[$0] ?? 0 }
-        let rejected = batch.rejections.keys.sorted()
-        let reasons = try rejected.map { try WireJSON.encodeString(batch.rejections[$0]!) }
+        try await commit(doc: id, expectedRev: expectedRev, groups: [CommitGroup(client: c, batch: batch)], newHead: newHead, snapshot: snapshot)
+    }
 
+    /// Atomically persists the processed requests of several clients in ONE transaction (group commit). Throws
+    /// `StoreError.revisionMismatch` (without writing) if the document row's revision differs from `expectedRev`.
+    /// Returns the new revision.
+    ///
+    /// `.notCommitted` means the transaction definitely did not commit; `.uncertain` means its outcome is unknown (the caller
+    /// must re-read durable state before doing anything else).
+    public func commit(doc id: String, expectedRev: Int, groups: [CommitGroup], newHead: Int, snapshot: Snapshot?) async throws -> Int {
+        let snapshotJSON = try snapshot.map { try WireJSON.encodeString($0.doc) }
+        var rows = Rows()
+        for g in groups {
+            for e in g.batch.entries {
+                rows.opSeq.append(e.seq); rows.opClient.append(g.client); rows.opCseq.append(e.cseq); rows.opBase.append(e.base)
+                rows.opJSON.append(try WireJSON.encodeString(e.op)); rows.opFp.append(g.batch.fingerprints[e.cseq] ?? 0)
+            }
+            for c in g.batch.rejections.keys.sorted() {
+                rows.rejClient.append(g.client); rows.rejCseq.append(c)
+                rows.rejJSON.append(try WireJSON.encodeString(g.batch.rejections[c]!)); rows.rejFp.append(g.batch.fingerprints[c] ?? 0)
+            }
+            if g.batch.highChanged { rows.highClient.append(g.client); rows.highValue.append(g.batch.newHigh) }
+        }
+        let snap = snapshot.map { ($0.seq, snapshotJSON!) }
+        let frozen = rows
         do {
             return try await withTimeout(operationTimeout) {
-                try await self.commitTransaction(id, expectedRev, c, batch, newHead, snapshot, snapshotJSON, seqs, cseqs, bases, ops, fps, rejected, reasons, rejectedFps)
+                try await self.commitTransaction(id, expectedRev, frozen, newHead, snap)
             }
         } catch is TimeoutError {
             throw StoreError.uncertain("commit did not finish in time")
@@ -218,40 +239,46 @@ public struct PostgresStore: Sendable {
         }
     }
 
-    private func commitTransaction(_ id: String, _ expectedRev: Int, _ c: ClientID, _ batch: SequencerBatch, _ newHead: Int,
-                                   _ snapshot: Snapshot?, _ snapshotJSON: String?, _ seqs: [Int], _ cseqs: [Int], _ bases: [Int],
-                                   _ ops: [String], _ fps: [Int64], _ rejected: [Int], _ reasons: [String], _ rejectedFps: [Int64]) async throws -> Int {
-        let newHigh = batch.newHigh
-        return try await client.withTransaction(logger: logger) { tx in
+    /// Column-oriented rows for the bulk inserts.
+    struct Rows: Sendable {
+        var opSeq: [Int] = [], opClient: [String] = [], opCseq: [Int] = [], opBase: [Int] = [], opJSON: [String] = [], opFp: [Int64] = []
+        var rejClient: [String] = [], rejCseq: [Int] = [], rejJSON: [String] = [], rejFp: [Int64] = []
+        var highClient: [String] = [], highValue: [Int] = []
+    }
+
+    private func commitTransaction(_ id: String, _ expectedRev: Int, _ r: Rows, _ newHead: Int, _ snap: (Int, String)?) async throws -> Int {
+        try await client.withTransaction(logger: logger) { tx in
             var current: Int?
             for try await rev in try await tx.query("SELECT rev FROM documents WHERE id = \(id) FOR UPDATE", logger: logger).decode(Int.self) {
                 current = rev
             }
             guard current == expectedRev else { throw StoreError.revisionMismatch }
 
-            if !seqs.isEmpty {
+            if !r.opSeq.isEmpty {
                 _ = try await tx.query("""
                     INSERT INTO ops (doc_id, seq, client_id, cseq, base, op, fp)
-                    SELECT \(id), u.seq, \(c), u.cseq, u.base, u.op::jsonb, u.fp
-                    FROM unnest(\(seqs)::bigint[], \(cseqs)::bigint[], \(bases)::bigint[], \(ops)::text[], \(fps)::bigint[]) AS u(seq, cseq, base, op, fp)
+                    SELECT \(id), u.seq, u.client, u.cseq, u.base, u.op::jsonb, u.fp
+                    FROM unnest(\(r.opSeq)::bigint[], \(r.opClient)::text[], \(r.opCseq)::bigint[], \(r.opBase)::bigint[], \(r.opJSON)::text[], \(r.opFp)::bigint[])
+                         AS u(seq, client, cseq, base, op, fp)
                     """, logger: logger)
             }
-            if !rejected.isEmpty {
+            if !r.rejCseq.isEmpty {
                 _ = try await tx.query("""
                     INSERT INTO rejections (doc_id, client_id, cseq, reason, fp)
-                    SELECT \(id), \(c), u.cseq, u.reason::jsonb, u.fp
-                    FROM unnest(\(rejected)::bigint[], \(reasons)::text[], \(rejectedFps)::bigint[]) AS u(cseq, reason, fp)
+                    SELECT \(id), u.client, u.cseq, u.reason::jsonb, u.fp
+                    FROM unnest(\(r.rejClient)::text[], \(r.rejCseq)::bigint[], \(r.rejJSON)::text[], \(r.rejFp)::bigint[]) AS u(client, cseq, reason, fp)
                     """, logger: logger)
             }
-            if batch.highChanged {
+            if !r.highClient.isEmpty {
                 _ = try await tx.query("""
-                    INSERT INTO client_state (doc_id, client_id, high) VALUES (\(id), \(c), \(newHigh))
+                    INSERT INTO client_state (doc_id, client_id, high)
+                    SELECT \(id), u.client, max(u.high) FROM unnest(\(r.highClient)::text[], \(r.highValue)::bigint[]) AS u(client, high) GROUP BY u.client
                     ON CONFLICT (doc_id, client_id) DO UPDATE SET high = GREATEST(client_state.high, EXCLUDED.high)
                     """, logger: logger)
             }
-            if let snapshot, let json = snapshotJSON {
+            if let (seq, json) = snap {
                 _ = try await tx.query("""
-                    INSERT INTO snapshots (doc_id, seq, state) VALUES (\(id), \(snapshot.seq), \(json)::text::jsonb)
+                    INSERT INTO snapshots (doc_id, seq, state) VALUES (\(id), \(seq), \(json)::text::jsonb)
                     ON CONFLICT DO NOTHING
                     """, logger: logger)
                 // Keep the two most recent checkpoints.

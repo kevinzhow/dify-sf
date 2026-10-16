@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 253,
+      "max" : 587,
+      "p50" : 6,
+      "p95" : 10,
+      "p99" : 66
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 79,
+        "conflict" : 0,
+        "issued" : 79,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 90,
+        "conflict" : 0,
+        "issued" : 90,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 9,
+        "conflict" : 0,
+        "issued" : 9,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 75,
+        "conflict" : 0,
+        "issued" : 75,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 2530,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 253,
+      "snapshots" : 10,
+      "streamsLost" : 10,
+      "streamsOpened" : 20
+    },
+    "committed" : 253,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 0,
+    "finalDivergence" : 0,
+    "head" : 253,
+    "issued" : 253,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 253,
+      "max" : 30,
+      "p50" : 5,
+      "p95" : 8,
+      "p99" : 13
+    },
+    "rejectedConflict" : 0,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 253,
+      "max" : 742,
+      "p50" : 6,
+      "p95" : 12,
+      "p99" : 286
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 193,
+      "max" : 742,
+      "p50" : 6,
+      "p95" : 12,
+      "p99" : 338
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 1.7515449353403305,
+    "peakCpuPercent" : 3.999215837757752,
+    "peakRssMB" : 65.21875,
+    "samples" : 42
+  },
+  "spec" : {
+    "clients" : 10,
+    "clientsPerWorker" : 10,
+    "durationSec" : 40,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-10c-baseline",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "baseline",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "no impairment (through the proxy)"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-005904\/work-storm-b-10c-baseline"
+  },
+  "wallSeconds" : 43.154343872999995
+}

@@ -167,4 +167,7 @@ public struct ProtocolDefects: OptionSet, Sendable {
     public static let noDedup = ProtocolDefects(rawValue: 1 << 3)
     /// Server treats every stale same-value write as a conflict anyway (violates the same-value rule).
     public static let sameValueConflicts = ProtocolDefects(rawValue: 1 << 4)
+    /// An accepted equal-value write takes over the register's stamp (the TLA+ counterexample: it launders the same
+    /// client's next stale write).
+    public static let equalValueRestamps = ProtocolDefects(rawValue: 1 << 5)
 }

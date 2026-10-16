@@ -258,11 +258,13 @@ public struct Document: Hashable, Sendable {
             switch key {
             case .item: return
             case .title:
-                guard case .string(let s) = value, nodes[id]!.title != s else { return }  // same value: no-op
+                guard case .string(let s) = value else { return }
+                // Same value: a pure no-op for conflict tracking (no stamp, no touch).
+                if nodes[id]!.title == s && !defects.contains(.equalValueRestamps) { return }
                 nodes[id]!.title = s
             case .config(let path):
                 guard ConfigTree.canSet(nodes[id]!.config, path) else { return }
-                if ConfigTree.get(nodes[id]!.config, path) == value { return }  // same value: no-op
+                if ConfigTree.get(nodes[id]!.config, path) == value && !defects.contains(.equalValueRestamps) { return }  // same value: no-op
                 ConfigTree.set(&nodes[id]!.config, path[...], value)
             }
             stampField(id, key, stamp)
@@ -307,7 +309,8 @@ public struct Document: Hashable, Sendable {
 
         case .updateItem(let id, let path, let itemId, let value):
             guard nodes[id] != nil, case .found(var items) = ConfigTree.list(in: nodes[id]!.config, at: path),
-                  let at = items.firstIndex(where: { $0.id == itemId }), items[at].value != value else { return }
+                  let at = items.firstIndex(where: { $0.id == itemId }),
+                  items[at].value != value || defects.contains(.equalValueRestamps) else { return }
             items[at].value = value
             ConfigTree.set(&nodes[id]!.config, path[...], .items(items))
             stampField(id, .item(path, itemId), stamp)

@@ -64,6 +64,7 @@ case "skipBrokenMarkers": defects = .skipBrokenMarkers
 case "clientNeverResends": defects = .clientNeverResends
 case "noDedup": defects = .noDedup
 case "sameValueConflicts": defects = .sameValueConflicts
+case "equalValueRestamps": defects = .equalValueRestamps
 case "lossyDisk": lossy = true
 case nil: break
 default: print("unknown mutation"); exit(2)

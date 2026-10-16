@@ -65,6 +65,13 @@ struct MutationTests {
         let r = Fuzz.runMany(from: 1, count: 300, defects: .sameValueConflicts)
         #expect(r.failureKinds["I6", default: 0] > 20)
     }
+    @Test func equalValueWriteTakingTheStampIsCaughtByI2() {
+        let r = Fuzz.runMany(from: 1, count: 4000, defects: .equalValueRestamps)
+        #expect(r.failureKinds["I2", default: 0] > 0)
+        // ... and the named 3-step regression scenario fails by itself on the mutant, passes on the real thing.
+        #expect(!Scenarios.equalValueTrace(defects: .equalValueRestamps).passed)
+        #expect(Scenarios.equalValueTrace(defects: []).passed)
+    }
     @Test func ackBeforeFsyncCaughtByI1() {
         let r = Fuzz.runMany(from: 1, count: 300, lossyDisk: true)
         #expect(r.failureKinds["I1", default: 0] > 50)

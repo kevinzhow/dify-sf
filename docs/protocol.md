@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.1
+# dify-sf collaboration protocol, version 1.2
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,15 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.2 (**clarification of the same-value rule; clients that keep their own conflict tracking, e.g. the Dart port, must apply it**):
+  An accepted equal-value write is a **pure no-op for conflict tracking**. It is committed (acked, it gets a `seq`, it is in the log)
+  but applying it changes *nothing* in the document's version metadata: no register stamp, no last-writer, no per-client "touched"
+  entry. Exactly: when applying `setField` (title or config path), `updateItem`, the current value of that register equals the
+  new value -> return before stamping. (Reason, found by the TLA+ model: if the equal-value write took over the stamp, the same
+  client's NEXT stale write to the register would be exempt as "last writer is me" and silently overwrite a value it never saw.
+  Trace: c1 sends f:=v1 then f:=v2, both base 0; c2 concurrently sends f:=v1 and is sequenced first; c1's first write is
+  equal-valued and acked; c1's second write must still be rejected with `conflict` naming c2.) The server and `CollabCore`
+  already behaved this way; this entry makes the rule explicit. Regression scenario: S9d in the simulator.
 * 1.1 (additive; no existing field or behaviour changed for conforming clients):
   * **CORS** is supported (section 2).
   * **`base` may be non-monotone**: successive ops of one client may carry decreasing bases (a typing draft keeps the version it
@@ -336,8 +345,9 @@ Registers: `title`; each config path (`model` and `model.name` overlap, `model.n
 stale whole-list replace conflicts with newer item inserts instead of silently deleting them.
 
 **Same-value rule.** If the new value equals the register's current value, the write is accepted even on a stale base.
-It is committed as a normal log entry and acked, but it is a no-op: it changes nothing, including the version metadata
-(so it does not make anyone else's later write stale). Same for removing an already-removed item or title/field writes of
+It is committed as a normal log entry and acked, but it is a no-op: it changes nothing, **including the version metadata**: no stamp,
+no last-writer, no "touched" entry. This matters in both directions: it does not make anyone else's later write stale, and it does not
+let its author's *next* stale write pass as "my own last write". Same for removing an already-removed item or title/field writes of
 the current value. *Only different values on a stale base are conflicts.*
 
 **Layout (`moveNode`) is last-writer-wins.** Applied in server order, never rejected for staleness, and it does not count

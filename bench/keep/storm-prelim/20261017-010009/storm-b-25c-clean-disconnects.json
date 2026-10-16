@@ -1,0 +1,187 @@
+{
+  "injected" : {
+    "disconnect" : 75
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 14"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 670,
+      "max" : 4278,
+      "p50" : 6,
+      "p95" : 2014,
+      "p99" : 3345
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 182,
+        "conflict" : 43,
+        "issued" : 225,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 241,
+        "conflict" : 0,
+        "issued" : 241,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 27,
+        "conflict" : 0,
+        "issued" : 27,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 220,
+        "conflict" : 0,
+        "issued" : 220,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 16750,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 693,
+      "snapshots" : 25,
+      "streamsLost" : 75,
+      "streamsOpened" : 100
+    },
+    "committed" : 670,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 19,
+    "finalDivergence" : 0,
+    "head" : 670,
+    "issued" : 713,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 693,
+      "max" : 4277,
+      "p50" : 5,
+      "p95" : 2008,
+      "p99" : 3346
+    },
+    "rejectedConflict" : 43,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 670,
+      "max" : 7138,
+      "p50" : 2938,
+      "p95" : 4958,
+      "p99" : 6399
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 527,
+      "max" : 6917,
+      "p50" : 2824,
+      "p95" : 4318,
+      "p99" : 5835
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 4.965084672065817,
+    "peakCpuPercent" : 6.998896518980364,
+    "peakRssMB" : 66.91015625,
+    "samples" : 47
+  },
+  "spec" : {
+    "clients" : 25,
+    "clientsPerWorker" : 10,
+    "durationSec" : 45,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-25c-clean-disconnects",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "cleanDisconnects",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "clean-disconnects",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "connections closed for 2-4 s every 8-20 s"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-010009\/work-storm-b-25c-clean-disconnects"
+  },
+  "wallSeconds" : 49.174356008
+}

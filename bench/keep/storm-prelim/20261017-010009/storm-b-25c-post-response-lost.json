@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 22"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 804,
+      "max" : 19106,
+      "p50" : 10,
+      "p95" : 3197,
+      "p99" : 11298
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 241,
+        "conflict" : 19,
+        "issued" : 260,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 277,
+        "conflict" : 0,
+        "issued" : 277,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 34,
+        "conflict" : 0,
+        "issued" : 34,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 252,
+        "conflict" : 0,
+        "issued" : 252,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 20100,
+      "postFailures" : 11,
+      "postMillis" : [
+
+      ],
+      "posts" : 764,
+      "snapshots" : 25,
+      "streamsLost" : 25,
+      "streamsOpened" : 50
+    },
+    "committed" : 804,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 18,
+    "finalDivergence" : 0,
+    "head" : 804,
+    "issued" : 823,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 753,
+      "max" : 45,
+      "p50" : 9,
+      "p95" : 17,
+      "p99" : 23
+    },
+    "rejectedConflict" : 19,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 804,
+      "max" : 11299,
+      "p50" : 11,
+      "p95" : 2242,
+      "p99" : 8954
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 664,
+      "max" : 11299,
+      "p50" : 11,
+      "p95" : 369,
+      "p99" : 7386
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 5.0232727597145725,
+    "peakCpuPercent" : 8.998308893819738,
+    "peakRssMB" : 68.83984375,
+    "samples" : 53
+  },
+  "spec" : {
+    "clients" : 25,
+    "clientsPerWorker" : 10,
+    "durationSec" : 45,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-25c-post-response-lost",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "post-response-lost",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0.3,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "30% of POST connections swallow the response after the server committed (client times out and resends)"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-010009\/work-storm-b-25c-post-response-lost"
+  },
+  "wallSeconds" : 55.987833305
+}

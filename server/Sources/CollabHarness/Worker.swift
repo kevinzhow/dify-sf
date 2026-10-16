@@ -153,7 +153,8 @@ public enum Worker {
                                           confirmed: await d.driver.confirmed, view: await d.driver.view,
                                           violations: await d.driver.violations,
                                           stats: DriverStatsDump(posts: stats.posts, postFailures: stats.postFailures, streamsOpened: stats.streamsOpened,
-                                                                 streamsLost: stats.streamsLost, snapshots: stats.snapshots, commits: stats.commits))
+                                                                 streamsLost: stats.streamsLost, snapshots: stats.snapshots, commits: stats.commits,
+                                                                 postMillis: stats.postMillis))
                     if let data = try? WireJSON.encode(fin) {
                         FileManager.default.createFile(atPath: "\(cfg.dir)/\(d.spec.id).final.json", contents: data)
                     }

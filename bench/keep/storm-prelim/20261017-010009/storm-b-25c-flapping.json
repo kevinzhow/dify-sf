@@ -1,0 +1,187 @@
+{
+  "injected" : {
+    "flap" : 414
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 22"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 607,
+      "max" : 4309,
+      "p50" : 82,
+      "p95" : 2015,
+      "p99" : 2637
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 133,
+        "conflict" : 88,
+        "issued" : 221,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 241,
+        "conflict" : 0,
+        "issued" : 241,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 27,
+        "conflict" : 0,
+        "issued" : 27,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 206,
+        "conflict" : 0,
+        "issued" : 206,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 15057,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 687,
+      "snapshots" : 25,
+      "streamsLost" : 410,
+      "streamsOpened" : 435
+    },
+    "committed" : 607,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 42,
+    "finalDivergence" : 0,
+    "head" : 607,
+    "issued" : 695,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 687,
+      "max" : 4308,
+      "p50" : 9,
+      "p95" : 2007,
+      "p99" : 2613
+    },
+    "rejectedConflict" : 88,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 607,
+      "max" : 6416,
+      "p50" : 2462,
+      "p95" : 4250,
+      "p99" : 4835
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 474,
+      "max" : 6416,
+      "p50" : 2458,
+      "p95" : 4250,
+      "p99" : 4995
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 7.2193177968286335,
+    "peakCpuPercent" : 17.994945723604722,
+    "peakRssMB" : 65.12890625,
+    "samples" : 47
+  },
+  "spec" : {
+    "clients" : 25,
+    "clientsPerWorker" : 10,
+    "durationSec" : 45,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-25c-flapping",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "flapping",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "flapping",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "link up\/down every 0.3-2.5 s"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-010009\/work-storm-b-25c-flapping"
+  },
+  "wallSeconds" : 49.29852619700001
+}

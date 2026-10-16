@@ -24,7 +24,7 @@ public enum Scenarios {
         s7_staleDeleteVsEdit, s7_editAfterDelete, s7_deleteReferencedNode, s7_refToConcurrentlyDeletedNode,
         s7_doubleDelete, s7_edgeToDeletedNode,
         s8_serverCrashKeepsAcked, s8_serverCrashAfterLogBeforeAck,
-        s9_thirtyUsersSameValue, s9_staleSameValueIsNoConflict, s9_sameValueDifferentOneStillConflicts,
+        s9_thirtyUsersSameValue, s9_staleSameValueIsNoConflict, s9_sameValueDifferentOneStillConflicts, s9_equalValueWriteDoesNotLaunderLaterWrite,
         s10_itemInsertsNeverConflict, s10_itemRemovesAndUpdates, s10_staleListReplaceVsInsert, s10_removeAlreadyRemovedItem,
         s11_positionIsLastWriterWins, s11_moveDoesNotBlockDelete, s11_moveOfDeletedNode,
     ]
@@ -32,7 +32,7 @@ public enum Scenarios {
     // MARK: helpers
 
     static func world(clients: Int = 2, volatile: Bool = false, snapshotEvery: Int = 64, drop: Double = 0,
-                      nodes: Int = 5) -> World {
+                      nodes: Int = 5, defects: ProtocolDefects = []) -> World {
         var cfg = SimConfig()
         cfg.clientCount = clients
         cfg.initialNodes = nodes
@@ -40,6 +40,7 @@ public enum Scenarios {
         cfg.maxDelay = 1
         cfg.volatileFraction = volatile ? 1 : 0
         cfg.dropRate = drop
+        cfg.defects = defects
         var w = World(seed: 7, cfg: cfg)
         w.drain()
         return w
@@ -502,6 +503,27 @@ public enum Scenarios {
         r.expect(isRejected(w.terminals("c2", c), "conflict"), "the different value is rejected with a conflict notice")
         r.expect(w.serverField("n1", "prompt") == .string("same"), "the winning value stays")
         return finish("S9c mixed same/different values on one field", &w, &r)
+    }
+
+    /// Regression for the TLA+ counterexample (P2 violation in 3 steps): an accepted equal-value write must be a pure no-op
+    /// for conflict tracking. If it took the register's stamp, the same client's NEXT stale write would be exempt ("last
+    /// writer is me") and silently overwrite a value it never saw.
+    static func s9_equalValueWriteDoesNotLaunderLaterWrite() -> ScenarioResult { equalValueTrace(defects: []) }
+
+    /// `defects` lets the mutation test prove the scenario can fail.
+    public static func equalValueTrace(defects: ProtocolDefects) -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world(clients: 2, defects: defects)
+        let first = w.userEdit(0, prompt("n1", "v1"))!    // c1: f1 := v1   (base 0)
+        let second = w.userEdit(0, prompt("n1", "v2"))!   // c1: f1 := v2   (base 0, queued behind the first POST)
+        let other = w.userEdit(1, prompt("n1", "v1"))!    // c2: f1 := v1   (base 0), sequenced FIRST
+        w.flush(slot: 1, toServer: true)
+        w.drain()
+        r.expect(isCommitted(w.terminals("c1", other)), "c2's write is committed first")
+        r.expect(isCommitted(w.terminals("c0", first)), "c1's first write equals the current value: accepted as a no-op")
+        r.expect(isRejected(w.terminals("c0", second), "conflict"), "c1's second write is stale against c2's write and must be refused")
+        r.expect(w.serverField("n1", "prompt") == .string("v1"), "c2's value survives; nothing was silently overwritten")
+        return finish("S9d equal-value write does not launder the next stale write (TLA+ counterexample)", &w, &r)
     }
 
     // MARK: S10 - list items

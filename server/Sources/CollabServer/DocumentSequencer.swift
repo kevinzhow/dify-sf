@@ -115,72 +115,131 @@ actor DocumentSequencer {
         return live
     }
 
-    // MARK: - Submit
+    // MARK: - Submit (group commit)
 
+    private struct Pending {
+        var req: SubmitRequest
+        var cont: CheckedContinuation<SubmitResponse, Error>
+    }
+    private var pending: [Pending] = []
+    private var draining = false
+    /// Upper bound of requests committed in one transaction.
+    private static let maxGroup = 64
+
+    /// Queues the request. Requests that arrive while a commit is in flight are committed TOGETHER in the next
+    /// transaction (group commit): one round of row lock + insert + COMMIT for many clients, which is what keeps the
+    /// write path flat when commits are slow or many clients are active. Nobody is answered before its transaction committed.
     func submit(_ req: SubmitRequest) async throws -> SubmitResponse {
-        try await exclusive {
-            var attempts = 0
-            while true {
-                attempts += 1
-                do {
-                    return try await submitOnce(req)
-                } catch StoreError.revisionMismatch {
-                    // Someone else wrote this document: forget our state, reload, re-plan.
-                    state = nil
-                    logger.warning("document \(docId): revision changed under us, reloading (attempt \(attempts))")
-                    if attempts >= 25 { throw ServerError.unavailable("document is contended") }
-                    // Back off a little (randomised) so that two processes do not keep invalidating each other in lockstep.
-                    try? await Task.sleep(for: .milliseconds(Int.random(in: 1...(5 * attempts))))
-                }
+        try await withCheckedThrowingContinuation { cont in
+            pending.append(Pending(req: req, cont: cont))
+            if !draining {
+                draining = true
+                Task { await self.drain() }
             }
         }
     }
 
-    private func submitOnce(_ req: SubmitRequest) async throws -> SubmitResponse {
+    private func drain() async {
+        while !pending.isEmpty {
+            let group = Array(pending.prefix(Self.maxGroup))
+            pending.removeFirst(group.count)
+            await exclusive { await self.commitGroup(group) }
+        }
+        draining = false
+    }
+
+    private func commitGroup(_ group: [Pending]) async {
+        var attempts = 0
+        while true {
+            attempts += 1
+            do {
+                let responses = try await commitGroupOnce(group.map(\.req))
+                for (p, r) in zip(group, responses) { p.cont.resume(returning: r) }
+                return
+            } catch StoreError.revisionMismatch {
+                // Someone else wrote this document: forget our state, reload, re-plan the whole group.
+                state = nil
+                logger.warning("document \(docId): revision changed under us, reloading (attempt \(attempts))")
+                if attempts >= 25 {
+                    for p in group { p.cont.resume(throwing: ServerError.unavailable("document is contended")) }
+                    return
+                }
+                // Back off a little (randomised) so that two processes do not keep invalidating each other in lockstep.
+                try? await Task.sleep(for: .milliseconds(Int.random(in: 1...(5 * attempts))))
+            } catch {
+                for p in group { p.cont.resume(throwing: error) }
+                return
+            }
+        }
+    }
+
+    /// Plans every request of the group in order on one working copy, persists everything in ONE transaction, and only
+    /// then adopts the new state, announces the commits and returns the responses (same order as `reqs`).
+    private func commitGroupOnce(_ reqs: [SubmitRequest]) async throws -> [SubmitResponse] {
         var live = try await ensureLoaded()
-        let high: Int
-        if let h = live.highs[req.client] {
-            high = h
-        } else {
-            do { high = try await store.clientHigh(docId, client: req.client) } catch { throw ServerError.unavailable("\(error)") }
-            state?.highs[req.client] = high
-            live.highs[req.client] = high
-        }
-        var known = KnownOutcomes()
-        if let range = Sequencer.lookupRange(for: req, clientHigh: high) {
-            do { known = try await store.knownOutcomes(docId, client: req.client, range: range) } catch { throw ServerError.unavailable("\(error)") }
-        }
         var working = live.core
-        let batch = working.process(req, clientHigh: high, known: known)
-        if batch.isEmpty { return batch.response }  // pure duplicates / gaps: nothing to persist
+        var highs = live.highs
+        var factsOfGroup: [ClientID: KnownOutcomes] = [:]  // outcomes decided earlier in this same group
+        var responses: [SubmitResponse] = []
+        var groups: [PostgresStore.CommitGroup] = []
+
+        for req in reqs {
+            let high: Int
+            if let h = highs[req.client] {
+                high = h
+            } else {
+                do { high = try await store.clientHigh(docId, client: req.client) } catch { throw ServerError.unavailable("\(error)") }
+                highs[req.client] = high
+            }
+            var known = KnownOutcomes()
+            if let range = Sequencer.lookupRange(for: req, clientHigh: high) {
+                do { known = try await store.knownOutcomes(docId, client: req.client, range: range) } catch { throw ServerError.unavailable("\(error)") }
+            }
+            if let earlier = factsOfGroup[req.client] {
+                known.committed.merge(earlier.committed) { $1 }
+                known.rejected.merge(earlier.rejected) { $1 }
+                known.fingerprints.merge(earlier.fingerprints) { $1 }
+            }
+            let batch = working.process(req, clientHigh: high, known: known)
+            responses.append(batch.response)
+            highs[req.client] = batch.newHigh
+            if batch.isEmpty { continue }  // pure duplicates / gaps: nothing to persist
+            var facts = factsOfGroup[req.client] ?? KnownOutcomes()
+            for e in batch.entries { facts.committed[e.cseq] = e.seq }
+            for (c, r) in batch.rejections { facts.rejected[c] = r }
+            facts.fingerprints.merge(batch.fingerprints) { $1 }
+            factsOfGroup[req.client] = facts
+            groups.append(.init(client: req.client, batch: batch))
+        }
+        if groups.isEmpty { return responses }
 
         let snapshot = Sequencer.snapshotDue(oldSeq: live.core.seq, newSeq: working.seq, every: config.snapshotEvery) ? working.snapshot : nil
         if config.testCommitDelayMillis > 0 { try? await Task.sleep(for: .milliseconds(config.testCommitDelayMillis)) }
+        let entries = groups.flatMap(\.batch.entries)
         if config.testDefect == "ackBeforeCommit" {
             // TEST ONLY defect: answer first, persist a moment later (a kill -9 in between loses acknowledged ops).
-            let store = self.store, docId = self.docId, rev = live.rev, client = req.client, head = working.seq
+            let store = self.store, docId = self.docId, rev = live.rev, head = working.seq, grp = groups
             Task {
                 try? await Task.sleep(for: .milliseconds(40))
-                _ = try? await store.commit(doc: docId, expectedRev: rev, client: client, batch: batch, newHead: head, snapshot: snapshot)
+                _ = try? await store.commit(doc: docId, expectedRev: rev, groups: grp, newHead: head, snapshot: snapshot)
             }
             live.core = working
-            live.rev = live.rev + 1
-            live.highs[req.client] = batch.newHigh
+            live.rev += 1
+            live.highs = highs
             state = live
-            for e in batch.entries { broadcast(e) }
+            for e in entries { broadcast(e) }
             published = working.seq
-            return batch.response
+            return responses
         }
         let newRev: Int
         do {
-            newRev = try await store.commit(doc: docId, expectedRev: live.rev, client: req.client, batch: batch,
-                                            newHead: working.seq, snapshot: snapshot)
+            newRev = try await store.commit(doc: docId, expectedRev: live.rev, groups: groups, newHead: working.seq, snapshot: snapshot)
         } catch StoreError.revisionMismatch {
             throw StoreError.revisionMismatch
         } catch StoreError.notCommitted(let why) {
             throw ServerError.unavailable("not committed: \(why)")
         } catch {
-            // Uncertain outcome (or cancellation): the batch may be durable. Forget memory; the retry is answered from the database.
+            // Uncertain outcome (or cancellation): the group may be durable. Forget memory; the retries are answered from the database.
             state = nil
             logger.error("document \(docId): commit outcome unknown: \(error)")
             throw ServerError.unavailable("commit outcome unknown")
@@ -188,11 +247,11 @@ actor DocumentSequencer {
         // Durable. Only now adopt the new state and tell anyone.
         live.core = working
         live.rev = newRev
-        live.highs[req.client] = batch.newHigh
+        live.highs = highs
         state = live
-        for e in batch.entries { broadcast(e) }
+        for e in entries { broadcast(e) }
         published = working.seq
-        return batch.response
+        return responses
     }
 
     private func broadcast(_ entry: LogEntry) {

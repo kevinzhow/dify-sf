@@ -9,13 +9,13 @@ enum Report {
     }
 
     static func stormTable(_ results: [RoundResult]) -> String {
-        var s = "| round | mix | clients | secs | profile | edits issued | committed | conflict notices | lost disjoint | lost same-value | reported lost (crash) | silent overwrites | final divergence | ack p50/p99 ms | visible p50/p99 ms (steady p99) | server CPU avg/peak % | RSS MB | faults | result |\n"
-        s += "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+        var s = "| round | mix | clients | secs | profile | edits issued | committed | conflict notices | lost disjoint | lost same-value | reported lost (crash) | silent overwrites | final divergence | POST rtt p50/p99 ms | ack p50/p99 ms | visible p50/p99 ms (steady p99) | server CPU avg/peak % | RSS MB | faults | result |\n"
+        s += "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
         for r in results {
             let c = r.report
             let mix = r.spec.name.split(separator: "-").dropFirst().first.map(String.init) ?? "?"
             let faults = r.injected.isEmpty ? "-" : r.injected.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " ")
-            s += "| \(r.spec.name) | \(mix) | \(r.spec.clients) | \(r.spec.durationSec) | \(r.spec.profile.name) | \(c.issued) | \(c.committed) | \(c.rejectedConflict) | \(c.lostDisjointEdits) | \(c.lostSameValueEdits) | \(c.reportedLostEdits) | \(c.silentOverwrites) | \(c.finalDivergence) | \(f(c.ackLatencyMs.p50))/\(f(c.ackLatencyMs.p99)) | \(f(c.visibilityLatencyMs.p50))/\(f(c.visibilityLatencyMs.p99)) (\(f(c.visibilityLatencySteadyMs.p99))) | \(f(r.server.avgCpuPercent))/\(f(r.server.peakCpuPercent)) | \(f(r.server.peakRssMB)) | \(faults) | \(r.passed ? "PASS" : "FAIL") |\n"
+            s += "| \(r.spec.name) | \(mix) | \(r.spec.clients) | \(r.spec.durationSec) | \(r.spec.profile.name) | \(c.issued) | \(c.committed) | \(c.rejectedConflict) | \(c.lostDisjointEdits) | \(c.lostSameValueEdits) | \(c.reportedLostEdits) | \(c.silentOverwrites) | \(c.finalDivergence) | \(f(c.postRoundTripMs.p50))/\(f(c.postRoundTripMs.p99)) | \(f(c.ackLatencyMs.p50))/\(f(c.ackLatencyMs.p99)) | \(f(c.visibilityLatencyMs.p50))/\(f(c.visibilityLatencyMs.p99)) (\(f(c.visibilityLatencySteadyMs.p99))) | \(f(r.server.avgCpuPercent))/\(f(r.server.peakCpuPercent)) | \(f(r.server.peakRssMB)) | \(faults) | \(r.passed ? "PASS" : "FAIL") |\n"
         }
         s += "\nProfiles:\n"
         for p in Set(results.map(\.spec.profile.name)).sorted() {

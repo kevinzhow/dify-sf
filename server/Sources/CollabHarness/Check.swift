@@ -51,6 +51,8 @@ public struct CheckReport: Codable, Sendable {
     public var visibilityLatencySteadyMs = Percentiles()
     public var ackLatencyMs = Percentiles()
     public var clientStats = DriverStatsDump()
+    /// Round-trip time of successful POSTs as seen by the clients (excludes waiting for the stream).
+    public var postRoundTripMs = Percentiles()
     public var passed: Bool { violations.isEmpty && unresolved == 0 }
 }
 
@@ -102,6 +104,7 @@ public enum Checker {
 
         // Client finals
         var clients: [ClientEvidence] = []
+        var postMs: [Double] = []
         for id in clientIds {
             if let data = FileManager.default.contents(atPath: "\(dir)/\(id).final.json"),
                let fin = try? WireJSON.decode(ClientFinal.self, from: data) {
@@ -113,6 +116,7 @@ public enum Checker {
                 report.clientStats.streamsLost += fin.stats.streamsLost
                 report.clientStats.snapshots += fin.stats.snapshots
                 report.clientStats.commits += fin.stats.commits
+                postMs += fin.stats.postMillis.map(Double.init)
             } else {
                 clients.append(ClientEvidence(id: id, confirmed: nil, view: nil, unresolved: 0))
             }
@@ -192,6 +196,7 @@ public enum Checker {
             }
         }
         report.ackLatencyMs = Percentiles(ack)
+        report.postRoundTripMs = Percentiles(postMs)
         report.visibilityLatencyMs = Percentiles(visible)
         report.visibilityLatencySteadyMs = Percentiles(visibleSteady)
         return report

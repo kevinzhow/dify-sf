@@ -94,6 +94,7 @@ public struct ClientFinal: Codable, Sendable {
 
 public struct DriverStatsDump: Codable, Sendable {
     public var posts = 0, postFailures = 0, streamsOpened = 0, streamsLost = 0, snapshots = 0, commits = 0
+    public var postMillis: [Int] = []
 }
 
 /// Per-client "when did I apply seq N" (wall millis), flushed periodically so a kill -9 loses little.

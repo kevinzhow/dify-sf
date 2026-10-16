@@ -68,6 +68,9 @@ public struct DriverStats: Sendable, Codable {
     public var streamsLost = 0
     public var snapshots = 0
     public var commits = 0
+    /// Round-trip time of successful POSTs in milliseconds (all of them; the harness reports percentiles).
+    public var postMillis: [Int] = []
+    /// Gaps in milliseconds between consecutive stream events that carried data while a commit was pending (diagnostics).
 }
 
 /// Runs the pure `Client` state machine against real HTTP/SSE: executes its requests, feeds back responses
@@ -180,8 +183,9 @@ public actor ClientDriver {
                 injectDuplicates(of: req)
                 postTask = Task { [transport, postTimeout, weak self] in
                     do {
+                        let t0 = ContinuousClock.now
                         let resp = try await transport.post(req, timeout: postTimeout)
-                        await self?.didRespond(resp)
+                        await self?.didRespond(resp, millis: Int((ContinuousClock.now - t0) / .milliseconds(1)))
                     } catch is CancellationError {
                     } catch {
                         await self?.didFailPost(error)
@@ -219,8 +223,9 @@ public actor ClientDriver {
         }
     }
 
-    private func didRespond(_ resp: SubmitResponse) {
+    private func didRespond(_ resp: SubmitResponse, millis: Int? = nil) {
         guard !stopped else { return }
+        if let millis { stats.postMillis.append(millis) }
         let reqs = client.receive(resp, now: now())
         afterMutation(reqs)
     }

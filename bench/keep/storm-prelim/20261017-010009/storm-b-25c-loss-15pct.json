@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 1126,
+      "max" : 5178,
+      "p50" : 127,
+      "p95" : 670,
+      "p99" : 1853
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 307,
+        "conflict" : 58,
+        "issued" : 365,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 410,
+        "conflict" : 0,
+        "issued" : 410,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 53,
+        "conflict" : 0,
+        "issued" : 53,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 356,
+        "conflict" : 0,
+        "issued" : 356,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 28133,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 1184,
+      "snapshots" : 25,
+      "streamsLost" : 50,
+      "streamsOpened" : 75
+    },
+    "committed" : 1126,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 5,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 41,
+    "finalDivergence" : 0,
+    "head" : 1126,
+    "issued" : 1184,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 1184,
+      "max" : 2221,
+      "p50" : 91,
+      "p95" : 623,
+      "p99" : 1232
+    },
+    "rejectedConflict" : 58,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 1126,
+      "max" : 5178,
+      "p50" : 499,
+      "p95" : 2599,
+      "p99" : 3880
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 993,
+      "max" : 5178,
+      "p50" : 496,
+      "p95" : 2773,
+      "p99" : 3944
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 4.948667921367756,
+    "peakCpuPercent" : 11.997558352904477,
+    "peakRssMB" : 69.8046875,
+    "samples" : 76
+  },
+  "spec" : {
+    "clients" : 25,
+    "clientsPerWorker" : 10,
+    "durationSec" : 45,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-25c-loss-15pct",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "loss-15pct",
+      "netem" : {
+        "delayMs" : 40,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 15,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "15% packet loss (netem) + 40 ms delay"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-010009\/work-storm-b-25c-loss-15pct"
+  },
+  "wallSeconds" : 78.60510657399999
+}

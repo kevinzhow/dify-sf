@@ -1,0 +1,187 @@
+{
+  "injected" : {
+
+  },
+  "notes" : [
+    "WARN toxiproxy admin API calls that failed after retries: 22"
+  ],
+  "report" : {
+    "ackLatencyMs" : {
+      "count" : 53,
+      "max" : 22,
+      "p50" : 10,
+      "p95" : 18,
+      "p99" : 20
+    },
+    "byClass" : {
+      "diffValue" : {
+        "committed" : 15,
+        "conflict" : 0,
+        "issued" : 15,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "disjoint" : {
+        "committed" : 18,
+        "conflict" : 0,
+        "issued" : 18,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "layout" : {
+        "committed" : 5,
+        "conflict" : 0,
+        "issued" : 5,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      },
+      "sameValue" : {
+        "committed" : 15,
+        "conflict" : 0,
+        "issued" : 15,
+        "lost" : 0,
+        "noTerminal" : 0,
+        "otherRejected" : 0
+      }
+    },
+    "clientStats" : {
+      "commits" : 747,
+      "postFailures" : 0,
+      "postMillis" : [
+
+      ],
+      "posts" : 53,
+      "snapshots" : 25,
+      "streamsLost" : 126,
+      "streamsOpened" : 151
+    },
+    "committed" : 53,
+    "conflictNoticesMissingInLog" : 0,
+    "diffRegistersChecked" : 4,
+    "disjointFinalMismatch" : 0,
+    "duplicateTerminals" : 0,
+    "earlyWarnings" : 0,
+    "finalDivergence" : 0,
+    "head" : 53,
+    "issued" : 53,
+    "lost" : 0,
+    "lostDisjointEdits" : 0,
+    "lostSameValueEdits" : 0,
+    "postRoundTripMs" : {
+      "count" : 53,
+      "max" : 21,
+      "p50" : 9,
+      "p95" : 17,
+      "p99" : 18
+    },
+    "rejectedConflict" : 0,
+    "rejectedOther" : {
+
+    },
+    "reportedLostEdits" : 0,
+    "silentOverwrites" : 0,
+    "unexplainedDiffRejects" : 0,
+    "unresolved" : 0,
+    "violationKinds" : {
+
+    },
+    "violations" : [
+
+    ],
+    "visibilityLatencyMs" : {
+      "count" : 53,
+      "max" : 21308,
+      "p50" : 14897,
+      "p95" : 19712,
+      "p99" : 20881
+    },
+    "visibilityLatencySteadyMs" : {
+      "count" : 0,
+      "max" : 0,
+      "p50" : 0,
+      "p95" : 0,
+      "p99" : 0
+    }
+  },
+  "server" : {
+    "avgCpuPercent" : 2.774548109313801,
+    "peakCpuPercent" : 34.993043592892,
+    "peakRssMB" : 69.375,
+    "samples" : 79
+  },
+  "spec" : {
+    "clients" : 25,
+    "clientsPerWorker" : 10,
+    "durationSec" : 45,
+    "editMaxMs" : 2000,
+    "editMinMs" : 1000,
+    "faults" : {
+      "clientFaultEverySec" : [
+        2,
+        5
+      ],
+      "clientKills" : false,
+      "clientPauses" : false,
+      "dbCuts" : false,
+      "duplicatePostRate" : 0,
+      "networkCuts" : false,
+      "replayOldRate" : 0,
+      "serverKillEverySec" : [
+        4,
+        8
+      ],
+      "serverKills" : false
+    },
+    "name" : "storm-b-25c-sse-lifetime-cap",
+    "pingSeconds" : 10,
+    "plan" : "stormMixed",
+    "profile" : {
+      "dynamics" : "none",
+      "events" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 8000,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "name" : "sse-lifetime-cap",
+      "netem" : {
+        "delayMs" : 0,
+        "duplicatePercent" : 0,
+        "jitterMs" : 0,
+        "lossPercent" : 0,
+        "reorderPercent" : 0
+      },
+      "post" : {
+        "bandwidthKBps" : 0,
+        "downJitterMs" : 0,
+        "downLatencyMs" : 0,
+        "downStallFraction" : 0,
+        "resetAfterMs" : 0,
+        "upJitterMs" : 0,
+        "upLatencyMs" : 0
+      },
+      "serverCommitDelayMs" : 0,
+      "summary" : "SSE connections are reset 8 s after they start (NAT \/ proxy lifetime cap)"
+    },
+    "seed" : 4242,
+    "settleSec" : 120,
+    "slot" : 0,
+    "timings" : {
+      "maxBatch" : 50,
+      "postTimeoutMs" : 10000,
+      "reconnectBaseMs" : 500,
+      "reconnectMaxMs" : 15000,
+      "retransmitAfterMs" : 10000,
+      "streamSilenceMs" : 30000
+    },
+    "volatileFraction" : 0,
+    "workDir" : "\/repo\/bench\/storm\/results\/20261017-010009\/work-storm-b-25c-sse-lifetime-cap"
+  },
+  "wallSeconds" : 81.701128447
+}
