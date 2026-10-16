@@ -115,6 +115,12 @@ enum Chaos {
         faults.dbCuts = hasProxy && rng.chance(0.45)
         faults.networkCuts = hasProxy && rng.chance(0.8)
         if rng.chance(0.6) { faults.duplicatePostRate = 0.2; faults.replayOldRate = 0.1 }
+        // Debugging aid: HARNESS_FORCE_FAULTS=server,db,client,net forces those fault classes on in every run.
+        let forced = (ProcessInfo.processInfo.environment["HARNESS_FORCE_FAULTS"] ?? "").split(separator: ",").map(String.init)
+        if forced.contains("server") { faults.serverKills = true }
+        if forced.contains("db") && hasProxy { faults.dbCuts = true }
+        if forced.contains("client") { faults.clientKills = true }
+        if forced.contains("net") && hasProxy { faults.networkCuts = true }
         faults.serverKillEverySec = [2, 4]
         faults.clientFaultEverySec = [1, 3]
         var t = ClientTimings()

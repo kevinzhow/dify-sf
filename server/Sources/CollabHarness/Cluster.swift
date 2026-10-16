@@ -1,4 +1,5 @@
 import AsyncHTTPClient
+import CollabClientKit
 import CollabCore
 import Foundation
 import NIOCore
@@ -128,7 +129,7 @@ public final class ServerProcess: @unchecked Sendable {
         e["COLLAB_DB_USER"] = env.dbUser
         e["COLLAB_DB_PASSWORD"] = env.dbPassword
         e["COLLAB_DB_NAME"] = env.dbName
-        e["COLLAB_LOG_LEVEL"] = e["COLLAB_LOG_LEVEL"] ?? ProcessInfo.processInfo.environment["HARNESS_SERVER_LOG_LEVEL"] ?? "warning"
+        e["COLLAB_LOG_LEVEL"] = e["COLLAB_LOG_LEVEL"] ?? ProcessInfo.processInfo.environment["HARNESS_SERVER_LOG_LEVEL"] ?? "notice"
         if let d = ProcessInfo.processInfo.environment["HARNESS_SERVER_DEFECT"], !d.isEmpty { e["COLLAB_TEST_DEFECT"] = d }
         proc = try ManagedProcess(name: "server", executable: env.serverBinary, arguments: [], environment: e,
                                   logPath: "\(dir)/server.\(generation).log")
@@ -167,20 +168,12 @@ public final class ServerProcess: @unchecked Sendable {
 /// Plain GET helper that always drains the body (an unconsumed body wedges AsyncHTTPClient's connection).
 public enum HarnessHTTP {
     public static func get(_ url: String, timeout: Duration) async throws -> (Int, Data) {
-        try await withThrowingTaskGroup(of: (Int, Data).self) { group in
-            group.addTask {
-                var r = HTTPClientRequest(url: url)
-                r.method = .GET
-                let resp = try await HTTPClient.shared.execute(r, deadline: .now() + .seconds(Int64(timeout.components.seconds) + 1))
-                let data = Data(buffer: try await resp.body.collect(upTo: 256 << 20))
-                return (Int(resp.status.code), data)
-            }
-            group.addTask {
-                try await Task.sleep(for: timeout)
-                throw HarnessError("GET \(url) timed out")
-            }
-            defer { group.cancelAll() }
-            return try await group.next()!
+        try await withTimeout(timeout) {
+            var r = HTTPClientRequest(url: url)
+            r.method = .GET
+            let resp = try await HTTPClient.shared.execute(r, deadline: .now() + .seconds(Int64(timeout.components.seconds) + 1))
+            let data = Data(buffer: try await resp.body.collect(upTo: 256 << 20))
+            return (Int(resp.status.code), data)
         }
     }
 }
@@ -208,16 +201,27 @@ public final class Toxiproxy: @unchecked Sendable {
     private func call(_ method: HTTPMethod, _ path: String, _ body: [String: Any]? = nil, allow: Set<Int> = [200, 201, 204]) async throws -> Data {
         var r = HTTPClientRequest(url: "\(api)\(path)")
         r.method = method
+        r.headers.add(name: "Connection", value: "close")  // no keep-alive: Toxiproxy's idle-connection handling races with reuse
         if let body {
             r.headers.add(name: "Content-Type", value: "application/json")
             r.body = .bytes(try JSONSerialization.data(withJSONObject: body))
         }
-        let resp = try await http.execute(r, timeout: .seconds(10))
-        let data = Data(buffer: try await resp.body.collect(upTo: 1 << 20))
-        guard allow.contains(Int(resp.status.code)) else {
-            throw HarnessError("toxiproxy \(method) \(path) -> \(resp.status.code): \(String(decoding: data, as: UTF8.self))")
+        // Toxiproxy closes idle keep-alive connections; a request that races with such a close is simply repeated.
+        var lastError: Error = HarnessError("toxiproxy unreachable")
+        for _ in 0..<4 {
+            do {
+                let resp = try await http.execute(r, timeout: .seconds(10))
+                let data = Data(buffer: try await resp.body.collect(upTo: 1 << 20))
+                guard allow.contains(Int(resp.status.code)) else {
+                    throw HarnessError("toxiproxy \(method) \(path) -> \(resp.status.code): \(String(decoding: data, as: UTF8.self))")
+                }
+                return data
+            } catch let e as HarnessError { throw e } catch {
+                lastError = error
+                try? await Task.sleep(for: .milliseconds(100))
+            }
         }
-        return data
+        throw lastError
     }
 
     public func createProxy(name: String, listenPort: Int, upstream: String) async throws {
@@ -227,8 +231,14 @@ public final class Toxiproxy: @unchecked Sendable {
 
     public func deleteProxy(_ name: String) async { _ = try? await call(.DELETE, "/proxies/\(name)", allow: [204, 404]) }
 
-    public func setEnabled(_ name: String, _ enabled: Bool) async {
-        _ = try? await call(.POST, "/proxies/\(name)", ["enabled": enabled])
+    /// Number of admin-API calls that failed even after retries (reported by the rounds).
+    public private(set) var failedCalls = 0
+    private let counterLock = NSLock()
+    private func failed() { counterLock.lock(); failedCalls += 1; counterLock.unlock() }
+
+    @discardableResult
+    public func setEnabled(_ name: String, _ enabled: Bool) async -> Bool {
+        do { _ = try await call(.POST, "/proxies/\(name)", ["enabled": enabled]); return true } catch { failed(); return false }
     }
 
     /// Adds (or replaces) a toxic. `type`: latency, bandwidth, timeout, slow_close, reset_peer, limit_data, slicer.
@@ -239,13 +249,20 @@ public final class Toxiproxy: @unchecked Sendable {
     }
 
     public func removeToxic(proxy: String, name: String) async {
-        _ = try? await call(.DELETE, "/proxies/\(proxy)/toxics/\(name)", allow: [204, 404])
+        do { _ = try await call(.DELETE, "/proxies/\(proxy)/toxics/\(name)", allow: [204, 404]) } catch { failed() }
     }
 
-    public func removeAllToxics(proxy: String) async {
-        guard let data = try? await call(.GET, "/proxies/\(proxy)/toxics"),
-              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
-        for t in arr { if let n = t["name"] as? String { await removeToxic(proxy: proxy, name: n) } }
+    /// Removes every toxic and re-enables the proxy, retrying until the admin API confirms a clean state.
+    public func ensureClean(proxy: String) async {
+        for _ in 0..<40 {
+            if let data = try? await call(.GET, "/proxies/\(proxy)/toxics"),
+               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                for t in arr { if let n = t["name"] as? String { await removeToxic(proxy: proxy, name: n) } }
+                if arr.isEmpty, await setEnabled(proxy, true) { return }
+            }
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        failed()
     }
 }
 

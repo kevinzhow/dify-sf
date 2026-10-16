@@ -175,12 +175,22 @@ public enum Invariants {
         for key in ev.issued.keys.sorted() {
             let terms = ev.terminals[key] ?? []
             let distinct = Set(terms)
-            let ok = ev.allowRepeatedIdenticalTerminals ? distinct.count == 1 : terms.count == 1
+            var ok = terms.count == 1
+            if ev.allowRepeatedIdenticalTerminals {
+                // Across process crashes an outcome may be reported again. "Not saved" may be reported as `rejected(reason)`
+                // before the crash and as `lost` after it (a volatile client no longer has the content); `committed` never mixes.
+                let rejections = distinct.filter { if case .rejected = $0 { return true }; return false }
+                let hasCommitted = distinct.contains { if case .committed = $0 { return true }; return false }
+                ok = !terms.isEmpty && (hasCommitted ? distinct.count == 1 : rejections.count <= 1)
+            }
             if !ok { v.append("I5: \(key.client)#\(key.cseq) has \(terms.count) outcomes: \(terms)"); continue }
             switch terms[0] {
             case .committed: break  // checked against the log in I1a
             case .rejected, .lost:
                 if inLog[key] != nil { v.append("I5: \(key.client)#\(key.cseq) reported \(terms[0]) but IS in the log") }
+            }
+            if terms.dropFirst().contains(where: { if case .committed = $0 { return true }; return false }), inLog[key] == nil {
+                v.append("I5: \(key.client)#\(key.cseq) reported committed but is not in the log")
             }
         }
         for key in inLog.keys where ev.issued[key] == nil {

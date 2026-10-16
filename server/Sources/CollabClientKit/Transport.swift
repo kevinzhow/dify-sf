@@ -16,7 +16,8 @@ public final class HTTPTransport: Sendable {
     public let postBase: String
     public let eventsBase: String
     public let doc: String
-    private let http: HTTPClient
+    private let http: HTTPClient       // POSTs: read timeout, so a swallowed response cannot clog the pool
+    private let streamHTTP: HTTPClient // SSE: long-lived; liveness is the client's silence watchdog
 
     /// `postBase`/`eventsBase` are `http://host:port`; they may differ so that harnesses can route the two
     /// channels through different fault proxies.
@@ -25,12 +26,19 @@ public final class HTTPTransport: Sendable {
         self.eventsBase = eventsBase
         self.doc = doc
         var cfg = HTTPClient.Configuration()
-        cfg.timeout = .init(connect: .seconds(5))
+        cfg.timeout = .init(connect: .seconds(5), read: .seconds(20))
         cfg.connectionPool = .init(idleTimeout: .seconds(30), concurrentHTTP1ConnectionsPerHostSoftLimit: 4)
         http = HTTPClient(eventLoopGroupProvider: .singleton, configuration: cfg)
+        var scfg = HTTPClient.Configuration()
+        scfg.timeout = .init(connect: .seconds(5))
+        scfg.connectionPool = .init(idleTimeout: .seconds(30), concurrentHTTP1ConnectionsPerHostSoftLimit: 2)
+        streamHTTP = HTTPClient(eventLoopGroupProvider: .singleton, configuration: scfg)
     }
 
-    public func shutdown() async { try? await http.shutdown() }
+    public func shutdown() async {
+        try? await http.shutdown()
+        try? await streamHTTP.shutdown()
+    }
 
     public func post(_ req: SubmitRequest, timeout: Duration) async throws -> SubmitResponse {
         let body = try WireJSON.encode(req)
@@ -55,7 +63,7 @@ public final class HTTPTransport: Sendable {
         req.method = .GET
         req.headers.add(name: "Accept", value: "text/event-stream")
         if let last = o.lastEventId { req.headers.add(name: "Last-Event-ID", value: String(last)) }
-        let http = self.http
+        let http = self.streamHTTP
         let r = req
         let resp = try await withTimeout(headTimeout) { try await http.execute(r, deadline: .distantFuture) }
         guard resp.status == .ok else {
@@ -70,18 +78,5 @@ public final class HTTPTransport: Sendable {
                 if let ev = try? StreamEvent.parse(event: m.event, data: m.data) { await onEvent(ev) } else { await onEvent(.ping) }
             }
         }
-    }
-}
-
-/// Runs `body`; throws `TransportError.timeout` if it does not finish within `duration` (and cancels it).
-func withTimeout<T: Sendable>(_ duration: Duration, _ body: @escaping @Sendable () async throws -> T) async throws -> T {
-    try await withThrowingTaskGroup(of: T.self) { group in
-        group.addTask { try await body() }
-        group.addTask {
-            try await Task.sleep(for: duration)
-            throw TransportError.timeout
-        }
-        defer { group.cancelAll() }
-        return try await group.next()!
     }
 }

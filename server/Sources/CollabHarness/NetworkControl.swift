@@ -123,7 +123,8 @@ public final class NetworkControl: @unchecked Sendable {
         bump("cut")
         await setUp(pairs[index], false)
         try? await Task.sleep(for: .milliseconds(ms))
-        await setUp(pairs[index], true)
+        let p = pairs[index]
+        await Task { await self.setUp(p, true) }.value  // heal even if the fault window just ended
     }
 
     /// Ad-hoc fault: stall the server->client direction of both channels for `ms` (connection stays open).
@@ -135,7 +136,7 @@ public final class NetworkControl: @unchecked Sendable {
             await toxi.setToxic(proxy: proxy, name: "adhoc-stall", type: "timeout", stream: "downstream", attributes: ["timeout": 0])
         }
         try? await Task.sleep(for: .milliseconds(ms))
-        for proxy in [p.post, p.events] { await toxi.removeToxic(proxy: proxy, name: "adhoc-stall") }
+        await Task { for proxy in [p.post, p.events] { await self.toxi.removeToxic(proxy: proxy, name: "adhoc-stall") } }.value
     }
 
     /// Stops all timed behaviour and puts every proxy back to a clean, enabled state.
@@ -144,10 +145,8 @@ public final class NetworkControl: @unchecked Sendable {
         for x in t { x.cancel() }
         for x in t { await x.value }
         for p in pairs {
-            await toxi.removeAllToxics(proxy: p.post)
-            await toxi.removeAllToxics(proxy: p.events)
-            await toxi.setEnabled(p.post, true)
-            await toxi.setEnabled(p.events, true)
+            await toxi.ensureClean(proxy: p.post)
+            await toxi.ensureClean(proxy: p.events)
         }
     }
 }

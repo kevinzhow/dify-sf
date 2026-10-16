@@ -11,6 +11,8 @@ public enum StoreError: Error, Sendable {
     case notCommitted(String)
     /// COMMIT was sent but its result is unknown (connection lost). The batch may or may not be durable.
     case uncertain(String)
+    /// A read did not finish in time (the connection is probably dead).
+    case timedOut
 }
 
 /// Result of loading a document's durable state.
@@ -25,17 +27,51 @@ public struct LoadedDocument: Sendable {
 public struct PostgresStore: Sendable {
     public let client: PostgresClient
     public let logger: Logger
+    /// Upper bound for any single database operation as seen by the caller. A connection that silently dies (half-open
+    /// TCP) would otherwise make a query wait forever, and with it the document's sequencer.
+    public let operationTimeout: Duration
 
-    public init(client: PostgresClient, logger: Logger) {
+    public init(client: PostgresClient, logger: Logger, operationTimeout: Duration = .seconds(20)) {
         self.client = client
         self.logger = logger
+        self.operationTimeout = operationTimeout
+    }
+
+    /// Runs a database operation with the deadline above.
+    func bounded<T: Sendable>(_ body: @escaping @Sendable () async throws -> T) async throws -> T {
+        do { return try await withTimeout(operationTimeout, body) } catch is TimeoutError {
+            throw StoreError.timedOut
+        }
+    }
+
+
+    // MARK: - Public API (every operation is bounded by `operationTimeout`)
+
+    public func migrate() async throws { try await bounded { try await self.migrateImpl() } }
+    public func ping() async throws { try await bounded { try await self.pingImpl() } }
+    public func createDocument(id: String, initial: Document) async throws -> Bool {
+        try await bounded { try await self.createDocumentImpl(id: id, initial: initial) }
+    }
+    public func documentHead(_ id: String) async throws -> Int? { try await bounded { try await self.documentHeadImpl(id) } }
+    public func load(_ id: String) async throws -> LoadedDocument? { try await bounded { try await self.loadImpl(id) } }
+    public func entries(_ id: String, after: Int, through: Int) async throws -> [LogEntry] {
+        try await bounded { try await self.entriesImpl(id, after: after, through: through) }
+    }
+    public func clientHigh(_ id: String, client c: ClientID) async throws -> Int {
+        try await bounded { try await self.clientHighImpl(id, client: c) }
+    }
+    public func knownOutcomes(_ id: String, client c: ClientID, range: ClosedRange<Int>?) async throws -> KnownOutcomes {
+        try await bounded { try await self.knownOutcomesImpl(id, client: c, range: range) }
+    }
+    public func committedMap(_ id: String, client c: ClientID, from: Int, through: Int) async throws -> [Int: Int] {
+        try await bounded { try await self.committedMapImpl(id, client: c, from: from, through: through) }
     }
 
     // MARK: - Setup
 
     /// Idempotent. Serialised with an advisory lock so that several processes starting at once do not race
     /// inside `CREATE TABLE IF NOT EXISTS` (which is not safe against concurrent creators).
-    public func migrate() async throws {
+    func migrateImpl() async throws {
         try await client.withTransaction(logger: logger) { tx in
             _ = try await tx.query("SELECT pg_advisory_xact_lock(7318004)", logger: logger)
             for sql in Schema.statements {
@@ -44,14 +80,14 @@ public struct PostgresStore: Sendable {
         }
     }
 
-    public func ping() async throws {
+    func pingImpl() async throws {
         _ = try await client.query("SELECT 1", logger: logger)
     }
 
     // MARK: - Documents
 
     /// Creates the document with its seed state (snapshot at seq 0). Returns false if it already existed.
-    public func createDocument(id: String, initial: Document) async throws -> Bool {
+    func createDocumentImpl(id: String, initial: Document) async throws -> Bool {
         let state = try WireJSON.encodeString(initial)
         return try await client.withTransaction(logger: logger) { c in
             let inserted = try await c.query("INSERT INTO documents (id) VALUES (\(id)) ON CONFLICT DO NOTHING RETURNING rev", logger: logger)
@@ -64,14 +100,14 @@ public struct PostgresStore: Sendable {
         }
     }
 
-    public func documentHead(_ id: String) async throws -> Int? {
+    func documentHeadImpl(_ id: String) async throws -> Int? {
         let rows = try await client.query("SELECT head FROM documents WHERE id = \(id)", logger: logger)
         for try await (head) in rows.decode(Int.self) { return head }
         return nil
     }
 
     /// Latest snapshot + the log tail after it, read in one repeatable-read transaction so they are consistent.
-    public func load(_ id: String) async throws -> LoadedDocument? {
+    func loadImpl(_ id: String) async throws -> LoadedDocument? {
         try await client.withTransaction(logger: logger) { c in
             _ = try await c.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ", logger: logger)
             var rev = -1
@@ -102,7 +138,7 @@ public struct PostgresStore: Sendable {
     // MARK: - Reads
 
     /// Committed entries with `after < seq <= through`, in order.
-    public func entries(_ id: String, after: Int, through: Int) async throws -> [LogEntry] {
+    func entriesImpl(_ id: String, after: Int, through: Int) async throws -> [LogEntry] {
         var out: [LogEntry] = []
         let rows = try await client.query(
             "SELECT seq, client_id, cseq, base, op::text FROM ops WHERE doc_id = \(id) AND seq > \(after) AND seq <= \(through) ORDER BY seq",
@@ -113,14 +149,14 @@ public struct PostgresStore: Sendable {
         return out
     }
 
-    public func clientHigh(_ id: String, client c: ClientID) async throws -> Int {
+    func clientHighImpl(_ id: String, client c: ClientID) async throws -> Int {
         let rows = try await client.query("SELECT high FROM client_state WHERE doc_id = \(id) AND client_id = \(c)", logger: logger)
         for try await high in rows.decode(Int.self) { return high }
         return 0
     }
 
     /// Durable outcomes of this client's cseqs in `range`.
-    public func knownOutcomes(_ id: String, client c: ClientID, range: ClosedRange<Int>?) async throws -> KnownOutcomes {
+    func knownOutcomesImpl(_ id: String, client c: ClientID, range: ClosedRange<Int>?) async throws -> KnownOutcomes {
         guard let range else { return KnownOutcomes() }
         var k = KnownOutcomes()
         let lo = range.lowerBound, hi = range.upperBound
@@ -140,7 +176,7 @@ public struct PostgresStore: Sendable {
     }
 
     /// cseq -> seq for the client's ops with `cseq >= from` committed at or before `through`.
-    public func committedMap(_ id: String, client c: ClientID, from: Int, through: Int) async throws -> [Int: Int] {
+    func committedMapImpl(_ id: String, client c: ClientID, from: Int, through: Int) async throws -> [Int: Int] {
         var out: [Int: Int] = [:]
         for try await (cseq, seq) in try await client.query(
             "SELECT cseq, seq FROM ops WHERE doc_id = \(id) AND client_id = \(c) AND cseq >= \(from) AND seq <= \(through)", logger: logger
@@ -170,7 +206,11 @@ public struct PostgresStore: Sendable {
         let reasons = try rejected.map { try WireJSON.encodeString(batch.rejections[$0]!) }
 
         do {
-            return try await commitTransaction(id, expectedRev, c, batch, newHead, snapshot, snapshotJSON, seqs, cseqs, bases, ops, fps, rejected, reasons, rejectedFps)
+            return try await withTimeout(operationTimeout) {
+                try await self.commitTransaction(id, expectedRev, c, batch, newHead, snapshot, snapshotJSON, seqs, cseqs, bases, ops, fps, rejected, reasons, rejectedFps)
+            }
+        } catch is TimeoutError {
+            throw StoreError.uncertain("commit did not finish in time")
         } catch let e as PostgresTransactionError {
             if e.commitError != nil { throw StoreError.uncertain("\(e.commitError!)") }
             if let closure = e.closureError as? StoreError { throw closure }

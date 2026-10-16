@@ -66,6 +66,10 @@ public final class RoundRunner: @unchecked Sendable {
     let toxi: Toxiproxy?
     var notes: [String] = []
     var diagStore: PostgresStore?
+    // Everything that must be torn down however the round ends.
+    var liveServer: ServerProcess?
+    var liveWorkers: [WorkerHandle] = []
+    var liveProxies: [String] = []
     var injected: [String: Int] = [:]
     let lock = NSLock()
 
@@ -90,9 +94,18 @@ public final class RoundRunner: @unchecked Sendable {
             note("FAIL harness error: \(error)")
             result.notes = notes
             result.report.violations.append("HARNESS: \(error)")
+            await cleanup()
         }
         result.wallSeconds = Double((ContinuousClock.now - started) / .milliseconds(1)) / 1000
         return result
+    }
+
+    /// Kills whatever is still running (error paths) so that a failed round cannot poison the next one in the same slot.
+    private func cleanup() async {
+        for w in liveWorkers { w.kill9() }
+        liveServer?.kill9()
+        if let toxi { for p in liveProxies { await toxi.deleteProxy(p) } }
+        if spec.profile.usesNetem, Netem.available { Netem.clear(device: env.netemDevice) }
     }
 
     private func execute() async throws -> RoundResult {
@@ -130,9 +143,11 @@ public final class RoundRunner: @unchecked Sendable {
             dbHost = env.toxiproxyHost
             dbPort = port
         }
-        var serverEnv: [String: String] = ["COLLAB_SSE_PING_SECONDS": "\(spec.pingSeconds)", "COLLAB_DB_POOL_SIZE": "12"]
+        var serverEnv: [String: String] = ["COLLAB_SSE_PING_SECONDS": "\(spec.pingSeconds)", "COLLAB_DB_POOL_SIZE": "12",
+                                      "COLLAB_DB_IDLE_IN_TRANSACTION_TIMEOUT_MS": "5000", "COLLAB_DB_LOCK_TIMEOUT_MS": "4000", "COLLAB_DB_OPERATION_TIMEOUT_MS": "6000"]
         if spec.profile.serverCommitDelayMs > 0 { serverEnv["COLLAB_TEST_COMMIT_DELAY_MILLIS"] = "\(spec.profile.serverCommitDelayMs)" }
         let server = ServerProcess(port: serverPort, dir: dir, env: env, dbHost: dbHost, dbPort: dbPort, extraEnv: serverEnv)
+        liveServer = server
         try server.start()
         try await server.waitHealthy()
 
@@ -148,6 +163,7 @@ public final class RoundRunner: @unchecked Sendable {
                 try await toxi.createProxy(name: pp, listenPort: base, upstream: "\(env.selfHost):\(serverPort)")
                 try await toxi.createProxy(name: ep, listenPort: base + 1, upstream: "\(env.selfHost):\(serverPort)")
                 pairs.append(.init(post: pp, events: ep))
+                liveProxies += [pp, ep]
                 post = "http://\(env.toxiproxyHost):\(base)"
                 events = "http://\(env.toxiproxyHost):\(base + 1)"
             }
@@ -171,6 +187,7 @@ public final class RoundRunner: @unchecked Sendable {
             let h = WorkerHandle(id: "w\(w)", clients: chunk, spec: spec, doc: docId, dir: dir, env: env)
             try h.spawn()
             workers.append(h)
+            liveWorkers.append(h)
         }
         for w in workers { _ = await w.expect("ready", timeout: .seconds(30)) }
 
@@ -183,7 +200,7 @@ public final class RoundRunner: @unchecked Sendable {
         await faultTask.value
         await net?.restore()
         if spec.profile.usesNetem, Netem.available { Netem.clear(device: env.netemDevice) }
-        if useProxy, spec.faults.dbCuts { await toxi?.setEnabled(pgProxy, true) }
+        if useProxy, spec.faults.dbCuts { await toxi?.ensureClean(proxy: pgProxy) }
         // Heal everything: server up, workers alive and resumed.
         if server.pid == nil { try server.start(); try await server.waitHealthy() }
         for w in workers { try await w.healAfterFaults() }
@@ -192,7 +209,12 @@ public final class RoundRunner: @unchecked Sendable {
         var allIdle = true
         for w in workers { w.send("stop") }
         for w in workers {
-            guard let r = await w.expect("idle", timeout: .seconds(spec.settleSec + 30)) else { allIdle = false; note("FAIL worker \(w.id) did not become idle"); continue }
+            guard let r = await w.expect("idle", timeout: .seconds(spec.settleSec + 30)) else {
+                allIdle = false
+                note("FAIL worker \(w.id) did not become idle")
+                await diagnoseStall(server: server)
+                continue
+            }
             if r != "idle 0" { allIdle = false; note("FAIL worker \(w.id) finished with unresolved ops: \(r)") }
         }
         guard let head = try await store.documentHead(docId) else { throw HarnessError("document vanished") }
@@ -222,7 +244,15 @@ public final class RoundRunner: @unchecked Sendable {
         result.server = metrics
         result.injected = injected.merging(net?.injected ?? [:], uniquingKeysWith: +)
         result.notes = notes
+        if let f = toxi?.failedCalls, f > 0 { result.notes.append("WARN toxiproxy admin API calls that failed after retries: \(f)") }
         return result
+    }
+
+    /// Evidence for a stalled round: is the server alive and answering, what is Postgres doing?
+    func diagnoseStall(server: ServerProcess) async {
+        let health = (try? await HarnessHTTP.get("\(server.baseURL)/healthz", timeout: .seconds(5))).map { "HTTP \($0.0) \(String(decoding: $0.1, as: UTF8.self))" } ?? "no answer"
+        note("DIAG server pid=\(server.pid.map(String.init) ?? "dead") healthz=\(health)")
+        note("DIAG pg_stat_activity: \(await diagnose())")
     }
 
     func diagnose() async -> String {
@@ -279,7 +309,10 @@ public final class RoundRunner: @unchecked Sendable {
                     server.kill9()
                     self.bump("serverKill")
                     try? await Task.sleep(for: .milliseconds(r.int(200...1500)))
-                    do { try server.start(); try await server.waitHealthy() } catch { self.note("FAIL server restart: \(error)"); self.note("DIAG pg_stat_activity: \(await self.diagnose())") }
+                    // Restarting must not be interrupted by the end of the fault window (cancellation would make the health probe fail).
+                    await Task {
+                        do { try server.start(); try await server.waitHealthy() } catch { self.note("FAIL server restart: \(error)") }
+                    }.value
                 }
             })
         }
@@ -313,7 +346,8 @@ public final class RoundRunner: @unchecked Sendable {
                     await toxi.setEnabled(pgProxy, false)
                     self.bump("dbCut")
                     try? await Task.sleep(for: .milliseconds(r.int(200...1500)))
-                    await toxi.setEnabled(pgProxy, true)
+                    // Healing must run even when the fault window just ended (a cancelled HTTP call would leave the proxy down).
+                    await Task { await toxi.setEnabled(pgProxy, true) }.value
                 }
             })
         }

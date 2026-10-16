@@ -42,9 +42,14 @@ public enum CollabServerMain {
         var pgConfig = PostgresClient.Configuration(host: config.dbHost, port: config.dbPort, username: config.dbUser,
                                                     password: config.dbPassword, database: config.dbName, tls: .disable)
         pgConfig.options.maximumConnections = config.dbPoolSize
+        pgConfig.options.additionalStartupParameters = [
+            ("idle_in_transaction_session_timeout", "\(config.dbIdleInTransactionTimeoutMs)"),
+            ("lock_timeout", "\(config.dbLockTimeoutMs)"),
+            ("statement_timeout", "\(config.dbStatementTimeoutMs)"),
+        ]
         pgConfig.options.minimumConnections = 2
         let pg = PostgresClient(configuration: pgConfig, backgroundLogger: logger)
-        let store = PostgresStore(client: pg, logger: logger)
+        let store = PostgresStore(client: pg, logger: logger, operationTimeout: .milliseconds(config.dbOperationTimeoutMs))
         let registry = DocumentRegistry(store: store, config: config, logger: logger)
 
         let app = try Application(.production,

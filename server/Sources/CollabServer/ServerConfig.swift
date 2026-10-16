@@ -12,6 +12,14 @@ public struct ServerConfig: Sendable {
     public var dbPassword: String
     public var dbName: String
     public var dbPoolSize: Int
+    /// Postgres kills a session that sits idle inside a transaction this long (a half-open connection that holds the
+    /// document row lock would otherwise block that document forever).
+    public var dbIdleInTransactionTimeoutMs: Int
+    /// A commit that cannot get the document row lock within this time fails (503, the client retries).
+    public var dbLockTimeoutMs: Int
+    public var dbStatementTimeoutMs: Int
+    /// Client-side bound on any single database operation (covers connections that die without telling us).
+    public var dbOperationTimeoutMs: Int
     /// Seconds between SSE keep-alive pings.
     public var ssePingSeconds: Int
     /// A reconnecting client further behind than this gets a snapshot instead of a replay.
@@ -36,6 +44,10 @@ public struct ServerConfig: Sendable {
         dbPassword = reader.string(forKey: "collab.db.password", isSecret: true, default: "collab")
         dbName = reader.string(forKey: "collab.db.name", default: "collab")
         dbPoolSize = reader.int(forKey: "collab.db.poolSize", default: 16)
+        dbIdleInTransactionTimeoutMs = reader.int(forKey: "collab.db.idleInTransactionTimeoutMs", default: 15_000)
+        dbLockTimeoutMs = reader.int(forKey: "collab.db.lockTimeoutMs", default: 10_000)
+        dbStatementTimeoutMs = reader.int(forKey: "collab.db.statementTimeoutMs", default: 30_000)
+        dbOperationTimeoutMs = reader.int(forKey: "collab.db.operationTimeoutMs", default: 20_000)
         ssePingSeconds = reader.int(forKey: "collab.sse.pingSeconds", default: 10)
         maxReplay = reader.int(forKey: "collab.maxReplay", default: 2000)
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
