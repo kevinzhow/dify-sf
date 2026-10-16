@@ -140,6 +140,12 @@ class FakeTransport implements CollabTransport {
   }
 
   @override
+  Future<String> issueClientId() async {
+    if (network.refused || network.partitioned) throw const TransportException('connection refused');
+    return server.issueClientId();
+  }
+
+  @override
   Stream<StreamEvent> openStream(StreamOpen open) {
     streamsOpened++;
     final stream = _FakeStream(this, open);

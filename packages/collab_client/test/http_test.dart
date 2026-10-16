@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing_io.dart';
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
 import 'support/helpers.dart';
@@ -170,6 +171,59 @@ void main() {
       throwsA(isA<TransportException>()),
     );
     await expectLater(t.openStream(const StreamOpen()).drain<void>(), throwsA(isA<TransportException>()));
+  });
+
+  test('server-issued client ids over HTTP: unique, kept in the journal, usable by a session', () async {
+    final t = HttpTransport(baseUrl: srv.url, docId: 'd');
+    final ids = {await t.issueClientId(), await t.issueClientId()};
+    expect(ids, hasLength(2));
+    await expectLater(
+      HttpTransport(baseUrl: srv.url, docId: 'no-such-doc').issueClientId(),
+      throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
+    );
+    final store = MemoryStore();
+    final s = CollabSession(
+      transport: HttpTransport(baseUrl: srv.url, docId: 'd'),
+      store: store,
+      config: _fast,
+      tickInterval: const Duration(milliseconds: 25),
+    );
+    sessions.add(s);
+    await s.start();
+    await s.settled().timeout(const Duration(seconds: 10));
+    expect(s.clientId, startsWith('s-'));
+    expect(store.saved!.id, s.clientId);
+    s.edit(setPrompt('a', 'x'));
+    await s.settled();
+    expect(srv.doc('d').log.single.client, s.clientId);
+    expect(await DocsApi(srv.url).issueClientId('d'), startsWith('s-'));
+  });
+
+  test('a browser-style client works against a server that answers CORS (preflight + allowed headers)', () async {
+    srv.allowedOrigin = 'http://app.example';
+    final res = http.Request('OPTIONS', srv.url.replace(path: '/v1/docs/d/ops'))
+      ..headers['Origin'] = 'http://app.example'
+      ..headers['Access-Control-Request-Method'] = 'POST'
+      ..headers['Access-Control-Request-Headers'] = 'content-type, last-event-id';
+    final sent = await res.send();
+    expect(sent.statusCode, 204);
+    expect(sent.headers['access-control-allow-origin'], 'http://app.example');
+    expect(sent.headers['access-control-allow-headers']!.toLowerCase(), contains('last-event-id'));
+    expect(srv.preflights, 1);
+    final other = http.Request('GET', srv.url.replace(path: '/healthz'))..headers['Origin'] = 'http://evil.example';
+    expect((await other.send()).headers.containsKey('access-control-allow-origin'), isFalse);
+  });
+
+  test('the resume point travels in Last-Event-ID by default, in ?lastEventId= when asked', () async {
+    for (final query in [false, true]) {
+      srv.streamResumePoints.clear();
+      final t = HttpTransport(baseUrl: srv.url, docId: 'd', lastEventIdInQuery: query);
+      final sub = t.openStream(const StreamOpen(lastEventId: 0)).listen((_) {});
+      await until(() => srv.streamResumePoints.isNotEmpty);
+      expect(srv.streamResumePoints, [0], reason: 'query=$query');
+      await sub.cancel();
+      t.close();
+    }
   });
 
   test('document endpoints', () async {

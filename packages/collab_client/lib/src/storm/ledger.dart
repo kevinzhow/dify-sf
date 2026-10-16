@@ -25,6 +25,7 @@ enum LedgerStatus {
 class LedgerEntry {
   LedgerEntry({
     required this.client,
+    required this.wireClient,
     required this.incarnation,
     required this.op,
     required this.intentMs,
@@ -32,7 +33,12 @@ class LedgerEntry {
     this.reappliesCseq,
   });
 
+  /// The logical client (stable across crashes).
   final String client;
+
+  /// The protocol client id the op was sent under (server-issued; can change after a crash that lost the
+  /// journal, or when the id turned out to be shared).
+  String wireClient;
 
   /// Which process lifetime of the client issued it (bumped on every simulated crash).
   final int incarnation;

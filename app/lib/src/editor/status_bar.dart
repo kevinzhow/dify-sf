@@ -5,10 +5,9 @@ import 'editor_controller.dart';
 
 /// Connection state (live / reconnecting / offline), unacknowledged edit count and the last applied seq.
 class StatusBar extends StatelessWidget {
-  const StatusBar({super.key, required this.controller, required this.clientId, required this.serverLabel});
+  const StatusBar({super.key, required this.controller, required this.serverLabel});
 
   final EditorController controller;
-  final String clientId;
   final String serverLabel;
 
   @override
@@ -66,7 +65,7 @@ class StatusBar extends StatelessWidget {
             Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: small),
             const Spacer(),
             Text(
-              '${controller.journaled ? 'journaled' : 'volatile'} · $clientId · ${controller.docId}',
+              '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · ${controller.docId}',
               style: small.copyWith(color: Colors.black54),
             ),
           ],

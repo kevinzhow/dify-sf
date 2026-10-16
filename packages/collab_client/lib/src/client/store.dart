@@ -10,6 +10,17 @@ abstract interface class DurableStore {
   Future<void> save(ClientDurable state);
 }
 
+/// A journal owned by exactly one live client instance (process, window, tab). Protocol 1.1 requires that a
+/// client id is used by one live process at a time, and the id lives in the journal: so a journal is claimed
+/// before use and [release]d afterwards. A crash releases it implicitly (OS file lock, tab lifetime).
+abstract interface class JournalSlot implements DurableStore {
+  /// Human-readable location, for diagnostics.
+  String get description;
+
+  /// Gives the slot back so that another instance may claim its journal.
+  Future<void> release();
+}
+
 /// In-memory store: survives a simulated crash within one test process, nothing more. Optionally models a
 /// slow disk and a crash racing a write.
 class MemoryStore implements DurableStore {
@@ -19,6 +30,9 @@ class MemoryStore implements DurableStore {
   Duration Function()? latency;
 
   ClientDurable? _saved;
+
+  /// What a restart would find in the journal.
+  ClientDurable? get saved => _saved;
   int _epoch = 0;
   bool _landInFlight = false;
   int writes = 0;

@@ -221,6 +221,8 @@ void _check(World w, List<Participant> ps, SimStats stats) {
           expect(p.journaled, isFalse, reason: '${p.id} journaled client reported a lost op');
           expect(byKey.containsKey((p.id, cseq)), isFalse, reason: '${p.id}/$cseq told lost but it is in the log (I5)');
           stats.lost++;
+        case ClientIdReplaced():
+          fail('${p.id}: the simulation never shares a client id, yet one was replaced');
         case ConflictDetected():
           stats.warnings++;
         case LocalInvalid():

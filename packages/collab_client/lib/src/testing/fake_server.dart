@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
@@ -18,6 +20,14 @@ class FakeServer {
   final List<LogEntry> log = [];
 
   final Map<String, int> _high = {};
+
+  /// Fingerprint `(base, op)` of the first op stored under each `(client, cseq)` (protocol 1.1, section 4
+  /// rule 5b): a duplicate with different content means two processes share the client id.
+  final Map<String, Map<int, String>> _fingerprints = {};
+  int _issued = 0;
+
+  /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits.
+  String issueClientId() => 's-${(++_issued).toRadixString(16).padLeft(32, '0')}';
   final Map<String, Map<int, int>> _committed = {};
   final Map<String, Map<int, RejectReason>> _rejected = {};
 
@@ -39,13 +49,20 @@ class FakeServer {
     var high = _high[client] ?? 0;
     final committed = _committed.putIfAbsent(client, () => {});
     final rejected = _rejected.putIfAbsent(client, () => {});
+    final prints = _fingerprints.putIfAbsent(client, () => {});
     final floor = req.floor;
     if (floor != null && floor - 1 > high) high = floor - 1;
     final results = <OpResult>[];
     final entries = <LogEntry>[];
     for (final inc in req.ops) {
       final cseq = inc.cseq;
+      final fingerprint = jsonEncode([inc.base, inc.op.toJson()]);
       if (cseq <= high) {
+        final first = prints[cseq];
+        if (first != null && first != fingerprint) {
+          results.add(RejectResult(cseq, const ClientIdInUse())); // nothing applied
+          continue;
+        }
         // Retransmit of something already handled: answer from durable facts, never apply twice.
         final s = committed[cseq];
         results.add(s != null ? AckResult(cseq, s) : RejectResult(cseq, rejected[cseq] ?? const NotCommitted()));
@@ -56,6 +73,7 @@ class FakeServer {
         continue;
       }
       // A new op, in order. Whatever happens, it advances the client's cseq.
+      prints[cseq] = fingerprint;
       RejectReason? bad;
       if (inc.base < 0 || inc.base > head) {
         bad = Invalid('base ${inc.base} is outside 0...$head');

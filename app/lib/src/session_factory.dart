@@ -4,14 +4,29 @@ import 'package:path_provider/path_provider.dart';
 
 /// Where an editor session comes from. The real one talks HTTP/SSE to a server and keeps its journal on
 /// disk; the demo one (lib/src/demo) runs against an in-memory server.
+/// A session plus whatever has to be given back when it is closed for good (the journal slot).
+class OpenedSession {
+  OpenedSession(this.session, [this._release]);
+
+  final CollabSession session;
+  final Future<void> Function()? _release;
+
+  /// Stops the session and releases its journal, so another window or a restart can claim it.
+  Future<void> close() async {
+    await session.stop();
+    await _release?.call();
+  }
+}
+
 abstract interface class Backend {
   String get label;
 
   /// Makes sure the document exists, returns its id.
   Future<String> prepare(String docId, {required bool create});
 
-  /// A new, not yet started session for [docId].
-  Future<CollabSession> openSession(String docId, {required String clientId, required bool journaled});
+  /// A new, not yet started session for [docId]. Normally [clientId] is null: the session takes the id from its
+  /// journal or gets a fresh one from the server (protocol 1.1). An explicit id is for tests and demos.
+  Future<OpenedSession> openSession(String docId, {String? clientId, required bool journaled});
 
   /// Creates a document with a server-generated id.
   Future<String> createDocument();
@@ -51,13 +66,18 @@ class HttpBackend implements Backend {
   }
 
   @override
-  Future<CollabSession> openSession(String docId, {required String clientId, required bool journaled}) async {
+  Future<OpenedSession> openSession(String docId, {String? clientId, required bool journaled}) async {
+    // One journal per live window: the id inside it is used by exactly one process at a time (protocol 1.1).
     final dir = kIsWeb ? null : '${(await getApplicationSupportDirectory()).path}/journals';
-    return CollabSession(
-      clientId: clientId,
-      transport: HttpTransport(baseUrl: baseUrl, docId: docId),
-      store: createPlatformStore(name: '$docId.$clientId'.replaceAll(':', '_'), directory: dir),
-      journaled: journaled,
+    final slot = await acquirePlatformJournal(docId, directory: dir);
+    return OpenedSession(
+      CollabSession(
+        clientId: clientId,
+        transport: HttpTransport(baseUrl: baseUrl, docId: docId),
+        store: slot,
+        journaled: journaled,
+      ),
+      slot.release,
     );
   }
 }

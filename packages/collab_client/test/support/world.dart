@@ -9,7 +9,7 @@ import 'package:fake_async/fake_async.dart';
 /// journal. Survives (simulated) crashes: [crash] drops the in-memory state, [restart] boots a new session
 /// from whatever the store holds.
 class Participant {
-  Participant(this.world, this.id, {required this.journaled, Random? random})
+  Participant(this.world, this.id, {required this.journaled, Random? random, this.wireId, this.serverIssuedId = false})
     : net = FakeNetwork(random: random ?? Random(id.hashCode)),
       _random = random ?? Random(id.hashCode ^ 0x5bd1) {
     transport = FakeTransport(world.server, network: net);
@@ -18,6 +18,13 @@ class Participant {
   final World world;
   final String id;
   final bool journaled;
+
+  /// The protocol client id to use, when it should differ from [id] (two "tabs" sharing one id). `null` = [id]
+  /// as the explicit id.
+  final String? wireId;
+
+  /// Let the session get its id from the server (protocol 1.1) instead of passing one.
+  final bool serverIssuedId;
   final FakeNetwork net;
   final Random _random;
   final MemoryStore store = MemoryStore();
@@ -40,7 +47,7 @@ class Participant {
     incarnation++;
     transport = FakeTransport(world.server, network: net);
     session = CollabSession(
-      clientId: id,
+      clientId: serverIssuedId ? null : (wireId ?? id),
       transport: transport,
       store: store,
       journaled: journaled,
@@ -115,8 +122,15 @@ class World {
 
   int clock() => async.elapsed.inMilliseconds;
 
-  Participant add(String id, {bool journaled = true, int? seed}) {
-    final p = Participant(this, id, journaled: journaled, random: seed == null ? null : Random(seed));
+  Participant add(String id, {bool journaled = true, int? seed, String? wireId, bool serverIssuedId = false}) {
+    final p = Participant(
+      this,
+      id,
+      journaled: journaled,
+      random: seed == null ? null : Random(seed),
+      wireId: wireId,
+      serverIssuedId: serverIssuedId,
+    );
     participants[id] = p;
     p.start();
     return p;

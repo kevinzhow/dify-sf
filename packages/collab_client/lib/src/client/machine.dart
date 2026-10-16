@@ -23,6 +23,12 @@ final class OpenStreamAction extends ClientRequest {
   final StreamOpen open;
 }
 
+/// The client id is compromised (another process uses it, protocol 1.1): the driver must obtain a fresh id
+/// (`POST /v1/docs/{doc}/clients`) and call [ClientMachine.adoptClientId]. Emitted once per compromise.
+final class RequestClientIdAction extends ClientRequest {
+  const RequestClientIdAction();
+}
+
 /// Timing knobs, in whatever unit the caller's `now` uses (simulator ticks, or milliseconds).
 final class ClientConfig {
   const ClientConfig({
@@ -155,7 +161,9 @@ class ClientMachine {
     return m;
   }
 
-  final String id;
+  /// The client id. Changes at most when the id is found to be shared with another process
+  /// ([adoptClientId]); never reused after that.
+  String id;
   final bool journaled;
   ClientConfig config;
 
@@ -180,6 +188,14 @@ class ClientMachine {
   int? _inFlightSince;
   int _submitBlockedUntil = 0;
   int submitFailures = 0;
+
+  // Client id compromise (protocol 1.1, `clientIdInUse`)
+  bool _idCompromised = false;
+  bool _idRequested = false;
+  int _catchUpTo = 0;
+
+  /// The id is shared with another process: nothing is sent until a new id is adopted.
+  bool get idCompromised => _idCompromised;
 
   final List<_Pending> _outbox = [];
   final List<ClientEvent> _events = [];
@@ -348,6 +364,7 @@ class ClientMachine {
   // ---- submitting --------------------------------------------------------------------------------
 
   List<ClientRequest> _flushIfIdle(int now) {
+    if (_idCompromised) return _maybeRequestNewId();
     if (_inFlightSince != null || now < _submitBlockedUntil) return const [];
     final abandoned = _outbox.any((p) => p.op == null && p.outcome == null);
     final batch = <OutgoingOp>[];
@@ -412,6 +429,9 @@ class ClientMachine {
       switch (r) {
         case AckResult(:final cseq, :final seq):
           _acked(cseq, seq);
+        case RejectResult(reason: ClientIdInUse()):
+          // Not a verdict on the op: the id is shared. Keep the op, stop sending, replace the id.
+          _compromise(response.head);
         case RejectResult(:final cseq, :final reason):
           _settle(cseq, _Rejected(reason));
         case GapResult():
@@ -424,7 +444,11 @@ class ClientMachine {
         _acked(cseq, known.committed[cseq]!);
       }
       for (final e in known.rejected.entries) {
-        _settle(e.key, _Rejected(e.value));
+        if (e.value is ClientIdInUse) {
+          _compromise(response.head);
+        } else {
+          _settle(e.key, _Rejected(e.value));
+        }
       }
       // Abandoned ops the server handled but never committed or rejected: definitively not saved.
       for (final p in _outbox) {
@@ -465,7 +489,15 @@ class ClientMachine {
     if (bad != null) violations.add('committed entry ${e.seq} invalid on client: $bad');
     _confirmed.apply(e.op, e.stamp);
     lastSeq = e.seq;
-    if (e.client == id) _settle(e.cseq, _Committed(e.seq));
+    if (e.client == id) {
+      final mine = _find(e.cseq);
+      if (mine != null && mine.op != null && (mine.op != e.op || mine.base != e.base)) {
+        // Someone else committed a different op under our (client, cseq): the id is shared.
+        _compromise(e.seq);
+      } else {
+        _settle(e.cseq, _Committed(e.seq));
+      }
+    }
   }
 
   /// An acked op whose entry we have since passed is committed (covers snapshot joins).
@@ -501,6 +533,62 @@ class ClientMachine {
       default:
         break;
     }
+  }
+
+  // ---- client id compromise ----------------------------------------------------------------------
+
+  void _compromise(int head) {
+    _idCompromised = true;
+    _catchUpTo = max(_catchUpTo, head);
+  }
+
+  /// Once the stream has caught up with everything committed so far (so that any of our own ops that did
+  /// get committed under the old id have been recognised), ask the driver for a new id.
+  List<ClientRequest> _maybeRequestNewId() {
+    if (_idRequested) return const [];
+    final settling = _outbox.any((p) => p.ackedSeq != null && p.outcome == null);
+    if (!hasState || !streamReady || lastSeq < _catchUpTo || settling) return const [];
+    _idRequested = true;
+    return const [RequestClientIdAction()];
+  }
+
+  /// Switches to [newId] after a [RequestClientIdAction]: starts again at cseq 1 and re-creates every unsaved
+  /// op (same content, same `base`, so stale-write protection is unchanged) as a new op. Ops whose content
+  /// was lost in a crash cannot be re-created and are reported lost. Emits [ClientIdReplaced].
+  List<ClientRequest> adoptClientId(String newId, int now) {
+    _releaseResolved();
+    final oldId = id;
+    final renumbered = <int, int>{};
+    final fresh = <_Pending>[];
+    var next = 1;
+    for (final p in _outbox) {
+      if (p.outcome != null) continue;
+      if (p.op == null) {
+        _events.add(OpLost(cseq: p.cseq));
+        continue;
+      }
+      renumbered[p.cseq] = next;
+      fresh.add(_Pending(next++, p.base, p.op));
+    }
+    _outbox
+      ..clear()
+      ..addAll(fresh);
+    id = newId;
+    nextCseq = next;
+    _idCompromised = false;
+    _idRequested = false;
+    _catchUpTo = 0;
+    _inFlightSince = null;
+    submitFailures = 0;
+    _submitBlockedUntil = 0;
+    durableRevision++;
+    _events.add(ClientIdReplaced(oldId: oldId, newId: newId, renumbered: renumbered));
+    _rebuildView();
+    final out = <ClientRequest>[];
+    // The stream carries `client` (for the snapshot's `committed` map): reopen it under the new id.
+    if (streamActive) _closeStream(now, backoff: false);
+    out.add(_openStream(now));
+    return out..addAll(_flushIfIdle(now));
   }
 
   // ---- rebase ------------------------------------------------------------------------------------

@@ -67,8 +67,11 @@ final class EditTicket {
 /// saved. A crash at any instant therefore leaves a journal that is a superset of what the server may have
 /// seen.
 class CollabSession {
+  /// [clientId] is normally omitted: the session then uses the id saved in its journal, or asks the server for a
+  /// fresh one (`POST /v1/docs/{doc}/clients`, protocol 1.1) when there is none. An explicit id is for tests and
+  /// tools that manage ids themselves (it must match the journal's, if the journal has one).
   CollabSession({
-    required this.clientId,
+    String? clientId,
     required this.transport,
     this.store,
     this.journaled = true,
@@ -77,10 +80,16 @@ class CollabSession {
     this.postTimeout = const Duration(seconds: 10),
     Random? random,
     int Function()? clock,
-  }) : _random = random ?? Random(),
+  }) : _explicitId = clientId,
+       _random = random ?? Random(),
        _clock = clock ?? _monotonicClock();
 
-  final String clientId;
+  final String? _explicitId;
+
+  /// The id this session sends under. Empty until [start] completes when it has to be issued by the server;
+  /// can change once if the id turns out to be shared ([ClientIdReplaced]).
+  String get clientId => _machine.id;
+
   final CollabTransport transport;
   final bool journaled;
   final ClientConfig config;
@@ -92,7 +101,12 @@ class CollabSession {
   final Random _random;
   final int Function() _clock;
 
-  late ClientMachine _machine = ClientMachine(id: clientId, journaled: journaled, config: config, random: _random);
+  late ClientMachine _machine = ClientMachine(
+    id: _explicitId ?? '',
+    journaled: journaled,
+    config: config,
+    random: _random,
+  );
   Timer? _ticker;
   StreamSubscription<StreamEvent>? _streamSub;
   int _postSeq = 0;
@@ -150,14 +164,16 @@ class CollabSession {
     return LinkState.reconnecting;
   }
 
-  /// Loads the journal (if any), then connects and starts syncing.
+  /// Loads the journal (if any), then connects and starts syncing. When there is no journal and no explicit
+  /// id, this asks the server for a client id first and throws a [TransportException] if that fails.
   Future<void> start() async {
     final saved = await store?.load();
-    if (saved != null && saved.id != clientId) {
-      throw StateError('journal belongs to client ${saved.id}, not $clientId');
+    if (saved != null && _explicitId != null && saved.id != _explicitId) {
+      throw StateError('journal belongs to client ${saved.id}, not $_explicitId');
     }
+    final id = saved?.id ?? _explicitId ?? await transport.issueClientId();
     _machine = saved == null
-        ? ClientMachine(id: clientId, journaled: journaled, config: config, random: _random)
+        ? ClientMachine(id: id, journaled: journaled, config: config, random: _random)
         : ClientMachine.restore(saved, journaled: journaled, config: config, random: _random);
     _running = true;
     _lastQueuedRevision = _machine.durableRevision;
@@ -250,6 +266,8 @@ class CollabSession {
           _openStream(open);
         case SubmitRequestAction(:final request):
           unawaited(_runSubmit(request));
+        case RequestClientIdAction():
+          unawaited(_replaceClientId());
       }
     }
   }
@@ -279,6 +297,24 @@ class CollabSession {
           onDone: () => closed(null),
           cancelOnError: true,
         );
+  }
+
+  /// The id is shared with another process: get a fresh one (retrying while the server is unreachable) and
+  /// let the machine re-create the unsaved edits under it.
+  Future<void> _replaceClientId() async {
+    var attempt = 0;
+    while (_running) {
+      try {
+        final id = await transport.issueClientId();
+        if (!_running) return;
+        _feed(() => _machine.adoptClientId(id, _clock()));
+        return;
+      } on Object catch (e) {
+        _lastError = 'could not get a new client id: $e';
+        attempt++;
+        await Future<void>.delayed(Duration(milliseconds: min(15000, 500 << min(attempt, 5))));
+      }
+    }
   }
 
   Future<void> _runSubmit(SubmitRequest request) async {

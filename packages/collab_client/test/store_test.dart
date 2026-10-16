@@ -50,6 +50,26 @@ void main() {
     expect((await store.load())!.nextCseq, 5);
   });
 
+  test('journal slots: one live instance per slot, the journal survives release, a free slot is reused', () async {
+    final dirs = FileJournalDirectory(dir.path);
+    final a = await dirs.acquire('doc1');
+    final b = await dirs.acquire('doc1');
+    expect(a.description, endsWith('doc1.slot-0.json'));
+    expect(
+      b.description,
+      endsWith('doc1.slot-1.json'),
+      reason: 'a second instance must not share the first one\'s journal',
+    );
+    expect((await dirs.acquire('doc2')).description, endsWith('doc2.slot-0.json'), reason: 'slots are per document');
+    await a.save(sample);
+    await a.release();
+    final again = await dirs.acquire('doc1');
+    expect(again.description, endsWith('doc1.slot-0.json'));
+    expect((await again.load())!.id, 'c1', reason: 'the restarted instance finds the journal of the one that left');
+    await again.release();
+    await b.release();
+  });
+
   test('platform factory gives a file store on the VM', () async {
     final store = createPlatformStore(name: 'x', directory: dir.path);
     await store.save(sample);

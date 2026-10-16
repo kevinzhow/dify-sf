@@ -514,6 +514,8 @@ sealed class RejectReason {
         return Invalid(m['message'] is String ? m['message']! as String : '');
       case 'notCommitted':
         return const NotCommitted();
+      case 'clientIdInUse':
+        return const ClientIdInUse();
       default:
         // Forward compatible: an unknown reason is still a rejection.
         return Invalid('unknown reject reason: ${m['type']}');
@@ -663,6 +665,17 @@ final class NotCommitted extends RejectReason {
   const NotCommitted();
   @override
   String get name => 'notCommitted';
+  @override
+  Map<String, Object?> toJson() => {'type': name};
+}
+
+/// Protocol 1.1: this `(client, cseq)` was already used for a *different* op, so another process shares this
+/// client id. Nothing was applied. The client must stop using the id, obtain a new one and re-send its unsaved
+/// edits as new ops (the machine does this; see `ClientIdReplaced`).
+final class ClientIdInUse extends RejectReason {
+  const ClientIdInUse();
+  @override
+  String get name => 'clientIdInUse';
   @override
   Map<String, Object?> toJson() => {'type': name};
 }

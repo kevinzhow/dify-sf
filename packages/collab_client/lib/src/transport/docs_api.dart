@@ -57,6 +57,16 @@ class DocsApi {
     return DocInfo.fromJson(jsonDecode(res.body));
   }
 
+  /// `POST /v1/docs/{id}/clients` (protocol 1.1): a fresh unique client id for one client instance.
+  Future<String> issueClientId(String id) async {
+    final req = http.Request('POST', _url('/v1/docs/$id/clients'))
+      ..headers['Content-Type'] = 'application/json'
+      ..body = '{}';
+    final res = await _guard(() async => http.Response.fromStream(await _client.send(req).timeout(timeout)));
+    if (res.statusCode != 201 && res.statusCode != 200) throw _error(res);
+    return (jsonDecode(res.body) as Map<String, Object?>)['client']! as String;
+  }
+
   /// `GET /v1/docs/{id}/snapshot`: the full document at the current head.
   Future<({int seq, Document doc})> snapshot(String id) async {
     final res = await _guard(() => _client.get(_url('/v1/docs/$id/snapshot')).timeout(timeout));

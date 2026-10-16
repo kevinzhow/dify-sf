@@ -1,6 +1,9 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
+import 'package:collab_client/testing.dart';
+import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
+import 'package:dify_sf_app/src/editor/node_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart' show isTest;
@@ -34,6 +37,7 @@ Future<DemoBackend> openEditor(
   bool journaled = true,
   bool withBo = true,
   Size size = const Size(1600, 900),
+  String? clientId = _me,
 }) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
@@ -44,7 +48,7 @@ Future<DemoBackend> openEditor(
       home: EditorPage(
         backend: demo,
         docId: 'demo',
-        clientId: _me,
+        clientId: clientId,
         journaled: journaled,
         extraActions: demo.actions,
       ),
@@ -54,6 +58,8 @@ Future<DemoBackend> openEditor(
   _current = demo;
   return demo;
 }
+
+EditorController _controller(WidgetTester t) => t.widget<NodePanel>(find.byType(NodePanel)).controller;
 
 String text(WidgetTester t, String key) => (t.widget(find.byKey(Key(key))) as Text).data!;
 
@@ -300,6 +306,38 @@ void main() {
     expect(text(t, 'notice-message'), contains('1 edit was lost'));
     expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('Answer briefly: {{#start.query#}}'));
     expect(text(t, 'pending-count'), 'All edits saved');
+  });
+
+  editorTest('a second window with the same client id: this one switches ids and re-sends, and says so', (t) async {
+    final demo = await openEditor(t, withBo: false, clientId: null);
+    final c = _controller(t);
+    final sharedId = c.session.clientId;
+    expect(sharedId, startsWith('s-'));
+    await select(t, 'llm');
+    demo.setOffline(true);
+    await settle(t, const Duration(seconds: 1));
+    await t.enterText(find.byKey(const ValueKey('title-llm')), 'Mine');
+    await settle(t, const Duration(seconds: 2));
+    expect(text(t, 'pending-count'), '1 unsaved edit');
+
+    // The "other window": same id, different edit, committed first (cseq 1).
+    final twin = CollabSession(clientId: sharedId, transport: FakeTransport(demo.server), store: MemoryStore());
+    await twin.start();
+    await settle(t, const Duration(seconds: 1));
+    twin.edit(const SetField('code', TitleKey(), VString('Twin')));
+    await settle(t, const Duration(seconds: 1));
+    expect(demo.server.log.single.client, sharedId);
+
+    demo.setOffline(false);
+    await t.tap(find.byKey(const Key('reconnect-now')));
+    await settle(t, const Duration(seconds: 6));
+    expect(c.session.clientId, isNot(sharedId));
+    expect(demo.server.doc.nodes['llm']!.title, 'Mine', reason: 'the edit was re-sent under the new id');
+    expect(demo.server.doc.nodes['code']!.title, 'Twin');
+    expect(text(t, 'notice-message'), contains('Another window was using this session'));
+    expect(text(t, 'notice-message'), contains('1 unsaved edit'));
+    expect(text(t, 'pending-count'), 'All edits saved');
+    await twin.stop();
   });
 
   editorTest('journaled mode: the same crash loses nothing and the edit is sent after restart', (t) async {

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
 import '../online_events.dart';
@@ -17,7 +16,7 @@ class EditorPage extends StatefulWidget {
     super.key,
     required this.backend,
     required this.docId,
-    required this.clientId,
+    this.clientId,
     required this.journaled,
     this.create = true,
     this.extraActions,
@@ -25,7 +24,9 @@ class EditorPage extends StatefulWidget {
 
   final Backend backend;
   final String docId;
-  final String clientId;
+
+  /// Explicit client id (tests, demo); null = issued by the server and kept in the journal.
+  final String? clientId;
   final bool journaled;
   final bool create;
 
@@ -39,7 +40,7 @@ class EditorPage extends StatefulWidget {
 
 class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   EditorController? _controller;
-  CollabSession? _session;
+  OpenedSession? _opened;
   Object? _error;
   var _generation = 0;
   void Function()? _stopOnlineListener;
@@ -63,14 +64,20 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     setState(() => _error = null);
     try {
       await widget.backend.prepare(widget.docId, create: widget.create);
-      final session = await widget.backend.openSession(
+      final opened = await widget.backend.openSession(
         widget.docId,
         clientId: widget.clientId,
         journaled: widget.journaled,
       );
-      await session.start();
+      final session = opened.session;
+      try {
+        await session.start();
+      } on Object {
+        await opened.close();
+        rethrow;
+      }
       if (!mounted || gen != _generation) {
-        await session.stop();
+        await opened.close();
         return;
       }
       final controller = EditorController(
@@ -79,7 +86,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         journaled: widget.journaled,
       )..addListener(_rebuild);
       setState(() {
-        _session = session;
+        _opened = opened;
         _controller = controller;
       });
     } on Object catch (e) {
@@ -95,15 +102,15 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   /// journal holds. Only used by the demo's "crash" button.
   Future<void> _crashAndRestart() async {
     final old = _controller;
-    final oldSession = _session;
+    final oldOpened = _opened;
     _generation++;
     setState(() {
       _controller = null;
-      _session = null;
+      _opened = null;
     });
     old?.removeListener(_rebuild);
     old?.dispose();
-    await oldSession?.stop();
+    await oldOpened?.close();
     await _open();
   }
 
@@ -114,7 +121,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     _generation++;
     _controller?.removeListener(_rebuild);
     _controller?.dispose();
-    unawaited(_session?.stop());
+    unawaited(_opened?.close());
     super.dispose();
   }
 
@@ -213,7 +220,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
             ],
           ),
         ),
-        StatusBar(controller: c, clientId: widget.clientId, serverLabel: widget.backend.label),
+        StatusBar(controller: c, serverLabel: widget.backend.label),
       ],
     );
   }

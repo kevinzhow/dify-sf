@@ -23,14 +23,10 @@ class HttpTransport implements CollabTransport {
     required this.docId,
     http.Client? client,
     this.connectTimeout = const Duration(seconds: 10),
-    bool? lastEventIdInQuery,
+    this.lastEventIdInQuery = false,
   }) : _base = baseUrl,
        _client = client ?? http.Client(),
-       _ownsClient = client == null,
-       lastEventIdInQuery = lastEventIdInQuery ?? _isWeb;
-
-  /// `dart.library.js_interop` is defined exactly when compiling for the web.
-  static const bool _isWeb = bool.fromEnvironment('dart.library.js_interop');
+       _ownsClient = client == null;
 
   final Uri _base;
   final String docId;
@@ -40,8 +36,9 @@ class HttpTransport implements CollabTransport {
   /// How long to wait for response headers when opening the stream.
   final Duration connectTimeout;
 
-  /// Send the resume point as `?lastEventId=` instead of the `Last-Event-ID` header. Browsers turn a custom
-  /// header into a CORS preflight; the query parameter is the protocol's escape hatch for them.
+  /// Send the resume point as `?lastEventId=` instead of the `Last-Event-ID` header. Not needed any more: since
+  /// protocol 1.1 the server answers CORS preflights and allows `Last-Event-ID`, so browsers can use the header
+  /// like everybody else. Kept for servers that predate 1.1.
   final bool lastEventIdInQuery;
 
   Uri _url(String suffix, [Map<String, String>? query]) => _base.replace(
@@ -78,6 +75,29 @@ class HttpTransport implements CollabTransport {
       if (!abort.isCompleted) abort.complete();
       unawaited(work.then<void>((_) {}, onError: (Object _) {}));
       throw const TransportException('POST timed out', timeout: true);
+    }
+  }
+
+  @override
+  Future<String> issueClientId() async {
+    final abort = Completer<void>();
+    final req = http.AbortableRequest('POST', _url('/clients'), abortTrigger: abort.future)
+      ..headers['Content-Type'] = 'application/json'
+      ..body = '{}';
+    try {
+      final res = await _client.send(req).timeout(connectTimeout);
+      final body = await res.stream.bytesToString();
+      if (res.statusCode != 201 && res.statusCode != 200) throw _errorFrom(res.statusCode, body);
+      final id = (jsonDecode(body) as Map<String, Object?>)['client'];
+      if (id is! String || id.isEmpty) throw const TransportException('server issued no client id');
+      return id;
+    } on TransportException {
+      rethrow;
+    } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
+      throw const TransportException('client id request timed out', timeout: true);
+    } on Object catch (e) {
+      throw TransportException('client id request failed: $e');
     }
   }
 

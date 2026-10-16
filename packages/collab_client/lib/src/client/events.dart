@@ -47,3 +47,14 @@ final class LocalInvalid extends ClientEvent {
   final Op op;
   final RejectReason reason;
 }
+
+/// The client id turned out to be shared with another process (protocol 1.1 `clientIdInUse`), so a new id was
+/// adopted and the unsaved edits were re-created as new ops starting at cseq 1. [renumbered] maps the old cseq
+/// of each re-created op to its new one (anything tracking ops by cseq must follow it); ops not in the map were
+/// finished before the switch or reported lost.
+final class ClientIdReplaced extends ClientEvent {
+  const ClientIdReplaced({required this.oldId, required this.newId, required this.renumbered});
+  final String oldId;
+  final String newId;
+  final Map<int, int> renumbered;
+}

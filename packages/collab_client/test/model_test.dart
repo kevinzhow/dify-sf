@@ -296,6 +296,7 @@ void main() {
         const ItemExists('i'),
         const Invalid('why'),
         const NotCommitted(),
+        const ClientIdInUse(),
       ];
       for (final r in reasons) {
         expect(RejectReason.fromJson(jsonDecode(jsonEncode(r.toJson()))), r);

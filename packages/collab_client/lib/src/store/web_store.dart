@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:web/web.dart' as web;
 
@@ -23,4 +24,29 @@ class LocalStorageStore implements DurableStore {
   Future<void> save(ClientDurable state) async {
     web.window.localStorage.setItem(key, jsonEncode(state.toJson()));
   }
+}
+
+/// One journal per browser tab: the slot id lives in `sessionStorage` (it survives a reload of the same tab,
+/// and is not shared with other tabs), the journal in `localStorage`. A duplicated tab copies the
+/// `sessionStorage` and would share the slot; the server then answers `clientIdInUse` and the client moves to
+/// a new id (protocol 1.1). A journal left by a closed tab is not adopted by others (a Web Locks based
+/// scheme could; see docs/client.md).
+Future<JournalSlot> acquireTabJournal(String docId) async {
+  final key = 'dify-sf/$docId/slot';
+  var slot = web.window.sessionStorage.getItem(key);
+  if (slot == null) {
+    slot = List.generate(12, (_) => Random.secure().nextInt(16).toRadixString(16)).join();
+    web.window.sessionStorage.setItem(key, slot);
+  }
+  return _TabSlot('dify-sf/$docId/$slot');
+}
+
+class _TabSlot extends LocalStorageStore implements JournalSlot {
+  _TabSlot(super.key);
+
+  @override
+  String get description => 'localStorage[$key]';
+
+  @override
+  Future<void> release() async {}
 }

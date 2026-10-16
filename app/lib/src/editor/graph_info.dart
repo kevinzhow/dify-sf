@@ -17,9 +17,12 @@ List<String> outputNames(Node n) {
   return names;
 }
 
-/// The display name for a client id: the part before the random suffix, capitalised
-/// (`bo-3fa2c1` -> `Bo`). Ids that do not follow the convention are shown as they are.
+/// The display name for a client id. Ids of the form `name-3fa2c1` (demo, tools) show as `Name`; server-issued
+/// ids (`s-` + 32 hex digits) have no name and show as `User 3fa2`; anything else is shown as it is.
 String clientDisplayName(String clientId) {
+  // Server-issued ids (protocol 1.1) carry no name: `s-` plus 32 hex digits. Show a short, stable tag.
+  final issued = RegExp(r'^s-[0-9a-f]{32}$');
+  if (issued.hasMatch(clientId)) return 'User ${clientId.substring(clientId.length - 4)}';
   final m = RegExp(r'^(.+?)[-_.:][0-9a-f]{4,}$').firstMatch(clientId);
   final base = m?.group(1) ?? clientId;
   if (base.isEmpty) return clientId;

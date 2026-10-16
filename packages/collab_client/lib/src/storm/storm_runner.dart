@@ -276,7 +276,7 @@ class StormRunner {
     final log = auditor.log;
     final byKey = {for (final e in log) (e.client, e.cseq): e};
     for (final e in _ledger) {
-      final entry = e.cseq == null ? null : byKey[(e.client, e.cseq!)];
+      final entry = e.cseq == null ? null : byKey[(e.wireClient, e.cseq!)];
       switch (e.status) {
         case LedgerStatus.committed:
           if (entry == null) {
@@ -303,9 +303,9 @@ class StormRunner {
     }
     final known = {
       for (final e in _ledger)
-        if (e.cseq != null) (e.client, e.cseq!),
+        if (e.cseq != null) (e.wireClient, e.cseq!),
     };
-    final mine = _clients.map((c) => c.id).toSet();
+    final mine = {for (final c in _clients) ...c.wireIds};
     for (final entry in log) {
       if (mine.contains(entry.client) && !known.contains((entry.client, entry.cseq))) {
         violations.add('log entry #${entry.seq} ${entry.client}/${entry.cseq} has no ledger entry');
@@ -391,6 +391,9 @@ class _StormClient {
   final Random rng;
 
   CollabSession? session;
+
+  /// Every protocol client id this client has used (issued by the server).
+  final Set<String> wireIds = {};
   int incarnation = 0;
   int _downUntil = 0;
 
@@ -406,7 +409,6 @@ class _StormClient {
     _booting = true;
     incarnation++;
     final s = CollabSession(
-      clientId: id,
       transport: HttpTransport(baseUrl: runner.config.url, docId: runner.config.doc),
       store: store,
       journaled: journaled,
@@ -416,6 +418,7 @@ class _StormClient {
     );
     s.events.listen(_onEvent);
     await s.start();
+    wireIds.add(s.clientId);
     session = s;
     _booting = false;
   }
@@ -466,6 +469,7 @@ class _StormClient {
     if (op == null || s == null) return;
     final entry = LedgerEntry(
       client: id,
+      wireClient: s.clientId,
       incarnation: incarnation,
       op: op,
       intentMs: runner._now,
@@ -517,6 +521,21 @@ class _StormClient {
           ..outcomeMs = now;
       case ConflictDetected(:final cseq):
         _byCseq[cseq]?.warned = true;
+      case ClientIdReplaced(:final newId, :final renumbered):
+        // The unsaved edits were re-created under a new id with new cseqs: follow them.
+        wireIds.add(newId);
+        final moved = <int, LedgerEntry>{};
+        for (final MapEntry(key: old, value: now) in renumbered.entries) {
+          final entry = _byCseq[old];
+          if (entry == null) continue;
+          entry
+            ..wireClient = newId
+            ..cseq = now;
+          moved[now] = entry;
+        }
+        _byCseq
+          ..clear()
+          ..addAll(moved);
       case LocalInvalid():
         break;
     }

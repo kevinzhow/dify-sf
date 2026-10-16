@@ -12,6 +12,9 @@ abstract interface class CollabTransport {
   /// subscription closes the connection.
   Stream<StreamEvent> openStream(StreamOpen open);
 
+  /// `POST /v1/docs/{doc}/clients` (protocol 1.1): a fresh, unique client id. Use one per client instance.
+  Future<String> issueClientId();
+
   /// Releases resources (open connections).
   void close();
 }

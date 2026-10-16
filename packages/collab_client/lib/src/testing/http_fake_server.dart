@@ -76,8 +76,38 @@ class HttpFakeServer {
 
   // ---- routing -----------------------------------------------------------------------------------
 
+  /// Number of CORS preflight (`OPTIONS`) requests answered.
+  int preflights = 0;
+
+  /// Origins other than this one get no CORS headers (like a server with a restrictive allow-list). null = any.
+  String? allowedOrigin;
+
+  void _cors(HttpRequest req) {
+    final origin = req.headers.value('origin');
+    if (origin == null || (allowedOrigin != null && origin != allowedOrigin)) return;
+    req.response.headers
+      ..set('Access-Control-Allow-Origin', origin)
+      ..set('Vary', 'Origin');
+  }
+
+  String _corsHeaderLine(HttpRequest req) {
+    final origin = req.headers.value('origin');
+    if (origin == null || (allowedOrigin != null && origin != allowedOrigin)) return '';
+    return 'Access-Control-Allow-Origin: $origin\r\nVary: Origin\r\n';
+  }
+
   Future<void> _handle(HttpRequest req) async {
     try {
+      _cors(req);
+      if (req.method == 'OPTIONS') {
+        preflights++;
+        req.response
+          ..statusCode = 204
+          ..headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
+          ..headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Last-Event-ID, Cache-Control')
+          ..headers.set('Access-Control-Max-Age', '600');
+        return await req.response.close();
+      }
       final seg = req.uri.pathSegments;
       if (req.method == 'GET' && req.uri.path == '/healthz') return await _json(req, 200, {'status': 'ok'});
       if (seg.length >= 2 && seg[0] == 'v1' && seg[1] == 'docs') {
@@ -95,6 +125,11 @@ class HttpFakeServer {
           return await _json(req, 200, {'seq': d.head, 'doc': d.doc.toJson()});
         }
         if (seg.length == 4 && seg[3] == 'ops' && req.method == 'POST') return await _ops(req, seg[2]);
+        if (seg.length == 4 && seg[3] == 'clients' && req.method == 'POST') {
+          final d = docs[seg[2]];
+          if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+          return await _json(req, 201, {'client': d.issueClientId()});
+        }
         if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2]);
       }
       await _error(req, 404, 'not_found', 'no such route');
@@ -160,6 +195,7 @@ class HttpFakeServer {
       'Content-Type: text/event-stream; charset=utf-8\r\n'
       'Cache-Control: no-store\r\n'
       'X-Accel-Buffering: no\r\n'
+      '${_corsHeaderLine(req)}'
       'Connection: close\r\n\r\n',
     );
     _streams.add(socket);

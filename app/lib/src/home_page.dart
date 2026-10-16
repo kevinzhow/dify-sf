@@ -26,7 +26,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final _url = TextEditingController(text: widget.settings.serverUrl);
   late final _doc = TextEditingController(text: widget.settings.lastDoc);
-  late final _name = TextEditingController(text: widget.settings.userName);
   late bool _journaled = widget.settings.journaled;
   String? _error;
   bool _busy = false;
@@ -44,7 +43,6 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _url.dispose();
     _doc.dispose();
-    _name.dispose();
     super.dispose();
   }
 
@@ -56,7 +54,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _remember() async {
     widget.settings
       ..serverUrl = _url.text.trim()
-      ..userName = _name.text.trim().isEmpty ? 'Me' : _name.text.trim()
       ..journaled = _journaled
       ..lastDoc = _doc.text.trim();
     await widget.settings.save();
@@ -107,7 +104,6 @@ class _HomePageState extends State<HomePage> {
         builder: (_) => EditorPage(
           backend: backend,
           docId: id,
-          clientId: widget.settings.clientId,
           journaled: _journaled,
           create: create,
           extraActions: extra,
@@ -134,16 +130,6 @@ class _HomePageState extends State<HomePage> {
                 key: const Key('server-field'),
                 controller: _url,
                 decoration: const InputDecoration(labelText: 'Server', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('name-field'),
-                controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Your name',
-                  helperText: 'Shown to others in conflict notices. Use a different name per window.',
-                  border: OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 12),
               TextField(

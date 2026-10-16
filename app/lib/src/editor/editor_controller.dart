@@ -203,6 +203,26 @@ class EditorController extends ChangeNotifier {
         }
       case OpLost():
         _noteLost();
+      case ClientIdReplaced(:final renumbered):
+        // Notices that refer to ops by cseq follow them to their new numbers.
+        final moved = <int, Notice>{};
+        for (final MapEntry(key: old, value: now) in renumbered.entries) {
+          final n = _byCseq[old];
+          if (n != null) moved[now] = n;
+        }
+        _byCseq
+          ..clear()
+          ..addAll(moved);
+        _addNotice(
+          Notice(
+            id: _nextNoticeId++,
+            kind: NoticeKind.info,
+            message:
+                'Another window was using this session\'s id, so this window switched to a new one'
+                '${renumbered.isEmpty ? '.' : ' and re-sent your ${renumbered.length} unsaved edit${renumbered.length == 1 ? '' : 's'}.'}',
+            detail: 'Each unsaved edit was sent again as a new edit, with the version it was made on.',
+          ),
+        );
       case LocalInvalid(:final op, :final reason):
         // A stale edit refused on the spot (it began before a newer remote write) or an edit of something
         // that is gone: say so, and keep the op for "re-apply" when that makes sense.
