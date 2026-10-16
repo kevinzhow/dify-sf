@@ -176,6 +176,31 @@ void main() {
     );
   });
 
+  group('regression: equal-value stale write (formal model REPORT 5.3)', () {
+    test(
+      'c1: f:=v1 then f:=v2, c2: f:=v1 sequenced first -> c1\'s second write is refused, c2\'s value survives',
+      () => inWorld((w) {
+        final c1 = w.add('c1');
+        final c2 = w.add('c2');
+        w.settle();
+        c1.net.dropRequest = 1; // c1 and c2 both write on top of version 0
+        c1.edit(setPrompt('a', 'v1'));
+        c1.edit(setPrompt('a', 'v2'));
+        c2.edit(setPrompt('a', 'v1'));
+        w.elapse(sec(2)); // c2 commits first
+        expect(w.server.log.map((e) => e.client), ['c2']);
+        c1.heal();
+        w.settle();
+        expect(c1.committed.map((c) => c.cseq), [1], reason: 'the equal-value write is accepted (a no-op)');
+        expect(c1.rejected.single.op, setPrompt('a', 'v2'));
+        expect(c1.rejected.single.reason, isA<Conflict>());
+        expect(cfg(w.server.doc, 'a', 'prompt'), 'v1', reason: 'c2\'s write was not silently overwritten');
+        expect(w.server.doc.fieldStamps['a']![const ConfigKey(['prompt'])], const Stamp(1, 'c2'));
+        expectConverged(w);
+      }, initial: threeNodes()),
+    );
+  });
+
   group('S3 a stale tab comes back', () {
     void staleTab(World w) {
       final alice = w.add('alice');

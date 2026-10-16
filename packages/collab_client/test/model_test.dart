@@ -33,6 +33,36 @@ void main() {
       expect(d.validate(const SetField('a', TitleKey(), VString('U')), base: 0, client: 'alice'), isA<Conflict>());
     });
 
+    test('regression (formal model, REPORT 5.3): an accepted equal-value stale write takes no stamp, so it cannot '
+        'exempt the same client\'s next write', () {
+      // c1 sends f1:=v1 then f1:=v2 (both base 0); c2's f1:=v1 is sequenced first.
+      final d = Document(nodes: [node('a')])..apply(setPrompt('a', 'v1'), stamp(1, 'c2'));
+      final first = setPrompt('a', 'v1');
+      final second = setPrompt('a', 'v2');
+      expect(d.validate(first, base: 0, client: 'c1'), isNull, reason: 'equal value: accepted');
+      d.apply(first, stamp(2, 'c1'));
+      expect(
+        d.fieldStamps['a']![const ConfigKey(['prompt'])],
+        stamp(1, 'c2'),
+        reason: 'stamp stays the earlier writer\'s',
+      );
+      expect(d.touches['a'], {'c2': 1}, reason: 'and c1 is not "touched" either');
+      expect(d.validate(second, base: 0, client: 'c1'), isA<Conflict>().having((c) => c.by, 'by', 'c2'));
+      // The same holds for titles, list items and removing an already removed item.
+      d.apply(const SetField('a', TitleKey(), VString('T')), stamp(3, 'c2'));
+      d.apply(const SetField('a', TitleKey(), VString('T')), stamp(4, 'c1'));
+      expect(d.validate(const SetField('a', TitleKey(), VString('U')), base: 0, client: 'c1'), isA<Conflict>());
+      d
+        ..apply(ins('a', 'x'), stamp(5, 'c2'))
+        ..apply(const UpdateItem('a', ['outs'], 'x', VString('x')), stamp(6, 'c1')); // equal value
+      expect(d.validate(const UpdateItem('a', ['outs'], 'x', VString('y')), base: 0, client: 'c1'), isA<Conflict>());
+      d
+        ..apply(const RemoveItem('a', ['outs'], 'x'), stamp(7, 'c2'))
+        ..apply(const RemoveItem('a', ['outs'], 'x'), stamp(8, 'c1')); // already removed
+      expect(d.deletedItems['x'], stamp(7, 'c2'));
+      expect(d.fieldStamps['a']![const ItemKey(['outs'], 'x')], stamp(7, 'c2'));
+    });
+
     test('overlapping paths conflict, siblings do not', () {
       final d = Document(nodes: [node('a')])..apply(setStr('a', ['model', 'name'], 'x'), stamp(2, 'bob'));
       expect(d.validate(setStr('a', ['model'], 'y'), base: 1, client: 'alice'), isA<Conflict>());
