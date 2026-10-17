@@ -2,6 +2,8 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'cards/card_kit.dart' show cardFontFamily;
+
 import 'demo/demo_backend.dart';
 import 'editor/editor_controller.dart';
 import 'editor/editor_page.dart';
@@ -237,7 +239,7 @@ Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, Launch
   theme: ThemeData(
     colorSchemeSeed: const Color(0xFF3F51B5),
     useMaterial3: true,
-    fontFamily: kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
+    fontFamily: cardFontFamily = kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
   ),
   home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
 );

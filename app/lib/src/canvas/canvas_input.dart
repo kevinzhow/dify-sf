@@ -50,7 +50,7 @@ class CanvasInput {
   Offset _lastCanvas = Offset.zero;
   Offset _panCenter = Offset.zero;
   bool _moved = false;
-  CanvasNode? _connectFrom;
+  (CanvasNode, String)? _connectFrom;
   Set<int> _moving = {};
   Timer? _sendTimer;
 
@@ -73,12 +73,15 @@ class CanvasInput {
 
   int stackKey(CanvasNode n) => (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
 
-  /// The node whose source handle box is under [c] (a little larger when zoomed out).
-  CanvasNode? outPortAt(Offset c) {
+  /// The node and source handle whose box is under [c] (a little larger when zoomed out).
+  (CanvasNode, String)? outPortAt(Offset c) {
     final slack = max(0.0, _portSlackPx / view.scale - 2);
     for (final slot in graph.grid.near(Rect.fromCenter(center: c, width: 40, height: 40))) {
       final n = graph.slots[slot];
-      if (n != null && n.outHandle.inflate(slack).contains(c)) return n;
+      if (n == null) continue;
+      for (final (id, box) in n.outHandles) {
+        if (box.inflate(slack).contains(c)) return (n, id);
+      }
     }
     return null;
   }
@@ -89,9 +92,9 @@ class CanvasInput {
     var bestD = r;
     for (final e in graph.edges) {
       final a = graph.slots[e.source]!, b = graph.slots[e.target]!;
-      final box = Rect.fromPoints(a.outPort, b.inPort).inflate(60 + r);
+      final box = Rect.fromPoints(a.outPortFor(e.sourceHandle), b.inPort).inflate(60 + r);
       if (!box.contains(c)) continue;
-      final d = distanceToPolyline(c, edgeCurve(a.outPort, b.inPort));
+      final d = distanceToPolyline(c, edgeCurve(a.outPortFor(e.sourceHandle), b.inPort));
       if (d <= bestD) {
         best = e;
         bestD = d;
@@ -151,7 +154,7 @@ class CanvasInput {
         renderer().moved(_moving);
         onApplied?.call('move');
       case 'connect':
-        renderer().connectPreview(_connectFrom!.outPort, c);
+        renderer().connectPreview(_connectFrom!.$1.outPortFor(_connectFrom!.$2), c);
         onApplied?.call('connect');
       case 'marquee':
         marquee.value = Rect.fromPoints(_downLocal, e.localPosition);
@@ -184,8 +187,10 @@ class CanvasInput {
       case 'connect':
         renderer().connectPreview(null, null);
         final target = nodeAt(c);
-        if (target != null && target.slot != _connectFrom!.slot) {
-          controller.connect(_connectFrom!.id, target.id);
+        final (from, handle) = _connectFrom!;
+        if (target != null && target.slot != from.slot && target.layout.target) {
+          // dify-sf's own documents use `out`; Dify's handles keep their ids (branches, classes, ...).
+          controller.connect(from.id, target.id, sourceHandle: handle == 'source' ? null : handle);
           onApplied?.call('connected');
         }
         _connectFrom = null;

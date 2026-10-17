@@ -16,6 +16,7 @@ dependencies:
   web: ^1.1.1
   flutter_scene: ^0.24.3
   vector_math: ^2.4.3
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +40,67 @@ flutter:
           weight: 700
   assets:
     - assets/fonts/OFL.txt
+    # Remix Icon as Dify uses it (tool/gen_remix_icons.py, Apache-2.0).
+    - assets/remix_icons/
+    # Dify's icons (tool/gen_dify_icons.py), one entry per directory.
+    - assets/dify_icons/public/agent/
+    - assets/dify_icons/public/avatar/
+    - assets/dify_icons/public/billing/
+    - assets/dify_icons/public/common/
+    - assets/dify_icons/public/education/
+    - assets/dify_icons/public/files/
+    - assets/dify_icons/public/knowledge/
+    - assets/dify_icons/public/knowledge/dataset-card/
+    - assets/dify_icons/public/knowledge/online-drive/
+    - assets/dify_icons/public/llm/
+    - assets/dify_icons/public/model/
+    - assets/dify_icons/public/other/
+    - assets/dify_icons/public/plugins/
+    - assets/dify_icons/public/thought/
+    - assets/dify_icons/public/tracing/
+    - assets/dify_icons/vender/agent-v2/
+    - assets/dify_icons/vender/app-publisher/
+    - assets/dify_icons/vender/deploy/
+    - assets/dify_icons/vender/features/
+    - assets/dify_icons/vender/integrations/
+    - assets/dify_icons/vender/knowledge/
+    - assets/dify_icons/vender/line/alertsAndFeedback/
+    - assets/dify_icons/vender/line/arrows/
+    - assets/dify_icons/vender/line/communication/
+    - assets/dify_icons/vender/line/development/
+    - assets/dify_icons/vender/line/editor/
+    - assets/dify_icons/vender/line/education/
+    - assets/dify_icons/vender/line/files/
+    - assets/dify_icons/vender/line/financeAndECommerce/
+    - assets/dify_icons/vender/line/general/
+    - assets/dify_icons/vender/line/images/
+    - assets/dify_icons/vender/line/layout/
+    - assets/dify_icons/vender/line/mediaAndDevices/
+    - assets/dify_icons/vender/line/others/
+    - assets/dify_icons/vender/line/shapes/
+    - assets/dify_icons/vender/line/time/
+    - assets/dify_icons/vender/line/users/
+    - assets/dify_icons/vender/line/weather/
+    - assets/dify_icons/vender/main-nav/
+    - assets/dify_icons/vender/other/
+    - assets/dify_icons/vender/pipeline/
+    - assets/dify_icons/vender/plugin/
+    - assets/dify_icons/vender/solid/FinanceAndECommerce/
+    - assets/dify_icons/vender/solid/alertsAndFeedback/
+    - assets/dify_icons/vender/solid/arrows/
+    - assets/dify_icons/vender/solid/communication/
+    - assets/dify_icons/vender/solid/development/
+    - assets/dify_icons/vender/solid/editor/
+    - assets/dify_icons/vender/solid/education/
+    - assets/dify_icons/vender/solid/files/
+    - assets/dify_icons/vender/solid/general/
+    - assets/dify_icons/vender/solid/layout/
+    - assets/dify_icons/vender/solid/mediaAndDevices/
+    - assets/dify_icons/vender/solid/security/
+    - assets/dify_icons/vender/solid/shapes/
+    - assets/dify_icons/vender/solid/users/
+    - assets/dify_icons/vender/system/
+    - assets/dify_icons/vender/workflow/
     - flutter_scene_generated/
     - path: flutter_scene_generated/metal_ios/
       platforms:

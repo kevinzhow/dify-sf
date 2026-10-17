@@ -126,8 +126,9 @@ class SceneRenderer extends CanvasRenderer {
   late final _RoundedFrames _statusFrames;
   late final _RoundedFrames _selectedFrames;
   late final InstancedMesh _markers;
-  final _connectedIn = <int>{};
-  final _connectedOut = <int>{};
+  // One marker instance per connected handle: (slot, handle id or '' for the target handle) -> instance.
+  final _markerAt = <(int, String), int>{};
+  final _markerFree = <int>[];
   late final UnlitMaterial _edgeMaterial;
   late final UnlitMaterial _selectedEdgeMaterial;
   late final UnlitMaterial _previewMaterial;
@@ -204,9 +205,6 @@ class SceneRenderer extends CanvasRenderer {
       _captureStartedAt.add(0);
       _lastOverviewAt.add(0);
       _skeleton.add(null);
-      _markers
-        ..addInstance(vm.Matrix4.zero(), color: srgb(DifyColors.workflowLinkLineHandle))
-        ..addInstance(vm.Matrix4.zero(), color: srgb(DifyColors.workflowLinkLineHandle));
     }
   }
 
@@ -257,9 +255,9 @@ class SceneRenderer extends CanvasRenderer {
     _skeleton[slot] = null;
     _statusFrames.clear(slot);
     _selectedFrames.clear(slot);
-    _markers
-      ..setInstanceTransform(2 * slot, vm.Matrix4.zero())
-      ..setInstanceTransform(2 * slot + 1, vm.Matrix4.zero());
+    for (final k in [..._markerAt.keys.where((k) => k.$1 == slot)]) {
+      _dropMarker(k);
+    }
     _overviewQueue.remove(slot);
     _dirty.remove(slot);
     _liveStale.remove(slot);
@@ -280,37 +278,74 @@ class SceneRenderer extends CanvasRenderer {
     final card = _cardNodes[slot];
     if (n == null || card == null) return;
     final lift = _lift(slot);
-    final padded = n.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad);
+    // Captures cover everything drawn for the node (the visual rectangle) plus room for the shadow.
+    final padded = n.visual.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad);
+    final center = n.visual.center;
     card
-      ..position = toWorld(n.center, lift)
+      ..position = toWorld(center, lift)
       ..scale = vm.Vector3(padded.width, padded.height, 1);
     _placeholderNodes[slot]
-      ?..position = toWorld(n.center, lift - 0.05)
+      ?..position = toWorld(center, lift - 0.05)
       ..scale = vm.Vector3(padded.width, padded.height, 1);
     final sk = _skeleton[slot];
-    if (sk != null) _skeletonMeshes[sk.$1]!.setInstanceTransform(sk.$2, _box(n.center, padded, lift - 0.05));
+    if (sk != null) _skeletonMeshes[sk.$1]!.setInstanceTransform(sk.$2, _box(center, padded, lift - 0.05));
     _statusChanged(slot);
     _highlight(slot);
     _placeMarkers(slot);
   }
 
   /// The handles' visible markers (node-handle.tsx `after:`): 2 x 8 bars, 6 px inside the handle box's outer side and
-  /// 4 px below its top, only on sides that have an edge.
+  /// 4 px below its top, only on handles that have an edge.
   void _placeMarkers(int slot) {
     final n = graph.slots[slot];
     if (n == null) return;
     final lift = _lift(slot) + 0.02;
-    final inBar = Rect.fromLTWH(n.inHandle.left + 6, n.inHandle.top + 4, 2, 8);
-    final outBar = Rect.fromLTWH(n.outHandle.right - 8, n.outHandle.top + 4, 2, 8);
-    _markers
-      ..setInstanceTransform(
-        2 * slot,
-        _connectedIn.contains(slot) ? _box(inBar.center, inBar.size, lift) : vm.Matrix4.zero(),
-      )
-      ..setInstanceTransform(
-        2 * slot + 1,
-        _connectedOut.contains(slot) ? _box(outBar.center, outBar.size, lift) : vm.Matrix4.zero(),
+    for (final MapEntry(key: k, value: at) in _markerAt.entries) {
+      if (k.$1 != slot) continue;
+      final Rect bar;
+      if (k.$2.isEmpty) {
+        bar = Rect.fromLTWH(n.inHandle.left + 6, n.inHandle.top + 4, 2, 8);
+      } else {
+        final port = n.outPortFor(k.$2);
+        bar = Rect.fromLTWH(port.dx - 8, port.dy - 4, 2, 8);
+      }
+      _markers.setInstanceTransform(at, _box(bar.center, bar.size, lift));
+    }
+  }
+
+  void _dropMarker((int, String) k) {
+    final at = _markerAt.remove(k);
+    if (at == null) return;
+    _markers.setInstanceTransform(at, vm.Matrix4.zero());
+    _markerFree.add(at);
+  }
+
+  /// Markers for exactly the handles that have edges.
+  void _syncMarkers() {
+    final want = <(int, String)>{
+      for (final e in graph.edges) ...[(e.target, ''), (e.source, _handleKey(e))],
+    };
+    for (final k in [..._markerAt.keys]) {
+      if (!want.contains(k)) _dropMarker(k);
+    }
+    for (final k in want) {
+      _markerAt.putIfAbsent(
+        k,
+        () => _markerFree.isNotEmpty
+            ? _markerFree.removeLast()
+            : _markers.addInstance(vm.Matrix4.zero(), color: srgb(DifyColors.workflowLinkLineHandle)),
       );
+    }
+    for (final slot in {for (final k in want) k.$1}) {
+      if (slot < _cardNodes.length) _placeMarkers(slot);
+    }
+  }
+
+  /// The source handle an edge leaves from, as the layout knows it.
+  String _handleKey(CanvasEdge e) {
+    final n = graph.slots[e.source];
+    if (n == null || n.layout.sources.containsKey(e.sourceHandle)) return e.sourceHandle;
+    return n.layout.sources.keys.firstOrNull ?? 'source';
   }
 
   // ----- status and selection frames -----
@@ -403,7 +438,7 @@ class SceneRenderer extends CanvasRenderer {
     for (final e in edges) {
       final a = graph.slots[e.source], b = graph.slots[e.target];
       if (a == null || b == null) continue;
-      final pts = edgeCurve(a.outPort, b.inPort);
+      final pts = edgeCurve(a.outPortFor(e.sourceHandle), b.inPort);
       for (var k = 0; k + 1 < pts.length; k++) {
         final p = toWorld(pts[k]), q = toWorld(pts[k + 1]);
         out.addAll([p.x, p.y, p.z, q.x, q.y, q.z]);
@@ -431,16 +466,7 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   void _rebuildEdges() {
-    final wasIn = {..._connectedIn}, wasOut = {..._connectedOut};
-    _connectedIn
-      ..clear()
-      ..addAll(graph.edges.map((e) => e.target));
-    _connectedOut
-      ..clear()
-      ..addAll(graph.edges.map((e) => e.source));
-    for (final slot in {...wasIn, ...wasOut, ..._connectedIn, ..._connectedOut}) {
-      if (slot < _cardNodes.length) _placeMarkers(slot);
-    }
+    _syncMarkers();
     _replaceEdgeNode(_staticEdges, (n) => _staticEdges = n, _edgesWhere(live: false), _edgeMaterial);
     _replaceEdgeNode(_liveEdges, (n) => _liveEdges = n, _edgesWhere(live: true), _edgeMaterial);
     _showSelectedEdge();
@@ -488,10 +514,11 @@ class SceneRenderer extends CanvasRenderer {
       // Cards stay out of the semantics tree; the canvas exposes its own summary (CanvasA11y).
       child: ExcludeSemantics(
         child: Builder(
-          builder: (context) => _padded(cards.build(context, n, live: true, onPainted: () => _livePainted(slot, c))),
+          builder: (context) =>
+              _padded(cards.build(context, n, graph, live: true, onPainted: () => _livePainted(slot, c))),
         ),
       ),
-      size: n.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
+      size: n.visual.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
       pixelRatio: density,
       worldHeight: 1,
       geometry: _unitQuad,
@@ -597,10 +624,10 @@ class SceneRenderer extends CanvasRenderer {
       child: ExcludeSemantics(
         child: Builder(
           builder: (context) =>
-              _padded(cards.build(context, sample, live: false, onPainted: () => c.controller.requestCapture())),
+              _padded(cards.build(context, sample, graph, live: false, onPainted: () => c.controller.requestCapture())),
         ),
       ),
-      size: sample.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
+      size: sample.visual.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
       pixelRatio: _dpr * SceneTuning.skeletonScale * 2,
       update: WidgetUpdatePolicy.manual,
       input: WidgetInput.manual,
@@ -686,10 +713,10 @@ class SceneRenderer extends CanvasRenderer {
         child: ExcludeSemantics(
           child: Builder(
             builder: (context) =>
-                _padded(cards.build(context, n, live: false, onPainted: () => c.controller.requestCapture())),
+                _padded(cards.build(context, n, graph, live: false, onPainted: () => c.controller.requestCapture())),
           ),
         ),
-        size: n.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
+        size: n.visual.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
         pixelRatio: _dpr * SceneTuning.overviewMaxScale,
         update: WidgetUpdatePolicy.manual,
         input: WidgetInput.manual,

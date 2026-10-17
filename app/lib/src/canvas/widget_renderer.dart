@@ -113,34 +113,36 @@ class WidgetRenderer extends CanvasRenderer {
       'exception' => DifyColors.stateWarningSolid,
       _ => null,
     };
-    final connectedIn = graph.edges.any((e) => e.target == n.slot);
-    final connectedOut = graph.edges.any((e) => e.source == n.slot);
-    // The box covers the card, its selected frame (1 px outside) and the handles (9 px outside).
-    const out = CanvasNode.handleOut;
-    Widget marker(bool on) => SizedBox(
-      width: CanvasNode.handleBox,
-      height: CanvasNode.handleBox,
+    final connected = {
+      for (final e in graph.edges) ...[
+        if (e.target == n.slot) ('in', ''),
+        if (e.source == n.slot)
+          ('out', n.layout.sources.containsKey(e.sourceHandle) ? e.sourceHandle : n.layout.sources.keys.first),
+      ],
+    };
+    // One box covering what is drawn for the node, its selected frame and its handles.
+    const out = CanvasNode.handleOut, box = CanvasNode.handleBox;
+    final bounds = n.visual.expandToInclude(n.rect.inflate(out + 1));
+    Offset local(Offset p) => p - bounds.topLeft;
+    Widget marker(bool on, {bool right = false}) => SizedBox(
+      width: box,
+      height: box,
       child: on
-          ? const Padding(
-              padding: EdgeInsets.fromLTRB(6, 4, 8, 4),
-              child: ColoredBox(color: DifyColors.workflowLinkLineHandle),
+          ? Padding(
+              padding: right ? const EdgeInsets.fromLTRB(8, 4, 6, 4) : const EdgeInsets.fromLTRB(6, 4, 8, 4),
+              child: const ColoredBox(color: DifyColors.workflowLinkLineHandle),
             )
           : null,
     );
-    return Positioned(
-      left: n.x - out,
-      top: n.y - 1,
-      width: n.size.width + 2 * out,
-      height: n.size.height + 2,
+    final card = local(n.rect.topLeft), visual = local(n.visual.topLeft);
+    return Positioned.fromRect(
+      rect: bounds,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           if (selected)
-            Positioned(
-              left: out - 1,
-              top: 0,
-              width: n.size.width + 2,
-              height: n.size.height + 2,
+            Positioned.fromRect(
+              rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(DifyRadius.xxl),
@@ -149,37 +151,42 @@ class WidgetRenderer extends CanvasRenderer {
               ),
             ),
           Positioned(
-            left: out,
-            top: 1,
-            width: n.size.width,
-            height: n.size.height,
+            left: visual.dx,
+            top: visual.dy,
+            width: n.visual.width,
+            height: n.visual.height,
             child: KeyedSubtree(
               key: ValueKey('node-${n.id}'),
-              child: RepaintBoundary(
+              child: RepaintBoundary(child: cards.build(context, n, graph, live: true)),
+            ),
+          ),
+          if (status != null)
+            Positioned.fromRect(
+              rect: Rect.fromLTWH(card.dx, card.dy, n.size.width, n.size.height),
+              child: IgnorePointer(
                 child: DecoratedBox(
-                  position: DecorationPosition.foreground,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(DifyRadius.nodeCard),
-                    border: status == null ? null : Border.all(color: status),
+                    border: Border.all(color: status),
                   ),
-                  child: cards.build(context, n, live: true),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            top: 1 + CanvasNode.handleTop,
-            child: KeyedSubtree(key: Key('in-${n.id}'), child: marker(connectedIn)),
-          ),
-          Positioned(
-            right: 0,
-            top: 1 + CanvasNode.handleTop,
-            child: KeyedSubtree(
-              key: Key('out-${n.id}'),
-              child: Transform.flip(flipX: true, child: marker(connectedOut)),
+          if (n.layout.target)
+            Positioned(
+              left: local(n.inHandle.topLeft).dx,
+              top: local(n.inHandle.topLeft).dy,
+              child: KeyedSubtree(key: Key('in-${n.id}'), child: marker(connected.contains(('in', '')))),
             ),
-          ),
+          for (final (i, (id, handle)) in n.outHandles.indexed)
+            Positioned(
+              left: local(handle.topLeft).dx,
+              top: local(handle.topLeft).dy,
+              child: KeyedSubtree(
+                key: Key(i == 0 ? 'out-${n.id}' : 'out-${n.id}-$id'),
+                child: marker(connected.contains(('out', id)), right: true),
+              ),
+            ),
         ],
       ),
     );
@@ -225,7 +232,7 @@ class _EdgePainter extends CustomPainter {
       final a = graph.slots[e.source], b = graph.slots[e.target];
       if (a == null || b == null) continue;
       canvas.drawPath(
-        _path(edgeCurve(a.outPort, b.inPort)),
+        _path(edgeCurve(a.outPortFor(e.sourceHandle), b.inPort)),
         Paint()
           ..color = e.id == selected ? DifyColors.workflowLinkLineHandle : DifyColors.workflowLinkLineNormal
           ..style = PaintingStyle.stroke

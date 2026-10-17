@@ -8,6 +8,7 @@ import 'canvas_input.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
+import '../cards/dify_cards.dart';
 import 'node_card.dart';
 import 'renderer_choice.dart';
 import 'scene_renderer.dart';
@@ -31,7 +32,7 @@ abstract final class CanvasDefaults {
 /// The workflow canvas: the document's nodes and edges, drawn by Flutter Scene (or plain widgets where Flutter GPU is
 /// not available), with selection, moving, connecting, panning and zooming. Edits go through [controller].
 class WorkflowCanvas extends StatefulWidget {
-  const WorkflowCanvas({super.key, required this.controller, this.cards = const CardSpec(), this.renderer});
+  const WorkflowCanvas({super.key, required this.controller, this.cards = const DifyCards(), this.renderer});
 
   final EditorController controller;
   final CardSpec cards;
@@ -44,7 +45,7 @@ class WorkflowCanvas extends StatefulWidget {
 }
 
 class WorkflowCanvasState extends State<WorkflowCanvas> {
-  late final graph = CanvasGraph(sizeOf: widget.cards.sizeOf);
+  late final graph = CanvasGraph(layoutOf: widget.cards.layoutOf);
   final view = CanvasViewState();
   final selection = CanvasSelection();
   late final CanvasInput input;

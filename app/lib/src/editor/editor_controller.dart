@@ -118,9 +118,16 @@ class EditorController extends ChangeNotifier {
     return id;
   }
 
-  void connect(String sourceId, String targetId) {
+  /// Connects [sourceHandle] of one node (a branch of an if-else, a class of a question classifier, ...) to another.
+  void connect(String sourceId, String targetId, {String? sourceHandle}) {
     if (sourceId == targetId) return;
-    session.edit(AddEdge(Edge(id: newId('e'), source: sourceId, target: targetId)));
+    session.edit(
+      AddEdge(
+        sourceHandle == null
+            ? Edge(id: newId('e'), source: sourceId, target: targetId)
+            : Edge(id: newId('e'), source: sourceId, sourceHandle: sourceHandle, target: targetId),
+      ),
+    );
   }
 
   void deleteEdge(String edgeId) {
