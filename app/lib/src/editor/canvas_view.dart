@@ -179,11 +179,40 @@ class _CanvasViewState extends State<CanvasView> {
 
   // ---- build -------------------------------------------------------------------------------------
 
+  /// Node cards by node id, reused while the node (the same immutable instance: `Document.apply` replaces only the
+  /// nodes an op touches), its selection and its hover state are unchanged. Returning the identical widget lets Flutter
+  /// skip the card's subtree, so panning, zooming and edits to other nodes rebuild only the cheap position wrappers.
+  final Map<String, ({Node node, bool selected, bool hovered, Widget card})> _cards = {};
+
+  Widget _card(Node n) {
+    final selected = c.selectedNodeId == n.id;
+    final hovered = _hoverTarget == n.id;
+    final hit = _cards[n.id];
+    if (hit != null && identical(hit.node, n) && hit.selected == selected && hit.hovered == hovered) return hit.card;
+    final card = _NodeCard(
+      key: ValueKey('node-${n.id}'),
+      node: n,
+      selected: selected,
+      hovered: hovered,
+      brokenCount: [for (final v in n.config.values) ...v.brokenRefs].length,
+      onTap: () => c.selectNode(n.id),
+      onDragStart: () => _dragStart(n),
+      onDragUpdate: (d) => _dragUpdate(n, d),
+      onDragEnd: () => _dragEnd(n),
+      onConnectStart: () => _connectStart(n),
+      onConnectUpdate: _connectUpdate,
+      onConnectEnd: _connectEnd,
+    );
+    _cards[n.id] = (node: n, selected: selected, hovered: hovered, card: card);
+    return card;
+  }
+
   @override
   Widget build(BuildContext context) {
     final doc = c.doc;
     final scheme = Theme.of(context).colorScheme;
     final nodes = doc.nodes.values.toList()..sort((a, b) => a.id.compareTo(b.id));
+    _cards.removeWhere((id, _) => !doc.nodes.containsKey(id));
     return LayoutBuilder(
       builder: (context, constraints) {
         _viewport = constraints.biggest;
@@ -250,20 +279,7 @@ class _CanvasViewState extends State<CanvasView> {
                       child: SizedBox(
                         width: kNodeWidth + _handleSize,
                         height: kNodeHeight,
-                        child: _NodeCard(
-                          key: ValueKey('node-${n.id}'),
-                          node: n,
-                          selected: c.selectedNodeId == n.id,
-                          hovered: _hoverTarget == n.id,
-                          brokenCount: [for (final v in n.config.values) ...v.brokenRefs].length,
-                          onTap: () => c.selectNode(n.id),
-                          onDragStart: () => _dragStart(n),
-                          onDragUpdate: (d) => _dragUpdate(n, d),
-                          onDragEnd: () => _dragEnd(n),
-                          onConnectStart: () => _connectStart(n),
-                          onConnectUpdate: _connectUpdate,
-                          onConnectEnd: _connectEnd,
-                        ),
+                        child: _card(n),
                       ),
                     ),
                   ),
