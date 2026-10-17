@@ -160,6 +160,76 @@ struct ListItemTests {
     }
 }
 
+@Suite("Declared outputs (protocol 1.4)")
+struct DeclaredOutputTests {
+    // code1 declares outputs result/extra; code2 references code1.result; llm has no declared outputs.
+    func doc() -> Document {
+        let out = Value.map(["type": .string("string")])
+        return Document(nodes: [
+            Node(id: "code1", type: "code", config: ["outputs": .items([Item(id: "result", value: out), Item(id: "extra", value: out)])]),
+            Node(id: "code2", type: "code", config: ["variables": .items([Item(id: "a", value: .ref(OutputRef(node: "code1", output: "result")))])]),
+            Node(id: "llm1", type: "llm"),
+        ])
+    }
+    func setRef(_ n: String, _ to: String, _ o: String) -> Op { .updateItem(n, path: ["variables"], id: "a", value: .ref(OutputRef(node: to, output: o))) }
+    let removeResult = Op.removeItem("code1", path: ["outputs"], id: "result")
+
+    @Test func referenceToAMissingDeclaredOutputIsRefused() throws {
+        let d = doc()
+        #expect(throws: RejectReason.danglingReference("code1")) { try d.validate(setRef("code2", "code1", "nope"), base: 0, by: "b") }
+        try d.validate(setRef("code2", "code1", "extra"), base: 0, by: "b")
+        try d.validate(setRef("code2", "llm1", "text"), base: 0, by: "b")  // no declared outputs: any name
+    }
+
+    @Test func removingAnOutputBreaksItsReferences() {
+        var d = doc()
+        d.apply(removeResult, at: stamp(1, "a"))
+        guard case .items(let vars)? = d.nodes["code2"]?.config["variables"] else { Issue.record("no variables"); return }
+        #expect(vars.first?.value == .brokenRef(OutputRef(node: "code1", output: "result")))
+        #expect(d.integrityProblems.isEmpty)
+    }
+
+    @Test func aReferenceAfterTheRemovalIsRefused() {
+        var d = doc()
+        d.apply(removeResult, at: stamp(1, "a"))
+        #expect(throws: RejectReason.danglingReference("code1")) { try d.validate(setRef("code2", "code1", "result"), base: 0, by: "b") }
+    }
+
+    @Test func aStaleRemovalConflictsWithANewerReference() throws {
+        // b points code2.a at code1.extra (seq 1); a, who has not seen that, removes extra: refused like a stale node delete.
+        var d = doc()
+        d.apply(setRef("code2", "code1", "extra"), at: stamp(1, "b"))
+        #expect(throws: RejectReason.self) { try d.validate(.removeItem("code1", path: ["outputs"], id: "extra"), base: 0, by: "a") }
+        // having seen it, a may remove it: the reference becomes an explicit broken marker
+        try d.validate(.removeItem("code1", path: ["outputs"], id: "extra"), base: 1, by: "a")
+    }
+
+    @Test func outputsAreReferencedByNameAndARenameBreaksTheOldName() throws {
+        // the real shape: stable item id, the output's name in the value
+        var d = Document(nodes: [
+            Node(id: "code", type: "code", config: ["outputs": .items([Item(id: "o-1", value: .map(["name": .string("result")]))])]),
+            Node(id: "ans", type: "answer", config: ["answer": .ref(OutputRef(node: "code", output: "result"))]),
+        ])
+        #expect(d.integrityProblems.isEmpty)
+        try d.validate(.setField("ans", .config(["answer"]), .ref(OutputRef(node: "code", output: "result"))), base: 0, by: "b")
+        #expect(throws: RejectReason.danglingReference("code")) {
+            try d.validate(.setField("ans", .config(["answer"]), .ref(OutputRef(node: "code", output: "o-1"))), base: 0, by: "b")
+        }
+        d.apply(.updateItem("code", path: ["outputs"], id: "o-1", value: .map(["name": .string("answer_text")])), at: stamp(1, "a"))
+        #expect(d.nodes["ans"]?.config["answer"] == .brokenRef(OutputRef(node: "code", output: "result")))
+        #expect(d.integrityProblems.isEmpty)
+    }
+
+    @Test func integrityReportsAReferenceToAMissingOutput() {
+        // a state the ops can no longer produce, built directly
+        let d = Document(nodes: [
+            Node(id: "code1", type: "code", config: ["outputs": .items([])]),
+            Node(id: "code2", type: "code", config: ["variables": .items([Item(id: "a", value: .ref(OutputRef(node: "code1", output: "result")))])]),
+        ])
+        #expect(d.integrityProblems.contains { $0.contains("code1.result") })
+    }
+}
+
 @Suite("Wire format")
 struct WireTests {
     private func roundTrip<T: Codable & Equatable>(_ v: T) throws {

@@ -66,17 +66,19 @@ extension Value {
         }
     }
 
-    func hasRef(to node: NodeID) -> Bool {
-        liveRefs.contains { $0.node == node }
-    }
+    func hasRef(to node: NodeID) -> Bool { hasRef { $0.node == node } }
+    func hasRef(where matches: (OutputRef) -> Bool) -> Bool { liveRefs.contains(where: matches) }
 
     /// Replaces every live reference to `node` with an explicit broken marker.
-    func breaking(refsTo node: NodeID) -> Value {
+    func breaking(refsTo node: NodeID) -> Value { breaking { $0.node == node } }
+
+    /// Replaces every live reference that `matches` with an explicit broken marker.
+    func breaking(where matches: (OutputRef) -> Bool) -> Value {
         switch self {
-        case .ref(let r) where r.node == node: return .brokenRef(r)
-        case .list(let items): return .list(items.map { $0.breaking(refsTo: node) })
-        case .items(let items): return .items(items.map { Item(id: $0.id, value: $0.value.breaking(refsTo: node)) })
-        case .map(let m): return .map(m.mapValues { $0.breaking(refsTo: node) })
+        case .ref(let r) where matches(r): return .brokenRef(r)
+        case .list(let items): return .list(items.map { $0.breaking(where: matches) })
+        case .items(let items): return .items(items.map { Item(id: $0.id, value: $0.value.breaking(where: matches)) })
+        case .map(let m): return .map(m.mapValues { $0.breaking(where: matches) })
         default: return self
         }
     }
@@ -144,26 +146,31 @@ enum ConfigTree {
     /// map-key path for atomic values; `(list path, item id)` for keyed lists) so the caller can
     /// version them.
     static func breakRefs(in cfg: inout [String: Value], to node: NodeID, prefix: [String] = []) -> [FieldKey] {
+        breakRefs(in: &cfg, matching: { $0.node == node }, prefix: prefix)
+    }
+
+    /// Rewrites every live reference that `matches` into a broken marker; returns the registers it changed.
+    static func breakRefs(in cfg: inout [String: Value], matching matches: (OutputRef) -> Bool, prefix: [String] = []) -> [FieldKey] {
         var changed: [FieldKey] = []
         for key in cfg.keys.sorted() {
             let v = cfg[key]!
             let path = prefix + [key]
             switch v {
             case .map(var m):
-                let sub = breakRefs(in: &m, to: node, prefix: path)
+                let sub = breakRefs(in: &m, matching: matches, prefix: path)
                 if !sub.isEmpty {
                     cfg[key] = .map(m)
                     changed += sub
                 }
             case .ref, .list:
-                if v.hasRef(to: node) {
-                    cfg[key] = v.breaking(refsTo: node)
+                if v.hasRef(where: matches) {
+                    cfg[key] = v.breaking(where: matches)
                     changed.append(.config(path))
                 }
             case .items(let items):
                 var out = items
-                for i in out.indices where out[i].value.hasRef(to: node) {
-                    out[i].value = out[i].value.breaking(refsTo: node)
+                for i in out.indices where out[i].value.hasRef(where: matches) {
+                    out[i].value = out[i].value.breaking(where: matches)
                     changed.append(.item(path, out[i].id))
                 }
                 if out != items { cfg[key] = .items(out) }

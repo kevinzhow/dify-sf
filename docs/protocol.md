@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.3
+# dify-sf collaboration protocol, version 1.4
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,15 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.4 (**stricter validation; clients that pre-check locally, e.g. the Dart port, must apply it**): **declared outputs are
+  part of reference integrity.** A node's declared outputs are the names of the items of its `outputs` keyed list (an
+  item's `name`, or its id if it has none); a node without an `outputs` list accepts references to any output name.
+  * Writing a live reference to a node with declared outputs that names none of them is refused with `danglingReference`
+    (the same reason as a reference to a missing node).
+  * Removing an output item, or renaming it (`updateItem` changing its `name`), takes its name away unless another item
+    still declares it. Like a node delete, this rewrites every reference to that name into a `$broken` marker in the same
+    commit, and it conflicts with any other client's write, after the op's `base`, to a field it would rewrite.
+  * Invariant I4 (no dangling references) covers declared outputs too.
 * 1.3 (additive and optional; old clients are unaffected): **display names**.
   * `POST /v1/docs/{doc}/clients` accepts an optional body `{"name":"Bo"}` (1-64 bytes, no control characters) and answers
     `201 {"client":"s-...","name":"Bo"}` (`name` only if given).

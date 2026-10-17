@@ -41,8 +41,12 @@ public struct Document: Hashable, Sendable {
         var problems: [String] = []
         for id in nodes.keys.sorted() {
             for key in nodes[id]!.config.keys.sorted() {
-                for r in nodes[id]!.config[key]!.liveRefs where nodes[r.node] == nil {
-                    problems.append("node \(id).\(key) has dangling ref to \(r.node)")
+                for r in nodes[id]!.config[key]!.liveRefs {
+                    if nodes[r.node] == nil {
+                        problems.append("node \(id).\(key) has dangling ref to \(r.node)")
+                    } else if let outs = Self.declaredOutputs(of: nodes[r.node]!), !outs.contains(r.output) {
+                        problems.append("node \(id).\(key) has dangling ref to \(r.node).\(r.output) (no such output)")
+                    }
                 }
             }
         }
@@ -53,6 +57,39 @@ public struct Document: Hashable, Sendable {
             }
         }
         return problems
+    }
+
+    /// The config key of a node's declared outputs (protocol 1.4).
+    public static let outputsKey = "outputs"
+
+    /// A node's declared outputs: the names of the items of its `outputs` keyed list (an item's `name`, or its id when it
+    /// has none), or nil if it has no such list (then any output name is accepted, e.g. the fixed outputs of an LLM node).
+    /// References to a node with declared outputs must name one of them.
+    public static func declaredOutputs(of node: Node) -> Set<String>? {
+        guard case .items(let xs)? = node.config[outputsKey] else { return nil }
+        return Set(xs.map(outputName))
+    }
+
+    static func outputName(_ item: Item) -> String {
+        if case .map(let m) = item.value, case .string(let n)? = m["name"] { return n }
+        return item.id
+    }
+
+    /// The output name that `op` takes away from `node` (removing or renaming an output item), if no other item of the
+    /// list still declares it. References to that name break, like references to a deleted node.
+    func outputNameRemoved(by op: Op) -> (node: NodeID, name: String)? {
+        let node: NodeID, itemId: ItemID, newValue: Value?
+        switch op {
+        case .removeItem(let n, let path, let id) where path == [Self.outputsKey]: (node, itemId, newValue) = (n, id, nil)
+        case .updateItem(let n, let path, let id, let v) where path == [Self.outputsKey]: (node, itemId, newValue) = (n, id, v)
+        default: return nil
+        }
+        guard let n = nodes[node], case .items(let xs)? = n.config[Self.outputsKey],
+              let item = xs.first(where: { $0.id == itemId }) else { return nil }
+        let old = Self.outputName(item)
+        if let v = newValue, Self.outputName(Item(id: itemId, value: v)) == old { return nil }
+        if xs.contains(where: { $0.id != itemId && Self.outputName($0) == old }) { return nil }
+        return (node, old)
     }
 
     // MARK: - Validation
@@ -150,6 +187,9 @@ public struct Document: Hashable, Sendable {
                 if checkConflicts, let c = fieldConflict(id, .item(path, itemId), base: base, client: client) {
                     throw .conflict(c)
                 }
+                // Removing a declared output rewrites every field that references it (ref -> brokenRef); like a node
+                // delete, refuse if someone else wrote one of those fields after `base`.
+                if checkConflicts { try checkOutputRemoval(op, base: base, client: client) }
             }
 
         case .updateItem(let id, let path, let itemId, let value):
@@ -158,6 +198,31 @@ public struct Document: Hashable, Sendable {
             try checkValue(value, selfNode: nil)
             try checkStale(id, .item(path, itemId), base: base, client: client, isSameValue: existing == value,
                            enabled: checkConflicts, defects: defects)
+            if checkConflicts { try checkOutputRemoval(op, base: base, client: client) }  // renaming an output
+        }
+    }
+
+    /// Removing or renaming a declared output rewrites every field that references its name (ref -> brokenRef); like a
+    /// node delete, refuse if someone else wrote one of those fields after `base`.
+    private func checkOutputRemoval(_ op: Op, base: Int, client: ClientID) throws(RejectReason) {
+        guard let (node, name) = outputNameRemoved(by: op) else { return }
+        for other in nodes.keys.sorted() {
+            var cfg = nodes[other]!.config
+            for key in ConfigTree.breakRefs(in: &cfg, matching: { $0.node == node && $0.output == name }) {
+                if let c = fieldConflict(other, key, base: base, client: client) { throw .conflict(c) }
+            }
+        }
+    }
+
+    private mutating func breakOutputRefs(_ removed: (node: NodeID, name: String)?, _ stamp: Stamp, _ defects: ProtocolDefects) {
+        guard let (node, name) = removed, !defects.contains(.skipBrokenMarkers) else { return }
+        for other in nodes.keys.sorted() {
+            var cfg = nodes[other]!.config
+            let changed = ConfigTree.breakRefs(in: &cfg, matching: { $0.node == node && $0.output == name })
+            guard !changed.isEmpty else { continue }
+            nodes[other]!.config = cfg
+            for key in changed { stampField(other, key, stamp) }
+            touch(other, stamp)
         }
     }
 
@@ -192,8 +257,9 @@ public struct Document: Hashable, Sendable {
     private func checkValue(_ v: Value, selfNode: NodeID?) throws(RejectReason) {
         if let p = v.structuralProblem { throw .invalid(p) }
         if v.containsBrokenRef { throw .invalid("brokenRef is server-written only") }
-        for r in v.liveRefs where nodes[r.node] == nil && r.node != selfNode {
-            throw .danglingReference(r.node)
+        for r in v.liveRefs where r.node != selfNode {
+            guard let target = nodes[r.node] else { throw .danglingReference(r.node) }
+            if let outs = Self.declaredOutputs(of: target), !outs.contains(r.output) { throw .danglingReference(r.node) }
         }
     }
 
@@ -301,20 +367,24 @@ public struct Document: Hashable, Sendable {
         case .removeItem(let id, let path, let itemId):
             guard nodes[id] != nil, case .found(var items) = ConfigTree.list(in: nodes[id]!.config, at: path),
                   let at = items.firstIndex(where: { $0.id == itemId }) else { return }
+            let removedName = outputNameRemoved(by: op)
             items.remove(at: at)
             ConfigTree.set(&nodes[id]!.config, path[...], .items(items))
             deletedItems[itemId] = stamp
             stampField(id, .item(path, itemId), stamp)
             touch(id, stamp)
+            breakOutputRefs(removedName, stamp, defects)
 
         case .updateItem(let id, let path, let itemId, let value):
             guard nodes[id] != nil, case .found(var items) = ConfigTree.list(in: nodes[id]!.config, at: path),
                   let at = items.firstIndex(where: { $0.id == itemId }),
                   items[at].value != value || defects.contains(.equalValueRestamps) else { return }
+            let removedName = outputNameRemoved(by: op)
             items[at].value = value
             ConfigTree.set(&nodes[id]!.config, path[...], .items(items))
             stampField(id, .item(path, itemId), stamp)
             touch(id, stamp)
+            breakOutputRefs(removedName, stamp, defects)
         }
     }
 
