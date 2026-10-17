@@ -101,7 +101,7 @@ class EndBody extends NodeBody {
         children: [
           for (final (i, r) in refs.indexed) ...[
             if (i > 0) const SizedBox(height: 2),
-            VariableLabel(ref: r, type: types.typeOf(r.path)),
+            VariableLabel.of(r, variant: VarLabelStyle.inNode, variableType: types.typeOf(r.path)),
           ],
         ],
       ),
@@ -262,7 +262,7 @@ class _ConditionLine extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Flexible(child: VariableLabel(ref: ref, inNode: false, bare: true)),
+          Flexible(child: VariableLabel.of(ref, variant: VarLabelStyle.inText, bare: true)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(

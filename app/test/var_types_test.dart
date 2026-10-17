@@ -504,4 +504,106 @@ void main() {
     expect(varTypeLabel('Array[String]'), 'Array[string]');
     expect(varTypeLabel(null), isNull);
   });
+
+  group('variable lists', () {
+    test('toNodeOutputVars: most recent first, Start last, then the special entries', () {
+      Node at(String id, String type, int x, [Map<String, Object?> config = const {}]) => Node(
+        id: id,
+        type: type,
+        title: id,
+        x: x,
+        config: {for (final e in config.entries) e.key: Value.fromJson(e.value)},
+      );
+      final nodes = [
+        at('start', 'start', 500),
+        at('code', 'code', 10, {'outputs': <String, Object?>{}}),
+        at('llm', 'llm', 100),
+        at('if', 'if-else', 300),
+        at('tpl', 'template-transform', 100),
+      ];
+      final types = _with(nodes, env: const [DeclaredVar('k', 'secret')]);
+      expect([for (final g in types.toNodeOutputVars(nodes)) g.nodeId], ['llm', 'tpl', 'start', 'env', 'global']);
+      expect(types.toNodeOutputVars(nodes).firstWhere((g) => g.nodeId == 'start').isStartNode, true);
+    });
+
+    test('toNodeAvailableVars inside an iteration leads with item and index', () {
+      final code = _node('code', 'code', {
+        'outputs': {
+          'files': {'type': 'array[file]'},
+        },
+      });
+      final iteration = _node('it', 'iteration', {
+        'iterator_selector': {
+          r'$ref': {'node': 'code', 'output': 'files'},
+        },
+        'output_type': 'array[string]',
+      });
+      final vars = toNodeAvailableVars(beforeNodes: [code, iteration], parent: iteration);
+      expect([for (final g in vars) g.nodeId], ['it', 'code', 'global']);
+      expect(vars.first.title, 'Current Iteration');
+      expect(vars.first.vars.first.type, VarType.file);
+      expect((vars.first.vars.first.children! as List).length, 7);
+      expect(vars.first.vars.last, const DifyVar('index', VarType.number));
+    });
+  });
+
+  group('updateNodeVars in the document model', () {
+    test('keeps keyed-list ids, rewrites references as references, keeps broken ones', () {
+      final end = _node('end', 'end', {
+        'outputs': {
+          r'$items': [
+            {
+              'id': 'a',
+              'value': {
+                'variable': 'x',
+                'value_selector': {
+                  r'$ref': {'node': 'n1', 'output': 'text'},
+                },
+              },
+            },
+            {
+              'id': 'b',
+              'value': {
+                'variable': 'y',
+                'value_selector': {
+                  r'$broken': {'node': 'gone', 'output': 'text'},
+                },
+              },
+            },
+          ],
+        },
+      });
+      final toNode = updateNodeVars(end, ['n1', 'text'], ['n2', 'out']);
+      final items = (toNode.config['outputs']! as VItems).items;
+      expect([for (final i in items) i.id], ['a', 'b']);
+      expect((items[0].value as VMap).entries['value_selector'], const VRef(OutputRef('n2', 'out')));
+      expect((items[1].value as VMap).entries['value_selector'], const VBroken(OutputRef('gone', 'text')));
+
+      final toEnv = updateNodeVars(end, ['n1', 'text'], ['env', 'K']);
+      final envSelector = ((toEnv.config['outputs']! as VItems).items[0].value as VMap).entries['value_selector'];
+      expect(envSelector, Value.fromJson(['env', 'K']), reason: 'not a node output: a list');
+
+      expect(updateNodeVars(end, ['x', 'y'], ['n2', 'out']), end);
+    });
+
+    test('keys Dify leaves undefined are not written; where Dify throws, StateError', () {
+      final qc = _node('qc', 'question-classifier', {
+        'query_variable_selector': ['sys', 'query'],
+        'classes': [
+          {'id': '1', 'name': 'about {{#sys.query#}}'},
+        ],
+      });
+      final updated = updateNodeVars(qc, ['sys', 'query'], ['start', 'q']);
+      expect(updated.config.containsKey('instruction'), false);
+      expect(plainOf(updated.config['classes']), [
+        {'id': '1', 'name': 'about {{#start.q#}}'},
+      ]);
+      expect(getNodeUsedVars(updated), [
+        ['start', 'q'],
+        ['start', 'q'],
+      ]);
+      expect(() => getNodeUsedVars(_node('qc', 'question-classifier')), throwsStateError);
+      expect(() => updateNodeVars(_node('it', 'iteration'), ['a', 'b'], ['c', 'd']), throwsStateError);
+    });
+  });
 }

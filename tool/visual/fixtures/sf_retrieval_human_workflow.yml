@@ -1,0 +1,564 @@
+app:
+  description: 'Chatflow: retrieval, LLM with retry and fail branch, code with default
+    values, template, human review and a conversation variable assigner.'
+  icon: 🧑‍💼
+  icon_background: '#FEF3C7'
+  mode: advanced-chat
+  name: sf_retrieval_human
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables:
+  - description: Last reply an agent approved
+    id: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e51
+    name: last_approved_reply
+    selector:
+    - conversation
+    - last_approved_reply
+    value: ''
+    value_type: string
+  - description: How many replies were approved
+    id: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e52
+    name: approved_count
+    selector:
+    - conversation
+    - approved_count
+    value: 0
+    value_type: number
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: Hi! Ask me anything about your account.
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - How do I reset my password?
+    - Where can I find my invoices?
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: knowledge-retrieval
+      id: 1760700000001-source-1760700030001-target
+      source: '1760700000001'
+      sourceHandle: source
+      target: '1760700030001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1760700030001-source-1760700060001-target
+      source: '1760700030001'
+      sourceHandle: source
+      target: '1760700060001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 1760700060001-source-1760700090001-target
+      source: '1760700060001'
+      sourceHandle: source
+      target: '1760700090001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: 1760700060001-fail-branch-1760700090002-target
+      source: '1760700060001'
+      sourceHandle: fail-branch
+      target: '1760700090002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: template-transform
+      id: 1760700090001-source-1760700120001-target
+      source: '1760700090001'
+      sourceHandle: source
+      target: '1760700120001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: template-transform
+        targetType: human-input
+      id: 1760700120001-source-1760700150001-target
+      source: '1760700120001'
+      sourceHandle: source
+      target: '1760700150001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: human-input
+        targetType: assigner
+      id: 1760700150001-approve-1760700180001-target
+      source: '1760700150001'
+      sourceHandle: approve
+      target: '1760700180001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: human-input
+        targetType: answer
+      id: 1760700150001-reject-1760700180002-target
+      source: '1760700150001'
+      sourceHandle: reject
+      target: '1760700180002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: human-input
+        targetType: answer
+      id: 1760700150001-__timeout-1760700180003-target
+      source: '1760700150001'
+      sourceHandle: __timeout
+      target: '1760700180003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: assigner
+        targetType: answer
+      id: 1760700180001-source-1760700210001-target
+      source: '1760700180001'
+      sourceHandle: source
+      target: '1760700210001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Audience
+          max_length: null
+          options:
+          - Customer
+          - Internal
+          required: false
+          type: select
+          variable: audience
+      height: 82
+      id: '1760700000001'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        dataset_ids:
+        - 6f1c2a3e-8b4d-4c1a-9e2f-3a5b7c9d1e01
+        - a2b4c6d8-1e3f-4a5b-8c7d-9e0f1a2b3c02
+        desc: Searches two knowledge bases.
+        metadata_filtering_mode: disabled
+        multiple_retrieval_config:
+          reranking_enable: false
+          score_threshold: null
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - sys
+        - query
+        retrieval_mode: multiple
+        selected: false
+        title: Search help center
+        type: knowledge-retrieval
+      height: 120
+      id: '1760700030001'
+      position:
+        x: 380
+        y: 282
+      positionAbsolute:
+        x: 380
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1760700030001'
+          - result
+        desc: Writes a draft from the retrieved context.
+        error_strategy: fail-branch
+        memory:
+          query_prompt_template: '{{#sys.query#}}
+
+
+            {{#sys.files#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 10
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: b7e1c0de-0001-4a00-9000-000000000001
+          role: system
+          text: 'You are a support agent writing for a {{#1760700000001.audience#}}
+            reader.
+
+            Answer only from this context:
+
+            {{#context#}}'
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        title: Draft reply
+        type: llm
+        vision:
+          enabled: false
+      height: 150
+      id: '1760700060001'
+      position:
+        x: 680
+        y: 282
+      positionAbsolute:
+        x: 680
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        answer: 'Sorry, the reply could not be drafted: {{#1760700060001.error_message#}}'
+        desc: ''
+        selected: false
+        title: Model failed
+        type: answer
+        variables: []
+      height: 106
+      id: '1760700090002'
+      position:
+        x: 980
+        y: 500
+      positionAbsolute:
+        x: 980
+        y: 500
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        code: "\ndef main(draft: str) -> dict:\n    words = draft.split()\n    return\
+          \ {\n        \"word_count\": len(words),\n        \"is_long\": \"yes\" if\
+          \ len(words) > 200 else \"no\",\n    }\n"
+        code_language: python3
+        default_value:
+        - key: word_count
+          type: number
+          value: 0
+        - key: is_long
+          type: string
+          value: 'no'
+        desc: Measures the draft. Falls back to defaults on error.
+        error_strategy: default-value
+        outputs:
+          is_long:
+            children: null
+            type: string
+          word_count:
+            children: null
+            type: number
+        selected: false
+        title: Count words
+        type: code
+        variables:
+        - value_selector:
+          - '1760700060001'
+          - text
+          value_type: string
+          variable: draft
+      height: 90
+      id: '1760700090001'
+      position:
+        x: 980
+        y: 282
+      positionAbsolute:
+        x: 980
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        selected: false
+        template: '{{ draft }}
+
+
+          ---
+
+          Words: {{ words }} (long: {{ is_long }})'
+        title: Format for review
+        type: template-transform
+        variables:
+        - value_selector:
+          - '1760700060001'
+          - text
+          value_type: string
+          variable: draft
+        - value_selector:
+          - '1760700090001'
+          - word_count
+          value_type: number
+          variable: words
+        - value_selector:
+          - '1760700090001'
+          - is_long
+          value_type: string
+          variable: is_long
+      height: 54
+      id: '1760700120001'
+      position:
+        x: 1280
+        y: 282
+      positionAbsolute:
+        x: 1280
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        delivery_methods:
+        - enabled: true
+          id: 5d0c9a7e-3b1f-4e8a-9c2d-7f6e5a4b3c21
+          type: webapp
+        desc: A support agent approves or rejects the draft.
+        form_content: '## Draft reply
+
+
+          {{#1760700120001.output#}}
+
+
+          Note for the customer:
+
+
+          {{#$output.agent_note#}}'
+        inputs:
+        - default:
+            selector: []
+            type: constant
+            value: ''
+          output_variable_name: agent_note
+          type: paragraph
+        selected: false
+        timeout: 2
+        timeout_unit: day
+        title: Agent review
+        type: human-input
+        user_actions:
+        - button_style: primary
+          id: approve
+          title: Approve and send
+        - button_style: default
+          id: reject
+          title: Reject
+      height: 196
+      id: '1760700150001'
+      position:
+        x: 1580
+        y: 282
+      positionAbsolute:
+        x: 1580
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        items:
+        - input_type: variable
+          operation: over-write
+          value:
+          - '1760700120001'
+          - output
+          variable_selector:
+          - conversation
+          - last_approved_reply
+        - input_type: constant
+          operation: +=
+          value: 1
+          variable_selector:
+          - conversation
+          - approved_count
+        selected: false
+        title: Remember reply
+        type: assigner
+        version: '2'
+      height: 112
+      id: '1760700180001'
+      position:
+        x: 1880
+        y: 140
+      positionAbsolute:
+        x: 1880
+        y: 140
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        answer: '{{#1760700120001.output#}}
+
+
+          {{#1760700150001.agent_note#}}'
+        desc: ''
+        selected: false
+        title: Send reply
+        type: answer
+        variables: []
+      height: 106
+      id: '1760700210001'
+      position:
+        x: 2180
+        y: 140
+      positionAbsolute:
+        x: 2180
+        y: 140
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        answer: An agent will follow up with you shortly.
+        desc: ''
+        selected: false
+        title: Rejected
+        type: answer
+        variables: []
+      height: 106
+      id: '1760700180002'
+      position:
+        x: 1880
+        y: 380
+      positionAbsolute:
+        x: 1880
+        y: 380
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        answer: No agent reviewed the reply in time. Please ask again later.
+        desc: ''
+        selected: false
+        title: Review timed out
+        type: answer
+        variables: []
+      height: 106
+      id: '1760700180003'
+      position:
+        x: 1880
+        y: 560
+      positionAbsolute:
+        x: 1880
+        y: 560
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
+import '../../workflow/model_catalog.dart';
 import '../card_kit.dart';
+import '../model_chip.dart';
 import '../node_body.dart';
 
 List<Value> _items(Value? v) => switch (v) {
@@ -18,101 +20,19 @@ String _str(Value? v) => v is VString ? v.value : '';
 
 Map<String, Value> _map(Value? v) => v is VMap ? v.entries : const {};
 
-/// `{provider, name, mode}` of a `model` config, or null when provider or name is empty (Dify's `hasSetModel`).
-({String name, String mode})? _model(Value? v) {
+/// `{provider, model}` of a `model` config (`provider` and `name`; an agent's model parameter has `model` instead,
+/// [key]), or null when either is empty (Dify's `hasSetModel`).
+DefaultModel? _model(Value? v, {String key = 'name'}) {
   final m = _map(v);
-  final name = _str(m['name']).isNotEmpty ? _str(m['name']) : _str(m['model']);
-  if (_str(m['provider']).isEmpty || name.isEmpty) return null;
-  return (name: name, mode: _str(m['mode']));
+  final provider = _str(m['provider']), model = _str(m[key]);
+  if (provider.isEmpty || model.isEmpty) return null;
+  return (provider: provider, model: model);
 }
 
-/// The disabled small ModelSelector trigger (model-selector-trigger.tsx, `h-6 gap-px rounded-md p-0.5`): ModelIcon +
-/// ModelName (name, mode badge). The provider icon and the model's label/features come from the backend's model
-/// list, which the canvas does not have: the icon is ModelIcon's no-icon fallback, the label is the model name.
-class _ModelChip extends StatelessWidget {
-  const _ModelChip({required this.name, this.mode = '', this.workflowSurface = false});
-  final String name;
-  final String mode;
-  final bool workflowSurface;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 24,
-    padding: const EdgeInsets.all(2),
-    decoration: BoxDecoration(
-      color: workflowSurface ? DifyColors.workflowBlockParmaBg : DifyColors.componentsInputBgNormal,
-      borderRadius: BorderRadius.circular(DifyRadius.md),
-    ),
-    child: Row(
-      children: [
-        // ModelIcon without an icon url: `h-5 w-5 rounded-md border-[0.5px] bg-background-default-subtle`.
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: DifyColors.backgroundDefaultSubtle,
-            borderRadius: BorderRadius.circular(DifyRadius.md),
-            border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
-          ),
-          child: const Center(
-            child: Opacity(
-              opacity: 0.35,
-              child: DifyIcon('vender/other/group', size: 12, color: DifyColors.textTertiary),
-            ),
-          ),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Row(
-              children: [
-                Flexible(
-                  child: DifyText(name, DifyType.systemSmRegular, color: DifyColors.componentsInputTextFilled),
-                ),
-                if (mode.isNotEmpty) ...[
-                  const SizedBox(width: 2),
-                  // ModelBadge: `h-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25`.
-                  Container(
-                    height: 18,
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: DifyColors.componentsBadgeBgDimm,
-                      borderRadius: BorderRadius.circular(DifyRadius.badge),
-                      border: Border.all(color: DifyColors.dividerDeep),
-                    ),
-                    child: DifyText(mode, DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// StatusDot error, medium (dify-ui status-dot): 8 px, `rounded-[3px] border`, red halo shadow.
-class _ErrorDot extends StatelessWidget {
-  const _ErrorDot();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 8,
-    height: 8,
-    decoration: BoxDecoration(
-      color: DifyColors.componentsBadgeStatusLightErrorBg,
-      borderRadius: BorderRadius.circular(3),
-      border: Border.all(color: DifyColors.componentsBadgeStatusLightErrorBorderInner),
-      boxShadow: const [
-        BoxShadow(color: DifyColors.componentsBadgeStatusLightErrorHalo, offset: Offset(0, 2), blurRadius: 6),
-        BoxShadow(color: DifyColors.componentsBadgeStatusLightBorderOuter, spreadRadius: 1),
-      ],
-    ),
-  );
-}
+/// The disabled small ModelSelector the LLM, Question Classifier and Parameter Extractor cards show, over the
+/// workspace's text generation models.
+Widget _modelChip(DefaultModel m, BodyContext ctx) =>
+    ModelChip(value: m, models: ctx.models.textGenerationModelList, catalog: ctx.models);
 
 /// SettingItem (_base/components/setting-item.tsx): 24 px `rounded-md bg-workflow-block-parma-bg px-1.5 py-1`, label
 /// left (`max-w-25` with a value), value right, an error dot at the top right.
@@ -151,7 +71,7 @@ class _SettingItem extends StatelessWidget {
           ],
         ),
       ),
-      if (error) const Positioned(top: -2, right: -2, child: _ErrorDot()),
+      if (error) const Positioned(top: -2, right: -2, child: ErrorStatusDot()),
     ],
   );
 }
@@ -169,7 +89,7 @@ class LlmBody extends NodeBody {
     if (m == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: _ModelChip(name: m.name, mode: m.mode),
+      child: _modelChip(m, ctx),
     );
   }
 }
@@ -187,7 +107,7 @@ class ParameterExtractorBody extends NodeBody {
     final m = _model(ctx['model']);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: m == null ? const SizedBox(width: double.infinity) : _ModelChip(name: m.name, mode: m.mode),
+      child: m == null ? const SizedBox(width: double.infinity) : _modelChip(m, ctx),
     );
   }
 }
@@ -321,7 +241,7 @@ class QuestionClassifierBody extends NodeBody {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (m != null) _ModelChip(name: m.name, mode: m.mode),
+          if (m != null) _modelChip(m, ctx),
           if (classes.isNotEmpty) const SizedBox(height: 8),
           for (final (i, c) in classes.indexed) ...[
             if (i > 0) const SizedBox(height: 2),
@@ -365,7 +285,7 @@ class AgentBody extends NodeBody {
   static Iterable<Value> _values(BodyContext ctx) =>
       _map(ctx['agent_parameters']).values.map((p) => _map(p)['value']).nonNulls;
 
-  static List<({String name, String mode})> _models(BodyContext ctx) => [for (final v in _values(ctx)) ?_model(v)];
+  static List<DefaultModel> _models(BodyContext ctx) => [for (final v in _values(ctx)) ?_model(v, key: 'model')];
 
   static int _tools(BodyContext ctx) {
     bool isTool(Value v) => _map(v).containsKey('provider_name');
@@ -415,7 +335,7 @@ class AgentBody extends NodeBody {
             _groupLabel('model'),
             for (final (i, m) in models.indexed) ...[
               if (i > 0) const SizedBox(height: 2),
-              _ModelChip(name: m.name, mode: m.mode, workflowSurface: true),
+              ModelBar(value: m, catalog: ctx.models),
             ],
             const SizedBox(height: 4),
           ],

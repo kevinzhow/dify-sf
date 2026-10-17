@@ -2,7 +2,15 @@ import 'settings.dart';
 
 /// Options given on the command line (desktop) or in the URL query (web: `?server=…&doc=…&name=…&demo=1&view=…`).
 class LaunchOptions {
-  const LaunchOptions({this.server, this.doc, this.name, this.volatile = false, this.demo = false, this.view});
+  const LaunchOptions({
+    this.server,
+    this.doc,
+    this.name,
+    this.volatile = false,
+    this.demo = false,
+    this.view,
+    this.lang,
+  });
 
   /// The web build's URL query as options.
   factory LaunchOptions.fromQuery(Map<String, String> q) => LaunchOptions(
@@ -12,6 +20,7 @@ class LaunchOptions {
     volatile: q['volatile'] == '1',
     demo: q['demo'] == '1',
     view: q['view'],
+    lang: q['lang'],
   );
 
   factory LaunchOptions.parse(List<String> args) {
@@ -21,6 +30,7 @@ class LaunchOptions {
     var volatile = false;
     var demo = false;
     String? view;
+    String? lang;
     for (var i = 0; i < args.length; i++) {
       String? value() => i + 1 < args.length ? args[++i] : null;
       switch (args[i]) {
@@ -36,9 +46,11 @@ class LaunchOptions {
           demo = true;
         case '--view':
           view = value();
+        case '--lang':
+          lang = value();
       }
     }
-    return LaunchOptions(server: server, doc: doc, name: name, volatile: volatile, demo: demo, view: view);
+    return LaunchOptions(server: server, doc: doc, name: name, volatile: volatile, demo: demo, view: view, lang: lang);
   }
 
   final String? server;
@@ -52,6 +64,9 @@ class LaunchOptions {
   /// The canvas's first view as a React Flow viewport `x,y,zoom` (screen = canvas * zoom + (x, y)), the way a Dify
   /// workflow file stores it; without it the canvas fits the graph. Visual tests open Dify and us at the same view.
   final String? view;
+
+  /// Dify's language code for the UI (`zh-Hans`, `ja-JP`, …); null follows the system locale.
+  final String? lang;
 
   bool get autoOpen => demo || doc != null;
 

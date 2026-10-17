@@ -15,6 +15,7 @@ import 'card_chrome.dart';
 import 'card_kit.dart';
 import 'node_body.dart';
 import 'node_extras.dart';
+import 'node_helpers.dart';
 
 /// Dify's node cards: the shared chrome (nodes/_base/node.tsx) around a body per node type.
 class DifyCards extends CardSpec {
@@ -77,10 +78,7 @@ class DifyCards extends CardSpec {
       yield ('assets/dify_icons/${varBlockGlyph(t)}.svg', DifyColors.textSecondary);
     }
     yield ('assets/dify_icons/${blockGlyph('start-placeholder')}.svg', DifyColors.textPrimary);
-    for (final k in VarKind.values) {
-      yield ('assets/dify_icons/${varIcon(k)}.svg', varColor(k));
-      yield ('assets/dify_icons/${varIcon(k)}.svg', DifyColors.textWarning);
-    }
+    yield* variableLabelIcons;
     for (final name in const [
       'align-left',
       'checkbox-multiple-line',
@@ -99,14 +97,20 @@ class DifyCards extends CardSpec {
     yield ('assets/remix_icons/checkbox-circle-fill.svg', DifyColors.textSuccess);
     yield ('assets/remix_icons/pause-circle-fill.svg', DifyColors.textWarningSecondary);
     yield ('assets/remix_icons/link-unlink-m.svg', DifyColors.textDestructive);
-    yield ('assets/remix_icons/more-line.svg', DifyColors.textSecondary);
     yield ('assets/dify_icons/vender/line/general/plus-02.svg', DifyColors.textTertiary);
     yield ('assets/dify_icons/vender/other/group.svg', DifyColors.textTertiary);
     yield ('assets/dify_icons/vender/agent-v2/configure.svg', DifyColors.textTertiary);
     yield* entryBodyIcons;
+    // Model chips (model_chip.dart).
+    yield ('assets/remix_icons/alert-fill.svg', DifyColors.textWarning);
+    yield ('assets/remix_icons/brain-2-line.svg', DifyColors.textQuaternary);
+    for (final name in const ['image-circle-ai-line', 'file-text-line', 'voice-ai-fill', 'film-ai-line']) {
+      yield ('assets/remix_icons/$name.svg', DifyColors.textTertiary);
+    }
+    yield ('assets/dify_icons/public/llm/openai-yellow.svg', DifyColors.componentsInputTextFilled);
   }
 
-  static bool isEntry(String type) => type == 'start' || type == 'start-placeholder' || type.startsWith('trigger-');
+  static bool isEntry(String type) => isEntryWorkflowNode(type);
 
   /// Data source nodes sit on a "DATA SOURCE" tab.
   static bool hasTab(String type) => type == 'datasource' || type == 'datasource-empty';

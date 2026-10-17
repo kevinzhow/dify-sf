@@ -126,13 +126,16 @@ class WidgetRenderer extends CanvasRenderer {
 
   Widget _card(BuildContext context, CanvasNode n) {
     final selected = selection.nodes.contains(n.slot);
-    final status = switch (n.status.value) {
-      'running' || 'paused' => DifyColors.stateAccentSolid,
-      'succeeded' => DifyColors.stateSuccessSolid,
-      'failed' => DifyColors.stateDestructiveSolid,
-      'exception' => DifyColors.stateWarningSolid,
-      _ => null,
-    };
+    // getNodeStatusBorders: no status border while the selected border shows.
+    final status = selected
+        ? null
+        : switch (n.status.value) {
+            'running' || 'paused' => DifyColors.stateAccentSolid,
+            'succeeded' => DifyColors.stateSuccessSolid,
+            'failed' => DifyColors.stateDestructiveSolid,
+            'exception' => DifyColors.stateWarningSolid,
+            _ => null,
+          };
     final connected = {
       for (final e in graph.edges) ...[
         if (e.target == n.slot) ('in', ''),

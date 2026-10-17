@@ -1,6 +1,7 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../../i18n/dify_i18n.dart';
 import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
 import '../node_body.dart';
@@ -35,7 +36,11 @@ class AnswerBody extends NodeBody {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const DifyText('Answer', DifyType.system2xsSemiboldUppercase, color: DifyColors.textSecondary),
+            DifyText(
+              DifyI18n.tr('workflow', 'nodes.answer.answer'),
+              DifyType.system2xsSemiboldUppercase,
+              color: DifyColors.textSecondary,
+            ),
             const SizedBox(height: 2),
             text.build(),
           ],

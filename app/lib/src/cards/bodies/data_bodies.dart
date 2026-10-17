@@ -112,7 +112,7 @@ class _InputVariable extends StatelessWidget {
     children: [
       const DifyText('Input Variable', DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
       const SizedBox(height: 4),
-      VariableLabel(ref: ref),
+      VariableLabel.of(ref, variant: VarLabelStyle.inNode),
     ],
   );
 }
@@ -322,7 +322,7 @@ class VariableAggregatorBody extends NodeBody {
                   else
                     for (final (j, v) in vars.indexed) ...[
                       if (j > 0) const SizedBox(height: 2),
-                      VariableLabel(ref: _ref(v, ctx)),
+                      VariableLabel.of(_ref(v, ctx), variant: VarLabelStyle.inNode),
                     ],
                 ],
               ),
@@ -394,8 +394,9 @@ class AssignerBody extends NodeBody {
             ),
           for (final (i, (ref, op)) in rows.indexed) ...[
             if (i > 0) const SizedBox(height: 2),
-            VariableLabel(
-              ref: ref,
+            VariableLabel.of(
+              ref,
+              variant: VarLabelStyle.inNode,
               rightSlot: op.isEmpty
                   ? null
                   : Container(

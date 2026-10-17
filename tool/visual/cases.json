@@ -8,5 +8,8 @@
   {"id": "canvas-http", "fixture": "tool/visual/fixtures/http_request_with_json_tool_workflow.yml", "viewport": [58, -62, 0.73], "window": [1440, 900], "region": [60, 64, 940, 700]},
   {"id": "canvas-aggregator", "fixture": "tool/visual/fixtures/dual_switch_variable_aggregator_workflow.yml", "viewport": [38, 27, 0.52], "window": [1440, 900], "region": [60, 64, 940, 700]},
   {"id": "canvas-assigner", "fixture": "tool/visual/fixtures/test_streaming_conversation_variables.yml", "viewport": [50, -146, 0.99], "window": [1440, 900], "region": [60, 64, 940, 700]},
-  {"id": "canvas-loop-answer", "fixture": "tool/visual/fixtures/loop_contains_answer.yml", "viewport": [63, -71, 0.56], "window": [1440, 900], "region": [60, 64, 940, 700]}
+  {"id": "canvas-loop-answer", "fixture": "tool/visual/fixtures/loop_contains_answer.yml", "viewport": [63, -71, 0.56], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-classify-extract", "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-retrieval-human", "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-triggers", "fixture": "tool/visual/fixtures/sf_triggers_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]}
 ]

@@ -1,6 +1,7 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
+import '../i18n/dify_i18n.dart';
 import '../design/dify_tokens.g.dart';
 import 'card_kit.dart';
 
@@ -62,7 +63,7 @@ abstract final class NodeExtras {
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
               decoration: box.copyWith(border: Border.all(color: const Color(0x00000000), width: 0.5)),
               child: DifyText(
-                'Retry $retries times on failure',
+                DifyI18n.tr('workflow', 'nodes.common.retry.retryTimes', {'times': retries}),
                 DifyType.systemXsMediumUppercase,
                 color: DifyColors.textTertiary,
               ),
@@ -78,9 +79,18 @@ abstract final class NodeExtras {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const DifyText('On Failure', DifyType.systemXsMediumUppercase, color: DifyColors.textTertiary),
                   DifyText(
-                    strategy == failBranch ? 'Fail Branch' : 'Output Default Value',
+                    DifyI18n.tr('workflow', 'common.onFailure'),
+                    DifyType.systemXsMediumUppercase,
+                    color: DifyColors.textTertiary,
+                  ),
+                  DifyText(
+                    DifyI18n.tr(
+                      'workflow',
+                      strategy == failBranch
+                          ? 'nodes.common.errorHandle.failBranch.title'
+                          : 'nodes.common.errorHandle.defaultValue.output',
+                    ),
                     DifyType.systemXsMedium,
                     color: DifyColors.textSecondary,
                   ),

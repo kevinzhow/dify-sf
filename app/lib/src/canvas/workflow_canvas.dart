@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../editor/editor_controller.dart';
 import 'canvas_a11y.dart';
 import 'canvas_background.dart';
+import 'canvas_controller.dart';
 import 'canvas_graph.dart';
 import 'canvas_input.dart';
 import 'canvas_renderer.dart';
@@ -34,9 +35,18 @@ abstract final class CanvasDefaults {
 /// The workflow canvas: the document's nodes and edges, drawn by Flutter Scene (or plain widgets where Flutter GPU is
 /// not available), with selection, moving, connecting, panning and zooming. Edits go through [controller].
 class WorkflowCanvas extends StatefulWidget {
-  const WorkflowCanvas({super.key, required this.controller, this.cards = const DifyCards(), this.renderer});
+  const WorkflowCanvas({
+    super.key,
+    required this.controller,
+    this.canvas,
+    this.cards = const DifyCards(),
+    this.renderer,
+  });
 
   final EditorController controller;
+
+  /// The view, selection and control mode, shared with the editor around the canvas; null: the canvas keeps its own.
+  final CanvasController? canvas;
   final CardSpec cards;
 
   /// Forces a renderer; by default Flutter Scene, or widgets under `flutter test`.
@@ -48,8 +58,10 @@ class WorkflowCanvas extends StatefulWidget {
 
 class WorkflowCanvasState extends State<WorkflowCanvas> {
   late final graph = CanvasGraph(layoutOf: widget.cards.layoutOf);
-  final view = CanvasViewState();
-  final selection = CanvasSelection();
+  late final CanvasController canvas = widget.canvas ?? (_ownCanvas = CanvasController());
+  CanvasController? _ownCanvas;
+  CanvasViewState get view => canvas.view;
+  CanvasSelection get selection => canvas.selection;
   late final CanvasInput input;
   late final CanvasA11y a11y;
   late CanvasRendererKind kind;
@@ -62,9 +74,17 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   @override
   void initState() {
     super.initState();
+    canvas.graph = graph;
     kind = widget.renderer ?? defaultRendererKind();
     renderer = _makeRenderer(kind);
-    input = CanvasInput(controller: c, graph: graph, view: view, selection: selection, renderer: () => renderer);
+    input = CanvasInput(
+      controller: c,
+      graph: graph,
+      view: view,
+      selection: selection,
+      renderer: () => renderer,
+      modeSource: canvas.controlMode,
+    );
     a11y = CanvasA11y(
       graph: graph,
       view: view,
@@ -160,7 +180,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
         ..center = (Offset(view.viewport.width / 2, view.viewport.height / 2) - Offset(vp.$1, vp.$2)) / vp.$3;
       return;
     }
-    view.fit(graph.bounds);
+    canvas.fitView();
   }
 
   /// Sets a node's run status (from a run, or a simulation of one).
@@ -183,6 +203,8 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     input.dispose();
     a11y.dispose();
     _focus.dispose();
+    if (canvas.graph == graph) canvas.graph = null;
+    _ownCanvas?.dispose();
     super.dispose();
   }
 

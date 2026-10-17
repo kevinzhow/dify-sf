@@ -1,5 +1,8 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
+
+import '../i18n/dify_i18n.dart';
+
 import 'package:flutter/scheduler.dart';
 
 import '../canvas/canvas_graph.dart';
@@ -164,7 +167,11 @@ class _Header extends StatelessWidget {
               border: Border.all(color: DifyColors.textWarning),
               borderRadius: BorderRadius.circular(DifyRadius.badge),
             ),
-            child: const DifyText('Parallel Mode', DifyType.system2xsMediumUppercase, color: DifyColors.textWarning),
+            child: DifyText(
+              DifyI18n.tr('workflow', 'nodes.iteration.parallelModeUpper'),
+              DifyType.system2xsMediumUppercase,
+              color: DifyColors.textWarning,
+            ),
           ),
         if (status != null) _StatusIcon(status: status!),
       ],
@@ -188,7 +195,10 @@ class _EntryContainer extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
         child: DifyText(
-          type == 'start' || type == 'start-placeholder' ? 'START' : 'TRIGGER',
+          DifyI18n.tr(
+            'workflow',
+            type == 'start' || type == 'start-placeholder' ? 'entryNodeStatus.enabled' : 'triggerStatus.enabled',
+          ),
           DifyType.system2xsSemiboldUppercase,
           color: DifyColors.textTertiary,
         ),
@@ -208,16 +218,20 @@ class _DataSourceTab extends StatelessWidget {
       gradient: DifyGradients.nodeDataSourceBg,
       borderRadius: BorderRadius.circular(DifyRadius.dataSourceTab),
     ),
-    child: const Align(
+    child: Align(
       alignment: Alignment.topLeft,
       child: Padding(
-        padding: EdgeInsets.all(2),
+        padding: const EdgeInsets.all(2),
         child: SizedBox(
           height: 20,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Center(
-              child: DifyText('Data Source', DifyType.system2xsSemiboldUppercase, color: DifyColors.textTertiary),
+              child: DifyText(
+                DifyI18n.tr('workflow', 'blocks.datasource'),
+                DifyType.system2xsSemiboldUppercase,
+                color: DifyColors.textTertiary,
+              ),
             ),
           ),
         ),

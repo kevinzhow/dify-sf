@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -29,6 +30,7 @@ class CanvasInput {
     required this.view,
     required this.selection,
     required this.renderer,
+    this.modeSource,
   });
 
   final EditorController controller;
@@ -40,7 +42,9 @@ class CanvasInput {
   /// The box being dragged out (screen coordinates), for the overlay.
   final marquee = ValueNotifier<Rect?>(null);
 
-  ControlMode mode = ControlMode.pointer;
+  /// Dify's control mode (pointer by default).
+  final ValueListenable<ControlMode>? modeSource;
+  ControlMode get mode => modeSource?.value ?? ControlMode.pointer;
 
   /// Called after an input changed what is drawn (benchmarks time input to frame).
   void Function(String kind)? onApplied;

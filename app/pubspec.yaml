@@ -40,6 +40,31 @@ flutter:
         - asset: assets/fonts/NotoSans-Bold.ttf
           weight: 700
   assets:
+    - assets/i18n/languages.json
+    - assets/i18n/ar-TN/
+    - assets/i18n/de-DE/
+    - assets/i18n/en-US/
+    - assets/i18n/es-ES/
+    - assets/i18n/fa-IR/
+    - assets/i18n/fr-FR/
+    - assets/i18n/hi-IN/
+    - assets/i18n/id-ID/
+    - assets/i18n/it-IT/
+    - assets/i18n/ja-JP/
+    - assets/i18n/ko-KR/
+    - assets/i18n/lo-LA/
+    - assets/i18n/nl-NL/
+    - assets/i18n/pl-PL/
+    - assets/i18n/pt-BR/
+    - assets/i18n/ro-RO/
+    - assets/i18n/ru-RU/
+    - assets/i18n/sl-SI/
+    - assets/i18n/th-TH/
+    - assets/i18n/tr-TR/
+    - assets/i18n/uk-UA/
+    - assets/i18n/vi-VN/
+    - assets/i18n/zh-Hans/
+    - assets/i18n/zh-Hant/
     - assets/fonts/OFL.txt
     # Remix Icon as Dify uses it (tool/gen_remix_icons.py, Apache-2.0).
     - assets/remix_icons/

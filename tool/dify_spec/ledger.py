@@ -18,6 +18,8 @@ CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|co
 
 
 def cases(text):
+    # A call whose name is on the next line (formatters wrap long names) is joined onto the call's line.
+    text = re.sub(r'\b(describe|it|test|group|testWidgets)\(\s*\n\s*([\'"`])', r'\1(\2', text)
     stack, out = [], []
     for line in text.splitlines():
         m = CALL.match(line)

@@ -367,7 +367,8 @@ class SceneRenderer extends CanvasRenderer {
   /// behind it, seen through the card's transparent border.
   void _statusChanged(int slot) {
     final n = graph.slots[slot];
-    final color = n == null ? null : _statusColors[n.status.value];
+    // getNodeStatusBorders: no status border while the selected border shows.
+    final color = n == null || selection.nodes.contains(slot) ? null : _statusColors[n.status.value];
     if (n == null || color == null) {
       _statusFrames.clear(slot);
       return;
