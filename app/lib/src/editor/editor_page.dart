@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../online_events.dart';
 import '../session_factory.dart';
-import 'canvas_view.dart';
+import '../canvas/workflow_canvas.dart';
 import 'editor_controller.dart';
 import 'node_panel.dart';
 import 'notice_overlay.dart';
@@ -246,7 +246,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
                 child: Stack(
                   children: [
                     if (c.ready)
-                      CanvasView(controller: c)
+                      WorkflowCanvas(controller: c)
                     else
                       const Center(
                         child: Column(

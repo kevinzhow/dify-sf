@@ -6,6 +6,7 @@
 #endif
 
 #include "flutter/generated_plugin_registrant.h"
+#include "vsync_driver.h"
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -58,7 +59,15 @@ static void my_application_activate(GApplication* application) {
   fl_dart_project_set_dart_entrypoint_arguments(
       project, self->dart_entrypoint_arguments);
 
+  // The canvas draws with Flutter Scene, which needs Flutter GPU (DIFYSF_FLUTTER_GPU=0 turns it off; the canvas
+  // then falls back to widgets). The Dart UI isolate runs on its own thread (DIFYSF_UI_THREAD=platform reverts).
+  if (g_strcmp0(g_getenv("DIFYSF_FLUTTER_GPU"), "0") != 0) fl_dart_project_set_enable_flutter_gpu(project, TRUE);
+  fl_dart_project_set_ui_thread_policy(project, g_strcmp0(g_getenv("DIFYSF_UI_THREAD"), "platform") == 0
+                                                    ? FL_UI_THREAD_POLICY_RUN_ON_PLATFORM_THREAD
+                                                    : FL_UI_THREAD_POLICY_RUN_ON_SEPARATE_THREAD);
   FlView* view = fl_view_new(project);
+  // From raft-flutter: release frames on the GTK frame clock (the stock embedder paces at a fixed 60 Hz).
+  raft_vsync_install(view);
   GdkRGBA background_color;
   // Background defaults to black, override it here if necessary, e.g. #00000000
   // for transparent.

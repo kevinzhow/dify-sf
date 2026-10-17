@@ -14,6 +14,8 @@ dependencies:
   path_provider: ^2.1.0
   shared_preferences: ^2.3.0
   web: ^1.1.1
+  flutter_scene: ^0.24.3
+  vector_math: ^2.4.3
 
 dev_dependencies:
   flutter_test:
@@ -26,4 +28,20 @@ dev_dependencies:
   meta: ^1.19.0
 
 flutter:
+  assets:
+    - flutter_scene_generated/
+    - path: flutter_scene_generated/metal_ios/
+      platforms:
+        - ios
+    - path: flutter_scene_generated/metal_desktop/
+      platforms:
+        - macos
+    - path: flutter_scene_generated/opengl_es_vulkan/
+      platforms:
+        - android
+        - linux
+        - windows
+    - path: flutter_scene_generated/opengl_es/
+      platforms:
+        - web
   uses-material-design: true

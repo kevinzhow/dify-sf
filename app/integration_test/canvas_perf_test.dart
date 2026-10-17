@@ -1,5 +1,7 @@
-// Canvas performance at 500 nodes. Run in profile mode on a real (virtual) display:
-//   xvfb-run -s "-screen 0 1600x1000x24" flutter drive --profile -d linux \
+// Canvas performance at 500 nodes, widget renderer (the integration-test binding settles between steps, which a
+// Flutter Scene view that ticks every frame never does; Flutter Scene is measured with real frames instead).
+// Run in profile mode on a real (virtual) display:
+//   DIFYSF_CANVAS=widgets xvfb-run -s "-screen 0 1600x1000x24" flutter drive --profile -d linux \
 //     --driver=test_driver/perf_driver.dart --target=integration_test/canvas_perf_test.dart
 // Writes build/perf/canvas_perf.json (frame timing summaries per interaction, load time, memory).
 import 'dart:io';
@@ -7,6 +9,7 @@ import 'dart:math';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
+import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:flutter/material.dart';
@@ -62,8 +65,13 @@ void main() {
         home: EditorPage(backend: backend, docId: 'perf', journaled: false, create: true),
       ),
     );
-    while (find.byKey(ValueKey('node-n${doc.nodes.length - 1}')).evaluate().isEmpty &&
-        sw.elapsed < const Duration(seconds: 60)) {
+    bool loaded() {
+      final canvas = find.byType(WorkflowCanvas);
+      return canvas.evaluate().isNotEmpty &&
+          t.state<WorkflowCanvasState>(canvas).graph.length == doc.nodes.length;
+    }
+
+    while (!loaded() && sw.elapsed < const Duration(seconds: 60)) {
       await t.pump(const Duration(milliseconds: 16));
     }
     final loadMs = sw.elapsedMilliseconds;
