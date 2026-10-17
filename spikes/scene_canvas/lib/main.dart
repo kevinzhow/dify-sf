@@ -36,6 +36,9 @@ final kSem = env('SEM', '1') == '1';
 final kPolicy = env('POLICY', 'manual');
 final kDref = env('DREF', '1') == '1';
 final kRecap = int.parse(env('RECAP', '0'));
+// CULL=1 (default): only cards near the view hold a WidgetComponent (and its texture); the rest show a plain
+// placeholder quad. CULL=0: every card holds one for the whole run.
+final kCull = env('CULL', '1') == '1';
 final kPhases = env('PHASES', 'pan,zoom,edits,drag,sharpen').split(',').toSet();
 final kBench = (Platform.environment['BENCH'] ?? const String.fromEnvironment('BENCH', defaultValue: 'true')) == 'true';
 
@@ -99,7 +102,7 @@ class View2D {
   double scale;
 }
 
-abstract class CanvasHandle {
+abstract mixin class CanvasHandle {
   void editTitle(int i, String title);
   void beginDrag(int i);
   void dragTo(int i, Offset topLeft);
@@ -108,6 +111,7 @@ abstract class CanvasHandle {
   /// Make text crisp at the current zoom (scene: recapture visible cards at a higher pixel ratio).
   Future<void> sharpen();
   int get liveWidgets;
+  Map<String, Object> get stats => const {};
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -219,11 +223,15 @@ class SceneCanvas extends StatefulWidget {
   State<SceneCanvas> createState() => SceneCanvasState();
 }
 
-class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
+class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   final scene = Scene();
   final cards = <Node>[];
-  final comps = <WidgetComponent>[];
+  final comps = <WidgetComponent?>[];
   final pixelRatios = <double>[];
+  int attached = 0;
+  int maxAttached = 0;
+  int attachedTotal = 0;
+  late final UnlitMaterial placeholderMaterial;
   Node? staticEdges;
   Node? liveEdges;
   Set<int> liveEdgeIds = {};
@@ -241,31 +249,28 @@ class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
       if (!mounted) return;
       edgeMaterial = UnlitMaterial()..baseColorFactor = vm.Vector4(0.58, 0.62, 0.68, 1);
       if (kAA.isNotEmpty) scene.antiAliasingMode = AntiAliasingMode.values.byName(kAA);
+      placeholderMaterial = UnlitMaterial()..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1);
       final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
       for (var i = 0; i < g.nodes.length; i++) {
         final n = Node(name: g.nodes[i].id);
         n.position = toWorld(g.nodes[i].center);
         cards.add(n);
         pixelRatios.add(dpr);
+        comps.add(null);
         if (widget.withCards) {
-          comps.add(_component(i, dpr));
-          n.addComponent(comps[i]);
+          // Stands in for the card until (and while not) it has a capture; just behind where the capture draws.
+          n.add(Node(mesh: Mesh(cardQuad(), placeholderMaterial))..position = vm.Vector3(0, 0, 0.05));
+          if (!kCull) _attach(i, dpr);
         }
         if (kCards && widget.withCards) scene.add(n);
       }
       _rebuildEdges();
       setState(() => ready = true);
       if (!kCards || !widget.withCards) SchedulerBinding.instance.addPostFrameCallback((_) => widget.onReady());
-      // Manual policy: the first capture is ours to request, once the hosted cards have laid out and painted.
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        for (final c in comps) {
-          c.controller.requestCapture();
-        }
-      });
       if (kRecap > 0) {
         Timer(Duration(milliseconds: kRecap), () {
           for (final c in comps) {
-            c.controller.requestCapture();
+            c?.controller.requestCapture();
           }
         });
       }
@@ -291,12 +296,79 @@ class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
     void counted() {
       if (c.controller.texture == null) return;
       c.controller.removeListener(counted);
-      if (++captured == g.nodes.length) widget.onReady();
+      if (!reported && ++captured == initialTarget) {
+        reported = true;
+        widget.onReady();
+      }
     }
 
     c.controller.addListener(counted);
     return c;
   }
+
+  // Readiness: every card attached in the first residency pass has its first capture.
+  int initialTarget = -1;
+  bool reported = false;
+
+  /// The capture density for the current zoom: the screen's pixel density, times the zoom rounded up to a power of 2
+  /// (small zoom steps do not recapture).
+  double densityForZoom() {
+    final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    return dpr * pow(2, (log(max(1.0, widget.view.scale)) / ln2).ceil()).toDouble();
+  }
+
+  // The card captures itself after its first paint (NodeCard's post-frame callback).
+  void _attach(int i, double pixelRatio) {
+    final c = _component(i, pixelRatio);
+    cards[i].addComponent(c);
+    comps[i] = c;
+    pixelRatios[i] = pixelRatio;
+    attachedTotal++;
+    maxAttached = max(maxAttached, ++attached);
+  }
+
+  void _detach(int i) {
+    cards[i].removeComponent(comps[i]!);
+    comps[i] = null;
+    attached--;
+  }
+
+  // Below this zoom cards are too small to read: placeholders only, no new captures.
+  static const lodScale = 0.3;
+  // Captures started per frame, so a fast pan spreads its work.
+  static const attachBudget = 24;
+
+  /// Keeps a WidgetComponent on the cards within half a viewport of the view and drops those beyond a whole one.
+  void _residency() {
+    if (!kCull || !widget.withCards || viewport.isEmpty) return;
+    final v = widget.view;
+    final view = visibleRect(v, viewport);
+    final keep = view.inflate(max(view.width, view.height) / 2);
+    final drop = view.inflate(max(view.width, view.height));
+    final density = densityForZoom();
+    var budget = initialTarget < 0 ? 1 << 30 : attachBudget;
+    var first = 0;
+    for (var i = 0; i < cards.length; i++) {
+      final r = g.nodes[i].rect;
+      if (comps[i] != null) {
+        if (!drop.overlaps(r) && !liveDrag(i)) _detach(i);
+      } else if (keep.overlaps(r) && v.scale >= lodScale && budget > 0) {
+        _attach(i, density);
+        budget--;
+        first++;
+      }
+    }
+    if (initialTarget < 0) {
+      initialTarget = first;
+      if (first == 0) {
+        reported = true;
+        SchedulerBinding.instance.addPostFrameCallback((_) => widget.onReady());
+      }
+    }
+  }
+
+  int? dragging;
+  bool liveDrag(int i) => dragging == i;
 
   Float32List _segments(Iterable<GEdge> edges) {
     final out = <double>[];
@@ -337,6 +409,7 @@ class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
 
   @override
   void beginDrag(int i) {
+    dragging = i;
     liveEdgeIds = {
       for (var k = 0; k < g.edges.length; k++)
         if (g.edges[k].source == i || g.edges[k].target == i) k,
@@ -358,6 +431,7 @@ class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
 
   @override
   void endDrag(int i) {
+    dragging = null;
     cards[i].position = toWorld(g.nodes[i].center);
     liveEdgeIds = {};
     _rebuildEdges();
@@ -367,36 +441,29 @@ class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
   /// so small zoom steps do not recapture). Off-screen cards keep theirs.
   @override
   Future<void> sharpen() async {
-    final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
-    final want = dpr * pow(2, (log(max(1.0, widget.view.scale)) / ln2).ceil()).toDouble();
+    final want = densityForZoom();
     final visible = visibleRect(widget.view, viewport);
     final pending = <Future<void>>[];
     for (var i = 0; i < cards.length; i++) {
-      if (pixelRatios[i] == want || !visible.overlaps(g.nodes[i].rect)) continue;
-      final done = Completer<void>();
-      final old = comps[i];
-      final c = _component(i, want);
+      if (comps[i] == null || pixelRatios[i] == want || !visible.overlaps(g.nodes[i].rect)) continue;
+      _detach(i);
+      _attach(i, want);
+      final c = comps[i]!, done = Completer<void>();
       void l() {
         if (c.controller.texture != null && !done.isCompleted) done.complete();
       }
 
       c.controller.addListener(l);
-      cards[i].removeComponent(old);
-      cards[i].addComponent(c);
-      comps[i] = c;
-      pixelRatios[i] = want;
       pending.add(done.future);
     }
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      for (var i = 0; i < cards.length; i++) {
-        if (pixelRatios[i] == want && visible.overlaps(g.nodes[i].rect)) comps[i].controller.requestCapture();
-      }
-    });
     await Future.wait(pending);
   }
 
   @override
-  int get liveWidgets => comps.length;
+  int get liveWidgets => attached;
+
+  @override
+  Map<String, Object> get stats => {'maxAttached': maxAttached, 'attachedTotal': attachedTotal};
 
   Camera camera() {
     final v = widget.view;
@@ -414,7 +481,7 @@ class SceneCanvasState extends State<SceneCanvas> implements CanvasHandle {
     return LayoutBuilder(
       builder: (context, c) {
         viewport = c.biggest;
-        return SceneView(scene, cameraBuilder: (_) => camera());
+        return SceneView(scene, cameraBuilder: (_) => camera(), onTick: (_, _) => _residency());
       },
     );
   }
@@ -443,7 +510,7 @@ class WidgetCanvas extends StatefulWidget {
   State<WidgetCanvas> createState() => WidgetCanvasState();
 }
 
-class WidgetCanvasState extends State<WidgetCanvas> with SingleTickerProviderStateMixin implements CanvasHandle {
+class WidgetCanvasState extends State<WidgetCanvas> with SingleTickerProviderStateMixin, CanvasHandle {
   late final Ticker ticker;
   final cards = <int, Widget>{};
   int edgesVersion = 0;
@@ -761,6 +828,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       'rssMb': ProcessInfo.currentRss ~/ (1 << 20),
       'maxRssMb': ProcessInfo.maxRss ~/ (1 << 20),
       'liveWidgets': canvas.liveWidgets,
+      ...canvas.stats,
       'phases': results,
     };
     stdout.writeln('SUMMARY ${jsonEncode(summary)}');

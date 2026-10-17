@@ -29,6 +29,7 @@ Frame timings come from `FrameTiming`; the interval is the time between consecut
 ## Results
 
 Each cell: frames per second and the p99 frame interval in ms (120 Hz = 8.3 ms). Raw output in `results/`.
+In this table every scene card holds its texture for the whole run (`CULL=0`); culling follows below.
 
 | 1x (1600x1000) | pan | zoom | edits 20/s | drag | load ms | RSS MB |
 |---|---|---|---|---|---|---|
@@ -54,7 +55,38 @@ Each cell: frames per second and the p99 frame interval in ms (120 Hz = 8.3 ms).
 | hybrid 500 | 108 fps, p99 22.3 | 114 fps, p99 17.7 | 119 fps, p99 14.1 | 119 fps, p99 13.9 | 120 | 268 |
 | hybrid 2000 | 105 fps, p99 22.4 | 112 fps, p99 22.3 | 118 fps, p99 15.5 | 119 fps, p99 14.0 | 115 | 264 |
 
-## Findings
+## Cards in the scene, culled per component
+
+Drawing was already culled by the camera (Flutter Scene's per-frame render work stays around 0.3 ms); what grew with
+the node count was that every card held a `WidgetComponent` and its texture. With `CULL=1` (now the default) every
+card has a plain placeholder quad, and only cards within half a viewport of the view hold a component and texture;
+cards more than a viewport away release theirs, at most 24 captures start per frame, and below 0.3x zoom only
+placeholders are drawn. Texture count, load time and memory then follow what is on screen, not the graph size:
+
+| scene cards | pan | zoom | edits 20/s | drag | load ms | RSS MB | cards holding a texture (max) |
+|---|---|---|---|---|---|---|---|
+| 1x 500, all | 119 fps, p99 14.3 | 120 fps, p99 10.4 | 118 fps, p99 11.0 | 120 fps, p99 11.7 | 339 | 258 | 500 |
+| 1x 500, culled | 120 fps, p99 12.2 | 115 fps, p99 14.8 | 121 fps, p99 12.0 | 120 fps, p99 12.5 | 205 | 234 | 320 |
+| 1x 1000, all | 116 fps, p99 14.2 | 118 fps, p99 10.7 | 118 fps, p99 11.2 | 119 fps, p99 10.4 | 554 | 317 | 1000 |
+| 1x 1000, culled | 120 fps, p99 11.7 | 115 fps, p99 15.4 | 120 fps, p99 12.6 | 120 fps, p99 11.4 | 217 | 230 | 336 |
+| 1x 2000, all | 120 fps, p99 11.3 | 122 fps, p99 11.1 | 118 fps, p99 10.5 | 120 fps, p99 11.4 | 1014 | 409 | 2000 |
+| 1x 2000, culled | 119 fps, p99 11.4 | 119 fps, p99 12.5 | 119 fps, p99 13.5 | 120 fps, p99 11.5 | 213 | 228 | 336 |
+| 2x 500, all | 102 fps, p99 22.4 | 116 fps, p99 14.4 | 120 fps, p99 13.6 | 122 fps, p99 12.6 | 342 | 279 | 500 |
+| 2x 500, culled | 104 fps, p99 19.6 | 114 fps, p99 16.8 | 120 fps, p99 14.2 | 98 fps, p99 17.0 | 246 | 273 | 320 |
+| 2x 2000, all | 10 fps, p99 289.6 | 72 fps, p99 79.4 | 90 fps, p99 26.3 | 85 fps, p99 23.5 | 2560 | 432 | 2000 |
+| 2x 2000, culled | 103 fps, p99 20.4 | 111 fps, p99 17.6 | 120 fps, p99 13.3 | 118 fps, p99 12.6 | 239 | 269 | 336 |
+
+* 2x with 2000 nodes: panning goes from 10 to 103 FPS (the empty scene reaches 101), load from 2.6 s to 0.24 s.
+* Load is about 0.2 s at any size; at most about 330 cards hold a texture.
+* Cost: zooming out brings many cards into range at once, so zoom p99 rises to about 15 ms at 1x (build p99 5 to 8
+  ms); fewer captures per frame or a larger margin before the zoom-out should flatten that.
+* One 2x drag run measured 98 FPS; two reruns gave 111 and 114 FPS (the 2x floor is about 109).
+* Still to do for a product version: placeholders that carry the node's colour and border (now plain and faint),
+  edge width in screen pixels (at 0.25x the 2-unit edges break up).
+
+![culled, 0.4x](results/scene-cull-2000-zoom0.4.png)
+
+## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
    positioned cards every frame) was build-bound at 1000 and 2000 nodes (`docs/results/canvas-perf.md`); viewport
@@ -80,11 +112,11 @@ Each cell: frames per second and the p99 frame interval in ms (120 Hz = 8.3 ms).
 
 ## Recommendation
 
-* Canvas now: culled widget cards with one layer transform (as in `widgets`/`hybrid`), plus building cards ahead of
-  the viewport edge to remove the zoom/pan build spikes.
-* Flutter Scene as the layer under the cards (hybrid): edges first, then background and effects. Cards inside the
-  scene only once texture budgeting and accessibility are solved.
-* Final 120 Hz acceptance on a real 120 Hz screen.
+With per-component culling, cards in Flutter Scene hold up at 2000 nodes and 2x like the widget canvases. Both
+directions work; the scene one keeps cards, edges and future shader or 3D effects in one renderer. Open items for it:
+an accessibility summary per node (cards are excluded from the semantics tree), pointer and keyboard input on cards,
+zoom-out capture spikes, placeholder look, edge width in screen pixels, the web build. Final 120 Hz acceptance on a
+real 120 Hz screen.
 
 Not covered yet: pointer and keyboard input on scene cards (`WidgetInput.automatic`), text input inside cards, the
 web build (the bench entry point uses `dart:io`).
@@ -98,4 +130,4 @@ python3 tool/table.py results
 ```
 
 Switches (environment): `MODE`, `NODES`, `SEM=0` (cards out of the semantics tree), `EDGES=0`, `CARDS=0`, `AA`,
-`PHASES`, `POLICY=every`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.
+`PHASES`, `POLICY=every`, `CULL=0`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.
