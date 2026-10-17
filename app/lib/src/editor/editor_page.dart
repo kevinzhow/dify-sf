@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../online_events.dart';
 import '../session_factory.dart';
@@ -144,6 +145,49 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     );
   }
 
+  /// Shows the current state as a Dify workflow file, ready to copy into Dify's "Import DSL".
+  Future<void> _exportDifyDsl(BuildContext context) async {
+    String yaml;
+    try {
+      yaml = await widget.backend.exportDifyDsl(widget.docId);
+    } on Object catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      return;
+    }
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dify workflow file'),
+        content: SizedBox(
+          width: 640,
+          height: 420,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              yaml,
+              key: const Key('export-dsl-text'),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('export-dsl-copy'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: yaml));
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied the workflow file')));
+              }
+            },
+            child: const Text('Copy'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   List<Widget> _actions(BuildContext context, EditorController c) {
     return [
       PopupMenuButton<String>(
@@ -156,6 +200,13 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
           for (final t in const ['start', 'llm', 'code', 'answer']) PopupMenuItem(value: t, child: Text('Add $t node')),
         ],
       ),
+      if (widget.backend.supportsDifyDsl)
+        IconButton(
+          key: const Key('export-dsl'),
+          tooltip: 'Export as a Dify workflow file',
+          icon: const Icon(Icons.file_download_outlined),
+          onPressed: () => unawaited(_exportDifyDsl(context)),
+        ),
       if (widget.extraActions != null) ...widget.extraActions!(context, c, () => unawaited(_crashAndRestart())),
       const SizedBox(width: 8),
     ];

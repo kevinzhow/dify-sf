@@ -31,6 +31,15 @@ abstract interface class Backend {
 
   /// Creates a document with a server-generated id.
   Future<String> createDocument();
+
+  /// Whether this backend converts Dify workflow files (the conversion runs on the server).
+  bool get supportsDifyDsl;
+
+  /// Creates a document from a Dify workflow file (YAML); returns its id.
+  Future<String> importDifyDsl(String yaml);
+
+  /// The document's current state as a Dify workflow file (YAML).
+  Future<String> exportDifyDsl(String docId);
 }
 
 class HttpBackend implements Backend {
@@ -61,6 +70,29 @@ class HttpBackend implements Backend {
     final api = DocsApi(baseUrl);
     try {
       return (await api.create(template: 'example')).id;
+    } finally {
+      api.close();
+    }
+  }
+
+  @override
+  bool get supportsDifyDsl => true;
+
+  @override
+  Future<String> importDifyDsl(String yaml) async {
+    final api = DocsApi(baseUrl);
+    try {
+      return (await api.importDifyDsl(yaml)).id;
+    } finally {
+      api.close();
+    }
+  }
+
+  @override
+  Future<String> exportDifyDsl(String docId) async {
+    final api = DocsApi(baseUrl);
+    try {
+      return await api.exportDifyDsl(docId);
     } finally {
       api.close();
     }

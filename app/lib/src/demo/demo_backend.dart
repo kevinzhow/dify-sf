@@ -40,6 +40,16 @@ class DemoBackend implements Backend {
   @override
   Future<String> createDocument() async => 'demo';
 
+  /// The in-memory server has no workflow-file converter (that lives in the Swift server).
+  @override
+  bool get supportsDifyDsl => false;
+
+  @override
+  Future<String> importDifyDsl(String yaml) => throw UnsupportedError('the demo cannot import Dify workflow files');
+
+  @override
+  Future<String> exportDifyDsl(String docId) => throw UnsupportedError('the demo cannot export Dify workflow files');
+
   @override
   Future<OpenedSession> openSession(
     String docId, {

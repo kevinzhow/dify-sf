@@ -88,6 +88,26 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Paste a Dify workflow file (YAML); the server converts it into a new document, which is then opened.
+  Future<void> _importDifyDsl() async {
+    final backend = _backend();
+    final yaml = await showDialog<String>(context: context, builder: (_) => const _ImportDslDialog());
+    if (yaml == null || yaml.trim().isEmpty || !mounted) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final id = await backend.importDifyDsl(yaml);
+      _doc.text = id;
+      await _launch(backend, id, create: false);
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = 'Import failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _demo() async {
     final demo = DemoBackend();
     await _launch(demo, 'demo', create: true, extra: demo.actions);
@@ -189,6 +209,12 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               const SizedBox(height: 8),
+              TextButton.icon(
+                key: const Key('import-dsl-button'),
+                onPressed: _busy ? null : _importDifyDsl,
+                icon: const Icon(Icons.upload_file_outlined),
+                label: const Text('Import a Dify workflow file…'),
+              ),
               TextButton(
                 key: const Key('demo-button'),
                 onPressed: _busy ? null : _demo,
@@ -209,3 +235,49 @@ Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, Launch
   theme: ThemeData(colorSchemeSeed: const Color(0xFF3F51B5), useMaterial3: true),
   home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
 );
+
+class _ImportDslDialog extends StatefulWidget {
+  const _ImportDslDialog();
+
+  @override
+  State<_ImportDslDialog> createState() => _ImportDslDialogState();
+}
+
+class _ImportDslDialogState extends State<_ImportDslDialog> {
+  final _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Import a Dify workflow file'),
+      content: SizedBox(
+        width: 560,
+        child: TextField(
+          key: const Key('import-dsl-text'),
+          controller: _text,
+          maxLines: 16,
+          minLines: 8,
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          decoration: const InputDecoration(
+            hintText: 'Paste the YAML exported from Dify (Studio → app → Export DSL)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          key: const Key('import-dsl-confirm'),
+          onPressed: () => Navigator.pop(context, _text.text),
+          child: const Text('Import'),
+        ),
+      ],
+    );
+  }
+}
