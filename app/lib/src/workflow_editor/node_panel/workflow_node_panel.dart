@@ -17,8 +17,10 @@ import '../../design/widgets/widgets.dart';
 import '../../editor/undo_manager.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/dify_json.dart';
+import '../block_selector/block_selector.dart' show BlockSelectorPlacements;
 import '../code_editor/code_editor.dart';
 import '../context_menu/context_menu.dart';
+import '../node_insertion/insert_block.dart';
 import '../panel_fields/panel_fields.dart';
 import '../store/store.dart';
 import 'last_run.dart';
@@ -433,6 +435,16 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                   ),
                   actions: NextStepActions(
                     onSelectNode: a.selectNode,
+                    // next-step/add.tsx: the block selector above the button; the block goes after the handle.
+                    onAdd: (anchor, handle) => a.showInsertBlockSelector(
+                      anchor,
+                      InsertAfter(node.id, handle),
+                      placement: BlockSelectorPlacements.nextStep,
+                      popupWidth: 328,
+                      showStartTab: false,
+                    ),
+                    // next-step/operator.tsx: Change replaces the next node.
+                    onChange: (anchor, nextId, handle) => a.showChangeBlockSelector(anchor, nextId, handle),
                     onDisconnect: _disconnect,
                     onDelete: a.deleteNode,
                   ),

@@ -73,11 +73,12 @@ class UndoManager extends ChangeNotifier {
   bool get canUndo => _past.isNotEmpty;
   bool get canRedo => _future.isNotEmpty;
 
-  /// Starts a step; the ops recorded until [end] belong to it.
-  void begin(HistoryEvent event, {String? nodeId}) {
+  /// Starts a step; the ops recorded until [end] belong to it. The step names [nodeId]'s title and type, or
+  /// [nodeTitle] and [nodeType] for a node the step is about to add.
+  void begin(HistoryEvent event, {String? nodeId, String? nodeTitle, String? nodeType}) {
     end();
     final n = nodeId == null ? null : doc().nodes[nodeId];
-    _open = HistoryStep(event, nodeId: nodeId, nodeTitle: n?.title, nodeType: n?.type);
+    _open = HistoryStep(event, nodeId: nodeId, nodeTitle: n?.title ?? nodeTitle, nodeType: n?.type ?? nodeType);
   }
 
   /// Closes the step started by [begin] (an empty one is dropped).

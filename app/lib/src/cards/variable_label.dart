@@ -495,11 +495,16 @@ class InlineVarText {
   /// left out).
   Widget build() {
     if (text.isEmpty) return const SizedBox.shrink();
-    Widget para(TextSpan s) => Text.rich(
-      s,
-      maxLines: truncate ? 1 : null,
-      overflow: truncate ? TextOverflow.ellipsis : TextOverflow.clip,
-      textHeightBehavior: const TextHeightBehavior(leadingDistribution: TextLeadingDistribution.even),
+    // The paragraph's own style is [_base], as in [height] (not the ambient text style, whose font size and leading
+    // would size a line holding only chips).
+    Widget para(TextSpan s) => DefaultTextStyle(
+      style: _base,
+      child: Text.rich(
+        s,
+        maxLines: truncate ? 1 : null,
+        overflow: truncate ? TextOverflow.ellipsis : TextOverflow.clip,
+        textHeightBehavior: const TextHeightBehavior(leadingDistribution: TextLeadingDistribution.even),
+      ),
     );
     return Stack(
       children: [

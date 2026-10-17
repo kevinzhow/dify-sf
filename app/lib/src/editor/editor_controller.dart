@@ -152,6 +152,52 @@ class EditorController extends ChangeNotifier {
     selectNode(nodes.first.id);
   }
 
+  /// Applies a graph edit (Dify's handleNodeAdd / handleNodeChange, built elsewhere) as one undo step [event] about
+  /// [nodeId] ([nodeTitle] and [nodeType] when that node is one of [addNodes]): [addNodes] are added, [moveNodes]
+  /// moved, [setFields] written, [removeEdges] removed, [addEdges] added, then [removeNodes] removed (their edges
+  /// with them, so undo restores those as they were). There is no op that changes a node's type: a replacement is
+  /// a removal and an addition. Selection is the caller's.
+  void applyGraphChange({
+    required HistoryEvent event,
+    String? nodeId,
+    String? nodeTitle,
+    String? nodeType,
+    List<Node> addNodes = const [],
+    Map<String, ({int x, int y})> moveNodes = const {},
+    List<({String node, List<String> path, Value value})> setFields = const [],
+    List<String> removeEdges = const [],
+    List<Edge> addEdges = const [],
+    List<String> removeNodes = const [],
+  }) {
+    final gone = removeNodes.toSet();
+    undo.begin(event, nodeId: nodeId, nodeTitle: nodeTitle, nodeType: nodeType);
+    try {
+      for (final n in addNodes) {
+        _edit(AddNode(n));
+      }
+      for (final MapEntry(key: id, value: (:x, :y)) in moveNodes.entries) {
+        final n = doc.nodes[id];
+        if (n != null && (n.x != x || n.y != y)) _edit(MoveNode(id, x, y));
+      }
+      for (final f in setFields) {
+        _edit(SetField(f.node, ConfigKey(f.path), f.value));
+      }
+      for (final id in removeEdges) {
+        final e = doc.edges[id];
+        if (e != null && !gone.contains(e.source) && !gone.contains(e.target)) _edit(RemoveEdge(id));
+      }
+      for (final e in addEdges) {
+        _edit(AddEdge(e));
+      }
+      if (gone.isNotEmpty) _rememberTitles();
+      for (final id in removeNodes) {
+        _edit(RemoveNode(id));
+      }
+    } finally {
+      undo.end();
+    }
+  }
+
   /// Connects [sourceHandle] of one node (a branch of an if-else, a class of a question classifier, ...) to another.
   void connect(String sourceId, String targetId, {String? sourceHandle}) {
     if (sourceId == targetId) return;

@@ -5,7 +5,10 @@ import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -93,6 +96,22 @@ Future<void> select(WidgetTester t, String nodeId) async {
   await settle(t, const Duration(milliseconds: 300));
 }
 
+/// The control whose accessible name is [label].
+Finder _buttonNamed(String label) =>
+    find.byWidgetPredicate((w) => w is DifyPressable && w.semanticLabel == label, description: 'button "$label"');
+
+/// The text field of the Code panel's output variable named [name].
+Finder _outputInput(String name) => find.descendant(
+  of: find.descendant(
+    of: find.byType(OutputVarList),
+    matching: find.byWidgetPredicate((w) => w is DifyInput && w.value == name),
+  ),
+  matching: find.byType(EditableText),
+);
+
+/// The text of the Code panel's code editor.
+final _codeEditor = find.descendant(of: find.byType(DifyCodeEditor), matching: find.byType(EditableText));
+
 void main() {
   editorTest('shows the document, the live status and the last seq', (t) async {
     final demo = await openEditor(t, withBo: false);
@@ -177,63 +196,79 @@ void main() {
     await settle(t, const Duration(seconds: 2));
     expect(demo.server.doc.nodes['llm']!.title, 'Summarize');
 
-    await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'Say hi');
+    // The Code panel's code editor: typed text is one field.
+    await select(t, 'code');
+    await t.enterText(_codeEditor, 'Say hi');
     await settle(t, const Duration(seconds: 2));
-    expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('Say hi'));
-    await t.enterText(find.byKey(const ValueKey('cfg-llm-model.name')), 'gpt-5');
-    await settle(t, const Duration(seconds: 2));
-    expect(
-      demo.server.doc.nodes['llm']!.config['model'],
-      const VMap({'provider': VString('openai'), 'name': VString('gpt-5')}),
-    );
+    expect(demo.server.doc.nodes['code']!.config['code'], const VString('Say hi'));
 
     final ops = demo.server.log.map((e) => e.op).toList();
-    expect(ops, hasLength(3));
+    expect(ops, hasLength(2));
     expect(ops, everyElement(isA<SetField>()));
-    expect(
-      (ops.last as SetField).field,
-      const ConfigKey(['model', 'name']),
-      reason: 'a nested path, not the whole model object',
-    );
+    expect((ops.last as SetField).field, const ConfigKey(['code']), reason: 'one field, not the whole config');
   });
 
   editorTest('the keyed outputs list: add, edit and remove items by id', (t) async {
     final demo = await openEditor(t, withBo: false);
     await select(t, 'code');
-    expect(find.byKey(const ValueKey('item-o-result')), findsOneWidget);
-    await t.ensureVisible(find.byKey(const Key('add-item-outputs')));
-    await t.tap(find.byKey(const Key('add-item-outputs')));
+    // The Code panel's output variables (OutputVarList): one row per item of the document's keyed list.
+    expect(_outputInput('result'), findsOneWidget);
+    final add = _buttonNamed(
+      '${DifyI18n.tr('common', 'operation.add')} ${DifyI18n.tr('workflow', 'nodes.code.outputVars')}',
+    );
+    await t.ensureVisible(add);
+    await t.tap(add);
     await settle(t);
     var outputs = demo.server.doc.nodes['code']!.config['outputs']! as VItems;
     expect(outputs.items, hasLength(2));
+    expect(outputs.items.first.id, 'o-result', reason: 'the existing item keeps its id');
     final newId = outputs.items.last.id;
     expect(demo.server.log.last.op, isA<InsertItem>());
 
-    await t.enterText(find.byKey(ValueKey('item-$newId-name')), 'summary');
+    await t.enterText(_outputInput('var_2'), 'summary');
     await settle(t, const Duration(seconds: 2));
     outputs = demo.server.doc.nodes['code']!.config['outputs']! as VItems;
+    expect(outputs.items.map((i) => i.id), ['o-result', newId]);
     expect((outputs.items.last.value as VMap).entries['name'], const VString('summary'));
     expect(demo.server.log.last.op, isA<UpdateItem>());
+    expect((demo.server.log.last.op as UpdateItem).itemId, newId);
 
-    await t.ensureVisible(find.byKey(Key('remove-item-$newId')));
-    await t.tap(find.byKey(Key('remove-item-$newId')));
+    final remove = find.descendant(of: find.byType(OutputVarList), matching: find.byType(RemoveButton)).at(1);
+    await t.ensureVisible(remove);
+    await t.tap(remove);
     await settle(t);
     outputs = demo.server.doc.nodes['code']!.config['outputs']! as VItems;
     expect(outputs.items.map((i) => i.id), ['o-result']);
     expect(demo.server.log.last.op, isA<RemoveItem>());
+    expect((demo.server.log.last.op as RemoveItem).itemId, newId);
   });
 
   editorTest('a new output shows up in the variable picker of other nodes', (t) async {
     final demo = await openEditor(t, withBo: false);
-    await select(t, 'answer');
-    await t.tap(find.byTooltip('Pick another variable'));
-    await settle(t, const Duration(milliseconds: 400));
-    expect(find.byKey(const ValueKey('var-code-result')), findsOneWidget);
-    expect(find.byKey(const ValueKey('var-llm-text')), findsOneWidget);
-    expect(find.byKey(const ValueKey('var-start-query')), findsOneWidget);
-    await t.tap(find.byKey(const ValueKey('var-llm-text')));
+    // Someone adds an output to the code node.
+    _controller(t).insertItem(
+      'code',
+      const ['outputs'],
+      const VMap({'name': VString('summary'), 'type': VString('string')}),
+      after: 'o-result',
+    );
     await settle(t);
-    expect(demo.server.doc.nodes['answer']!.config['answer'], const VRef(OutputRef('llm', 'text')));
+    await select(t, 'answer');
+    // The Answer panel's prompt editor: "Insert variable" opens its variable picker.
+    await t.tap(
+      find.byWidgetPredicate(
+        (w) => w is DifyIconButton && w.label == DifyI18n.tr('workflow', 'common.insertVarTip'),
+      ),
+    );
+    await settle(t, const Duration(milliseconds: 400));
+    // (The seed's start variable is `{name, type}`, not Dify's `{variable, type}`, so Dify's picker has no name for it.)
+    for (final v in ['summary', 'result', 'text']) {
+      expect(find.text(v), findsWidgets, reason: '$v is offered');
+    }
+    await t.tap(find.text('text').last);
+    await settle(t);
+    // Dify's answer is a template: the picked variable is written into it, as one field op.
+    expect(demo.server.doc.nodes['answer']!.config['answer'], const VString('{{#llm.text#}}'));
     expect((demo.server.log.last.op as SetField).field, const ConfigKey(['answer']));
   });
 
@@ -257,7 +292,7 @@ void main() {
     expect(find.byKey(const Key('broken-badge-code')), findsOneWidget);
     await select(t, 'code');
     expect(find.byKey(const Key('broken-summary')), findsOneWidget);
-    expect(find.byKey(const Key('broken-llm-text')), findsOneWidget);
+    expect(find.textContaining('1 broken reference'), findsOneWidget);
     expect(demo.server.doc.nodes['code']!.config['inputs'], const VBroken(OutputRef('llm', 'text')));
   });
 
@@ -267,13 +302,14 @@ void main() {
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
 
-    await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'my prompt');
+    await select(t, 'code');
+    await t.enterText(_codeEditor, 'my code');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 
-    demo.boSets('llm', ['prompt'], 'bo prompt');
+    demo.boSets('code', ['code'], 'bo code');
     await settle(t, const Duration(seconds: 1));
-    expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('bo prompt'));
+    expect(demo.server.doc.nodes['code']!.config['code'], const VString('bo code'));
     // 30 s without a byte: the watchdog notices the dead connection.
     await settle(t, const Duration(seconds: 35));
     expect(await text(t, 'link-state'), isNot('Live'));
@@ -284,14 +320,14 @@ void main() {
     expect(await text(t, 'link-state'), 'Live');
     expect(await text(t, 'pending-count'), 'All edits saved');
     expect(find.byKey(const Key('notice-message')), findsOneWidget);
-    expect(await text(t, 'notice-message'), startsWith('Bo changed prompt'));
+    expect(await text(t, 'notice-message'), startsWith('Bo changed code'));
     expect(await text(t, 'notice-message'), endsWith('your change wasn\'t applied'));
     // The winning value is what's on screen, not the lost draft.
-    expect(fieldText(t, 'cfg-llm-prompt'), 'bo prompt');
+    expect(t.widget<EditableText>(_codeEditor).controller.text, 'bo code');
 
     await t.tap(find.byKey(const Key('reapply')));
     await settle(t);
-    expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('my prompt'));
+    expect(demo.server.doc.nodes['code']!.config['code'], const VString('my code'));
     expect(find.byKey(const Key('notice-message')), findsNothing);
   });
 
@@ -320,7 +356,8 @@ void main() {
     await select(t, 'llm');
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
-    await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'unsaved work');
+    await select(t, 'code');
+    await t.enterText(_codeEditor, 'unsaved work');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 
@@ -334,7 +371,10 @@ void main() {
     await settle(t, const Duration(seconds: 5));
     expect(find.byKey(const Key('notice-message')), findsOneWidget);
     expect(await text(t, 'notice-message'), contains('1 edit was lost'));
-    expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('Answer briefly: {{#start.query#}}'));
+    expect(
+      demo.server.doc.nodes['code']!.config['code'],
+      const VString("def main(text):\n    return {'result': text.strip()}"),
+    );
     expect(await text(t, 'pending-count'), 'All edits saved');
   });
 
@@ -375,7 +415,8 @@ void main() {
     await select(t, 'llm');
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
-    await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'kept work');
+    await select(t, 'code');
+    await t.enterText(_codeEditor, 'kept work');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 
@@ -388,11 +429,7 @@ void main() {
     demo.setOffline(false);
     await t.tap(find.byKey(const Key('reconnect-now')));
     await settle(t, const Duration(seconds: 5));
-    expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('kept work'));
+    expect(demo.server.doc.nodes['code']!.config['code'], const VString('kept work'));
     expect(await text(t, 'pending-count'), 'All edits saved');
   });
 }
-
-String fieldText(WidgetTester t, String key) => (t.widget(
-  find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText)),
-) as EditableText).controller.text;

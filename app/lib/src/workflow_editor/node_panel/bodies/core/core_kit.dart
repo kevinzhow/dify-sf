@@ -177,7 +177,7 @@ void writeNodeData(EditorController c, Node node, Map<String, Object?> data) {
       c.setConfig(node.id, [key], VItems([for (final v in value) Item(newId('i'), docValue(v, c.doc))]));
       continue;
     }
-    _writeKey(c, node.id, key, orig, value);
+    _writeKey(c, node.id, [key], orig, value);
   }
 }
 
@@ -199,8 +199,19 @@ void writeNodeConfig(EditorController c, Node orig, Node next) {
 bool _sameIds(List<Item> a, List<Item> b) =>
     a.length == b.length && [for (var i = 0; i < a.length; i++) a[i].id == b[i].id].every((x) => x);
 
-void _writeKey(EditorController c, String nodeId, String key, Value? orig, Object? next) {
+/// Writes [next] at [path]: a map that keeps all its members member by member (only what changed, at its own path,
+/// so concurrent edits of sibling members merge; a map losing a member is written whole), a keyed list item by item.
+void _writeKey(EditorController c, String nodeId, List<String> path, Value? orig, Object? next) {
   final doc = c.doc;
+  if (orig is VMap && next is Map && orig.entries.keys.every(next.containsKey)) {
+    for (final MapEntry(:key, :value) in next.entries) {
+      final o = orig.entries['$key'];
+      if (o == null && value == null) continue;
+      if (o != null && jsonEquals(plainOf(o), value)) continue;
+      _writeKey(c, nodeId, [...path, '$key'], o, value);
+    }
+    return;
+  }
   if (orig is VItems && next is List) {
     final old = orig.items;
     final plain = [for (final i in old) plainOf(i.value)];
@@ -213,11 +224,11 @@ void _writeKey(EditorController c, String nodeId, String key, Value? orig, Objec
       ];
       final reorder = _permutation(plain, next);
       if (reorder != null && changed.isNotEmpty) {
-        c.setConfig(nodeId, [key], VItems([for (final i in reorder) old[i]]));
+        c.setConfig(nodeId, path, VItems([for (final i in reorder) old[i]]));
         return;
       }
       for (final i in changed) {
-        c.updateItem(nodeId, [key], old[i].id, docValue(next[i], doc, old[i].value));
+        c.updateItem(nodeId, path, old[i].id, docValue(next[i], doc, old[i].value));
       }
       return;
     }
@@ -225,7 +236,7 @@ void _writeKey(EditorController c, String nodeId, String key, Value? orig, Objec
     if (next.length == old.length + 1) {
       for (var k = 0; k < next.length; k++) {
         if ([for (var i = 0; i < old.length; i++) eq(i, i < k ? i : i + 1)].every((x) => x)) {
-          c.insertItem(nodeId, [key], docValue(next[k], doc), after: k == 0 ? null : old[k - 1].id);
+          c.insertItem(nodeId, path, docValue(next[k], doc), after: k == 0 ? null : old[k - 1].id);
           return;
         }
       }
@@ -234,7 +245,7 @@ void _writeKey(EditorController c, String nodeId, String key, Value? orig, Objec
     if (next.length == old.length - 1) {
       for (var k = 0; k < old.length; k++) {
         if ([for (var j = 0; j < next.length; j++) eq(j < k ? j : j + 1, j)].every((x) => x)) {
-          c.removeItem(nodeId, [key], old[k].id);
+          c.removeItem(nodeId, path, old[k].id);
           return;
         }
       }
@@ -256,10 +267,10 @@ void _writeKey(EditorController c, String nodeId, String key, Value? orig, Objec
         items.add(Item(id, docValue(v, doc, j < old.length ? old[j].value : null)));
       }
     }
-    c.setConfig(nodeId, [key], VItems(items));
+    c.setConfig(nodeId, path, VItems(items));
     return;
   }
-  c.setConfig(nodeId, [key], docValue(next, doc, orig));
+  c.setConfig(nodeId, path, docValue(next, doc, orig));
 }
 
 /// The order of [a]'s elements in [b] when [b] is a permutation of [a], else null.

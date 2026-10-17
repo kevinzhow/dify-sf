@@ -104,6 +104,39 @@ void main() {
       await h.dispose(t);
     });
 
+    testWidgets('writes a changed member of a map at its own path', (t) async {
+      final h = await Harness.start(
+        t,
+        difyNodes([
+          difyNode('agg', 'variable-aggregator', {
+            'output_type': 'string',
+            'variables': <Object?>[],
+            'advanced_settings': {'group_enabled': false, 'groups': <Object?>[]},
+          }),
+        ]),
+      );
+      List<Op> sent() => [for (final p in h.controller.session.pending) ?p.op];
+      final before = sent().length;
+      final crud = _crud(h, 'agg');
+      final settings = crud.inputs['advanced_settings']! as Map;
+      crud.setInputs({
+        ...crud.inputs,
+        'advanced_settings': {...settings, 'group_enabled': true},
+      });
+      final ops = sent().sublist(before);
+      expect(ops, hasLength(1));
+      expect((ops.single as SetField).field, const ConfigKey(['advanced_settings', 'group_enabled']));
+      expect(difyDataOf(h['agg']!)['advanced_settings'], {'group_enabled': true, 'groups': <Object?>[]});
+      // A map losing a member is written whole.
+      crud.setInputs({
+        ...crud.inputs,
+        'advanced_settings': {'group_enabled': true},
+      });
+      expect((sent().last as SetField).field, const ConfigKey(['advanced_settings']));
+      expect(difyDataOf(h['agg']!)['advanced_settings'], {'group_enabled': true});
+      await h.dispose(t);
+    });
+
     testWidgets('creates keyed lists, writes nothing while read-only', (t) async {
       final h = await Harness.start(
         t,
