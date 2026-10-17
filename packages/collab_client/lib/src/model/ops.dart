@@ -295,8 +295,18 @@ sealed class Op {
 
   Map<String, Object?> toJson();
 
-  /// The node this op writes to, if any (for UI notices).
+  /// The node this op writes to, if any (for UI notices). `$app` for the document-level registers (protocol 1.7).
   String? get nodeId;
+
+  /// Protocol 1.7: the op writes a document-level register (node `Document.appNode`). Only [SetField], [InsertItem],
+  /// [RemoveItem] and [UpdateItem] can (every other op naming `$app` is invalid and never committed).
+  bool get touchesApp => switch (this) {
+    SetField(:final node) ||
+    InsertItem(:final node) ||
+    RemoveItem(:final node) ||
+    UpdateItem(:final node) => node == r'$app',
+    _ => false,
+  };
 }
 
 final class AddNode extends Op {

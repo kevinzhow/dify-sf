@@ -111,8 +111,12 @@ class EditorController extends ChangeNotifier {
     );
   }
 
-  void insertItem(String nodeId, List<String> path, Value value, {String? after}) {
-    session.edit(InsertItem(nodeId, path, Item(newId('i'), value), after));
+  /// Inserts [value] as a new item after the item [after] (null: at the front); the new item's id ([id], else a
+  /// fresh one: a Dify variable list keys its items by the variable's id).
+  String insertItem(String nodeId, List<String> path, Value value, {String? after, String? id}) {
+    id ??= newId('i');
+    session.edit(InsertItem(nodeId, path, Item(id, value), after));
+    return id;
   }
 
   void updateItem(String nodeId, List<String> path, String itemId, Value value, {int? base}) {
@@ -227,6 +231,28 @@ class EditorController extends ChangeNotifier {
     if (selectedNodeId == nodeId) selectedNodeId = null;
     notifyListeners();
   }
+
+  // ---- document-level registers (protocol 1.7) ---------------------------------------------------
+
+  /// The document's environment variables, conversation variables (Dify JSON, in order) and features, as this client
+  /// sees them now (local edits included). They live in the document under [Document.appNode] (`$app`) and are written
+  /// with [insertItem] / [updateItem] / [removeItem] / [setConfig] on that node id. Like Dify, these edits are not
+  /// part of the undo history.
+  ({
+    List<Map<String, Object?>> environmentVariables,
+    List<Map<String, Object?>> conversationVariables,
+    Map<String, Object?> features,
+  })
+  get appLists => (
+    environmentVariables: AppRegisters.variables(doc, AppRegisters.environmentVariables),
+    conversationVariables: AppRegisters.variables(doc, AppRegisters.conversationVariables),
+    features: AppRegisters.featuresOf(doc),
+  );
+
+  /// Stores the plaintext of a secret environment variable on the server (`POST /v1/docs/{doc}/secrets`) and returns
+  /// its reference and Dify's mask. Write the variable with `value` = [masked] and `secret_ref` = [ref]: the plaintext
+  /// never enters the document, the log or anyone's view.
+  Future<({String ref, String masked})> storeSecret(String value) => session.transport.storeSecret(value);
 
   // ---- notices -----------------------------------------------------------------------------------
 

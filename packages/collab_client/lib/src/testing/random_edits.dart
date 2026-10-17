@@ -6,12 +6,16 @@ import '../model/value.dart';
 
 /// Generates plausible random user edits against what a client currently sees (its view): drags, text
 /// edits drawn from a tiny pool (so same-value writes happen), list edits, node/edge creation and deletion,
-/// variable references, and undo of its own deletes (protocol 1.6 `restoreNode`). Used by the randomized tests and the
-/// headless storm CLI.
+/// variable references, undo of its own deletes (protocol 1.6 `restoreNode`) and, with [appEdits], edits of the
+/// document-level registers (protocol 1.7 `$app`: a variable list and a features map). Used by the randomized tests
+/// and the headless storm CLI.
 class RandomEditor {
-  RandomEditor(this.rng, {required this.idPrefix});
+  RandomEditor(this.rng, {required this.idPrefix, this.appEdits = false});
 
   final Random rng;
+
+  /// Also edit the document-level registers (about one edit in ten).
+  final bool appEdits;
 
   /// Prefix of every id this editor invents. Must be unique per (client, run): ids are never reused.
   final String idPrefix;
@@ -34,6 +38,7 @@ class RandomEditor {
       final d = _deleted.remove(_pick(undoable))!;
       return RestoreNode(d.node, d.edges);
     }
+    if (appEdits && rng.nextInt(100) < 10) return _appEdit(view);
     final ids = view.nodes.keys.toList()..sort();
     if (ids.isEmpty) return null;
     final r = rng.nextInt(100);
@@ -91,5 +96,32 @@ class RandomEditor {
       );
     }
     return SetField(n, const ConfigKey(['prompt']), VString(_pick(['x', 'y'])));
+  }
+
+  /// An edit of `$app`: variables inserted, updated (from a tiny pool, so same-value writes happen) and removed, feature
+  /// members and the whole features map written.
+  Op _appEdit(Document view) {
+    const app = Document.appNode;
+    const path = ['vars'];
+    final vars = switch (view.app['vars']) {
+      VItems(:final items) => items,
+      _ => const <Item>[],
+    };
+    VMap variable(String id) => VMap({
+      'id': VString(id),
+      'value': VString(_pick(['a', 'b', 'c'])),
+    });
+    final r = rng.nextInt(100);
+    if (r < 35 || vars.isEmpty) {
+      final id = _id('v');
+      final after = vars.isEmpty || rng.nextBool() ? null : _pick([for (final i in vars) i.id]);
+      return InsertItem(app, path, Item(id, variable(id)), after);
+    }
+    final v = _pick([for (final i in vars) i.id]);
+    if (r < 65) return UpdateItem(app, path, v, variable(v));
+    if (r < 75) return RemoveItem(app, path, v);
+    final member = _pick(['p', 'q']), text = _pick(['x', 'y']);
+    if (r < 93) return SetField(app, ConfigKey(['features', member]), VString(text));
+    return SetField(app, const ConfigKey(['features']), VMap({member: VString(text)}));
   }
 }

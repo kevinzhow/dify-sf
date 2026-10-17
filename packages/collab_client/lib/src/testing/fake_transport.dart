@@ -146,6 +146,12 @@ class FakeTransport implements CollabTransport {
   }
 
   @override
+  Future<({String ref, String masked})> storeSecret(String value) async {
+    if (network.refused || network.partitioned) throw const TransportException('connection refused');
+    return server.storeSecret(value);
+  }
+
+  @override
   Future<void> setClientName(String client, String name) async {
     if (network.refused || network.partitioned) throw const TransportException('connection refused');
     server.setClientName(client, name);
@@ -209,7 +215,12 @@ class _FakeStream {
     if (_closed) return;
     if (net.partitioned || net.blockStreams) return;
     _connected = true;
-    final events = server.catchUp(lastEventId: open.lastEventId, client: open.client, from: open.from);
+    final events = server.catchUp(
+      lastEventId: open.lastEventId,
+      client: open.client,
+      from: open.from,
+      proto: open.proto,
+    );
     server.addListener(_listener);
     for (final e in events) {
       _deliver(e);
@@ -221,6 +232,11 @@ class _FakeStream {
 
   void _onCommit(LogEntry e) {
     if (!_connected || _closed) return;
+    if (!StreamCompat.streamCarries(e.op, open.proto)) {
+      // An older client cannot decode this op: the server ends its stream (it reconnects and gets a snapshot).
+      unawaited(close());
+      return;
+    }
     if (_blackholed) {
       _dead = true;
       return;

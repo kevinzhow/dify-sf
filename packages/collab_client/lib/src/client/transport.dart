@@ -19,6 +19,11 @@ abstract interface class CollabTransport {
   /// `PUT /v1/docs/{doc}/clients/{client}` (protocol 1.3): names or renames [client].
   Future<void> setClientName(String client, String name);
 
+  /// `POST /v1/docs/{doc}/secrets` (protocol 1.7): stores the plaintext of a secret environment variable on the server
+  /// and returns its reference and Dify's mask. The variable is then written with ordinary item ops on `$app`
+  /// (`value` = the mask, `secret_ref` = the reference); the plaintext never enters ops, the log or snapshots.
+  Future<({String ref, String masked})> storeSecret(String value);
+
   /// Releases resources (open connections).
   void close();
 }

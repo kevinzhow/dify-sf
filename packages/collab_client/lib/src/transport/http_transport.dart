@@ -102,6 +102,30 @@ class HttpTransport implements CollabTransport {
   }
 
   @override
+  Future<({String ref, String masked})> storeSecret(String value) async {
+    final abort = Completer<void>();
+    final req = http.AbortableRequest('POST', _url('/secrets'), abortTrigger: abort.future)
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'value': value});
+    try {
+      final res = await _client.send(req).timeout(connectTimeout);
+      final body = await res.stream.bytesToString();
+      if (res.statusCode != 201 && res.statusCode != 200) throw _errorFrom(res.statusCode, body);
+      final json = jsonDecode(body) as Map<String, Object?>;
+      final ref = json['ref'], masked = json['masked'];
+      if (ref is! String || masked is! String) throw const TransportException('server stored no secret');
+      return (ref: ref, masked: masked);
+    } on TransportException {
+      rethrow;
+    } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
+      throw const TransportException('secret request timed out', timeout: true);
+    } on Object catch (e) {
+      throw TransportException('secret request failed: $e');
+    }
+  }
+
+  @override
   Future<void> setClientName(String client, String name) async {
     final abort = Completer<void>();
     final req =

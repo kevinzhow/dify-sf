@@ -92,9 +92,12 @@ class UndoManager extends ChangeNotifier {
   }
 
   /// Records [op] (about to be submitted by this client) in the open step, or as a step of its own when [event] is
-  /// given. Edits outside a step and without an event are not undoable.
+  /// given. Edits outside a step and without an event are not undoable, and neither are writes of `$app`.
   void record(Op op, {HistoryEvent? event}) {
     if (_replaying) return;
+    // Writes of the document-level registers (environment / conversation variables, features: protocol 1.7) are
+    // not workflow history in Dify (its env and chat-variable panels save outside it), so they are never undoable.
+    if (op.touchesApp) return;
     // Typing a title or description is one step: edits of the same field follow each other closely.
     final last = _past.lastOrNull;
     if (_open == null &&

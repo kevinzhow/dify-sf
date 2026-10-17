@@ -218,7 +218,7 @@ void main() {
     });
   });
 
-  group('protocol 1.1 to 1.6', () {
+  group('protocol 1.1 to 1.7', () {
     test('POST /clients issues unique client ids (404 for an unknown document)', () async {
       final ids = {for (var i = 0; i < 5; i++) await t.issueClientId()};
       expect(ids, hasLength(5));
@@ -496,7 +496,7 @@ workflow:
       expect(await api.exportDifyDsl(id), contains('conformance import'));
     });
 
-    test('Dify app metadata: mode and variables of an imported file, secrets blanked; defaults otherwise', () async {
+    test('Dify app metadata: mode and variables of an imported file, secrets masked; defaults otherwise', () async {
       const dsl = '''
 app: {mode: advanced-chat, name: conformance meta}
 kind: app
@@ -519,7 +519,15 @@ workflow:
       final m = await api.meta(id);
       expect(m.appMode, 'advanced-chat');
       expect(m.appName, 'conformance meta');
-      expect({for (final v in m.environmentVariables) v['name']: v['value']}, {'api_key': '', 'region': 'eu'});
+      // 1.7: a secret is served masked (Dify's formatSecret), never in plaintext nor with its reference.
+      expect(
+        {for (final v in m.environmentVariables) v['name']: v['value']},
+        {
+          'api_key': 'not-fo************ts',
+          'region': 'eu',
+        },
+      );
+      expect(m.environmentVariables.every((v) => !v.containsKey('secret_ref')), isTrue);
       expect(m.conversationVariables.single['name'], 'str');
       expect(m.raw['features'], {'opening_statement': 'hi'});
       expect(m.raw.containsKey('workflow'), isFalse, reason: 'no graph');
@@ -530,6 +538,75 @@ workflow:
         api.meta(_docId()),
         throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
       );
+    });
+
+    test('1.7 app registers: variables are edited with item ops on \$app; secrets stay on the server', () async {
+      const app = Document.appNode;
+      const env = [AppRegisters.environmentVariables];
+      // A secret typed in the panel: stored aside, the document only gets the mask and the reference.
+      final (:ref, :masked) = await api.storeSecret(doc, 'sk-typed-in-the-panel');
+      expect(ref, matches(RegExp(r'^sec-[0-9a-f]{32}$')));
+      expect(masked, AppRegisters.maskSecret('sk-typed-in-the-panel'));
+      Value v(String id, String value, {String type = 'string', String? secretRef}) => Value.of({
+        'id': id,
+        'name': id,
+        'value': value,
+        'value_type': type,
+        'description': '',
+        'secret_ref': ?secretRef,
+      });
+      final r = await post('cli-v', [
+        (1, 0, InsertItem(app, env, Item('k', v('k', masked, type: 'secret', secretRef: ref)), null)),
+        (2, 0, InsertItem(app, env, Item('r', v('r', 'eu')), 'k')),
+        (3, 0, const SetField(app, ConfigKey(['features', 'opening_statement']), VString('hi'))),
+      ]);
+      expect([for (final x in r.results) (x as AckResult).seq], [1, 2, 3]);
+      // Concurrent edits of different variables both commit; a stale edit of the same one is a conflict.
+      final b = await post('cli-w', [(1, 2, UpdateItem(app, env, 'r', v('r', 'us')))]);
+      expect(b.results.single, isA<AckResult>());
+      final stale = await post('cli-v', [(4, 2, UpdateItem(app, env, 'r', v('r', 'jp')))]);
+      expect(
+        (stale.results.single as RejectResult).reason,
+        const Conflict(node: app, field: ItemKey(env, 'r'), seq: 4, by: 'cli-w'),
+      );
+      // Everything else naming $app is invalid.
+      final bad = await post('cli-v', [
+        (5, 4, const RemoveNode(app)),
+        (6, 4, const SetField(app, TitleKey(), VString('t'))),
+        (7, 4, const AddNode(Node(id: r'$x', type: 'llm'))),
+        (8, 4, const SetField(app, ConfigKey(['features', 'r']), VRef(OutputRef('llm', 'text')))),
+      ]);
+      expect([for (final x in bad.results) (x as RejectResult).reason.name], everyElement('invalid'));
+      // The client's replay equals the server's document; the snapshot never holds the plaintext.
+      final snap = await api.snapshot(doc);
+      expect(jsonEncode(snap.doc.toJson()), isNot(contains('sk-typed-in-the-panel')));
+      expect(AppRegisters.variables(snap.doc, AppRegisters.environmentVariables).map((x) => x['value']), [
+        masked,
+        'us',
+      ]);
+      // Meta follows the document (mask, no reference); export blanks secrets unless include_secret.
+      final meta = await api.meta(doc);
+      expect(meta.environmentVariables.map((x) => x['value']), [masked, 'us']);
+      expect(meta.environmentVariables.every((x) => !x.containsKey('secret_ref')), isTrue);
+      expect(meta.raw['features'], {'opening_statement': 'hi'});
+      List<Object?> exportedEnv(Map<String, Object?> dsl) =>
+          (dsl['workflow']! as Map<String, Object?>)['environment_variables']! as List<Object?>;
+      final plain = exportedEnv(await api.exportDifyDslJson(doc));
+      expect(plain.map((x) => (x! as Map<String, Object?>)['value']), ['', 'us']);
+      final full = exportedEnv(await api.exportDifyDslJson(doc, includeSecret: true));
+      expect(full.map((x) => (x! as Map<String, Object?>)['value']), ['sk-typed-in-the-panel', 'us']);
+      expect([...plain, ...full].every((x) => !(x! as Map<String, Object?>).containsKey('secret_ref')), isTrue);
+      expect(await api.exportDifyDsl(doc, includeSecret: true), contains('sk-typed-in-the-panel'));
+      // A 1.6 stream never carries a $app write: its catch-up becomes a snapshot.
+      final old = <StreamEvent>[];
+      await for (final e
+          in t.openStream(const StreamOpen(lastEventId: 0, proto: '1.6')).timeout(const Duration(seconds: 10))) {
+        if (e is PingEvent) continue;
+        old.add(e);
+        if (e is ReadyEvent) break;
+      }
+      expect(old.first, isA<SnapshotEvent>());
+      expect((old.first as SnapshotEvent).doc, snap.doc);
     });
 
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {

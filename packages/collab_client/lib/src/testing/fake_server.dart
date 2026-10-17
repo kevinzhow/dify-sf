@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../model/app_registers.dart';
 import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
@@ -28,6 +29,18 @@ class FakeServer {
 
   /// Display names by client id (protocol 1.3).
   final Map<String, String> names = {};
+
+  /// Plaintext of secret environment variables by reference (protocol 1.7, `POST /v1/docs/{doc}/secrets`).
+  final Map<String, String> secrets = {};
+  int _secretsIssued = 0;
+
+  /// `POST /v1/docs/{doc}/secrets`: stores [value] aside and returns its reference (`sec-` plus 32 hex digits) and
+  /// Dify's mask. The plaintext never enters the document.
+  ({String ref, String masked}) storeSecret(String value) {
+    final ref = 'sec-${(++_secretsIssued).toRadixString(16).padLeft(32, '0')}';
+    secrets[ref] = value;
+    return (ref: ref, masked: AppRegisters.maskSecret(value));
+  }
 
   /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits, optionally named (protocol 1.3).
   String issueClientId({String? name}) {
@@ -141,10 +154,15 @@ class FakeServer {
     return SubmitResponse(head: head, high: high, results: results, known: known);
   }
 
-  /// What a newly opened stream receives first (catch-up), ending with `ready`.
-  List<StreamEvent> catchUp({int? lastEventId, String? client, int? from}) {
+  /// What a newly opened stream receives first (catch-up), ending with `ready`. A stream opened with an older [proto]
+  /// gets a snapshot instead of a replay that contains a commit it cannot decode ([StreamCompat]).
+  List<StreamEvent> catchUp({int? lastEventId, String? client, int? from, String? proto = protocolVersion}) {
     final n = lastEventId;
-    if (n == null || n < 0 || n > head || head - n > maxReplay) {
+    if (n == null ||
+        n < 0 ||
+        n > head ||
+        head - n > maxReplay ||
+        log.skip(n).any((e) => !StreamCompat.streamCarries(e.op, proto))) {
       final committed = <int, int>{};
       if (client != null) {
         for (final e in (_committed[client] ?? const <int, int>{}).entries) {

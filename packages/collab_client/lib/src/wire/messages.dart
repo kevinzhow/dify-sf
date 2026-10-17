@@ -245,8 +245,40 @@ final class PingEvent extends StreamEvent {
 }
 
 /// The protocol version this package implements (docs/protocol.md). Sent as `proto` when opening the event stream, so
-/// the server includes ops added in 1.6 (`restoreNode`) in it.
-const protocolVersion = '1.6';
+/// the server includes ops added in 1.6 (`restoreNode`) and 1.7 (writes of the document-level registers, `$app`) in it.
+const protocolVersion = '1.7';
+
+/// Which commits a stream opened with a given `proto` may carry (mirrors `StreamCompat` in the Swift core). A stream
+/// without `proto`, or below 1.6, never carries a `restoreNode`; one below 1.7 never carries a write of `$app`. The
+/// server answers such a stream with a snapshot instead of a replay containing one, and ends it instead of sending one
+/// live.
+abstract final class StreamCompat {
+  /// Parses `major.minor`; null when [proto] is not a version (the server answers 400).
+  static (int, int)? parse(String proto) {
+    final m = RegExp(r'^([0-9]+)\.([0-9]+)$').firstMatch(proto);
+    if (m == null) return null;
+    return (int.parse(m[1]!), int.parse(m[2]!));
+  }
+
+  static bool _atLeast(String? proto, int minor) {
+    final p = proto == null ? null : parse(proto);
+    if (p == null) return false;
+    return p.$1 > 1 || (p.$1 == 1 && p.$2 >= minor);
+  }
+
+  /// True when a stream opened with [proto] may carry `restoreNode` commits (1.6).
+  static bool acceptsRestore(String? proto) => _atLeast(proto, 6);
+
+  /// True when a stream opened with [proto] may carry writes of the document-level registers (1.7).
+  static bool acceptsApp(String? proto) => _atLeast(proto, 7);
+
+  /// True when [op] may be sent as a commit event on a stream opened with [proto].
+  static bool streamCarries(Op op, String? proto) {
+    if (op is RestoreNode) return acceptsRestore(proto);
+    if (op.touchesApp) return acceptsApp(proto);
+    return true;
+  }
+}
 
 /// `GET /v1/docs/{doc}/events` parameters.
 final class StreamOpen {
@@ -263,8 +295,8 @@ final class StreamOpen {
   /// Client-side stream generation (not sent on the wire; lets drivers ignore events of dead streams).
   final int generation;
 
-  /// `proto` query parameter (protocol 1.6). null plays a client older than 1.6: the server never sends it a
-  /// `restoreNode` commit (it gets a snapshot instead).
+  /// `proto` query parameter (protocol 1.6). null plays a client older than 1.6: the server never sends it a commit it
+  /// cannot decode (it gets a snapshot instead), see [StreamCompat].
   final String? proto;
 
   @override

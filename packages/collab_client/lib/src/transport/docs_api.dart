@@ -20,7 +20,9 @@ final class DocInfo {
 }
 
 /// A document's Dify app metadata (`GET /v1/docs/{id}/meta`): what an imported Dify workflow file says about the app.
-/// Documents that were not imported have the defaults (a workflow, no variables).
+/// Documents that were not imported have the defaults (a workflow, no variables). Since protocol 1.7 the variables and
+/// features are those of the document at head (they live in the document: [AppRegisters]); a live editor reads them
+/// from its document instead.
 final class DocMeta {
   const DocMeta({
     this.appMode = 'workflow',
@@ -50,7 +52,7 @@ final class DocMeta {
   final String appMode;
   final String appName;
 
-  /// Dify's `workflow.environment_variables`, as Dify JSON (secret values are blanked by the server).
+  /// Dify's `workflow.environment_variables`, as Dify JSON (secret values are masked by the server, 1.7).
   final List<Map<String, Object?>> environmentVariables;
 
   /// Dify's `workflow.conversation_variables`, as Dify JSON.
@@ -144,20 +146,39 @@ class DocsApi {
     return DocInfo(id: json['id']! as String, head: json['head']! as int, created: json['created'] as bool? ?? false);
   }
 
-  /// `GET /v1/docs/{id}/export`: the current state as a Dify workflow file (YAML).
-  Future<String> exportDifyDsl(String id) async {
-    final res = await _guard(() => _client.get(_url('/v1/docs/$id/export')).timeout(timeout));
+  /// `GET /v1/docs/{id}/export`: the current state as a Dify workflow file (YAML). Secret environment variables are
+  /// exported with `""` unless [includeSecret] (Dify's option of the same name, protocol 1.7).
+  Future<String> exportDifyDsl(String id, {bool includeSecret = false}) async {
+    final url = _url('/v1/docs/$id/export');
+    final res = await _guard(
+      () =>
+          _client.get(includeSecret ? url.replace(queryParameters: {'include_secret': 'true'}) : url).timeout(timeout),
+    );
     if (res.statusCode != 200) throw _error(res);
     return utf8.decode(res.bodyBytes);
   }
 
   /// `GET /v1/docs/{id}/export?format=json`: the same as parsed JSON.
-  Future<Map<String, Object?>> exportDifyDslJson(String id) async {
+  Future<Map<String, Object?>> exportDifyDslJson(String id, {bool includeSecret = false}) async {
+    final query = {'format': 'json', if (includeSecret) 'include_secret': 'true'};
     final res = await _guard(
-      () => _client.get(_url('/v1/docs/$id/export').replace(queryParameters: {'format': 'json'})).timeout(timeout),
+      () => _client.get(_url('/v1/docs/$id/export').replace(queryParameters: query)).timeout(timeout),
     );
     if (res.statusCode != 200) throw _error(res);
     return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>;
+  }
+
+  /// `POST /v1/docs/{id}/secrets` (protocol 1.7): stores the plaintext of a secret environment variable server-side.
+  /// Returns its reference and Dify's mask; write the variable with ordinary item ops on `$app` with `value` = [masked]
+  /// and `secret_ref` = [ref]. The plaintext never enters ops, the log or snapshots.
+  Future<({String ref, String masked})> storeSecret(String id, String value) async {
+    final req = http.Request('POST', _url('/v1/docs/$id/secrets'))
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'value': value});
+    final res = await _guard(() async => http.Response.fromStream(await _client.send(req).timeout(timeout)));
+    if (res.statusCode != 201 && res.statusCode != 200) throw _error(res);
+    final json = jsonDecode(res.body) as Map<String, Object?>;
+    return (ref: json['ref']! as String, masked: json['masked']! as String);
   }
 
   /// `GET /v1/docs/{id}/meta`: the Dify app metadata (mode, name, variables, features).

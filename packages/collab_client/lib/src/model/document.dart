@@ -16,9 +16,10 @@ import 'value.dart';
 /// A [Document] is mutable through [apply] only. Elements ([Node], [Edge], [Value], [Stamp]) are immutable,
 /// so [clone] is a cheap shallow copy.
 class Document {
-  Document({Iterable<Node> nodes = const [], Iterable<Edge> edges = const []})
+  Document({Iterable<Node> nodes = const [], Iterable<Edge> edges = const [], Map<String, Value> app = const {}})
     : nodes = {for (final n in nodes) n.id: n},
       edges = {for (final e in edges) e.id: e},
+      app = Map.unmodifiable(app),
       deletedNodes = {},
       deletedEdges = {},
       deletedItems = {},
@@ -28,6 +29,7 @@ class Document {
   Document._(
     this.nodes,
     this.edges,
+    this.app,
     this.deletedNodes,
     this.deletedEdges,
     this.deletedItems,
@@ -55,9 +57,15 @@ class Document {
       final m = row! as Map<String, Object?>;
       (touches[m['node']! as String] ??= {})[m['client']! as String] = m['seq']! as int;
     }
+    final app = switch (json['app']) {
+      null => const <String, Value>{},
+      final Map<String, Object?> m => (Value.fromJson(m) as VMap).entries,
+      final other => throw FormatException('bad app: $other'),
+    };
     return Document._(
       {for (final n in list('nodes').map(Node.fromJson)) n.id: n},
       {for (final e in list('edges').map(Edge.fromJson)) e.id: e},
+      Map.unmodifiable(app),
       stamps('deletedNodes'),
       stamps('deletedEdges'),
       stamps('deletedItems'),
@@ -68,6 +76,16 @@ class Document {
 
   final Map<String, Node> nodes;
   final Map<String, Edge> edges;
+
+  /// Protocol 1.7: document-level registers (Dify's environment variables, conversation variables, features). Ops
+  /// address them through the reserved node id [appNode] (`$app`) with [SetField] (config paths), [InsertItem],
+  /// [RemoveItem] and [UpdateItem], under the same conflict rules as a node's config. Values contain no references.
+  /// Unmodifiable; replaced by [apply].
+  Map<String, Value> app;
+
+  /// The reserved node id of the document-level registers (protocol 1.7). It always exists; it has no title, position,
+  /// edges or touches, and can be neither added, removed nor restored. Real node ids never start with `$`.
+  static const appNode = r'$app';
 
   /// Tombstones. Ids are never reused, so an edit to a deleted node is always recognisable.
   final Map<String, Stamp> deletedNodes;
@@ -84,6 +102,7 @@ class Document {
   Document clone() => Document._(
     Map.of(nodes),
     Map.of(edges),
+    app,
     Map.of(deletedNodes),
     Map.of(deletedEdges),
     Map.of(deletedItems),
@@ -112,6 +131,8 @@ class Document {
     return {
       'nodes': [for (final k in nodes.keys.toList()..sort()) nodes[k]!.toJson()],
       'edges': [for (final k in edges.keys.toList()..sort()) edges[k]!.toJson()],
+      // Protocol 1.7: omitted when empty, so documents without document-level registers keep the 1.6 shape.
+      if (app.isNotEmpty) 'app': VMap(app).toJson(),
       'deletedNodes': stamps(deletedNodes),
       'deletedEdges': stamps(deletedEdges),
       'deletedItems': stamps(deletedItems),
@@ -132,6 +153,7 @@ class Document {
     const deepStamps = MapEquality<String, Stamp>();
     return const MapEquality<String, Node>().equals(nodes, other.nodes) &&
         const MapEquality<String, Edge>().equals(edges, other.edges) &&
+        const MapEquality<String, Value>().equals(app, other.app) &&
         deepStamps.equals(deletedNodes, other.deletedNodes) &&
         deepStamps.equals(deletedEdges, other.deletedEdges) &&
         deepStamps.equals(deletedItems, other.deletedItems) &&
@@ -206,6 +228,11 @@ class Document {
       final e = edges[id]!;
       if (!nodes.containsKey(e.source) || !nodes.containsKey(e.target)) problems.add('edge $id has missing endpoint');
     }
+    for (final key in app.keys.toList()..sort()) {
+      if (app[key]!.liveRefs.isNotEmpty || app[key]!.containsBrokenRef) {
+        problems.add('$appNode.$key contains a reference');
+      }
+    }
     return problems;
   }
 
@@ -265,6 +292,7 @@ class Document {
     switch (op) {
       case AddNode(:final node):
         if (node.id.isEmpty) return const Invalid('empty node id');
+        if (node.id.startsWith(r'$')) return Invalid('node id ${node.id} is reserved (ids starting with \$)');
         if (nodes.containsKey(node.id) || deletedNodes.containsKey(node.id)) return NodeExists(node.id);
         for (final key in node.config.keys.toList()..sort()) {
           if (key.startsWith(r'$')) return Invalid('config key $key is reserved');
@@ -274,7 +302,7 @@ class Document {
         return null;
 
       case RemoveNode(:final node):
-        final dead = _requireLive(node);
+        final dead = _requireNotApp(node, 'removeNode') ?? _requireLive(node);
         if (dead != null) return dead;
         if (checkConflicts) {
           final c = _nodeConflict(node, base, client);
@@ -292,7 +320,7 @@ class Document {
         return null;
 
       case MoveNode(:final node):
-        return _requireLive(node);
+        return _requireNotApp(node, 'moveNode') ?? _requireLive(node);
 
       case SetField(:final node, :final field, :final value):
         final dead = _requireLive(node);
@@ -302,21 +330,28 @@ class Document {
           case ItemKey():
             return const Invalid('list items are written with the item ops');
           case TitleKey():
+            final notApp = _requireNotApp(node, 'title');
+            if (notApp != null) return notApp;
             if (value is! VString) return const Invalid('title must be a string');
             current = VString(nodes[node]!.title);
           case ConfigKey(:final path):
-            if (!ConfigTree.canSet(nodes[node]!.config, path)) return Invalid('bad path $path');
+            final cfg = _configOf(node)!;
+            if (!ConfigTree.canSet(cfg, path)) return Invalid('bad path $path');
             if (path.any((p) => p.startsWith(r'$'))) return const Invalid('reserved key in path');
-            final bad = _checkValue(value, selfNode: null);
+            final bad = _checkValue(value, selfNode: null, inApp: node == appNode);
             if (bad != null) return bad;
-            current = ConfigTree.get(nodes[node]!.config, path);
+            current = ConfigTree.get(cfg, path);
         }
         return _checkStale(node, field, base, client, sameValue: current == value, enabled: checkConflicts);
 
       case AddEdge(:final edge):
         if (edge.id.isEmpty) return const Invalid('empty edge id');
         if (edges.containsKey(edge.id) || deletedEdges.containsKey(edge.id)) return EdgeExists(edge.id);
-        final a = _requireLive(edge.source) ?? _requireLive(edge.target);
+        final a =
+            _requireNotApp(edge.source, 'edge endpoint') ??
+            _requireNotApp(edge.target, 'edge endpoint') ??
+            _requireLive(edge.source) ??
+            _requireLive(edge.target);
         if (a != null) return a;
         for (final other in edges.values) {
           if (other.sameConnection(edge)) return DuplicateEdge(other.id);
@@ -329,11 +364,12 @@ class Document {
       case InsertItem(:final node, :final path, :final item):
         final dead = _requireLive(node);
         if (dead != null) return dead;
-        if (path.isEmpty || !ConfigTree.canSet(nodes[node]!.config, path) || path.any((p) => p.startsWith(r'$'))) {
+        final cfg = _configOf(node)!;
+        if (path.isEmpty || !ConfigTree.canSet(cfg, path) || path.any((p) => p.startsWith(r'$'))) {
           return Invalid('bad list path $path');
         }
         if (item.id.isEmpty) return const Invalid('empty item id');
-        switch (ConfigTree.list(nodes[node]!.config, path)) {
+        switch (ConfigTree.list(cfg, path)) {
           case ListNotAList():
             return Invalid('$path is not a keyed list');
           case ListFound(:final items):
@@ -342,7 +378,7 @@ class Document {
             break;
         }
         if (deletedItems.containsKey(item.id)) return ItemExists(item.id);
-        return _checkValue(item.value, selfNode: null);
+        return _checkValue(item.value, selfNode: null, inApp: node == appNode);
 
       case RemoveItem(:final node, :final path, :final itemId):
         final dead = _requireLive(node);
@@ -367,7 +403,7 @@ class Document {
           case _ItemTombstoned():
             return ItemDeleted(itemId);
           case _ItemPresent(value: final existing):
-            final bad = _checkValue(value, selfNode: null);
+            final bad = _checkValue(value, selfNode: null, inApp: node == appNode);
             if (bad != null) return bad;
             return _checkStale(
                   node,
@@ -392,6 +428,7 @@ class Document {
   /// skipped by [apply].
   RejectReason? _validateRestore(Node n, List<Edge> restoredEdges, int base, String client, bool checkConflicts) {
     if (n.id.isEmpty) return const Invalid('empty node id');
+    if (n.id.startsWith(r'$')) return Invalid('node id ${n.id} is reserved (ids starting with \$)');
     if (nodes.containsKey(n.id)) return NodeExists(n.id);
     final tomb = deletedNodes[n.id];
     if (tomb == null) return NodeNotFound(n.id);
@@ -483,7 +520,7 @@ class Document {
   }
 
   _ItemState _lookupItem(String node, List<String> path, String id) {
-    if (ConfigTree.list(nodes[node]!.config, path) case ListFound(:final items)) {
+    if (ConfigTree.list(_configOf(node)!, path) case ListFound(:final items)) {
       final hit = items.firstWhereOrNull((i) => i.id == id);
       if (hit != null) return _ItemPresent(hit.value);
     }
@@ -505,9 +542,25 @@ class Document {
     return c;
   }
 
+  /// `$app` (protocol 1.7) always exists.
   RejectReason? _requireLive(String id) {
-    if (nodes.containsKey(id)) return null;
+    if (nodes.containsKey(id) || id == appNode) return null;
     return deletedNodes.containsKey(id) ? NodeDeleted(id) : NodeNotFound(id);
+  }
+
+  /// `$app` takes config and item writes only (protocol 1.7).
+  static RejectReason? _requireNotApp(String id, String what) =>
+      id == appNode ? Invalid('$what is not allowed on $appNode') : null;
+
+  /// The config a register write addresses: a live node's, or the document-level registers for `$app`.
+  Map<String, Value>? _configOf(String id) => id == appNode ? app : nodes[id]?.config;
+
+  void _setConfigOf(String id, Map<String, Value> cfg) {
+    if (id == appNode) {
+      app = Map.unmodifiable(cfg);
+    } else {
+      nodes[id] = nodes[id]!.copyWith(config: cfg);
+    }
   }
 
   /// Removing a declared output rewrites every field that references it (ref -> brokenRef); like a node delete, it
@@ -528,10 +581,12 @@ class Document {
   }
 
   /// Clients may only write live refs to existing nodes and existing declared outputs; broken markers are server-only.
-  RejectReason? _checkValue(Value v, {required String? selfNode}) {
+  /// `$app` values (protocol 1.7) contain no references at all.
+  RejectReason? _checkValue(Value v, {required String? selfNode, bool inApp = false}) {
     final problem = v.structuralProblem;
     if (problem != null) return Invalid(problem);
     if (v.containsBrokenRef) return const Invalid('brokenRef is server-written only');
+    if (inApp && v.liveRefs.isNotEmpty) return const Invalid('references are not allowed in $appNode');
     for (final r in v.liveRefs) {
       if (r.node == selfNode) continue;
       final target = nodes[r.node];
@@ -606,18 +661,19 @@ class Document {
         nodes[node] = n.copyWith(x: x, y: y);
 
       case SetField(:final node, :final field, :final value):
-        final n = nodes[node];
-        if (n == null) return;
+        final cfg = _configOf(node);
+        if (cfg == null) return;
         switch (field) {
           case ItemKey():
             return;
           case TitleKey():
-            if (value is! VString || n.title == value.value) return; // same value: no-op
+            final n = nodes[node];
+            if (n == null || value is! VString || n.title == value.value) return; // same value: no-op
             nodes[node] = n.copyWith(title: value.value);
           case ConfigKey(:final path):
-            if (!ConfigTree.canSet(n.config, path)) return;
-            if (ConfigTree.get(n.config, path) == value) return; // same value: no-op
-            nodes[node] = n.copyWith(config: ConfigTree.set(n.config, path, value));
+            if (!ConfigTree.canSet(cfg, path)) return;
+            if (ConfigTree.get(cfg, path) == value) return; // same value: no-op
+            _setConfigOf(node, ConfigTree.set(cfg, path, value));
         }
         _stampField(node, field, stamp);
         _touch(node, stamp);
@@ -638,10 +694,10 @@ class Document {
         deletedEdges[edge] = stamp;
 
       case InsertItem(:final node, :final path, :final item, :final after):
-        final n = nodes[node];
-        if (n == null || !ConfigTree.canSet(n.config, path) || deletedItems.containsKey(item.id)) return;
+        final cfg = _configOf(node);
+        if (cfg == null || !ConfigTree.canSet(cfg, path) || deletedItems.containsKey(item.id)) return;
         final List<Item> items;
-        switch (ConfigTree.list(n.config, path)) {
+        switch (ConfigTree.list(cfg, path)) {
           case ListNotAList():
             return;
           case ListAbsent():
@@ -659,19 +715,19 @@ class Document {
           at = idx < 0 ? items.length : idx + 1;
         }
         items.insert(at, item);
-        nodes[node] = n.copyWith(config: ConfigTree.set(n.config, path, VItems(List.unmodifiable(items))));
+        _setConfigOf(node, ConfigTree.set(cfg, path, VItems(List.unmodifiable(items))));
         _stampField(node, ItemKey(path, item.id), stamp);
         _touch(node, stamp);
 
       case RemoveItem(:final node, :final path, :final itemId):
-        final n = nodes[node];
-        if (n == null) return;
-        if (ConfigTree.list(n.config, path) case ListFound(:final items)) {
+        final cfg = _configOf(node);
+        if (cfg == null) return;
+        if (ConfigTree.list(cfg, path) case ListFound(:final items)) {
           final at = items.indexWhere((i) => i.id == itemId);
           if (at < 0) return;
           final removed = _outputNameRemoved(op);
           final next = List.of(items)..removeAt(at);
-          nodes[node] = n.copyWith(config: ConfigTree.set(n.config, path, VItems(List.unmodifiable(next))));
+          _setConfigOf(node, ConfigTree.set(cfg, path, VItems(List.unmodifiable(next))));
           deletedItems[itemId] = stamp;
           _stampField(node, ItemKey(path, itemId), stamp);
           _touch(node, stamp);
@@ -679,14 +735,14 @@ class Document {
         }
 
       case UpdateItem(:final node, :final path, :final itemId, :final value):
-        final n = nodes[node];
-        if (n == null) return;
-        if (ConfigTree.list(n.config, path) case ListFound(:final items)) {
+        final cfg = _configOf(node);
+        if (cfg == null) return;
+        if (ConfigTree.list(cfg, path) case ListFound(:final items)) {
           final at = items.indexWhere((i) => i.id == itemId);
           if (at < 0 || items[at].value == value) return;
           final removed = _outputNameRemoved(op);
           final next = List.of(items)..[at] = Item(itemId, value);
-          nodes[node] = n.copyWith(config: ConfigTree.set(n.config, path, VItems(List.unmodifiable(next))));
+          _setConfigOf(node, ConfigTree.set(cfg, path, VItems(List.unmodifiable(next))));
           _stampField(node, ItemKey(path, itemId), stamp);
           _touch(node, stamp);
           _breakOutputRefs(removed, stamp);
@@ -698,6 +754,7 @@ class Document {
   }
 
   void _touch(String node, Stamp stamp) {
+    if (node == appNode) return; // nothing deletes `$app`: no touches
     final t = Map.of(touches[node] ?? const <String, int>{});
     t[stamp.client] = stamp.seq;
     touches[node] = t;

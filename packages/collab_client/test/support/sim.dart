@@ -91,7 +91,9 @@ void _run(FakeAsync async, int seed, Profile profile, int? stepsOverride, SimSta
     }
   }
 
-  final editors = {for (final p in ps) p.id: RandomEditor(Random(seed * 131 + p.id.hashCode), idPrefix: p.id)};
+  final editors = {
+    for (final p in ps) p.id: RandomEditor(Random(seed * 131 + p.id.hashCode), idPrefix: p.id, appEdits: true),
+  };
   final seen = {for (final p in ps) p.id: 0};
   final offlineUntil = {for (final p in ps) p.id: Duration.zero};
   final downUntil = {for (final p in ps) p.id: Duration.zero};

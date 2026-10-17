@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import '../model/app_registers.dart';
+import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
 import '../wire/messages.dart';
@@ -148,6 +150,12 @@ class HttpFakeServer {
           return await _json(req, 200, {'client': seg[4], 'name': name});
         }
         if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2]);
+        if (seg.length == 4 && seg[3] == 'secrets' && req.method == 'POST') return await _storeSecret(req, seg[2]);
+        if (seg.length == 4 && seg[3] == 'meta' && req.method == 'GET') {
+          final d = docs[seg[2]];
+          if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+          return await _json(req, 200, appMeta(seg[2], d.doc));
+        }
       }
       await _error(req, 404, 'not_found', 'no such route');
     } on Object catch (e) {
@@ -158,6 +166,45 @@ class HttpFakeServer {
       }
     }
   }
+
+  /// `POST /v1/docs/{doc}/secrets` (protocol 1.7): `{"value": "..."}` -> `201 {"ref", "masked"}`.
+  Future<void> _storeSecret(HttpRequest req, String docId) async {
+    final body = await utf8.decoder.bind(req).join();
+    Object? value;
+    try {
+      final json = jsonDecode(body);
+      if (json is Map<String, Object?>) value = json['value'];
+    } on FormatException {
+      value = null;
+    }
+    if (value is! String) return await _error(req, 400, 'bad_request', 'body must be {"value": string}');
+    final d = docs[docId];
+    if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+    final (:ref, :masked) = d.storeSecret(value);
+    await _json(req, 201, {'ref': ref, 'masked': masked});
+  }
+
+  /// `GET /v1/docs/{doc}/meta` for a document that was not imported: the defaults of the reference server, with the
+  /// variables and features of the document at head (protocol 1.7; secrets masked, never a `secret_ref`).
+  static Map<String, Object?> appMeta(String docId, Document doc) => {
+    'app': {
+      'name': docId,
+      'mode': 'workflow',
+      'description': '',
+      'icon': '🤖',
+      'icon_background': '#FFEAD5',
+      'use_icon_as_answer_icon': false,
+    },
+    'kind': 'app',
+    'version': '0.3.1',
+    'dependencies': const <Object?>[],
+    AppRegisters.environmentVariables: [
+      for (final v in AppRegisters.variables(doc, AppRegisters.environmentVariables))
+        {...v}..remove(AppRegisters.secretRef),
+    ],
+    AppRegisters.conversationVariables: AppRegisters.variables(doc, AppRegisters.conversationVariables),
+    AppRegisters.features: AppRegisters.featuresOf(doc),
+  };
 
   Future<void> _createDoc(HttpRequest req, String? id) async {
     final body = await utf8.decoder.bind(req).join();
@@ -247,10 +294,21 @@ class HttpFakeServer {
       }
     }
 
-    void onCommit(LogEntry e) => write(_frame('commit', e.seq, e.toJson()));
+    final proto = req.uri.queryParameters['proto'];
+    void onCommit(LogEntry e) {
+      if (!StreamCompat.streamCarries(e.op, proto)) {
+        // An older client cannot decode this op: end its stream (it reconnects and is caught up with a snapshot).
+        closed = true;
+        markGone();
+        return;
+      }
+      write(_frame('commit', e.seq, e.toJson()));
+    }
+
     write('retry: 1000\n\n');
     final from = int.tryParse(req.uri.queryParameters['from'] ?? '');
-    for (final ev in d.catchUp(lastEventId: last, client: req.uri.queryParameters['client'], from: from)) {
+    final catchUp = d.catchUp(lastEventId: last, client: req.uri.queryParameters['client'], from: from, proto: proto);
+    for (final ev in catchUp) {
       switch (ev) {
         case SnapshotEvent():
           write(

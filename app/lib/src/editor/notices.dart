@@ -73,7 +73,13 @@ class Notice extends ChangeNotifier {
       }
       return (
         message: '$who changed ${fieldLabel(field)} $when — your change wasn\'t applied',
-        detail: [if (op.nodeId != null) 'In ${titleOf(op.nodeId!)}.', ?valuePreview()].join(' '),
+        detail: [
+          if (op.nodeId == Document.appNode)
+            "In the app's variables and features."
+          else if (op.nodeId != null)
+            'In ${titleOf(op.nodeId!)}.',
+          ?valuePreview(),
+        ].join(' '),
       );
     case NodeDeleted(:final node):
       return (message: '${titleOf(node)} was deleted — your change wasn\'t applied', detail: valuePreview());
