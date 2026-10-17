@@ -39,6 +39,11 @@ flutter:
           weight: 400
         - asset: assets/fonts/NotoSans-Bold.ttf
           weight: 700
+    # Monaco's Linux font stack ('Droid Sans Mono', monospace) resolves to DejaVu Sans Mono; bundled for the code
+    # editor on Linux and the web build (assets/fonts/LICENSE-DejaVu.txt).
+    - family: DejaVu Sans Mono
+      fonts:
+        - asset: assets/fonts/DejaVuSansMono.ttf
   assets:
     - assets/i18n/languages.json
     - assets/i18n/ar-TN/
@@ -66,6 +71,7 @@ flutter:
     - assets/i18n/zh-Hans/
     - assets/i18n/zh-Hant/
     - assets/fonts/OFL.txt
+    - assets/fonts/LICENSE-DejaVu.txt
     # Remix Icon as Dify uses it (tool/gen_remix_icons.py, Apache-2.0).
     - assets/remix_icons/
     # Dify's icons (tool/gen_dify_icons.py), one entry per directory.
