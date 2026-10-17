@@ -1,0 +1,5 @@
+READY mode=scene nodes=500 edges=567 loadMs=25 window=1600.0x1000.0@1.0 canvas=1600.0x1000.0 shot=1600.0x1000.0
+PERF {"phase":"pan","frames":490,"fps":122.5,"interval_p50":8.3,"interval_p90":9.5,"interval_p99":11.3,"interval_max":11.9,"over_9_6ms":38,"over_16_7ms":0,"build_p50":0.2,"build_p99":0.4,"raster_p50":0.1,"raster_p99":0.3}
+PERF {"phase":"zoom","frames":484,"fps":121.0,"interval_p50":8.1,"interval_p90":9.2,"interval_p99":10.7,"interval_max":11.4,"over_9_6ms":23,"over_16_7ms":0,"build_p50":0.2,"build_p99":0.3,"raster_p50":0.1,"raster_p99":0.3}
+PERF {"phase":"edits","frames":473,"fps":118.3,"interval_p50":8.2,"interval_p90":9.6,"interval_p99":11.0,"interval_max":12.6,"over_9_6ms":34,"over_16_7ms":0,"build_p50":0.3,"build_p99":0.4,"raster_p50":0.2,"raster_p99":0.3}
+PERF {"phase":"drag","frames":476,"fps":119.0,"interval_p50":8.1,"interval_p90":9.2,"interval_p99":10.6,"interval_max":11.4,"over_9_6ms":19,"over_16_7ms":0,"build_p50":0.2,"build_p99":0.3,"raster_p50":0.1,"raster_p99":0.3}
