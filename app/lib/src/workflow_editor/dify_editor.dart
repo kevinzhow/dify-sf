@@ -23,7 +23,7 @@ import 'workflow_editor.dart';
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
 /// shortcuts. dify-sf's own collaboration controls (link state, reconnect, unsaved edits, the host's actions) sit in
 /// the header's left slot, where Dify puts its own extra controls.
-class DifyWorkflowEditor extends StatelessWidget {
+class DifyWorkflowEditor extends StatefulWidget {
   const DifyWorkflowEditor({
     super.key,
     required this.controller,
@@ -41,6 +41,58 @@ class DifyWorkflowEditor extends StatelessWidget {
   /// The host's actions (add node, export, demo), shown behind the session menu.
   final List<Widget> actions;
 
+  @override
+  State<DifyWorkflowEditor> createState() => _DifyWorkflowEditorState();
+}
+
+class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
+  EditorController get controller => widget.controller;
+  DocMeta get meta => widget.meta;
+  String get serverLabel => widget.serverLabel;
+  List<Widget> get actions => widget.actions;
+
+  /// A context inside the editor's scopes (store, block selector) and its canvas, for popups opened from callbacks.
+  BuildContext? _inner;
+  CanvasController? _canvas;
+
+  /// The pane menu's Add Node (panel-contextmenu.tsx reuses AddBlock): the block selector at the menu, and the chosen
+  /// block becomes the candidate that follows the pointer.
+  void _addBlockAt(Offset at) {
+    final context = _inner, canvas = _canvas;
+    if (context == null || canvas == null) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final data = BlockSelectorScope.of(context), store = WorkflowStoreScope.of(context);
+    final p = BlockSelectorPlacements.paneMenu;
+    final screen = box.localToGlobal(canvas.view.toScreen(at));
+    BlockSelector(
+      placement: p.placement,
+      sideOffset: p.sideOffset,
+      alignOffset: p.alignOffset,
+      popupMinWidth: 256,
+      isolateKeyboardEvents: true,
+      availableBlocksTypes: useAvailableBlocks(
+        'start',
+        availableTypes: availableNodeTypes(chatMode: data.chatMode, agentV2: data.agentV2),
+      ).next,
+      showStartTab: !data.chatMode && data.flow == BlockSelectorFlow.app,
+      onSelect: (type, defaults, {toolDefaultValue}) => store.setCandidateNode(
+        candidateNodeOf(
+          type,
+          defaults,
+          toolDefaultValue: toolDefaultValue,
+          existing: [
+            for (final n in data.nodes)
+              {
+                'id': n.id,
+                'data': {'type': n.type},
+              },
+          ],
+        ),
+      ),
+    ).show(context, anchor: screen & Size.zero);
+  }
+
   /// Puts a placed candidate (and an iteration's or loop's start node) into the document as one undo step.
   void _place(CandidatePlacement p) {
     final doc = controller.doc;
@@ -56,7 +108,7 @@ class DifyWorkflowEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
     const options = OperatorOptions(collaborationEnabled: true);
-    final menuOptions = WorkflowMenuOptions(isChatMode: meta.isChatflow);
+    final menuOptions = WorkflowMenuOptions(isChatMode: meta.isChatflow, onAddBlock: _addBlockAt);
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
     // spacing would widen every label).
     return DefaultTextStyle(
@@ -102,7 +154,11 @@ class DifyWorkflowEditor extends StatelessWidget {
                   left: _OfflinePill(controller: controller),
                 ),
                 // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
-                overlay: (context, canvas) => CandidateNode(canvas: canvas, onPlace: _place),
+                overlay: (context, canvas) {
+                  _inner = context;
+                  _canvas = canvas;
+                  return CandidateNode(canvas: canvas, onPlace: _place);
+                },
                 control: workflowControlBuilder(options),
                 operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
                 // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify).
