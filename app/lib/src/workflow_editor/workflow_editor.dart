@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart';
 import '../editor/editor_controller.dart';
+import 'context_menu/context_menu.dart';
 import 'store/store.dart';
 
 /// Dify's workflow editor page (components/workflow/index.tsx and workflow-app): the canvas filling the area, with
@@ -21,12 +22,13 @@ class WorkflowEditor extends StatefulWidget {
     this.control,
     this.operator,
     this.panels,
+    this.menuOptions = const WorkflowMenuOptions(),
   });
 
   final EditorController controller;
 
   /// header/index.tsx: `absolute top-7 left-0 z-10 flex h-0 w-full items-center justify-between px-3`.
-  final WidgetBuilder? header;
+  final Widget Function(BuildContext context, CanvasController canvas)? header;
 
   /// operator/control.tsx in `absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2`, centred on
   /// the canvas height above the bottom panel.
@@ -37,6 +39,9 @@ class WorkflowEditor extends StatefulWidget {
 
   /// panel/index.tsx: `absolute top-14 right-0 bottom-1 z-10 flex`.
   final Widget Function(BuildContext context, CanvasController canvas)? panels;
+
+  /// What the context menus, the node "…" bar and the edit shortcuts call for actions that leave the canvas.
+  final WorkflowMenuOptions menuOptions;
 
   @override
   State<WorkflowEditor> createState() => _WorkflowEditorState();
@@ -86,16 +91,28 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              WorkflowCanvas(controller: w.controller, canvas: canvas),
+              WorkflowShortcuts(
+                controller: w.controller,
+                canvas: canvas,
+                options: w.menuOptions,
+                child: WorkflowContextMenus(
+                  controller: w.controller,
+                  canvas: canvas,
+                  options: w.menuOptions,
+                  child: WorkflowCanvas(controller: w.controller, canvas: canvas),
+                ),
+              ),
               if (w.header != null)
+                // `absolute top-7 h-0 items-center`: centred 28 px from the top. A 56 px band (not a zero-height box,
+                // which hit testing would ignore) lets the controls take clicks; empty parts of it pass them on.
                 Positioned(
-                  top: 28,
+                  top: 0,
                   left: 0,
                   right: 0,
-                  height: 0,
-                  child: OverflowBox(
-                    maxHeight: double.infinity,
-                    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: w.header!(context)),
+                  height: 56,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Align(alignment: Alignment.center, child: w.header!(context, canvas)),
                   ),
                 ),
               if (w.control != null)

@@ -5,11 +5,9 @@ import 'package:flutter/services.dart';
 
 import '../online_events.dart';
 import '../session_factory.dart';
-import '../canvas/workflow_canvas.dart';
-import 'editor_controller.dart';
-import 'node_panel.dart';
+import '../workflow_editor/dify_editor.dart';
 import 'notice_overlay.dart';
-import 'status_bar.dart';
+import 'editor_controller.dart';
 
 /// Opens a document and shows the editor. Owns the session lifecycle.
 class EditorPage extends StatefulWidget {
@@ -134,15 +132,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Workflow · ${widget.docId}'),
-        actions: [
-          if (c != null) ..._actions(context, c),
-        ],
-      ),
-      body: _body(context, c),
-    );
+    return Scaffold(body: _body(context, c));
   }
 
   /// Shows the current state as a Dify workflow file, ready to copy into Dify's "Import DSL".
@@ -237,47 +227,25 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       );
     }
     if (c == null) return const Center(child: CircularProgressIndicator());
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    if (c.ready)
-                      WorkflowCanvas(controller: c)
-                    else
-                      const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 12),
-                            Text('Loading the document…'),
-                          ],
-                        ),
-                      ),
-                    if (c.selectedEdgeId != null && c.ready)
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Chip(
-                          avatar: const Icon(Icons.timeline, size: 16),
-                          label: const Text('Connection selected — details on the right'),
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        ),
-                      ),
-                    NoticeOverlay(controller: c),
-                  ],
-                ),
-              ),
-              NodePanel(controller: c),
-            ],
+    if (!c.ready) {
+      // Until the document arrives: the session controls (offline, reconnect) and its notices stay reachable.
+      return Stack(
+        children: [
+          const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [CircularProgressIndicator(), SizedBox(height: 12), Text('Loading the document…')],
+            ),
           ),
-        ),
-        StatusBar(controller: c, serverLabel: widget.backend.label),
-      ],
-    );
+          Positioned(
+            top: 16,
+            right: 12,
+            child: SessionBadge(controller: c, serverLabel: widget.backend.label, actions: _actions(context, c)),
+          ),
+          NoticeOverlay(controller: c),
+        ],
+      );
+    }
+    return DifyWorkflowEditor(controller: c, serverLabel: widget.backend.label, actions: _actions(context, c));
   }
 }

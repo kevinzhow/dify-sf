@@ -271,11 +271,6 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
                       ),
                     ),
                     a11y.build(),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: _ZoomControls(view: view, onFit: _fit),
-                    ),
                   ],
                 ),
               ),
@@ -283,50 +278,6 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
           ),
         );
       },
-    );
-  }
-}
-
-class _ZoomControls extends StatelessWidget {
-  const _ZoomControls({required this.view, required this.onFit});
-  final CanvasViewState view;
-  final VoidCallback onFit;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    Offset mid() => Offset(view.viewport.width / 2, view.viewport.height / 2);
-    return Material(
-      elevation: 1,
-      borderRadius: BorderRadius.circular(8),
-      color: scheme.surface,
-      child: ListenableBuilder(
-        listenable: view,
-        builder: (context, _) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              key: const Key('zoom-out'),
-              tooltip: 'Zoom out',
-              icon: const Icon(Icons.remove, size: 18),
-              onPressed: () => view.zoomAt(mid(), 1 / 1.2),
-            ),
-            Text('${(view.scale * 100).round()}%', style: const TextStyle(fontSize: 12)),
-            IconButton(
-              key: const Key('zoom-in'),
-              tooltip: 'Zoom in',
-              icon: const Icon(Icons.add, size: 18),
-              onPressed: () => view.zoomAt(mid(), 1.2),
-            ),
-            IconButton(
-              key: const Key('zoom-fit'),
-              tooltip: 'Fit to window',
-              icon: const Icon(Icons.fit_screen, size: 18),
-              onPressed: onFit,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

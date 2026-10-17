@@ -4,6 +4,9 @@ import 'package:dify_sf_app/src/launch_options.dart';
 import 'package:dify_sf_app/src/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/app_fonts.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> settle(WidgetTester t, [int ms = 2000]) async {
@@ -16,6 +19,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('rejects document ids the protocol does not allow', (t) async {
+    await useAppFonts();
     t.view.physicalSize = const Size(1200, 900);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
@@ -28,6 +32,7 @@ void main() {
   });
 
   testWidgets('opens a document and remembers the choices; the session gets a server-issued client id', (t) async {
+    await useAppFonts();
     t.view.physicalSize = const Size(1600, 900);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
@@ -40,6 +45,8 @@ void main() {
     await t.tap(find.byKey(const Key('open-button')));
     await settle(t);
     expect(find.byKey(const ValueKey('node-start')), findsOneWidget);
+    await t.tap(find.byKey(const Key('session-menu')));
+    await t.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('volatile · s-'), findsOneWidget, reason: 'a server-issued id, shown in the status bar');
 
     final saved = await SharedPreferences.getInstance();

@@ -4,6 +4,9 @@ import 'package:dify_sf_app/src/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/app_fonts.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The demo backend with a stand-in for the server's workflow-file converter.
@@ -34,6 +37,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('a pasted Dify workflow file is imported and opened; the editor exports and copies it', (t) async {
+    await useAppFonts();
     t.view.physicalSize = const Size(1600, 900);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
@@ -53,6 +57,8 @@ void main() {
     expect(backend.imported, contains('from dify'));
     expect(find.byKey(const ValueKey('node-start')), findsOneWidget, reason: 'the imported document is open');
 
+    await t.tap(find.byKey(const Key('session-menu')));
+    await t.pump(const Duration(milliseconds: 300));
     await t.tap(find.byKey(const Key('export-dsl')));
     await settle(t, 500);
     expect(find.textContaining('exported demo'), findsOneWidget);
@@ -67,6 +73,7 @@ void main() {
   });
 
   testWidgets('the demo backend offers no workflow-file export', (t) async {
+    await useAppFonts();
     t.view.physicalSize = const Size(1600, 900);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);

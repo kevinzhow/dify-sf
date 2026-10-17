@@ -1,11 +1,14 @@
 import 'package:collab_client/collab_client.dart';
+import 'package:dify_sf_app/src/workflow_editor/dify_editor.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
-import 'package:dify_sf_app/src/editor/node_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/app_fonts.dart';
+
 import 'package:meta/meta.dart' show isTest;
 
 const _me = 'me-abc123';
@@ -39,12 +42,14 @@ Future<DemoBackend> openEditor(
   Size size = const Size(1600, 900),
   String? clientId = _me,
 }) async {
+  await useAppFonts();
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
   final demo = DemoBackend(withBo: withBo);
   await t.pumpWidget(
     MaterialApp(
+      theme: ThemeData(fontFamily: 'Noto Sans'),
       home: EditorPage(
         backend: demo,
         docId: 'demo',
@@ -59,9 +64,20 @@ Future<DemoBackend> openEditor(
   return demo;
 }
 
-EditorController _controller(WidgetTester t) => t.widget<NodePanel>(find.byType(NodePanel)).controller;
+EditorController _controller(WidgetTester t) =>
+    t.widget<DifyWorkflowEditor>(find.byType(DifyWorkflowEditor)).controller;
 
-String text(WidgetTester t, String key) => (t.widget(find.byKey(Key(key))) as Text).data!;
+/// The session details live in the header's session menu (opened when needed).
+Future<void> openSession(WidgetTester t) async {
+  if (find.byKey(const Key('link-state')).evaluate().isNotEmpty) return;
+  await t.tap(find.byKey(const Key('session-menu')));
+  await t.pump(const Duration(milliseconds: 300));
+}
+
+Future<String> text(WidgetTester t, String key) async {
+  if (const ['link-state', 'pending-count', 'last-seq'].contains(key)) await openSession(t);
+  return (t.widget(find.byKey(Key(key))) as Text).data!;
+}
 
 Future<void> select(WidgetTester t, String nodeId) async {
   await t.tap(find.byKey(ValueKey('node-$nodeId')), warnIfMissed: false);
@@ -74,9 +90,9 @@ void main() {
     for (final id in ['start', 'llm', 'code', 'answer']) {
       expect(find.byKey(ValueKey('node-$id')), findsOneWidget);
     }
-    expect(text(t, 'link-state'), 'Live');
-    expect(text(t, 'pending-count'), 'All edits saved');
-    expect(text(t, 'last-seq'), 'seq 0');
+    expect(await text(t, 'link-state'), 'Live');
+    expect(await text(t, 'pending-count'), 'All edits saved');
+    expect(await text(t, 'last-seq'), 'seq 0');
     expect(demo.server.head, 0);
   });
 
@@ -91,14 +107,14 @@ void main() {
     final ops = demo.server.log.map((e) => e.op);
     expect(ops, isNotEmpty);
     expect(ops, everyElement(isA<MoveNode>()), reason: 'a drag is only small position ops');
-    expect(text(t, 'pending-count'), 'All edits saved');
+    expect(await text(t, 'pending-count'), 'All edits saved');
   });
 
   editorTest('zoomed out, a drag still moves the node by the distance the pointer travelled', (t) async {
     final demo = await openEditor(t, withBo: false, size: const Size(1000, 700));
     final label = t.widget<Text>(find.textContaining('%'));
     final scale = int.parse(label.data!.replaceAll('%', '')) / 100;
-    expect(scale, lessThan(0.8), reason: 'the graph is wider than the viewport, so it was fitted');
+    expect(scale, lessThan(1), reason: 'the graph is wider than the viewport, so it was fitted');
     // The first pixels of a drag are swallowed by the gesture slop, so compare two drags of different length.
     Future<int> dragBy(double dx) async {
       final before = demo.server.doc.nodes['llm']!.x;
@@ -240,23 +256,23 @@ void main() {
 
     await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'my prompt');
     await settle(t, const Duration(seconds: 2));
-    expect(text(t, 'pending-count'), '1 unsaved edit');
+    expect(await text(t, 'pending-count'), '1 unsaved edit');
 
     demo.boSets('llm', ['prompt'], 'bo prompt');
     await settle(t, const Duration(seconds: 1));
     expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('bo prompt'));
     // 30 s without a byte: the watchdog notices the dead connection.
     await settle(t, const Duration(seconds: 35));
-    expect(text(t, 'link-state'), isNot('Live'));
+    expect(await text(t, 'link-state'), isNot('Live'));
 
     demo.setOffline(false);
     await t.tap(find.byKey(const Key('reconnect-now')));
     await settle(t, const Duration(seconds: 5));
-    expect(text(t, 'link-state'), 'Live');
-    expect(text(t, 'pending-count'), 'All edits saved');
+    expect(await text(t, 'link-state'), 'Live');
+    expect(await text(t, 'pending-count'), 'All edits saved');
     expect(find.byKey(const Key('notice-message')), findsOneWidget);
-    expect(text(t, 'notice-message'), startsWith('Bo changed prompt'));
-    expect(text(t, 'notice-message'), endsWith('your change wasn\'t applied'));
+    expect(await text(t, 'notice-message'), startsWith('Bo changed prompt'));
+    expect(await text(t, 'notice-message'), endsWith('your change wasn\'t applied'));
     // The winning value is what's on screen, not the lost draft.
     expect(fieldText(t, 'cfg-llm-prompt'), 'bo prompt');
 
@@ -279,7 +295,7 @@ void main() {
     demo.net.cutStreams();
     await settle(t, const Duration(seconds: 60)); // no hint at all: the client finds its way back by itself
     expect(find.byKey(const Key('discard')), findsOneWidget);
-    expect(text(t, 'notice-message'), contains('title'));
+    expect(await text(t, 'notice-message'), contains('title'));
     await t.tap(find.byKey(const Key('discard')));
     await settle(t);
     expect(find.byKey(const Key('notice-message')), findsNothing);
@@ -293,8 +309,9 @@ void main() {
     await settle(t, const Duration(seconds: 1));
     await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'unsaved work');
     await settle(t, const Duration(seconds: 2));
-    expect(text(t, 'pending-count'), '1 unsaved edit');
+    expect(await text(t, 'pending-count'), '1 unsaved edit');
 
+    await openSession(t);
     await t.tap(find.byKey(const Key('demo-menu')));
     await settle(t, const Duration(milliseconds: 400));
     await t.tap(find.text('Crash the app and restart'));
@@ -303,9 +320,9 @@ void main() {
     await t.tap(find.byKey(const Key('reconnect-now')));
     await settle(t, const Duration(seconds: 5));
     expect(find.byKey(const Key('notice-message')), findsOneWidget);
-    expect(text(t, 'notice-message'), contains('1 edit was lost'));
+    expect(await text(t, 'notice-message'), contains('1 edit was lost'));
     expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('Answer briefly: {{#start.query#}}'));
-    expect(text(t, 'pending-count'), 'All edits saved');
+    expect(await text(t, 'pending-count'), 'All edits saved');
   });
 
   editorTest('a second window with the same client id: this one switches ids and re-sends, and says so', (t) async {
@@ -318,7 +335,7 @@ void main() {
     await settle(t, const Duration(seconds: 1));
     await t.enterText(find.byKey(const ValueKey('title-llm')), 'Mine');
     await settle(t, const Duration(seconds: 2));
-    expect(text(t, 'pending-count'), '1 unsaved edit');
+    expect(await text(t, 'pending-count'), '1 unsaved edit');
 
     // The "other window": same id, different edit, committed first (cseq 1).
     final twin = CollabSession(clientId: sharedId, transport: FakeTransport(demo.server), store: MemoryStore());
@@ -334,9 +351,9 @@ void main() {
     expect(c.session.clientId, isNot(sharedId));
     expect(demo.server.doc.nodes['llm']!.title, 'Mine', reason: 'the edit was re-sent under the new id');
     expect(demo.server.doc.nodes['code']!.title, 'Twin');
-    expect(text(t, 'notice-message'), contains('Another window was using this session'));
-    expect(text(t, 'notice-message'), contains('1 unsaved edit'));
-    expect(text(t, 'pending-count'), 'All edits saved');
+    expect(await text(t, 'notice-message'), contains('Another window was using this session'));
+    expect(await text(t, 'notice-message'), contains('1 unsaved edit'));
+    expect(await text(t, 'pending-count'), 'All edits saved');
     await twin.stop();
   });
 
@@ -347,8 +364,9 @@ void main() {
     await settle(t, const Duration(seconds: 1));
     await t.enterText(find.byKey(const ValueKey('cfg-llm-prompt')), 'kept work');
     await settle(t, const Duration(seconds: 2));
-    expect(text(t, 'pending-count'), '1 unsaved edit');
+    expect(await text(t, 'pending-count'), '1 unsaved edit');
 
+    await openSession(t);
     await t.tap(find.byKey(const Key('demo-menu')));
     await settle(t, const Duration(milliseconds: 400));
     await t.tap(find.text('Crash the app and restart'));
@@ -358,7 +376,7 @@ void main() {
     await t.tap(find.byKey(const Key('reconnect-now')));
     await settle(t, const Duration(seconds: 5));
     expect(demo.server.doc.nodes['llm']!.config['prompt'], const VString('kept work'));
-    expect(text(t, 'pending-count'), 'All edits saved');
+    expect(await text(t, 'pending-count'), 'All edits saved');
   });
 }
 

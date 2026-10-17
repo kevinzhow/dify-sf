@@ -239,7 +239,7 @@ Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, Launch
   theme: ThemeData(
     colorSchemeSeed: const Color(0xFF3F51B5),
     useMaterial3: true,
-    fontFamily: cardFontFamily = kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
+    fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
   ),
   home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
 );

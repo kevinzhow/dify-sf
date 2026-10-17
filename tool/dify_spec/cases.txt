@@ -3875,3 +3875,139 @@ packages/dify-ui/src/toggle/__tests__/index.spec.tsx :: Toggle > composes presse
 packages/dify-ui/src/tooltip/__tests__/index.spec.tsx :: TooltipContent > Placement and offsets > should use default top placement when placement is not provided
 packages/dify-ui/src/tooltip/__tests__/index.spec.tsx :: TooltipContent > Placement and offsets > should apply custom placement when placement props are provided
 packages/dify-ui/src/tooltip/__tests__/index.spec.tsx :: TooltipContent > Popup props > should forward popup props and handlers when popup props are provided
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > shows the shared loading state while deployment details load
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > formats deployed_at as a Unix timestamp in seconds
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > shows the publish action when an undeployed environment has no published versions
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > offers the latest version actions when an undeployed environment has a published version
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > opens all versions and returns to the original publisher
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > disables deployment triggers but keeps environment navigation available while the state is %s
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > hides the Access Point environment entry without view permission
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > keeps the deployment target and progress controls when a deploying status refresh fails
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > keeps current and latest version information when a status refresh fails outside deployment
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > shows the undeployed state when terminal state %s has no current version
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > deploys the latest version directly and goes back to version selection
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > reports whether deployment configuration is active
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > hides the environment variables section when deployment options have no slots
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > hides the credentials section when deployment options only have environment variables
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > shows unsupported node titles when the latest version fails precheck
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > submits the latest version through the deployment API
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > polls the environment deployment after submit and refreshes environments on success
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > submits a version selected from all versions through the deployment API
+web/app/components/app/app-publisher/__tests__/environment-deployment-flow.spec.tsx :: PublisherEnvironmentFlow > disables deploy latest and submits another selected version when already latest
+web/app/components/app/app-publisher/__tests__/environment-tabs.spec.tsx :: PublisherEnvironmentTabs > uses More environments as the only add entry, then adds and selects an environment
+web/app/components/app/app-publisher/__tests__/environment-tabs.spec.tsx :: PublisherEnvironmentTabs > keeps fixed visible environments in place and marks a selected overflow environment
+web/app/components/app/app-publisher/__tests__/environment-tabs.spec.tsx :: PublisherEnvironmentTabs > removes the not-deployed section when every environment has joined
+web/app/components/app/app-publisher/__tests__/environment-tabs.spec.tsx :: PublisherEnvironmentTabs > does not render More when every joined environment fits
+web/app/components/app/app-publisher/__tests__/environment-tabs.spec.tsx :: PublisherEnvironmentTabs > shows the full environment name in a tooltip when its button is truncated
+web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx :: FeaturesWrappedAppPublisher > should pass current features through to onPublish
+web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx :: FeaturesWrappedAppPublisher > should pass publish notification options through to onPublish
+web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx :: FeaturesWrappedAppPublisher > should restore published features after confirmation
+web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx :: FeaturesWrappedAppPublisher > should close restore confirmation without restoring when cancelled
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should enable access permission query when the publish popover opens
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should not render Web app access control in the publish popover
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should publish once per open session and reset the lock after reopening
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should refresh deployment data after publishing when multi-environment deployment is available
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should not refresh deployment data after publishing without multi-environment deployment
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should edit the current workflow version from the publish summary
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should expose app deployment with deploy ACL regardless of the legacy workspace role
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should keep the workflow publisher single-environment without app deploy ACL
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should keep the single-environment publisher for unsupported app types
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should show the matching publisher state for an undeployed environment
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > returns to the built-in environment when reopened
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should collect hidden inputs before opening the web app from its config action
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should keep workflow tool drawer mounted after closing the publish popover
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should show one success toast when automatically publishing a workflow tool
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should not show a success toast when workflow tool creation fails after publishing
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should not create a workflow tool when automatic publishing fails
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should not open workflow tool drawer without tool.manage
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should ignore the trigger when the publish button is disabled
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should keep keyboard publishing available in multiple model mode
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should keep the popover open when restore and publish fail
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should show marketplace button and open redirect URL on success
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should show toast error when publish to marketplace fails
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should disable marketplace button when not yet published
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should hide marketplace button when enable_creators_platform is false
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should not infer an app mode when app detail is unavailable
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should keep workflow publishing available for an existing published version
+web/app/components/app/app-publisher/__tests__/index.spec.tsx :: AppPublisher > should refresh the shared workflow query and store after a collaborator publishes
+web/app/components/app/app-publisher/__tests__/publish-with-multiple-model.spec.tsx :: PublishWithMultipleModel > should disable the trigger when no valid model configuration is available
+web/app/components/app/app-publisher/__tests__/publish-with-multiple-model.spec.tsx :: PublishWithMultipleModel > should disable the trigger when publishing is unavailable
+web/app/components/app/app-publisher/__tests__/publish-with-multiple-model.spec.tsx :: PublishWithMultipleModel > should open matching model options and call onSelect
+web/app/components/app/app-publisher/__tests__/publisher-panel.spec.tsx :: PublisherPanel > keeps the publisher open after an outside press when dismissal is prevented
+web/app/components/app/app-publisher/__tests__/publisher-panel.spec.tsx :: PublisherPanel > keeps the default outside-press dismissal outside deployment configuration
+web/app/components/app/app-publisher/__tests__/publisher-panel.spec.tsx :: PublisherPanel > still closes from the trigger and Escape when outside dismissal is prevented
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should render restore controls for published chat apps
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should disable publish and restore after publishing in the current open session
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should render the initial publish action when the draft has not been published yet
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should expose naming and keep publishing available for an unnamed published workflow
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should show named workflow metadata and keep publish update available
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should keep non-workflow apps free of workflow version details and saved time
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should keep multiple-model publishing available without publish config changes
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should disable multiple-model publishing when publishing is unavailable
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should render the upgrade hint when the start node limit is exceeded
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should render the published workflow actions with Workflow as Tool after Marketplace
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should expose Configure and Manage in Tools actions for a ready workflow tool
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should show the disabled reason below setup and configured workflow tool actions
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should surface update-needed and loading states for a configured workflow tool
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should keep Access Point and Deploy available for trigger workflows
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should hide the Access Point publisher entry without view permission
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should expose unavailable quick links as disabled buttons before the first publish
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should show the disabled reason when hovering an unavailable action
+web/app/components/app/app-publisher/__tests__/sections.spec.tsx :: app-publisher sections > should keep an unavailable action with a tooltip keyboard focusable
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > derives deployed tabs from the environment in_use field
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > discovers and resumes polling a first deployment while the environment remains not in use
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > stops automatic status polling while the deployment query is failing
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > queries deployment details only after selecting an in-use non-built-in environment
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > resets the selected environment to built-in when the publisher reopens
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > refreshes environments when a selected deployment has succeeded
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > scopes polling to the selected environment and clears it when the publisher closes
+web/app/components/app/app-publisher/__tests__/state.spec.tsx :: app publisher environment state > resets open state and active polling when the last publisher subscriber unmounts
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should render an enabled external link with supporting copy
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should render internal destinations without opening a new tab
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should use native disabled button semantics for unavailable links
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should keep an explained disabled action in the keyboard tab order
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should render and trigger an enabled button action
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should keep the main link separate from a trailing action button
+web/app/components/app/app-publisher/__tests__/suggested-action.spec.tsx :: SuggestedAction > should disable both controls when an action with a trailing button is unavailable
+web/app/components/app/app-publisher/__tests__/utils.spec.ts :: app-publisher utils > getPublisherAppMode > should normalize chat-like apps to chat mode
+web/app/components/app/app-publisher/__tests__/utils.spec.ts :: app-publisher utils > getPublisherAppMode > should keep completion mode unchanged
+web/app/components/app/app-publisher/__tests__/utils.spec.ts :: app-publisher utils > getPublisherAppUrl > should build the published app url from site info
+web/app/components/app/app-publisher/__tests__/utils.spec.ts :: app-publisher utils > getDisabledFunctionTooltip > should prioritize the unpublished hint
+web/app/components/app/app-publisher/__tests__/utils.spec.ts :: app-publisher utils > getDisabledFunctionTooltip > should return the access error when the app is published but blocked
+web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx :: VersionInfoModal > should prefill the fields from the current version info
+web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx :: VersionInfoModal > should reject overlong titles
+web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx :: VersionInfoModal > should publish valid values and close the modal
+web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx :: VersionInfoModal > should close when the dialog requests close
+web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx :: VersionInfoModal > should close when the close button is clicked
+web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx :: VersionInfoModal > should validate release note length and clear previous errors before publishing
+web/app/components/app/app-publisher/environment-tabs/__tests__/layout.spec.ts :: getEnvironmentTabLayout > shows every joined environment without a More trigger when the row fits
+web/app/components/app/app-publisher/environment-tabs/__tests__/layout.spec.ts :: getEnvironmentTabLayout > reserves room for adding undeployed environments
+web/app/components/app/app-publisher/environment-tabs/__tests__/layout.spec.ts :: getEnvironmentTabLayout > keeps overflow environments in their joined order
+web/app/components/app/app-publisher/environment-tabs/__tests__/layout.spec.ts :: getEnvironmentTabLayout > shows only the add trigger when no environment has joined
+web/app/components/workflow-app/components/workflow-header/__tests__/chat-variable-trigger.spec.tsx :: ChatVariableTrigger > Rendering > should not render when not in chat mode
+web/app/components/workflow-app/components/workflow-header/__tests__/chat-variable-trigger.spec.tsx :: ChatVariableTrigger > Props > should render enabled ChatVariableButton when nodes are editable
+web/app/components/workflow-app/components/workflow-header/__tests__/chat-variable-trigger.spec.tsx :: ChatVariableTrigger > Props > should render disabled ChatVariableButton when nodes are read-only
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Rendering > should not render the features button when not in chat mode
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Rendering > should render the features button when in chat mode
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Rendering > should apply dark theme styling when theme is dark
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > User Interactions > should toggle features panel when clicked and nodes are editable
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Edge Cases > should not toggle features panel when nodes are read-only and not restoring
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Props > should disable AppPublisher when there are no workflow nodes
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Computed Props > should pass outputs from every end node to AppPublisher
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Computed Props > should append image input when file image upload is enabled
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Computed Props > should apply the entry limit for $edition / $plan
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Callbacks > should set toolPublished when AppPublisher refreshes data
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Callbacks > should sync workflow draft when AppPublisher toggles on
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Callbacks > should not sync workflow draft when AppPublisher toggles off
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should wait for the draft save barrier before publishing
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should not publish when the draft save barrier fails
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should notify error and reject publish when checklist has warning nodes
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should reject publish when checklist before publish fails
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should publish workflow and update related stores when validation passes
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should not show a success toast when the publisher requests a silent publish
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should invalidate roster list after publishing a workflow with a roster Agent v2 node
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should keep roster list cache stable after publishing a workflow without roster Agent v2 nodes
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should pass publish params to workflow publish mutation
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should respect the publish url passed by the publisher
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should skip success side effects when publish mutation returns no workflow version
+web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx :: FeaturesTrigger > Publishing > should log error when app detail refresh fails after publish
