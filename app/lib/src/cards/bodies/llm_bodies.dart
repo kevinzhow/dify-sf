@@ -114,14 +114,14 @@ class ParameterExtractorBody extends NodeBody {
 }
 
 /// Knowledge Retrieval (nodes/knowledge-retrieval/node.tsx): one `h-6.5` row per dataset (AppIcon xs + name) in
-/// `mb-1 px-3 py-1 space-y-0.5`. Dify takes name and icon from the datasets the backend returns; the document only has
-/// `dataset_ids`, so each row shows Dify's fallback icon (📙 on #FFF4ED) and the dataset id.
+/// `mb-1 px-3 py-1 space-y-0.5`, for the selected datasets the workspace knows ([BodyContext.datasets]); like Dify, none
+/// is shown before their details are known. The icon is Dify's fallback (📙 on #FFF4ED).
 class KnowledgeRetrievalBody extends NodeBody {
   const KnowledgeRetrievalBody();
 
   static List<String> _ids(BodyContext ctx) => [
     for (final v in _items(ctx['dataset_ids']))
-      if (_str(v).isNotEmpty) _str(v),
+      if (ctx.datasets.containsKey(_str(v))) _str(v),
   ];
 
   @override
@@ -161,7 +161,13 @@ class KnowledgeRetrievalBody extends NodeBody {
                     child: const Text('📙', style: TextStyle(fontSize: 12, height: 1)),
                   ),
                   const SizedBox(width: 4),
-                  Expanded(child: DifyText(id, DifyType.systemXsRegular, color: DifyColors.textSecondary)),
+                  Expanded(
+                    child: DifyText(
+                      '${ctx.datasets[id]!['name'] ?? id}',
+                      DifyType.systemXsRegular,
+                      color: DifyColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),

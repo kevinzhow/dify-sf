@@ -15,6 +15,7 @@ class BodyContext {
     this.start,
     this.viewOrigin = Offset.zero,
     this.models = ModelCatalog.empty,
+    this.datasets = const {},
   });
   final Node node;
   final Node? Function(String id) lookup;
@@ -28,6 +29,10 @@ class BodyContext {
 
   /// The workspace's model providers and models (model chips show their status from it).
   final ModelCatalog models;
+
+  /// The knowledge bases the workspace has, by id (Dify's datasets-detail store: `name`, `icon_info`); none known
+  /// until the host provides them.
+  final Map<String, Map<String, Object?>> datasets;
 
   Value? operator [](String key) => node.config[key];
 }
