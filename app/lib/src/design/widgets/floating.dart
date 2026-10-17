@@ -262,13 +262,20 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
             }
             return KeyEventResult.ignored;
           },
-          child: Builder(builder: widget.popupBuilder),
+          child: _FloatingGroup(
+            group: _group,
+            child: Builder(builder: widget.popupBuilder),
+          ),
         );
         popup = TapRegion(
           groupId: _group,
           onTapOutside: widget.dismissible ? (_) => _request(false) : null,
           child: popup,
         );
+        // A popup opened from inside another one (a select in a popover) is part of it, as in Base UI: taps in it
+        // are not outside taps of the outer popup.
+        final parent = _FloatingGroup.of(context);
+        if (parent != null && parent != _group) popup = TapRegion(groupId: parent, child: popup);
         return DifyFloatingLayout(
           anchor: anchor,
           placement: widget.placement,
@@ -284,6 +291,17 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       child: trigger,
     );
   }
+}
+
+/// The tap region group of the popup [child] is in.
+class _FloatingGroup extends InheritedWidget {
+  const _FloatingGroup({required this.group, required super.child});
+  final Object group;
+
+  static Object? of(BuildContext context) => context.getInheritedWidgetOfExactType<_FloatingGroup>()?.group;
+
+  @override
+  bool updateShouldNotify(_FloatingGroup old) => group != old.group;
 }
 
 /// Lays a popup out against [anchor] in the overlay ([computeFloatingPosition]) and paints the open/close
