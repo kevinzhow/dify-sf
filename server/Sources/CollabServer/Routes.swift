@@ -1,4 +1,5 @@
 import CollabCore
+import CollabDSL
 import CollabStore
 import Foundation
 import HTTPTypes
@@ -23,6 +24,10 @@ struct Routes: Sendable {
             await handle(req) { try await createDoc(req, id: try docId(req)) }
         }
         r.get("v1", "docs", ":doc") { req in await handle(req) { try await docInfo(try docId(req)) } }
+        // Dify workflow files (protocol 1.5): import creates a document, export renders the current state.
+        r.post("v1", "docs", "import") { req in await handle(req) { try await importDSL(req, id: nil) } }
+        r.put("v1", "docs", ":doc", "import") { req in await handle(req) { try await importDSL(req, id: try docId(req)) } }
+        r.get("v1", "docs", ":doc", "export") { req in await handle(req) { try await exportDSL(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(try docId(req)) } }
         r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "clients") { req in await handle(req) { try await clientDirectory(try docId(req)) } }
@@ -126,6 +131,46 @@ struct Routes: Sendable {
         do { head = try await store.documentHead(docId) ?? 0 } catch { throw ServerError.unavailable("\(error)") }
         struct Created: Encodable { var id: String; var head: Int; var created: Bool }
         return try json(Created(id: docId, head: head, created: created), status: created ? .created : .ok)
+    }
+
+    /// Dify workflow files can be large; a 500-node workflow is a few hundred kilobytes.
+    static let maxImportBytes = 16 << 20
+
+    /// Body: the Dify DSL as YAML (any content type), or JSON `{"yaml": "..."}`. Creates the document if absent
+    /// (`201`); an existing document is left alone (`200`, `created: false`), so a retried import is harmless.
+    private func importDSL(_ req: Request, id: String?) async throws -> Response {
+        let data = try await req.body.collect(max: .specified(ByteCount(value: Self.maxImportBytes))) ?? Data()
+        struct Wrapped: Decodable { var yaml: String }
+        let text = (try? WireJSON.decode(Wrapped.self, from: data))?.yaml ?? String(decoding: data, as: UTF8.self)
+        let imported: DifyDSL.Imported
+        do { imported = try DifyDSL.importYAML(text) } catch { throw ServerError.badRequest("not an importable Dify workflow: \(error)") }
+        let docId = id ?? UUID().uuidString.lowercased()
+        let created: Bool
+        do { created = try await store.createDocument(id: docId, initial: imported.document, metadata: imported.metadata) } catch {
+            throw ServerError.unavailable("\(error)")
+        }
+        let head: Int
+        do { head = try await store.documentHead(docId) ?? 0 } catch { throw ServerError.unavailable("\(error)") }
+        struct Created: Encodable { var id: String; var head: Int; var created: Bool; var nodes: Int; var edges: Int }
+        return try json(Created(id: docId, head: head, created: created, nodes: imported.document.nodes.count,
+                                edges: imported.document.edges.count), status: created ? .created : .ok)
+    }
+
+    /// The current state as a Dify workflow file: YAML, or `?format=json`. Documents that were not imported get a
+    /// minimal app skeleton.
+    private func exportDSL(_ req: Request, _ id: String) async throws -> Response {
+        let meta: Value?
+        do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
+        let s = try await registry.sequencer(id).currentSnapshot()
+        let metadata = meta ?? DifyDSL.defaultMetadata(name: id)
+        var headers = HTTPFields()
+        if query(req)["format"] == "json" {
+            let v = try DifyDSL.exportValue(s.doc, metadata: metadata)
+            headers[.contentType] = "application/json"
+            return Response(status: .ok, headers: headers, body: .init(data: try WireJSON.encode(v)))
+        }
+        headers[.contentType] = "application/x-yaml; charset=utf-8"
+        return Response(status: .ok, headers: headers, body: .init(data: Data(try DifyDSL.exportYAML(s.doc, metadata: metadata).utf8)))
     }
 
     private func docInfo(_ id: String) async throws -> Response {

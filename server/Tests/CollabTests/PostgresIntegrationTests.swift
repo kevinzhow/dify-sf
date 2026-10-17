@@ -1,4 +1,5 @@
 import CollabCore
+import CollabDSL
 import CollabStore
 import Foundation
 import Logging
@@ -114,6 +115,29 @@ struct PostgresIntegrationTests {
             #expect(c.by == "alice" && c.byName == "Alice")
             try await seqr.setName(client: "bob", name: "Bob")
             #expect(try await seqr.clientNames(force: true) == ["alice": "Alice", "bob": "Bob"])
+        }
+    }
+
+    @Test func anImportedWorkflowKeepsItsDifyPartsAndExportsItsCurrentState() async throws {
+        let yaml = try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dify/basic_llm_chat_workflow.yml"), encoding: .utf8)
+        let imported = try DifyDSL.importYAML(yaml)
+        try await withStore { store, logger in
+            let doc = "t-\(UUID().uuidString.lowercased().prefix(12))"
+            #expect(try await store.createDocument(id: doc, initial: imported.document, metadata: imported.metadata))
+            #expect(try await store.createDocument(id: doc, initial: Document(), metadata: nil) == false)  // retry: left alone
+            #expect(try await store.documentMetadata(doc) == imported.metadata)
+            let seqr = DocumentSequencer(docId: doc, store: store, config: ServerConfig.defaults, logger: logger)
+            let llm = imported.document.nodes.values.first { $0.type == "llm" }!.id
+            _ = try await seqr.submit(req("alice", [(1, 0, .setField(llm, .title, .string("Renamed")))]))
+            let current = try await seqr.currentSnapshot().doc
+            guard case .map(let top) = try DifyDSL.exportValue(current, metadata: try await store.documentMetadata(doc)!),
+                  case .map(let app)? = top["app"], case .map(let wf)? = top["workflow"], case .map(let g)? = wf["graph"],
+                  case .list(let nodes)? = g["nodes"] else { Issue.record("export shape"); return }
+            guard case .map(let origTop) = imported.metadata, case .map(let origApp)? = origTop["app"] else { Issue.record("meta"); return }
+            #expect(app == origApp)
+            #expect(nodes.contains { if case .map(let n) = $0, case .map(let d)? = n["data"] { return d["title"] == .string("Renamed") }; return false })
+            #expect(try await store.documentMetadata("t-never-imported") == nil)
         }
     }
 

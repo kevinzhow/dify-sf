@@ -152,6 +152,17 @@ public enum DifyDSL {
 
     // MARK: - Export
 
+    /// App-level parts for a document that was not imported from a Dify file.
+    public static func defaultMetadata(name: String) -> Value {
+        .map([
+            "app": .map(["name": .string(name), "mode": .string("workflow"), "description": .string(""), "icon": .string("🤖"),
+                         "icon_background": .string("#FFEAD5"), "use_icon_as_answer_icon": .bool(false)]),
+            "kind": .string("app"), "version": .string("0.3.1"), "dependencies": .list([]),
+            "workflow": .map(["conversation_variables": .list([]), "environment_variables": .list([]), "features": .map([:]),
+                              "graph": .map(["viewport": .map(["x": .int(0), "y": .int(0), "zoom": .int(1)])])]),
+        ])
+    }
+
     public static func exportYAML(_ doc: Document, metadata: Value) throws -> String {
         try Yams.serialize(node: yamlNode(exportValue(doc, metadata: metadata)), allowUnicode: true)
     }
@@ -176,6 +187,11 @@ public enum DifyDSL {
             let n = doc.nodes[id]!
             var config = n.config
             var top: [String: Value] = { if case .map(let m)? = config.removeValue(forKey: "_dify_node") { return m }; return [:] }()
+            if top["type"] == nil {  // a node created in dify-sf: the fields Dify's canvas expects
+                top["type"] = .string("custom")
+                top["sourcePosition"] = .string("right")
+                top["targetPosition"] = .string("left")
+            }
             let (x, y) = exactPosition(n)
             top["position"] = .map(["x": .number(x), "y": .number(y)])
             if top["positionAbsolute"] != nil {

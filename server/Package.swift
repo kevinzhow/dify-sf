@@ -35,7 +35,7 @@ let package = Package(
         ]),
         // The Vapor application: HTTP routes, per-document sequencer actors, SSE hub, configuration.
         .target(name: "CollabServer", dependencies: [
-            "CollabCore", "CollabStore",
+            "CollabCore", "CollabStore", "CollabDSL",
             .product(name: "Vapor", package: "vapor"),
             .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
             .product(name: "Configuration", package: "swift-configuration"),

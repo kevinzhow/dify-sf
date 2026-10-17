@@ -68,6 +68,14 @@ public enum Schema {
             PRIMARY KEY (doc_id, client_id)
         )
         """,
+        // Dify workflow-file parts outside the graph (app, features, variables, edge extras), kept for export.
+        """
+        CREATE TABLE IF NOT EXISTS doc_meta (
+            doc_id     text  PRIMARY KEY REFERENCES documents(id),
+            dsl        jsonb NOT NULL,
+            updated_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",

@@ -70,9 +70,20 @@ public struct PostgresStore: Sendable {
 
     public func migrate() async throws { try await bounded { try await self.migrateImpl() } }
     public func ping() async throws { try await bounded { try await self.pingImpl() } }
-    public func createDocument(id: String, initial: Document) async throws -> Bool {
-        try await bounded { try await self.createDocumentImpl(id: id, initial: initial) }
+    /// The Dify workflow-file parts outside the graph stored at import, if the document was imported.
+    public func documentMetadata(_ id: String) async throws -> Value? {
+        try await bounded {
+            for try await (json,) in try await self.client.query("SELECT dsl::text FROM doc_meta WHERE doc_id = \(id)", logger: self.logger).decode((String,).self) {
+                return try WireJSON.decode(Value.self, from: Data(json.utf8))
+            }
+            return nil
+        }
     }
+
+    public func createDocument(id: String, initial: Document, metadata: Value? = nil) async throws -> Bool {
+        try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata) }
+    }
+
     public func documentHead(_ id: String) async throws -> Int? { try await bounded { try await self.documentHeadImpl(id) } }
     public func load(_ id: String) async throws -> LoadedDocument? { try await bounded { try await self.loadImpl(id) } }
     public func entries(_ id: String, after: Int, through: Int) async throws -> [LogEntry] {
@@ -108,14 +119,18 @@ public struct PostgresStore: Sendable {
     // MARK: - Documents
 
     /// Creates the document with its seed state (snapshot at seq 0). Returns false if it already existed.
-    func createDocumentImpl(id: String, initial: Document) async throws -> Bool {
+    func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil) async throws -> Bool {
         let state = try WireJSON.encodeString(initial)
+        let meta = try metadata.map { try WireJSON.encodeString($0) }
         return try await client.withTransaction(logger: logger) { c in
             let inserted = try await c.query("INSERT INTO documents (id) VALUES (\(id)) ON CONFLICT DO NOTHING RETURNING rev", logger: logger)
             var created = false
             for try await _ in inserted { created = true }
             if created {
                 _ = try await c.query("INSERT INTO snapshots (doc_id, seq, state) VALUES (\(id), 0, \(state)::text::jsonb)", logger: logger)
+                if let meta {
+                    _ = try await c.query("INSERT INTO doc_meta (doc_id, dsl) VALUES (\(id), \(meta)::text::jsonb)", logger: logger)
+                }
             }
             return created
         }
