@@ -57,10 +57,19 @@ const _deepList = ListEquality<Value>();
 const _deepItems = ListEquality<Item>();
 const _deepMap = MapEquality<String, Value>();
 
-/// A node config value. Plain JSON maps onto it directly (see docs/protocol.md section 3). Numbers are
-/// 64-bit integers only. Values are immutable: never mutate a list or map you passed in.
+/// A node config value. Plain JSON maps onto it directly (see docs/protocol.md section 3). Numbers are 64-bit
+/// integers or, since protocol 1.5, finite doubles with a fractional part (every number has exactly one form, see
+/// [Value.number]). Values are immutable: never mutate a list or map you passed in.
 sealed class Value {
   const Value();
+
+  /// The canonical value of a JSON number: [VInt] if integral (and exactly representable), else [VDouble].
+  static Value number(num n) {
+    if (n is int) return VInt(n);
+    final d = n.toDouble();
+    if (d.isFinite && d == d.truncateToDouble() && d.abs() < 9.0e15) return VInt(d.toInt());
+    return VDouble(d);
+  }
 
   /// Decodes natural JSON: `null`, bool, int, string, list (atomic), map (config subtree), or the
   /// single-key forms `$ref`, `$broken`, `$items`.
@@ -72,6 +81,8 @@ sealed class Value {
         return VBool(b);
       case final int i:
         return VInt(i);
+      case final double d:
+        return Value.number(d);
       case final String s:
         return VString(s);
       case final List<Object?> xs:
@@ -158,6 +169,27 @@ final class VInt extends Value {
   Object? toJson() => value;
   @override
   bool operator ==(Object other) => other is VInt && other.value == value;
+  @override
+  int get hashCode => value.hashCode;
+  @override
+  String toString() => '$value';
+}
+
+/// A finite number with a fractional part (protocol 1.5). Integral numbers are always [VInt].
+final class VDouble extends Value {
+  const VDouble(this.value);
+  final double value;
+  @override
+  Object? toJson() => value;
+  @override
+  String? get structuralProblem {
+    if (!value.isFinite) return 'numbers must be finite';
+    if (value == value.truncateToDouble()) return 'integral number $value must be written as an int';
+    return null;
+  }
+
+  @override
+  bool operator ==(Object other) => other is VDouble && other.value == value;
   @override
   int get hashCode => value.hashCode;
   @override

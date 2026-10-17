@@ -293,6 +293,20 @@ void main() {
       expect(snap.integrityProblems, isEmpty);
     });
 
+    test('1.5 numbers: a fractional value is stored and served as a double', () async {
+      final r = await post('cli-n', [
+        (1, 0, const SetField('llm', ConfigKey(['temperature']), VDouble(0.7))),
+      ]);
+      expect(r.results.single, isA<AckResult>());
+      expect((await api.snapshot(doc)).doc.nodes['llm']!.config['temperature'], const VDouble(0.7));
+      // on the wire 2.0 is just the number 2: stored and served as an int (one representation per number)
+      final whole = await post('cli-n', [
+        (2, 1, const SetField('llm', ConfigKey(['temperature']), VDouble(2.0))),
+      ]);
+      expect(whole.results.single, isA<AckResult>());
+      expect((await api.snapshot(doc)).doc.nodes['llm']!.config['temperature'], const VInt(2));
+    });
+
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'

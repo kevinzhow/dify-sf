@@ -130,16 +130,17 @@ class _ValueEditor extends StatelessWidget {
             onPick: (ref, base) => _set(VRef(ref), base: base),
           ),
         );
-      case VInt(:final value):
+      case VInt() || VDouble():
+        // one numeric field for both forms; what is typed is stored in its canonical form (protocol 1.5)
         return SyncedTextField(
           key: ValueKey('cfg-${node.id}-${path.join('.')}'),
           value: '$value',
           label: label,
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
           currentVersion: () => controller.seenVersion,
           onCommit: (text, base) {
-            final n = int.tryParse(text.trim());
-            if (n != null) _set(VInt(n), base: base);
+            final n = num.tryParse(text.trim());
+            if (n != null && n.isFinite) _set(Value.number(n), base: base);
           },
         );
       case VBool(:final value):

@@ -252,7 +252,7 @@ void main() {
         r'{"a":1,"b":[null,true,"s"],"i":{"$items":[{"id":"x","value":2}]},"r":{"$ref":{"node":"n","output":"o"}}}',
       );
       expect(Value.fromJson(jsonDecode(jsonEncode(v.toJson()))), v);
-      expect(() => Value.fromJson(jsonDecode('1.5')), throwsFormatException);
+      expect(Value.fromJson(jsonDecode('1.5')), const VDouble(1.5)); // protocol 1.5
       expect(() => Value.fromJson(jsonDecode(r'{"$weird":1}')), throwsFormatException);
     });
 
