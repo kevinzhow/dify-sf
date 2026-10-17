@@ -223,6 +223,9 @@ extension RejectReason: Codable {
             try c.encode(e, forKey: .edge)
         case .itemNotFound(let i), .itemDeleted(let i), .itemExists(let i):
             try c.encode(i, forKey: .item)
+        case .notDeleter(let n, let by):
+            try c.encode(n, forKey: .node)
+            try c.encode(by, forKey: .by)
         case .invalid(let m): try c.encode(m, forKey: .message)
         case .notCommitted, .clientIdInUse: break
         }
@@ -246,6 +249,7 @@ extension RejectReason: Codable {
         case "itemNotFound": self = .itemNotFound(try c.decode(String.self, forKey: .item))
         case "itemDeleted": self = .itemDeleted(try c.decode(String.self, forKey: .item))
         case "itemExists": self = .itemExists(try c.decode(String.self, forKey: .item))
+        case "notDeleter": self = .notDeleter(try c.decode(String.self, forKey: .node), by: try c.decode(String.self, forKey: .by))
         case "invalid": self = .invalid(try c.decode(String.self, forKey: .message))
         case "notCommitted": self = .notCommitted
         case "clientIdInUse": self = .clientIdInUse

@@ -455,8 +455,9 @@ public struct World: Sendable {
                             memo = (n, slots[i].client!.view.edges.values.filter { $0.source == id || $0.target == id }
                                 .sorted { $0.id < $1.id })
                         }
-                        if case .restoreNode = op { rec.stats.bump("restore.issued") }
-                        if let cseq = userEdit(i, op, base: base, sameValue: same), let memo { slots[i].deleteMemo[cseq] = memo }
+                        let cseq = userEdit(i, op, base: base, sameValue: same)
+                        if case .restoreNode = op { rec.stats.bump(cseq == nil ? "restore.refusedLocally" : "restore.issued") }
+                        if let cseq, let memo { slots[i].deleteMemo[cseq] = memo }
                     }
                 }
             }
@@ -488,11 +489,12 @@ public struct World: Sendable {
     private mutating func genOp(_ i: Int) -> (Op, Bool)? {
         let view = slots[i].client!.view
         let ids = view.nodes.keys.sorted()
-        // Undo of a delete (protocol 1.6): mostly the user's own, sometimes someone else's.
+        // Undo of a delete (protocol 1.6): the user's own. Sometimes a user tries to undo someone else's delete, which
+        // the protocol refuses (`notDeleter`, already by the local pre-check).
         if !slots[i].legacy, rng.chance(cfg.restoreRate) {
             let gone = restorable.keys.sorted().filter { view.nodes[$0] == nil && view.deletedNodes[$0] != nil }
             let own = gone.filter { restorable[$0]!.by == slots[i].id }
-            if let id = rng.pick(own.isEmpty || rng.chance(0.3) ? gone : own) {
+            if let id = rng.pick(rng.chance(0.1) ? gone : own) {
                 return (.restoreNode(restorable[id]!.node, edges: restorable[id]!.edges), false)
             }
         }

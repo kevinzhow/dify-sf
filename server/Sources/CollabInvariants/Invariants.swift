@@ -220,6 +220,20 @@ public enum Invariants {
             }
         }
 
+        // I7: undo is only of one's own operations: a committed restore undoes a delete made by the same client.
+        var deleter: [NodeID: ClientID] = ev.initial.deletedNodes.mapValues(\.client)
+        for e in log {
+            switch e.op {
+            case .removeNode(let id): deleter[id] = e.client
+            case .restoreNode(let n, _):
+                if let d = deleter[n.id], d != e.client {
+                    v.append("I7: seq \(e.seq) (\(e.client)) restored \(n.id), deleted by \(d)")
+                }
+                deleter[n.id] = nil
+            default: break
+            }
+        }
+
         // I6: same-value writes are never conflicts: they must all end up committed. (The generator's premise is that such
         // a register only ever receives one constant. A restore (1.6) rewrites the whole node, and may bring it back
         // without that register; a stale write then is a real change, and its conflict names the restore.)

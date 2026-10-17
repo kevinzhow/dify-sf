@@ -267,11 +267,15 @@ struct RestoreTests {
         let (d, a, es) = deleted()
         #expect(reason(d, .restoreNode(node("ghost"), edges: []), base: 5, by: "x") == .nodeNotFound("ghost"))
         #expect(reason(d, .restoreNode(node("b"), edges: []), base: 5, by: "x") == .nodeExists("b"))
-        // Someone else deleted it after the base: a stale write to the node's existence.
-        #expect(reason(d, .restoreNode(a, edges: es), base: 4, by: "bob")
-                == .conflict(Conflict(node: "a", field: nil, seq: 5, by: "alice")))
-        // ... having seen the delete, anyone may restore it.
-        #expect(reason(d, .restoreNode(a, edges: es), base: 5, by: "bob") == nil)
+        // Undo is only of one's own operations: only alice, who deleted it, may restore it (whatever the base).
+        #expect(reason(d, .restoreNode(a, edges: es), base: 4, by: "bob") == .notDeleter("a", by: "alice"))
+        #expect(reason(d, .restoreNode(a, edges: es), base: 5, by: "bob") == .notDeleter("a", by: "alice"))
+        #expect(RejectReason.notDeleter("a", by: "alice").isStaleBased)
+        // The rule is a validity rule: it holds when a client replays committed entries too.
+        do throws(RejectReason) {
+            try d.validate(.restoreNode(a, edges: es), base: 5, by: "bob", checkConflicts: false)
+            Issue.record("accepted a restore by someone else")
+        } catch { #expect(error == .notDeleter("a", by: "alice")) }
         // Malformed edge lists.
         #expect(reason(d, .restoreNode(a, edges: es + es), base: 5, by: "alice") == .invalid("edge e listed twice"))
         #expect(reason(d, .restoreNode(a, edges: [Edge(id: "f", source: "b", target: "c")]), base: 5, by: "alice")
@@ -354,7 +358,7 @@ struct RestoreTests {
         #expect(try WireJSON.decode(Document.self, from: try WireJSON.encode(d)) == d)
     }
 
-    @Test func oldStreamsNeverCarryARestore() {
+    @Test func oldStreamsNeverCarryARestore() throws {
         #expect(StreamCompat.acceptsRestore("1.6") && StreamCompat.acceptsRestore("1.10") && StreamCompat.acceptsRestore("2.0"))
         #expect(!StreamCompat.acceptsRestore(nil) && !StreamCompat.acceptsRestore("1.5") && !StreamCompat.acceptsRestore("x"))
         #expect(StreamCompat.parse("1.6")! == (1, 6) && StreamCompat.parse("1.6.1") == nil && StreamCompat.parse("1.") == nil)
@@ -362,6 +366,7 @@ struct RestoreTests {
         let restore = Op.restoreNode(node("a"), edges: [])
         #expect(!StreamCompat.streamCarries(restore, proto: nil) && StreamCompat.streamCarries(restore, proto: "1.6"))
         #expect(StreamCompat.streamCarries(.removeNode("a"), proto: nil))
+        #expect(try WireJSON.encodeString(RejectReason.notDeleter("a", by: "c")) == #"{"by":"c","node":"a","type":"notDeleter"}"#)
     }
 }
 
@@ -406,6 +411,7 @@ struct WireTests {
             .conflict(Conflict(node: "n", field: .title, seq: 3, by: "c", byName: "Bo")),
             .nodeDeleted("n"), .nodeNotFound("n"), .nodeExists("n"), .edgeNotFound("e"), .edgeExists("e"), .duplicateEdge("e"),
             .danglingReference("n"), .itemNotFound("i"), .itemDeleted("i"), .itemExists("i"), .invalid("why"), .notCommitted, .clientIdInUse,
+            .notDeleter("n", by: "c"),
         ]
         for r in reasons { try roundTrip(r) }
     }

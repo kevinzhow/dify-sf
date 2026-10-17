@@ -130,6 +130,9 @@ public enum RejectReason: Error, Hashable, Sendable {
     case itemNotFound(ItemID)
     case itemDeleted(ItemID)
     case itemExists(ItemID)
+    /// Protocol 1.6: a `restoreNode` from a client other than the one whose delete it would undo (`by`). Undo is only
+    /// for one's own operations.
+    case notDeleter(NodeID, by: ClientID)
     case invalid(String)
     /// The idempotency key (client, cseq) was already used for a DIFFERENT op: another process is using this client id.
     case clientIdInUse
@@ -139,7 +142,7 @@ public enum RejectReason: Error, Hashable, Sendable {
     /// Reasons that are certain to repeat on the server, so a client may warn the user early.
     public var isStaleBased: Bool {
         switch self {
-        case .conflict, .nodeDeleted, .danglingReference, .itemDeleted: return true
+        case .conflict, .nodeDeleted, .danglingReference, .itemDeleted, .notDeleter: return true
         default: return false
         }
     }
@@ -158,6 +161,7 @@ public enum RejectReason: Error, Hashable, Sendable {
         case .itemNotFound: return "itemNotFound"
         case .itemDeleted: return "itemDeleted"
         case .itemExists: return "itemExists"
+        case .notDeleter: return "notDeleter"
         case .invalid: return "invalid"
         case .clientIdInUse: return "clientIdInUse"
         case .notCommitted: return "notCommitted"
@@ -187,4 +191,6 @@ public struct ProtocolDefects: OptionSet, Sendable {
     public static let restoreSkipsStamps = ProtocolDefects(rawValue: 1 << 6)
     /// A restore re-creates its edges even when the other endpoint is deleted (edges to missing nodes).
     public static let restoreIgnoresEndpoints = ProtocolDefects(rawValue: 1 << 7)
+    /// Anyone may restore a deleted node, not only its deleter (server and client pre-check alike).
+    public static let anyoneRestores = ProtocolDefects(rawValue: 1 << 8)
 }

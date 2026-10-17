@@ -183,7 +183,7 @@ public struct Client: Sendable {
         }
         let base = min(max(requested ?? lastSeq, 0), lastSeq)
         do {
-            try view.validate(op, base: base, by: id)
+            try view.validate(op, base: base, by: id, defects: ruleDefects)
         } catch {
             events.append(.localInvalid(op: op, reason: error))
             return EditResult(cseq: nil, requests: [])
@@ -371,7 +371,7 @@ public struct Client: Sendable {
             violations.append("entry \(e.seq): \(e.op) sent on a stream opened with proto \(config.proto ?? "none")")
         }
         do {
-            try confirmed.validate(e.op, base: e.base, by: e.client, checkConflicts: false)
+            try confirmed.validate(e.op, base: e.base, by: e.client, checkConflicts: false, defects: ruleDefects)
         } catch {
             violations.append("committed entry \(e.seq) invalid on client: \(error)")
         }
@@ -406,6 +406,10 @@ public struct Client: Sendable {
 
     private var localStamp: Stamp { Stamp(seq: Int.max, client: id) }
 
+    /// Defects that change a validity rule (not a server-side check): a client library with the same bug pre-checks the
+    /// same wrong rule (mutation tests).
+    private var ruleDefects: ProtocolDefects { defects.intersection(.anyoneRestores) }
+
     /// view = confirmed + every unresolved op that is still valid on top of it. Ops that became
     /// invalid (stale conflict, node deleted remotely, ...) are hidden; stale-based ones raise an
     /// early warning once.
@@ -414,7 +418,7 @@ public struct Client: Sendable {
         for i in outbox.indices where outbox[i].outcome == nil {
             guard let op = outbox[i].op else { continue }
             do {
-                try d.validate(op, base: outbox[i].base, by: id)
+                try d.validate(op, base: outbox[i].base, by: id, defects: ruleDefects)
                 d.apply(op, at: localStamp, defects: defects)
             } catch {
                 if error.isStaleBased && !outbox[i].conflictNotified {

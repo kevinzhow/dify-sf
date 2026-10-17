@@ -28,7 +28,7 @@ public enum Scenarios {
         s10_itemInsertsNeverConflict, s10_itemRemovesAndUpdates, s10_staleListReplaceVsInsert, s10_removeAlreadyRemovedItem,
         s11_positionIsLastWriterWins, s11_moveDoesNotBlockDelete, s11_moveOfDeletedNode,
         s12_undoOwnDelete, { s12_staleWriteAfterRestore(defects: []) }, { s12_restoreSkipsEdgeToDeletedNode(defects: []) },
-        s12_staleRestoreOfAnothersDelete, s12_restoreConflictsWithUnseenCascade, s12_restoreBeforeTheDeleteIsConfirmed,
+        { s12_onlyTheDeleterRestores(defects: []) }, s12_restoreConflictsWithUnseenCascade, s12_restoreBeforeTheDeleteIsConfirmed,
         s12_oldClientNeverSeesARestore,
     ]
 
@@ -739,21 +739,29 @@ public enum Scenarios {
         return finish("S12c restore skips an edge whose other end was deleted", &w, &r)
     }
 
-    static func s12_staleRestoreOfAnothersDelete() -> ScenarioResult {
+    /// Undo is only of one's own operations. Fails with `anyoneRestores` (I7).
+    public static func s12_onlyTheDeleterRestores(defects: ProtocolDefects) -> ScenarioResult {
         var r = ScenarioResult(name: "")
-        var w = world()
-        let before = w.slots[0].client!.lastSeq
+        var w = world(defects: defects)
         let undo = restoreOp(w, 0, "n2")
         w.userEdit(1, .removeNode("n2"))
         w.drain()
-        let stale = w.userEdit(0, undo, base: before)  // a draft older than B's delete: the local pre-check refuses it
-        r.expect(stale == nil && w.rec.localRefusals.last.map { $0 == ("c0", "conflict") } == true,
-                 "restoring a delete someone else made after the op's base is a conflict (refused locally, as the server would)")
-        r.expect(w.serverDoc!.nodes["n2"] == nil, "the node stays deleted")
-        let seen = w.userEdit(0, undo)!
+        if defects.isEmpty {
+            r.expect(w.userEdit(0, undo) == nil && w.rec.localRefusals.last.map { $0 == ("c0", "notDeleter") } == true,
+                     "restoring someone else's delete is refused (locally, as the server would)")
+        }
+        // A delete that lost the race: A's delete and its undo are sent while B's delete is sequenced first.
+        let undo3 = restoreOp(w, 0, "n3")
+        let mine = w.userEdit(0, .removeNode("n3"))!
+        let res = w.userEdit(0, undo3)!
+        w.userEdit(1, .removeNode("n3"))
+        w.flush(slot: 1, toServer: true)
+        w.flush(slot: 0, toServer: true)
         w.drain()
-        r.expect(isCommitted(w.terminals("c0", seen)), "restoring it after having seen the delete is allowed")
-        return finish("S12d restore of another user's delete needs to have seen it", &w, &r)
+        r.expect(isRejected(w.terminals("c0", mine), "nodeDeleted"), "A's delete lost the race")
+        r.expect(isRejected(w.terminals("c0", res), "notDeleter"), "A's undo would undo B's delete: notDeleter")
+        r.expect(w.serverDoc!.nodes["n3"] == nil && w.serverDoc!.nodes["n2"] == nil, "both nodes stay deleted")
+        return finish("S12d only the deleter may restore", &w, &r)
     }
 
     static func s12_restoreConflictsWithUnseenCascade() -> ScenarioResult {

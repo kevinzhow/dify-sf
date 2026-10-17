@@ -201,19 +201,20 @@ public struct Document: Hashable, Sendable {
             if checkConflicts { try checkOutputRemoval(op, base: base, client: client) }  // renaming an output
 
         case .restoreNode(let n, let restoredEdges):
-            try validateRestore(n, restoredEdges, base: base, client: client, checkConflicts: checkConflicts)
+            try validateRestore(n, restoredEdges, base: base, client: client, checkConflicts: checkConflicts, defects: defects)
         }
     }
 
-    /// Protocol 1.6 `restoreNode` (undo of a delete). The node's existence is a register whose last write is its tombstone:
-    /// restoring is refused as a stale write if someone else deleted it after `base`. Like a delete, the restore rewrites
-    /// fields of other nodes (`$broken` -> `$ref`); it conflicts with any other client's write, after `base`, to one of
-    /// those fields.
+    /// Protocol 1.6 `restoreNode` (undo of a delete). Undo is only for one's own operations: only the client whose delete
+    /// made the tombstone may restore the node (`notDeleter` otherwise). Since that client wrote the tombstone, the
+    /// tombstone itself is never a stale write for it. Like a delete, the restore rewrites fields of other nodes
+    /// (`$broken` -> `$ref`); it conflicts with any other client's write, after `base`, to one of those fields.
     private func validateRestore(_ n: Node, _ restoredEdges: [Edge], base: Int, client: ClientID,
-                                 checkConflicts: Bool) throws(RejectReason) {
+                                 checkConflicts: Bool, defects: ProtocolDefects) throws(RejectReason) {
         guard !n.id.isEmpty else { throw .invalid("empty node id") }
         if nodes[n.id] != nil { throw .nodeExists(n.id) }
         guard let tomb = deletedNodes[n.id] else { throw .nodeNotFound(n.id) }
+        if tomb.client != client && !defects.contains(.anyoneRestores) { throw .notDeleter(n.id, by: tomb.client) }
         for key in n.config.keys.sorted() {
             guard !key.hasPrefix("$") else { throw .invalid("config key \(key) is reserved") }
             // `$broken` markers are allowed here (the node comes back as it was); live and broken references are
@@ -229,7 +230,7 @@ public struct Document: Hashable, Sendable {
             guard e.source == n.id || e.target == n.id else { throw .invalid("edge \(e.id) does not touch node \(n.id)") }
         }
         guard checkConflicts else { return }
-        if tomb.seq > base && tomb.client != client {
+        if tomb.seq > base && tomb.client != client {  // only reachable with the `anyoneRestores` defect
             throw .conflict(Conflict(node: n.id, field: nil, seq: tomb.seq, by: tomb.client))
         }
         let accepts = Self.acceptsOutput(of: n)

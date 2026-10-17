@@ -89,6 +89,12 @@ struct MutationTests {
         let r = Fuzz.runMany(from: 1, count: 2000, defects: .restoreIgnoresEndpoints)
         #expect(r.failureKinds["I4", default: 0] > 0)
     }
+    @Test func restoreBySomeoneElseIsCaughtByI7() {
+        #expect(!Scenarios.s12_onlyTheDeleterRestores(defects: .anyoneRestores).passed)
+        #expect(Scenarios.s12_onlyTheDeleterRestores(defects: []).passed)
+        let r = Fuzz.runMany(from: 1, count: 2000, defects: .anyoneRestores)
+        #expect(r.failureKinds["I7", default: 0] > 0)
+    }
     @Test func ackBeforeFsyncCaughtByI1() {
         let r = Fuzz.runMany(from: 1, count: 300, lossyDisk: true)
         #expect(r.failureKinds["I1", default: 0] > 50)

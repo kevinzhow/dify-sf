@@ -13,7 +13,9 @@ section 9 describes the same algorithm in prose.
   * New op `restoreNode`: `{"t":"restoreNode","node":Node,"edges":[Edge,...]}` carries the node as it was before the delete
     (id, type, title, position, config; the config may contain `$broken` markers) and the edges the delete removed, with their
     original ids (`edges` may be empty or omitted). The node id and those edge ids leave the tombstones, and `$broken` references
-    to the node turn back into references. Exact rules: section 6, "Restore"; reasons: section 7.
+    to the node turn back into references. **Only the client whose delete made the tombstone may restore the node** (undo is
+    only of one's own operations); anyone else gets the new reject reason `notDeleter`. Exact rules: section 6, "Restore";
+    reasons: section 7.
   * The event stream takes a new query parameter `proto` (the protocol version the client implements, `1.6`). A stream opened
     without it, or with a lower version, **never carries a `restoreNode` commit**: if its catch-up range contains one, it gets a
     `snapshot` at head instead of the replay; if one is committed while it is live, the server ends the stream (the client
@@ -409,22 +411,25 @@ into `$broken` markers and removes its edges, identically on every replica. New 
 
 **Add/remove edge.** Not stale-checked; existence rules apply (`edgeNotFound`, `duplicateEdge`, endpoints must exist).
 
-**Restore (1.6).** `restoreNode` brings back a node a `removeNode` deleted; it is how a client undoes its own delete. The client
-sends the node as it saw it just before the delete and the edges attached to it then. A node's existence is a register whose last
-write is its tombstone.
+**Restore (1.6).** `restoreNode` brings back a node a `removeNode` deleted; it is how a client undoes its own delete, and only
+that: **undo is only of one's own operations**, so only the client whose delete made the tombstone (the tombstone stamp's
+`client`) may restore the node. The client sends the node as it saw it just before the delete and the edges attached to it then.
 
 Validation, in this order (the first failing check is the reason):
 
 1. `node.id` is empty: `invalid`.
 2. The node exists: `nodeExists`. It was never created: `nodeNotFound`.
-3. A config key starts with `$`, or a value is malformed (as for `addNode`): `invalid`. `$broken` markers *are* allowed in the
+3. The tombstone was made by another client: `notDeleter` (with `node` and `by` = the deleter), whatever the `base`. This is a
+   validity rule, not a staleness rule: replicas apply it to committed entries too. Typical case: a client's delete lost a race
+   (it was refused `nodeDeleted` because someone else deleted the node first) and its undo, already sent, would undo the other
+   client's delete.
+4. A config key starts with `$`, or a value is malformed (as for `addNode`): `invalid`. `$broken` markers *are* allowed in the
    restored config, and references are not checked against the document (they are normalised, below).
-4. An edge has an empty id, is listed twice, or has neither `source` nor `target` equal to `node.id`: `invalid`. Nothing else
+5. An edge has an empty id, is listed twice, or has neither `source` nor `target` equal to `node.id`: `invalid`. Nothing else
    about an edge makes the op fail (see "skipped" below).
-5. Stale tombstone: the node was deleted by **another** client after the op's `base` -> `conflict` with `field: null` and the
-   delete's `seq` and author. A client never conflicts with its own delete, so an undo may be sent before its delete is even
-   confirmed. A client that has seen someone else's delete (`base` >= its `seq`) may restore it as well.
-6. Like a delete, a restore rewrites fields of other nodes (`$broken` -> `$ref`, below). It conflicts with any other client's
+6. The tombstone is the restorer's own write, so it is never stale for it: an undo may be sent with any `base`, even before its
+   delete is confirmed.
+7. Like a delete, a restore rewrites fields of other nodes (`$broken` -> `$ref`, below). It conflicts with any other client's
    write, after `base`, to one of those fields: `conflict` naming that write.
 
 Effect (identical on every replica):
@@ -453,7 +458,8 @@ Consequences for concurrent ops:
   stale-checked) are unaffected, as everywhere.
 * Ops on the node sequenced while it was deleted were rejected (`nodeDeleted`) and stay rejected. After the restore the node
   accepts ops again (clients drop the early "doomed" warning when their view validates the op again).
-* Two restores of one node: the first wins, and the second is `nodeExists`. A restore and a delete of an edge's other endpoint:
+* Two restores of one node (by its deleter, e.g. a retried undo sent as a new op): the first wins, and the second is
+  `nodeExists`. If the node was deleted again in between, by someone else, the second is `notDeleter`. A restore and a delete of an edge's other endpoint:
   the server order decides. If the endpoint's delete is first, the edge is skipped. If the restore is first, the endpoint's delete
   removes the edge like any other edge.
 * A restore cannot bring back an edge that a `removeEdge` deleted, nor an edge that a different delete removed (for example the
@@ -474,15 +480,16 @@ Consequences for concurrent ops:
 | `itemNotFound` | `item` | Unknown list item. |
 | `itemDeleted` | `item` | The item was removed. |
 | `itemExists` | `item` | Item id already used (even if removed). |
+| `notDeleter` | `node`, `by` | 1.6, `restoreNode` only: the node was deleted by `by`, not by you; only the deleter may undo a delete. |
 | `invalid` | `message` | Malformed op / bad path / forbidden value (e.g. `$broken`, reserved key, float). |
 | `notCommitted` | none | The cseq was handled (abandoned below a `floor`) but never committed. |
 | `clientIdInUse` | none | This `(client, cseq)` was already used for a *different* op: another process shares your client id. Nothing was applied. Stop using this id (section 9). |
 
 `restoreNode` (1.6) uses `invalid`, `nodeExists` (the node is not deleted, e.g. restored already), `nodeNotFound` (no such node
-ever) and `conflict` (`field: null`: someone else deleted it after `base`; or a field the restore would rewrite in another node).
+ever), `notDeleter` (someone else deleted it) and `conflict` (a field the restore would rewrite in another node).
 A `conflict` whose `field` is `{"k":"config","path":[]}` names a restore: the stale op's node was restored after its `base`.
 
-`conflict`, `nodeDeleted`, `danglingReference`, `itemDeleted` are *stale-based*: they will certainly repeat on the server, so a
+`conflict`, `nodeDeleted`, `danglingReference`, `itemDeleted`, `notDeleter` are *stale-based*: they will certainly repeat on the server, so a
 client may warn the user as soon as a newer remote commit makes a pending op doomed (and hide it from the local view) before the
 server confirms.
 
@@ -547,8 +554,9 @@ obtain a new one, start again at `cseq = 1`, and re-create (re-send as new ops) 
 **Never** reuse a `cseq` for a different op, and never reuse a client id after losing its counters (use a new id instead).
 
 **Undo of a delete (1.6).** Before submitting `removeNode`, keep the node and its edges as the view shows them. To undo, submit
-`restoreNode` with them (as a new op, `base = lastSeq` as usual). If it is rejected with `conflict`, the document changed in a way the
-undo would overwrite; show it like any conflict.
+`restoreNode` with them (as a new op, `base = lastSeq` as usual). Only undo your own deletes: a restore of a node someone else
+deleted is `notDeleter`. If it is rejected with `conflict`, the document changed in a way the undo would overwrite; show it like any
+conflict.
 
 ## 10. Examples
 
