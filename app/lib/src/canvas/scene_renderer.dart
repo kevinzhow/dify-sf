@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:collab_client/collab_client.dart' as collab;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Material;
 import 'package:flutter/scheduler.dart';
@@ -747,10 +748,12 @@ class SceneRenderer extends CanvasRenderer {
     _skeletonMeshes[type] = mesh;
     _skeletonLayer.addComponent(InstancedMeshComponent(mesh));
     if (!_skeletonRequested.add(type)) return;
-    // One capture of a typical card of this type: the look of every card of the type below 0.2x, and of a card
-    // until its own overview arrives.
-    final sample = graph.nodes.where((n) => n.type == type).firstOrNull;
-    if (sample == null) return;
+    // One capture of a card of this type with no content of its own (no title, default settings): the look of every
+    // card of the type below 0.2x, and of a card until its own overview arrives (never another node's text).
+    final real = graph.nodes.where((n) => n.type == type).firstOrNull;
+    if (real == null) return;
+    final blank = collab.Node(id: '__skeleton-$type', type: type);
+    final sample = CanvasNode(-1, blank, graph.layoutOf(blank, collab.Document(nodes: [blank])), 0);
     final host = Node();
     late final WidgetComponent c;
     c = WidgetComponent.bindOnly(
