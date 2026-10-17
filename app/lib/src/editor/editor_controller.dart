@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../ids.dart';
 import 'notices.dart';
+import 'undo_manager.dart';
 
 /// Everything the editor UI does to the document goes through here, and each action becomes a handful of
 /// small ops (never a whole-object write). The controller owns the notices that tell the user what happened
@@ -81,15 +82,28 @@ class EditorController extends ChangeNotifier {
 
   // ---- edits -------------------------------------------------------------------------------------
 
+  /// Undo and redo of this client's own structural edits (Dify's history).
+  late final undo = UndoManager(doc: () => doc, submit: (op) => session.edit(op), newId: newId);
+
+  /// Submits [op], recorded for undo under [event] (or in the step the UI opened with `undo.begin`).
+  void _edit(Op op, {HistoryEvent? event, int? base}) {
+    undo.record(op, event: event);
+    session.edit(op, base: base);
+  }
+
   /// A `moveNode` op: layout is last-writer-wins, so it never conflicts.
-  void moveNode(String id, int x, int y) => session.edit(MoveNode(id, x, y));
+  void moveNode(String id, int x, int y) => _edit(MoveNode(id, x, y));
 
   void setTitle(String nodeId, String title, {required int base}) {
-    session.edit(SetField(nodeId, const TitleKey(), VString(title)), base: base);
+    _edit(SetField(nodeId, const TitleKey(), VString(title)), event: HistoryEvent.nodeTitleChange, base: base);
   }
 
   void setConfig(String nodeId, List<String> path, Value value, {int? base}) {
-    session.edit(SetField(nodeId, ConfigKey(path), value), base: base);
+    _edit(
+      SetField(nodeId, ConfigKey(path), value),
+      event: path.length == 1 && path.first == 'desc' ? HistoryEvent.nodeDescriptionChange : null,
+      base: base,
+    );
   }
 
   void insertItem(String nodeId, List<String> path, Value value, {String? after}) {
@@ -113,7 +127,10 @@ class EditorController extends ChangeNotifier {
       'start' => 'Start',
       _ => type,
     };
-    session.edit(AddNode(Node(id: id, type: type, title: title, x: x, y: y)));
+    _edit(
+      AddNode(Node(id: id, type: type, title: title, x: x, y: y)),
+      event: HistoryEvent.nodeAdd,
+    );
     selectNode(id);
     return id;
   }
@@ -121,7 +138,8 @@ class EditorController extends ChangeNotifier {
   /// Connects [sourceHandle] of one node (a branch of an if-else, a class of a question classifier, ...) to another.
   void connect(String sourceId, String targetId, {String? sourceHandle}) {
     if (sourceId == targetId) return;
-    session.edit(
+    _edit(
+      event: HistoryEvent.nodeConnect,
       AddEdge(
         sourceHandle == null
             ? Edge(id: newId('e'), source: sourceId, target: targetId)
@@ -131,7 +149,7 @@ class EditorController extends ChangeNotifier {
   }
 
   void deleteEdge(String edgeId) {
-    session.edit(RemoveEdge(edgeId));
+    _edit(RemoveEdge(edgeId), event: HistoryEvent.edgeDelete);
     if (selectedEdgeId == edgeId) selectedEdgeId = null;
     notifyListeners();
   }
@@ -142,7 +160,7 @@ class EditorController extends ChangeNotifier {
 
   void deleteNode(String nodeId) {
     _rememberTitles();
-    session.edit(RemoveNode(nodeId));
+    _edit(RemoveNode(nodeId), event: HistoryEvent.nodeDelete);
     if (selectedNodeId == nodeId) selectedNodeId = null;
     notifyListeners();
   }
@@ -288,6 +306,7 @@ class EditorController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    undo.dispose();
     unawaited(_events.cancel());
     unawaited(_changes.cancel());
     super.dispose();

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../editor/editor_controller.dart';
+import '../editor/undo_manager.dart';
 import 'canvas_graph.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
@@ -294,6 +295,8 @@ class CanvasInput {
     };
     graph.dragging.addAll([for (final s in _moving) graph.slots[s]!.id]);
     renderer().beginMove(_moving);
+    // One drag is one undo step (Dify's NodeDragStop).
+    controller.undo.begin(HistoryEvent.nodeDragStop, nodeId: graph.slots[_leaders.first]?.id);
     _sendTimer = Timer.periodic(const Duration(milliseconds: 125), (_) => _sendMoves());
   }
 
@@ -339,6 +342,7 @@ class CanvasInput {
     _sendTimer?.cancel();
     _sendTimer = null;
     _sendMoves();
+    controller.undo.end();
     final done = _moving;
     _moving = {};
     renderer().endMove(done);
