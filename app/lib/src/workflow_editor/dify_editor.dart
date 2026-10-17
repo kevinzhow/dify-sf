@@ -2,6 +2,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
 import '../canvas/canvas_controller.dart';
+import '../cards/card_kit.dart';
 import '../design/dify_tokens.g.dart';
 import '../editor/editor_controller.dart';
 import '../editor/node_panel.dart';
@@ -41,39 +42,52 @@ class DifyWorkflowEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
     const options = OperatorOptions(collaborationEnabled: true);
-    return OperatorShortcuts(
-      history: controller.undo,
-      options: options,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          WorkflowEditor(
-            controller: controller,
-            header: (context, canvas) => _BoundHeader(
+    // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
+    // spacing would widen every label).
+    return DefaultTextStyle(
+      style: TextStyle(
+        fontFamily: cardFontFamily,
+        fontSize: 14,
+        height: 20 / 14,
+        letterSpacing: 0,
+        wordSpacing: 0,
+        color: DifyColors.textPrimary,
+        leadingDistribution: TextLeadingDistribution.even,
+      ),
+      child: OperatorShortcuts(
+        history: controller.undo,
+        options: options,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            WorkflowEditor(
               controller: controller,
-              canvas: canvas,
-              meta: meta,
-              session: (anchor) => SessionBadge(
+              header: (context, canvas) => _BoundHeader(
                 controller: controller,
-                serverLabel: serverLabel,
-                actions: actions,
-                anchor: anchor,
-                pill: false,
+                canvas: canvas,
+                meta: meta,
+                session: (anchor) => SessionBadge(
+                  controller: controller,
+                  serverLabel: serverLabel,
+                  actions: actions,
+                  anchor: anchor,
+                  pill: false,
+                ),
+                left: _OfflinePill(controller: controller),
               ),
-              left: _OfflinePill(controller: controller),
+              control: workflowControlBuilder(options),
+              operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
+              panels: (context, canvas) => ListenableBuilder(
+                listenable: controller,
+                // The node panel shows while a node or an edge is selected (Dify's NodePanel / edge details).
+                builder: (context, _) => controller.selectedNode == null && controller.selectedEdgeId == null
+                    ? const SizedBox.shrink()
+                    : NodePanel(controller: controller),
+              ),
             ),
-            control: workflowControlBuilder(options),
-            operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
-            panels: (context, canvas) => ListenableBuilder(
-              listenable: controller,
-              // The node panel shows while a node or an edge is selected (Dify's NodePanel / edge details).
-              builder: (context, _) => controller.selectedNode == null && controller.selectedEdgeId == null
-                  ? const SizedBox.shrink()
-                  : NodePanel(controller: controller),
-            ),
-          ),
-          NoticeOverlay(controller: controller),
-        ],
+            NoticeOverlay(controller: controller),
+          ],
+        ),
       ),
     );
   }
