@@ -12,6 +12,21 @@ import 'renderer_choice.dart';
 import 'scene_renderer.dart';
 import 'widget_renderer.dart';
 
+/// Process-wide canvas defaults (from the launch options).
+abstract final class CanvasDefaults {
+  /// The first view as a React Flow viewport (x, y, zoom); null fits the graph.
+  static (double, double, double)? viewport;
+
+  /// Visual tests: print the canvas's rectangle on screen (`CANVAS_RECT left,top,width,height`) once it is laid out.
+  static bool reportRect = false;
+
+  static (double, double, double)? parseViewport(String? s) {
+    final p = s?.split(',').map(double.tryParse).toList();
+    if (p == null || p.length != 3 || p.contains(null)) return null;
+    return (p[0]!, p[1]!, p[2]!);
+  }
+}
+
 /// The workflow canvas: the document's nodes and edges, drawn by Flutter Scene (or plain widgets where Flutter GPU is
 /// not available), with selection, moving, connecting, panning and zooming. Edits go through [controller].
 class WorkflowCanvas extends StatefulWidget {
@@ -116,7 +131,15 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   }
 
   void _fit() {
+    final vp = _fitted ? null : CanvasDefaults.viewport;
     _fitted = true;
+    if (vp != null) {
+      // React Flow: screen = canvas * zoom + (x, y); our view is the canvas point at the middle of the viewport.
+      view
+        ..scale = vp.$3
+        ..center = (Offset(view.viewport.width / 2, view.viewport.height / 2) - Offset(vp.$1, vp.$2)) / vp.$3;
+      return;
+    }
     view.fit(graph.bounds);
   }
 
@@ -148,7 +171,20 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       builder: (context, constraints) {
         final size = constraints.biggest;
         if (size != view.viewport) {
+          final old = view.viewport;
           view.viewport = size;
+          // Like React Flow, a resize keeps the top-left corner of the view where it is (not the middle).
+          if (!old.isEmpty) {
+            view.center += Offset(size.width - old.width, size.height - old.height) / (2 * view.scale);
+          }
+          if (CanvasDefaults.reportRect) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final box = context.findRenderObject() as RenderBox?;
+              if (box == null || !box.hasSize) return;
+              final o = box.localToGlobal(Offset.zero);
+              debugPrint('CANVAS_RECT ${o.dx},${o.dy},${box.size.width},${box.size.height}');
+            });
+          }
           if (!_fitted && graph.length > 0) {
             WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _fit() : null);
           }

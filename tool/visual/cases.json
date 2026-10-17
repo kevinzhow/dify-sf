@@ -1,0 +1,6 @@
+[
+  {"id": "canvas-basic-llm", "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-if-else", "fixture": "tool/visual/fixtures/conditional_hello_branching_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-iteration", "fixture": "tool/visual/fixtures/array_iteration_formatting_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-loop", "fixture": "tool/visual/fixtures/increment_loop_with_break_condition_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]}
+]

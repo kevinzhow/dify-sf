@@ -1,15 +1,16 @@
-.build/
-*.swp
-.DS_Store
-/bench/storm/results/
-/bench/chaos/results/
-/server/.swiftpm/
 
+/bench/chaos/results/
+/bench/storm/results/
+.build/
 # Dart / Flutter
 .dart_tool/
-.packages
-build/
+.DS_Store
 .flutter-plugins
 .flutter-plugins-dependencies
 .fvm/
+.packages
 /packages/*/pubspec.lock
+__pycache__/
+/server/.swiftpm/
+*.swp
+tool/visual/.venv/
