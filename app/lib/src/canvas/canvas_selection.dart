@@ -6,6 +6,10 @@ class CanvasSelection extends ChangeNotifier {
   String? edge;
   int? hovered;
 
+  /// The edge under the pointer when no node is (Dify reveals the edge's "+" then). Separate from the notifications
+  /// above, which repaint cards.
+  final hoveredEdge = ValueNotifier<String?>(null);
+
   /// Slots whose selected/hovered state changed in the last notification.
   final changed = <int>{};
 
@@ -42,6 +46,12 @@ class CanvasSelection extends ChangeNotifier {
     final was = nodes.remove(slot) | (hovered == slot);
     if (hovered == slot) hovered = null;
     if (was) _notify({slot});
+  }
+
+  @override
+  void dispose() {
+    hoveredEdge.dispose();
+    super.dispose();
   }
 
   void _notify(Set<int> slots) {

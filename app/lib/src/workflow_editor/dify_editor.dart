@@ -18,6 +18,7 @@ import 'operator/operator.dart';
 import 'store/store.dart';
 import 'variable_inspect/trigger.dart';
 import 'block_selector/block_selector.dart';
+import 'canvas_plus/canvas_plus_buttons.dart';
 import 'workflow_editor.dart';
 
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
@@ -157,7 +158,13 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                 overlay: (context, canvas) {
                   _inner = context;
                   _canvas = canvas;
-                  return CandidateNode(canvas: canvas, onPlace: _place);
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
+                      CandidateNode(canvas: canvas, onPlace: _place),
+                    ],
+                  );
                 },
                 control: workflowControlBuilder(options),
                 operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),

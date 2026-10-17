@@ -218,14 +218,19 @@ class CanvasInput {
   }
 
   void hover(PointerHoverEvent e) {
-    final n = nodeAt(view.toCanvas(e.localPosition));
+    final c = view.toCanvas(e.localPosition);
+    final n = nodeAt(c);
     if (n?.slot != selection.hovered) {
       selection.hover(n?.slot);
       onApplied?.call('hover');
     }
+    selection.hoveredEdge.value = n == null ? edgeAt(c)?.id : null;
   }
 
-  void exit(PointerExitEvent e) => selection.hover(null);
+  void exit(PointerExitEvent e) {
+    selection.hover(null);
+    selection.hoveredEdge.value = null;
+  }
 
   /// The wheel pans in pointer mode and zooms with Ctrl/Cmd (or in hand mode), around the pointer.
   void signal(PointerSignalEvent e) {
