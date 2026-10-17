@@ -1,4 +1,5 @@
 import 'package:collab_client/collab_client.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'demo/demo_backend.dart';
@@ -232,7 +233,12 @@ class _HomePageState extends State<HomePage> {
 Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, LaunchOptions? launch}) => MaterialApp(
   title: 'dify-sf',
   debugShowCheckedModeBanner: false,
-  theme: ThemeData(colorSchemeSeed: const Color(0xFF3F51B5), useMaterial3: true),
+  // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
+  theme: ThemeData(
+    colorSchemeSeed: const Color(0xFF3F51B5),
+    useMaterial3: true,
+    fontFamily: kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
+  ),
   home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
 );
 

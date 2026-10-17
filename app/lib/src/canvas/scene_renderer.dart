@@ -503,6 +503,14 @@ class SceneRenderer extends CanvasRenderer {
 
   void _attach(int slot, double density) {
     final c = _component(slot, density);
+    // Once the live capture shows, the overview behind it is hidden (its softer edges would show around the card).
+    void landed() {
+      if (c.controller.texture == null) return;
+      c.controller.removeListener(landed);
+      if (identical(_live[slot], c) || _replaced[slot] == c) _placeholderNodes[slot]?.visible = false;
+    }
+
+    c.controller.addListener(landed);
     _cardNodes[slot]!.addComponent(c);
     _live[slot] = c;
     _density[slot] = density;
@@ -533,6 +541,7 @@ class SceneRenderer extends CanvasRenderer {
     if (c != null && c.isAttached) _cardNodes[slot]?.removeComponent(c);
     _live[slot] = null;
     _attached.remove(slot);
+    _placeholderNodes[slot]?.visible = true;
   }
 
   bool _onScreen(int slot) {

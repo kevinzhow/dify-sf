@@ -28,7 +28,17 @@ dev_dependencies:
   meta: ^1.19.0
 
 flutter:
+  # Dify's font stack resolves to Noto Sans on Linux (Regular and Bold installed: weight 500 renders Regular, 600
+  # Bold); the same two files are bundled for Linux and the web build (macOS, iOS and Windows use system fonts).
+  fonts:
+    - family: Noto Sans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
   assets:
+    - assets/fonts/OFL.txt
     - flutter_scene_generated/
     - path: flutter_scene_generated/metal_ios/
       platforms:
