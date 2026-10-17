@@ -285,6 +285,8 @@ class SceneRenderer extends CanvasRenderer {
   double _lift(int slot) {
     final n = graph.slots[slot];
     if (n == null) return 0;
+    // Underlays (notes) lie behind the edges, which are 1 behind the canvas plane's cards.
+    if (n.layout.underlay) return -1.5 + (n.order % 100000) * 1e-6;
     if (_moving.contains(slot)) return 0.5 + n.depth * 0.3;
     // Nested nodes above their container (even a selected one), then selected nodes, then later above earlier.
     return n.depth * 0.3 + (selection.nodes.contains(slot) ? 0.2 : 0) + (n.order % 100000) * 1e-6;
@@ -385,7 +387,7 @@ class SceneRenderer extends CanvasRenderer {
   /// The selected frame: 1 px outside the card (radius 16), option-card selected border.
   void _highlight(int slot) {
     final n = graph.slots[slot];
-    if (n == null || !selection.nodes.contains(slot)) {
+    if (n == null || !selection.nodes.contains(slot) || n.layout.underlay) {
       _selectedFrames.clear(slot);
       return;
     }

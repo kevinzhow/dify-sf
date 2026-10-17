@@ -14,9 +14,12 @@ import 'header/features_trigger.dart';
 import 'header/titles.dart';
 import 'header/workflow_header.dart';
 import 'node_panel/node_panel.dart';
+import 'note_node/note_node.dart';
 import 'operator/operator.dart';
+import 'store/app_registers_sync.dart';
 import 'store/store.dart';
 import 'variable_inspect/trigger.dart';
+import 'variable_panels/variable_panels.dart';
 import 'block_selector/block_selector.dart';
 import 'canvas_plus/canvas_plus_buttons.dart';
 import 'node_insertion/insert_block.dart';
@@ -112,6 +115,12 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     ).showChangeBlockSelector(context, nodeId, sourceHandle, anchor: box.localToGlobal(r.topLeft) & r.size);
   }
 
+  /// The control bar's and the pane menu's Add Note (operator/hooks.ts handleAddNote): a note follows the pointer.
+  void _addNote() {
+    final context = _inner;
+    if (context != null) addNoteCandidate(context, controller);
+  }
+
   /// Puts a placed candidate (and an iteration's or loop's start node) into the document as one undo step.
   void _place(CandidatePlacement p) {
     final doc = controller.doc;
@@ -126,10 +135,11 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   @override
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
-    const options = OperatorOptions(collaborationEnabled: true);
+    final options = OperatorOptions(collaborationEnabled: true, onAddNote: _addNote);
     final menuOptions = WorkflowMenuOptions(
       isChatMode: meta.isChatflow,
       onAddBlock: _addBlockAt,
+      onAddNote: _addNote,
       onChangeBlock: _changeBlock,
     );
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
@@ -184,15 +194,28 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     fit: StackFit.expand,
                     children: [
                       CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
+                      // The selected note, edited in place over its card.
+                      NoteNodeOverlay(controller: controller, canvas: canvas, options: menuOptions),
                       CandidateNode(canvas: canvas, onPlace: _place),
                     ],
                   );
                 },
                 control: workflowControlBuilder(options),
                 operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
-                // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify).
-                panels: (context, canvas) =>
-                    WorkflowPanels(controller: controller, canvas: canvas, options: menuOptions),
+                // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
+                // variable panels.
+                panels: (context, canvas) => WorkflowPanels(
+                  controller: controller,
+                  canvas: canvas,
+                  options: menuOptions,
+                  others: [
+                    VariablePanels(
+                      controller: controller,
+                      isChatMode: meta.isChatflow,
+                      storeSecret: controller.storeSecret,
+                    ),
+                  ],
+                ),
               ),
               NoticeOverlay(controller: controller),
             ],
@@ -227,6 +250,9 @@ class _BoundHeader extends StatefulWidget {
 class _BoundHeaderState extends State<_BoundHeader> {
   EditorHeaderBinding? _binding;
 
+  /// The store's environment and conversation variables follow the document (protocol 1.7).
+  AppRegistersSync? _variables;
+
   /// The people on this document; dify-sf has no presence yet, so it is this user.
   final _users = ValueNotifier<List<OnlineUser>>(const []);
 
@@ -237,11 +263,12 @@ class _BoundHeaderState extends State<_BoundHeader> {
     _binding ??= EditorHeaderBinding(
       controller: widget.controller,
       store: WorkflowStoreScope.of(context),
-      // The app's model catalog is an empty workspace (see ModelCatalog), so LLM nodes need a model configured.
+      // The app's model catalog is an empty workspace (see ModelCatalog), so LLM nodes need a model configured. The
+      // variables are the document's (it is recomputed on every change of the document).
       checklistEnv: () => checklist.ChecklistEnv(
         appMode: widget.meta.appMode,
-        environmentVariables: widget.meta.environmentVariables,
-        conversationVariables: widget.meta.conversationVariables,
+        environmentVariables: widget.controller.appLists.environmentVariables,
+        conversationVariables: widget.controller.appLists.conversationVariables,
         modelProviders: const [],
       ),
     );
@@ -257,22 +284,21 @@ class _BoundHeaderState extends State<_BoundHeader> {
     if (!identical(old.meta, widget.meta)) _storeVariables(refreshChecklist: true);
   }
 
-  /// The app's environment and conversation variables, where Dify's UI reads them (and the checklist, which depends
-  /// on the app mode and the variables, when they changed). After the frame: this runs while building, and other
-  /// widgets listen to the store.
+  /// The app's environment and conversation variables, where Dify's UI reads them: the document's, kept in sync from
+  /// then on by [AppRegistersSync] (and the checklist, which depends on the app mode, when the metadata changed).
+  /// After the frame: this runs while building, and other widgets listen to the store.
   void _storeVariables({bool refreshChecklist = false}) {
-    final store = WorkflowStoreScope.of(context);
+    _variables ??= AppRegistersSync(controller: widget.controller, store: WorkflowStoreScope.of(context));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      store
-        ..setEnvironmentVariables(widget.meta.environmentVariables)
-        ..setConversationVariables(widget.meta.conversationVariables);
+      _variables?.sync();
       if (refreshChecklist) _binding?.refreshChecklist();
     });
   }
 
   @override
   void dispose() {
+    _variables?.dispose();
     _binding?.dispose();
     _users.dispose();
     super.dispose();

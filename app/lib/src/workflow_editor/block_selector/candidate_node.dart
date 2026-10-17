@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
+import '../../cards/bodies/note_body.dart' show NoteCardView, NoteData, customNoteNode;
 import '../../cards/card_kit.dart' show DifyText;
 import '../../design/dify_tokens.g.dart';
 import '../store/workflow_store.dart';
@@ -221,7 +222,7 @@ class _CandidateNodeMainState extends State<CandidateNodeMain> {
 }
 
 /// The default candidate card: BaseNode's `w-60 rounded-[15px] bg-workflow-block-bg shadow-xs` with its header
-/// (BlockIcon md and the title in `system-sm-semibold-uppercase`); a note is a 240 × 88 yellow note.
+/// (BlockIcon md and the title in `system-sm-semibold-uppercase`); a note is the note card.
 class _CandidateCard extends StatelessWidget {
   const _CandidateCard({required this.candidate});
   final DifyJson candidate;
@@ -229,19 +230,8 @@ class _CandidateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = (candidate['data'] as Map?)?.cast<String, Object?>() ?? const {};
-    final note = candidate['type'] == 'custom-note';
-    if (note) {
-      return Container(
-        width: (data['width'] as num?)?.toDouble() ?? 240,
-        height: (data['height'] as num?)?.toDouble() ?? 88,
-        decoration: BoxDecoration(
-          color: DifyColors.utilColorsYellowYellow50,
-          borderRadius: BorderRadius.circular(DifyRadius.md),
-          border: Border.all(color: DifyColors.utilColorsYellowYellow100),
-          boxShadow: DifyShadows.xs,
-        ),
-      );
-    }
+    // candidate-node-main.tsx renders the note itself (CustomNoteNode).
+    if (candidate['type'] == customNoteNode) return NoteCardView(data: NoteData.fromJson(data));
     final type = '${data['type'] ?? ''}';
     final title = '${data['title'] ?? type}';
     return Container(

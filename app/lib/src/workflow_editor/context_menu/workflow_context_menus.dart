@@ -150,7 +150,8 @@ class _WorkflowContextMenusState extends State<WorkflowContextMenus> {
   /// The top-most node under [c] (CanvasInput.nodeAt: nested nodes above containers, selected above others).
   CanvasNode? _nodeAt(CanvasGraph g, Offset c) {
     final selected = widget.canvas.selection.nodes;
-    int key(CanvasNode n) => (n.depth << 44) + (selected.contains(n.slot) ? 1 << 40 : 0) + n.order;
+    int key(CanvasNode n) =>
+        n.layout.underlay ? n.order - (1 << 50) : (n.depth << 44) + (selected.contains(n.slot) ? 1 << 40 : 0) + n.order;
     CanvasNode? hit;
     for (final slot in g.grid.near(Rect.fromCenter(center: c, width: 1, height: 1))) {
       final n = g.slots[slot];

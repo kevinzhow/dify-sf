@@ -13,6 +13,7 @@ class CardLayout {
     Rect? visual,
     this.sources = const {'source': CanvasNode.defaultHandleY},
     this.target = true,
+    this.underlay = false,
   }) : visual = visual ?? card;
 
   /// The card (hit testing, frames).
@@ -26,6 +27,10 @@ class CardLayout {
 
   /// Whether the node has a target (input) handle.
   final bool target;
+
+  /// Drawn under the edges and every other node, selected or not, without the selected frame (the card shows its
+  /// own selection): Dify's notes (`.react-flow__node-custom-note { z-index: -1 }`).
+  final bool underlay;
 }
 
 /// One node as the canvas sees it. Slots are reused when nodes go and come, so renderers can keep per-slot
@@ -258,6 +263,7 @@ class CanvasGraph {
       final layout = layoutOf(node, doc);
       if (layout.card != n.layout.card ||
           layout.visual != n.layout.visual ||
+          layout.underlay != n.layout.underlay ||
           !mapEquals(layout.sources, n.layout.sources)) {
         n.layout = layout;
         change.resized.add(n);

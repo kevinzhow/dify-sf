@@ -76,6 +76,8 @@ class WidgetRenderer extends CanvasRenderer {
         final cards = _stacked(visible);
         final depths = {0, for (final n in cards) n.depth}.toList()..sort();
         final children = <Widget>[
+          for (final n in cards)
+            if (n.layout.underlay) _card(context, n),
           for (final d in depths) ...[
             RepaintBoundary(
               child: CustomPaint(
@@ -101,7 +103,7 @@ class WidgetRenderer extends CanvasRenderer {
                 ),
               ),
             for (final n in cards)
-              if (n.depth == d) _card(context, n),
+              if (n.depth == d && !n.layout.underlay) _card(context, n),
           ],
           if (_preview != null) CustomPaint(painter: _PreviewPainter(_preview!)),
         ];
@@ -117,7 +119,9 @@ class WidgetRenderer extends CanvasRenderer {
 
   /// Cards in [visible], bottom to top: selected nodes above the others, later nodes above earlier ones.
   List<CanvasNode> _stacked(Rect visible) {
-    int key(CanvasNode n) => (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
+    int key(CanvasNode n) => n.layout.underlay
+        ? n.order - (1 << 50)
+        : (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
     return [
       for (final slot in graph.grid.near(visible))
         if (graph.slots[slot] case final n? when visible.overlaps(n.rect)) n,
@@ -168,7 +172,7 @@ class WidgetRenderer extends CanvasRenderer {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          if (selected)
+          if (selected && !n.layout.underlay)
             Positioned.fromRect(
               rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
               child: DecoratedBox(

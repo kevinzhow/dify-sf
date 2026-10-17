@@ -78,8 +78,10 @@ class CanvasInput {
   }
 
   /// Nested nodes lie above their container even when it is selected (React Flow: nested z-index 1001 > the 1000 a
-  /// selected node gets), then selected nodes, then later nodes above earlier ones.
-  int stackKey(CanvasNode n) => (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
+  /// selected node gets), then selected nodes, then later nodes above earlier ones; underlays (notes) below all.
+  int stackKey(CanvasNode n) => n.layout.underlay
+      ? n.order - (1 << 50)
+      : (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
 
   /// The node and source handle whose box is under [c] (a little larger when zoomed out).
   (CanvasNode, String)? outPortAt(Offset c) {

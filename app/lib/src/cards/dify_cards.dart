@@ -11,6 +11,7 @@ import 'bodies/container_bodies.dart';
 import 'bodies/data_bodies.dart';
 import 'bodies/entry_bodies.dart';
 import 'bodies/llm_bodies.dart';
+import 'bodies/note_body.dart';
 import 'card_chrome.dart';
 import 'card_kit.dart';
 import 'node_body.dart';
@@ -133,6 +134,10 @@ class DifyCards extends CardSpec {
 
   @override
   CardLayout layoutOf(Node node, Document doc) {
+    // A note (custom-note) is its own card: the node element at its data's size, no handles, under everything.
+    if (isNoteCard(node)) {
+      return CardLayout(card: Offset.zero & NoteData.of(node).size, sources: const {}, target: false, underlay: true);
+    }
     final ctx = context(node, (id) => doc.nodes[id], doc.nodes.values.where((n) => n.type == 'start').firstOrNull);
     final body = bodyOf(node.type);
     final chrome = body.chrome;
@@ -191,5 +196,7 @@ class DifyCards extends CardSpec {
     CanvasGraph graph, {
     required bool live,
     VoidCallback? onPainted,
-  }) => DifyNodeCard(node: node, graph: graph, live: live, onPainted: onPainted);
+  }) => isNoteCard(node.node.value)
+      ? NoteCard(node: node, onPainted: onPainted)
+      : DifyNodeCard(node: node, graph: graph, live: live, onPainted: onPainted);
 }
