@@ -102,6 +102,31 @@ Widget cards break down here: building the cards that pan into view costs up to 
 so this is not like for like; widgets could switch to simple boxes too, but that is writing a second renderer, while
 culling and level of detail are what Flutter Scene already does.
 
+## Zooming back out: cards ready without loading
+
+Zoomed in to 2x on the middle of the graph (text sharpened), then zoomed out to 0.35x in 1 s, in 0.3 s, or in one
+jump (a zoom-to-fit button). `PHASES=zoomback`, `ZB_SEC`; each cell: frames per second and p99 interval over the
+2.5 s phase, then the most on-screen cards showing a placeholder at once and how long after the zoom ends they last.
+
+| 1x, 2000 nodes | zoom out in 1 s | in 0.3 s | jump |
+|---|---|---|---|
+| capture on demand, 24/frame | 97 fps, p99 30.3: placeholders 0 cards, 0 ms | 86 fps, p99 32.5: placeholders 22 cards, 162 ms | 101 fps, p99 23.9: placeholders 208 cards, 417 ms |
+| capture on demand, 64/frame | 102 fps, p99 37.9: placeholders 0 cards, 0 ms | 108 fps, p99 31.9: placeholders 0 cards, 0 ms | 104 fps, p99 39.6: placeholders 208 cards, 276 ms |
+| overviews, capture only at rest | 121 fps, p99 13.9: placeholders 0 cards, 0 ms | 114 fps, p99 16.4: placeholders 0 cards, 0 ms | 108 fps, p99 16.2: placeholders 0 cards, 0 ms |
+| 2x, capture on demand | | | 70 fps, p99 30.8: placeholders 208 cards, 474 ms |
+| 2x, overviews | 100 fps, p99 21.7: placeholders 0 cards, 0 ms | | 88 fps, p99 22.2: placeholders 0 cards, 0 ms |
+
+* Capturing cards when they come into view cannot keep up with a fast zoom or a jump (up to 208 placeholders for
+  0.3 to 1 s), and the captures themselves cost frames (p99 24 to 40 ms).
+* Overviews (`OVERVIEW=1`): every card also gets a half-density capture, taken in the background nearest first, a
+  few per frame while the view rests, and kept as its placeholder's texture (a captured texture outlives its
+  component). About 5 s for 2000 cards after load (frames at 102 to 114 FPS meanwhile); about 34 MB at 1x, 137 MB at
+  2x. At or below 0.5x the overview is the right density, so zooming out needs no capture at all; above it the card
+  shows its overview until the full-density capture arrives. No capture or release work runs while the view moves.
+* Result: no placeholders at any zoom speed, at 1x and 2x. The remaining slow frames (p99 13.9 to 16.4 ms at 1x)
+  are a few frames around the jump; the residency pass still checks all 2000 cards every frame (about 0.5 ms), a
+  spatial index would make it follow the on-screen cards.
+
 ## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
@@ -131,7 +156,7 @@ culling and level of detail are what Flutter Scene already does.
 Cards in Flutter Scene with per-component culling: they hold up at 2000 nodes, at 2x, and zoomed out to the whole
 graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Open items for it:
 an accessibility summary per node (cards are excluded from the semantics tree), pointer and keyboard input on cards,
-zoom-out capture spikes, placeholder look, edge width in screen pixels, the web build. Final 120 Hz acceptance on a
+placeholder look before the overviews arrive, edge width in screen pixels, the web build. Final 120 Hz acceptance on a
 real 120 Hz screen.
 
 Not covered yet: pointer and keyboard input on scene cards (`WidgetInput.automatic`), text input inside cards, the
@@ -146,4 +171,4 @@ python3 tool/table.py results
 ```
 
 Switches (environment): `MODE`, `NODES`, `SEM=0` (cards out of the semantics tree), `EDGES=0`, `CARDS=0`, `AA`,
-`PHASES`, `POLICY=every`, `CULL=0`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.
+`PHASES`, `POLICY=every`, `CULL=0`, `OVERVIEW=1`, `OV_BUDGET`, `CAP_BUDGET`, `DENSITY=zoom`, `KEEP`, `PREDICT=1`, `ZB_SEC`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.

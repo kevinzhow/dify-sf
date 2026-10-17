@@ -1,5 +1,5 @@
 // Top Dart functions by CPU samples, from a running profile-mode app's VM service.
-// Usage: dart vmprof.dart <app log with "VM service is listening on http://..."> <delay s> <window s>
+// Usage: dart vmprof.dart <app log with "VM service is listening on http://..."> <delay s> <window s> [marker]
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -32,6 +32,12 @@ Future<void> main(List<String> args) async {
   if (vm['isolates'] == null) { stdout.writeln('getVM: $vm'); await stdout.flush(); exit(1); }
   final iso = (vm['isolates'] as List).first['id'];
   stdout.writeln('setFlag profiler: ${jsonEncode(await call('setFlag', {'name': 'profiler', 'value': 'true'}))}');
+  // Optional 4th argument: wait until this line appears in the log before the delay.
+  if (args.length > 3) {
+    for (var i = 0; i < 600 && !log.readAsStringSync().contains(args[3]); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
   await Future<void>.delayed(Duration(milliseconds: (delay * 1000).round()));
   await call('clearCpuSamples', {'isolateId': iso});
   await Future<void>.delayed(Duration(milliseconds: (window * 1000).round()));

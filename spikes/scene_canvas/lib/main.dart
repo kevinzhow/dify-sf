@@ -39,6 +39,17 @@ final kRecap = int.parse(env('RECAP', '0'));
 // CULL=1 (default): only cards near the view hold a WidgetComponent (and its texture); the rest show a plain
 // placeholder quad. CULL=0: every card holds one for the whole run.
 final kCull = env('CULL', '1') == '1';
+// Zoom-back tuning: CAP_BUDGET captures started per frame; DENSITY=zoom captures at the zoom's density (below 1x
+// too, cheaper when zoomed out); KEEP=<n> keeps captures beyond the drop margin while fewer than n are held;
+// PREDICT=1 widens the capture margin to where a zoom-out is heading.
+final kCapBudget = int.parse(env('CAP_BUDGET', '24'));
+final kDensityZoom = env('DENSITY', 'fixed') == 'zoom';
+final kKeep = int.parse(env('KEEP', '0'));
+final kPredict = env('PREDICT', '0') == '1';
+// OVERVIEW=1: every card also gets a half-density capture, made in the background a few per frame (nearest first)
+// and kept as its placeholder's texture; at or below 0.5x zoom no full-density captures are started.
+final kOverview = env('OVERVIEW', '0') == '1';
+final kOverviewBudget = int.parse(env('OV_BUDGET', '6'));
 final kPhases = env('PHASES', 'pan,zoom,edits,drag,sharpen').split(',').toSet();
 final kBench = (Platform.environment['BENCH'] ?? const String.fromEnvironment('BENCH', defaultValue: 'true')) == 'true';
 
@@ -112,6 +123,7 @@ abstract mixin class CanvasHandle {
   Future<void> sharpen();
   int get liveWidgets;
   Map<String, Object> get stats => const {};
+  int get pendingVisible => 0;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -232,6 +244,11 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   int maxAttached = 0;
   int attachedTotal = 0;
   late final UnlitMaterial placeholderMaterial;
+  final placeholders = <UnlitMaterial>[];
+  final hasOverview = <bool>[];
+  final overviewQueue = <int>[];
+  final overviewInFlight = <int, WidgetComponent>{};
+  int overviewsDone = 0;
   Node? staticEdges;
   Node? liveEdges;
   Set<int> liveEdgeIds = {};
@@ -259,10 +276,24 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
         comps.add(null);
         if (widget.withCards) {
           // Stands in for the card until (and while not) it has a capture; just behind where the capture draws.
-          n.add(Node(mesh: Mesh(cardQuad(), placeholderMaterial))..position = vm.Vector3(0, 0, 0.05));
+          final m = kOverview
+              ? (UnlitMaterial()
+                  ..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1)
+                  ..alphaMode = AlphaMode.blend
+                  ..displayReferred = true)
+              : placeholderMaterial;
+          placeholders.add(m);
+          hasOverview.add(false);
+          n.add(Node(mesh: Mesh(cardQuad(), m))..position = vm.Vector3(0, 0, 0.05));
           if (!kCull) _attach(i, dpr);
         }
         if (kCards && widget.withCards) scene.add(n);
+      }
+      if (kOverview && widget.withCards) {
+        final c = widget.view.center;
+        overviewQueue
+          ..addAll(List.generate(g.nodes.length, (i) => i))
+          ..sort((a, b) => (g.nodes[a].center - c).distanceSquared.compareTo((g.nodes[b].center - c).distanceSquared));
       }
       _rebuildEdges();
       setState(() => ready = true);
@@ -314,7 +345,8 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   /// (small zoom steps do not recapture).
   double densityForZoom() {
     final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
-    return dpr * pow(2, (log(max(1.0, widget.view.scale)) / ln2).ceil()).toDouble();
+    final scale = kDensityZoom ? max(0.25, widget.view.scale) : max(1.0, widget.view.scale);
+    return dpr * pow(2, (log(scale) / ln2).ceil()).toDouble();
   }
 
   // The card captures itself after its first paint (NodeCard's post-frame callback).
@@ -335,24 +367,96 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
 
   // Below this zoom cards are too small to read: placeholders only, no new captures.
   static const lodScale = 0.3;
+  // The overview capture is exact up to this zoom.
+  static const overviewMaxScale = 0.5;
+
+  void _overviewStep() {
+    if (!kOverview) return;
+    final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    while (overviewInFlight.length < kOverviewBudget && overviewQueue.isNotEmpty) {
+      final i = overviewQueue.removeAt(0);
+      late final WidgetComponent c;
+      c = WidgetComponent.bindOnly(
+        child: ExcludeSemantics(
+          child: NodeCard(node: g.nodes[i], onPainted: () => c.controller.requestCapture()),
+        ),
+        size: const Size(kNodeW, kNodeH),
+        pixelRatio: dpr * overviewMaxScale,
+        update: WidgetUpdatePolicy.manual,
+        input: WidgetInput.manual,
+        bind: (texture) {
+          // The wrapped texture keeps its image alive after the component (and its host) is gone.
+          placeholders[i]
+            ..baseColorTexture = GpuTextureSource(texture)
+            ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+          if (!hasOverview[i]) overviewsDone++;
+          hasOverview[i] = true;
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            cards[i].removeComponent(c);
+            overviewInFlight.remove(i);
+          });
+        },
+      );
+      overviewInFlight[i] = c;
+      cards[i].addComponent(c);
+    }
+  }
+
   // Captures started per frame, so a fast pan spreads its work.
-  static const attachBudget = 24;
+  static final attachBudget = kCapBudget;
+  Offset? lastCenter;
+  double lastViewScale = 0;
+  int lastMove = 0;
+  double lastScale = 0;
+
+  /// Cards on screen that still show their placeholder (for the zoom-back measurement).
+  @override
+  int get pendingVisible {
+    if (widget.view.scale < lodScale || viewport.isEmpty) return 0;
+    final view = visibleRect(widget.view, viewport);
+    var n = 0;
+    for (var i = 0; i < cards.length; i++) {
+      if (view.overlaps(g.nodes[i].rect) && comps[i]?.controller.texture == null && !(kOverview && hasOverview[i])) {
+        n++;
+      }
+    }
+    return n;
+  }
 
   /// Keeps a WidgetComponent on the cards within half a viewport of the view and drops those beyond a whole one.
   void _residency() {
     if (!kCull || !widget.withCards || viewport.isEmpty) return;
     final v = widget.view;
+    // With overviews every card already shows real content, so capture work waits until the view rests.
+    final now = DateTime.now().microsecondsSinceEpoch;
+    if (v.center != lastCenter || v.scale != lastViewScale) lastMove = now;
+    lastCenter = v.center;
+    lastViewScale = v.scale;
+    final moving = now - lastMove < 150000;
+    if (kOverview && moving && initialTarget >= 0) return;
+    _overviewStep();
     final view = visibleRect(v, viewport);
-    final keep = view.inflate(max(view.width, view.height) / 2);
+    var keep = view.inflate(max(view.width, view.height) / 2);
+    if (kPredict && lastScale > 0 && v.scale < lastScale) {
+      // Zooming out: also cover where the view will be in about 15 frames at this rate.
+      final ahead = max(lodScale, v.scale * pow(v.scale / lastScale, 15));
+      keep = keep.expandToInclude(visibleRect(View2D(v.center, ahead.toDouble()), viewport));
+    }
+    lastScale = v.scale;
     final drop = view.inflate(max(view.width, view.height));
     final density = densityForZoom();
     var budget = initialTarget < 0 ? 1 << 30 : attachBudget;
+    // Releases are spread too: each one unmounts a hosted card.
+    var releases = initialTarget < 0 ? 1 << 30 : max(8, attachBudget);
     var first = 0;
     for (var i = 0; i < cards.length; i++) {
       final r = g.nodes[i].rect;
       if (comps[i] != null) {
-        if (!drop.overlaps(r) && !liveDrag(i)) _detach(i);
-      } else if (keep.overlaps(r) && v.scale >= lodScale && budget > 0) {
+        if (!drop.overlaps(r) && !liveDrag(i) && attached > kKeep && releases > 0) {
+          _detach(i);
+          releases--;
+        }
+      } else if (keep.overlaps(r) && v.scale >= (kOverview ? overviewMaxScale : lodScale) && budget > 0) {
         _attach(i, density);
         budget--;
         first++;
@@ -405,7 +509,14 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   }
 
   @override
-  void editTitle(int i, String title) => g.nodes[i].title.value = title;
+  void editTitle(int i, String title) {
+    g.nodes[i].title.value = title;
+    if (kOverview && !overviewInFlight.containsKey(i)) {
+      overviewQueue
+        ..remove(i)
+        ..insert(0, i);
+    }
+  }
 
   @override
   void beginDrag(int i) {
@@ -463,7 +574,11 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   int get liveWidgets => attached;
 
   @override
-  Map<String, Object> get stats => {'maxAttached': maxAttached, 'attachedTotal': attachedTotal};
+  Map<String, Object> get stats => {
+    'maxAttached': maxAttached,
+    'attachedTotal': attachedTotal,
+    if (kOverview) 'overviewsDone': overviewsDone,
+  };
 
   Camera camera() {
     final v = widget.view;
@@ -752,6 +867,66 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     stdout.writeln('PERF ${jsonEncode(s)}');
   }
 
+  /// Zoomed in to 2x on the middle of the graph (text made crisp), then a 1 s zoom out to 0.35x and hold: how many
+  /// on-screen cards show a placeholder, and for how long.
+  Future<void> _zoomBack() async {
+    if (kOverview) {
+      // Background overview captures: record the frames while they run, and how long they take.
+      final sw0 = Stopwatch()..start();
+      final p = Phase('warmup', 0);
+      current = p;
+      while ((canvas.stats['overviewsDone'] as int? ?? 0) < kNodes && sw0.elapsed.inSeconds < 20) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      current = null;
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final w = Phase('warmup', sw0.elapsedMilliseconds / 1000)..timings.addAll(p.timings);
+      final sum = summarize(w)..['overviewMs'] = sw0.elapsedMilliseconds;
+      results.add(sum);
+      stdout.writeln('PERF ${jsonEncode(sum)}');
+    }
+    final saved = (view.center, view.scale);
+    view
+      ..center = const Offset(3700, 3000)
+      ..scale = 2;
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    await canvas.sharpen();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    // ZB_SEC: how long the zoom out takes (0 = a jump, like a zoom-to-fit button).
+    const start = 0.3;
+    final end = start + double.parse(env('ZB_SEC', '1'));
+    stdout.writeln('ZB_START');
+    final samples = <(double, int)>[];
+    // Screenshots during the zoom, just after it ends, and later.
+    const shotsAt = [0.8, 1.35, 1.6, 2.2];
+    final taken = <double>{};
+    await _phase('zoomback', 2.5, (t) {
+      final u = end <= start ? (t >= start ? 1.0 : 0.0) : ((t - start) / (end - start)).clamp(0.0, 1.0);
+      view.scale = 2 * pow(0.35 / 2, u).toDouble();
+      if (t >= start) samples.add((t, canvas.pendingVisible));
+      for (final at in shotsAt) {
+        if (t >= at && !taken.contains(at)) {
+          taken.add(at);
+          unawaited(_shot('zoomback-${(at * 1000).round()}ms'));
+        }
+      }
+    });
+    final pending = samples.where((x) => x.$2 > 0).toList();
+    final extra = <String, Object>{
+      'maxPending': pending.isEmpty ? 0 : pending.map((x) => x.$2).reduce(max),
+      'framesWithPending': pending.length,
+      'framesSampled': samples.length,
+      'pendingAfterZoomMs': pending.isEmpty ? 0 : max(0, ((pending.last.$1 - end) * 1000).round()),
+      'pendingCardFrames': pending.fold<int>(0, (a, x) => a + x.$2),
+    };
+    results.last.addAll(extra);
+    stdout.writeln('ZOOMBACK ${jsonEncode(extra)}');
+    view
+      ..center = saved.$1
+      ..scale = saved.$2;
+    await _shot('after-zoomback');
+  }
+
   Future<void> _shot(String name) async {
     await SchedulerBinding.instance.endOfFrame;
     final dir = Platform.environment['SHOTS'] ?? '/tmp/scene_canvas';
@@ -772,6 +947,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     await Future<void>.delayed(const Duration(seconds: 1));
     await _shot('start');
     final home = view.center;
+    if (kPhases.contains('zoomback')) await _zoomBack();
     // Pan: a 600 px/s diagonal sweep and back.
     await _phase('pan', 4, (t) {
       final s = sin(t * pi / 2);
