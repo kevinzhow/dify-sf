@@ -3,7 +3,7 @@ import CollabCore
 import CollabInvariants
 @testable import CollabSim
 
-@Suite("Named scenarios (S1-S8)")
+@Suite("Named scenarios (S1-S12)")
 struct ScenarioTests {
     @Test(arguments: 0..<Scenarios.all.count)
     func scenario(_ i: Int) {
@@ -29,6 +29,9 @@ struct FuzzTests {
         // Make sure the profile genuinely exercised the hard paths.
         #expect(report.stats["op.committed"] > 10_000)
         #expect(report.stats["op.rejected"] > 0)
+        // Protocol 1.6: restores happen, and clients older than 1.6 are kept off them.
+        #expect(report.stats["restore.issued"] > 100)
+        #expect(report.stats["sync.legacyStreamEnded"] > 0)
     }
 
     @Test func runsAreDeterministic() {
@@ -51,7 +54,9 @@ struct MutationTests {
     }
     @Test func missingBrokenMarkersCaughtByI4() {
         let r = Fuzz.runMany(from: 1, count: 300, defects: .skipBrokenMarkers)
-        #expect(r.failureKinds["I4", default: 0] > 100)
+        // Checked while running ("I4 server") and at the end ("I4"). Restores (1.6) make some dangling references valid
+        // again before the end, so the online check sees more of them.
+        #expect(r.failureKinds["I4 server", default: 0] > 100 && r.failureKinds["I4", default: 0] > 50)
     }
     @Test func noRetransmitCaughtByConvergenceAndI5() {
         let r = Fuzz.runMany(from: 1, count: 300, defects: .clientNeverResends)
@@ -71,6 +76,18 @@ struct MutationTests {
         // ... and the named 3-step regression scenario fails by itself on the mutant, passes on the real thing.
         #expect(!Scenarios.equalValueTrace(defects: .equalValueRestamps).passed)
         #expect(Scenarios.equalValueTrace(defects: []).passed)
+    }
+    @Test func restoreWithoutStampsIsCaughtByI2() {
+        #expect(!Scenarios.s12_staleWriteAfterRestore(defects: .restoreSkipsStamps).passed)
+        #expect(Scenarios.s12_staleWriteAfterRestore(defects: []).passed)
+        let r = Fuzz.runMany(from: 1, count: 2000, defects: .restoreSkipsStamps)
+        #expect(r.failureKinds["I2", default: 0] > 0)
+    }
+    @Test func restoredEdgeToADeletedNodeIsCaughtByI4() {
+        #expect(!Scenarios.s12_restoreSkipsEdgeToDeletedNode(defects: .restoreIgnoresEndpoints).passed)
+        #expect(Scenarios.s12_restoreSkipsEdgeToDeletedNode(defects: []).passed)
+        let r = Fuzz.runMany(from: 1, count: 2000, defects: .restoreIgnoresEndpoints)
+        #expect(r.failureKinds["I4", default: 0] > 0)
     }
     @Test func ackBeforeFsyncCaughtByI1() {
         let r = Fuzz.runMany(from: 1, count: 300, lossyDisk: true)

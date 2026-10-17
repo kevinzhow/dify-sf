@@ -115,16 +115,28 @@ public enum Invariants {
         // are exactly the registers it changed (for a delete: the node itself plus every field it rewrote).
         // Same-value writes changed nothing, so they have no targets. Layout (moveNode) has none either.
         for e in log {
+            // A restore's own targets are the fields it rewrote in OTHER nodes. The restored node itself had no content
+            // between its delete and the restore, and what it had before the delete was checked with the delete.
+            var restored: NodeID?
             switch e.op {
             case .setField, .removeNode, .updateItem, .removeItem: break
+            case .restoreNode(let n, _): restored = n.id
             default: continue
             }
             guard e.base + 1 < e.seq else { continue }
+            let targets = touches[e.seq - 1].filter { restored == nil || ($0.node != restored && $0.field != nil) }
             for later in log[e.base..<(e.seq - 1)] where later.client != e.client {
-                for t in touches[e.seq - 1] {
+                for t in targets {
                     for u in touches[later.seq - 1] where u.node == t.node {
                         let hit = t.field == nil || (u.field != nil && u.field!.overlaps(t.field!))
                         guard hit else { continue }
+                        // The writer restored this node after the foreign write: its restore passed the stale check
+                        // against the delete (and the delete against everything before it), so it had seen it.
+                        let restoredSince = log[later.seq..<(e.seq - 1)].contains { mine in
+                            guard mine.client == e.client, case .restoreNode(let n, _) = mine.op else { return false }
+                            return n.id == t.node
+                        }
+                        if restoredSince { continue }
                         // A register keeps only its last write. If the writer itself wrote an overlapping register after the
                         // foreign write (its own op passed the check against everything before it), the foreign value
                         // had already been seen and deliberately replaced: bases need not be monotone.
@@ -144,7 +156,7 @@ public enum Invariants {
         var lastPos: [NodeID: (Int, Int)] = [:]
         for e in log {
             switch e.op {
-            case .addNode(let n): lastPos[n.id] = (n.x, n.y)
+            case .addNode(let n), .restoreNode(let n, _): lastPos[n.id] = (n.x, n.y)
             case .moveNode(let id, let x, let y): lastPos[id] = (x, y)
             default: break
             }
@@ -208,10 +220,14 @@ public enum Invariants {
             }
         }
 
-        // I6: same-value writes are never conflicts: they must all end up committed.
+        // I6: same-value writes are never conflicts: they must all end up committed. (The generator's premise is that such
+        // a register only ever receives one constant. A restore (1.6) rewrites the whole node, and may bring it back
+        // without that register; a stale write then is a real change, and its conflict names the restore.)
         for key in ev.sameValueOps.sorted() {
             for t in ev.terminals[key] ?? [] {
-                if case .rejected(.conflict(let c)) = t { v.append("I6: same-value write \(key.client)#\(key.cseq) was rejected as a conflict: \(c)") }
+                guard case .rejected(.conflict(let c)) = t else { continue }
+                if c.seq >= 1, c.seq <= log.count, case .restoreNode = log[c.seq - 1].op { continue }
+                v.append("I6: same-value write \(key.client)#\(key.cseq) was rejected as a conflict: \(c)")
             }
         }
         return v

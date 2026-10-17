@@ -121,7 +121,7 @@ extension FieldKey: Codable {
 // MARK: - Op
 
 extension Op: Codable {
-    enum CodingKeys: String, CodingKey { case t, node, edge, x, y, field, value, path, item, itemId, after }
+    enum CodingKeys: String, CodingKey { case t, node, edge, edges, x, y, field, value, path, item, itemId, after }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -165,6 +165,10 @@ extension Op: Codable {
             try c.encode(path, forKey: .path)
             try c.encode(itemId, forKey: .itemId)
             try c.encode(v, forKey: .value)
+        case .restoreNode(let n, let edges):
+            try c.encode("restoreNode", forKey: .t)
+            try c.encode(n, forKey: .node)
+            try c.encode(edges, forKey: .edges)
         }
     }
 
@@ -191,6 +195,8 @@ extension Op: Codable {
         case "updateItem":
             self = .updateItem(try c.decode(String.self, forKey: .node), path: try c.decode([String].self, forKey: .path),
                                id: try c.decode(String.self, forKey: .itemId), value: try c.decode(Value.self, forKey: .value))
+        case "restoreNode":
+            self = .restoreNode(try c.decode(Node.self, forKey: .node), edges: try c.decodeIfPresent([Edge].self, forKey: .edges) ?? [])
         case let other: throw bad(.init(codingPath: c.codingPath, debugDescription: "unknown op type \(other)"))
         }
     }

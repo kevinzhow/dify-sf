@@ -143,11 +143,44 @@ public struct StreamOpen: Hashable, Sendable {
     public var from: Int?
     /// Client-side stream generation (not sent on the wire; lets drivers ignore events of dead streams).
     public var generation: Int
-    public init(client: ClientID?, lastEventId: Int?, from: Int?, generation: Int = 0) {
+    /// `proto` query parameter (protocol 1.6): the protocol version the client implements. nil = a client older than
+    /// 1.6, which never receives a `restoreNode` commit (see `StreamCompat`).
+    public var proto: String?
+    public init(client: ClientID?, lastEventId: Int?, from: Int?, generation: Int = 0, proto: String? = protocolVersion) {
         self.client = client
         self.lastEventId = lastEventId
         self.from = from
         self.generation = generation
+        self.proto = proto
+    }
+}
+
+/// The protocol version this code implements (docs/protocol.md).
+public let protocolVersion = "1.6"
+
+/// Keeping event streams of clients older than 1.6 free of ops they cannot decode. Such a stream (no `proto`, or
+/// `proto` < 1.6) never carries a `restoreNode` commit: a catch-up range that contains one is answered with a snapshot
+/// at head instead of a replay, and a live `restoreNode` commit ends the stream (the client reconnects and catches up
+/// with a snapshot). Both are things every client already handles (protocol section 5).
+public enum StreamCompat {
+    /// Parses a `proto` value (`major.minor`). nil = not a version (the server answers 400).
+    public static func parse(_ proto: String) -> (major: Int, minor: Int)? {
+        let parts = proto.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }),
+              let major = Int(parts[0]), let minor = Int(parts[1]) else { return nil }
+        return (major, minor)
+    }
+
+    /// True when a stream opened with `proto` may carry `restoreNode` commits.
+    public static func acceptsRestore(_ proto: String?) -> Bool {
+        guard let p = proto.flatMap(parse) else { return false }
+        return p.major > 1 || (p.major == 1 && p.minor >= 6)
+    }
+
+    /// True when `op` may be sent as a commit event on a stream opened with `proto`.
+    public static func streamCarries(_ op: Op, proto: String?) -> Bool {
+        if case .restoreNode = op { return acceptsRestore(proto) }
+        return true
     }
 }
 

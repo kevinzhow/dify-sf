@@ -59,6 +59,7 @@ public final class HTTPTransport: Sendable {
     public func stream(_ o: StreamOpen, headTimeout: Duration, onEvent: @Sendable (StreamEvent) async -> Void) async throws {
         var q = "client=\(o.client ?? "")"
         if let f = o.from { q += "&from=\(f)" }
+        if let p = o.proto { q += "&proto=\(p)" }
         var req = HTTPClientRequest(url: "\(eventsBase)/v1/docs/\(doc)/events?\(q)")
         req.method = .GET
         req.headers.add(name: "Accept", value: "text/event-stream")

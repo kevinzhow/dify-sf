@@ -86,6 +86,37 @@ extension Value {
         }
     }
 
+    /// Every broken marker contained in this value, recursively.
+    var brokenRefs: [OutputRef] {
+        switch self {
+        case .brokenRef(let r): return [r]
+        case .list(let items): return items.flatMap(\.brokenRefs)
+        case .items(let items): return items.flatMap { $0.value.brokenRefs }
+        case .map(let m): return m.keys.sorted().flatMap { m[$0]!.brokenRefs }
+        default: return []
+        }
+    }
+
+    func hasBrokenRef(where matches: (OutputRef) -> Bool) -> Bool { brokenRefs.contains(where: matches) }
+
+    /// Turns every broken marker that `matches` back into a live reference (protocol 1.6, restoring a node).
+    func reviving(where matches: (OutputRef) -> Bool) -> Value {
+        normalizingRefs { r, live in live || matches(r) }
+    }
+
+    /// Rewrites every reference, live or broken, into the form `live(ref, isLiveNow)` decides (true = `$ref`, false =
+    /// `$broken`). Used for the config of a restored node: a reference is live iff its target exists and declares it.
+    func normalizingRefs(_ live: (OutputRef, Bool) -> Bool) -> Value {
+        switch self {
+        case .ref(let r): return live(r, true) ? self : .brokenRef(r)
+        case .brokenRef(let r): return live(r, false) ? .ref(r) : self
+        case .list(let items): return .list(items.map { $0.normalizingRefs(live) })
+        case .items(let items): return .items(items.map { Item(id: $0.id, value: $0.value.normalizingRefs(live)) })
+        case .map(let m): return .map(m.mapValues { $0.normalizingRefs(live) })
+        default: return self
+        }
+    }
+
     /// Structural problems that make a value unwritable: duplicate/empty item ids, reserved map keys.
     var structuralProblem: String? {
         switch self {
@@ -164,26 +195,38 @@ enum ConfigTree {
 
     /// Rewrites every live reference that `matches` into a broken marker; returns the registers it changed.
     static func breakRefs(in cfg: inout [String: Value], matching matches: (OutputRef) -> Bool, prefix: [String] = []) -> [FieldKey] {
+        rewrite(in: &cfg, prefix: prefix, affects: { $0.hasRef(where: matches) }, transform: { $0.breaking(where: matches) })
+    }
+
+    /// Turns every broken marker that `matches` back into a live reference (protocol 1.6); returns the registers it changed.
+    static func reviveRefs(in cfg: inout [String: Value], matching matches: (OutputRef) -> Bool, prefix: [String] = []) -> [FieldKey] {
+        rewrite(in: &cfg, prefix: prefix, affects: { $0.hasBrokenRef(where: matches) }, transform: { $0.reviving(where: matches) })
+    }
+
+    /// Applies `transform` to every register (nearest map-key path for atomic values, `(list path, item id)` for items of
+    /// keyed lists) whose value `affects` holds for; returns those registers so the caller can version them.
+    private static func rewrite(in cfg: inout [String: Value], prefix: [String], affects: (Value) -> Bool,
+                                transform: (Value) -> Value) -> [FieldKey] {
         var changed: [FieldKey] = []
         for key in cfg.keys.sorted() {
             let v = cfg[key]!
             let path = prefix + [key]
             switch v {
             case .map(var m):
-                let sub = breakRefs(in: &m, matching: matches, prefix: path)
+                let sub = rewrite(in: &m, prefix: path, affects: affects, transform: transform)
                 if !sub.isEmpty {
                     cfg[key] = .map(m)
                     changed += sub
                 }
-            case .ref, .list:
-                if v.hasRef(where: matches) {
-                    cfg[key] = v.breaking(where: matches)
+            case .ref, .brokenRef, .list:
+                if affects(v) {
+                    cfg[key] = transform(v)
                     changed.append(.config(path))
                 }
             case .items(let items):
                 var out = items
-                for i in out.indices where out[i].value.hasRef(where: matches) {
-                    out[i].value = out[i].value.breaking(where: matches)
+                for i in out.indices where affects(out[i].value) {
+                    out[i].value = transform(out[i].value)
                     changed.append(.item(path, out[i].id))
                 }
                 if out != items { cfg[key] = .items(out) }

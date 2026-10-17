@@ -27,13 +27,17 @@ public enum Scenarios {
         s9_thirtyUsersSameValue, s9_staleSameValueIsNoConflict, s9_sameValueDifferentOneStillConflicts, s9_equalValueWriteDoesNotLaunderLaterWrite,
         s10_itemInsertsNeverConflict, s10_itemRemovesAndUpdates, s10_staleListReplaceVsInsert, s10_removeAlreadyRemovedItem,
         s11_positionIsLastWriterWins, s11_moveDoesNotBlockDelete, s11_moveOfDeletedNode,
+        s12_undoOwnDelete, { s12_staleWriteAfterRestore(defects: []) }, { s12_restoreSkipsEdgeToDeletedNode(defects: []) },
+        s12_staleRestoreOfAnothersDelete, s12_restoreConflictsWithUnseenCascade, s12_restoreBeforeTheDeleteIsConfirmed,
+        s12_oldClientNeverSeesARestore,
     ]
 
     // MARK: helpers
 
     static func world(clients: Int = 2, volatile: Bool = false, snapshotEvery: Int = 64, drop: Double = 0,
-                      nodes: Int = 5, defects: ProtocolDefects = []) -> World {
+                      nodes: Int = 5, defects: ProtocolDefects = [], legacy: Set<Int> = []) -> World {
         var cfg = SimConfig()
+        cfg.legacySlots = legacy
         cfg.clientCount = clients
         cfg.initialNodes = nodes
         cfg.snapshotEvery = snapshotEvery
@@ -653,5 +657,155 @@ public enum Scenarios {
         w.drain()
         r.expect(isCommitted(w.terminals("c0", del)) && isRejected(w.terminals("c1", mv), "nodeDeleted"), "moving a deleted node: explicit nodeDeleted")
         return finish("S11c move of a node deleted concurrently", &w, &r)
+    }
+
+    // MARK: S12 - restoring a deleted node (protocol 1.6)
+
+    /// What an undo sends: the node as client `i` sees it now, with its edges.
+    static func restoreOp(_ w: World, _ i: Int, _ id: NodeID) -> Op {
+        let v = w.slots[i].client!.view
+        return .restoreNode(v.nodes[id]!, edges: v.edges.values.filter { $0.source == id || $0.target == id }.sorted { $0.id < $1.id })
+    }
+    static func ref(_ n: NodeID) -> Value { .ref(OutputRef(node: n, output: "out")) }
+    static func broken(_ n: NodeID) -> Value { .brokenRef(OutputRef(node: n, output: "out")) }
+
+    static func s12_undoOwnDelete() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world()
+        w.userEdit(1, .setField("n3", .config(["inputs"]), .list([ref("n2"), ref("n1")])))
+        w.userEdit(1, .setField("n4", .config(["vars", "a"]), ref("n2")))
+        w.userEdit(1, .addEdge(Edge(id: "e1", source: "n2", target: "n3")))
+        w.userEdit(1, .addEdge(Edge(id: "e2", source: "n1", target: "n2")))
+        w.drain()
+        let undo = restoreOp(w, 0, "n2")
+        let del = w.userEdit(0, .removeNode("n2"))!
+        w.drain()
+        r.expect(w.serverField("n3", "inputs") == .list([broken("n2"), ref("n1")]), "the delete broke the references")
+        let res = w.userEdit(0, undo)!
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", del)) && isCommitted(w.terminals("c0", res)), "delete and its undo both commit")
+        let doc = w.serverDoc!
+        r.expect(doc.nodes["n2"] != nil && doc.deletedNodes["n2"] == nil, "the node is back and no longer tombstoned")
+        r.expect(Set(doc.edges.keys) == ["e1", "e2"] && doc.deletedEdges.isEmpty, "both edges are back with their ids")
+        r.expect(w.serverField("n3", "inputs") == .list([ref("n2"), ref("n1")]), "list reference is live again")
+        r.expect(w.serverField("n4", "vars") == .map(["a": ref("n2")]), "nested reference is live again")
+        let again = w.userEdit(1, prompt("n2", "after undo"))!
+        w.drain()
+        r.expect(isCommitted(w.terminals("c1", again)), "the restored node can be edited by someone who saw the restore")
+        return finish("S12 undo of one's own delete restores node, edges and references", &w, &r)
+    }
+
+    /// A writer whose base predates the restore must not overwrite the restored content. Fails with `restoreSkipsStamps`.
+    public static func s12_staleWriteAfterRestore(defects: ProtocolDefects) -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world(clients: 3, defects: defects)
+        w.dropLink(2)  // C is offline (a stale tab) for all of this
+        w.userEdit(1, prompt("n2", "B's work"))
+        w.drain()
+        let undo = restoreOp(w, 0, "n2")
+        w.userEdit(0, .removeNode("n2"))
+        w.drain()
+        let res = w.userEdit(0, undo)!
+        w.drain()
+        let late = w.userEdit(2, prompt("n2", "C's stale draft"))!  // based on what C saw before B's write
+        w.restoreLink(2)
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", res)), "restore committed")
+        r.expect(isRejected(w.terminals("c2", late), "conflict"), "C never saw B's write nor the restore: its write is a conflict")
+        r.expect(w.serverField("n2", "prompt") == .string("B's work"), "B's work came back with the node and survives")
+        return finish("S12b stale write after a restore is a conflict", &w, &r)
+    }
+
+    /// The other end of an edge was deleted meanwhile: the edge stays deleted, the node comes back. Fails with
+    /// `restoreIgnoresEndpoints`.
+    public static func s12_restoreSkipsEdgeToDeletedNode(defects: ProtocolDefects) -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world(defects: defects)
+        w.userEdit(0, .addEdge(Edge(id: "e1", source: "n2", target: "n3")))
+        w.userEdit(0, .addEdge(Edge(id: "e2", source: "n1", target: "n2")))
+        w.userEdit(0, .setField("n2", .config(["inputs"]), ref("n3")))
+        w.drain()
+        let undo = restoreOp(w, 0, "n2")
+        w.userEdit(0, .removeNode("n2"))
+        w.drain()
+        w.userEdit(1, .removeNode("n3"))
+        w.drain()
+        let res = w.userEdit(0, undo)!
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", res)), "restore commits although one edge cannot come back")
+        r.expect(Set(w.serverDoc!.edges.keys) == ["e2"], "only the edge whose other end still exists is back")
+        r.expect(w.serverDoc!.deletedEdges["e1"] != nil, "the other edge stays deleted")
+        r.expect(w.serverField("n2", "inputs") == broken("n3"), "the restored node's reference to the deleted node is broken")
+        return finish("S12c restore skips an edge whose other end was deleted", &w, &r)
+    }
+
+    static func s12_staleRestoreOfAnothersDelete() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world()
+        let before = w.slots[0].client!.lastSeq
+        let undo = restoreOp(w, 0, "n2")
+        w.userEdit(1, .removeNode("n2"))
+        w.drain()
+        let stale = w.userEdit(0, undo, base: before)  // a draft older than B's delete: the local pre-check refuses it
+        r.expect(stale == nil && w.rec.localRefusals.last.map { $0 == ("c0", "conflict") } == true,
+                 "restoring a delete someone else made after the op's base is a conflict (refused locally, as the server would)")
+        r.expect(w.serverDoc!.nodes["n2"] == nil, "the node stays deleted")
+        let seen = w.userEdit(0, undo)!
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", seen)), "restoring it after having seen the delete is allowed")
+        return finish("S12d restore of another user's delete needs to have seen it", &w, &r)
+    }
+
+    static func s12_restoreConflictsWithUnseenCascade() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world()
+        w.userEdit(1, .setField("n4", .config(["inputs"]), .list([ref("n2"), ref("n3")])))
+        w.drain()
+        let undo = restoreOp(w, 0, "n2")
+        w.userEdit(0, .removeNode("n2"))
+        w.drain()
+        w.userEdit(1, .removeNode("n3"))  // rewrites n4.inputs again, concurrently with A's undo
+        let stale = w.userEdit(0, undo)!
+        w.flush(slot: 1, toServer: true)  // B's delete is sequenced first
+        w.flush(slot: 0, toServer: true)
+        w.drain()
+        r.expect(isRejected(w.terminals("c0", stale), "conflict"), "the restore would rewrite a field someone else wrote after its base")
+        let fresh = w.userEdit(0, undo)!
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", fresh)), "re-applied on the latest version it commits")
+        r.expect(w.serverField("n4", "inputs") == .list([ref("n2"), broken("n3")]), "only the restored node's reference is live again")
+        return finish("S12e restore vs an unseen write to a field it rewrites", &w, &r)
+    }
+
+    static func s12_restoreBeforeTheDeleteIsConfirmed() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world()
+        w.userEdit(0, .addEdge(Edge(id: "e1", source: "n2", target: "n3")))
+        w.drain()
+        let undo = restoreOp(w, 0, "n2")
+        let del = w.userEdit(0, .removeNode("n2"))!
+        let res = w.userEdit(0, undo)!  // undo pressed before the delete reached the server
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", del)) && isCommitted(w.terminals("c0", res)), "delete and undo in one batch both commit")
+        r.expect(w.serverDoc!.nodes["n2"] != nil && w.serverDoc!.edges["e1"] != nil, "node and edge are back")
+        return finish("S12f undo before the delete is confirmed", &w, &r)
+    }
+
+    static func s12_oldClientNeverSeesARestore() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world(clients: 3, legacy: [1, 2])
+        let undo = restoreOp(w, 0, "n2")
+        w.userEdit(0, .removeNode("n2"))
+        w.drain()
+        w.dropLink(2)  // c2 is offline while the restore happens: its catch-up range contains it
+        let res = w.userEdit(0, undo)!
+        w.drain()
+        w.restoreLink(2)
+        r.expect(isCommitted(w.terminals("c0", res)), "restore committed")
+        r.expect(w.rec.stats["sync.legacyStreamEnded"] >= 1, "the old client's live stream was ended instead of carrying the restore")
+        let ok = w.settle()
+        r.expect(ok && w.slots[1].client!.view.nodes["n2"] != nil && w.slots[2].client!.view.nodes["n2"] != nil,
+                 "both old clients caught up with a snapshot that has the node back")
+        return finish("S12g a client older than 1.6 never receives a restoreNode commit", &w, &r)
     }
 }

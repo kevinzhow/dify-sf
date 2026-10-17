@@ -22,10 +22,57 @@ public struct Oracle {
 
     var nodes: [NodeID: ONode] = [:]
     var edges: [EdgeID: Edge] = [:]
+    /// Seq of the op that deleted each node / edge (a restore brings back exactly the edges its node's delete removed).
+    var nodeDeletedAt: [NodeID: Int] = [:]
+    var edgeDeletedAt: [EdgeID: Int] = [:]
 
     public init(_ doc: Document) {
         for n in doc.nodes.values { nodes[n.id] = Self.make(n) }
         edges = doc.edges
+        for (id, s) in doc.deletedNodes { nodeDeletedAt[id] = s.seq }
+        for (id, s) in doc.deletedEdges { edgeDeletedAt[id] = s.seq }
+    }
+
+    /// Output names a node declares (the `name` of each item of its top-level `outputs` keyed list, or the item id),
+    /// nil when it has no such list (any name is accepted).
+    func declared(_ n: ONode) -> Set<String>? {
+        guard case .items(let xs)? = n.leaves[["outputs"]] else { return nil }
+        return Set(xs.map { i -> String in
+            if case .map(let m) = i.value, case .string(let name)? = m["name"] { return name }
+            return i.id
+        })
+    }
+
+    func accepts(_ n: ONode, _ output: String) -> Bool { declared(n).map { $0.contains(output) } ?? true }
+
+    /// Rewrites every reference in `v` into the form `live(ref)` says (true = live, false = broken).
+    static func setRefs(_ v: Value, _ live: (OutputRef, Bool) -> Bool) -> (Value, changedItems: [ItemID], changed: Bool) {
+        switch v {
+        case .ref(let r): return live(r, true) ? (v, [], false) : (.brokenRef(r), [], true)
+        case .brokenRef(let r): return live(r, false) ? (.ref(r), [], true) : (v, [], false)
+        case .list(let xs):
+            let r = xs.map { setRefs($0, live) }
+            return (.list(r.map(\.0)), [], r.contains { $0.changed })
+        case .items(let items):
+            var ids: [ItemID] = []
+            var out: [Item] = []
+            for i in items {
+                let r = setRefs(i.value, live)
+                if r.changed { ids.append(i.id) }
+                out.append(Item(id: i.id, value: r.0))
+            }
+            return (.items(out), ids, !ids.isEmpty)
+        case .map(let m):
+            var changed = false
+            var out: [String: Value] = [:]
+            for (k, c) in m {
+                let r = setRefs(c, live)
+                changed = changed || r.changed
+                out[k] = r.0
+            }
+            return (.map(out), [], changed)
+        default: return (v, [], false)
+        }
     }
 
     static func make(_ n: Node) -> ONode {
@@ -85,6 +132,8 @@ public struct Oracle {
         case .removeNode(let d):
             var touches = [Touch(node: d, field: nil)]
             nodes[d] = nil
+            nodeDeletedAt[d] = e.seq
+            for (id, ed) in edges where ed.source == d || ed.target == d { edgeDeletedAt[id] = e.seq }
             edges = edges.filter { $0.value.source != d && $0.value.target != d }
             for id in nodes.keys.sorted() {
                 for path in nodes[id]!.leaves.keys.sorted(by: { $0.joined(separator: "/") < $1.joined(separator: "/") }) {
@@ -128,7 +177,49 @@ public struct Oracle {
             return [Touch(node: ed.source, field: nil), Touch(node: ed.target, field: nil)]
         case .removeEdge(let id):
             edges[id] = nil
+            edgeDeletedAt[id] = e.seq
             return []
+        case .restoreNode(let n, let restored):
+            // The node is back (its own references live iff their target exists and declares the output) and counts
+            // as a write of its whole content; its delete's edges come back where both ends exist; broken references
+            // to it that it now declares are live again.
+            guard nodes[n.id] == nil, let deletedAt = nodeDeletedAt[n.id] else { return [] }
+            let given = Self.make(n)
+            let mine = declared(given)
+            let acceptsMine = { (o: String) in mine?.contains(o) ?? true }
+            var me = given
+            for path in given.leaves.keys {
+                me.leaves[path] = Self.setRefs(given.leaves[path]!, { r, _ in
+                    if r.node == n.id { return acceptsMine(r.output) }
+                    return nodes[r.node].map { accepts($0, r.output) } ?? false
+                }).0
+            }
+            nodes[n.id] = me
+            nodeDeletedAt[n.id] = nil
+            var touches = [Touch(node: n.id, field: nil), Touch(node: n.id, field: .title), Touch(node: n.id, field: .config([]))]
+            for ed in restored where (ed.source == n.id || ed.target == n.id) && edges[ed.id] == nil
+                && edgeDeletedAt[ed.id] == deletedAt && nodes[ed.source] != nil && nodes[ed.target] != nil
+                && !edges.values.contains(where: { $0.source == ed.source && $0.sourceHandle == ed.sourceHandle
+                                                  && $0.target == ed.target && $0.targetHandle == ed.targetHandle }) {
+                edges[ed.id] = ed
+                edgeDeletedAt[ed.id] = nil
+                touches += [Touch(node: ed.source, field: nil), Touch(node: ed.target, field: nil)]
+            }
+            for id in nodes.keys.sorted() where id != n.id {
+                for path in nodes[id]!.leaves.keys.sorted(by: { $0.joined(separator: "/") < $1.joined(separator: "/") }) {
+                    let (nv, items, changed) = Self.setRefs(nodes[id]!.leaves[path]!, { r, live in
+                        live || (r.node == n.id && acceptsMine(r.output))
+                    })
+                    guard changed else { continue }
+                    nodes[id]!.leaves[path] = nv
+                    if case .items = nv {
+                        for i in items { touches.append(Touch(node: id, field: .item(path, i))) }
+                    } else {
+                        touches.append(Touch(node: id, field: .config(path)))
+                    }
+                }
+            }
+            return touches
         case .insertItem(let id, let path, let item, let after):
             guard nodes[id] != nil else { return [] }
             var items: [Item] = []

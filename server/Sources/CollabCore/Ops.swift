@@ -32,6 +32,11 @@ public struct Edge: Hashable, Codable, Sendable {
         self.target = target
         self.targetHandle = targetHandle
     }
+
+    /// Same endpoints and handles (two such edges would be duplicates).
+    public func sameConnection(_ o: Edge) -> Bool {
+        source == o.source && sourceHandle == o.sourceHandle && target == o.target && targetHandle == o.targetHandle
+    }
 }
 
 /// A versioned content location inside a node. Each one is a register guarded by the stale-write rule
@@ -77,6 +82,10 @@ public enum Op: Hashable, Sendable {
     case removeItem(NodeID, path: [String], id: ItemID)
     /// Replaces the value of one item.
     case updateItem(NodeID, path: [String], id: ItemID, value: Value)
+    /// Protocol 1.6: brings a deleted node back (undo of a delete), with the edges its delete removed (original ids).
+    /// The node id and those edge ids leave the tombstones; `$broken` references to the node turn back into references.
+    /// See `Document.validate` and docs/protocol.md ("Restore").
+    case restoreNode(Node, edges: [Edge])
 }
 
 /// Server version stamp: which committed op (global sequence) last wrote something, and who.
@@ -173,4 +182,9 @@ public struct ProtocolDefects: OptionSet, Sendable {
     /// An accepted equal-value write takes over the register's stamp (the TLA+ counterexample: it launders the same
     /// client's next stale write).
     public static let equalValueRestamps = ProtocolDefects(rawValue: 1 << 5)
+    /// A restore does not version the restored node (no stamps, no touch): a stale writer that never saw the restore can
+    /// overwrite it, and a stale delete can destroy it.
+    public static let restoreSkipsStamps = ProtocolDefects(rawValue: 1 << 6)
+    /// A restore re-creates its edges even when the other endpoint is deleted (edges to missing nodes).
+    public static let restoreIgnoresEndpoints = ProtocolDefects(rawValue: 1 << 7)
 }

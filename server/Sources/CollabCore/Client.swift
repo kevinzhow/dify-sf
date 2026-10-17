@@ -55,14 +55,18 @@ public struct ClientConfig: Sendable {
     public var reconnectBase: Int
     public var reconnectMax: Int
     public var maxBatch: Int
+    /// The `proto` the client announces on its event stream. nil plays a client older than 1.6 (simulator): it must
+    /// never be sent a `restoreNode` commit.
+    public var proto: String?
 
     public init(retransmitAfter: Int = 8, streamSilence: Int = 30, reconnectBase: Int = 2,
-                reconnectMax: Int = 40, maxBatch: Int = 50) {
+                reconnectMax: Int = 40, maxBatch: Int = 50, proto: String? = protocolVersion) {
         self.retransmitAfter = retransmitAfter
         self.streamSilence = streamSilence
         self.reconnectBase = reconnectBase
         self.reconnectMax = reconnectMax
         self.maxBatch = maxBatch
+        self.proto = proto
     }
 }
 
@@ -253,7 +257,7 @@ public struct Client: Sendable {
         generation += 1
         lastStreamActivity = now
         return .openStream(StreamOpen(client: id, lastEventId: hasState ? lastSeq : nil,
-                                      from: outbox.first?.cseq, generation: generation))
+                                      from: outbox.first?.cseq, generation: generation, proto: config.proto))
     }
 
     private mutating func backoffDelay(attempts: Int) -> Int {
@@ -363,6 +367,9 @@ public struct Client: Sendable {
     }
 
     private mutating func ingest(_ e: LogEntry) {
+        if !StreamCompat.streamCarries(e.op, proto: config.proto) {
+            violations.append("entry \(e.seq): \(e.op) sent on a stream opened with proto \(config.proto ?? "none")")
+        }
         do {
             try confirmed.validate(e.op, base: e.base, by: e.client, checkConflicts: false)
         } catch {

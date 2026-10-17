@@ -46,7 +46,7 @@ struct SimServer: Sendable {
     var seqr: Sequencer
     var disk: SimDisk
     /// client -> its live stream: `conn` orders connections by when the client opened them, `generation` tags events.
-    var subs: [ClientID: (conn: Int, generation: Int)] = [:]
+    var subs: [ClientID: (conn: Int, generation: Int, proto: String?)] = [:]
     let snapshotEvery: Int
     let maxReplay: Int
 
@@ -61,6 +61,8 @@ struct SimServer: Sendable {
     struct Output {
         var response: SubmitResponse?
         var events: [(to: ClientID, event: StreamEvent)] = []
+        /// Streams the server ended (a client older than 1.6 and a `restoreNode` commit), with their generation.
+        var closed: [(to: ClientID, generation: Int)] = []
     }
 
     mutating func submit(_ req: SubmitRequest) -> Output {
@@ -74,7 +76,15 @@ struct SimServer: Sendable {
         seqr = working
         var out = Output(response: batch.response)
         for e in batch.entries {
-            for c in subs.keys.sorted() { out.events.append((c, .commit(e))) }
+            for c in subs.keys.sorted() {
+                guard let sub = subs[c] else { continue }
+                if StreamCompat.streamCarries(e.op, proto: sub.proto) {
+                    out.events.append((c, .commit(e)))
+                } else {
+                    subs[c] = nil  // the client reconnects and is caught up with a snapshot
+                    out.closed.append((c, sub.generation))
+                }
+            }
         }
         return out
     }
@@ -83,10 +93,15 @@ struct SimServer: Sendable {
     mutating func open(_ o: StreamOpen, conn: Int) -> [StreamEvent] {
         guard let client = o.client else { return [] }
         if let cur = subs[client], cur.conn > conn { return [] }  // an older request overtaken by a newer one
-        subs[client] = (conn, o.generation)
+        subs[client] = (conn, o.generation, o.proto)
         let head = seqr.seq
         var events: [StreamEvent] = []
-        switch resumePlan(lastEventId: o.lastEventId, head: head, maxReplay: maxReplay) {
+        var plan = resumePlan(lastEventId: o.lastEventId, head: head, maxReplay: maxReplay)
+        if case .replay(let after) = plan,
+           disk.log.contains(where: { $0.seq > after && $0.seq <= head && !StreamCompat.streamCarries($0.op, proto: o.proto) }) {
+            plan = .snapshot
+        }
+        switch plan {
         case .replay(let after):
             events += disk.log.filter { $0.seq > after && $0.seq <= head }.map { .commit($0) }
         case .snapshot:

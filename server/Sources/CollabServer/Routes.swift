@@ -271,9 +271,24 @@ struct Routes: Sendable {
             fromParam = n
         }
         let from = fromParam
+        // Protocol 1.6: `proto` is the version the client implements; older clients never get a restoreNode commit.
+        if let p = q["proto"], StreamCompat.parse(p) == nil { throw ServerError.badRequest("bad proto") }
+        let acceptsRestore = StreamCompat.acceptsRestore(q["proto"])
 
         let sequencer = await registry.sequencer(doc)
-        let sub = try await sequencer.subscribe(lastEventId: lastEventId, maxReplay: config.maxReplay)
+        var subscription = try await sequencer.subscribe(lastEventId: lastEventId, maxReplay: config.maxReplay,
+                                                         acceptsRestore: acceptsRestore)
+        if !acceptsRestore, case .replay(let after) = subscription.plan, after < subscription.head {
+            do {
+                if try await store.logContainsOp(doc, type: "restoreNode", after: after, through: subscription.head) {
+                    subscription.plan = .snapshot  // `doc` was captured at `head` for exactly this case
+                }
+            } catch {
+                await sequencer.unsubscribe(subscription.id)
+                throw error
+            }
+        }
+        let sub = subscription
         let store = self.store
         let logger = self.logger
         var headers = HTTPFields()

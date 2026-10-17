@@ -3,7 +3,8 @@ import CollabCore
 import CollabSim
 
 // Usage: collab-sim [--runs N] [--seed S] [--profile calm|lossy|flaky|crashy|chaos]
-//                   [--mutation skipStaleCheck|skipBrokenMarkers|clientNeverResends|noDedup|sameValueConflicts|lossyDisk]
+//                   [--mutation skipStaleCheck|skipBrokenMarkers|clientNeverResends|noDedup|sameValueConflicts|
+//                               equalValueRestamps|restoreSkipsStamps|restoreIgnoresEndpoints|lossyDisk]
 //                   [--scenarios-only]
 //        collab-sim --catalog bench/catalog/A-cases.json [--catalog-runs 20] [--catalog-out results.md]
 var runs = 10_000
@@ -91,6 +92,8 @@ case "clientNeverResends": defects = .clientNeverResends
 case "noDedup": defects = .noDedup
 case "sameValueConflicts": defects = .sameValueConflicts
 case "equalValueRestamps": defects = .equalValueRestamps
+case "restoreSkipsStamps": defects = .restoreSkipsStamps
+case "restoreIgnoresEndpoints": defects = .restoreIgnoresEndpoints
 case "lossyDisk": lossy = true
 case nil: break
 default: print("unknown mutation"); exit(2)

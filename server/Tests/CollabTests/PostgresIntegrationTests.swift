@@ -64,6 +64,32 @@ struct PostgresIntegrationTests {
         }
     }
 
+    @Test func aRestoreIsDurableAndOldStreamsAreCaughtUpWithASnapshot() async throws {
+        try await withStore { store, logger in
+            let doc = try await freshDoc(store, nodes: ["a", "b"])
+            var cfg = ServerConfig.defaults
+            cfg.snapshotEvery = 1000  // recovery replays the restore from the log
+            let seqr = DocumentSequencer(docId: doc, store: store, config: cfg, logger: logger)
+            let e = Edge(id: "e", source: "a", target: "b")
+            let restore = Op.restoreNode(node("a"), edges: [e])
+            let r = try await seqr.submit(req("c", [(1, 0, .addEdge(e)), (2, 1, .removeNode("a")), (3, 2, restore)]))
+            #expect(r.results == [.ack(cseq: 1, seq: 1), .ack(cseq: 2, seq: 2), .ack(cseq: 3, seq: 3)])
+            let restarted = DocumentSequencer(docId: doc, store: store, config: cfg, logger: logger)
+            let snap = try await restarted.currentSnapshot()
+            #expect(snap.seq == 3 && snap.doc.nodes["a"] == node("a") && snap.doc.edges["e"] == e && snap.doc.deletedNodes.isEmpty)
+            #expect(try await store.entries(doc, after: 2, through: 3).map(\.op) == [restore])
+            #expect(try await store.logContainsOp(doc, type: "restoreNode", after: 0, through: 3))
+            #expect(try await store.logContainsOp(doc, type: "restoreNode", after: 2, through: 3))
+            #expect(try await !store.logContainsOp(doc, type: "restoreNode", after: 3, through: 3))
+            #expect(try await !store.logContainsOp(doc, type: "restoreNode", after: 0, through: 2))
+            // An old (1.5) stream's replay would carry the restore: the route turns it into a snapshot; the
+            // subscription captured the document for that.
+            let sub = try await restarted.subscribe(lastEventId: 1, maxReplay: 100, acceptsRestore: false)
+            #expect(sub.plan == .replay(after: 1) && sub.doc == snap.doc)
+            await restarted.unsubscribe(sub.id)
+        }
+    }
+
     @Test func twoSequencersOnOneDocumentNeverBothSequence() async throws {
         try await withStore { store, logger in
             let doc = try await freshDoc(store)

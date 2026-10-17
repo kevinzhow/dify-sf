@@ -29,6 +29,8 @@ struct Packet: Sendable {
         case open(StreamOpen, conn: Int)
         case response(SubmitResponse)
         case event(StreamEvent, generation: Int)
+        /// The server ended the stream of this generation (after the events sent before it).
+        case streamEnd(generation: Int)
     }
     var at: Int
     var tie: Int
@@ -41,6 +43,8 @@ struct Packet: Sendable {
 public struct Slot: Sendable {
     public let id: ClientID
     public let journaled: Bool
+    /// Plays a client older than protocol 1.6: no `proto` on its stream, never restores.
+    public var legacy = false
     public var client: Client?
     var durable: ClientDurable?
     public var linkUp = true
@@ -50,6 +54,8 @@ public struct Slot: Sendable {
     var linkRestoreAt: Int?
     var reconnectAt: Int?
     var reapplyQueue: [Op] = []
+    /// The node (as this user saw it) and its edges for each of its pending deletes, by cseq: what an undo restores.
+    var deleteMemo: [Int: (node: Node, edges: [Edge])] = [:]
 }
 
 /// One simulated deployment: a server, N clients, a lossy reordering network and a fault injector.
@@ -81,6 +87,14 @@ public struct World: Sendable {
     private var itemCounter = 0
     private var connCounter = 0
     private let clientConfig = ClientConfig(retransmitAfter: 8, streamSilence: 35, reconnectBase: 2, reconnectMax: 24, maxBatch: 8)
+    /// Committed deletes that can be undone: the node as its deleter saw it, its edges, and who deleted it.
+    private var restorable: [NodeID: (node: Node, edges: [Edge], by: ClientID)] = [:]
+
+    private func config(legacy: Bool) -> ClientConfig {
+        var c = clientConfig
+        if legacy { c.proto = nil }
+        return c
+    }
 
     public init(seed: UInt64, cfg: SimConfig, initial: Document? = nil, clientIDs: [ClientID]? = nil) {
         self.cfg = cfg
@@ -99,10 +113,14 @@ public struct World: Sendable {
         server = try! SimServer(disk: serverDisk, snapshotEvery: cfg.snapshotEvery, maxReplay: cfg.maxReplay, defects: cfg.defects)
         nodeCounter = cfg.initialNodes
         let ids = clientIDs ?? (0..<cfg.clientCount).map { "c\($0)" }
-        for id in ids {
+        for (k, id) in ids.enumerated() {
             let journaled = !rng.chance(cfg.volatileFraction)
-            slots.append(Slot(id: id, journaled: journaled,
-                              client: Client(id: id, journaled: journaled, defects: cfg.defects, config: clientConfig)))
+            let legacy = (cfg.legacyFraction > 0 && rng.chance(cfg.legacyFraction)) || cfg.legacySlots.contains(k)
+            var cc = clientConfig
+            if legacy { cc.proto = nil }
+            var slot = Slot(id: id, journaled: journaled, client: Client(id: id, journaled: journaled, defects: cfg.defects, config: cc))
+            slot.legacy = legacy
+            slots.append(slot)
         }
         self.rng = rng
         for i in slots.indices { boot(i) }
@@ -121,7 +139,10 @@ public struct World: Sendable {
             return
         }
         var ordered = false
-        if case .event = payload { ordered = true }
+        switch payload {
+        case .event, .streamEnd: ordered = true
+        default: break
+        }
         if !ordered, !calm, rng.chance(cfg.dropRate) {
             rec.stats.bump("net.dropped.random")
             return
@@ -227,7 +248,13 @@ public struct World: Sendable {
             }
             let out = server!.submit(req)
             if let r = out.response { enqueue(.response(r), slot: slotIndex(req.client)) }
-            sendEvents(out.events, gen: server!.subs.mapValues(\.generation))
+            var gens = server!.subs.mapValues(\.generation)
+            for (c, g) in out.closed { gens[c] = g }
+            sendEvents(out.events, gen: gens)
+            for (c, g) in out.closed {
+                rec.stats.bump("sync.legacyStreamEnded")
+                enqueue(.streamEnd(generation: g), slot: slotIndex(c))
+            }
 
         case .open(let o, let conn):
             guard server != nil, let client = o.client else { return }
@@ -241,6 +268,10 @@ public struct World: Sendable {
             let out = slots[p.slot].client!.receive(r, now: now)
             perform(out, from: p.slot)
             collect(p.slot)
+
+        case .streamEnd(let g):
+            guard slots[p.slot].client != nil else { return }
+            slots[p.slot].client!.streamClosed(generation: g, now: now)
 
         case .event(let ev, let g):
             guard slots[p.slot].client != nil else { return }
@@ -270,7 +301,10 @@ public struct World: Sendable {
             case .committed(let cseq, let seq):
                 rec.terminals[OpKey(client: id, cseq: cseq), default: []].append(.committed(seq: seq))
                 rec.stats.bump("op.committed")
+                if let m = slots[i].deleteMemo.removeValue(forKey: cseq) { restorable[m.node.id] = (m.node, m.edges, id) }
             case .rejected(let cseq, let op, let reason):
+                slots[i].deleteMemo[cseq] = nil
+                if case .restoreNode = op { rec.stats.bump("restore.rejected." + reason.name) }
                 rec.terminals[OpKey(client: id, cseq: cseq), default: []].append(.rejected(reason))
                 rec.stats.bump("op.rejected")
                 rec.stats.bump("reject." + reason.name)
@@ -281,6 +315,7 @@ public struct World: Sendable {
                     }
                 }
             case .lost(let cseq):
+                slots[i].deleteMemo[cseq] = nil
                 rec.terminals[OpKey(client: id, cseq: cseq), default: []].append(.lost)
                 rec.stats.bump("op.lost")
             case .conflictDetected:
@@ -365,7 +400,7 @@ public struct World: Sendable {
     public mutating func restartClient(_ i: Int) {
         slots[i].restartAt = nil
         guard slots[i].client == nil, let d = slots[i].durable else { return }
-        slots[i].client = Client(restoring: d, journaled: slots[i].journaled, defects: cfg.defects, config: clientConfig)
+        slots[i].client = Client(restoring: d, journaled: slots[i].journaled, defects: cfg.defects, config: config(legacy: slots[i].legacy))
         boot(i)
     }
 
@@ -415,7 +450,13 @@ public struct World: Sendable {
                         // (and then not monotone across this client's ops).
                         let last = slots[i].client!.lastSeq
                         let base = rng.chance(0.2) ? max(0, last - rng.int(1...10)) : nil
-                        userEdit(i, op, base: base, sameValue: same)
+                        var memo: (node: Node, edges: [Edge])?
+                        if case .removeNode(let id) = op, let n = slots[i].client!.view.nodes[id] {
+                            memo = (n, slots[i].client!.view.edges.values.filter { $0.source == id || $0.target == id }
+                                .sorted { $0.id < $1.id })
+                        }
+                        if case .restoreNode = op { rec.stats.bump("restore.issued") }
+                        if let cseq = userEdit(i, op, base: base, sameValue: same), let memo { slots[i].deleteMemo[cseq] = memo }
                     }
                 }
             }
@@ -447,6 +488,14 @@ public struct World: Sendable {
     private mutating func genOp(_ i: Int) -> (Op, Bool)? {
         let view = slots[i].client!.view
         let ids = view.nodes.keys.sorted()
+        // Undo of a delete (protocol 1.6): mostly the user's own, sometimes someone else's.
+        if !slots[i].legacy, rng.chance(cfg.restoreRate) {
+            let gone = restorable.keys.sorted().filter { view.nodes[$0] == nil && view.deletedNodes[$0] != nil }
+            let own = gone.filter { restorable[$0]!.by == slots[i].id }
+            if let id = rng.pick(own.isEmpty || rng.chance(0.3) ? gone : own) {
+                return (.restoreNode(restorable[id]!.node, edges: restorable[id]!.edges), false)
+            }
+        }
         if ids.count < 3 { return (newNodeOp(ids), false) }
         let roll = rng.int(0...99)
         let node = rng.pick(ids)!

@@ -199,7 +199,52 @@ public struct Document: Hashable, Sendable {
             try checkStale(id, .item(path, itemId), base: base, client: client, isSameValue: existing == value,
                            enabled: checkConflicts, defects: defects)
             if checkConflicts { try checkOutputRemoval(op, base: base, client: client) }  // renaming an output
+
+        case .restoreNode(let n, let restoredEdges):
+            try validateRestore(n, restoredEdges, base: base, client: client, checkConflicts: checkConflicts)
         }
+    }
+
+    /// Protocol 1.6 `restoreNode` (undo of a delete). The node's existence is a register whose last write is its tombstone:
+    /// restoring is refused as a stale write if someone else deleted it after `base`. Like a delete, the restore rewrites
+    /// fields of other nodes (`$broken` -> `$ref`); it conflicts with any other client's write, after `base`, to one of
+    /// those fields.
+    private func validateRestore(_ n: Node, _ restoredEdges: [Edge], base: Int, client: ClientID,
+                                 checkConflicts: Bool) throws(RejectReason) {
+        guard !n.id.isEmpty else { throw .invalid("empty node id") }
+        if nodes[n.id] != nil { throw .nodeExists(n.id) }
+        guard let tomb = deletedNodes[n.id] else { throw .nodeNotFound(n.id) }
+        for key in n.config.keys.sorted() {
+            guard !key.hasPrefix("$") else { throw .invalid("config key \(key) is reserved") }
+            // `$broken` markers are allowed here (the node comes back as it was); live and broken references are
+            // normalised when applied, so references to nodes deleted meanwhile are not an error.
+            if let p = n.config[key]!.structuralProblem { throw .invalid(p) }
+        }
+        // Only a malformed edge list is refused. An edge that cannot come back (not removed by this delete, other
+        // endpoint deleted meanwhile, duplicate connection) is skipped when applied; the rest of the restore holds.
+        var ids = Set<EdgeID>()
+        for e in restoredEdges {
+            guard !e.id.isEmpty else { throw .invalid("empty edge id") }
+            guard ids.insert(e.id).inserted else { throw .invalid("edge \(e.id) listed twice") }
+            guard e.source == n.id || e.target == n.id else { throw .invalid("edge \(e.id) does not touch node \(n.id)") }
+        }
+        guard checkConflicts else { return }
+        if tomb.seq > base && tomb.client != client {
+            throw .conflict(Conflict(node: n.id, field: nil, seq: tomb.seq, by: tomb.client))
+        }
+        let accepts = Self.acceptsOutput(of: n)
+        for other in nodes.keys.sorted() {
+            var cfg = nodes[other]!.config
+            for key in ConfigTree.reviveRefs(in: &cfg, matching: { $0.node == n.id && accepts($0.output) }) {
+                if let c = fieldConflict(other, key, base: base, client: client) { throw .conflict(c) }
+            }
+        }
+    }
+
+    /// Whether `node` can be referenced by output name `output`: it declares it, or it declares no outputs at all.
+    static func acceptsOutput(of node: Node) -> (String) -> Bool {
+        guard let outs = declaredOutputs(of: node) else { return { _ in true } }
+        return { outs.contains($0) }
     }
 
     /// Removing or renaming a declared output rewrites every field that references its name (ref -> brokenRef); like a
@@ -385,6 +430,53 @@ public struct Document: Hashable, Sendable {
             stampField(id, .item(path, itemId), stamp)
             touch(id, stamp)
             breakOutputRefs(removedName, stamp, defects)
+
+        case .restoreNode(let n, let restoredEdges):
+            applyRestore(n, restoredEdges, stamp, defects)
+        }
+    }
+
+    /// Restore: the node comes back with its references normalised (live iff the target exists and declares the
+    /// output); each listed edge comes back iff this delete removed it (same tombstone), both endpoints exist and no live
+    /// edge has the same connection, otherwise it stays deleted; `$broken` references to the node in other nodes whose
+    /// output it declares become live again. The restore counts as a content write of the whole node
+    /// (title + the whole config) by its author, so writes based on a version before it are stale.
+    private mutating func applyRestore(_ n: Node, _ restoredEdges: [Edge], _ stamp: Stamp, _ defects: ProtocolDefects) {
+        guard nodes[n.id] == nil, let tomb = deletedNodes[n.id] else { return }
+        let accepts = Self.acceptsOutput(of: n)
+        var node = n
+        for key in node.config.keys.sorted() {
+            node.config[key] = node.config[key]!.normalizingRefs { r, _ in
+                if r.node == n.id { return accepts(r.output) }
+                guard let target = nodes[r.node] else { return false }
+                return Self.acceptsOutput(of: target)(r.output)
+            }
+        }
+        deletedNodes[n.id] = nil
+        nodes[n.id] = node
+        if !defects.contains(.restoreSkipsStamps) {
+            stampField(n.id, .title, stamp)
+            stampField(n.id, .config([]), stamp)  // the empty path overlaps every config path and list item
+            touch(n.id, stamp)
+        }
+        for e in restoredEdges {
+            guard e.source == n.id || e.target == n.id, edges[e.id] == nil, deletedEdges[e.id] == tomb else { continue }
+            if !defects.contains(.restoreIgnoresEndpoints) {
+                guard nodes[e.source] != nil, nodes[e.target] != nil else { continue }  // other endpoint deleted: skipped
+            }
+            guard !edges.values.contains(where: { $0.sameConnection(e) }) else { continue }
+            edges[e.id] = e
+            deletedEdges[e.id] = nil
+            touch(e.source, stamp)
+            touch(e.target, stamp)
+        }
+        for other in nodes.keys.sorted() where other != n.id {
+            var cfg = nodes[other]!.config
+            let changed = ConfigTree.reviveRefs(in: &cfg, matching: { $0.node == n.id && accepts($0.output) })
+            guard !changed.isEmpty else { continue }
+            nodes[other]!.config = cfg
+            for key in changed { stampField(other, key, stamp) }
+            touch(other, stamp)
         }
     }
 

@@ -33,7 +33,8 @@ actor DocumentSequencer {
         var id: Int
         var head: Int
         var plan: ResumePlan
-        /// Present for `.snapshot` plans: the document at `head`, captured atomically with the registration.
+        /// The document at `head`, captured atomically with the registration: for `.snapshot` plans, and for streams of
+        /// clients older than 1.6 (whose replay may have to become a snapshot, see `StreamCompat`).
         var doc: Document?
         var live: AsyncStream<String>
     }
@@ -46,6 +47,8 @@ actor DocumentSequencer {
     /// Highest seq already pushed to subscribers.
     private var published = 0
     private var subs: [Int: AsyncStream<String>.Continuation] = [:]
+    /// Subscribers whose stream must not carry `restoreNode` commits (clients older than protocol 1.6).
+    private var legacySubs: Set<Int> = []
     private var nextSub = 0
     private var busy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -302,6 +305,15 @@ actor DocumentSequencer {
 
     private func broadcast(_ entry: LogEntry) {
         guard !subs.isEmpty, let frame = try? StreamEvent.commit(entry).sseFrame() else { return }
+        if !StreamCompat.streamCarries(entry.op, proto: nil) {
+            // A client older than 1.6 cannot decode this op: end its stream. It reconnects from its last seq and,
+            // because the range contains this entry, is caught up with a snapshot.
+            for id in legacySubs {
+                subs[id]?.finish()
+                subs[id] = nil
+            }
+            legacySubs = []
+        }
         for (id, c) in subs {
             if case .dropped = c.yield(frame) {
                 // Too slow: cut it loose. The client reconnects with Last-Event-ID and catches up from the log.
@@ -323,7 +335,7 @@ actor DocumentSequencer {
 
     /// Registers a stream subscriber atomically with respect to commits: it receives every entry after `head`
     /// through `live`, and the caller is responsible for the catch-up up to `head`.
-    func subscribe(lastEventId: Int?, maxReplay: Int) async throws -> Subscription {
+    func subscribe(lastEventId: Int?, maxReplay: Int, acceptsRestore: Bool = true) async throws -> Subscription {
         try await exclusive {
             let live = try await ensureLoaded()
             let head = live.core.seq
@@ -332,12 +344,13 @@ actor DocumentSequencer {
             nextSub += 1
             let id = nextSub
             subs[id] = cont
+            if !acceptsRestore { legacySubs.insert(id) }
             cont.onTermination = { [weak self] _ in
                 guard let self else { return }
                 Task { await self.unsubscribe(id) }
             }
             var doc: Document?
-            if plan == .snapshot { doc = live.core.doc }
+            if plan == .snapshot || !acceptsRestore { doc = live.core.doc }  // copy-on-write: no copy is made here
             return Subscription(id: id, head: head, plan: plan, doc: doc, live: stream)
         }
     }
@@ -345,6 +358,7 @@ actor DocumentSequencer {
     func unsubscribe(_ id: Int) {
         subs[id]?.finish()
         subs[id] = nil
+        legacySubs.remove(id)
     }
 
     func ping() {
@@ -359,6 +373,7 @@ actor DocumentSequencer {
     func finishAllStreams() {
         for (_, c) in subs { c.finish() }
         subs = [:]
+        legacySubs = []
     }
 
     var subscriberCount: Int { subs.count }

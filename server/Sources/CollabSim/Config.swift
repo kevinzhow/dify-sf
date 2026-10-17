@@ -14,6 +14,9 @@ public struct SimConfig: Sendable {
     public var editRate = 0.35          // chance per step that some user edits
     public var burstRate = 0.10         // chance that an edit is a fast burst of 2-5 edits
     public var reapplyRate = 0.6        // chance a user re-applies an edit that lost a conflict
+    public var restoreRate = 0.07       // chance an edit is the undo of a committed delete (protocol 1.6), when one exists
+    public var legacyFraction = 0.0     // share of clients older than 1.6 (their streams must never carry restoreNode)
+    public var legacySlots: Set<Int> = []  // these clients are older than 1.6 regardless of `legacyFraction` (scenarios)
 
     // network (per message)
     public var maxDelay = 3
@@ -51,6 +54,7 @@ public enum Profile: Int, CaseIterable, Sendable {
         c.maxReplay = rng.int(6...120)
         c.maxDelay = rng.int(1...6)
         c.editRate = Double(rng.int(25...60)) / 100
+        c.legacyFraction = Double(rng.int(0...3)) / 10
         switch self {
         case .calm: break
         case .lossy:

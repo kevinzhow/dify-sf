@@ -230,6 +230,141 @@ struct DeclaredOutputTests {
     }
 }
 
+@Suite("Restoring a deleted node (protocol 1.6)")
+struct RestoreTests {
+    private func ref(_ n: String, _ o: String = "o") -> Value { .ref(OutputRef(node: n, output: o)) }
+    private func broken(_ n: String, _ o: String = "o") -> Value { .brokenRef(OutputRef(node: n, output: o)) }
+    private func reason(_ d: Document, _ op: Op, base: Int, by c: ClientID) -> RejectReason? {
+        do throws(RejectReason) { try d.validate(op, base: base, by: c); return nil } catch { return error }
+    }
+
+    /// a <- b (b.in refs a), edge a->b, c unrelated; alice deletes a at seq 5.
+    private func deleted() -> (Document, Node, [Edge]) {
+        let a = node("a", ["p": .string("x")])
+        let e = Edge(id: "e", source: "a", target: "b")
+        var d = Document(nodes: [a, node("b", ["in": ref("a")]), node("c")], edges: [e, Edge(id: "f", source: "b", target: "c")])
+        d.apply(.removeNode("a"), at: stamp(5, "alice"))
+        return (d, a, [e])
+    }
+
+    @Test func restoreUndoesTheDelete() throws {
+        var (d, a, es) = deleted()
+        try d.validate(.restoreNode(a, edges: es), base: 4, by: "alice")  // own delete: the base may predate it
+        d.apply(.restoreNode(a, edges: es), at: stamp(6, "alice"))
+        #expect(d.nodes["a"] == a && d.deletedNodes["a"] == nil)
+        #expect(d.edges["e"] == es[0] && d.deletedEdges["e"] == nil)
+        #expect(d.nodes["b"]?.config["in"] == ref("a"))
+        #expect(d.integrityProblems.isEmpty)
+        // The restore versions the whole node and the fields it revived.
+        #expect(d.fieldStamps["a"]?[.title] == stamp(6, "alice") && d.fieldStamps["a"]?[.config([])] == stamp(6, "alice"))
+        #expect(d.fieldStamps["b"]?[.config(["in"])] == stamp(6, "alice"))
+        #expect(d.touches["a"]?["alice"] == 6 && d.touches["b"]?["alice"] == 6)
+        // Restoring twice: the node exists.
+        #expect(reason(d, .restoreNode(a, edges: []), base: 6, by: "alice") == .nodeExists("a"))
+    }
+
+    @Test func refusals() {
+        let (d, a, es) = deleted()
+        #expect(reason(d, .restoreNode(node("ghost"), edges: []), base: 5, by: "x") == .nodeNotFound("ghost"))
+        #expect(reason(d, .restoreNode(node("b"), edges: []), base: 5, by: "x") == .nodeExists("b"))
+        // Someone else deleted it after the base: a stale write to the node's existence.
+        #expect(reason(d, .restoreNode(a, edges: es), base: 4, by: "bob")
+                == .conflict(Conflict(node: "a", field: nil, seq: 5, by: "alice")))
+        // ... having seen the delete, anyone may restore it.
+        #expect(reason(d, .restoreNode(a, edges: es), base: 5, by: "bob") == nil)
+        // Malformed edge lists.
+        #expect(reason(d, .restoreNode(a, edges: es + es), base: 5, by: "alice") == .invalid("edge e listed twice"))
+        #expect(reason(d, .restoreNode(a, edges: [Edge(id: "f", source: "b", target: "c")]), base: 5, by: "alice")
+                == .invalid("edge f does not touch node a"))
+        var bad = a
+        bad.config["$x"] = .int(1)
+        #expect(reason(d, .restoreNode(bad, edges: []), base: 5, by: "alice") == .invalid("config key $x is reserved"))
+    }
+
+    @Test func restoreConflictsWithAnUnseenWriteToAFieldItRevives() {
+        var d = Document(nodes: [node("a"), node("b", ["in": .list([ref("a"), ref("c")])]), node("c")])
+        d.apply(.removeNode("a"), at: stamp(5, "alice"))
+        d.apply(.removeNode("c"), at: stamp(6, "bob"))  // rewrites b.in again
+        #expect(reason(d, .restoreNode(node("a"), edges: []), base: 5, by: "alice")
+                == .conflict(Conflict(node: "b", field: .config(["in"]), seq: 6, by: "bob")))
+        #expect(reason(d, .restoreNode(node("a"), edges: []), base: 6, by: "alice") == nil)
+        d.apply(.restoreNode(node("a"), edges: []), at: stamp(7, "alice"))
+        #expect(d.nodes["b"]?.config["in"] == .list([ref("a"), broken("c")]))
+    }
+
+    @Test func aStaleWriteToTheRestoredNodeConflicts() throws {
+        var (d, a, es) = deleted()
+        d.apply(.restoreNode(a, edges: es), at: stamp(6, "alice"))
+        #expect(reason(d, set("a", ["p"], "y"), base: 4, by: "carol")
+                == .conflict(Conflict(node: "a", field: .config([]), seq: 6, by: "alice")))
+        #expect(reason(d, set("a", ["new"], "y"), base: 4, by: "carol") != nil)
+        #expect(reason(d, .setField("a", .title, .string("t")), base: 4, by: "carol") != nil)
+        #expect(reason(d, .removeNode("a"), base: 4, by: "carol") == .conflict(Conflict(node: "a", field: nil, seq: 6, by: "alice")))
+        try d.validate(set("a", ["p"], "x"), base: 4, by: "carol")  // same value: still fine
+        try d.validate(set("a", ["p"], "y"), base: 6, by: "carol")  // saw the restore
+        try d.validate(.moveNode("a", x: 9, y: 9), base: 0, by: "carol")  // layout is never stale
+    }
+
+    @Test func edgesThatCannotComeBackAreSkipped() {
+        var (d, a, es) = deleted()
+        d.apply(.removeNode("b"), at: stamp(6, "bob"))  // the other end of e is gone now
+        let fresh = Edge(id: "g", source: "a", target: "c")  // an id the delete did not remove
+        #expect(reason(d, .restoreNode(a, edges: es + [fresh]), base: 6, by: "alice") == nil)
+        d.apply(.restoreNode(a, edges: es + [fresh]), at: stamp(7, "alice"))
+        #expect(d.nodes["a"] != nil && d.edges.isEmpty && d.deletedEdges["e"] == stamp(5, "alice"))
+        #expect(d.integrityProblems.isEmpty)
+    }
+
+    @Test func restoredReferencesAreLiveExactlyWhenTheirTargetIsThere() {
+        var d = Document(nodes: [node("a"), node("b"), node("x", ["outputs": .items([Item(id: "i1", value: .map(["name": .string("r")]))])])])
+        d.apply(.removeNode("a"), at: stamp(1, "alice"))
+        d.apply(.removeNode("b"), at: stamp(2, "alice"))
+        // As alice last saw it, a referenced b (deleted since), x.r (declared), x.gone (not declared) and itself.
+        let a = node("a", ["b": ref("b"), "x": ref("x", "r"), "old": broken("x", "r"), "gone": ref("x", "gone"), "me": ref("a")])
+        d.apply(.restoreNode(a, edges: []), at: stamp(3, "alice"))
+        let cfg = d.nodes["a"]!.config
+        #expect(cfg["b"] == broken("b") && cfg["x"] == ref("x", "r") && cfg["old"] == ref("x", "r"))
+        #expect(cfg["gone"] == broken("x", "gone") && cfg["me"] == ref("a"))
+        #expect(d.integrityProblems.isEmpty)
+    }
+
+    @Test func onlyDeclaredOutputsAreRevivedInOtherNodes() {
+        func out(_ id: String, _ name: String) -> Item { Item(id: id, value: .map(["name": .string(name)])) }
+        var d = Document(nodes: [node("a", ["outputs": .items([out("i1", "r"), out("i2", "s")])]),
+                                 node("b", ["r": ref("a", "r"), "s": ref("a", "s")])])
+        d.apply(.removeItem("a", path: ["outputs"], id: "i2"), at: stamp(1, "alice"))  // b.s breaks
+        d.apply(.removeNode("a"), at: stamp(2, "alice"))  // b.r breaks
+        d.apply(.restoreNode(node("a", ["outputs": .items([out("i1", "r")])]), edges: []), at: stamp(3, "alice"))
+        #expect(d.nodes["b"]?.config["r"] == ref("a", "r") && d.nodes["b"]?.config["s"] == broken("a", "s"))
+        #expect(d.integrityProblems.isEmpty)
+    }
+
+    @Test func wireShape() throws {
+        let op = Op.restoreNode(Node(id: "n", type: "llm", title: "t", x: 1, y: 2, config: ["r": broken("m")]),
+                                edges: [Edge(id: "e", source: "n", target: "m")])
+        #expect(try WireJSON.encodeString(op) == #"{"edges":[{"id":"e","source":"n","sourceHandle":"out","target":"m","targetHandle":"in"}],"node":{"config":{"r":{"$broken":{"node":"m","output":"o"}}},"id":"n","title":"t","type":"llm","x":1,"y":2},"t":"restoreNode"}"#)
+        #expect(try WireJSON.decode(Op.self, from: try WireJSON.encode(op)) == op)
+        // `edges` may be omitted.
+        #expect(try WireJSON.decode(Op.self, from: #"{"t":"restoreNode","node":{"id":"n","type":"llm","title":"","x":0,"y":0,"config":{}}}"#)
+                == .restoreNode(Node(id: "n", type: "llm"), edges: []))
+        // A restored document keeps the 1.5 snapshot shape (the whole-config stamp is a config key with an empty path).
+        var (d, a, es) = deleted()
+        d.apply(.restoreNode(a, edges: es), at: stamp(6, "alice"))
+        #expect(try WireJSON.encodeString(d).contains(#"{"client":"alice","field":{"k":"config","path":[]},"node":"a","seq":6}"#))
+        #expect(try WireJSON.decode(Document.self, from: try WireJSON.encode(d)) == d)
+    }
+
+    @Test func oldStreamsNeverCarryARestore() {
+        #expect(StreamCompat.acceptsRestore("1.6") && StreamCompat.acceptsRestore("1.10") && StreamCompat.acceptsRestore("2.0"))
+        #expect(!StreamCompat.acceptsRestore(nil) && !StreamCompat.acceptsRestore("1.5") && !StreamCompat.acceptsRestore("x"))
+        #expect(StreamCompat.parse("1.6")! == (1, 6) && StreamCompat.parse("1.6.1") == nil && StreamCompat.parse("1.") == nil)
+        #expect(StreamCompat.parse("-1.6") == nil && StreamCompat.parse("1.6x") == nil)
+        let restore = Op.restoreNode(node("a"), edges: [])
+        #expect(!StreamCompat.streamCarries(restore, proto: nil) && StreamCompat.streamCarries(restore, proto: "1.6"))
+        #expect(StreamCompat.streamCarries(.removeNode("a"), proto: nil))
+    }
+}
+
 @Suite("Wire format")
 struct WireTests {
     private func roundTrip<T: Codable & Equatable>(_ v: T) throws {

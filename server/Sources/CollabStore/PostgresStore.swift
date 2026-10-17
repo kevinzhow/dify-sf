@@ -95,6 +95,10 @@ public struct PostgresStore: Sendable {
     public func knownOutcomes(_ id: String, client c: ClientID, range: ClosedRange<Int>?) async throws -> KnownOutcomes {
         try await bounded { try await self.knownOutcomesImpl(id, client: c, range: range) }
     }
+    /// Whether the log has an op of type `t` (the wire discriminator) with `after < seq <= through`.
+    public func logContainsOp(_ id: String, type t: String, after: Int, through: Int) async throws -> Bool {
+        try await bounded { try await self.logContainsOpImpl(id, type: t, after: after, through: through) }
+    }
     public func committedMap(_ id: String, client c: ClientID, from: Int, through: Int) async throws -> [Int: Int] {
         try await bounded { try await self.committedMapImpl(id, client: c, from: from, through: through) }
     }
@@ -183,6 +187,14 @@ public struct PostgresStore: Sendable {
             out.append(LogEntry(seq: row.0, client: row.1, cseq: row.2, base: row.3, op: try WireJSON.decode(Op.self, from: row.4)))
         }
         return out
+    }
+
+    func logContainsOpImpl(_ id: String, type t: String, after: Int, through: Int) async throws -> Bool {
+        let rows = try await client.query(
+            "SELECT EXISTS (SELECT 1 FROM ops WHERE doc_id = \(id) AND seq > \(after) AND seq <= \(through) AND op->>'t' = \(t))",
+            logger: logger)
+        for try await found in rows.decode(Bool.self) { return found }
+        return false
     }
 
     func clientHighImpl(_ id: String, client c: ClientID) async throws -> Int {
