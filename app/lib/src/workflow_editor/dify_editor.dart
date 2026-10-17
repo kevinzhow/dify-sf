@@ -6,11 +6,13 @@ import '../design/dify_tokens.g.dart';
 import '../editor/editor_controller.dart';
 import '../editor/node_panel.dart';
 import '../editor/notice_overlay.dart';
+import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
 import 'header/features_trigger.dart';
 import 'header/workflow_header.dart';
 import 'operator/operator.dart';
 import 'store/store.dart';
+import 'variable_inspect/trigger.dart';
 import 'workflow_editor.dart';
 
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
@@ -27,7 +29,8 @@ class DifyWorkflowEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = OperatorOptions();
+    // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
+    const options = OperatorOptions(collaborationEnabled: true);
     return OperatorShortcuts(
       history: controller.undo,
       options: options,
@@ -42,7 +45,7 @@ class DifyWorkflowEditor extends StatelessWidget {
               left: SessionBadge(controller: controller, serverLabel: serverLabel, actions: actions),
             ),
             control: workflowControlBuilder(options),
-            operator: workflowOperatorBuilder(controller, options),
+            operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
             panels: (context, canvas) => ListenableBuilder(
               listenable: controller,
               // The node panel shows while a node or an edge is selected (Dify's NodePanel / edge details).
@@ -72,15 +75,28 @@ class _BoundHeader extends StatefulWidget {
 class _BoundHeaderState extends State<_BoundHeader> {
   EditorHeaderBinding? _binding;
 
+  /// The people on this document; dify-sf has no presence yet, so it is this user.
+  final _users = ValueNotifier<List<OnlineUser>>(const []);
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _binding ??= EditorHeaderBinding(controller: widget.controller, store: WorkflowStoreScope.of(context));
+    _binding ??= EditorHeaderBinding(
+      controller: widget.controller,
+      store: WorkflowStoreScope.of(context),
+      // The app's model catalog is an empty workspace (see ModelCatalog), so LLM nodes need a model configured.
+      checklistEnv: () => checklist.ChecklistEnv(modelProviders: const []),
+    );
+    final session = widget.controller.session;
+    _users.value = [
+      OnlineUser(sid: session.clientId, userId: session.clientId, username: session.displayName ?? ''),
+    ];
   }
 
   @override
   void dispose() {
     _binding?.dispose();
+    _users.dispose();
     super.dispose();
   }
 
@@ -91,6 +107,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
       canvas: widget.canvas,
       data: WorkflowHeaderData(
         graph: b.graph,
+        onlineUsers: _users,
+        currentUserId: widget.controller.session.clientId,
         handleNodeSelect: b.selectNode,
         handleNodesCancelSelected: b.cancelSelection,
         left: widget.left,

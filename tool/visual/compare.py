@@ -108,7 +108,10 @@ TEXT_RECTS = """() => {
 
 
 def capture_ours(browser, base, doc, case, out, viewport):
-    ctx = browser.new_context(viewport={'width': case['window'][0], 'height': case['window'][1]}, device_scale_factor=DSF)
+    # Our page is only the editor; Dify's has its app sidebar too, so a whole-canvas case gives ours the size of
+    # Dify's canvas (`oursWindow`).
+    w, h = case.get('oursWindow', case['window'])
+    ctx = browser.new_context(viewport={'width': w, 'height': h}, device_scale_factor=DSF)
     page = ctx.new_page()
     rect = []
     views = []
