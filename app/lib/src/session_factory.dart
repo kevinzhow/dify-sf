@@ -40,6 +40,9 @@ abstract interface class Backend {
 
   /// The document's current state as a Dify workflow file (YAML).
   Future<String> exportDifyDsl(String docId);
+
+  /// The document's Dify app metadata (mode, name, environment and conversation variables).
+  Future<DocMeta> docMeta(String docId);
 }
 
 class HttpBackend implements Backend {
@@ -93,6 +96,16 @@ class HttpBackend implements Backend {
     final api = DocsApi(baseUrl);
     try {
       return await api.exportDifyDsl(docId);
+    } finally {
+      api.close();
+    }
+  }
+
+  @override
+  Future<DocMeta> docMeta(String docId) async {
+    final api = DocsApi(baseUrl);
+    try {
+      return await api.meta(docId);
     } finally {
       api.close();
     }

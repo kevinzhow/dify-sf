@@ -19,6 +19,49 @@ final class DocInfo {
   final bool created;
 }
 
+/// A document's Dify app metadata (`GET /v1/docs/{id}/meta`): what an imported Dify workflow file says about the app.
+/// Documents that were not imported have the defaults (a workflow, no variables).
+final class DocMeta {
+  const DocMeta({
+    this.appMode = 'workflow',
+    this.appName = '',
+    this.environmentVariables = const [],
+    this.conversationVariables = const [],
+    this.raw = const {},
+  });
+
+  factory DocMeta.fromJson(Map<String, Object?> json) {
+    final app = json['app'];
+    List<Map<String, Object?>> vars(Object? v) => [
+      if (v is List)
+        for (final e in v)
+          if (e is Map<String, Object?>) e,
+    ];
+    return DocMeta(
+      appMode: app is Map<String, Object?> && app['mode'] is String ? app['mode']! as String : 'workflow',
+      appName: app is Map<String, Object?> && app['name'] is String ? app['name']! as String : '',
+      environmentVariables: vars(json['environment_variables']),
+      conversationVariables: vars(json['conversation_variables']),
+      raw: json,
+    );
+  }
+
+  /// Dify's `app.mode`: `workflow`, `advanced-chat` (a chatflow), ...
+  final String appMode;
+  final String appName;
+
+  /// Dify's `workflow.environment_variables`, as Dify JSON (secret values are blanked by the server).
+  final List<Map<String, Object?>> environmentVariables;
+
+  /// Dify's `workflow.conversation_variables`, as Dify JSON.
+  final List<Map<String, Object?>> conversationVariables;
+
+  /// The whole response (`app`, `features`, `dependencies`, ...).
+  final Map<String, Object?> raw;
+
+  bool get isChatflow => appMode == 'advanced-chat';
+}
+
 /// The document-level endpoints (everything except ops and events).
 class DocsApi {
   DocsApi(this.baseUrl, {http.Client? client, this.timeout = const Duration(seconds: 10)})
@@ -115,6 +158,13 @@ class DocsApi {
     );
     if (res.statusCode != 200) throw _error(res);
     return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>;
+  }
+
+  /// `GET /v1/docs/{id}/meta`: the Dify app metadata (mode, name, variables, features).
+  Future<DocMeta> meta(String id) async {
+    final res = await _guard(() => _client.get(_url('/v1/docs/$id/meta')).timeout(timeout));
+    if (res.statusCode != 200) throw _error(res);
+    return DocMeta.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>);
   }
 
   /// `GET /v1/docs/{id}/snapshot`: the full document at the current head.

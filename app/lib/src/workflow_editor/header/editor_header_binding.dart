@@ -58,6 +58,12 @@ class EditorHeaderBinding {
     graph.value = graphFactsOf(doc, checklist: items);
   }
 
+  /// Recomputes the checklist after its environment changed (the app metadata arrived).
+  void refreshChecklist() {
+    _doc = null;
+    _update();
+  }
+
   /// Dify's `handleSyncWorkflowDraft(true)` before publishing: true once all our edits are saved, false when they are
   /// not within [timeout].
   Future<bool> syncWorkflowDraft({Duration timeout = const Duration(seconds: 15)}) {

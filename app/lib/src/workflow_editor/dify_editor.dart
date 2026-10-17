@@ -20,10 +20,19 @@ import 'workflow_editor.dart';
 /// shortcuts. dify-sf's own collaboration controls (link state, reconnect, unsaved edits, the host's actions) sit in
 /// the header's left slot, where Dify puts its own extra controls.
 class DifyWorkflowEditor extends StatelessWidget {
-  const DifyWorkflowEditor({super.key, required this.controller, this.serverLabel = '', this.actions = const []});
+  const DifyWorkflowEditor({
+    super.key,
+    required this.controller,
+    this.serverLabel = '',
+    this.actions = const [],
+    this.meta = const DocMeta(),
+  });
 
   final EditorController controller;
   final String serverLabel;
+
+  /// The document's Dify app metadata: a chatflow (`advanced-chat`) or a workflow, its variables.
+  final DocMeta meta;
 
   /// The host's actions (add node, export, demo), shown behind the session menu.
   final List<Widget> actions;
@@ -43,6 +52,7 @@ class DifyWorkflowEditor extends StatelessWidget {
             header: (context, canvas) => _BoundHeader(
               controller: controller,
               canvas: canvas,
+              meta: meta,
               session: (anchor) => SessionBadge(
                 controller: controller,
                 serverLabel: serverLabel,
@@ -71,9 +81,16 @@ class DifyWorkflowEditor extends StatelessWidget {
 
 /// The header with its data bound to the session ([EditorHeaderBinding] needs the editor's store, found in scope).
 class _BoundHeader extends StatefulWidget {
-  const _BoundHeader({required this.controller, required this.canvas, required this.session, this.left});
+  const _BoundHeader({
+    required this.controller,
+    required this.canvas,
+    required this.meta,
+    required this.session,
+    this.left,
+  });
   final EditorController controller;
   final CanvasController canvas;
+  final DocMeta meta;
 
   /// Dify's auto-saved line, opening dify-sf's session menu.
   final Widget Function(Widget anchor) session;
@@ -92,16 +109,42 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_binding == null) _storeVariables();
     _binding ??= EditorHeaderBinding(
       controller: widget.controller,
       store: WorkflowStoreScope.of(context),
       // The app's model catalog is an empty workspace (see ModelCatalog), so LLM nodes need a model configured.
-      checklistEnv: () => checklist.ChecklistEnv(modelProviders: const []),
+      checklistEnv: () => checklist.ChecklistEnv(
+        appMode: widget.meta.appMode,
+        environmentVariables: widget.meta.environmentVariables,
+        conversationVariables: widget.meta.conversationVariables,
+        modelProviders: const [],
+      ),
     );
     final session = widget.controller.session;
     _users.value = [
       OnlineUser(sid: session.clientId, userId: session.clientId, username: session.displayName ?? ''),
     ];
+  }
+
+  @override
+  void didUpdateWidget(_BoundHeader old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.meta, widget.meta)) _storeVariables(refreshChecklist: true);
+  }
+
+  /// The app's environment and conversation variables, where Dify's UI reads them (and the checklist, which depends
+  /// on the app mode and the variables, when they changed). After the frame: this runs while building, and other
+  /// widgets listen to the store.
+  void _storeVariables({bool refreshChecklist = false}) {
+    final store = WorkflowStoreScope.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      store
+        ..setEnvironmentVariables(widget.meta.environmentVariables)
+        ..setConversationVariables(widget.meta.conversationVariables);
+      if (refreshChecklist) _binding?.refreshChecklist();
+    });
   }
 
   @override
@@ -118,6 +161,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
       canvas: widget.canvas,
       data: WorkflowHeaderData(
         graph: b.graph,
+        isChatMode: widget.meta.isChatflow,
         onlineUsers: _users,
         currentUserId: widget.controller.session.clientId,
         handleNodeSelect: b.selectNode,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collab_client/collab_client.dart' show DocMeta;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -45,6 +46,9 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   EditorController? _controller;
   OpenedSession? _opened;
   Object? _error;
+
+  /// The document's Dify app metadata; the defaults (a workflow, no variables) until it arrives or if it cannot be read.
+  DocMeta _meta = const DocMeta();
   var _generation = 0;
   void Function()? _stopOnlineListener;
 
@@ -93,9 +97,21 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         _opened = opened;
         _controller = controller;
       });
+      unawaited(_loadMeta(gen));
     } on Object catch (e) {
       if (mounted && gen == _generation) setState(() => _error = e);
     }
+  }
+
+  /// Never keeps the document from opening: a failure (an older server, no network) leaves the defaults.
+  Future<void> _loadMeta(int gen) async {
+    final DocMeta meta;
+    try {
+      meta = await widget.backend.docMeta(widget.docId);
+    } on Object {
+      return;
+    }
+    if (mounted && gen == _generation) setState(() => _meta = meta);
   }
 
   void _rebuild() {
@@ -246,6 +262,11 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         ],
       );
     }
-    return DifyWorkflowEditor(controller: c, serverLabel: widget.backend.label, actions: _actions(context, c));
+    return DifyWorkflowEditor(
+      controller: c,
+      serverLabel: widget.backend.label,
+      actions: _actions(context, c),
+      meta: _meta,
+    );
   }
 }

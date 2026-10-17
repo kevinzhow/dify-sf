@@ -496,6 +496,42 @@ workflow:
       expect(await api.exportDifyDsl(id), contains('conformance import'));
     });
 
+    test('Dify app metadata: mode and variables of an imported file, secrets blanked; defaults otherwise', () async {
+      const dsl = '''
+app: {mode: advanced-chat, name: conformance meta}
+kind: app
+version: 0.3.1
+workflow:
+  environment_variables:
+  - {id: e1, name: api_key, value: not-for-clients, value_type: secret}
+  - {id: e2, name: region, value: eu, value_type: string}
+  conversation_variables:
+  - {id: c1, name: str, selector: [conversation, str], value: default, value_type: string}
+  features: {opening_statement: hi}
+  graph:
+    edges: []
+    nodes:
+    - id: s
+      data: {type: start, title: Start, variables: []}
+''';
+      final id = 'meta-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+      await api.importDifyDsl(dsl, id: id);
+      final m = await api.meta(id);
+      expect(m.appMode, 'advanced-chat');
+      expect(m.appName, 'conformance meta');
+      expect({for (final v in m.environmentVariables) v['name']: v['value']}, {'api_key': '', 'region': 'eu'});
+      expect(m.conversationVariables.single['name'], 'str');
+      expect(m.raw['features'], {'opening_statement': 'hi'});
+      expect(m.raw.containsKey('workflow'), isFalse, reason: 'no graph');
+      final plain = await api.meta(doc);
+      expect((plain.appMode, plain.appName), ('workflow', doc), reason: 'not imported: the export defaults');
+      expect([...plain.environmentVariables, ...plain.conversationVariables], isEmpty);
+      await expectLater(
+        api.meta(_docId()),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
+      );
+    });
+
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'
