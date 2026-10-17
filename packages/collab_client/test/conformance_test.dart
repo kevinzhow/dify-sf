@@ -278,6 +278,21 @@ void main() {
       );
     });
 
+    test('1.4 declared outputs: a ref to a missing output is refused; removing an output breaks refs to it', () async {
+      // example template: code.outputs = [o-result {name: result}], answer.answer = ref(code.result)
+      final bad = await post('cli-o', [
+        (1, 0, const SetField('answer', ConfigKey(['answer']), VRef(OutputRef('code', 'nope')))),
+      ]);
+      expect((bad.results.single as RejectResult).reason, const DanglingReference('code'));
+      final rm = await post('cli-o', [
+        (2, 0, const RemoveItem('code', ['outputs'], 'o-result')),
+      ]);
+      expect(rm.results.single, isA<AckResult>());
+      final snap = (await api.snapshot(doc)).doc;
+      expect(snap.nodes['answer']!.config['answer'], const VBroken(OutputRef('code', 'result')));
+      expect(snap.integrityProblems, isEmpty);
+    });
+
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'

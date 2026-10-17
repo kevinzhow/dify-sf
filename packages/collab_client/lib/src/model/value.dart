@@ -113,10 +113,14 @@ sealed class Value {
 
   bool get containsBrokenRef => brokenRefs.isNotEmpty;
 
-  bool hasRefTo(String node) => liveRefs.any((r) => r.node == node);
+  bool hasRefTo(String node) => hasRefWhere((r) => r.node == node);
+  bool hasRefWhere(bool Function(OutputRef) matches) => liveRefs.any(matches);
 
   /// Replaces every live reference to [node] with an explicit broken marker.
-  Value breakingRefsTo(String node) => this;
+  Value breakingRefsTo(String node) => breakingRefsWhere((r) => r.node == node);
+
+  /// Replaces every live reference that [matches] with an explicit broken marker.
+  Value breakingRefsWhere(bool Function(OutputRef) matches) => this;
 
   /// Structural problems that make a value unwritable: duplicate/empty item ids, reserved map keys.
   String? get structuralProblem => null;
@@ -181,7 +185,7 @@ final class VRef extends Value {
   @override
   Iterable<OutputRef> get liveRefs => [ref];
   @override
-  Value breakingRefsTo(String node) => ref.node == node ? VBroken(ref) : this;
+  Value breakingRefsWhere(bool Function(OutputRef) matches) => matches(ref) ? VBroken(ref) : this;
   @override
   bool operator ==(Object other) => other is VRef && other.ref == ref;
   @override
@@ -218,7 +222,8 @@ final class VList extends Value {
   @override
   Iterable<OutputRef> get brokenRefs => items.expand((v) => v.brokenRefs);
   @override
-  Value breakingRefsTo(String node) => VList([for (final v in items) v.breakingRefsTo(node)]);
+  Value breakingRefsWhere(bool Function(OutputRef) matches) =>
+      VList([for (final v in items) v.breakingRefsWhere(matches)]);
   @override
   String? get structuralProblem => items.map((v) => v.structuralProblem).nonNulls.firstOrNull;
   @override
@@ -242,7 +247,8 @@ final class VItems extends Value {
   @override
   Iterable<OutputRef> get brokenRefs => items.expand((i) => i.value.brokenRefs);
   @override
-  Value breakingRefsTo(String node) => VItems([for (final i in items) Item(i.id, i.value.breakingRefsTo(node))]);
+  Value breakingRefsWhere(bool Function(OutputRef) matches) =>
+      VItems([for (final i in items) Item(i.id, i.value.breakingRefsWhere(matches))]);
   @override
   String? get structuralProblem {
     final seen = <String>{};
@@ -274,7 +280,8 @@ final class VMap extends Value {
   @override
   Iterable<OutputRef> get brokenRefs => _sortedKeys(entries).expand((k) => entries[k]!.brokenRefs);
   @override
-  Value breakingRefsTo(String node) => VMap({for (final e in entries.entries) e.key: e.value.breakingRefsTo(node)});
+  Value breakingRefsWhere(bool Function(OutputRef) matches) =>
+      VMap({for (final e in entries.entries) e.key: e.value.breakingRefsWhere(matches)});
   @override
   String? get structuralProblem {
     for (final MapEntry(:key, :value) in entries.entries) {

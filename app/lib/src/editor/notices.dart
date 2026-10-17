@@ -79,7 +79,7 @@ class Notice extends ChangeNotifier {
       return (message: '${titleOf(node)} was deleted — your change wasn\'t applied', detail: valuePreview());
     case DanglingReference(:final node):
       return (
-        message: '${titleOf(node)} was deleted — the variable you picked wasn\'t applied',
+        message: 'The variable you picked from ${titleOf(node)} no longer exists — your change wasn\'t applied',
         detail: 'Pick another variable.',
       );
     case ItemDeleted():

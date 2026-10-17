@@ -145,14 +145,60 @@ class Document {
 
   // ---- queries -----------------------------------------------------------------------------------
 
-  /// Human-readable integrity problems: dangling live refs, edges to missing nodes (invariant I4).
+  /// The config key of a node's declared outputs (protocol 1.4).
+  static const outputsKey = 'outputs';
+
+  /// A node's declared outputs: the names of the items of its `outputs` keyed list (an item's `name`, or its id when it
+  /// has none), or null if it has no such list (then any output name is accepted, e.g. the fixed outputs of an LLM
+  /// node). References to a node with declared outputs must name one of them.
+  static Set<String>? declaredOutputs(Node node) => switch (node.config[outputsKey]) {
+    VItems(:final items) => {for (final i in items) _outputName(i)},
+    _ => null,
+  };
+
+  static String _outputName(Item i) => switch (i.value) {
+    VMap(:final entries) when entries['name'] is VString => (entries['name']! as VString).value,
+    _ => i.id,
+  };
+
+  /// The output name that [op] takes away from its node (removing or renaming an output item), if no other item of
+  /// the list still declares it. References to that name break, like references to a deleted node.
+  ({String node, String name})? _outputNameRemoved(Op op) {
+    final (String node, String itemId, Value? newValue) = switch (op) {
+      RemoveItem(:final node, :final path, :final itemId) when _isOutputs(path) => (node, itemId, null),
+      UpdateItem(:final node, :final path, :final itemId, :final value) when _isOutputs(path) => (node, itemId, value),
+      _ => ('', '', null),
+    };
+    if (node.isEmpty) return null;
+    final n = nodes[node];
+    if (n == null) return null;
+    if (n.config[outputsKey] case VItems(:final items)) {
+      final at = items.indexWhere((i) => i.id == itemId);
+      if (at < 0) return null;
+      final old = _outputName(items[at]);
+      if (newValue != null && _outputName(Item(itemId, newValue)) == old) return null;
+      if (items.any((i) => i.id != itemId && _outputName(i) == old)) return null;
+      return (node: node, name: old);
+    }
+    return null;
+  }
+
+  static bool _isOutputs(List<String> path) => path.length == 1 && path[0] == outputsKey;
+
+  /// Human-readable integrity problems: dangling live refs (to a missing node or a missing declared output), edges to
+  /// missing nodes (invariant I4).
   List<String> get integrityProblems {
     final problems = <String>[];
     for (final id in nodes.keys.toList()..sort()) {
       final cfg = nodes[id]!.config;
       for (final key in cfg.keys.toList()..sort()) {
         for (final r in cfg[key]!.liveRefs) {
-          if (!nodes.containsKey(r.node)) problems.add('node $id.$key has dangling ref to ${r.node}');
+          final target = nodes[r.node];
+          if (target == null) {
+            problems.add('node $id.$key has dangling ref to ${r.node}');
+          } else if (declaredOutputs(target) case final outs? when !outs.contains(r.output)) {
+            problems.add('node $id.$key has dangling ref to ${r.node}.${r.output} (no such output)');
+          }
         }
       }
     }
@@ -305,7 +351,11 @@ class Document {
         return switch (state) {
           _ItemTombstoned() => null, // already gone: the intended end state holds (same-value rule)
           _ItemMissing(:final reason) => reason,
-          _ItemPresent() => checkConflicts ? _fieldConflict(node, ItemKey(path, itemId), base, client) : null,
+          _ItemPresent() =>
+            checkConflicts
+                ? (_fieldConflict(node, ItemKey(path, itemId), base, client) ??
+                      _outputRemovalConflict(op, base, client))
+                : null,
         };
 
       case UpdateItem(:final node, :final path, :final itemId, :final value):
@@ -320,14 +370,28 @@ class Document {
             final bad = _checkValue(value, selfNode: null);
             if (bad != null) return bad;
             return _checkStale(
-              node,
-              ItemKey(path, itemId),
-              base,
-              client,
-              sameValue: existing == value,
-              enabled: checkConflicts,
-            );
+                  node,
+                  ItemKey(path, itemId),
+                  base,
+                  client,
+                  sameValue: existing == value,
+                  enabled: checkConflicts,
+                ) ??
+                (checkConflicts ? _outputRemovalConflict(op, base, client) : null); // renaming an output
         }
+    }
+  }
+
+  void _breakOutputRefs(({String node, String name})? removed, Stamp stamp) {
+    if (removed == null) return;
+    for (final other in nodes.keys.toList()..sort()) {
+      final r = _breakRefsWhere(nodes[other]!.config, (x) => x.node == removed.node && x.output == removed.name);
+      if (r.changed.isEmpty) continue;
+      nodes[other] = nodes[other]!.copyWith(config: r.config);
+      for (final key in r.changed) {
+        _stampField(other, key, stamp);
+      }
+      _touch(other, stamp);
     }
   }
 
@@ -359,13 +423,33 @@ class Document {
     return deletedNodes.containsKey(id) ? NodeDeleted(id) : NodeNotFound(id);
   }
 
-  /// Clients may only write live refs to existing nodes; broken markers are server-only.
+  /// Removing a declared output rewrites every field that references it (ref -> brokenRef); like a node delete, it
+  /// conflicts with someone else's write to one of those fields after [base].
+  Conflict? _outputRemovalConflict(Op op, int base, String client) {
+    final removed = _outputNameRemoved(op);
+    if (removed == null) return null;
+    for (final other in nodes.keys.toList()..sort()) {
+      for (final key in _breakRefsWhere(
+        nodes[other]!.config,
+        (r) => r.node == removed.node && r.output == removed.name,
+      ).changed) {
+        final c = _fieldConflict(other, key, base, client);
+        if (c != null) return c;
+      }
+    }
+    return null;
+  }
+
+  /// Clients may only write live refs to existing nodes and existing declared outputs; broken markers are server-only.
   RejectReason? _checkValue(Value v, {required String? selfNode}) {
     final problem = v.structuralProblem;
     if (problem != null) return Invalid(problem);
     if (v.containsBrokenRef) return const Invalid('brokenRef is server-written only');
     for (final r in v.liveRefs) {
-      if (!nodes.containsKey(r.node) && r.node != selfNode) return DanglingReference(r.node);
+      if (r.node == selfNode) continue;
+      final target = nodes[r.node];
+      if (target == null) return DanglingReference(r.node);
+      if (declaredOutputs(target) case final outs? when !outs.contains(r.output)) return DanglingReference(r.node);
     }
     return null;
   }
@@ -498,11 +582,13 @@ class Document {
         if (ConfigTree.list(n.config, path) case ListFound(:final items)) {
           final at = items.indexWhere((i) => i.id == itemId);
           if (at < 0) return;
+          final removed = _outputNameRemoved(op);
           final next = List.of(items)..removeAt(at);
           nodes[node] = n.copyWith(config: ConfigTree.set(n.config, path, VItems(List.unmodifiable(next))));
           deletedItems[itemId] = stamp;
           _stampField(node, ItemKey(path, itemId), stamp);
           _touch(node, stamp);
+          _breakOutputRefs(removed, stamp);
         }
 
       case UpdateItem(:final node, :final path, :final itemId, :final value):
@@ -511,10 +597,12 @@ class Document {
         if (ConfigTree.list(n.config, path) case ListFound(:final items)) {
           final at = items.indexWhere((i) => i.id == itemId);
           if (at < 0 || items[at].value == value) return;
+          final removed = _outputNameRemoved(op);
           final next = List.of(items)..[at] = Item(itemId, value);
           nodes[node] = n.copyWith(config: ConfigTree.set(n.config, path, VItems(List.unmodifiable(next))));
           _stampField(node, ItemKey(path, itemId), stamp);
           _touch(node, stamp);
+          _breakOutputRefs(removed, stamp);
         }
     }
   }
@@ -557,6 +645,13 @@ class Document {
     Map<String, Value> cfg,
     String node, [
     List<String> prefix = const [],
+  ]) => _breakRefsWhere(cfg, (r) => r.node == node, prefix);
+
+  /// Like [_breakRefs] for every reference that [matches] (protocol 1.4: a removed declared output).
+  static ({Map<String, Value> config, List<FieldKey> changed}) _breakRefsWhere(
+    Map<String, Value> cfg,
+    bool Function(OutputRef) matches, [
+    List<String> prefix = const [],
   ]) {
     final changed = <FieldKey>[];
     final out = Map.of(cfg);
@@ -565,24 +660,24 @@ class Document {
       final path = [...prefix, key];
       switch (v) {
         case VMap(:final entries):
-          final sub = _breakRefs(entries, node, path);
+          final sub = _breakRefsWhere(entries, matches, path);
           if (sub.changed.isNotEmpty) {
             out[key] = VMap(sub.config);
             changed.addAll(sub.changed);
           }
         case VRef() || VList():
-          if (v.hasRefTo(node)) {
-            out[key] = v.breakingRefsTo(node);
+          if (v.hasRefWhere(matches)) {
+            out[key] = v.breakingRefsWhere(matches);
             changed.add(ConfigKey(path));
           }
         case VItems(:final items):
           final next = <Item>[];
           var touched = false;
           for (final i in items) {
-            if (i.value.hasRefTo(node)) {
+            if (i.value.hasRefWhere(matches)) {
               touched = true;
               changed.add(ItemKey(path, i.id));
-              next.add(Item(i.id, i.value.breakingRefsTo(node)));
+              next.add(Item(i.id, i.value.breakingRefsWhere(matches)));
             } else {
               next.add(i);
             }
