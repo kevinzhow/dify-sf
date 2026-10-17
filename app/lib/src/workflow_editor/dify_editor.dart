@@ -5,13 +5,14 @@ import '../canvas/canvas_controller.dart';
 import '../cards/card_kit.dart';
 import '../design/dify_tokens.g.dart';
 import '../editor/editor_controller.dart';
-import '../editor/node_panel.dart';
 import '../editor/notice_overlay.dart';
+import 'context_menu/context_menu.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
 import 'header/features_trigger.dart';
 import 'header/titles.dart';
 import 'header/workflow_header.dart';
+import 'node_panel/node_panel.dart';
 import 'operator/operator.dart';
 import 'store/store.dart';
 import 'variable_inspect/trigger.dart';
@@ -42,6 +43,7 @@ class DifyWorkflowEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
     const options = OperatorOptions(collaborationEnabled: true);
+    final menuOptions = WorkflowMenuOptions(isChatMode: meta.isChatflow);
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
     // spacing would widen every label).
     return DefaultTextStyle(
@@ -62,6 +64,7 @@ class DifyWorkflowEditor extends StatelessWidget {
           children: [
             WorkflowEditor(
               controller: controller,
+              menuOptions: menuOptions,
               header: (context, canvas) => _BoundHeader(
                 controller: controller,
                 canvas: canvas,
@@ -77,13 +80,8 @@ class DifyWorkflowEditor extends StatelessWidget {
               ),
               control: workflowControlBuilder(options),
               operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
-              panels: (context, canvas) => ListenableBuilder(
-                listenable: controller,
-                // The node panel shows while a node or an edge is selected (Dify's NodePanel / edge details).
-                builder: (context, _) => controller.selectedNode == null && controller.selectedEdgeId == null
-                    ? const SizedBox.shrink()
-                    : NodePanel(controller: controller),
-              ),
+              // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify).
+              panels: (context, canvas) => WorkflowPanels(controller: controller, canvas: canvas, options: menuOptions),
             ),
             NoticeOverlay(controller: controller),
           ],

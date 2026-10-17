@@ -9,6 +9,7 @@ import 'dart:ui' as ui;
 
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -98,7 +99,9 @@ void main() {
     await settle(300);
     await t.tap(find.byKey(const ValueKey('node-llm')), warnIfMissed: false);
     await settle(300);
-    await t.tap(find.byKey(const Key('delete-node')));
+    await t.tap(find.byKey(const Key('node-panel-more')));
+    await settle(300);
+    await t.tap(find.text(DifyI18n.tr('common', 'operation.delete')));
     await settle(500);
     await shot('5-delete-dialog');
     await t.tap(find.byKey(const Key('confirm-delete')));

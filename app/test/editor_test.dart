@@ -4,7 +4,10 @@ import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/app_fonts.dart';
@@ -77,6 +80,12 @@ Future<void> openSession(WidgetTester t) async {
 Future<String> text(WidgetTester t, String key) async {
   if (const ['link-state', 'pending-count', 'last-seq'].contains(key)) await openSession(t);
   return (t.widget(find.byKey(Key(key))) as Text).data!;
+}
+
+/// Types a node's title in its panel and commits it (Dify's title input commits on blur; Enter blurs it).
+Future<void> enterTitle(WidgetTester t, String nodeId, String title) async {
+  await t.enterText(find.byKey(ValueKey('title-$nodeId')), title);
+  await t.testTextInput.receiveAction(TextInputAction.done);
 }
 
 Future<void> select(WidgetTester t, String nodeId) async {
@@ -152,18 +161,19 @@ void main() {
     )!;
     await t.tapAt(Offset(c.dx, c.dy));
     await settle(t, const Duration(milliseconds: 300));
-    final deleteButton = find.byKey(const Key('delete-edge'));
-    if (deleteButton.evaluate().isNotEmpty) {
-      await t.tap(deleteButton);
-      await settle(t);
-      expect(demo.server.doc.edges.length, 3);
-    }
+    // Dify has no edge panel: the edge shows as selected and the Delete key removes it.
+    expect(_controller(t).selectedEdgeId, edge.id);
+    expect(find.byType(WorkflowNodePanel), findsNothing);
+    await t.sendKeyEvent(LogicalKeyboardKey.delete);
+    await settle(t);
+    expect(demo.server.doc.edges.length, 3);
+    expect(demo.server.log.last.op, isA<RemoveEdge>());
   });
 
   editorTest('editing the title and a config field becomes small field ops', (t) async {
     final demo = await openEditor(t, withBo: false);
     await select(t, 'llm');
-    await t.enterText(find.byKey(const ValueKey('title-llm')), 'Summarize');
+    await enterTitle(t, 'llm', 'Summarize');
     await settle(t, const Duration(seconds: 2));
     expect(demo.server.doc.nodes['llm']!.title, 'Summarize');
 
@@ -230,7 +240,10 @@ void main() {
   editorTest('deleting a node warns about references, then shows broken references explicitly', (t) async {
     final demo = await openEditor(t, withBo: false);
     await select(t, 'llm');
-    await t.tap(find.byKey(const Key('delete-node')));
+    // The node panel's "…" menu: Delete asks first, as the node's output is referenced.
+    await t.tap(find.byKey(const Key('node-panel-more')));
+    await settle(t, const Duration(milliseconds: 400));
+    await t.tap(find.text(DifyI18n.tr('common', 'operation.delete')));
     await settle(t, const Duration(milliseconds: 400));
     expect(find.byKey(const Key('delete-dialog')), findsOneWidget);
     expect(find.textContaining('1 reference'), findsOneWidget);
@@ -287,7 +300,7 @@ void main() {
     await select(t, 'llm');
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
-    await t.enterText(find.byKey(const ValueKey('title-llm')), 'Mine');
+    await enterTitle(t, 'llm', 'Mine');
     await settle(t, const Duration(seconds: 2));
     demo.bo!.edit(const SetField('llm', TitleKey(), VString('Bo title')));
     await settle(t, const Duration(seconds: 1));
@@ -333,7 +346,7 @@ void main() {
     await select(t, 'llm');
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
-    await t.enterText(find.byKey(const ValueKey('title-llm')), 'Mine');
+    await enterTitle(t, 'llm', 'Mine');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 
