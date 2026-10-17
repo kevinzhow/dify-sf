@@ -27,6 +27,9 @@ and the Flutter Scene canvas. Dify Web is the specification; any deviation needs
   1.17.1 and in our web build, same Chromium, viewport, scale, fonts and fake data; screenshots per page, component
   and state (hover, selected, dragging, panel open, error); `alignment-audit.py` (edge and text-line alignment) plus
   perceptual diff; pass = non-text similarity at least 99.5%; passing shots become golden baselines.
+* Dify's own unit tests: every case of Dify's vitest specs for the workflow editor, the model provider page and
+  dify-ui (3823 cases) is ported to Dart with the same names, or listed as not applicable with a reason;
+  `tool/dify_spec/ledger.py` reports the counts. A module counts as done when its Dify specs pass.
 * Behaviour: interaction checklist per gesture and shortcut, scripted where possible; IME, real gestures and 120 Hz on
   real devices (mibook).
 * Performance stays at the canvas spike's level (120 FPS at 2000 nodes on the test machine).

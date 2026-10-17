@@ -1,0 +1,82 @@
+"""Ledger of Dify's own frontend unit tests (vitest) that the Flutter port must pass.
+
+  python3 tool/dify_spec/ledger.py <dify source root> [--write]
+
+Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page, dify-ui) as
+`<spec path> :: <describe> > ... > <it>`, and checks which are ported: a ported case is a Dart test under
+app/test/dify_spec/ whose full name (group names joined with ' > ' and the test name) equals the Dify case name, in a
+file that names the spec in a `// dify-spec: <spec path>` line. Cases that cannot apply are listed with a reason in
+tool/dify_spec/not_applicable.tsv (`<spec path> :: <case>\\t<reason>`). --write saves the full case list to
+tool/dify_spec/cases.txt.
+"""
+import re, sys
+from pathlib import Path
+
+ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setting/model-provider-page',
+         'packages/dify-ui/src']
+CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|concurrent|todo))*\(\s*(['"`])(.*?)\3''')
+
+
+def cases(text):
+    stack, out = [], []
+    for line in text.splitlines():
+        m = CALL.match(line)
+        if not m:
+            continue
+        indent, kind, name = len(m.group(1)), m.group(2), m.group(4)
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        if kind == 'describe':
+            stack.append((indent, name))
+        else:
+            out.append(' > '.join([n for _, n in stack] + [name]))
+    return out
+
+
+def dify_cases(root):
+    for base in ROOTS:
+        for f in sorted((root / base).rglob('*.spec.ts*')):
+            if 'node_modules' in f.parts:
+                continue
+            rel = f.relative_to(root).as_posix()
+            for c in cases(f.read_text(errors='replace')):
+                yield rel, c
+
+
+def ported(repo):
+    done = set()
+    for f in (repo / 'app/test/dify_spec').rglob('*_test.dart'):
+        text = f.read_text()
+        specs = re.findall(r'//\s*dify-spec:\s*(\S+)', text)
+        names = cases(text.replace('group(', 'describe(').replace('testWidgets(', 'test('))
+        for s in specs:
+            done.update((s, n) for n in names)
+    return done
+
+
+def main():
+    root, repo = Path(sys.argv[1]), Path(__file__).resolve().parents[2]
+    all_cases = list(dify_cases(root))
+    done = ported(repo)
+    na = {}
+    tsv = repo / 'tool/dify_spec/not_applicable.tsv'
+    if tsv.exists():
+        for line in tsv.read_text().splitlines():
+            if '\t' in line and not line.startswith('#'):
+                key, reason = line.split('\t', 1)
+                na[key] = reason
+    if '--write' in sys.argv:
+        (repo / 'tool/dify_spec/cases.txt').write_text(''.join(f'{s} :: {c}\n' for s, c in all_cases))
+    by_area = {}
+    for s, c in all_cases:
+        area = '/'.join(s.split('/')[:5])
+        st = 'ported' if (s, c) in done else 'n/a' if f'{s} :: {c}' in na else 'todo'
+        by_area.setdefault(area, {'ported': 0, 'n/a': 0, 'todo': 0})[st] += 1
+    total = {k: sum(v[k] for v in by_area.values()) for k in ('ported', 'n/a', 'todo')}
+    print(f'{len(all_cases)} Dify cases: {total["ported"]} ported, {total["n/a"]} not applicable, {total["todo"]} to do')
+    for area, v in sorted(by_area.items(), key=lambda kv: -sum(kv[1].values())):
+        print(f'  {area}: {v["ported"]} ported, {v["n/a"]} n/a, {v["todo"]} to do')
+
+
+if __name__ == '__main__':
+    main()
