@@ -10,7 +10,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' show Timeline;
-import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -23,12 +22,14 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
+import 'host_io.dart' if (dart.library.js_interop) 'host_web.dart';
+
 const kNodeW = 220.0;
 const kNodeH = 78.0;
 // Environment variables override the dart-defines, so one build covers every configuration.
-final kMode = Platform.environment['MODE'] ?? const String.fromEnvironment('MODE', defaultValue: 'scene');
-final kNodes = int.parse(Platform.environment['NODES'] ?? const String.fromEnvironment('NODES', defaultValue: '500'));
-String env(String k, String d) => Platform.environment[k] ?? d;
+final kMode = hostEnv('MODE') ?? const String.fromEnvironment('MODE', defaultValue: 'scene');
+final kNodes = int.parse(hostEnv('NODES') ?? const String.fromEnvironment('NODES', defaultValue: '500'));
+String env(String k, String d) => hostEnv(k) ?? d;
 // Isolation switches (scene mode): EDGES=0 / CARDS=0 drop that layer, AA=none|fxaa|msaa, PHASES=pan,zoom,...
 final kEdges = env('EDGES', '1') == '1';
 final kCards = env('CARDS', '1') == '1';
@@ -48,16 +49,17 @@ final kCull = env('CULL', '1') == '1';
 // Zoom-back tuning: CAP_BUDGET captures started per frame; DENSITY=zoom captures at the zoom's density (below 1x
 // too, cheaper when zoomed out); KEEP=<n> keeps captures beyond the drop margin while fewer than n are held;
 // PREDICT=1 widens the capture margin to where a zoom-out is heading.
-final kCapBudget = int.parse(env('CAP_BUDGET', '24'));
+// On the web every capture is read back and uploaded again (no texture wrapping), so fewer per frame.
+final kCapBudget = int.parse(env('CAP_BUDGET', kIsWeb ? '8' : '24'));
 final kDensityZoom = env('DENSITY', 'fixed') == 'zoom';
 final kKeep = int.parse(env('KEEP', '0'));
 final kPredict = env('PREDICT', '0') == '1';
 // OVERVIEW=1: every card also gets a half-density capture, made in the background a few per frame (nearest first)
 // and kept as its placeholder's texture; at or below 0.5x zoom no full-density captures are started.
 final kOverview = env('OVERVIEW', '0') == '1';
-final kOverviewBudget = int.parse(env('OV_BUDGET', '6'));
+final kOverviewBudget = int.parse(env('OV_BUDGET', kIsWeb ? '2' : '6'));
 final kPhases = env('PHASES', 'pan,zoom,edits,drag,sharpen').split(',').toSet();
-final kBench = (Platform.environment['BENCH'] ?? const String.fromEnvironment('BENCH', defaultValue: 'true')) == 'true';
+final kBench = (hostEnv('BENCH') ?? const String.fromEnvironment('BENCH', defaultValue: 'true')) == 'true';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Graph: the same generator as app/integration_test/canvas_perf_test.dart (25-wide grid, chain + fan-out every 7).
@@ -1464,6 +1466,9 @@ class Phase {
   final String name;
   final double seconds;
   final timings = <ui.FrameTiming>[];
+
+  /// Intervals between animation ticks, ms (a frame measure that also works where FrameTiming is not reported).
+  final ticks = <double>[];
 }
 
 double pct(List<double> xs, double p) {
@@ -1494,6 +1499,9 @@ Map<String, Object> summarize(Phase p) {
     'interval_max': r1(intervals.isEmpty ? 0 : intervals.reduce(max)),
     'over_9_6ms': intervals.where((x) => x > 9.6).length,
     'over_16_7ms': intervals.where((x) => x > 16.7).length,
+    'tick_fps': r1(p.ticks.length / max(p.seconds, 0.001)),
+    'tick_p50': r1(pct(p.ticks, .5)),
+    'tick_p99': r1(pct(p.ticks, .99)),
     'build_p50': r1(pct(build, .5)),
     'build_p99': r1(pct(build, .99)),
     'raster_p50': r1(pct(raster, .5)),
@@ -1541,7 +1549,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
   void _ready() {
     loadMs = sw.elapsedMilliseconds;
     final v = WidgetsBinding.instance.platformDispatcher.views.first;
-    stdout.writeln(
+    out(
       'READY mode=$kMode nodes=$kNodes edges=${graph.edges.length} loadMs=$loadMs window=${v.physicalSize.width}x${v.physicalSize.height}@${v.devicePixelRatio} canvas=${canvasKey.currentContext?.size?.width}x${canvasKey.currentContext?.size?.height} shot=${shotKey.currentContext?.size?.width}x${shotKey.currentContext?.size?.height}',
     );
     if (kBench) unawaited(_run());
@@ -1553,7 +1561,9 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
   double _phaseStart = 0;
 
   void _tick(Duration elapsed) {
+    final prev = _now;
     _now = elapsed.inMicroseconds / 1e6;
+    if (current != null && prev > 0) current!.ticks.add((_now - prev) * 1000);
     _motion?.call(_now - _phaseStart);
   }
 
@@ -1571,7 +1581,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     await Future<void>.delayed(const Duration(milliseconds: 200)); // timings arrive in batches
     final s = summarize(p);
     results.add(s);
-    stdout.writeln('PERF ${jsonEncode(s)}');
+    out('PERF ${jsonEncode(s)}');
   }
 
   /// Zoomed in to 2x on the middle of the graph (text made crisp), then a 1 s zoom out to 0.35x and hold: how many
@@ -1590,7 +1600,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       final w = Phase('warmup', sw0.elapsedMilliseconds / 1000)..timings.addAll(p.timings);
       final sum = summarize(w)..['overviewMs'] = sw0.elapsedMilliseconds;
       results.add(sum);
-      stdout.writeln('PERF ${jsonEncode(sum)}');
+      out('PERF ${jsonEncode(sum)}');
     }
   }
 
@@ -1606,7 +1616,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     // ZB_SEC: how long the zoom out takes (0 = a jump, like a zoom-to-fit button).
     const start = 0.3;
     final end = start + double.parse(env('ZB_SEC', '1'));
-    stdout.writeln('ZB_START');
+    out('ZB_START');
     final samples = <(double, int)>[];
     // Screenshots during the zoom, just after it ends, and later.
     const shotsAt = [0.8, 1.35, 1.6, 2.2];
@@ -1631,7 +1641,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       'pendingCardFrames': pending.fold<int>(0, (a, x) => a + x.$2),
     };
     results.last.addAll(extra);
-    stdout.writeln('ZOOMBACK ${jsonEncode(extra)}');
+    out('ZOOMBACK ${jsonEncode(extra)}');
     view
       ..center = saved.$1
       ..scale = saved.$2;
@@ -1651,7 +1661,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       for (var i = 0; i < graph.nodes.length; i++)
         if (visibleRect(view, const Size(1600, 1000)).overlaps(graph.nodes[i].rect)) i,
     ];
-    stdout.writeln('RUN_START');
+    out('RUN_START');
     var started = 0, finished = 0, edits = 0;
     var lastEdit = 0.0;
     var midShot = false;
@@ -1691,7 +1701,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       'staleMaxMs': r1(st.isEmpty ? 0 : st.last),
     };
     results.last.addAll(extra);
-    stdout.writeln('RUN ${jsonEncode(extra)}');
+    out('RUN ${jsonEncode(extra)}');
     view
       ..center = saved.$1
       ..scale = saved.$2;
@@ -1785,6 +1795,8 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     sc.forceMarquee = false;
     checks['box select picks the 3 x 2 block'] = sc.selected.length == 6;
     if (kA11y) {
+      // The web builds the semantics tree only once accessibility is on (GTK keeps it on).
+      final semantics = SemanticsBinding.instance.ensureSemantics();
       await Future<void>.delayed(const Duration(milliseconds: 500));
       final cardsInView = [
         for (final n in graph.nodes)
@@ -1798,6 +1810,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       checks['semantics: one summary when zoomed out'] = semanticsLabels().any((l) => l.contains('nodes in view'));
       view.scale = 1;
       await Future<void>.delayed(const Duration(milliseconds: 300));
+      semantics.dispose();
     }
     current = null;
     sc.onInputApplied = null;
@@ -1832,8 +1845,8 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     };
     summary.addAll(extra);
     results.add(summary);
-    stdout.writeln('PERF ${jsonEncode(summary)}');
-    stdout.writeln('INPUT ${jsonEncode(extra)}');
+    out('PERF ${jsonEncode(summary)}');
+    out('INPUT ${jsonEncode(extra)}');
     await _shot('after-input');
   }
 
@@ -1854,15 +1867,14 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
 
   Future<void> _shot(String name) async {
     await SchedulerBinding.instance.endOfFrame;
-    final dir = Platform.environment['SHOTS'] ?? '/tmp/scene_canvas';
-    Directory(dir).createSync(recursive: true);
+    final dir = hostEnv('SHOTS') ?? '/tmp/scene_canvas';
     final boundary = shotKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     try {
       final image = await boundary.toImage();
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
-      File('$dir/$kMode-$kNodes-$name.png').writeAsBytesSync(png!.buffer.asUint8List());
+      saveFile('$dir/$kMode-$kNodes-$name.png', png!.buffer.asUint8List());
     } catch (e) {
-      stdout.writeln(
+      out(
         'SHOT $name failed (${boundary.size.width}x${boundary.size.height}, dpr ${View.of(context).devicePixelRatio}): $e',
       );
     }
@@ -1889,7 +1901,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
         unsharp = canvas.stats['unsharpOnScreen'] as int? ?? -1;
         if (unsharp == 0) break;
       }
-      stdout.writeln('AUTOSHARP ${jsonEncode({'unsharpOnScreen': unsharp, 'ms': sw1.elapsedMilliseconds})}');
+      out('AUTOSHARP ${jsonEncode({'unsharpOnScreen': unsharp, 'ms': sw1.elapsedMilliseconds})}');
       await _shot('autosharp');
     }
     // Pan: a 600 px/s diagonal sweep and back.
@@ -1945,15 +1957,14 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       'sharpenWorstBuildMs': r1(
         p.timings.isEmpty ? 0 : p.timings.map((f) => f.buildDuration.inMicroseconds / 1000).reduce(max),
       ),
-      'rssMb': ProcessInfo.currentRss ~/ (1 << 20),
-      'maxRssMb': ProcessInfo.maxRss ~/ (1 << 20),
+      'rssMb': rssMb(),
+      'maxRssMb': maxRssMb(),
       'liveWidgets': canvas.liveWidgets,
       ...canvas.stats,
       'phases': results,
     };
-    stdout.writeln('SUMMARY ${jsonEncode(summary)}');
-    await stdout.flush();
-    exit(0);
+    out('SUMMARY ${jsonEncode(summary)}');
+    await quit();
   }
 
   @override

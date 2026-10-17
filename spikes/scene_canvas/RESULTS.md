@@ -211,6 +211,26 @@ it off (pan 121 / 118 fps, zoom 119 / 120, edits 116 / 117, drag 116 / 115; `res
 
 ![2x after automatic sharpening](results/autosharp-2x.png)
 
+## Web
+
+The same app built for the web (`flutter build web --profile`, Flutter Scene's WebGL2 backend), run in Chromium on the
+same 120 Hz headless Weston (Wayland, `tool/web_bench.py`; options as URL query): WebGL renderer
+`ANGLE (Intel, Mesa Intel(R) Graphics (LNL), OpenGL ES 3.2)`, so the real GPU. Frame measure: intervals between
+animation ticks (`tick_*`).
+
+| 2000 nodes, web | pan | zoom | edits 20/s | drag |
+|---|---|---|---|---|
+| 24 captures/frame, 6 overviews | 98 fps, p99 58.3 | 109 fps, p99 10.6 | 85 fps, p99 27.1 | 103 fps, p99 18.5 |
+| 8 captures/frame, 2 overviews (web default now) | 108 fps, p99 11.2 | 109 fps, p99 10.7 | 103 fps, p99 18.6 | 96 fps, p99 23.3 |
+
+* On the web a capture cannot be wrapped as a GPU texture: Flutter Scene reads it back and uploads it again, so each
+  capture costs much more than on native; the web now starts fewer per frame. Edits and drags still show p99 of 18 to
+  23 ms.
+* Load: about 1.2 to 1.3 s (native: 0.2 s). Workflow run at 0.35x: 94 fps, overview staleness max 276 ms (same as
+  native). Zoom-back jump: no placeholders. Input: all six gesture checks pass; semantics checks pass once
+  accessibility is turned on (the web builds the semantics tree only then). Input latency is not measured on the web
+  (its timer and frame clocks differ).
+
 ## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
@@ -238,7 +258,7 @@ it off (pan 121 / 118 fps, zoom 119 / 120, edits 116 / 117, drag 116 / 115; `res
 ## Recommendation
 
 Cards in Flutter Scene with per-component culling: they hold up at 2000 nodes, at 2x, and zoomed out to the whole
-graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Open item for it: the web build. Final 120 Hz acceptance on a
+graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Final 120 Hz acceptance on a
 real 120 Hz screen.
 
 Not covered yet: pointer and keyboard input on scene cards (`WidgetInput.automatic`), text input inside cards, the
