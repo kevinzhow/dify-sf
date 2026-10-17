@@ -89,6 +89,34 @@ class DocsApi {
     };
   }
 
+  /// `POST /v1/docs/import` (server-generated id) or `PUT /v1/docs/{id}/import`: a document from a Dify workflow
+  /// file (YAML). An existing document is left alone (`created: false`), so a retried import is harmless.
+  Future<DocInfo> importDifyDsl(String yaml, {String? id}) async {
+    final req = http.Request(id == null ? 'POST' : 'PUT', _url(id == null ? '/v1/docs/import' : '/v1/docs/$id/import'))
+      ..headers['Content-Type'] = 'application/x-yaml; charset=utf-8'
+      ..body = yaml;
+    final res = await _guard(() async => http.Response.fromStream(await _client.send(req).timeout(timeout)));
+    if (res.statusCode != 200 && res.statusCode != 201) throw _error(res);
+    final json = jsonDecode(res.body) as Map<String, Object?>;
+    return DocInfo(id: json['id']! as String, head: json['head']! as int, created: json['created'] as bool? ?? false);
+  }
+
+  /// `GET /v1/docs/{id}/export`: the current state as a Dify workflow file (YAML).
+  Future<String> exportDifyDsl(String id) async {
+    final res = await _guard(() => _client.get(_url('/v1/docs/$id/export')).timeout(timeout));
+    if (res.statusCode != 200) throw _error(res);
+    return utf8.decode(res.bodyBytes);
+  }
+
+  /// `GET /v1/docs/{id}/export?format=json`: the same as parsed JSON.
+  Future<Map<String, Object?>> exportDifyDslJson(String id) async {
+    final res = await _guard(
+      () => _client.get(_url('/v1/docs/$id/export').replace(queryParameters: {'format': 'json'})).timeout(timeout),
+    );
+    if (res.statusCode != 200) throw _error(res);
+    return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>;
+  }
+
   /// `GET /v1/docs/{id}/snapshot`: the full document at the current head.
   Future<({int seq, Document doc})> snapshot(String id) async {
     final res = await _guard(() => _client.get(_url('/v1/docs/$id/snapshot')).timeout(timeout));

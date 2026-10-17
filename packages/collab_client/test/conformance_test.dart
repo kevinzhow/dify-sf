@@ -307,6 +307,76 @@ void main() {
       expect((await api.snapshot(doc)).doc.nodes['llm']!.config['temperature'], const VInt(2));
     });
 
+    test('1.5 Dify workflow files: import creates the document, export renders its current state', () async {
+      const dsl = '''
+app:
+  mode: workflow
+  name: conformance import
+kind: app
+version: 0.3.1
+workflow:
+  features: {}
+  graph:
+    edges:
+    - id: s-c
+      source: s
+      sourceHandle: source
+      target: c
+      targetHandle: target
+      type: custom
+    nodes:
+    - id: s
+      type: custom
+      position: {x: 80, y: 282.5}
+      data: {type: start, title: Start, variables: [{variable: q, label: q, type: text-input}]}
+    - id: c
+      type: custom
+      position: {x: 384, y: 282}
+      data:
+        type: code
+        title: Code
+        code: "def main(q): return {'result': q}"
+        variables: [{variable: q, value_selector: [s, q]}]
+        outputs: {result: {type: string, children: null}}
+        temperature_like: 0.7
+''';
+      final id = 'dsl-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+      final created = await api.importDifyDsl(dsl, id: id);
+      expect(created.created, isTrue);
+      expect(
+        (await api.importDifyDsl(dsl, id: id)).created,
+        isFalse,
+        reason: 'a retried import leaves the document alone',
+      );
+      final snap = (await api.snapshot(id)).doc;
+      expect(snap.nodes.keys.toSet(), {'s', 'c'});
+      expect(snap.nodes['c']!.config['temperature_like'], const VDouble(0.7));
+      final vars = snap.nodes['c']!.config['variables']! as VItems;
+      expect(vars.items.single.id, 'q');
+      expect((vars.items.single.value as VMap).entries['value_selector'], const VRef(OutputRef('s', 'q')));
+      // edit, then export
+      final t = HttpTransport(baseUrl: base, docId: id);
+      final r = await t.submit(
+        const SubmitRequest(
+          client: 'cli-dsl',
+          ops: [OutgoingOp(cseq: 1, base: 0, op: SetField('c', TitleKey(), VString('Renamed')))],
+        ),
+        timeout: const Duration(seconds: 10),
+      );
+      t.close();
+      expect(r.results.single, isA<AckResult>());
+      Map<String, Object?> m(Object? x) => x! as Map<String, Object?>;
+      final out = await api.exportDifyDslJson(id);
+      expect(m(out['app'])['name'], 'conformance import');
+      final nodes = (m(m(out['workflow'])['graph'])['nodes']! as List<Object?>).map(m).toList();
+      final c = m(nodes.firstWhere((n) => n['id'] == 'c')['data']);
+      expect(c['title'], 'Renamed');
+      expect(m(c['outputs']).keys, ['result']);
+      expect(m((c['variables']! as List<Object?>).single)['value_selector'], ['s', 'q']);
+      expect(m(nodes.firstWhere((n) => n['id'] == 's')['position'])['y'], 282.5);
+      expect(await api.exportDifyDsl(id), contains('conformance import'));
+    });
+
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'
