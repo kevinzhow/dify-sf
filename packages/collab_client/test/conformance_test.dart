@@ -218,7 +218,7 @@ void main() {
     });
   });
 
-  group('protocol 1.1 and 1.2', () {
+  group('protocol 1.1 to 1.6', () {
     test('POST /clients issues unique client ids (404 for an unknown document)', () async {
       final ids = {for (var i = 0; i < 5; i++) await t.issueClientId()};
       expect(ids, hasLength(5));
@@ -292,6 +292,120 @@ void main() {
       expect(snap.nodes['answer']!.config['answer'], const VBroken(OutputRef('code', 'result')));
       expect(snap.integrityProblems, isEmpty);
     });
+
+    test('1.6 restore: undo of a delete brings back node, edges and references; a stale restore of another '
+        "client's delete is a conflict", () async {
+      final before = (await api.snapshot(doc)).doc;
+      final llm = before.nodes['llm']!;
+      final edges = [
+        for (final e in before.edges.values)
+          if (e.source == 'llm' || e.target == 'llm') e,
+      ]..sort((a, b) => a.id.compareTo(b.id));
+      expect(edges.map((e) => e.id), ['e-llm-code', 'e-start-llm']);
+      expect(
+        (await post('cli-r', [(1, 0, const RemoveNode('llm'))])).results.single,
+        isA<AckResult>().having((a) => a.seq, 'seq', 1),
+      );
+      final gone = (await api.snapshot(doc)).doc;
+      expect(gone.nodes['code']!.config['inputs'], const VBroken(OutputRef('llm', 'text')));
+      // Someone who has not seen the delete cannot restore it (stale tombstone) ...
+      final stale = await post('cli-s', [(1, 0, RestoreNode(llm, edges))]);
+      expect(
+        (stale.results.single as RejectResult).reason,
+        const Conflict(node: 'llm', field: null, seq: 1, by: 'cli-r'),
+      );
+      // ... the deleter can (the same base as its delete: an undo pressed right away).
+      final undo = await post('cli-r', [(2, 0, RestoreNode(llm, edges))]);
+      expect(undo.results.single, isA<AckResult>().having((a) => a.seq, 'seq', 2));
+      final back = (await api.snapshot(doc)).doc;
+      expect(back.nodes['llm'], llm);
+      expect(back.edges, before.edges);
+      expect(back.deletedNodes, isEmpty);
+      expect(back.deletedEdges, isEmpty);
+      expect(back.nodes['code']!.config['inputs'], const VRef(OutputRef('llm', 'text')));
+      expect(back.integrityProblems, isEmpty);
+      // The client's own replay of the log gives the server's document, version metadata included.
+      final replay = Templates.example()
+        ..apply(const RemoveNode('llm'), const Stamp(1, 'cli-r'))
+        ..apply(RestoreNode(llm, edges), const Stamp(2, 'cli-r'));
+      expect(replay, back);
+      // A write based on a version before the restore is stale: it names the restore.
+      final late = await post('cli-s', [
+        (2, 0, const SetField('llm', ConfigKey(['prompt']), VString('stale'))),
+      ]);
+      expect(
+        (late.results.single as RejectResult).reason,
+        const Conflict(node: 'llm', field: ConfigKey([]), seq: 2, by: 'cli-r'),
+      );
+      // A second restore: the node exists.
+      final again = await post('cli-r', [(3, 2, RestoreNode(llm, edges))]);
+      expect((again.results.single as RejectResult).reason, const NodeExists('llm'));
+    });
+
+    test(
+      '1.6 restore: streams without proto=1.6 never carry it (snapshot instead of replay, live stream ended)',
+      () async {
+        Future<List<StreamEvent>> catchUp(StreamOpen open) async {
+          final out = <StreamEvent>[];
+          await for (final e in t.openStream(open).timeout(const Duration(seconds: 10))) {
+            if (e is PingEvent) continue;
+            out.add(e);
+            if (e is ReadyEvent) break;
+          }
+          return out;
+        }
+
+        final answer = (await api.snapshot(doc)).doc.nodes['answer']!;
+        const edge = Edge(id: 'e-code-answer', source: 'code', target: 'answer');
+        await post('cli-r', [(1, 0, const RemoveNode('answer'))]);
+
+        // Live: a 1.5 stream (no proto) and a 1.6 stream are open when the restore commits.
+        final old = <StreamEvent>[], current = <StreamEvent>[];
+        var oldEnded = false;
+        final oldSub = t
+            .openStream(const StreamOpen(lastEventId: 1, proto: null))
+            .listen(
+              (e) => e is PingEvent ? null : old.add(e),
+              onDone: () => oldEnded = true,
+              onError: (_) => oldEnded = true,
+            );
+        final curSub = t
+            .openStream(const StreamOpen(lastEventId: 1))
+            .listen((e) => e is PingEvent ? null : current.add(e));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        expect(old.whereType<ReadyEvent>(), hasLength(1));
+        expect(
+          (await post('cli-r', [
+            (2, 1, RestoreNode(answer, const [edge])),
+          ])).results.single,
+          isA<AckResult>().having((a) => a.seq, 'seq', 2),
+        );
+        for (var i = 0; i < 40 && !(oldEnded && current.whereType<CommitEvent>().isNotEmpty); i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        await oldSub.cancel();
+        await curSub.cancel();
+        expect(oldEnded, isTrue, reason: 'the server ends a 1.5 stream instead of sending it the restore');
+        expect(old.whereType<CommitEvent>(), isEmpty);
+        expect(current.whereType<CommitEvent>().single.entry.op, RestoreNode(answer, const [edge]));
+
+        // Catch-up: the range (0, 2] contains the restore.
+        final oldResume = await catchUp(const StreamOpen(lastEventId: 0, proto: null));
+        expect(oldResume.first, isA<SnapshotEvent>().having((s) => s.seq, 'seq', 2));
+        expect((oldResume.first as SnapshotEvent).doc.nodes['answer'], answer);
+        final oldUpToDate = await catchUp(const StreamOpen(lastEventId: 2, proto: null));
+        expect(oldUpToDate, hasLength(1), reason: 'nothing to replay: only ready');
+        final newResume = await catchUp(const StreamOpen(lastEventId: 0));
+        expect(newResume.whereType<CommitEvent>().map((c) => c.entry.op), [
+          const RemoveNode('answer'),
+          RestoreNode(answer, const [edge]),
+        ]);
+        final older = await catchUp(const StreamOpen(lastEventId: 0, proto: '1.5'));
+        expect(older.first, isA<SnapshotEvent>(), reason: 'proto below 1.6 counts as old');
+        final bad = await http.get(base.replace(path: '/v1/docs/$doc/events', query: 'proto=latest'));
+        expect(bad.statusCode, 400);
+      },
+    );
 
     test('1.5 numbers: a fractional value is stored and served as a double', () async {
       final r = await post('cli-n', [

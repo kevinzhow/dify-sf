@@ -134,6 +134,7 @@ class HttpTransport implements CollabTransport {
           if (open.client != null) 'client': open.client!,
           if (open.from != null) 'from': '${open.from}',
           if (open.lastEventId != null && lastEventIdInQuery) 'lastEventId': '${open.lastEventId}',
+          if (open.proto != null) 'proto': open.proto!,
         };
         final req =
             http.AbortableRequest('GET', _url('/events', query.isEmpty ? null : query), abortTrigger: abort.future)

@@ -83,7 +83,12 @@ class EditorController extends ChangeNotifier {
   // ---- edits -------------------------------------------------------------------------------------
 
   /// Undo and redo of this client's own structural edits (Dify's history).
-  late final undo = UndoManager(doc: () => doc, submit: (op) => session.edit(op), newId: newId);
+  late final undo = UndoManager(
+    doc: () => doc,
+    submit: (op) => session.edit(op),
+    newId: newId,
+    restoreNode: RestoreNode.new, // protocol 1.6
+  );
 
   /// Submits [op], recorded for undo under [event] (or in the step the UI opened with `undo.begin`).
   void _edit(Op op, {HistoryEvent? event, int? base}) {

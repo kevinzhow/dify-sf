@@ -379,6 +379,94 @@ class Document {
                 ) ??
                 (checkConflicts ? _outputRemovalConflict(op, base, client) : null); // renaming an output
         }
+
+      case RestoreNode(:final node, :final edges):
+        return _validateRestore(node, edges, base, client, checkConflicts);
+    }
+  }
+
+  /// Protocol 1.6 [RestoreNode] (undo of a delete). The node's existence is a register whose last write is its
+  /// tombstone: restoring is refused as a stale write if someone else deleted it after [base]. Like a delete, the
+  /// restore rewrites fields of other nodes (broken -> ref); it conflicts with any other client's write, after [base],
+  /// to one of those fields. Only a malformed edge list is refused: an edge that cannot come back is skipped by [apply].
+  RejectReason? _validateRestore(Node n, List<Edge> restoredEdges, int base, String client, bool checkConflicts) {
+    if (n.id.isEmpty) return const Invalid('empty node id');
+    if (nodes.containsKey(n.id)) return NodeExists(n.id);
+    final tomb = deletedNodes[n.id];
+    if (tomb == null) return NodeNotFound(n.id);
+    for (final key in n.config.keys.toList()..sort()) {
+      if (key.startsWith(r'$')) return Invalid('config key $key is reserved');
+      // Broken markers are allowed here (the node comes back as it was); references are normalised when applied.
+      final problem = n.config[key]!.structuralProblem;
+      if (problem != null) return Invalid(problem);
+    }
+    final ids = <String>{};
+    for (final e in restoredEdges) {
+      if (e.id.isEmpty) return const Invalid('empty edge id');
+      if (!ids.add(e.id)) return Invalid('edge ${e.id} listed twice');
+      if (e.source != n.id && e.target != n.id) return Invalid('edge ${e.id} does not touch node ${n.id}');
+    }
+    if (!checkConflicts) return null;
+    if (tomb.seq > base && tomb.client != client) {
+      return Conflict(node: n.id, field: null, seq: tomb.seq, by: tomb.client);
+    }
+    final accepts = _acceptsOutput(n);
+    for (final other in nodes.keys.toList()..sort()) {
+      for (final key in _reviveRefsWhere(nodes[other]!.config, (r) => r.node == n.id && accepts(r.output)).changed) {
+        final c = _fieldConflict(other, key, base, client);
+        if (c != null) return c;
+      }
+    }
+    return null;
+  }
+
+  /// Whether [node] can be referenced by output name: it declares it, or declares no outputs at all.
+  static bool Function(String) _acceptsOutput(Node node) {
+    final outs = declaredOutputs(node);
+    return outs == null ? (_) => true : outs.contains;
+  }
+
+  /// Restore: the node comes back with its references normalised (live iff the target exists and declares the output);
+  /// each listed edge comes back iff this delete removed it (same tombstone), both endpoints exist and no live edge has
+  /// the same connection, otherwise it stays deleted; broken references to the node in other nodes whose output it
+  /// declares become live again. The restore counts as a content write of the whole node (title + the whole config) by
+  /// its author, so writes based on a version before it are stale.
+  void _applyRestore(Node n, List<Edge> restoredEdges, Stamp stamp) {
+    final tomb = deletedNodes[n.id];
+    if (nodes.containsKey(n.id) || tomb == null) return;
+    final accepts = _acceptsOutput(n);
+    final config = <String, Value>{
+      for (final e in n.config.entries)
+        e.key: e.value.normalizingRefs((r, _) {
+          if (r.node == n.id) return accepts(r.output);
+          final target = nodes[r.node];
+          return target != null && _acceptsOutput(target)(r.output);
+        }),
+    };
+    deletedNodes.remove(n.id);
+    nodes[n.id] = n.copyWith(config: Map.unmodifiable(config));
+    _stampField(n.id, const TitleKey(), stamp);
+    _stampField(n.id, const ConfigKey([]), stamp); // the empty path overlaps every config path and list item
+    _touch(n.id, stamp);
+    for (final e in restoredEdges) {
+      if (e.source != n.id && e.target != n.id) continue;
+      if (edges.containsKey(e.id) || deletedEdges[e.id] != tomb) continue;
+      if (!nodes.containsKey(e.source) || !nodes.containsKey(e.target)) continue; // other endpoint deleted: skipped
+      if (edges.values.any((o) => o.sameConnection(e))) continue;
+      edges[e.id] = e;
+      deletedEdges.remove(e.id);
+      _touch(e.source, stamp);
+      _touch(e.target, stamp);
+    }
+    for (final other in nodes.keys.toList()..sort()) {
+      if (other == n.id) continue;
+      final r = _reviveRefsWhere(nodes[other]!.config, (x) => x.node == n.id && accepts(x.output));
+      if (r.changed.isEmpty) continue;
+      nodes[other] = nodes[other]!.copyWith(config: r.config);
+      for (final key in r.changed) {
+        _stampField(other, key, stamp);
+      }
+      _touch(other, stamp);
     }
   }
 
@@ -604,6 +692,9 @@ class Document {
           _touch(node, stamp);
           _breakOutputRefs(removed, stamp);
         }
+
+      case RestoreNode(:final node, :final edges):
+        _applyRestore(node, edges, stamp);
     }
   }
 
@@ -652,7 +743,23 @@ class Document {
     Map<String, Value> cfg,
     bool Function(OutputRef) matches, [
     List<String> prefix = const [],
-  ]) {
+  ]) => _rewrite(cfg, prefix, (v) => v.hasRefWhere(matches), (v) => v.breakingRefsWhere(matches));
+
+  /// Turns every broken marker that [matches] back into a live reference (protocol 1.6, restoring a node).
+  static ({Map<String, Value> config, List<FieldKey> changed}) _reviveRefsWhere(
+    Map<String, Value> cfg,
+    bool Function(OutputRef) matches, [
+    List<String> prefix = const [],
+  ]) => _rewrite(cfg, prefix, (v) => v.hasBrokenRefWhere(matches), (v) => v.revivingRefsWhere(matches));
+
+  /// Applies [transform] to every register (nearest map-key path for atomic values, `(list path, item id)` for items of
+  /// keyed lists) whose value [affects] holds for; returns the new config and those registers.
+  static ({Map<String, Value> config, List<FieldKey> changed}) _rewrite(
+    Map<String, Value> cfg,
+    List<String> prefix,
+    bool Function(Value) affects,
+    Value Function(Value) transform,
+  ) {
     final changed = <FieldKey>[];
     final out = Map.of(cfg);
     for (final key in cfg.keys.toList()..sort()) {
@@ -660,24 +767,24 @@ class Document {
       final path = [...prefix, key];
       switch (v) {
         case VMap(:final entries):
-          final sub = _breakRefsWhere(entries, matches, path);
+          final sub = _rewrite(entries, path, affects, transform);
           if (sub.changed.isNotEmpty) {
             out[key] = VMap(sub.config);
             changed.addAll(sub.changed);
           }
-        case VRef() || VList():
-          if (v.hasRefWhere(matches)) {
-            out[key] = v.breakingRefsWhere(matches);
+        case VRef() || VBroken() || VList():
+          if (affects(v)) {
+            out[key] = transform(v);
             changed.add(ConfigKey(path));
           }
         case VItems(:final items):
           final next = <Item>[];
           var touched = false;
           for (final i in items) {
-            if (i.value.hasRefWhere(matches)) {
+            if (affects(i.value)) {
               touched = true;
               changed.add(ItemKey(path, i.id));
-              next.add(Item(i.id, i.value.breakingRefsWhere(matches)));
+              next.add(Item(i.id, transform(i.value)));
             } else {
               next.add(i);
             }

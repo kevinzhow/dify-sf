@@ -173,6 +173,7 @@ All of the following pass (package: 180 tests with the real server configured, 1
 
 | Suite | What it covers | Result |
 |---|---|---|
+| `restore_test` (9) | 1.6 `restoreNode`: undo restores node, edges and references and stamps them; refusals (nodeNotFound, nodeExists, stale tombstone, malformed edges); conflict with an unseen write to a revived field; stale writes after a restore; skipped edges; reference normalisation; declared outputs; the exact server wire shape; replica equality | pass |
 | `model_test` (21) | stale-write, same-value, overlap, layout-LWW, delete cascade, tombstones, keyed lists, JSON shapes, round trips | pass |
 | `scenarios_test` (31) | S1 (no overlap), S2 (same field both orders, overlapping paths, same value, 30 users same value, re-apply), S3 (stale tab by log and by snapshot), S4 (lost request, lost ack, 503 after commit, 40% loss both ways, half-open stream, lost stream event, server unreachable), S5 (journaled/volatile crash, commit-before-ack crash), S6 (fast edits then reload), S7 (stale delete, edit after delete, broken refs, dangling refs, double delete, edge to deleted node), keyed-list conflicts, batching, slow-edit base | pass |
 | `random_test` | seeded simulation, 5 fault profiles (calm, lossy, flaky, crashy, chaos), 2-5 clients, journaled and volatile, slow disk, crashes racing writes; checks convergence (I3, including version metadata), I4, log hygiene, exactly-one-fate per op, committed ops in the log with identical content, rejected/lost not in the log, everything in the log known to its client (I5), promised ops resolved | pass; see below for run counts |
@@ -264,3 +265,10 @@ implemented and tested here. What is left:
    declared output (the `name` of an `outputs` item, or its id), removing or renaming an output breaks references to its
    name and conflicts with unseen writes to them; `integrityProblems` reports references to missing outputs. The app's
    notice for `danglingReference` now reads "The variable you picked from X no longer exists".
+11. **Resolved: undo of a delete** (1.6). `RestoreNode(node, edges)` brings a deleted node back with the edges its
+   delete removed; `Document` validates and applies it exactly as the server (tombstone stale rule, edges skipped when
+   their other end is gone, references normalised, `$broken` markers to the node revived, whole-node stamp
+   `{"k":"config","path":[]}`). The stream is opened with `proto=1.6`, so the server sends restores to this client
+   (older clients get a snapshot instead). The app's `UndoManager` undoes a node delete with it. `RandomEditor` undoes
+   some of its own deletes, so the randomized tests and the storm CLI exercise it. Tests: `restore_test`, two
+   conformance cases (restore against the real server; a stream without `proto` never carries a restore).

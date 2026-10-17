@@ -284,6 +284,10 @@ sealed class Op {
           _str(m, 'itemId', 'op'),
           Value.fromJson(m['value']),
         );
+      case 'restoreNode':
+        final edges = m['edges'] ?? const <Object?>[];
+        if (edges is! List<Object?>) return _bad('op.edges', m);
+        return RestoreNode(Node.fromJson(m['node']), List.unmodifiable(edges.map(Edge.fromJson)));
       default:
         return _bad('op type', json);
     }
@@ -472,6 +476,30 @@ final class UpdateItem extends Op {
   int get hashCode => Object.hash(node, const ListEquality<String>().hash(path), itemId, value);
   @override
   String toString() => 'updateItem($node, ${path.join('.')}, $itemId, $value)';
+}
+
+/// Protocol 1.6: brings a deleted node back (undo of a delete) with the edges its delete removed (original ids). The
+/// node id and those edge ids leave the tombstones; `$broken` references to the node turn back into references. See
+/// `Document.validate` and docs/protocol.md ("Restore").
+final class RestoreNode extends Op {
+  const RestoreNode(this.node, [this.edges = const []]);
+  final Node node;
+  final List<Edge> edges;
+  @override
+  Map<String, Object?> toJson() => {
+    't': 'restoreNode',
+    'node': node.toJson(),
+    'edges': [for (final e in edges) e.toJson()],
+  };
+  @override
+  String? get nodeId => node.id;
+  @override
+  bool operator ==(Object other) =>
+      other is RestoreNode && other.node == node && const ListEquality<Edge>().equals(other.edges, edges);
+  @override
+  int get hashCode => Object.hash(node, const ListEquality<Edge>().hash(edges));
+  @override
+  String toString() => 'restoreNode($node, $edges)';
 }
 
 // ---- reject reasons ------------------------------------------------------------------------------

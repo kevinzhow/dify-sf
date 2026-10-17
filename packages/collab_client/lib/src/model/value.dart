@@ -133,6 +133,15 @@ sealed class Value {
   /// Replaces every live reference that [matches] with an explicit broken marker.
   Value breakingRefsWhere(bool Function(OutputRef) matches) => this;
 
+  bool hasBrokenRefWhere(bool Function(OutputRef) matches) => brokenRefs.any(matches);
+
+  /// Turns every broken marker that [matches] back into a live reference (protocol 1.6, restoring a node).
+  Value revivingRefsWhere(bool Function(OutputRef) matches) => normalizingRefs((r, live) => live || matches(r));
+
+  /// Rewrites every reference, live or broken, into the form `live(ref, isLiveNow)` decides (true = [VRef], false =
+  /// [VBroken]). Used for the config of a restored node: a reference is live iff its target exists and declares it.
+  Value normalizingRefs(bool Function(OutputRef ref, bool live) live) => this;
+
   /// Structural problems that make a value unwritable: duplicate/empty item ids, reserved map keys.
   String? get structuralProblem => null;
 }
@@ -219,6 +228,8 @@ final class VRef extends Value {
   @override
   Value breakingRefsWhere(bool Function(OutputRef) matches) => matches(ref) ? VBroken(ref) : this;
   @override
+  Value normalizingRefs(bool Function(OutputRef ref, bool live) live) => live(ref, true) ? this : VBroken(ref);
+  @override
   bool operator ==(Object other) => other is VRef && other.ref == ref;
   @override
   int get hashCode => Object.hash('ref', ref);
@@ -226,7 +237,8 @@ final class VRef extends Value {
   String toString() => '{{$ref}}';
 }
 
-/// The explicit marker the server writes when the referenced node is deleted. Clients can never write it.
+/// The explicit marker the server writes when the referenced node is deleted. Clients can never write it, except inside
+/// the node of a `RestoreNode` (protocol 1.6).
 final class VBroken extends Value {
   const VBroken(this.ref);
   final OutputRef ref;
@@ -234,6 +246,8 @@ final class VBroken extends Value {
   Object? toJson() => {r'$broken': ref.toJson()};
   @override
   Iterable<OutputRef> get brokenRefs => [ref];
+  @override
+  Value normalizingRefs(bool Function(OutputRef ref, bool live) live) => live(ref, false) ? VRef(ref) : this;
   @override
   bool operator ==(Object other) => other is VBroken && other.ref == ref;
   @override
@@ -256,6 +270,9 @@ final class VList extends Value {
   @override
   Value breakingRefsWhere(bool Function(OutputRef) matches) =>
       VList([for (final v in items) v.breakingRefsWhere(matches)]);
+  @override
+  Value normalizingRefs(bool Function(OutputRef ref, bool live) live) =>
+      VList(List.unmodifiable([for (final v in items) v.normalizingRefs(live)]));
   @override
   String? get structuralProblem => items.map((v) => v.structuralProblem).nonNulls.firstOrNull;
   @override
@@ -281,6 +298,9 @@ final class VItems extends Value {
   @override
   Value breakingRefsWhere(bool Function(OutputRef) matches) =>
       VItems([for (final i in items) Item(i.id, i.value.breakingRefsWhere(matches))]);
+  @override
+  Value normalizingRefs(bool Function(OutputRef ref, bool live) live) =>
+      VItems(List.unmodifiable([for (final i in items) Item(i.id, i.value.normalizingRefs(live))]));
   @override
   String? get structuralProblem {
     final seen = <String>{};
@@ -314,6 +334,9 @@ final class VMap extends Value {
   @override
   Value breakingRefsWhere(bool Function(OutputRef) matches) =>
       VMap({for (final e in entries.entries) e.key: e.value.breakingRefsWhere(matches)});
+  @override
+  Value normalizingRefs(bool Function(OutputRef ref, bool live) live) =>
+      VMap(Map.unmodifiable({for (final e in entries.entries) e.key: e.value.normalizingRefs(live)}));
   @override
   String? get structuralProblem {
     for (final MapEntry(:key, :value) in entries.entries) {

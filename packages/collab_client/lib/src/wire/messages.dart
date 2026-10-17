@@ -244,9 +244,13 @@ final class PingEvent extends StreamEvent {
   const PingEvent();
 }
 
+/// The protocol version this package implements (docs/protocol.md). Sent as `proto` when opening the event stream, so
+/// the server includes ops added in 1.6 (`restoreNode`) in it.
+const protocolVersion = '1.6';
+
 /// `GET /v1/docs/{doc}/events` parameters.
 final class StreamOpen {
-  const StreamOpen({this.client, this.lastEventId, this.from, this.generation = 0});
+  const StreamOpen({this.client, this.lastEventId, this.from, this.generation = 0, this.proto = protocolVersion});
 
   final String? client;
 
@@ -259,6 +263,10 @@ final class StreamOpen {
   /// Client-side stream generation (not sent on the wire; lets drivers ignore events of dead streams).
   final int generation;
 
+  /// `proto` query parameter (protocol 1.6). null plays a client older than 1.6: the server never sends it a
+  /// `restoreNode` commit (it gets a snapshot instead).
+  final String? proto;
+
   @override
-  String toString() => 'StreamOpen(client=$client lastEventId=$lastEventId from=$from gen=$generation)';
+  String toString() => 'StreamOpen(client=$client lastEventId=$lastEventId from=$from gen=$generation proto=$proto)';
 }

@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1
+# dify-sf collaboration protocol, version 1.6
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,58 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.6 (additive; clients older than 1.6 are unaffected): **restoring a deleted node** (undo of a delete).
+  * New op `restoreNode`: `{"t":"restoreNode","node":Node,"edges":[Edge,...]}` carries the node as it was before the delete
+    (id, type, title, position, config; the config may contain `$broken` markers) and the edges the delete removed, with their
+    original ids (`edges` may be empty or omitted). The node id and those edge ids leave the tombstones, and `$broken` references
+    to the node turn back into references. Exact rules: section 6, "Restore"; reasons: section 7.
+  * The event stream takes a new query parameter `proto` (the protocol version the client implements, `1.6`). A stream opened
+    without it, or with a lower version, **never carries a `restoreNode` commit**: if its catch-up range contains one, it gets a
+    `snapshot` at head instead of the replay; if one is committed while it is live, the server ends the stream (the client
+    reconnects and gets that snapshot). Both are behaviours every client already has (section 5). Clients that send `proto=1.6`
+    must decode and apply `restoreNode` (clients that pre-check locally, e.g. the Dart port, run its validation too).
+  * Documents keep the 1.5 shape. A restore adds no new kind of field: the stamp it puts on the whole config is an ordinary
+    FieldKey `{"k":"config","path":[]}`, which 1.5 decoders read and whose overlap rule (a prefix of every path) they already apply.
+* 1.5 (additive; clients that decode values must accept it): **fractional numbers.** A config value may be a JSON number
+  with a fractional part (Dify settings such as `temperature: 0.7`). Every number has one form: integral numbers are
+  integers (on the wire `2.0` is the number 2 and is stored and served as `2`); a fractional number is a finite double.
+  Encoders write the shortest representation that reads back to the same double.
+* 1.4 (**stricter validation; clients that pre-check locally, e.g. the Dart port, must apply it**): **declared outputs are
+  part of reference integrity.** A node's declared outputs are the names of the items of its `outputs` keyed list (an
+  item's `name`, or its id if it has none); a node without an `outputs` list accepts references to any output name.
+  * Writing a live reference to a node with declared outputs that names none of them is refused with `danglingReference`
+    (the same reason as a reference to a missing node).
+  * Removing an output item, or renaming it (`updateItem` changing its `name`), takes its name away unless another item
+    still declares it. Like a node delete, this rewrites every reference to that name into a `$broken` marker in the same
+    commit, and it conflicts with any other client's write, after the op's `base`, to a field it would rewrite.
+  * Invariant I4 (no dangling references) covers declared outputs too.
+* 1.3 (additive and optional; old clients are unaffected): **display names**.
+  * `POST /v1/docs/{doc}/clients` accepts an optional body `{"name":"Bo"}` (1-64 bytes, no control characters) and answers
+    `201 {"client":"s-...","name":"Bo"}` (`name` only if given).
+  * `PUT /v1/docs/{doc}/clients/{client}` with `{"name":"Bo"}` names (or renames) a client id the client chose itself:
+    `200 {"client","name"}`. `GET /v1/docs/{doc}/clients` returns the directory `200 {"clients":{"<client id>":"<name>", ...}}`
+    (only clients that registered a name; refetch it when you see an unknown author id).
+  * `conflict` reject reasons gain an optional field `byName` (the author's display name, present only when `by` registered one at
+    the time the response is produced: a retransmit may carry a name that was registered later). `by` is unchanged.
+  * Commit events keep carrying only the client id; resolve names through the directory.
+* 1.2 (**clarification of the same-value rule; clients that keep their own conflict tracking, e.g. the Dart port, must apply it**):
+  An accepted equal-value write is a **pure no-op for conflict tracking**. It is committed (acked, it gets a `seq`, it is in the log)
+  but applying it changes *nothing* in the document's version metadata: no register stamp, no last-writer, no per-client "touched"
+  entry. Exactly: when applying `setField` (title or config path), `updateItem`, the current value of that register equals the
+  new value -> return before stamping. (Reason, found by the TLA+ model: if the equal-value write took over the stamp, the same
+  client's NEXT stale write to the register would be exempt as "last writer is me" and silently overwrite a value it never saw.
+  Trace: c1 sends f:=v1 then f:=v2, both base 0; c2 concurrently sends f:=v1 and is sequenced first; c1's first write is
+  equal-valued and acked; c1's second write must still be rejected with `conflict` naming c2.) The server and `CollabCore`
+  already behaved this way; this entry makes the rule explicit. Regression scenario: S9d in the simulator.
+* 1.1 (additive; no existing field or behaviour changed for conforming clients):
+  * **CORS** is supported (section 2).
+  * **`base` may be non-monotone**: successive ops of one client may carry decreasing bases (a typing draft keeps the version it
+    started from). This is explicitly legal and the server does not assume otherwise (section 4).
+  * **Outcome semantics** for crashed/volatile clients are spelled out: `rejected` and `lost` both mean "not saved"; which one a
+    client reports is defined in section 9 ("Finishing").
+  * **Client id collisions**: new `POST /v1/docs/{doc}/clients` issues unique client ids, and the server now refuses a retransmit whose
+    content differs from the op first stored under the same `(client, cseq)` with the new reject reason `clientIdInUse`
+    (sections 2, 4, 7, 9). Existing clients are unaffected (a genuine retransmit is byte-identical).
 * 1.0: initial version.
 
 ## 1. Overview
@@ -53,12 +105,26 @@ Transport conventions:
 | PUT | `/v1/docs/{doc}` | Create the document if absent (idempotent). Body optional as above. `201` if created, `200` if it existed: `{"id","head","created":bool}`. |
 | GET | `/v1/docs/{doc}` | Metadata: `200 {"id","head"}`, `404` if unknown. |
 | GET | `/v1/docs/{doc}/snapshot` | Full document at the current head: `200 {"seq":N,"doc":Document}`. For bootstrapping/debugging; the stream also delivers snapshots. |
+| POST | `/v1/docs/{doc}/clients` | Issue a fresh unique client id: `201 {"client":"s-<32 hex>"}`, `404` if the document is unknown. Optional body `{"name":"Bo"}` registers a display name (1.3). Use one id per client *instance* (section 9). |
+| PUT | `/v1/docs/{doc}/clients/{client}` | Name (or rename) a client id: body `{"name":"Bo"}` (1.3). |
+| GET | `/v1/docs/{doc}/clients` | Name directory: `{"clients":{"<id>":"<name>"}}` (1.3). |
 | POST | `/v1/docs/{doc}/ops` | Submit a batch of ops (section 4). |
 | GET | `/v1/docs/{doc}/events` | SSE stream (section 5). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
 node.
+
+### CORS
+
+Browser clients on another origin are supported. The server answers `OPTIONS` preflights itself and adds
+`Access-Control-Allow-Origin: <origin>` (never `*` unless configured so) and `Vary: Origin` to every response for an allowed origin.
+Allowed methods: `GET, POST, PUT, OPTIONS`; allowed request headers: `Content-Type, Accept, Last-Event-ID, Cache-Control`
+(so `fetch`-based SSE with `Last-Event-ID` works; the native `EventSource` cannot send custom headers, use `?lastEventId=`);
+exposed response headers: `Content-Type`; preflight cache `Access-Control-Max-Age: 600`. Allowed origins are configured with
+`COLLAB_CORS_ALLOWED_ORIGINS` (comma separated; entries are exact origins, `scheme://host:*` for any port, or `*`). The default is
+`http://localhost:*,http://127.0.0.1:*,http://[::1]:*` (local development). Requests from other origins get no CORS headers, so the
+browser blocks them. There are no cookies or credentials in this protocol.
 
 ### Error responses
 
@@ -87,7 +153,7 @@ A config value. Plain JSON maps onto it directly:
 | `[v, ...]` | **atomic list**: replaced as a whole; concurrent edits to it conflict |
 | `{ "k": v, ... }` | map (config subtree). Keys must **not** start with `$` |
 | `{"$ref": {"node": "n1", "output": "text"}}` | reference to another node's output variable |
-| `{"$broken": {"node": "n1", "output": "text"}}` | a reference whose node was deleted. **Server-written only**: clients may not send it |
+| `{"$broken": {"node": "n1", "output": "text"}}` | a reference whose node was deleted. **Server-written only**: clients may not send it, except inside the node of a `restoreNode` (1.6) |
 | `{"$items": [{"id": "i1", "value": v}, ...]}` | **keyed list**: ordered items with stable ids, edited with item ops (never conflict across different items) |
 
 ### Node, Edge
@@ -141,6 +207,7 @@ Every op is an object with a `t` discriminator:
 | `insertItem` | `node, path:[...], item:{"id","value"}, after: id\|null` | Inserts into the keyed list at `path` after item `after` (`null` = front). If `after` no longer exists the item is appended. Creates the list if absent. |
 | `removeItem` | `node, path, itemId` | |
 | `updateItem` | `node, path, itemId, value` | Replaces one item's value. |
+| `restoreNode` | `node: Node, edges: [Edge]` | 1.6. Brings back a deleted node (undo of a delete) with the edges its delete removed, original ids. `edges` may be omitted (= `[]`). Section 6, "Restore". |
 
 Examples:
 
@@ -149,6 +216,7 @@ Examples:
 {"t":"moveNode","node":"n1","x":300,"y":120}
 {"t":"insertItem","node":"code","path":["outputs"],"item":{"id":"7c1e","value":{"name":"result","type":"string"}},"after":null}
 {"t":"removeNode","node":"n3"}
+{"t":"restoreNode","node":{"id":"n3","type":"code","title":"Parse","x":40,"y":80,"config":{"in":{"$broken":{"node":"n1","output":"text"}}}},"edges":[{"id":"e7","source":"n1","sourceHandle":"out","target":"n3","targetHandle":"in"}]}
 ```
 
 ## 4. Submitting ops: `POST /v1/docs/{doc}/ops`
@@ -169,8 +237,10 @@ Request:
 
 * `client` + `cseq` is the **idempotency key**. `cseq` starts at 1 for a client id and increases by exactly 1 per op.
   Ops in one request must have strictly increasing `cseq`. At most 100 ops per request.
-* `base` is the server `seq` the client had applied (its `lastSeq`) when the user made the edit. It **never changes on
-  retransmission**; it is what the stale-write rule compares against.
+* `base` is the server `seq` the client had applied (its `lastSeq`) when the user made the edit - or, for an edit that grows out
+  of a longer-lived draft, the version the draft *started* from (older bases make stale writes easier to detect, never harder).
+  It **never changes on retransmission**; it is what the stale-write rule compares against. **Bases need not be monotone**: a
+  client's later op may carry a smaller `base` than an earlier one. The only constraint is `0 <= base <= head`.
 
 Response `200`:
 
@@ -207,6 +277,9 @@ Processing rules (server):
    its `cseq`).
 4. For `cseq > high + 1`: `gap`.
 5. `base` must satisfy `0 <= base <= head`; otherwise `reject invalid`.
+5b. A duplicate (`cseq <= high`) is recognised by the idempotency key *and* a fingerprint of `(base, op)`. If the same
+   `(client, cseq)` arrives with a different op than the one first stored, it is answered `reject clientIdInUse` and nothing is
+   applied: it means two processes are using one client id (see section 9, "Client ids").
 6. The whole request is committed in **one database transaction** (log rows, rejections, `high`). The response is
    sent only after the transaction committed. Retrying after any failure (timeout, 5xx, connection reset) is safe
    and returns the original outcome.
@@ -234,6 +307,8 @@ Query parameters (all optional):
 * `client`: the client id. Needed for `committed` in snapshot events.
 * `from`: the client's lowest unresolved `cseq`. Snapshot events then include `committed` for `cseq >= from`.
 * `lastEventId`: same as the `Last-Event-ID` header (for clients that cannot set headers). The header wins if both are present.
+* `proto` (1.6): the protocol version the client implements, `major.minor` (e.g. `1.6`); anything else is `400 bad_request`.
+  Without it (or below `1.6`) the stream never carries a `restoreNode` commit (see the resume rules below).
 
 Request header `Last-Event-ID: N`: "I have applied everything up to and including seq N." Omit it if you have no
 state.
@@ -275,6 +350,11 @@ Resume rules (decided by the server when the stream opens, with `head` = current
 | `0 <= N <= head` and `head - N <= maxReplay` | `commit` for every seq in `(N, head]`, `ready` |
 | `head - N > maxReplay` (default 2000) | `snapshot` at head, `ready` |
 | `N > head` (the server lost data, or wrong document) | `snapshot` at head, `ready`. The client must adopt it even though it goes backwards. |
+| replay case, no `proto` >= `1.6`, and `(N, head]` contains a `restoreNode` | `snapshot` at head, `ready` (1.6) |
+
+Live part (1.6): when a `restoreNode` is committed, the server ends every stream opened without `proto` >= `1.6` instead of
+sending it the commit. Such a client sees the stream end, reconnects with its `Last-Event-ID` and is caught up with a snapshot
+(previous row).
 
 A snapshot can therefore arrive on **any** (re)connect; clients must always handle it. After the catch-up the server
 streams new `commit` events as they are committed.
@@ -310,8 +390,9 @@ Registers: `title`; each config path (`model` and `model.name` overlap, `model.n
 stale whole-list replace conflicts with newer item inserts instead of silently deleting them.
 
 **Same-value rule.** If the new value equals the register's current value, the write is accepted even on a stale base.
-It is committed as a normal log entry and acked, but it is a no-op: it changes nothing, including the version metadata
-(so it does not make anyone else's later write stale). Same for removing an already-removed item or title/field writes of
+It is committed as a normal log entry and acked, but it is a no-op: it changes nothing, **including the version metadata**: no stamp,
+no last-writer, no "touched" entry. This matters in both directions: it does not make anyone else's later write stale, and it does not
+let its author's *next* stale write pass as "my own last write". Same for removing an already-removed item or title/field writes of
 the current value. *Only different values on a stale base are conflicts.*
 
 **Layout (`moveNode`) is last-writer-wins.** Applied in server order, never rejected for staleness, and it does not count
@@ -328,13 +409,63 @@ into `$broken` markers and removes its edges, identically on every replica. New 
 
 **Add/remove edge.** Not stale-checked; existence rules apply (`edgeNotFound`, `duplicateEdge`, endpoints must exist).
 
+**Restore (1.6).** `restoreNode` brings back a node a `removeNode` deleted; it is how a client undoes its own delete. The client
+sends the node as it saw it just before the delete and the edges attached to it then. A node's existence is a register whose last
+write is its tombstone.
+
+Validation, in this order (the first failing check is the reason):
+
+1. `node.id` is empty: `invalid`.
+2. The node exists: `nodeExists`. It was never created: `nodeNotFound`.
+3. A config key starts with `$`, or a value is malformed (as for `addNode`): `invalid`. `$broken` markers *are* allowed in the
+   restored config, and references are not checked against the document (they are normalised, below).
+4. An edge has an empty id, is listed twice, or has neither `source` nor `target` equal to `node.id`: `invalid`. Nothing else
+   about an edge makes the op fail (see "skipped" below).
+5. Stale tombstone: the node was deleted by **another** client after the op's `base` -> `conflict` with `field: null` and the
+   delete's `seq` and author. A client never conflicts with its own delete, so an undo may be sent before its delete is even
+   confirmed. A client that has seen someone else's delete (`base` >= its `seq`) may restore it as well.
+6. Like a delete, a restore rewrites fields of other nodes (`$broken` -> `$ref`, below). It conflicts with any other client's
+   write, after `base`, to one of those fields: `conflict` naming that write.
+
+Effect (identical on every replica):
+
+* The id leaves `deletedNodes` and the node is added with every reference in its config **normalised**: a reference (`$ref` or
+  `$broken`) is `$ref` if its target node exists (or is the restored node itself) and accepts the output name (declares it, or
+  declares no outputs), and `$broken` otherwise. A reference to a node deleted in the meantime therefore comes back broken.
+* Each listed edge is re-created with its id, and leaves `deletedEdges`, if and only if this very delete removed it (its tombstone
+  stamp equals the node's), both endpoints exist, and no live edge has the same `(source, sourceHandle, target, targetHandle)`.
+  Otherwise the edge is **skipped**: it stays deleted and the rest of the restore still holds. The typical case is an edge whose
+  other end was deleted meanwhile; it is skipped, never re-created dangling.
+* In every other node, a `$broken` marker that points to the restored node and to an output name it accepts becomes `$ref` again.
+  Markers of output names the restored node does not declare stay broken.
+* Version metadata: the restore is a content write by its author at its `seq` of the restored node's title and of its **whole
+  config**: stamps on `{"k":"title"}` and `{"k":"config","path":[]}` (the empty path overlaps every config path and every list
+  item), and a touch of the node. Every rewritten field of another node is stamped and that node touched. Each re-created edge
+  touches both endpoints (as `addEdge`).
+
+Consequences for concurrent ops:
+
+* A content write (`setField`, `updateItem`, `removeItem`) to the restored node by another client whose `base` is before the
+  restore is a `conflict` naming the restore (`field` `{"k":"config","path":[]}` or `{"k":"title"}`), unless it writes the value
+  that is there (same-value rule). This rule is conservative: it also refuses such a write to a field that the restored node does
+  not have. The delete removed the node's version metadata, and without this rule a stale writer could overwrite content it never
+  saw. A `removeNode` of it with such a `base` is a `conflict` as well. `moveNode` (last writer wins) and `insertItem` (never
+  stale-checked) are unaffected, as everywhere.
+* Ops on the node sequenced while it was deleted were rejected (`nodeDeleted`) and stay rejected. After the restore the node
+  accepts ops again (clients drop the early "doomed" warning when their view validates the op again).
+* Two restores of one node: the first wins, and the second is `nodeExists`. A restore and a delete of an edge's other endpoint:
+  the server order decides. If the endpoint's delete is first, the edge is skipped. If the restore is first, the endpoint's delete
+  removes the edge like any other edge.
+* A restore cannot bring back an edge that a `removeEdge` deleted, nor an edge that a different delete removed (for example the
+  earlier delete of the other endpoint). Undo in reverse order (last delete first) restores everything.
+
 ## 7. Reject reasons
 
 `reason` is an object with a `type`:
 
 | `type` | Extra fields | Meaning |
 |---|---|---|
-| `conflict` | `node`, `field` (FieldKey or `null` = whole node), `seq`, `by` | Stale write with a different value; the newer write at `seq` by `by` is kept. UI: show the winning value and offer "re-apply mine" (re-send as a new op based on the latest version). |
+| `conflict` | `node`, `field` (FieldKey or `null` = whole node), `seq`, `by`, optional `byName` | Stale write with a different value; the newer write at `seq` by `by` is kept. UI: show the winning value and offer "re-apply mine" (re-send as a new op based on the latest version). |
 | `nodeDeleted` | `node` | The node was deleted. |
 | `nodeNotFound` | `node` | Unknown node id. |
 | `nodeExists` | `node` | Node id already used (even if deleted). |
@@ -345,6 +476,11 @@ into `$broken` markers and removes its edges, identically on every replica. New 
 | `itemExists` | `item` | Item id already used (even if removed). |
 | `invalid` | `message` | Malformed op / bad path / forbidden value (e.g. `$broken`, reserved key, float). |
 | `notCommitted` | none | The cseq was handled (abandoned below a `floor`) but never committed. |
+| `clientIdInUse` | none | This `(client, cseq)` was already used for a *different* op: another process shares your client id. Nothing was applied. Stop using this id (section 9). |
+
+`restoreNode` (1.6) uses `invalid`, `nodeExists` (the node is not deleted, e.g. restored already), `nodeNotFound` (no such node
+ever) and `conflict` (`field: null`: someone else deleted it after `base`; or a field the restore would rewrite in another node).
+A `conflict` whose `field` is `{"k":"config","path":[]}` names a restore: the stale op's node was restored after its `base`.
 
 `conflict`, `nodeDeleted`, `danglingReference`, `itemDeleted` are *stale-based*: they will certainly repeat on the server, so a
 client may warn the user as soon as a newer remote commit makes a pending op doomed (and hide it from the local view) before the
@@ -377,14 +513,22 @@ resend the same ops after backoff. Duplicate responses are harmless.
 the view, do not resend it, and finish it when the stream delivers `seq` (or a snapshot at/after `seq`). `reject(reason)`: the op is
 finished as rejected: remove it from the view, tell the user (with the op, so they can re-apply it). `gap`: resend from the oldest unresolved op.
 
-**Stream handling.** Open the stream with `Last-Event-ID = lastSeq` (omit if no state) and `client`, `from = oldest unresolved cseq`.
+**Stream handling.** Open the stream with `Last-Event-ID = lastSeq` (omit if no state) and `client`, `from = oldest unresolved cseq`,
+`proto` = the protocol version you implement (1.6).
 Apply `commit` events in order to `confirmed`; if the commit is your own (`client`, `cseq` match an outbox op) the op is finished as
 committed. On `snapshot`, replace `confirmed`, set `lastSeq`, finish ops listed in `committed`. After every change recompute `view`;
 a pending op that no longer validates because of a newer remote commit raises an early `conflictDetected` warning (once) and is hidden
 until the server's verdict arrives. On stream error/EOF, silence watchdog, or a hole: reconnect with backoff.
 
-**Finishing.** Report each op's outcome exactly once, in cseq order: `committed(seq)`, `rejected(reason)`, or `lost`. (After a process
-crash the same outcome may be reported again: reporting is at-least-once across crashes.)
+**Finishing.** Report each op's outcome exactly once, in cseq order: `committed(seq)`, `rejected(reason)`, or `lost`.
+`rejected` and `lost` **both mean "not saved"**; the UI should treat them alike (`lost` just cannot offer "re-apply", because the
+content is gone). Which one is reported is deterministic: a client that still has the op's content reports `rejected(reason)` when
+the server says so; a client that lost the content (volatile crash) reports `lost` for everything the server did not commit
+- including ops the server had rejected (it has no content to show with the reason). An op never changes from `committed` to anything
+else, and never from `rejected` to `committed`: the server's durable record is the single source of truth and the same query always
+returns the same answer. After a process crash an outcome may be reported again (at-least-once); a journaled client repeats the same
+outcome, a volatile client may turn an earlier `rejected` into `lost` (still "not saved"). Never treat `lost`/`rejected` as final
+for the *user's intent*: only `committed` means saved.
 
 **Crash recovery.**
 * *Journaled client:* reload `outbox`/`nextCseq` from the journal, open the stream (no state: you get a snapshot with `committed` for your
@@ -392,7 +536,19 @@ crash the same outcome may be reported again: reporting is at-least-once across 
 * *Volatile client:* persist only `nextCseq` and the oldest unresolved cseq. After a crash send `{"client","floor":nextCseq,"resolveFrom":oldestUnresolved,"ops":[]}`;
   from `known` report committed ops as committed and everything else in the range as `lost`.
 
+**Client ids.** A client id names one cseq stream, so it must be used by exactly one live process at a time. Two browser tabs
+or two app instances must not share an id (they would overwrite each other's counters and acknowledge each other's ops). Recommended:
+call `POST /v1/docs/{doc}/clients` once per client *instance* (tab/process start) and keep the id (and its counters/journal) in
+per-instance storage; or generate a UUID yourself. With a shared store (e.g. IndexedDB), guard the id with a lock (Web Locks API)
+and take a new id if the lock is held. The server detects most violations: if an op arrives with a `(client, cseq)` that is already
+used for a *different* op it answers `reject clientIdInUse` (and applies nothing). On `clientIdInUse` the client must stop using the id:
+obtain a new one, start again at `cseq = 1`, and re-create (re-send as new ops) the user's unsaved edits.
+
 **Never** reuse a `cseq` for a different op, and never reuse a client id after losing its counters (use a new id instead).
+
+**Undo of a delete (1.6).** Before submitting `removeNode`, keep the node and its edges as the view shows them. To undo, submit
+`restoreNode` with them (as a new op, `base = lastSeq` as usual). If it is rejected with `conflict`, the document changed in a way the
+undo would overwrite; show it like any conflict.
 
 ## 10. Examples
 

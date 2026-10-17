@@ -159,6 +159,7 @@ class UndoManager extends ChangeNotifier {
   /// Whether [op] still makes sense: the nodes and edges it needs exist (a node restore needs its node gone).
   bool _applies(Op op, Document d) => switch (op) {
     AddNode(:final node) => !d.nodes.containsKey(node.id) && !d.deletedNodes.containsKey(node.id),
+    RestoreNode(:final node) => !d.nodes.containsKey(node.id) && d.deletedNodes.containsKey(node.id),
     AddEdge(:final edge) => d.nodes.containsKey(edge.source) && d.nodes.containsKey(edge.target),
     RemoveEdge(:final edge) => d.edges.containsKey(edge),
     MoveNode() || SetField() || RemoveNode() || InsertItem() || RemoveItem() || UpdateItem() => d.nodes.containsKey(
@@ -181,7 +182,7 @@ class UndoManager extends ChangeNotifier {
           _ => null,
         };
         return old == null || old == value ? null : [SetField(node, field, old)];
-      case AddNode(:final node):
+      case AddNode(:final node) || RestoreNode(:final node):
         return [RemoveNode(node.id)];
       case RemoveNode(:final node):
         final n = d.nodes[node];

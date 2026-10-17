@@ -4,6 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// A document edited by "us" through an UndoManager, and by "others" directly.
 class _Doc {
+  _Doc({this.restore = false});
+
+  /// Undo node deletes with `restoreNode` (protocol 1.6).
+  final bool restore;
   final doc = Document(
     nodes: const [
       Node(id: 'a', type: 'start', title: 'A', x: 0, y: 0),
@@ -16,6 +20,7 @@ class _Doc {
     doc: () => doc,
     submit: (op) => doc.apply(op, Stamp(++seq, 'me')),
     newId: (p) => '$p-new${++ids}',
+    restoreNode: restore ? RestoreNode.new : null,
   );
 
   void mine(Op op, {HistoryEvent? event}) {
@@ -73,6 +78,21 @@ void main() {
     expect(d.undo.canUndo, isFalse);
     // Redoing the node add needs the node restored (protocol 1.6); without a restore op only the edge can be redone.
     expect(d.undo.future, hasLength(1));
+  });
+
+  test('undoing a node delete restores the node with its edges (1.6); redo deletes it again', () {
+    final d = _Doc(restore: true);
+    final b = d.doc.nodes['b']!;
+    d.mine(const RemoveNode('b'), event: HistoryEvent.nodeDelete);
+    d.undo.undo();
+    expect(d.doc.nodes['b'], b);
+    expect(d.doc.edges.keys, ['e1']);
+    expect(d.doc.deletedNodes, isEmpty);
+    d.undo.redo();
+    expect(d.doc.nodes.containsKey('b'), isFalse);
+    d.undo.undo();
+    expect(d.doc.nodes['b'], b);
+    expect(d.doc.edges.keys, ['e1']);
   });
 
   test('a step whose node another client deleted is skipped', () {
