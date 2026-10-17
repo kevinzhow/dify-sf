@@ -1,4 +1,5 @@
 // dify-spec: packages/dify-ui/src/popover/__tests__/index.spec.tsx
+import 'package:dify_sf_app/src/design/css_metrics.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -83,7 +84,7 @@ void main() {
                     )
                     .decoration!
                 as BoxDecoration;
-        expect((deco.border! as Border).top.width, 0.5);
+        expect((deco.border! as Border).top.width, Css.border(0.5)); // border-[0.5px], as Chrome snaps it
         expect((deco.border! as Border).top.color, DifyColors.componentsPanelBorder);
         expect(deco.borderRadius, BorderRadius.circular(12));
         expect(deco.color, DifyColors.componentsPanelBg);

@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
+
+import '../css_metrics.dart';
+
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -70,7 +73,7 @@ class DifyMenuPopup extends StatefulWidget {
 
   static final decoration = BoxDecoration(
     color: DifyColors.componentsPanelBgBlur,
-    border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+    border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
     borderRadius: BorderRadius.circular(DifyRadius.xl),
     boxShadow: DifyShadows.lg,
   );

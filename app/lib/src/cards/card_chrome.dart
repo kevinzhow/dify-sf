@@ -27,45 +27,57 @@ class DifyNodeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = DifyCards.bodyOf(node.type);
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        node.node,
-        node.hovered,
-        if (live) node.status,
-        if (body.chrome == CardChrome.container) graph.restingOrigin,
-      ]),
-      builder: (context, _) {
-        if (onPainted != null) SchedulerBinding.instance.addPostFrameCallback((_) => onPainted!());
-        final n = node.node.value;
-        final ctx = DifyCards.context(
-          n,
-          (id) => graph[id]?.node.value,
-          graph.startNode,
-          viewOrigin: graph.restingOrigin.value,
-        );
-        final layout = node.layout;
-        final card = SizedBox.fromSize(
-          size: layout.card.size,
-          child: switch (body.chrome) {
-            CardChrome.marker || CardChrome.flatMarker => _marker(context, body, ctx),
-            CardChrome.bodyOnly => _bodyOnly(context, body, ctx),
-            _ => _card(context, n, body, ctx),
-          },
-        );
-        if (layout.visual == layout.card) return card;
-        final at = layout.card.topLeft - layout.visual.topLeft;
-        return SizedBox.fromSize(
-          size: layout.visual.size,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: DifyCards.isEntry(n.type) ? _EntryContainer(type: n.type) : const _DataSourceTab(),
-              ),
-              Positioned(left: at.dx, top: at.dy, child: card),
-            ],
-          ),
-        );
-      },
+    // Cards are styled by Dify's tokens alone: nothing inherited from the app's (Material) text theme.
+    return DefaultTextStyle(
+      style: TextStyle(
+        fontFamily: cardFontFamily,
+        fontSize: 14,
+        height: 20 / 14,
+        letterSpacing: 0,
+        wordSpacing: 0,
+        color: DifyColors.textPrimary,
+        leadingDistribution: TextLeadingDistribution.even,
+      ),
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          node.node,
+          node.hovered,
+          if (live) node.status,
+          if (body.chrome == CardChrome.container) graph.restingOrigin,
+        ]),
+        builder: (context, _) {
+          if (onPainted != null) SchedulerBinding.instance.addPostFrameCallback((_) => onPainted!());
+          final n = node.node.value;
+          final ctx = DifyCards.context(
+            n,
+            (id) => graph[id]?.node.value,
+            graph.startNode,
+            viewOrigin: graph.restingOrigin.value,
+          );
+          final layout = node.layout;
+          final card = SizedBox.fromSize(
+            size: layout.card.size,
+            child: switch (body.chrome) {
+              CardChrome.marker || CardChrome.flatMarker => _marker(context, body, ctx),
+              CardChrome.bodyOnly => _bodyOnly(context, body, ctx),
+              _ => _card(context, n, body, ctx),
+            },
+          );
+          if (layout.visual == layout.card) return card;
+          final at = layout.card.topLeft - layout.visual.topLeft;
+          return SizedBox.fromSize(
+            size: layout.visual.size,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: DifyCards.isEntry(n.type) ? _EntryContainer(type: n.type) : const _DataSourceTab(),
+                ),
+                Positioned(left: at.dx, top: at.dy, child: card),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -81,8 +93,9 @@ class DifyNodeCard extends StatelessWidget {
         border: Border.all(color: container ? DifyColors.workflowBlockBorder : Colors.transparent),
         boxShadow: _shadow,
       ),
+      // The 1 px border (transparent or not) takes space in CSS; a DecoratedBox only paints it.
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.fromLTRB(1, 1, 1, 1 + 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -108,7 +121,7 @@ class DifyNodeCard extends StatelessWidget {
       border: Border.all(color: Colors.transparent),
       boxShadow: DifyShadows.xs,
     ),
-    child: body.build(context, ctx),
+    child: Padding(padding: const EdgeInsets.all(1), child: body.build(context, ctx)),
   );
 
   /// `size-11 rounded-2xl border border-workflow-block-border bg-workflow-block-bg` (+ shadow-xs for iteration).
@@ -119,7 +132,7 @@ class DifyNodeCard extends StatelessWidget {
       border: Border.all(color: DifyColors.workflowBlockBorder),
       boxShadow: body.chrome == CardChrome.marker ? DifyShadows.xs : null,
     ),
-    child: body.build(context, ctx),
+    child: Padding(padding: const EdgeInsets.all(1), child: body.build(context, ctx)),
   );
 }
 

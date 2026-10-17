@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
@@ -611,7 +612,7 @@ class DataSourceEmptyBody extends NodeBody {
       decoration: BoxDecoration(
         color: DifyColors.componentsButtonPrimaryBg,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
-        border: Border.all(color: DifyColors.componentsButtonPrimaryBorder, width: 0.5),
+        border: Border.all(color: DifyColors.componentsButtonPrimaryBorder, width: Css.hairline),
         boxShadow: DifyShadows.primaryButton,
       ),
       child: Row(
@@ -688,7 +689,7 @@ class KnowledgeIndexBody extends NodeBody {
 
   static BoxDecoration _decoration(bool warning) => BoxDecoration(
     color: warning ? DifyColors.stateWarningHover : DifyColors.workflowBlockParmaBg,
-    border: warning ? Border.all(color: DifyColors.stateWarningActive, width: 0.5) : null,
+    border: warning ? Border.all(color: DifyColors.stateWarningActive, width: Css.hairline) : null,
     borderRadius: BorderRadius.circular(DifyRadius.md),
   );
 
@@ -843,7 +844,7 @@ abstract class _ContainerStartBody extends NodeBody {
         decoration: BoxDecoration(
           color: DifyColors.utilColorsBlueBrandBlueBrand500,
           shape: BoxShape.circle,
-          border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
+          border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
         ),
         child: const Center(child: RemixIcon('home-5-fill', size: 12, color: DifyColors.textPrimaryOnSurface)),
       ),

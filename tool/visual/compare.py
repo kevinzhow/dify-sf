@@ -24,6 +24,8 @@ DIFY = os.environ.get('DIFY_URL', 'http://localhost')
 SF = os.environ.get('DIFYSF_URL', 'http://127.0.0.1:18080')
 # Extra query parameters for our app, e.g. canvas=widgets (the widget renderer instead of Flutter Scene).
 EXTRA = os.environ.get('OURS_QUERY', '')
+# Device pixel ratio of both browsers: 2, the acceptance screen's (mibook).
+DSF = float(os.environ.get('VISUAL_DSF', '2'))
 
 
 def dify_session():
@@ -70,7 +72,7 @@ def serve(directory):
 
 
 def capture_dify(browser, s, app_id, case, out):
-    ctx = browser.new_context(viewport={'width': case['window'][0], 'height': case['window'][1]}, device_scale_factor=1)
+    ctx = browser.new_context(viewport={'width': case['window'][0], 'height': case['window'][1]}, device_scale_factor=DSF)
     ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies])
     page = ctx.new_page()
     page.goto(f'{DIFY}/app/{app_id}/workflow')
@@ -85,7 +87,8 @@ def capture_dify(browser, s, app_id, case, out):
     # Where Dify draws text (every non-empty text node in the canvas), relative to the captured region.
     rects = page.evaluate(TEXT_RECTS)
     ox, oy = box['x'] + case['region'][0], box['y'] + case['region'][1]
-    out.with_suffix('.text.json').write_text(json.dumps([[r[0] - ox, r[1] - oy, r[2] - ox, r[3] - oy] for r in rects]))
+    out.with_suffix('.text.json').write_text(
+        json.dumps([[(r[0] - ox) * DSF, (r[1] - oy) * DSF, (r[2] - ox) * DSF, (r[3] - oy) * DSF] for r in rects]))
     ctx.close()
     return box, viewport
 
@@ -105,10 +108,12 @@ TEXT_RECTS = """() => {
 
 
 def capture_ours(browser, base, doc, case, out, viewport):
-    ctx = browser.new_context(viewport={'width': case['window'][0], 'height': case['window'][1]}, device_scale_factor=1)
+    ctx = browser.new_context(viewport={'width': case['window'][0], 'height': case['window'][1]}, device_scale_factor=DSF)
     page = ctx.new_page()
     rect = []
+    views = []
     page.on('console', lambda m: rect.append(m.text) if m.text.startswith('CANVAS_RECT') else None)
+    page.on('console', lambda m: views.append(m.text) if m.text.startswith('CANVAS_VIEW') else None)
     x, y, z = viewport
     page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1' + (f'&{EXTRA}' if EXTRA else ''))
     t0 = time.time()
@@ -118,6 +123,8 @@ def capture_ours(browser, base, doc, case, out, viewport):
     l, t, w, h = (float(v) for v in rect[-1].split()[1].split(','))
     box = {'x': l, 'y': t, 'width': w, 'height': h}
     shot(page, box, case, out)
+    if views:
+        print(f'  ours at rest: {views[-1]}')
     ctx.close()
     return box
 
@@ -156,7 +163,7 @@ def main():
     (out / 'visual-testing-results/react').mkdir(parents=True, exist_ok=True)
     (out / 'visual-testing-results/android').mkdir(parents=True, exist_ok=True)
     (out / 'diff').mkdir(exist_ok=True)
-    (out / 'visual-testing-results/react/metadata.json').write_text(json.dumps({'density': 1}))
+    (out / 'visual-testing-results/react/metadata.json').write_text(json.dumps({'density': DSF}))
     s = dify_session()
     server, base = serve(str(ROOT / 'app/build/web'))
     rows = []

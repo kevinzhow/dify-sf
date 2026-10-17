@@ -4,6 +4,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import 'card_kit.dart';
@@ -240,7 +241,7 @@ class VariableLabel extends StatefulWidget {
   double get _height => variant == VarLabelStyle.inText || variant == VarLabelStyle.inEditor ? 18 : 24;
   double get _gap => variant == VarLabelStyle.base ? 2 : 1;
   double get _padding => variant == VarLabelStyle.base ? 6 : 4;
-  double get _border => bare ? 0 : (variant == VarLabelStyle.inEditor && isSelected ? 1 : 0.5);
+  double get _border => bare ? 0 : Css.border(variant == VarLabelStyle.inEditor && isSelected ? 1 : 0.5);
 
   /// es-toolkit capitalize: first letter upper case, the rest lower case.
   static String capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
@@ -442,13 +443,17 @@ class InlineVarText {
     return out;
   }();
 
+  /// A chip's slot in the line: from its top to the line's bottom in Chrome (the text's rounded descent and leading
+  /// can reach lower than the chip).
+  static double _slot(VariableLabel l) => max(18, l.baseline + Css.textLine(12, 16).below);
+
   TextStyle get _base => _style.copyWith(fontFamily: cardFontFamily, color: color);
 
   List<PlaceholderDimensions> _dims(double width) => [
     for (final (_, l) in _parts)
       if (l != null)
         PlaceholderDimensions(
-          size: Size(min(l.intrinsicWidth, width), 18),
+          size: Size(min(l.intrinsicWidth, width), _slot(l)),
           alignment: PlaceholderAlignment.baseline,
           baseline: TextBaseline.alphabetic,
           baselineOffset: l.baseline,
@@ -498,11 +503,23 @@ class InlineVarText {
     );
     return Stack(
       children: [
-        para(_span((l) => SizedBox(width: l.intrinsicWidth, height: 18, child: l), const Color(0x00000000))),
+        para(
+          _span(
+            (l) => SizedBox(
+              width: l.intrinsicWidth,
+              height: _slot(l),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(height: 18, child: l),
+              ),
+            ),
+            const Color(0x00000000),
+          ),
+        ),
         Positioned.fill(
           top: -textLift,
           bottom: textLift,
-          child: para(_span((l) => SizedBox(width: l.intrinsicWidth, height: 18), color)),
+          child: para(_span((l) => SizedBox(width: l.intrinsicWidth, height: _slot(l)), color)),
         ),
       ],
     );

@@ -106,7 +106,13 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   /// Publishes where the view came to rest (cards tied to the viewport redraw then, not while it moves).
   void _viewMoved() {
     _rest?.cancel();
-    _rest = Timer(const Duration(milliseconds: 150), () => graph.restingOrigin.value = view.toScreen(Offset.zero));
+    _rest = Timer(const Duration(milliseconds: 150), () {
+      graph.restingOrigin.value = view.toScreen(Offset.zero);
+      if (CanvasDefaults.reportRect) {
+        final o = graph.restingOrigin.value;
+        debugPrint('CANVAS_VIEW ${o.dx},${o.dy},${view.scale}');
+      }
+    });
   }
 
   CanvasRenderer _makeRenderer(CanvasRendererKind k) => switch (k) {

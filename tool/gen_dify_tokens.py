@@ -86,6 +86,8 @@ for name, body in re.findall(r'@utility\s+([a-z0-9-]+)\s*\{([^}]*)\}', util):
         args.append(f'height: {h:.10g}')
         # CSS splits the leading evenly above and below the text.
         args.append('leadingDistribution: TextLeadingDistribution.even')
+    # CSS letter-spacing is normal unless a utility sets it; Material's text themes set their own, which would leak in.
+    args.append('letterSpacing: 0')
     upper = 'text-transform: uppercase' in body
     out.append(f'  /// `{name}`')
     out.append(f'  static const {camel(name)} = DifyTextStyle(TextStyle({", ".join(args)}){", uppercase: true" if upper else ""});')

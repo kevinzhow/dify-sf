@@ -2,6 +2,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
 import '../i18n/dify_i18n.dart';
+import '../design/css_metrics.dart';
 import '../design/dify_tokens.g.dart';
 import 'card_kit.dart';
 
@@ -37,8 +38,9 @@ abstract final class NodeExtras {
     };
   }
 
-  // Retry: mb-1, py-1 around a 16 px line, 0.5 px border. Error handling: pt-1, a 24 px row, pb-2.
-  static const _retryHeight = 1 + 4 + 16 + 4 + 4.0, _errorHeight = 4 + 24 + 8.0;
+  // Retry: mb-1, py-1 around a 16 px line, 0.5 px border (as Chrome snaps it). Error handling: pt-1, a 24 px row, pb-2.
+  static double get _retryHeight => 2 * Css.hairline + 4 + 16 + 4 + 4;
+  static const _errorHeight = 4 + 24 + 8.0;
 
   static double height(Node n) => (_retries(n) != null ? _retryHeight : 0) + (_strategy(n) != null ? _errorHeight : 0);
 
@@ -61,7 +63,9 @@ abstract final class NodeExtras {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-              decoration: box.copyWith(border: Border.all(color: const Color(0x00000000), width: 0.5)),
+              decoration: box.copyWith(
+                border: Border.all(color: const Color(0x00000000), width: Css.hairline),
+              ),
               child: DifyText(
                 DifyI18n.tr('workflow', 'nodes.common.retry.retryTimes', {'times': retries}),
                 DifyType.systemXsMediumUppercase,

@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
+
+import '../css_metrics.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -242,7 +245,7 @@ class DifyTipPopupBox extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: DifyColors.componentsTooltipBg,
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+        border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
         borderRadius: r,
         boxShadow: DifyShadows.lg,
       ),

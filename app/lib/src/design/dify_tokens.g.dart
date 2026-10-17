@@ -2154,6 +2154,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2164,6 +2165,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2175,6 +2177,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2185,6 +2188,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2195,6 +2199,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2206,6 +2211,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2217,6 +2223,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2227,6 +2234,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2238,6 +2246,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2248,6 +2257,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2259,6 +2269,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2269,6 +2280,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2280,6 +2292,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2290,6 +2303,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2300,6 +2314,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2311,6 +2326,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2321,6 +2337,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2332,6 +2349,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2342,6 +2360,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2352,6 +2371,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2362,6 +2382,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
     uppercase: true,
   );
@@ -2373,6 +2394,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.5,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2383,6 +2405,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.5,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2393,6 +2416,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.5,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2403,6 +2427,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.5,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2413,6 +2438,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.5,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2423,6 +2449,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2433,6 +2460,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2443,6 +2471,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2453,6 +2482,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2463,6 +2493,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2473,6 +2504,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w500,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2483,6 +2515,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2493,6 +2526,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w400,
       height: 1.5,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2503,6 +2537,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.333333333,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2513,6 +2548,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.230769231,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2523,6 +2559,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.428571429,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2533,6 +2570,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w700,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2543,6 +2581,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2553,6 +2592,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2563,6 +2603,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2573,6 +2614,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w700,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2583,6 +2625,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2593,6 +2636,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w600,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 
@@ -2603,6 +2647,7 @@ abstract final class DifyType {
       fontWeight: FontWeight.w700,
       height: 1.2,
       leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: 0,
     ),
   );
 }

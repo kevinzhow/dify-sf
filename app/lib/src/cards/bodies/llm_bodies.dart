@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../workflow/model_catalog.dart';
@@ -155,7 +156,7 @@ class KnowledgeRetrievalBody extends NodeBody {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF4ED),
                       borderRadius: BorderRadius.circular(DifyRadius.sm),
-                      border: Border.all(color: DifyColors.dividerRegular, width: 0.5),
+                      border: Border.all(color: DifyColors.dividerRegular, width: Css.hairline),
                     ),
                     child: const Text('📙', style: TextStyle(fontSize: 12, height: 1)),
                   ),
@@ -355,7 +356,7 @@ class AgentBody extends NodeBody {
                     decoration: BoxDecoration(
                       color: DifyColors.backgroundDefaultDodge,
                       borderRadius: BorderRadius.circular(DifyRadius.md),
-                      border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
+                      border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
                     ),
                     child: const Opacity(
                       opacity: 0.35,

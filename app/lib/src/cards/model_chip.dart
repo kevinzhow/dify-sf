@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../design/css_metrics.dart';
+
 import 'package:flutter/rendering.dart';
 
 import '../design/dify_icon.dart';
@@ -150,7 +153,7 @@ class ModelIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: DifyColors.backgroundDefaultSubtle,
         borderRadius: BorderRadius.circular(DifyRadius.md),
-        border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
+        border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
       ),
       child: const Opacity(
         opacity: 0.35,
@@ -441,7 +444,7 @@ class ModelSelectorTrigger extends StatelessWidget {
             decoration: BoxDecoration(
               color: DifyColors.backgroundDefaultSubtle,
               borderRadius: BorderRadius.circular(DifyRadius.md),
-              border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
+              border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
             ),
             child: const RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
           )
