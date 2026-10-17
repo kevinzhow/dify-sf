@@ -11,19 +11,16 @@ import '../../../../../i18n/dify_i18n.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
-import '../entry_common.dart';
+import '../../../panel_edit.dart';
 import '../trigger_plugin/plugin_form.dart';
-import '../trigger_plugin/structure_output.dart';
-import '../trigger_plugin/trigger_plugin_default.dart' show toolParametersToFormSchemas;
+import '../../../../panel_fields/tool_form_schema.dart' show toolParametersToFormSchemas;
 import 'data_source_default.dart';
 import 'data_source_host.dart';
-import 'tag_input.dart';
 
 export 'before_run_form.dart';
 export 'data_source_auth.dart' show dataSourceTabsRow, PluginAuthInDataSourceNode, AuthorizedInDataSourceNode;
 export 'data_source_default.dart';
 export 'data_source_host.dart';
-export 'tag_input.dart';
 
 String _wf(String key) => DifyI18n.tr('workflow', key);
 

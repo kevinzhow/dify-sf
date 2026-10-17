@@ -15,14 +15,19 @@ import 'var_picker_model.dart';
 /// One option of a chooser.
 typedef SelectOption<T> = ({T value, String label});
 
+/// A titled group of options (dify-ui's Select `Group` + `GroupLabel`).
+typedef SelectGroup<T> = ({String label, List<SelectOption<T>> options});
+
 /// dify-ui's Select (Trigger + Content + Item): an input-coloured trigger (`h-8 rounded-lg px-3 system-sm-regular`,
 /// hover `bg-state-base-hover-alt`, the chevron hidden when [readonly]) opening its options 4 px below, the selected
-/// one checked. [capitalize] applies CSS `capitalize` to the labels.
-class DifySelect<T> extends StatelessWidget {
+/// one checked and highlighted. [groups] follow [options] under their labels. [capitalize] applies CSS `capitalize`
+/// to the labels.
+class DifySelect<T> extends StatefulWidget {
   const DifySelect({
     super.key,
     required this.value,
-    required this.options,
+    this.options = const [],
+    this.groups = const [],
     this.onChanged,
     this.placeholder,
     this.readonly = false,
@@ -36,6 +41,7 @@ class DifySelect<T> extends StatelessWidget {
 
   final T? value;
   final List<SelectOption<T>> options;
+  final List<SelectGroup<T>> groups;
   final ValueChanged<T>? onChanged;
   final String? placeholder;
   final bool readonly, disabled, capitalize;
@@ -45,35 +51,61 @@ class DifySelect<T> extends StatelessWidget {
   final TextStyle? textStyle;
   final double paddingX;
 
-  String _label(String s) => capitalize ? cssCapitalize(s) : s;
+  @override
+  State<DifySelect<T>> createState() => _DifySelectState<T>();
+}
+
+class _DifySelectState<T> extends State<DifySelect<T>> {
+  final _selectedNode = FocusNode(debugLabel: 'DifySelect selected');
+
+  @override
+  void dispose() {
+    _selectedNode.dispose();
+    super.dispose();
+  }
+
+  String _label(String s) => widget.capitalize ? cssCapitalize(s) : s;
+
+  Widget _item(SelectOption<T> o) {
+    final selected = o.value == widget.value;
+    final item = DifyMenuRadioItem<T>(
+      value: o.value,
+      closeOnClick: true,
+      focusNode: selected ? _selectedNode : null,
+      child: Text(_label(o.label)),
+    );
+    return selected ? _FocusOnOpen(node: _selectedNode, child: item) : item;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final selected = options.where((o) => o.value == value).firstOrNull;
+    final w = widget;
+    final all = [...w.options, for (final g in w.groups) ...g.options];
+    final selected = all.where((o) => o.value == w.value).firstOrNull;
     return SizedBox(
-      width: width,
+      width: w.width,
       child: LayoutBuilder(
         builder: (context, c) => DifyDropdownMenu(
           placement: DifyPlacement.bottomStart,
           sideOffset: 4,
-          width: popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : null),
+          width: w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : null),
           builder: (context, controller) => _SelectTrigger(
-            text: selected == null ? placeholder ?? '' : _label(selected.label),
+            text: selected == null ? w.placeholder ?? '' : _label(selected.label),
             placeholder: selected == null,
-            readonly: readonly,
-            disabled: disabled,
-            textStyle: textStyle,
-            paddingX: paddingX,
+            readonly: w.readonly,
+            disabled: w.disabled,
+            textStyle: w.textStyle,
+            paddingX: w.paddingX,
             open: controller.isOpen,
-            onTap: readonly || disabled ? null : controller.toggle,
+            onTap: w.readonly || w.disabled ? null : controller.toggle,
           ),
           children: [
             DifyMenuRadioGroup<T>(
-              value: value,
-              onValueChange: onChanged,
+              value: w.value,
+              onValueChange: w.onChanged,
               children: [
-                for (final o in options)
-                  DifyMenuRadioItem<T>(value: o.value, closeOnClick: true, child: Text(_label(o.label))),
+                for (final o in w.options) _item(o),
+                for (final g in w.groups) ...[DifyMenuGroupLabel(g.label), for (final o in g.options) _item(o)],
               ],
             ),
           ],
@@ -81,6 +113,29 @@ class DifySelect<T> extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Focuses [node] (highlights the selected item) once the menu holding [child] is shown.
+class _FocusOnOpen extends StatefulWidget {
+  const _FocusOnOpen({required this.node, required this.child});
+  final FocusNode node;
+  final Widget child;
+
+  @override
+  State<_FocusOnOpen> createState() => _FocusOnOpenState();
+}
+
+class _FocusOnOpenState extends State<_FocusOnOpen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.node.context != null) widget.node.requestFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _SelectTrigger extends StatefulWidget {

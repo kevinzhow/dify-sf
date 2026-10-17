@@ -9,7 +9,8 @@ library;
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/node_config.dart' show Json;
 import 'llm_config.dart' show jsonClone;
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
+import '../../../panel_fields/tool_form_schema.dart';
 
 /// `FormTypeEnum` values the agent's strategy forms use.
 abstract final class AgentFormType {
@@ -61,14 +62,6 @@ Json withAgentStrategy(Json inputs, AgentStrategyRef s) => {
 
 // ---- tools/utils/to-form-schema.ts -------------------------------------------------------------------------------
 
-/// `toType`.
-String toFormType(String type) => switch (type) {
-  'string' => AgentFormType.textInput,
-  'number' => AgentFormType.textNumber,
-  'boolean' => AgentFormType.checkbox,
-  _ => type,
-};
-
 /// `strategyParamToCredientialForm` (agent/panel.tsx): a strategy parameter as a form schema.
 Json strategyParamToCredentialForm(Json param) => {
   ...param,
@@ -77,62 +70,6 @@ Json strategyParamToCredentialForm(Json param) => {
   'type': toFormType(jsStr(param['type']) ?? ''),
   'tooltip': param['help'],
 };
-
-/// `toolParametersToFormSchemas`.
-List<Json> toolParametersToFormSchemas(Object? parameters) => [
-  for (final p in jsList(parameters))
-    if (p is Map)
-      {
-        ...jsMap(p),
-        'variable': p['name'],
-        'type': toFormType(jsStr(p['type']) ?? ''),
-        '_type': p['type'],
-        'show_on': <Object?>[],
-        if (p['options'] is List)
-          'options': [
-            for (final o in jsList(p['options'])) {...jsMap(o), 'show_on': <Object?>[]},
-          ],
-        'tooltip': p['human_description'],
-      },
-];
-
-/// `correctInitialData`.
-Json _correctInitialData(String type, Json target, Object? defaultValue) {
-  if (type == 'text-input' || type == 'secret-input') target['type'] = 'mixed';
-  if (type == 'boolean') {
-    if (defaultValue is String) target['value'] = defaultValue == 'true' || defaultValue == '1';
-    if (defaultValue is bool) target['value'] = defaultValue;
-    if (defaultValue is num) target['value'] = defaultValue == 1;
-  }
-  if (type == 'number-input' && defaultValue is String && defaultValue.isNotEmpty) {
-    target['value'] = double.tryParse(defaultValue) ?? double.nan;
-  }
-  if (type == AgentFormType.date || type == AgentFormType.dateRange) {
-    if (defaultValue is String) target['value'] = defaultValue;
-    if (defaultValue is Map) target['value'] = defaultValue.toString();
-  }
-  if (type == 'app-selector' || type == 'model-selector') target['value'] = defaultValue;
-  return target;
-}
-
-bool _emptyish(Object? v) => v == null || v == '';
-
-/// `generateFormValue`: the defaults of [schemas] missing from [value] (`{value: {type: constant, value}}`, or
-/// `{auto: 1, value: null}` for reasoning parameters).
-Json generateFormValue(Json value, List<Json> schemas, {bool isReasoning = false}) {
-  final out = <String, Object?>{};
-  for (final s in schemas) {
-    final name = '${s['variable']}';
-    if (s.containsKey('default') && s['default'] != null && _emptyish(value[name])) {
-      out[name] = isReasoning
-          ? {'auto': 1, 'value': null}
-          : {
-              'value': _correctInitialData('${s['type']}', {'type': 'constant', 'value': s['default']}, s['default']),
-            };
-    }
-  }
-  return out;
-}
 
 /// `getVarKindType` (to-form-schema.ts).
 String? _varKindType(String type) {
@@ -159,7 +96,7 @@ Json generateAgentToolValue(Json value, List<Json> schemas, {bool isReasoning = 
     final item = jsMap(value[name]);
     if (!isReasoning) {
       out[name] = {
-        'value': _correctInitialData('${s['type']}', {'type': 'constant', 'value': item['value']}, item['value']),
+        'value': correctInitialData('${s['type']}', {'type': 'constant', 'value': item['value']}, item['value']),
       };
     } else if (item['auto'] == 1) {
       out[name] = {'auto': 1, 'value': null};

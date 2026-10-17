@@ -9,8 +9,9 @@ import '../../../../../workflow/var_types.dart';
 import '../../../../header/checklist/node_validators.dart' as validators show loopNodeMaxCount;
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
-import '../data_common.dart' as common;
-import '../data_common.dart' show childrenOf, scopeOfNodes, wf;
+import '../data_common.dart' show childrenOf, wf;
+import '../../../panel_edit.dart' show NodeVars;
+import '../../../panel_edit.dart' as edit;
 
 /// `MIN_ITERATION_PARALLEL_NUM`.
 const minIterationParallelNum = 1;
@@ -88,11 +89,11 @@ class IterationConfig {
     return IterationConfig(
       id: props.id,
       inputs: props.data,
-      setInputs: (next) => common.setInputs(props, next),
+      setInputs: (next) => edit.setInputs(props, next),
       readOnly: props.readOnly,
       deleteNodeInspectorVars: props.actions.store.deleteNodeInspectVars,
       iterationChildrenNodes: children,
-      childrenNodeVars: scopeOfNodes(props, children, env: false, chat: false),
+      childrenNodeVars: NodeVars.scopeOver(props, children, environment: false, conversation: false),
     );
   }
 

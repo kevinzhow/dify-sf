@@ -23,7 +23,8 @@ import 'group_host.dart';
 import 'llm_config.dart' show jsonClone;
 import 'llm_panel.dart' show promptEditorEnvOf;
 import 'model_parameter_modal.dart';
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 import 'tool_picker.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
@@ -114,7 +115,7 @@ class _AgentPanelState extends State<AgentPanel> {
       }
     }
 
-    final vars = NodeVars.of(context, props);
+    final vars = NodeVars.of(props);
     final schemas = [for (final p in jsList(strategy?['parameters'])) strategyParamToCredentialForm(jsMap(p))];
     final features = jsList(strategy?['features']);
     final outputs = agentOutputSchema(inputs);

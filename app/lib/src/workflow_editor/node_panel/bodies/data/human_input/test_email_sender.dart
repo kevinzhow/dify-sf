@@ -96,10 +96,10 @@ Future<bool> showTestEmailSender(
 }) async {
   final toast = DataPanelHost.of(context).toast;
   final host = HumanInputHost.of(context);
-  final r = await showHiDialog<bool>(
+  final r = await showDifyDialog<bool>(
     context,
     dismissible: false,
-    (context) => DataPanelHost(
+    builder: (context) => DataPanelHost(
       toast: toast,
       child: HumanInputHost(
         members: host.members,
@@ -219,7 +219,9 @@ class _TestEmailSenderState extends State<TestEmailSender> {
             style: body,
           );
     if (_done) {
-      return HiDialogBox(
+      return DifyDialogSurface(
+        padding: const EdgeInsets.all(24),
+        scrollable: true,
         label: _t('done'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -245,7 +247,9 @@ class _TestEmailSenderState extends State<TestEmailSender> {
         ),
       );
     }
-    return HiDialogBox(
+    return DifyDialogSurface(
+      padding: const EdgeInsets.all(24),
+      scrollable: true,
       label: _t('title'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

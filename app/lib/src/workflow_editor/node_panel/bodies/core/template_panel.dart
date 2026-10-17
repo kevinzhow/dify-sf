@@ -11,6 +11,7 @@ import '../../../../workflow/output_vars.dart' show VarType;
 import '../../../code_editor/code_editor.dart';
 import '../../../panel_fields/panel_fields.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'code_editor_support_vars.dart';
 import 'code_panel.dart' show writeCoreInputs;
 import 'core_kit.dart';
@@ -118,7 +119,7 @@ class _TemplatePanelState extends State<_TemplatePanel> {
     final props = widget.props, c = _config, readOnly = props.readOnly;
     final inputs = c.inputs();
     final variables = inputs['variables'];
-    final vars = panelVars(props);
+    final vars = NodeVars.of(props);
     final title = tw('nodes.templateTransform.inputVars');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

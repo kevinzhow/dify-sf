@@ -17,7 +17,7 @@ import '../../../../header/checklist/use_checklist.dart'
 import '../../../../panel_fields/panel_fields.dart' hide Json;
 import '../../../../store/store.dart';
 import '../../../node_panel_bodies.dart';
-import '../entry_common.dart';
+import '../../../panel_edit.dart';
 import 'kb_widgets.dart';
 import 'knowledge_base_host.dart';
 import 'knowledge_base_logic.dart';

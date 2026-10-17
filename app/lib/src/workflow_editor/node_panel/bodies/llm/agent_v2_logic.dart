@@ -10,7 +10,7 @@ import 'dart:convert';
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/node_config.dart' show Json;
 import 'llm_config.dart' show jsonClone;
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 // ---- types.ts ----------------------------------------------------------------------------------------------------
 

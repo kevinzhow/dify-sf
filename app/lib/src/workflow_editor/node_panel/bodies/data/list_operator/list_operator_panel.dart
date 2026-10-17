@@ -10,6 +10,7 @@ import '../../../node_panel_bodies.dart';
 import '../data_common.dart';
 import 'list_operator_model.dart';
 import 'list_operator_widgets.dart';
+import '../../../panel_edit.dart';
 
 /// What the panel derives from the node (use-config.ts): the input's type, its item type and how that shows.
 typedef ListOperatorTypes = ({String? varType, String itemVarType, String itemVarTypeShowName, bool hasSubVariable});
@@ -40,8 +41,8 @@ class _ListOperatorPanel extends StatelessWidget {
     final p = props;
     final data = p.data;
     final readOnly = p.readOnly;
-    final scope = availableScope(p);
-    final nodesMap = nodesMapOf(p);
+    final scope = NodeVars.of(p).scope;
+    final nodesMap = NodeVars.of(p).nodesMap;
     final version = versionOf(p);
     final types = listOperatorTypes(data, scope);
     void set(Map<String, Object?> next, [int? base]) => setInputs(p, next, base: base);

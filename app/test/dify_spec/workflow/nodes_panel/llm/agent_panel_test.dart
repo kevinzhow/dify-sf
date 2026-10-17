@@ -15,7 +15,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_pane
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/panel_edit.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -404,7 +404,7 @@ void main() {
           formSchemas: schemas,
           formValue: const {},
           onFormValueChange: (_) {},
-          vars: NodeVars.of(context, propsOf(h)),
+          vars: NodeVars.of(propsOf(h)),
           props: propsOf(h),
         ),
       ),

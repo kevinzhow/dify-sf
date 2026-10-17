@@ -14,6 +14,7 @@ import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/match_schema_type.dart';
 import '../../../../../workflow/output_vars.dart';
 import '../../../../panel_fields/var_picker_model.dart' show PickerVar, VarFilter;
+import '../../../../panel_fields/tool_form_schema.dart' hide parseFloatJs;
 
 typedef JsonMap = Map<String, Object?>;
 
@@ -67,73 +68,6 @@ extension on String? {
 }
 
 // ---- to-form-schema.ts ---------------------------------------------------------------------------------------------
-
-/// `toType`.
-String toType(String type) => switch (type) {
-  'string' => FormType.textInput,
-  'number' => FormType.textNumber,
-  'boolean' => FormType.checkbox,
-  _ => type,
-};
-
-/// `toolParametersToFormSchemas`: each `ToolParameter` with `variable` (its name), the form `type`, the raw `_type`,
-/// empty `show_on`s and its `human_description` as `tooltip`.
-List<JsonMap> toolParametersToFormSchemas(Object? parameters) => [
-  for (final p in jsList(parameters))
-    if (p is Map)
-      {
-        ...p.cast<String, Object?>(),
-        'variable': p['name'],
-        'type': toType(jsStr(p['type']) ?? ''),
-        '_type': p['type'],
-        'show_on': const <Object?>[],
-        'options': p['options'] == null
-            ? null
-            : [
-                for (final o in jsList(p['options']))
-                  if (o is Map) {...o.cast<String, Object?>(), 'show_on': const <Object?>[]},
-              ],
-        'tooltip': p['human_description'],
-      },
-];
-
-/// `correctInitialData`.
-JsonMap _correctInitialData(String type, JsonMap target, Object? defaultValue) {
-  if (type == 'text-input' || type == 'secret-input') target['type'] = ToolVarKind.mixed;
-  if (type == 'boolean') {
-    if (defaultValue is String) target['value'] = defaultValue == 'true' || defaultValue == '1';
-    if (defaultValue is bool) target['value'] = defaultValue;
-    if (defaultValue is num) target['value'] = defaultValue == 1;
-  }
-  if (type == 'number-input' && defaultValue is String && defaultValue.isNotEmpty) {
-    target['value'] = double.tryParse(defaultValue) ?? double.nan;
-  }
-  if (type == FormType.date || type == FormType.dateRange) {
-    if (defaultValue is String) target['value'] = defaultValue;
-    if (defaultValue is Map) target['value'] = jsonEncode(defaultValue);
-  }
-  if (type == 'app-selector' || type == 'model-selector') target['value'] = defaultValue;
-  return target;
-}
-
-/// `getConfiguredValue`: [value] with each schema's `default` filled in where the value is missing or empty
-/// (`{type: 'constant', value: default}`, corrected per type; `\n` in string defaults escaped).
-JsonMap getConfiguredValue(JsonMap value, List<JsonMap> formSchemas) {
-  final out = {...value};
-  for (final s in formSchemas) {
-    final variable = jsKey(s['variable']);
-    final item = value[variable];
-    if (s.containsKey('default') && (item == null || item == '')) {
-      final d = s['default'];
-      final initial = <String, Object?>{
-        'type': ToolVarKind.constant,
-        'value': d is String ? d.replaceAll('\n', r'\n') : d,
-      };
-      out[variable] = _correctInitialData(jsStr(s['type']) ?? '', initial, d);
-    }
-  }
-  return out;
-}
 
 // ---- form-input-item.helpers.ts ------------------------------------------------------------------------------------
 

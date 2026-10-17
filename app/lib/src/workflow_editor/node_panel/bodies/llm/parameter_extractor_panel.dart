@@ -12,7 +12,8 @@ import '../../node_panel_bodies.dart';
 import 'llm_panel.dart' show promptEditorEnvOf;
 import 'model_common.dart';
 import 'model_parameter_modal.dart' show ModelChoice;
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 import 'pe_params.dart';
 import 'qc_pe_kit.dart';
 
@@ -94,7 +95,7 @@ class _ParameterExtractorPanelState extends State<ParameterExtractorPanel> with 
   Widget build(BuildContext context) {
     inputs = props.data;
     final readOnly = props.readOnly, chatMode = props.chatMode;
-    final vars = NodeVars.of(context, props);
+    final vars = NodeVars.of(props);
     runEffects();
     final env = promptEditorEnvOf(context, props, vars, filterNumberStringVar, services);
     final vision = jsMap(inputs['vision']);

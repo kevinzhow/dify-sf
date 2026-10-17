@@ -11,7 +11,8 @@ import '../../../prompt_editor/config_prompt.dart' show PromptEditorEnv;
 import '../../node_panel_bodies.dart';
 import 'llm_panel.dart' show promptEditorEnvOf;
 import 'model_common.dart';
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 import 'qc_class_list.dart';
 import 'qc_pe_kit.dart';
 
@@ -91,7 +92,7 @@ class _QuestionClassifierPanelState extends State<QuestionClassifierPanel> with 
   Widget build(BuildContext context) {
     inputs = props.data;
     final readOnly = props.readOnly, chatMode = props.chatMode;
-    final vars = _vars = NodeVars.of(context, props);
+    final vars = _vars = NodeVars.of(props);
     runEffects();
     final env = promptEditorEnvOf(context, props, vars, filterNumberStringVar, services);
     final classEnv = promptEditorEnvOf(context, props, vars, filterStringVar, services);

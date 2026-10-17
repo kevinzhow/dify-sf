@@ -3,7 +3,10 @@
 /// toggle-expand-btn.tsx, variable/object-child-tree-panel/tree-indent-line.tsx).
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
@@ -101,35 +104,32 @@ class _FieldState extends State<Field> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    Widget header = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    Widget header = _FieldHeaderLayout(
       children: [
-        Flexible(
-          child: SizedBox(
-            height: 24,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: _FieldTitleText(
-                    w.title,
-                    isSubTitle: w.isSubTitle,
-                    required: w.required,
-                    warningDot: w.warningDot,
-                  ),
+        SizedBox(
+          height: 24,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: _FieldTitleText(
+                  w.title,
+                  isSubTitle: w.isSubTitle,
+                  required: w.required,
+                  warningDot: w.warningDot,
                 ),
-                if (w.tooltip != null && w.tooltip!.isNotEmpty) ...[
-                  const SizedBox(width: 4),
-                  Infotip(label: w.tooltip!, content: Text(w.tooltip!)),
-                ],
+              ),
+              if (w.tooltip != null && w.tooltip!.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Infotip(label: w.tooltip!, content: Text(w.tooltip!)),
               ],
-            ),
+            ],
           ),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ?w.operations,
+            if (w.operations != null) Flexible(child: w.operations!),
             if (w.supportFold)
               AnimatedRotation(
                 turns: _fold ? -0.25 : 0,
@@ -169,6 +169,80 @@ class _FieldState extends State<Field> {
       ],
     );
   }
+}
+
+/// A [Field]'s title row: the title on the left and the operations on the right (`justify-between`), both centred
+/// vertically. The operations keep their natural width and the title takes the rest (it truncates); operations wider
+/// than the whole row shrink to it (they are Flexible) instead of overflowing.
+class _FieldHeaderLayout extends MultiChildRenderObjectWidget {
+  const _FieldHeaderLayout({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderFieldHeader();
+}
+
+class _HeaderParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderFieldHeader extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _HeaderParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _HeaderParentData> {
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _HeaderParentData) child.parentData = _HeaderParentData();
+  }
+
+  RenderBox get _title => firstChild!;
+  RenderBox get _ops => lastChild!;
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      _title.getMinIntrinsicWidth(height) + _ops.getMinIntrinsicWidth(height);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      _title.getMaxIntrinsicWidth(height) + _ops.getMaxIntrinsicWidth(height);
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      math.max(_title.getMinIntrinsicHeight(width), _ops.getMinIntrinsicHeight(width));
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      math.max(_title.getMaxIntrinsicHeight(width), _ops.getMaxIntrinsicHeight(width));
+
+  @override
+  void performLayout() {
+    final width = constraints.maxWidth;
+    final loose = BoxConstraints(maxWidth: width, maxHeight: constraints.maxHeight);
+    // Natural widths first, then the final split.
+    _title.layout(loose, parentUsesSize: true);
+    _ops.layout(loose, parentUsesSize: true);
+    final titleNatural = _title.size.width, opsNatural = _ops.size.width;
+    var opsWidth = opsNatural;
+    if (width.isFinite && titleNatural + opsNatural > width) {
+      opsWidth = math.min(opsNatural, width);
+      _ops.layout(loose.copyWith(maxWidth: opsWidth), parentUsesSize: true);
+      opsWidth = _ops.size.width;
+    }
+    final titleMax = width.isFinite ? width - opsWidth : double.infinity;
+    if (titleNatural > titleMax) _title.layout(loose.copyWith(maxWidth: titleMax), parentUsesSize: true);
+    final height = constraints.constrainHeight(math.max(_title.size.height, _ops.size.height));
+    final rowWidth = width.isFinite ? width : _title.size.width + _ops.size.width;
+    size = constraints.constrain(Size(rowWidth, height));
+    (_title.parentData! as _HeaderParentData).offset = Offset(0, (size.height - _title.size.height) / 2);
+    (_ops.parentData! as _HeaderParentData).offset = Offset(
+      size.width - _ops.size.width,
+      (size.height - _ops.size.height) / 2,
+    );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }
 
 /// Split (split.tsx, `PanelSplit` beside Flutter's Split curve): `h-[0.5px] bg-divider-subtle`, with the call site's margin.

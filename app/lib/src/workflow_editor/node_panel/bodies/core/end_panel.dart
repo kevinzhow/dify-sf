@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../panel_fields/panel_fields.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'core_kit.dart';
 
 /// use-config.ts with `useVarList({varKey: 'outputs'})`.
@@ -43,7 +44,7 @@ Widget endPanelBody(BuildContext context, NodePanelProps props) {
       child: VarList(
         readonly: config.readOnly,
         list: varListItemsOf(outputs),
-        scope: panelVars(props).scope,
+        scope: NodeVars.of(props).scope,
         onChange: (rows) => config.handleVarListChange(varListDataOf(rows, outputs)),
         onError: CorePanelHost.of(context).toastError,
       ),

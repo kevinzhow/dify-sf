@@ -16,7 +16,7 @@ import '../../../panel_fields/panel_fields.dart';
 import 'group_host.dart';
 import 'kr_config.dart';
 import 'model_parameter_modal.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 String _c(String key) => DifyI18n.tr('common', key);
 String _w(String key) => DifyI18n.tr('workflow', key);

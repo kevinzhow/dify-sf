@@ -18,7 +18,7 @@ import '../../../../workflow/dify_json.dart';
 import '../../../../workflow/model_catalog.dart' show renderI18nObject;
 import '../../../panel_fields/panel_fields.dart';
 import '../../../store/store.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 String _w(String key) => DifyI18n.tr('workflow', key);
 

@@ -3,7 +3,6 @@
 /// ModelSelector (trigger in its medium size and the model popup).
 library;
 
-import 'package:flutter/material.dart' show Material, MaterialType, TextField, InputDecoration, InputBorder;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -637,8 +636,7 @@ class KbLearnMore extends StatelessWidget {
 
 // ---- Textarea ----------------------------------------------------------------------------------------------------
 
-/// dify-ui's Textarea (medium): `min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3
-/// py-2 system-sm-regular`. Committed on blur with the document version its draft began on.
+/// dify-ui's Textarea ([DifyTextarea]) committed on blur with the document version its draft began on.
 class KbTextarea extends StatefulWidget {
   const KbTextarea({
     super.key,
@@ -661,95 +659,49 @@ class KbTextarea extends StatefulWidget {
 }
 
 class _KbTextareaState extends State<KbTextarea> {
-  late final _controller = TextEditingController(text: widget.value);
-  late final _focus = FocusNode()..addListener(_focusChanged);
+  /// The version the draft began on (its first keystroke), and the draft; the draft is kept after the commit until
+  /// the document's value changes, so the text does not flash back.
   int? _base;
-  bool _hovered = false;
-
-  void _focusChanged() {
-    setState(() {});
-    if (!_focus.hasFocus) _commit();
-  }
+  String? _draft;
 
   void _commit() {
-    final base = _base;
+    final base = _base, text = _draft;
     _base = null;
-    if (base != null && _controller.text != widget.value) widget.onCommit(_controller.text, base);
+    if (base == null || text == null) return;
+    if (text == widget.value) {
+      _draft = null;
+    } else {
+      widget.onCommit(text, base);
+    }
   }
 
   @override
   void didUpdateWidget(KbTextarea old) {
     super.didUpdateWidget(old);
-    if (_base == null && _controller.text != widget.value) _controller.text = widget.value;
+    if (_base == null && widget.value != old.value) _draft = null;
   }
 
   @override
   void dispose() {
     _commit();
-    _focus.dispose();
-    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    final focused = _focus.hasFocus;
-    final style = difyStyle(
-      DifyType.systemSmRegular,
-      w.disabled ? DifyColors.componentsInputTextFilledDisabled : DifyColors.componentsInputTextFilled,
-    );
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 80),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: w.disabled
-              ? DifyColors.componentsInputBgDisabled
-              : focused
-              ? DifyColors.componentsInputBgActive
-              : _hovered
-              ? DifyColors.componentsInputBgHover
-              : DifyColors.componentsInputBgNormal,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: Border.all(
-            color: w.disabled
-                ? const Color(0x00000000)
-                : focused
-                ? DifyColors.componentsInputBorderActive
-                : _hovered
-                ? DifyColors.componentsInputBorderHover
-                : const Color(0x00000000),
-          ),
-          boxShadow: focused ? DifyShadows.xs : null,
-        ),
-        child: Semantics(
-          label: w.semanticLabel,
-          textField: true,
-          child: Material(
-            type: MaterialType.transparency,
-            child: TextField(
-              controller: _controller,
-              focusNode: _focus,
-              enabled: !w.disabled,
-              minLines: 3,
-              maxLines: null,
-              style: style,
-              cursorColor: DifyColors.utilColorsBlueBrandBlueBrand600,
-              onChanged: (_) => _base ??= w.currentVersion(),
-              decoration: InputDecoration(
-                isDense: true,
-                isCollapsed: true,
-                border: InputBorder.none,
-                hintText: w.placeholder,
-                hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return DifyTextarea(
+      value: _draft ?? w.value,
+      placeholder: w.placeholder,
+      semanticLabel: w.semanticLabel,
+      disabled: w.disabled,
+      onChanged: (text) {
+        _base ??= w.currentVersion();
+        _draft = text;
+      },
+      onFocusChange: (focused) {
+        if (!focused) _commit();
+      },
     );
   }
 }

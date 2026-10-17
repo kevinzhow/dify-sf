@@ -18,7 +18,6 @@ import 'trigger_webhook/webhook_default.dart';
 
 export 'data_source/data_source_host.dart';
 export 'data_source/data_source_panel.dart';
-export 'entry_common.dart';
 export 'knowledge_base/knowledge_base_host.dart';
 export 'knowledge_base/knowledge_base_panel.dart';
 export 'start_placeholder/start_placeholder_panel.dart';

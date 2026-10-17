@@ -15,8 +15,7 @@ import '../../../../workflow/model_catalog.dart' show ModelFeatureEnum;
 import '../../../panel_fields/panel_fields.dart';
 import 'group_host.dart';
 import 'kr_config.dart';
-import 'llm_dialog.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 String _w(String key) => DifyI18n.tr('workflow', key);
 String _c(String key) => DifyI18n.tr('common', key);
@@ -244,11 +243,11 @@ class AddDataset extends StatelessWidget {
 /// Opens SelectDataSet; resolves with the chosen datasets (Add) or null (closed).
 Future<List<Json>?> showSelectDataset(BuildContext context, {required List<String> selectedIds}) {
   final services = LlmGroupScope.of(context);
-  return showLlmDialog<List<Json>>(
+  return showDifyDialog<List<Json>>(
     context,
     builder: (ctx) => LlmGroupScope(
       services: services,
-      child: LlmDialogSurface(
+      child: DifyDialogSurface(
         label: _ad('feature.dataSet.selectTitle'),
         width: 400,
         padding: const EdgeInsets.all(24),

@@ -16,7 +16,7 @@ import '../iteration/iteration_config.dart' show ContainerLimits;
 import 'loop_conditions.dart';
 import 'loop_config.dart';
 import 'loop_variables.dart';
-import 'loop_widgets.dart';
+import '../../../panel_edit.dart';
 
 /// The Loop node's body.
 Widget loopPanelBody(BuildContext context, NodePanelProps props) {
@@ -26,12 +26,12 @@ Widget loopPanelBody(BuildContext context, NodePanelProps props) {
   final start = doc.nodes.values.where((n) => n.type == 'start').firstOrNull;
   return LoopPanel(
     config: config,
-    variableScope: availableScope(props),
+    variableScope: NodeVars.of(props).scope,
     vars: ConditionVars(
       availableVars: config.childrenNodeVars.vars,
       lookup: (id) => byId[id],
       start: start,
-      numberVariables: filteredScope(props, typeIn(const {VarType.number})).vars,
+      numberVariables: NodeVars.of(props).filtered(typeIn(const {VarType.number})).vars,
       allNodes: (id) => doc.nodes[id],
       nodesMap: workflowNodesMapOf(config.loopChildrenNodes),
     ),

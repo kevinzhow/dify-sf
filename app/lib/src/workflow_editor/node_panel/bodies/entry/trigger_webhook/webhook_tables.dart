@@ -9,6 +9,7 @@ import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../i18n/dify_i18n.dart';
+import '../../../../panel_fields/form_controls.dart' show DifyCheckbox;
 import '../../../../panel_fields/var_list.dart' show varNameFormatter;
 import 'webhook_config.dart' show Json;
 import 'webhook_default.dart';
@@ -130,7 +131,7 @@ class GenericTable extends StatelessWidget {
         height: 28,
         child: Align(
           alignment: Alignment.centerLeft,
-          child: WebhookCheckbox(
+          child: DifyCheckbox(
             checked: value == true,
             label: c.title,
             disabled: readonly,
@@ -429,57 +430,6 @@ class _SelectCell extends StatelessWidget {
       ),
     );
   }
-}
-
-/// dify-ui's Checkbox: a 16 px `rounded-sm` box (`border-components-checkbox-border`, white) that turns
-/// `bg-components-checkbox-bg` with a white check when [checked].
-class WebhookCheckbox extends StatelessWidget {
-  const WebhookCheckbox({super.key, required this.checked, required this.label, this.onChanged, this.disabled = false});
-  final bool checked, disabled;
-  final String label;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    checked: checked,
-    label: label,
-    child: DifyPressable(
-      disabled: disabled,
-      onPressed: () => onChanged?.call(!checked),
-      builder: (context, hovered, focused) {
-        final Color bg, border;
-        if (disabled) {
-          bg = checked ? DifyColors.componentsCheckboxBgDisabledChecked : DifyColors.componentsCheckboxBgDisabled;
-          border = checked ? const Color(0x00000000) : DifyColors.componentsCheckboxBorderDisabled;
-        } else if (checked) {
-          bg = hovered ? DifyColors.componentsCheckboxBgHover : DifyColors.componentsCheckboxBg;
-          border = const Color(0x00000000);
-        } else {
-          bg = hovered ? DifyColors.componentsCheckboxBgUncheckedHover : DifyColors.componentsCheckboxBgUnchecked;
-          border = hovered ? DifyColors.componentsCheckboxBorderHover : DifyColors.componentsCheckboxBorder;
-        }
-        return Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: bg,
-            border: Border.all(color: border),
-            borderRadius: BorderRadius.circular(DifyRadius.sm),
-            boxShadow: focused
-                ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
-                : const [BoxShadow(color: DifyColors.shadowShadow3, offset: Offset(0, 1), blurRadius: 2)],
-          ),
-          child: checked
-              ? RemixIcon(
-                  'check-line',
-                  size: 12,
-                  color: disabled ? DifyColors.componentsCheckboxIconDisabled : DifyColors.componentsCheckboxIcon,
-                )
-              : null,
-        );
-      },
-    ),
-  );
 }
 
 /// ParameterTable: Variable name / Type / Required; the types [createParameterTypeOptions] offers for

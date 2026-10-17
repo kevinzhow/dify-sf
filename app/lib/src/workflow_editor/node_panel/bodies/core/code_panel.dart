@@ -12,6 +12,7 @@ import '../../../../workflow/output_vars.dart' show VarType;
 import '../../../code_editor/code_editor.dart';
 import '../../../panel_fields/panel_fields.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'code_parser.dart';
 import 'core_kit.dart';
 
@@ -265,7 +266,7 @@ List<Object?> codeOutputsListOf(Object? outputs, List<String> orders) {
 
 /// Writes Dify's [next] data for [props]' node; a change to [textKey] alone is typed text (written with [base]).
 void writeCoreInputs(NodePanelProps props, Map<String, Object?> next, {String? textKey, int Function()? base}) =>
-    PanelInputs(props).setInputs(next, textKey: textKey, base: base);
+    PanelInputs(props).setInputs(next, textKey: textKey, textBase: base);
 
 // ---- the panel ---------------------------------------------------------------------------------------------------
 
@@ -381,7 +382,7 @@ class _CodePanelState extends State<_CodePanel> {
                 child: VarList(
                   readonly: readOnly,
                   list: varListItemsOf(variables),
-                  scope: panelVars(props).scope,
+                  scope: NodeVars.of(props).scope,
                   filterVar: (v, _) => CodeConfig.filterVar(v.type),
                   isSupportFileVar: false,
                   onChange: (rows) => c.handleVarListChange(varListDataOf(rows, variables)),

@@ -2,7 +2,6 @@
 //
 // use-config.ts is IfElseConfig: the mocked node CRUD, edge interactions, React Flow internals and file-attribute
 // check are its constructor's callbacks; the available variables are the panel's scope (IfElseEnv).
-import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/if_else_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,7 +75,7 @@ void main() {
           ),
         ],
       );
-      final env = IfElseEnv.of(r.config, (scope: scope, availableNodes: const {}, beforeNodes: const <Node>[]));
+      final env = IfElseEnv.of(r.config, scope);
       expect(r.config.readOnly, isFalse);
       expect(r.config.filterVar(), isTrue);
       expect(r.config.filterNumberVar(const PickerVar('a', 'number')), isTrue);

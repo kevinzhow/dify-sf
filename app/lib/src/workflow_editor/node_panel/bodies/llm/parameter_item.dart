@@ -2,7 +2,6 @@
 /// dropdown (presets-parameter.tsx, presets-parameter-utils.ts) and the stop-sequence tag input (base/tag-input).
 library;
 
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -14,6 +13,7 @@ import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart' show jsTruthy;
 import '../../../../workflow/model_catalog.dart' show renderI18nObject;
 import '../../../panel_fields/controls.dart' show DifyInput, DifySlider, DifySwitch, Infotip;
+import '../../../panel_fields/form_controls.dart' show TagInput;
 import '../../../panel_fields/selectors.dart' show DifySelect;
 import '../../../panel_fields/var_picker_model.dart' show VarGroup;
 import '../../../prompt_editor/prompt_editor.dart';
@@ -408,6 +408,7 @@ class _ParameterItemState extends State<ParameterItem> {
             isInWorkflow: widget.isInWorkflow,
             required: r.required,
             label: label,
+            onError: (m) => LlmGroupScope.of(context).toast?.call(LlmToastType.error, m),
           ),
         );
     }
@@ -593,162 +594,4 @@ class _Radio extends StatelessWidget {
       ),
     ),
   );
-}
-
-// ---- tag input ---------------------------------------------------------------------------------------------------
-
-/// TagInput (base/tag-input): the [items] as removable chips and an input that adds the trimmed text on
-/// [customizedConfirmKey] or blur (Tab mode: the field is the `rounded-lg bg-components-input-bg-normal` box and Enter
-/// types `↵`). Empty (when [required]), duplicate and over-20-character tags are refused with a toast.
-class TagInput extends StatefulWidget {
-  const TagInput({
-    super.key,
-    required this.items,
-    required this.onChange,
-    this.customizedConfirmKey = LogicalKeyboardKey.enter,
-    this.isInWorkflow = false,
-    this.required = false,
-    this.placeholder,
-    this.label,
-  });
-
-  final List<String> items;
-  final ValueChanged<List<String>> onChange;
-  final LogicalKeyboardKey customizedConfirmKey;
-  final bool isInWorkflow, required;
-  final String? placeholder, label;
-
-  @override
-  State<TagInput> createState() => _TagInputState();
-}
-
-class _TagInputState extends State<TagInput> {
-  final _text = TextEditingController();
-  late final _focus = FocusNode(debugLabel: 'tag input', onKeyEvent: _onKey)..addListener(_focusChanged);
-  bool _focused = false;
-
-  bool get _special => widget.customizedConfirmKey == LogicalKeyboardKey.tab;
-
-  @override
-  void dispose() {
-    _text.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  void _focusChanged() {
-    if (_focus.hasFocus == _focused) return;
-    setState(() => _focused = _focus.hasFocus);
-    if (!_focus.hasFocus) _add(_text.text);
-  }
-
-  KeyEventResult _onKey(FocusNode node, KeyEvent e) {
-    if (e is! KeyDownEvent) return KeyEventResult.ignored;
-    if (_special && e.logicalKey == LogicalKeyboardKey.enter) {
-      _text.text = '${_text.text}↵';
-      return KeyEventResult.handled;
-    }
-    if (e.logicalKey == widget.customizedConfirmKey) {
-      _add(_text.text);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  void _add(String value) {
-    final v = value.trim();
-    final toast = LlmGroupScope.of(context).toast;
-    if (v.isEmpty) {
-      if (widget.required) toast?.call(LlmToastType.error, DifyI18n.tr('dataset-documents', 'segment.keywordEmpty'));
-      return;
-    }
-    if (widget.items.contains(v)) {
-      toast?.call(LlmToastType.error, DifyI18n.tr('dataset-documents', 'segment.keywordDuplicate'));
-      return;
-    }
-    if (v.length > 20) {
-      toast?.call(LlmToastType.error, DifyI18n.tr('dataset-documents', 'segment.keywordError'));
-      return;
-    }
-    widget.onChange([...widget.items, v]);
-    _text.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final placeholder =
-        widget.placeholder ??
-        (_special
-            ? _c('model.params.stop_sequencesPlaceholder')
-            : DifyI18n.tr('dataset-documents', 'segment.addKeyWord'));
-    final style = difyStyle(DifyType.systemXsRegular, DifyColors.textPrimary);
-    return Container(
-      padding: _special ? const EdgeInsets.only(left: 4, bottom: 4) : EdgeInsets.zero,
-      decoration: _special
-          ? BoxDecoration(color: DifyColors.componentsInputBgNormal, borderRadius: BorderRadius.circular(DifyRadius.lg))
-          : null,
-      child: Wrap(
-        children: [
-          for (final (i, item) in widget.items.indexed)
-            Container(
-              margin: const EdgeInsets.only(top: 4, right: 4),
-              padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
-              decoration: BoxDecoration(
-                color: DifyColors.componentsBadgeWhiteToDark,
-                border: Border.all(color: DifyColors.dividerDeep),
-                borderRadius: BorderRadius.circular(DifyRadius.md),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(item, style: difyStyle(DifyType.systemXsRegular, DifyColors.textSecondary)),
-                  DifyPressable(
-                    semanticLabel: '${_c('operation.remove')} $item',
-                    onPressed: () => widget.onChange([...widget.items]..removeAt(i)),
-                    builder: (context, hovered, focused) => const Padding(
-                      padding: EdgeInsets.only(left: 2),
-                      child: RemixIcon('close-line', size: 14, color: DifyColors.textTertiary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            constraints: BoxConstraints(maxWidth: widget.isInWorkflow ? 146 : 300, minWidth: 40),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(DifyRadius.md),
-              border: _special
-                  ? Border.all(color: _focused ? DifyColors.dividerDeep : const Color(0x00000000))
-                  : Border.all(color: DifyColors.dividerDeep),
-            ),
-            child: Material(
-              type: MaterialType.transparency,
-              child: IntrinsicWidth(
-                child: Semantics(
-                  label: widget.label,
-                  textField: true,
-                  child: Stack(
-                    children: [
-                      if (_text.text.isEmpty)
-                        Text(placeholder, style: style.copyWith(color: DifyColors.textPlaceholder), maxLines: 1),
-                      EditableText(
-                        controller: _text,
-                        focusNode: _focus,
-                        style: style,
-                        cursorColor: const Color(0xFF295EFF),
-                        backgroundCursorColor: DifyColors.textQuaternary,
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

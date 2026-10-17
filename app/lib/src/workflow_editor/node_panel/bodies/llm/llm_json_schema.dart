@@ -20,8 +20,7 @@ import '../../../code_editor/code_editor.dart';
 import '../../../panel_fields/panel_fields.dart';
 import 'group_host.dart';
 import 'llm_config.dart';
-import 'llm_dialog.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 String _w(String key) => DifyI18n.tr('workflow', key);
 String _c(String key) => DifyI18n.tr('common', key);
@@ -43,13 +42,13 @@ Future<void> showJsonSchemaConfigModal(
   required ValueChanged<Json> onSave,
 }) {
   final services = LlmGroupScope.of(context);
-  return showLlmDialog<void>(
+  return showDifyDialog<void>(
     context,
     builder: (ctx) {
       final h = MediaQuery.sizeOf(ctx).height - 32;
       return LlmGroupScope(
         services: services,
-        child: LlmDialogSurface(
+        child: DifyDialogSurface(
           label: _w('nodes.llm.jsonSchema.title'),
           width: 960,
           height: h < 800 ? h : 800,

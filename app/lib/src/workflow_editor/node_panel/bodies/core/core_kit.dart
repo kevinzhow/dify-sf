@@ -1,6 +1,6 @@
-/// What the core node panels share: the host's data and services ([CorePanelHost]), Dify's `useNodeCrud` over the
-/// collaborative document ([PanelInputs]: a node's `data` in, the smallest ops out), the variables a node may
-/// reference ([panelScope]) and the variable-usage helpers of hooks/use-workflow.ts.
+/// What the core node panels share: the host's data and services ([CorePanelHost]), typed-text bases
+/// ([TypingBase]) and the variable-usage helpers of hooks/use-workflow.ts. Writes (`PanelInputs`) and the variable
+/// scope (`NodeVars`) are the shared `node_panel/panel_edit.dart`'s.
 library;
 
 import 'dart:async';
@@ -13,15 +13,10 @@ import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
 import '../../../../editor/editor_controller.dart';
 import '../../../../i18n/dify_i18n.dart';
-import '../../../../ids.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../../workflow/var_types.dart';
-import '../../../context_menu/workflow_actions.dart' show parentIdOf;
-import '../../../header/checklist/use_checklist.dart';
 import '../../../panel_fields/panel_fields.dart';
-import '../../../prompt_editor/prompt_editor.dart' show WorkflowNodeInfo;
-import '../../../prompt_editor/prompt_editor_panel.dart' show workflowNodesMapOf;
-import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart' show writeNodeConfig;
 
 String tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String tc(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
@@ -123,210 +118,6 @@ class CorePanelHost extends InheritedWidget {
   bool updateShouldNotify(CorePanelHost old) => old.data != data;
 }
 
-// ---- useNodeCrud ---------------------------------------------------------------------------------------------------
-
-/// Dify's `useNodeCrud` for one node: [inputs] is its `data` as it is now (read live, like `inputsRef.current`),
-/// [setInputs] writes a whole new `data` as the few ops that change what differs, so concurrent edits to other
-/// fields or other items of a keyed list merge.
-class PanelInputs {
-  PanelInputs(this.props);
-  final NodePanelProps props;
-
-  EditorController get _c => props.controller;
-  Node get node => _c.doc.nodes[props.id] ?? props.node;
-  Map<String, Object?> get inputs => difyDataOf(node);
-
-  /// Writes [next] (Dify's data) over the node's config; nothing while the panel is read-only (Dify's
-  /// `handleNodeDataUpdate` checks `getNodesReadOnly`). When only [textKey] changed, it is written with [base] (typed
-  /// text).
-  void setInputs(Map<String, Object?> next, {String? textKey, int Function()? base}) {
-    if (props.readOnly) return;
-    if (textKey != null && base != null) {
-      final now = inputs;
-      final changed = [
-        for (final e in next.entries)
-          if (!jsonEquals(now[e.key], e.value)) e.key,
-      ];
-      if (changed.length == 1 && changed.single == textKey) return set(textKey, next[textKey], base: base());
-    }
-    writeNodeData(_c, node, next);
-  }
-
-  /// Sets one top-level key (typed text passes [base]).
-  void set(String key, Object? value, {int? base}) {
-    if (props.readOnly) return;
-    final n = node;
-    _c.setConfig(n.id, [key], docValue(value, _c.doc, n.config[key]), base: base);
-  }
-}
-
-/// (node type, key): the config keys kept as keyed lists (as the DSL import makes them; `*` = any type).
-const _keyedLists = {('*', 'variables'), ('end', 'outputs'), ('code', 'outputs'), ('if-else', 'cases')};
-
-bool _isKeyed(String type, String key) => _keyedLists.contains(('*', key)) || _keyedLists.contains((type, key));
-
-/// Writes Dify's [data] for [node]: each top-level key that changed, keyed lists item by item.
-void writeNodeData(EditorController c, Node node, Map<String, Object?> data) {
-  for (final MapEntry(:key, :value) in data.entries) {
-    if (key == 'type' || key == 'title' || key == 'selected' || key.startsWith('_')) continue;
-    final orig = node.config[key];
-    if (orig == null && value == null) continue;
-    if (orig != null && jsonEquals(plainOf(orig), value)) continue;
-    if (orig is! VItems && value is List && _isKeyed(node.type, key)) {
-      // A keyed list from scratch (or from an atomic list), so its items merge from now on.
-      c.setConfig(node.id, [key], VItems([for (final v in value) Item(newId('i'), docValue(v, c.doc))]));
-      continue;
-    }
-    _writeKey(c, node.id, [key], orig, value);
-  }
-}
-
-/// Writes [next] (a document [Node] with an updated config, from `updateNodeVars`) over [orig].
-void writeNodeConfig(EditorController c, Node orig, Node next) {
-  for (final MapEntry(:key, :value) in next.config.entries) {
-    final o = orig.config[key];
-    if (o == value) continue;
-    if (o is VItems && value is VItems && _sameIds(o.items, value.items)) {
-      for (final (i, item) in value.items.indexed) {
-        if (item.value != o.items[i].value) c.updateItem(orig.id, [key], item.id, item.value);
-      }
-    } else {
-      c.setConfig(orig.id, [key], value);
-    }
-  }
-}
-
-bool _sameIds(List<Item> a, List<Item> b) =>
-    a.length == b.length && [for (var i = 0; i < a.length; i++) a[i].id == b[i].id].every((x) => x);
-
-/// Writes [next] at [path]: a map that keeps all its members member by member (only what changed, at its own path,
-/// so concurrent edits of sibling members merge; a map losing a member is written whole), a keyed list item by item.
-void _writeKey(EditorController c, String nodeId, List<String> path, Value? orig, Object? next) {
-  final doc = c.doc;
-  if (orig is VMap && next is Map && orig.entries.keys.every(next.containsKey)) {
-    for (final MapEntry(:key, :value) in next.entries) {
-      final o = orig.entries['$key'];
-      if (o == null && value == null) continue;
-      if (o != null && jsonEquals(plainOf(o), value)) continue;
-      _writeKey(c, nodeId, [...path, '$key'], o, value);
-    }
-    return;
-  }
-  if (orig is VItems && next is List) {
-    final old = orig.items;
-    final plain = [for (final i in old) plainOf(i.value)];
-    bool eq(int i, int j) => jsonEquals(plain[i], next[j]);
-    // One item changed in place, or a pure reorder.
-    if (next.length == old.length) {
-      final changed = [
-        for (var i = 0; i < old.length; i++)
-          if (!eq(i, i)) i,
-      ];
-      final reorder = _permutation(plain, next);
-      if (reorder != null && changed.isNotEmpty) {
-        c.setConfig(nodeId, path, VItems([for (final i in reorder) old[i]]));
-        return;
-      }
-      for (final i in changed) {
-        c.updateItem(nodeId, path, old[i].id, docValue(next[i], doc, old[i].value));
-      }
-      return;
-    }
-    // One item added.
-    if (next.length == old.length + 1) {
-      for (var k = 0; k < next.length; k++) {
-        if ([for (var i = 0; i < old.length; i++) eq(i, i < k ? i : i + 1)].every((x) => x)) {
-          c.insertItem(nodeId, path, docValue(next[k], doc), after: k == 0 ? null : old[k - 1].id);
-          return;
-        }
-      }
-    }
-    // One item removed.
-    if (next.length == old.length - 1) {
-      for (var k = 0; k < old.length; k++) {
-        if ([for (var j = 0; j < next.length; j++) eq(j < k ? j : j + 1, j)].every((x) => x)) {
-          c.removeItem(nodeId, path, old[k].id);
-          return;
-        }
-      }
-    }
-    // Anything else: the whole list, keeping the ids of the items that stay.
-    final used = <String>{};
-    final items = <Item>[];
-    for (final (j, v) in next.indexed) {
-      final i = [
-        for (var i = 0; i < old.length; i++)
-          if (!used.contains(old[i].id) && eq(i, j)) i,
-      ].firstOrNull;
-      if (i != null) {
-        used.add(old[i].id);
-        items.add(old[i]);
-      } else {
-        final id = j < old.length && !used.contains(old[j].id) ? old[j].id : newId('i');
-        used.add(id);
-        items.add(Item(id, docValue(v, doc, j < old.length ? old[j].value : null)));
-      }
-    }
-    c.setConfig(nodeId, path, VItems(items));
-    return;
-  }
-  c.setConfig(nodeId, path, docValue(next, doc, orig));
-}
-
-/// The order of [a]'s elements in [b] when [b] is a permutation of [a], else null.
-List<int>? _permutation(List<Object?> a, List<Object?> b) {
-  final used = <int>{};
-  final out = <int>[];
-  for (final x in b) {
-    final i = [
-      for (var i = 0; i < a.length; i++)
-        if (!used.contains(i) && jsonEquals(a[i], x)) i,
-    ].firstOrNull;
-    if (i == null) return null;
-    used.add(i);
-    out.add(i);
-  }
-  return out;
-}
-
-/// Dify's plain JSON [v] as a document value, keeping [orig]'s forms where the JSON did not change (references,
-/// keyed-list ids). A new `[node, output]` pair naming an output of a node in [doc] becomes a reference.
-Value docValue(Object? v, Document doc, [Value? orig]) {
-  if (orig != null && jsonEquals(plainOf(orig), v)) return orig;
-  switch ((orig, v)) {
-    case (VItems(:final items), final List l) when l.length == items.length:
-      return VItems([for (final (i, item) in items.indexed) Item(item.id, docValue(l[i], doc, item.value))]);
-    case (VList(:final items), final List l) when l.length == items.length:
-      return VList([for (final (i, item) in items.indexed) docValue(l[i], doc, item)]);
-    case (VMap(:final entries), final Map m):
-      return VMap({
-        for (final e in m.entries)
-          if (e.value != null || entries.containsKey('${e.key}'))
-            '${e.key}': docValue(e.value, doc, entries['${e.key}']),
-      });
-  }
-  if (v is List) {
-    if (refOf(v, doc) case final ref?) return VRef(ref);
-    return VList([for (final i in v) docValue(i, doc)]);
-  }
-  if (v is Map) return VMap({for (final e in v.entries) '${e.key}': docValue(e.value, doc)});
-  if (v is double) return Value.number(v);
-  return Value.fromJson(v);
-}
-
-/// The reference [selector] makes in [doc]: `[node, output]` of an existing node that declares that output.
-OutputRef? refOf(List<Object?> selector, Document doc) {
-  if (selector.length != 2 || selector[0] is! String || selector[1] is! String) return null;
-  final target = doc.nodes[selector[0]];
-  if (target == null) return null;
-  final outs = Document.declaredOutputs(target);
-  if (outs != null && !outs.contains(selector[1])) return null;
-  return OutputRef(selector[0]! as String, selector[1]! as String);
-}
-
-/// The value selector at `data[key]` (plain JSON) as strings; empty when unset.
-List<String> selectorList(Object? v) => [for (final e in jsList(v)) jsKey(e)];
-
 // ---- typed text --------------------------------------------------------------------------------------------------
 
 /// The document version a burst of typing into one field began on (each keystroke is written at once, with this
@@ -345,38 +136,10 @@ class TypingBase {
   }
 }
 
-// ---- the variables on offer --------------------------------------------------------------------------------------
+// ---- value selectors ---------------------------------------------------------------------------------------------
 
-/// What a node's pickers offer ([scope]) and the nodes the prompt editor's variable blocks name ([availableNodes]).
-typedef PanelVars = ({VarScope scope, Map<String, WorkflowNodeInfo> availableNodes, List<Node> beforeNodes});
-
-/// `useAvailableVarList(id)`: the upstream nodes in the same branch (and the container), Dify's
-/// `getBeforeNodesInSameBranchIncludeParent`, with the environment and (in a chatflow) conversation variables.
-PanelVars panelVars(NodePanelProps props) {
-  final doc = props.controller.doc;
-  final graph = difyGraphOf(doc);
-  final before = [
-    for (final n in getBeforeNodesInSameBranchIncludeParent(props.id, graph.nodes, graph.edges)) ?n.node,
-  ];
-  final parentId = parentIdOf(props.node);
-  final parent = parentId == null ? null : doc.nodes[parentId];
-  final store = props.actions.store;
-  VarScope scope;
-  try {
-    scope = VarScope.of(
-      beforeNodes: before,
-      parent: parent,
-      chatMode: props.chatMode,
-      environmentVariables: DeclaredVar.listOf(store.environmentVariables.value),
-      conversationVariables: props.chatMode ? DeclaredVar.listOf(store.conversationVariables.value) : const [],
-      currentIterationTitle: tw('nodes.iteration.currentIteration'),
-    );
-  } on StateError {
-    scope = const VarScope();
-  }
-  final start = doc.nodes.values.where((n) => n.type == 'start');
-  return (scope: scope, availableNodes: workflowNodesMapOf([...before, ...start]), beforeNodes: before);
-}
+/// The value selector at `data[key]` (plain JSON) as strings; empty when unset.
+List<String> selectorList(Object? v) => [for (final e in jsList(v)) jsKey(e)];
 
 // ---- hooks/use-workflow.ts ---------------------------------------------------------------------------------------
 
@@ -464,25 +227,6 @@ class FieldAddButton extends StatelessWidget {
         border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
       ),
       child: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
-    ),
-  );
-}
-
-/// ListNoDataPlaceholder (list-no-data-placeholder.tsx): `flex min-h-10.5 w-full items-center justify-center
-/// rounded-[10px] bg-background-section system-xs-regular text-text-tertiary`.
-class ListNoDataPlaceholder extends StatelessWidget {
-  const ListNoDataPlaceholder(this.text, {super.key});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 42),
-    alignment: Alignment.center,
-    decoration: BoxDecoration(color: DifyColors.backgroundSection, borderRadius: BorderRadius.circular(10)),
-    child: Text(
-      text,
-      textAlign: TextAlign.center,
-      style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
     ),
   );
 }

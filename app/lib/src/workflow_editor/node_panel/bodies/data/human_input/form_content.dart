@@ -21,7 +21,6 @@ import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/var_types.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../../prompt_editor/prompt_editor.dart';
-import '../../core/start_var_modal.dart' show ConfigSelect, DifyTextarea, FileUploadSetting, InputTypeSelect;
 import '../data_common.dart';
 import 'human_input_kit.dart';
 import 'human_input_model.dart';
@@ -494,9 +493,9 @@ Future<Map<String, Object?>?> showInputFieldDialog(
   Map<String, Object?>? payload,
   List<String> unavailable = const [],
   bool isEdit = false,
-}) => showHiDialog<Map<String, Object?>>(
+}) => showDifyDialog<Map<String, Object?>>(
   context,
-  (context) => Center(
+  builder: (context) => Center(
     child: Material(
       type: MaterialType.transparency,
       child: InputFieldEditor(

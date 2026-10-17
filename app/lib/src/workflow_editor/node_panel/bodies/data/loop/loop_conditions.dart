@@ -18,7 +18,6 @@ import '../../../../prompt_editor/prompt_editor.dart';
 import '../data_common.dart';
 import 'loop_config.dart';
 import 'loop_utils.dart';
-import 'loop_widgets.dart';
 
 /// The handlers a condition list edits through (`handle*Condition`, `handle*SubVariableCondition`).
 class ConditionHandlers {

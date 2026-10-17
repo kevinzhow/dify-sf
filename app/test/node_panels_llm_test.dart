@@ -5,7 +5,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/panel_edit.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';

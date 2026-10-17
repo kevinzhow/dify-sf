@@ -17,7 +17,7 @@ import '../../../../../workflow/dify_json.dart';
 import '../../../../header/header_data.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
-import '../entry_common.dart';
+import '../../../panel_edit.dart';
 import 'webhook_config.dart';
 import 'webhook_default.dart';
 import 'webhook_tables.dart';

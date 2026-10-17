@@ -4,243 +4,18 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../i18n/dify_i18n.dart';
+import '../../../../panel_fields/date_picker.dart';
 import 'tool_model.dart';
 
 String _time(String key) => DifyI18n.tr('time', key);
 
-const _monthKeys = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-const _dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/// `YYYY-MM-DD` as a calendar day, or null.
-DateTime? parseDateOnly(Object? raw) {
-  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(raw is String ? raw.trim() : '');
-  if (m == null) return null;
-  return DateTime(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
-}
-
-String _pad(int n, [int w = 2]) => '$n'.padLeft(w, '0');
-
-/// The day as `YYYY-MM-DD`.
-String formatDateOnly(DateTime d) => '${_pad(d.year, 4)}-${_pad(d.month)}-${_pad(d.day)}';
-
-/// dayjs `format` for the date tokens Dify's display formats use (`YYYY`, `MMMM`, `MMM`, `MM`, `M`, `DD`, `D`),
-/// month names from the `time` namespace.
-String formatDisplayDate(DateTime d, String format) {
-  final month = _time('months.${_monthKeys[d.month - 1]}');
-  return format.replaceAllMapped(RegExp(r'YYYY|MMMM|MMM|MM|M|DD|D'), (m) {
-    return switch (m[0]) {
-      'YYYY' => _pad(d.year, 4),
-      'MMMM' => month,
-      'MMM' => month.length > 3 ? month.substring(0, 3) : month,
-      'MM' => _pad(d.month),
-      'M' => '${d.month}',
-      'DD' => _pad(d.day),
-      _ => '${d.day}',
-    };
-  });
-}
-
 String _display(DateTime? d) => d == null ? '' : formatDisplayDate(d, _time('dateFormats.display'));
-
-/// DatePicker's popup (`noConfirm`): `w-63 rounded-xl border-[0.5px] bg-components-panel-bg shadow-lg`, the month
-/// header with previous / next buttons, the days of the week and a 6-week grid; a day click chooses it.
-class _CalendarPopup extends StatefulWidget {
-  const _CalendarPopup({required this.selected, required this.onSelect});
-  final DateTime? selected;
-  final ValueChanged<DateTime> onSelect;
-
-  @override
-  State<_CalendarPopup> createState() => _CalendarPopupState();
-}
-
-class _CalendarPopupState extends State<_CalendarPopup> {
-  late DateTime _month = DateTime((widget.selected ?? DateTime.now()).year, (widget.selected ?? DateTime.now()).month);
-
-  void _shift(int by) => setState(() => _month = DateTime(_month.year, _month.month + by));
-
-  @override
-  Widget build(BuildContext context) {
-    final first = DateTime(_month.year, _month.month);
-    final start = first.subtract(Duration(days: first.weekday % 7));
-    final today = DateTime.now();
-    bool same(DateTime a, DateTime? b) => b != null && a.year == b.year && a.month == b.month && a.day == b.day;
-    return Semantics(
-      role: SemanticsRole.dialog,
-      explicitChildNodes: true,
-      child: Container(
-        width: 252,
-        margin: const EdgeInsets.only(top: 4),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-          boxShadow: DifyShadows.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          spacing: 2,
-                          children: [
-                            DifyText(
-                              '${_time('months.${_monthKeys[_month.month - 1]}')} ${_month.year}',
-                              DifyType.systemMdSemibold,
-                            ),
-                            const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  for (final (icon, by) in const [('arrow-up-s-line', -1), ('arrow-down-s-line', 1)])
-                    DifyIconButton(
-                      label: icon,
-                      onPressed: () => _shift(by),
-                      icon: RemixIcon(icon, size: 18, color: DifyColors.textSecondary),
-                    ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: DifyColors.dividerRegular, width: 0.5)),
-              ),
-              child: Row(
-                children: [
-                  for (final d in _dayKeys)
-                    Expanded(
-                      child: DifyText(
-                        _time('daysInWeek.$d'),
-                        DifyType.system2xsMedium,
-                        color: DifyColors.textTertiary,
-                        align: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                spacing: 2,
-                children: [
-                  for (var w = 0; w < 6; w++)
-                    Row(
-                      spacing: 2,
-                      children: [
-                        for (var i = 0; i < 7; i++)
-                          () {
-                            final day = DateTime(start.year, start.month, start.day + w * 7 + i);
-                            return Expanded(
-                              child: _DayItem(
-                                day: day,
-                                inMonth: day.month == _month.month,
-                                selected: same(day, widget.selected),
-                                today: same(day, today),
-                                onTap: () => widget.onSelect(day),
-                              ),
-                            );
-                          }(),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// calendar/item.tsx: `rounded-lg px-1 py-2 system-sm-medium`, primary when selected, a dot under today.
-class _DayItem extends StatelessWidget {
-  const _DayItem({
-    required this.day,
-    required this.inMonth,
-    required this.selected,
-    required this.today,
-    required this.onTap,
-  });
-  final DateTime day;
-  final bool inMonth, selected, today;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => DifyPressable(
-    onPressed: onTap,
-    semanticLabel: formatDateOnly(day),
-    builder: (context, hovered, focused) => Container(
-      height: 36,
-      decoration: BoxDecoration(
-        color: selected
-            ? DifyColors.componentsButtonPrimaryBg
-            : hovered
-            ? DifyColors.stateBaseHover
-            : null,
-        borderRadius: BorderRadius.circular(DifyRadius.lg),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          DifyText(
-            '${day.day}',
-            DifyType.systemSmMedium,
-            color: selected
-                ? DifyColors.componentsButtonPrimaryText
-                : inMonth || hovered
-                ? DifyColors.textSecondary
-                : DifyColors.textQuaternary,
-          ),
-          if (today)
-            Positioned(
-              bottom: 4,
-              child: Container(
-                width: 4,
-                height: 4,
-                decoration: const BoxDecoration(
-                  color: DifyColors.componentsButtonPrimaryBg,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
-}
 
 /// A DatePicker trigger opening the calendar (`bottom-end`); [builder] draws the trigger from the open state.
 class _DatePopover extends StatefulWidget {
@@ -261,7 +36,7 @@ class _DatePopoverState extends State<_DatePopover> {
     controller: _controller,
     placement: DifyPlacement.bottomEnd,
     builder: widget.builder,
-    popupBuilder: (context) => _CalendarPopup(
+    popupBuilder: (context) => DifyCalendar(
       selected: widget.selected,
       onSelect: (d) {
         _controller.close();

@@ -20,7 +20,8 @@ import 'group_host.dart';
 import 'llm_config.dart' show jsonClone;
 import 'model_common.dart';
 import 'model_parameter_modal.dart';
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 
@@ -254,20 +255,5 @@ class AddIconButton extends StatelessWidget {
     label: label,
     icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
     onPressed: onPressed,
-  );
-}
-
-/// ListNoDataPlaceholder: `flex min-h-10.5 w-full items-center justify-center rounded-[10px] bg-background-section
-/// system-xs-regular text-text-tertiary`.
-class NoDataPlaceholder extends StatelessWidget {
-  const NoDataPlaceholder(this.text, {super.key});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 42),
-    alignment: Alignment.center,
-    decoration: BoxDecoration(color: DifyColors.backgroundSection, borderRadius: BorderRadius.circular(10)),
-    child: Text(text, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
   );
 }

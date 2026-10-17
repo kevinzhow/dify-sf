@@ -7,7 +7,8 @@ import '../../../../../workflow/match_schema_type.dart';
 import '../../../../../workflow/var_types.dart';
 import '../../../../header/checklist/node_validators.dart' show ChecklistTranslate;
 import '../../../../panel_fields/node_config.dart' show Json;
-import '../trigger_plugin/trigger_plugin_default.dart' show labelOf, toolParametersToFormSchemas;
+import '../../../../panel_fields/tool_form_schema.dart' show toolParametersToFormSchemas;
+import '../trigger_plugin/trigger_plugin_default.dart' show labelOf;
 
 /// `defaultValue` (default.ts); the pipeline's block list adds `_dataSourceStartToAdd: true`.
 const Json dataSourceDefaultValue = {

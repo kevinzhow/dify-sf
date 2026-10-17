@@ -105,27 +105,6 @@ class ConditionOperator extends StatelessWidget {
   }
 }
 
-/// BoolValue (panel/chat-variable-panel/components/bool-value.tsx): "True" / "False" option cards side by side.
-class BoolValue extends StatelessWidget {
-  const BoolValue({super.key, required this.value, required this.onChange, this.disabled = false});
-  final bool value;
-  final ValueChanged<bool> onChange;
-  final bool disabled;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    spacing: 4,
-    children: [
-      Expanded(
-        child: OptionCard(title: 'True', selected: value, disabled: disabled, onSelect: () => onChange(true)),
-      ),
-      Expanded(
-        child: OptionCard(title: 'False', selected: !value, disabled: disabled, onSelect: () => onChange(false)),
-      ),
-    ],
-  );
-}
-
 /// SubVariablePicker: a file attribute (SUB_VARIABLES). The trigger is `h-8 rounded-lg bg-components-input-bg-normal
 /// pl-1` (hover `bg-state-base-hover-alt`) with the chosen attribute as an accent chip, or `Variable02` and "Please
 /// select"; the list (`w-41.25`, `h-8` rows with an accent `Variable02`) opens below.
@@ -205,59 +184,6 @@ class SubVariablePicker extends StatelessWidget {
   }
 }
 
-/// InputNumberWithSlider: an `h-8 w-12` number input (`pl-3 text-[13px]`, committed on blur or Enter; text that is
-/// no number gives [defaultValue], out-of-range values are clamped) beside a slider over [min]..[max].
-class InputNumberWithSlider extends StatelessWidget {
-  const InputNumberWithSlider({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.onChange,
-    this.defaultValue = 0,
-    this.min = 0,
-    this.max = 100,
-    this.readonly = false,
-  });
-
-  final String label;
-  final int value;
-  final int defaultValue, min, max;
-  final bool readonly;
-  final ValueChanged<int> onChange;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 32,
-    child: Row(
-      spacing: 8,
-      children: [
-        SizedBox(
-          width: 48,
-          child: DifyNumberField(
-            value: value,
-            min: min,
-            max: max,
-            disabled: readonly,
-            semanticLabel: label,
-            inputPaddingRight: 0,
-            onChanged: (v) => onChange(v == null ? defaultValue : v.round()),
-          ),
-        ),
-        Expanded(
-          child: DifySlider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            disabled: readonly,
-            semanticLabel: label,
-            onChanged: onChange,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 /// LIMIT_SIZE_MIN / MAX / DEFAULT.
 const limitSizeMin = 1, limitSizeMax = 20, limitSizeDefault = 10;
 
@@ -290,7 +216,7 @@ class LimitConfig extends StatelessWidget {
               min: limitSizeMin,
               max: limitSizeMax,
               readonly: readonly || !enabled,
-              onChange: (v) => onChange({...c, 'size': v}),
+              onChange: (v) => onChange({...c, 'size': v.isFinite ? v.round() : limitSizeDefault}),
             )
           : null,
     );

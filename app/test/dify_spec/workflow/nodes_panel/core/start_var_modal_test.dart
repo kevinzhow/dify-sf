@@ -1,6 +1,7 @@
 // The Start node's input field dialog (config-modal) beyond Dify's specs: its validation and each field type's form.
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/start_var_modal.dart';
+import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -16,6 +16,7 @@ import 'http_dialogs.dart';
 import 'http_model.dart';
 import 'key_value.dart';
 import 'timeout.dart';
+import '../../../panel_edit.dart';
 
 /// What the HTTP panel gets from the host: the server's block default (`nodesDefaultConfigs['http-request']`, from
 /// `/workflows/default-workflow-block-configs`), merged under the node's data and read for the timeout maxima.
@@ -90,8 +91,8 @@ class _HttpRequestPanelState extends State<HttpRequestPanel> {
     final defaults = HttpPanelHost.defaultConfigOf(context);
     final inputs = hydrateHttpInputs(props.data, defaults);
     final version = versionOf(props);
-    final all = availableScope(props);
-    final nodes = nodesMapOf(props);
+    final all = NodeVars.of(props).scope;
+    final nodes = NodeVars.of(props).nodesMap;
     final vars = KeyValueVars(
       text: all.filtered(typeIn(httpTextVariableTypes)).vars,
       textWithFiles: all.filtered(typeIn({...httpTextVariableTypes, VarType.file, VarType.arrayFile})).vars,

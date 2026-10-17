@@ -3,8 +3,8 @@
 //
 // The panel over a document in an in-memory session; the prompt editor is the real one, its props are read back.
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/answer_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/core_kit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor_panel.dart';
 import 'package:flutter_test/flutter_test.dart';

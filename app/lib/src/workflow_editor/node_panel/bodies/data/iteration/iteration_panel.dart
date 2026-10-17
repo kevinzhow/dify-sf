@@ -9,11 +9,12 @@ import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
 import '../data_common.dart';
 import 'iteration_config.dart';
+import '../../../panel_edit.dart';
 
 /// The Iteration node's body.
 Widget iterationPanelBody(BuildContext context, NodePanelProps props) => IterationPanel(
   config: IterationConfig.of(props),
-  inputScope: filteredScope(props, (v, _) => filterIterationInputVar(v.type)),
+  inputScope: NodeVars.of(props).filtered((v, _) => filterIterationInputVar(v.type)),
 );
 
 /// The "Array" badge beside the Input and Output titles (`flex h-4.5 items-center rounded-[5px] border

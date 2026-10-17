@@ -11,7 +11,7 @@ import '../../../header/checklist/node_validators.dart'
 import '../../../panel_fields/node_config.dart' show Json;
 import '../../../prompt_editor/prompt_blocks.dart' show checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock;
 import 'model_parameter_modal.dart' show ModelParameterRule;
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 export '../../../header/checklist/node_validators.dart'
     show isEnvironmentModelSource, isLLMEnvironmentVariableValue, resolveLLMNodeModel;

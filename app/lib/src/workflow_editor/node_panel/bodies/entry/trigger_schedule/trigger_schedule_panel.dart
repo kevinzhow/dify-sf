@@ -9,7 +9,7 @@ import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../i18n/dify_i18n.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
-import '../entry_common.dart';
+import '../../../panel_edit.dart';
 import 'schedule_components.dart';
 import 'schedule_config.dart';
 import 'schedule_host.dart';

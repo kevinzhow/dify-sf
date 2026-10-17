@@ -12,7 +12,6 @@ import '../../../../../design/widgets/widgets.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart' hide Json;
 import '../data_common.dart' show cm;
-import '../../core/start_var_modal.dart' show DifyTextarea;
 import 'human_input_kit.dart';
 import 'human_input_model.dart';
 import 'user_action.dart';

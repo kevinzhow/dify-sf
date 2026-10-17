@@ -4,13 +4,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../../../../cards/card_kit.dart';
 import '../../../../../design/css_metrics.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
-import '../../../../../design/widgets/widgets.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../data_common.dart';
 import 'human_input_model.dart';
@@ -97,63 +95,6 @@ List<InlineSpan> transSpans(String text, Map<String, InlineSpan Function(String 
   }
   if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
   return spans;
-}
-
-/// Shows dify-ui's Dialog with [builder]'s content: centred on `bg-background-overlay`, scaling from 0.95. Escape and
-/// a backdrop tap close it unless [dismissible] is false (`disablePointerDismissal` keeps Escape).
-Future<T?> showHiDialog<T>(BuildContext context, WidgetBuilder builder, {bool dismissible = true}) =>
-    showGeneralDialog<T>(
-      context: context,
-      barrierDismissible: dismissible,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: DifyColors.backgroundOverlay,
-      transitionDuration: difyTransitionDuration,
-      transitionBuilder: (context, animation, _, child) {
-        final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-        return FadeTransition(
-          opacity: a,
-          child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-        );
-      },
-      pageBuilder: (context, _, _) => builder(context),
-    );
-
-/// DialogContent: `rounded-2xl bg-components-panel-bg p-6 shadow-xl`, [width] wide at most (the viewport less 2 rem).
-class HiDialogBox extends StatelessWidget {
-  const HiDialogBox({super.key, required this.child, this.width = 480, this.padding = 24, this.label});
-  final Widget child;
-  final double width, padding;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: width, maxHeight: MediaQuery.sizeOf(context).height - 64),
-        child: Material(
-          type: MaterialType.transparency,
-          child: Semantics(
-            container: true,
-            role: SemanticsRole.dialog,
-            explicitChildNodes: true,
-            label: label,
-            child: Container(
-              width: width,
-              clipBehavior: Clip.antiAlias,
-              padding: EdgeInsets.all(padding),
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBg,
-                borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                boxShadow: DifyShadows.xl,
-              ),
-              child: SingleChildScrollView(child: child),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
 }
 
 /// The icon tile of a delivery method: `rounded-sm border border-divider-regular` in the method's colour around its

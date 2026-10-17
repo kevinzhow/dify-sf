@@ -18,13 +18,13 @@ import '../../../prompt_editor/config_prompt.dart';
 import '../../../prompt_editor/prompt_editor_panel.dart';
 import '../../../store/store.dart';
 import '../../node_panel_bodies.dart';
-import '../entry/trigger_plugin/structure_output.dart' show StructureOutputItem;
 import 'group_host.dart';
 import 'llm_config.dart';
 import 'llm_json_schema.dart';
 import 'model_common.dart';
 import 'model_parameter_modal.dart';
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String _c(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
@@ -251,7 +251,7 @@ class _LlmPanelState extends State<LlmPanel> {
       isChatMode: isChatMode,
       isChatModel: isChatModel,
     );
-    final vars = NodeVars.of(context, props);
+    final vars = NodeVars.of(props);
     final installed = s.models.providers.any((p) => extractPluginIdOf(p.provider) == extractPluginIdOf(provider));
     final hasModelWarning =
         getLLMModelIssue(

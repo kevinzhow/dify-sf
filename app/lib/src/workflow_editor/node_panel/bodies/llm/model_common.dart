@@ -7,7 +7,7 @@ import '../../../../workflow/dify_json.dart';
 import '../../../../workflow/model_catalog.dart';
 import '../../../panel_fields/node_config.dart' show Json;
 import 'group_host.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 /// `{provider, name}` of a node's `model` config.
 ({String provider, String name, String mode}) modelOf(Object? model) {

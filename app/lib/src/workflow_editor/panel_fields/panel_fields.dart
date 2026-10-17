@@ -4,10 +4,15 @@
 library;
 
 export 'controls.dart';
+export 'date_picker.dart';
+export 'dialog.dart';
 export 'field.dart';
+export 'file_upload_setting.dart';
+export 'form_controls.dart';
 export 'next_step.dart';
 export 'node_config.dart';
 export 'selectors.dart';
+export 'structure_output.dart';
 export 'var_list.dart';
 export 'var_picker_model.dart';
 export 'var_reference_picker.dart';

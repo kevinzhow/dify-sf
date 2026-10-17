@@ -3,11 +3,11 @@
 // use-config.ts is listOperatorTypes (derived state) and the helpers its handlers call; the variable types come
 // from a scope (Dify's mocked getCurrentVariableType). The container context is the scope of a node inside an
 // iteration or loop in a document.
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/data_common.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/list_operator/list_operator_model.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/list_operator/list_operator_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/context_menu/context_menu.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -101,8 +101,8 @@ void main() {
 
       expect(props('list-node').readOnly, true);
       expect(props('list-node').chatMode, true);
-      expect(availableScope(props('list-node')).parent?.id, 'iteration-parent');
-      expect(availableScope(props('loop-node')).parent?.id, 'loop-parent');
+      expect(NodeVars.of(props('list-node')).scope.parent?.id, 'iteration-parent');
+      expect(NodeVars.of(props('loop-node')).scope.parent?.id, 'loop-parent');
 
       // array[string] (the loop node's names): no sub variable, so the order key stays empty.
       final loopData = createPayload({

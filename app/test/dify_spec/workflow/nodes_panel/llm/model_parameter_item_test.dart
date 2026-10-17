@@ -9,6 +9,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/parameter_
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifyInput, DifySlider, DifySwitch;
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/var_picker_model.dart';
+import 'package:dify_sf_app/src/workflow_editor/panel_fields/form_controls.dart' show TagInput;
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor_panel.dart' show workflowNodesMapOf;
 import 'package:flutter/material.dart';

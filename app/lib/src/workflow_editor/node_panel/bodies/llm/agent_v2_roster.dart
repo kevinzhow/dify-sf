@@ -19,7 +19,6 @@ import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/panel_fields.dart';
 import 'group_host.dart';
-import 'llm_dialog.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String _c(String key) => DifyI18n.tr('common', key);
@@ -258,14 +257,14 @@ class _AgentRosterFieldState extends State<AgentRosterField> {
     if (showDrawer != _drawer.isShowing) showDrawer ? _drawer.show() : _drawer.hide();
     if (showDialog && !_dialogShowing) {
       _dialogShowing = true;
-      showLlmDialog<void>(
+      showDifyDialog<void>(
         context,
         dismissible: false,
         builder: (ctx) {
           _dialogContext = ctx;
           final agent = widget.agent ?? const {};
           return _EscapeCloses(
-            child: LlmDialogSurface(
+            child: DifyDialogSurface(
               label: jsKey(agent['name']),
               width: 1120,
               height: 760,
@@ -1099,10 +1098,10 @@ Future<void> showSaveInlineAgentToRosterDialog(
   required Json initialAgent,
   required Future<String?> Function(Json body) save,
   required ValueChanged<String> onSaved,
-}) => showLlmDialog<void>(
+}) => showDifyDialog<void>(
   context,
   dismissible: false,
-  builder: (ctx) => LlmDialogSurface(
+  builder: (ctx) => DifyDialogSurface(
     label: _a('roster.saveToRosterDialog.title'),
     width: 520,
     child: SaveInlineAgentToRosterForm(

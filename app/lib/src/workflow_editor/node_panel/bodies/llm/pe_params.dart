@@ -3,7 +3,6 @@
 /// from tools and the reasoning mode cards.
 library;
 
-import 'package:flutter/material.dart' show TextField, InputDecoration, InputBorder;
 import 'package:flutter/widgets.dart';
 
 import '../../../../cards/card_kit.dart' show DifyText;
@@ -14,8 +13,7 @@ import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/panel_fields.dart';
 import 'group_host.dart';
-import 'llm_dialog.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 import 'qc_pe_kit.dart';
 import 'tool_picker.dart';
 
@@ -192,7 +190,7 @@ class ExtractParamList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (list.isEmpty) return NoDataPlaceholder(_w('$_p.extractParametersNotSet'));
+    if (list.isEmpty) return ListNoDataPlaceholder(_w('$_p.extractParametersNotSet'));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 4,
@@ -245,11 +243,11 @@ Future<void> showExtractParameterDialog(
   VoidCallback? onCancel,
 }) async {
   final services = LlmGroupScope.of(context);
-  final saved = await showLlmDialog<bool>(
+  final saved = await showDifyDialog<bool>(
     context,
     builder: (ctx) => LlmGroupScope(
       services: services,
-      child: LlmDialogSurface(
+      child: DifyDialogSurface(
         label: _w('$_p.addExtractParameter'),
         width: 400,
         padding: const EdgeInsets.all(16),
@@ -375,16 +373,17 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
               if (type == 'select')
                 _field(
                   _d('variableConfig.options'),
-                  _OptionsEditor(
+                  ConfigSelect(
                     options: [for (final o in jsList(_param['options'])) '$o'],
                     onChange: (o) => _change('options', o),
                   ),
                 ),
               _field(
                 descLabel,
-                _Textarea(
+                DifyTextarea(
                   value: '${_param['description'] ?? ''}',
-                  label: descLabel,
+                  semanticLabel: descLabel,
+                  verticalPadding: 6,
                   placeholder: _w('$_p.addExtractParameterContent.descriptionPlaceholder'),
                   onChanged: (v) => _change('description', v),
                 ),
@@ -438,123 +437,6 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// dify-ui's Textarea: `min-h-20 rounded-lg bg-components-input-bg-normal px-3 py-1.5 system-sm-regular`.
-class _Textarea extends StatefulWidget {
-  const _Textarea({required this.value, required this.onChanged, this.label, this.placeholder});
-  final String value;
-  final ValueChanged<String> onChanged;
-  final String? label, placeholder;
-
-  @override
-  State<_Textarea> createState() => _TextareaState();
-}
-
-class _TextareaState extends State<_Textarea> {
-  late final _c = TextEditingController(text: widget.value);
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => setState(() {}));
-  }
-
-  @override
-  void didUpdateWidget(_Textarea old) {
-    super.didUpdateWidget(old);
-    if (_c.text != widget.value) _c.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
-    return Semantics(
-      label: widget.label,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 80),
-        decoration: BoxDecoration(
-          color: _focus.hasFocus ? DifyColors.componentsInputBgActive : DifyColors.componentsInputBgNormal,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: Border.all(
-            color: _focus.hasFocus ? DifyColors.componentsInputBorderActive : const Color(0x00000000),
-          ),
-        ),
-        child: TextField(
-          controller: _c,
-          focusNode: _focus,
-          minLines: 3,
-          maxLines: null,
-          style: style,
-          cursorColor: const Color(0xFF155EEF),
-          onChanged: widget.onChanged,
-          decoration: InputDecoration(
-            isCollapsed: true,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            hintText: widget.placeholder,
-            hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// ConfigSelect (config-var/config-select): one input per option with its delete button, then "Add option".
-class _OptionsEditor extends StatelessWidget {
-  const _OptionsEditor({required this.options, required this.onChange});
-  final List<String> options;
-  final ValueChanged<List<String>> onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _d('variableConfig.options');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 4,
-      children: [
-        for (final (i, o) in options.indexed)
-          Row(
-            children: [
-              Expanded(
-                child: DifyInput(
-                  value: o,
-                  semanticLabel: '$label ${i + 1}',
-                  onChanged: (v) => onChange([for (final (j, x) in options.indexed) j == i ? v : x]),
-                ),
-              ),
-              DifyIconButton(
-                label: _c('operation.delete'),
-                tone: DifyButtonTone.destructive,
-                icon: const RemixIcon('delete-bin-line', size: 14),
-                onPressed: () => onChange([
-                  for (final (j, x) in options.indexed)
-                    if (j != i) x,
-                ]),
-              ),
-            ],
-          ),
-        SizedBox(
-          height: 36,
-          child: DifyButton(
-            variant: DifyButtonVariant.tertiary,
-            leading: const RemixIcon('add-line', size: 16),
-            onPressed: () => onChange([...options, '']),
-            child: Align(alignment: Alignment.centerLeft, child: Text(_d('variableConfig.addOption'))),
-          ),
-        ),
-      ],
     );
   }
 }

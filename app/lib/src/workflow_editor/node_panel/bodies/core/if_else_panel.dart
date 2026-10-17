@@ -6,7 +6,6 @@ library;
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../cards/variable_label.dart';
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
@@ -16,6 +15,7 @@ import '../../../header/checklist/node_validators.dart' show comparisonOperatorN
 import '../../../panel_fields/panel_fields.dart';
 import '../../../prompt_editor/prompt_editor.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'core_kit.dart';
 import 'if_else_utils.dart';
 
@@ -43,10 +43,14 @@ class IfElseEnv {
     this.onSortCase,
   });
 
-  /// From [config] and the node's variables.
-  factory IfElseEnv.of(IfElseConfig config, PanelVars vars) => IfElseEnv(
-    scope: vars.scope,
-    availableNodes: vars.availableNodes,
+  /// From [config] and the node's variables ([scope]; the prompt editor's [availableNodes]).
+  factory IfElseEnv.of(
+    IfElseConfig config,
+    VarScope scope, [
+    Map<String, WorkflowNodeInfo> availableNodes = const {},
+  ]) => IfElseEnv(
+    scope: scope,
+    availableNodes: availableNodes,
     readOnly: config.readOnly,
     varsIsVarFileAttribute: config.varsIsVarFileAttribute,
     onAddCondition: config.handleAddCondition,
@@ -86,7 +90,7 @@ bool Function(List<String>) isVarFileAttributeIn(VarScope scope) =>
 
 Widget ifElsePanelBody(BuildContext context, NodePanelProps props) {
   final crud = PanelInputs(props);
-  final vars = panelVars(props);
+  final vars = NodeVars.of(props);
   final config = IfElseConfig(
     nodeId: props.id,
     inputs: () => crud.inputs,
@@ -95,7 +99,7 @@ Widget ifElsePanelBody(BuildContext context, NodePanelProps props) {
     deleteBranch: props.actions.deleteBranch,
     isVarFileAttribute: isVarFileAttributeIn(vars.scope),
   );
-  return IfElsePanel(config: config, env: IfElseEnv.of(config, vars));
+  return IfElsePanel(config: config, env: IfElseEnv.of(config, vars.scope, vars.nodesMap));
 }
 
 /// Writes [next]; a reorder of the cases keeps each case's item (matched by `case_id`).
@@ -123,7 +127,7 @@ void _write(PanelInputs crud, Json next) {
       for (final c in cases)
         () {
           final i = items[old.indexOf(jsGet(c, 'case_id'))];
-          return Item(i.id, docValue(c, doc, i.value));
+          return Item(i.id, mergeValue(i.value, c, doc));
         }(),
     ]),
   );
@@ -772,8 +776,8 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
                         cursor: SystemMouseCursors.click,
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: IfElseVariableTag(
-                            selector: [for (final s in jsList(_c['variable_selector'])) jsKey(s)],
+                          child: VariableTag.inScope(
+                            valueSelector: [for (final s in jsList(_c['variable_selector'])) jsKey(s)],
                             varType: type,
                             scope: env.scope,
                             isShort: true,
@@ -993,36 +997,6 @@ class _SubVarKeySelect extends StatelessWidget {
   }
 }
 
-/// variable-tag.tsx: the variable as VariableLabelInSelect (its node from [scope], the start node for system
-/// variables), "Invalid variable" when nothing defines it; [isShort] hides the type.
-class IfElseVariableTag extends StatelessWidget {
-  const IfElseVariableTag({super.key, required this.selector, this.varType, required this.scope, this.isShort = false});
-  final List<String> selector;
-  final String? varType;
-  final VarScope scope;
-  final bool isShort;
-
-  @override
-  Widget build(BuildContext context) {
-    final rag = isRagVariableVar(selector);
-    final node = isSystemVar(selector)
-        ? scope.start
-        : selector.isEmpty
-        ? null
-        : scope.lookup(rag && selector.length > 1 ? selector[1] : selector[0]);
-    final valid = node != null || isEnvVar(selector) || isConversationVar(selector) || rag || isGlobalVar(selector);
-    final name = (isSystemVar(selector) ? selector : selector.skip(1)).join('.');
-    return VariableLabel(
-      variables: selector,
-      nodeType: node?.type,
-      nodeTitle: node?.title,
-      variableType: isShort ? null : varType,
-      errorMsg: valid ? null : tw('errorMsg.invalidVariable'),
-      isExceptionVariable: isExceptionVariable(name, node?.type),
-    );
-  }
-}
-
 /// condition-operator.tsx: a small ghost button with the operator (or "Select", faded) opening the operators of
 /// the type ([fileKey]: of the file attribute).
 class IfElseConditionOperator extends StatelessWidget {
@@ -1144,7 +1118,12 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
           child: Align(
             alignment: Alignment.centerLeft,
             child: w.value.isNotEmpty
-                ? IfElseVariableTag(selector: selector, varType: VarType.number, scope: w.scope, isShort: w.isShort)
+                ? VariableTag.inScope(
+                    valueSelector: selector,
+                    varType: VarType.number,
+                    scope: w.scope,
+                    isShort: w.isShort,
+                  )
                 : Container(
                     height: 24,
                     padding: const EdgeInsets.all(4),

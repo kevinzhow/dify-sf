@@ -10,9 +10,10 @@ import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/var_types.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
-import '../data_common.dart' as common;
-import '../data_common.dart' show availableScope, childrenOf, scopeOfNodes;
+import '../data_common.dart' show childrenOf;
 import 'loop_utils.dart';
+import '../../../panel_edit.dart' show NodeVars;
+import '../../../panel_edit.dart' as edit;
 
 final _random = Random.secure();
 
@@ -212,14 +213,14 @@ class LoopConfig {
   factory LoopConfig.of(NodePanelProps props) {
     final doc = props.controller.doc;
     final nodes = [props.node, ...childrenOf(doc, props.id)];
-    final types = availableScope(props).typeOf;
+    final types = NodeVars.of(props).scope.typeOf;
     return LoopConfig(
       id: props.id,
       inputs: props.data,
-      setInputs: (next) => common.setInputs(props, next),
+      setInputs: (next) => edit.setInputs(props, next),
       readOnly: props.readOnly,
       loopChildrenNodes: nodes,
-      childrenNodeVars: scopeOfNodes(props, nodes, env: false),
+      childrenNodeVars: NodeVars.scopeOver(props, nodes, environment: false),
       getIsVarFileAttribute: (selector) => selector.length == 3 && types?.call(selector.sublist(0, 2)) == VarType.file,
     );
   }

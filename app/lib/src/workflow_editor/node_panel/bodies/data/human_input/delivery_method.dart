@@ -553,9 +553,11 @@ class _MethodItemState extends State<MethodItem> {
 /// upgrade button ([HumanInputHost.onUpgrade]).
 Future<void> showUpgradeModal(BuildContext context) {
   final host = HumanInputHost.of(context), isCloud = DataPanelHost.of(context).isCloud;
-  return showHiDialog<void>(
+  return showDifyDialog<void>(
     context,
-    (context) => HiDialogBox(
+    builder: (context) => DifyDialogSurface(
+      padding: const EdgeInsets.all(24),
+      scrollable: true,
       width: 580,
       label: hi('deliveryMethod.upgradeTip'),
       child: Column(

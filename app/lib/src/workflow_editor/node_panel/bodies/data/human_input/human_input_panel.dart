@@ -22,6 +22,7 @@ import 'human_input_config.dart';
 import 'human_input_kit.dart';
 import 'human_input_model.dart';
 import 'user_action.dart';
+import '../../../panel_edit.dart';
 
 export 'human_input_config.dart' show HumanInputConfig;
 export 'human_input_kit.dart' show HiMember, HumanInputHost, SendTestEmail;
@@ -59,8 +60,7 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
   Widget _formContentSection(BuildContext context, {required bool expanded}) {
     final data = props.data;
     final readOnly = props.readOnly;
-    final scope = filteredScope(
-      props,
+    final scope = NodeVars.of(props).filtered(
       typeIn(const {VarType.string, VarType.number, VarType.secret, VarType.arrayString}),
     );
     final formInputs = jsList(data['inputs']);
@@ -92,7 +92,7 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
       value: jsStr(data['form_content']) ?? '',
       formInputs: formInputs,
       scope: scope,
-      nodesMap: nodesMapOf(props),
+      nodesMap: NodeVars.of(props).nodesMap,
       isExpand: expanded,
       readonly: readOnly,
       version: versionOf(props),
@@ -180,11 +180,12 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
     final formInputs = jsList(data['inputs']);
     final emailCtx = EmailContext(
       nodeId: props.id,
-      vars: filteredScope(
-        props,
-        typeIn(const {VarType.string, VarType.number, VarType.secret, VarType.arrayString}),
-      ).vars,
-      nodesMap: nodesMapOf(props),
+      vars: NodeVars.of(props)
+          .filtered(
+            typeIn(const {VarType.string, VarType.number, VarType.secret, VarType.arrayString}),
+          )
+          .vars,
+      nodesMap: NodeVars.of(props).nodesMap,
       formContent: jsStr(data['form_content']) ?? '',
       formInputs: formInputs,
     );

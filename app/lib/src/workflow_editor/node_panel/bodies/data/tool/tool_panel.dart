@@ -19,6 +19,7 @@ import 'tool_form.dart';
 import 'tool_host.dart';
 import 'tool_model.dart';
 import 'tool_schema_view.dart';
+import '../../../panel_edit.dart';
 
 export 'tool_host.dart';
 export 'tool_model.dart';
@@ -104,11 +105,11 @@ class _ToolPanelState extends State<ToolPanel> {
         final config = ToolConfig.of(props.data, _tools(context));
         _syncDefaults(config);
         final host = ToolPanelHost.of(context);
-        final scope = availableScope(props);
+        final scope = NodeVars.of(props).scope;
         final env = ToolFormEnv(
           scope: scope,
           mixedVars: scope.filtered(typeIn({VarType.string, VarType.number, VarType.secret})).vars,
-          nodesMap: nodesMapOf(props),
+          nodesMap: NodeVars.of(props).nodesMap,
           version: versionOf(props),
           currentTool: config.currTool,
           currentProvider: config.currCollection,

@@ -1,9 +1,8 @@
 /// The HTTP node's dialogs: Authorization (components/authorization) and Import from cURL
-/// (components/curl-panel.tsx), on dify-ui's Dialog look.
+/// (components/curl-panel.tsx), on dify-ui's Dialog ([showDifyDialog]).
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_tokens.g.dart';
@@ -13,57 +12,6 @@ import '../../../../panel_fields/panel_fields.dart';
 import '../../../../prompt_editor/prompt_editor.dart';
 import '../data_common.dart';
 import 'http_model.dart';
-
-/// dify-ui's Dialog: the overlay backdrop, the popup scaling in from 0.95 with a fade (150 ms), centred, [width]
-/// wide (at most the viewport less 2 rem), `rounded-2xl bg-components-panel-bg shadow-xl` with [padding]. Escape and
-/// the backdrop close it.
-Future<void> showDifyDialog(
-  BuildContext context, {
-  required String label,
-  required double width,
-  required EdgeInsets padding,
-  required WidgetBuilder builder,
-}) => showGeneralDialog<void>(
-  context: context,
-  barrierDismissible: true,
-  barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-  barrierColor: DifyColors.backgroundOverlay,
-  transitionDuration: difyTransitionDuration,
-  transitionBuilder: (context, animation, _, child) {
-    final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-    return FadeTransition(
-      opacity: a,
-      child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-    );
-  },
-  pageBuilder: (context, _, _) => Center(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: width, maxHeight: MediaQuery.sizeOf(context).height * 0.8),
-        child: Material(
-          type: MaterialType.transparency,
-          child: Semantics(
-            container: true,
-            role: SemanticsRole.dialog,
-            explicitChildNodes: true,
-            label: label,
-            child: Container(
-              width: width,
-              padding: padding,
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBg,
-                borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                boxShadow: DifyShadows.xl,
-              ),
-              child: SingleChildScrollView(child: Builder(builder: builder)),
-            ),
-          ),
-        ),
-      ),
-    ),
-  ),
-);
 
 Widget _title(String text) => Text(text, style: difyStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary));
 
@@ -76,12 +24,14 @@ Future<void> showAuthorizationModal(
   required ValueChanged<Map<String, Object?>> onChange,
   List<VarGroup> vars = const [],
   Map<String, WorkflowNodeInfo> nodes = const {},
-}) => showDifyDialog(
+}) => showDifyDialog<void>(
   context,
-  label: wf('nodes.http.authorization.authorization'),
-  width: 480,
-  padding: const EdgeInsets.all(24),
-  builder: (context) => AuthorizationModal(payload: payload, onChange: onChange, vars: vars, nodes: nodes),
+  builder: (context) => DifyDialogSurface(
+    label: wf('nodes.http.authorization.authorization'),
+    padding: const EdgeInsets.all(24),
+    scrollable: true,
+    child: AuthorizationModal(payload: payload, onChange: onChange, vars: vars, nodes: nodes),
+  ),
 );
 
 /// The Authorization dialog's content: "Authorization Type" (None / API-Key), then for API keys "Auth Type" (Basic
@@ -299,12 +249,15 @@ Future<void> showCurlPanel(
   ({Map<String, Object?>? node, String? error}) Function(String) parse = parseCurl,
 }) {
   final toast = DataPanelHost.of(context).toast;
-  return showDifyDialog(
+  return showDifyDialog<void>(
     context,
-    label: wf('nodes.http.curl.title'),
-    width: 400,
-    padding: const EdgeInsets.all(16),
-    builder: (context) => CurlPanel(onImport: onImport, parse: parse, toast: toast),
+    builder: (context) => DifyDialogSurface(
+      label: wf('nodes.http.curl.title'),
+      width: 400,
+      padding: const EdgeInsets.all(16),
+      scrollable: true,
+      child: CurlPanel(onImport: onImport, parse: parse, toast: toast),
+    ),
   );
 }
 

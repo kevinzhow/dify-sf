@@ -30,7 +30,7 @@ export 'model_selector.dart'
         ModelSelectorSize,
         SplitModelSelector,
         modelProviderPluginId;
-export 'parameter_item.dart' show ParameterItem, PresetsParameter, TagInput, getSupportedPresetConfig;
+export 'parameter_item.dart' show ParameterItem, PresetsParameter, getSupportedPresetConfig;
 
 /// What choosing a model reports (Dify's `setModel` argument): the provider and model, the model's mode
 /// (`model_properties.mode`) and features.

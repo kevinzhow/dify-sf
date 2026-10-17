@@ -155,6 +155,8 @@ class DifySlider extends StatefulWidget {
     this.disabled = false,
     this.semanticLabel,
     this.valueText,
+    this.trackColor,
+    this.rangeColor,
   });
 
   final int value, min, max, step;
@@ -162,6 +164,9 @@ class DifySlider extends StatefulWidget {
   final bool disabled;
   final String? semanticLabel;
   final String Function(int value)? valueText;
+
+  /// Call-site track / range colours (`bg-components-slider-track`, `bg-components-slider-range` by default).
+  final Color? trackColor, rangeColor;
 
   @override
   State<DifySlider> createState() => _DifySliderState();
@@ -254,7 +259,7 @@ class _DifySliderState extends State<DifySlider> {
                         Container(
                           height: 4,
                           decoration: BoxDecoration(
-                            color: DifyColors.componentsSliderTrack,
+                            color: w.trackColor ?? DifyColors.componentsSliderTrack,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -262,7 +267,7 @@ class _DifySliderState extends State<DifySlider> {
                           width: width * fraction,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: DifyColors.componentsSliderRange,
+                            color: w.rangeColor ?? DifyColors.componentsSliderRange,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -453,6 +458,8 @@ class DifyInput extends StatefulWidget {
     this.leading,
     this.trailing,
     this.onKeyEvent,
+    this.textStyle,
+    this.fontFamily,
   });
 
   final String value;
@@ -475,6 +482,11 @@ class DifyInput extends StatefulWidget {
 
   /// Keys pressed while the field has focus, before the text field sees them.
   final FocusOnKeyEventCallback? onKeyEvent;
+
+  /// The text's style (`system-sm-regular text-components-input-text-filled` by default); [fontFamily] replaces
+  /// just the family (`font-mono` call sites).
+  final TextStyle? textStyle;
+  final String? fontFamily;
 
   @override
   State<DifyInput> createState() => _DifyInputState();
@@ -505,7 +517,9 @@ class _DifyInputState extends State<DifyInput> with _ControlledText<DifyInput> {
     Widget field = _field(
       controller: controller,
       focusNode: _focus,
-      style: difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
+      style: (w.textStyle ?? difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled)).copyWith(
+        fontFamily: w.fontFamily,
+      ),
       padding: EdgeInsets.fromLTRB(w.leading == null ? 12 : 0, 7, w.trailing == null ? 12 : 0, 7),
       placeholder: w.placeholder,
       readOnly: w.readOnly,
@@ -564,6 +578,7 @@ class DifyNumberField extends StatefulWidget {
     this.semanticLabel,
     this.focusNode,
     this.inputPaddingRight = 12,
+    this.showControls = false,
   });
 
   final num value;
@@ -577,6 +592,10 @@ class DifyNumberField extends StatefulWidget {
 
   /// `pr-0` on the input (the memory window).
   final double inputPaddingRight;
+
+  /// NumberFieldControls: the increment / decrement buttons stacked at the end (`border-l border-divider-subtle`,
+  /// `i-ri-arrow-up-s-line` / `i-ri-arrow-down-s-line`).
+  final bool showControls;
 
   @override
   State<DifyNumberField> createState() => _DifyNumberFieldState();
@@ -646,11 +665,39 @@ class _DifyNumberFieldState extends State<DifyNumberField> with _ControlledText<
     }
     final up = e.logicalKey == LogicalKeyboardKey.arrowUp, down = e.logicalKey == LogicalKeyboardKey.arrowDown;
     if (!up && !down) return KeyEventResult.ignored;
+    _stepBy(up ? 1 : -1);
+    return KeyEventResult.handled;
+  }
+
+  /// One [DifyNumberField.step] up (1) or down (-1), reported at once.
+  void _stepBy(int direction) {
+    if (widget.readOnly || widget.disabled) return;
     final current = num.tryParse(controller.text.trim()) ?? widget.value;
-    final n = _normalize(current + (up ? widget.step : -widget.step));
+    final n = _normalize(current + direction * widget.step);
     controller.text = format(n);
     if (n != widget.value) widget.onChanged?.call(n);
-    return KeyEventResult.handled;
+  }
+
+  Widget _control(int direction) {
+    final w = widget;
+    final atLimit = direction > 0 ? (w.max != null && w.value >= w.max!) : (w.min != null && w.value <= w.min!);
+    return Expanded(
+      child: DifyPressable(
+        disabled: w.disabled || w.readOnly || atLimit,
+        semanticLabel: direction > 0 ? 'Increment' : 'Decrement',
+        onPressed: () => _stepBy(direction),
+        builder: (context, hovered, focused) => Container(
+          width: 24,
+          alignment: Alignment.center,
+          color: hovered ? DifyColors.stateBaseHover : null,
+          child: RemixIcon(
+            direction > 0 ? 'arrow-up-s-line' : 'arrow-down-s-line',
+            size: 12,
+            color: DifyColors.textTertiary,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -696,6 +743,14 @@ class _DifyNumberFieldState extends State<DifyNumberField> with _ControlledText<
                     style: style.copyWith(color: DifyColors.textTertiary),
                   ),
                 ),
+              ),
+            if (w.showControls)
+              Container(
+                height: 30,
+                decoration: const BoxDecoration(
+                  border: Border(left: BorderSide(color: DifyColors.dividerSubtle)),
+                ),
+                child: Column(children: [_control(1), _control(-1)]),
               ),
           ],
         ),

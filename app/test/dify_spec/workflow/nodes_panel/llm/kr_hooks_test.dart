@@ -14,7 +14,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_config.
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_datasets.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_metadata.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_retrieval_config.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/panel_edit.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_vars.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter_test/flutter_test.dart';
 

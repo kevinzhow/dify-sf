@@ -11,6 +11,7 @@ import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/panel_fields.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'core_kit.dart';
 import 'start_config.dart';
 import 'start_var_modal.dart';

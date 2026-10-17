@@ -3,7 +3,7 @@
 // useConfig's mount effect runs in the panel; its handlers are the panel's `setInputs` writes; the output schema
 // helpers are pure.
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/data_source/data_source_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/entry_common.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
 import 'package:dify_sf_app/src/workflow/dify_json.dart';
 import 'package:flutter_test/flutter_test.dart';

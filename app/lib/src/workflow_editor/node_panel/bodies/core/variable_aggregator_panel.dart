@@ -19,6 +19,7 @@ import '../../../../workflow/dify_json.dart';
 import '../../../../workflow/var_types.dart' show VarType;
 import '../../../panel_fields/panel_fields.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'core_kit.dart';
 
 typedef Json = Map<String, Object?>;
@@ -820,7 +821,7 @@ class _VariableAggregatorPanelState extends State<VariableAggregatorPanel> {
     final inputs = c.inputs();
     final enabled = c.isEnableGroup;
     final groups = _groupsOf(inputs);
-    final scope = panelVars(props).scope;
+    final scope = NodeVars.of(props).scope;
     final onError = CorePanelHost.of(context).toastError;
     VarScope addScope(Object? type) => aggregatorAddScope(scope, filterVarByType(jsStr(type)));
 

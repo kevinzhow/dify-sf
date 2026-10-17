@@ -16,7 +16,7 @@ import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/panel_fields.dart';
 import 'kr_config.dart';
 import 'model_parameter_modal.dart';
-import 'panel_edit.dart' show jsMap;
+import 'llm_vars.dart' show jsMap;
 
 String _w(String key) => DifyI18n.tr('workflow', key);
 String _c(String key) => DifyI18n.tr('common', key);
@@ -1173,27 +1173,11 @@ class ConditionCommonVariableSelector extends StatelessWidget {
   }
 }
 
-const _monthKeys = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-const _dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 String _pad(int n) => '$n'.padLeft(2, '0');
 
 /// dayjs `format('MMMM DD YYYY HH:mm A')` of [d] (local time).
 String formatConditionDate(DateTime d) =>
-    '${_time('months.${_monthKeys[d.month - 1]}')} ${_pad(d.day)} ${d.year} ${_pad(d.hour)}:${_pad(d.minute)} '
+    '${_time('months.${calendarMonthKeys[d.month - 1]}')} ${_pad(d.day)} ${d.year} ${_pad(d.hour)}:${_pad(d.minute)} '
     '${d.hour < 12 ? 'AM' : 'PM'}';
 
 /// ConditionDate: "Choose a time..." or the date (`MMMM DD YYYY HH:mm A`, device local time) with the calendar icon
@@ -1260,7 +1244,7 @@ class ConditionDate extends StatelessWidget {
   }
 }
 
-/// The date-time picker popup: month navigation, the days of the month, hour and minute, Now and OK.
+/// The date-time picker popup: the calendar ([DifyCalendar]), then hour and minute, Now and OK.
 class _DateTimePopup extends StatefulWidget {
   const _DateTimePopup({required this.initial, required this.onDone});
   final DateTime? initial;
@@ -1272,95 +1256,20 @@ class _DateTimePopup extends StatefulWidget {
 
 class _DateTimePopupState extends State<_DateTimePopup> {
   late DateTime _selected = widget.initial ?? DateTime.now();
-  late DateTime _month = DateTime(_selected.year, _selected.month);
+
+  DateTime _withTime(DateTime d, {int? hour, int? minute}) =>
+      DateTime(d.year, d.month, d.day, hour ?? _selected.hour, minute ?? _selected.minute);
 
   @override
-  Widget build(BuildContext context) {
-    final first = DateTime(_month.year, _month.month);
-    final lead = first.weekday % 7;
-    final days = DateTime(_month.year, _month.month + 1, 0).day;
-    final cells = <DateTime?>[
-      for (var i = 0; i < lead; i++) null,
-      for (var d = 1; d <= days; d++) DateTime(_month.year, _month.month, d),
-    ];
-    return Container(
-      width: 252,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-        boxShadow: DifyShadows.lg,
-      ),
+  Widget build(BuildContext context) => DifyCalendar(
+    selected: _selected,
+    onSelect: (d) => setState(() => _selected = _withTime(d)),
+    footer: Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: DifyText(
-                  '${_time('months.${_monthKeys[_month.month - 1]}')} ${_month.year}',
-                  DifyType.systemMdSemibold,
-                  color: DifyColors.textPrimary,
-                ),
-              ),
-              DifyIconButton(
-                label: 'previous',
-                icon: const RemixIcon('arrow-up-s-line', size: 16),
-                onPressed: () => setState(() => _month = DateTime(_month.year, _month.month - 1)),
-              ),
-              DifyIconButton(
-                label: 'next',
-                icon: const RemixIcon('arrow-down-s-line', size: 16),
-                onPressed: () => setState(() => _month = DateTime(_month.year, _month.month + 1)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          GridView.count(
-            crossAxisCount: 7,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1,
-            children: [
-              for (final d in _dayKeys)
-                Center(
-                  child: DifyText(_time('daysInWeek.$d'), DifyType.systemXsMedium, color: DifyColors.textTertiary),
-                ),
-              for (final d in cells)
-                if (d == null)
-                  const SizedBox()
-                else
-                  DifyPressable(
-                    semanticLabel: '${d.day}',
-                    onPressed: () => setState(
-                      () => _selected = DateTime(d.year, d.month, d.day, _selected.hour, _selected.minute),
-                    ),
-                    builder: (context, hovered, focused) {
-                      final on = d.year == _selected.year && d.month == _selected.month && d.day == _selected.day;
-                      return Container(
-                        margin: const EdgeInsets.all(2),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: on
-                              ? DifyColors.componentsButtonPrimaryBg
-                              : hovered
-                              ? DifyColors.stateBaseHover
-                              : null,
-                          borderRadius: BorderRadius.circular(DifyRadius.lg),
-                        ),
-                        child: DifyText(
-                          '${d.day}',
-                          DifyType.systemSmMedium,
-                          color: on ? DifyColors.componentsButtonPrimaryText : DifyColors.textSecondary,
-                        ),
-                      );
-                    },
-                  ),
-            ],
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
               DifyText(_time('title.pickTime'), DifyType.systemXsMedium, color: DifyColors.textTertiary),
@@ -1372,15 +1281,7 @@ class _DateTimePopupState extends State<_DateTimePopup> {
                   min: 0,
                   max: 23,
                   semanticLabel: 'hour',
-                  onChanged: (h) => setState(
-                    () => _selected = DateTime(
-                      _selected.year,
-                      _selected.month,
-                      _selected.day,
-                      (h ?? 0).toInt(),
-                      _selected.minute,
-                    ),
-                  ),
+                  onChanged: (h) => setState(() => _selected = _withTime(_selected, hour: (h ?? 0).toInt())),
                 ),
               ),
               const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text(':')),
@@ -1391,15 +1292,7 @@ class _DateTimePopupState extends State<_DateTimePopup> {
                   min: 0,
                   max: 59,
                   semanticLabel: 'minute',
-                  onChanged: (m) => setState(
-                    () => _selected = DateTime(
-                      _selected.year,
-                      _selected.month,
-                      _selected.day,
-                      _selected.hour,
-                      (m ?? 0).toInt(),
-                    ),
-                  ),
+                  onChanged: (m) => setState(() => _selected = _withTime(_selected, minute: (m ?? 0).toInt())),
                 ),
               ),
             ],
@@ -1424,6 +1317,6 @@ class _DateTimePopupState extends State<_DateTimePopup> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }

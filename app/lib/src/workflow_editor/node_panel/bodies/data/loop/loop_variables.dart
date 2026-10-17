@@ -15,7 +15,6 @@ import '../../../../../workflow/var_types.dart';
 import '../../../../code_editor/code_editor.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../data_common.dart';
-import 'loop_widgets.dart';
 
 /// chat-variable-panel/utils.ts placeholders of the JSON editors.
 const objectPlaceholder = '#  example\n#  {\n#     "name": "ray",\n#     "age": 20\n#  }';
@@ -266,7 +265,7 @@ class LoopVariableFormItem extends StatelessWidget {
     if (valueType != 'constant') return const SizedBox.shrink();
     switch (varType) {
       case VarType.string:
-        return _Textarea(value: jsStr(value) ?? '', semanticLabel: valueLabel, onChanged: onChange);
+        return DifyTextarea(value: jsStr(value) ?? '', semanticLabel: valueLabel, minHeight: 48, onChanged: onChange);
       case VarType.number:
         return DifyInput(
           value: value == null ? '' : jsKey(value),
@@ -310,63 +309,5 @@ class LoopVariableFormItem extends StatelessWidget {
         );
     }
     return const SizedBox.shrink();
-  }
-}
-
-/// dify-ui's Textarea (medium: `rounded-lg px-3 py-2 system-sm-regular` on the input background), `min-h-12`.
-class _Textarea extends StatefulWidget {
-  const _Textarea({required this.value, required this.onChanged, this.semanticLabel});
-  final String value;
-  final ValueChanged<String> onChanged;
-  final String? semanticLabel;
-
-  @override
-  State<_Textarea> createState() => _TextareaState();
-}
-
-class _TextareaState extends State<_Textarea> {
-  late final _text = TextEditingController(text: widget.value);
-  late final _focus = FocusNode()..addListener(() => setState(() {}));
-
-  @override
-  void didUpdateWidget(_Textarea old) {
-    super.didUpdateWidget(old);
-    if (_text.text != widget.value) _text.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _text.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final focused = _focus.hasFocus;
-    return Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: focused ? DifyColors.componentsInputBgActive : DifyColors.componentsInputBgNormal,
-        borderRadius: BorderRadius.circular(DifyRadius.lg),
-        border: Border.all(color: focused ? DifyColors.componentsInputBorderActive : const Color(0x00000000)),
-        boxShadow: focused ? DifyShadows.xs : null,
-      ),
-      child: Semantics(
-        label: widget.semanticLabel,
-        textField: true,
-        child: TextField(
-          controller: _text,
-          focusNode: _focus,
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
-          style: difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
-          cursorWidth: 1,
-          decoration: const InputDecoration(isCollapsed: true, border: InputBorder.none),
-          onChanged: widget.onChanged,
-        ),
-      ),
-    );
   }
 }

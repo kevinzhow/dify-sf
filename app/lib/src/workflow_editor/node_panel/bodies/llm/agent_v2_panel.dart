@@ -20,7 +20,8 @@ import 'agent_v2_outputs.dart';
 import 'agent_v2_roster.dart';
 import 'group_host.dart';
 import 'llm_config.dart' show jsonClone;
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String _a(String key) => DifyI18n.tr('agent-v-2', key);
@@ -328,7 +329,7 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
               }
             : null);
     final outputs = getAgentV2DeclaredOutputs(data);
-    final vars = NodeVars.of(context, props);
+    final vars = NodeVars.of(props);
     final readOnly = props.readOnly;
 
     final workspace = _services.inlineAgentWorkspaceBuilder;

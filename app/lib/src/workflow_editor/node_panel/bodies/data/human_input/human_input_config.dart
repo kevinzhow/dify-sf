@@ -7,8 +7,8 @@ import 'package:collab_client/collab_client.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/node_used_vars.dart';
 import '../../../node_panel_bodies.dart';
-import '../data_common.dart';
 import 'human_input_model.dart';
+import '../../../panel_edit.dart';
 
 /// `handleOutVarRenameChange`: every other node's use of [oldSelector] now names [newSelector].
 void renameVarInOtherNodes(NodePanelProps props, List<String> oldSelector, List<String> newSelector) {

@@ -12,7 +12,7 @@ import 'package:dify_sf_app/src/workflow/var_types.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_config.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/var_picker_model.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/panel_edit.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_vars.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';

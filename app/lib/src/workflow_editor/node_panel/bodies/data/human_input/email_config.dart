@@ -29,9 +29,9 @@ Json recipientsOf(Json? config) => switch (config?['recipients']) {
 Future<Json?> showEmailConfigureModal(BuildContext context, {Json? config, required EmailContext email}) {
   final toast = DataPanelHost.of(context).toast;
   final host = HumanInputHost.of(context);
-  return showHiDialog<Json>(
+  return showDifyDialog<Json>(
     context,
-    (context) => DataPanelHost(
+    builder: (context) => DataPanelHost(
       toast: toast,
       child: HumanInputHost(
         members: host.members,
@@ -100,7 +100,9 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
   Widget build(BuildContext context) {
     final email = HumanInputHost.of(context).userEmail;
     final base = difyStyle(DifyType.bodyXsRegular, DifyColors.textTertiary);
-    return HiDialogBox(
+    return DifyDialogSurface(
+      padding: const EdgeInsets.all(24),
+      scrollable: true,
       width: 720,
       label: _t('title'),
       child: Column(

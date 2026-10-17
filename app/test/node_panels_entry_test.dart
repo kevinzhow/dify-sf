@@ -8,6 +8,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/entry_bo
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/knowledge_base/knowledge_base_logic.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/trigger_webhook/webhook_default.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/workflow/node_panel/harness.dart';

@@ -13,7 +13,7 @@ import '../../ids.dart';
 import '../../workflow/dify_json.dart';
 import '../block_selector/block_selector.dart';
 import '../context_menu/context_menu.dart';
-import '../node_panel/bodies/core/core_kit.dart' show docValue;
+import '../node_panel/panel_edit.dart' show mergeValue;
 import '../store/workflow_store.dart' show DifyJson;
 import 'node_insertion.dart';
 
@@ -117,7 +117,7 @@ void applyGraphChangeTo(EditorController c, GraphChange change) {
     setFields: [
       for (final MapEntry(key: id, value: data) in change.updateData.entries)
         for (final MapEntry(:key, :value) in data.entries)
-          (node: id, path: [key], value: docValue(value, doc, doc.nodes[id]?.config[key])),
+          (node: id, path: [key], value: mergeValue(doc.nodes[id]?.config[key], value, doc)),
     ],
     removeEdges: change.removeEdges,
     addEdges: [

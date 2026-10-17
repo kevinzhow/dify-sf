@@ -21,6 +21,7 @@ import '../../../../code_editor/code_editor.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../../prompt_editor/prompt_editor.dart';
 import 'trigger_plugin_default.dart';
+import '../../../../panel_fields/tool_form_schema.dart';
 
 /// `useLanguage`: the UI locale as plugin labels key it (`en_US`).
 String uiLanguage() {
@@ -360,10 +361,11 @@ class FormInputItem extends StatelessWidget {
         _ => s.defaultValue is List ? [for (final i in s.defaultValue! as List) '$i'] : <String>[],
       }.where(allowed.contains).toList();
       controls.add(
-        _CheckboxList(
-          items: items,
+        CheckboxList(
+          options: items,
           value: checked,
           disabled: readOnly,
+          maxHeight: 200,
           onChange: (v) => set('constant', v),
         ),
       );
@@ -576,73 +578,6 @@ class _MixedVariableTextInputState extends State<MixedVariableTextInput> {
       ),
     );
   }
-}
-
-/// CheckboxList (base/checkbox-list): one checkbox row per option.
-class _CheckboxList extends StatelessWidget {
-  const _CheckboxList({required this.items, required this.value, required this.onChange, this.disabled = false});
-  final List<SelectOption<String>> items;
-  final List<String> value;
-  final ValueChanged<List<String>> onChange;
-  final bool disabled;
-
-  @override
-  Widget build(BuildContext context) => ConstrainedBox(
-    constraints: const BoxConstraints(maxHeight: 200),
-    child: SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final i in items)
-            DifyPressable(
-              disabled: disabled,
-              semanticLabel: i.label,
-              onPressed: () => onChange(
-                value.contains(i.value) ? [...value.where((v) => v != i.value)] : [...value, i.value],
-              ),
-              builder: (context, hovered, focused) => Container(
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  color: hovered ? DifyColors.stateBaseHover : null,
-                  borderRadius: BorderRadius.circular(DifyRadius.md),
-                ),
-                child: Row(
-                  spacing: 8,
-                  children: [
-                    _Checkbox(checked: value.contains(i.value), disabled: disabled),
-                    Expanded(child: DifyText(i.label, DifyType.systemSmRegular, color: DifyColors.textSecondary)),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
-}
-
-/// dify-ui's Checkbox: 16 px, `rounded-sm`, the accent fill with a check when checked.
-class _Checkbox extends StatelessWidget {
-  const _Checkbox({required this.checked, this.disabled = false});
-  final bool checked, disabled;
-
-  @override
-  Widget build(BuildContext context) => Opacity(
-    opacity: disabled ? 0.5 : 1,
-    child: Container(
-      width: 16,
-      height: 16,
-      decoration: BoxDecoration(
-        color: checked ? DifyColors.componentsCheckboxBg : DifyColors.componentsCheckboxBgUnchecked,
-        borderRadius: BorderRadius.circular(DifyRadius.sm),
-        border: checked ? null : Border.all(color: DifyColors.componentsCheckboxBorder),
-      ),
-      child: checked
-          ? const Center(child: RemixIcon('check-line', size: 12, color: DifyColors.componentsCheckboxIcon))
-          : null,
-    ),
-  );
 }
 
 /// MultiSelectField (form-input-item.sections.tsx): a select trigger with the chosen labels ("N selected" past two)

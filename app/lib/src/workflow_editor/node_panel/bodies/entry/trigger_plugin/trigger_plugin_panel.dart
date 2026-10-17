@@ -9,9 +9,8 @@ import 'package:flutter/widgets.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
-import '../entry_common.dart';
+import '../../../panel_edit.dart';
 import 'plugin_form.dart';
-import 'structure_output.dart';
 import 'trigger_plugin_default.dart';
 import 'trigger_plugin_host.dart';
 

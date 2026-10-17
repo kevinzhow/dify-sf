@@ -7,6 +7,7 @@ import '../../../../workflow/var_types.dart' show VarType;
 import '../../../panel_fields/panel_fields.dart';
 import '../../../prompt_editor/prompt_editor_panel.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'core_kit.dart';
 import 'end_panel.dart' show jsonListOf;
 
@@ -21,7 +22,8 @@ class AnswerConfig {
 
   Map<String, Object?> get inputs => crud.inputs;
 
-  void handleAnswerChange(String value) => crud.setInputs({...inputs, 'answer': value}, textKey: 'answer', base: base);
+  void handleAnswerChange(String value) =>
+      crud.setInputs({...inputs, 'answer': value}, textKey: 'answer', textBase: base);
 
   void handleVarListChange(List<Object?> list) => crud.setInputs({...inputs, 'variables': list});
 
@@ -54,7 +56,7 @@ class _AnswerPanelState extends State<_AnswerPanel> {
   Widget build(BuildContext context) {
     final p = widget.props;
     final config = AnswerConfig(PanelInputs(p), readOnly: p.readOnly, base: _base.call);
-    final vars = panelVars(p);
+    final vars = NodeVars.of(p);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: DifyPromptEditorPanel(
@@ -64,7 +66,7 @@ class _AnswerPanelState extends State<_AnswerPanel> {
         value: jsStrOrEmpty(config.inputs['answer']),
         onChange: config.handleAnswerChange,
         nodesOutputVars: vars.scope.filtered(AnswerConfig.filterVar).vars,
-        availableNodes: vars.availableNodes,
+        availableNodes: vars.nodesMap,
         isSupportFileVar: true,
         expandedWidth: p.actions.store.nodePanelWidth.value - 1,
       ),

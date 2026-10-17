@@ -8,7 +8,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/context_menu/context_menu.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/start_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/start_var_modal.dart';
+import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

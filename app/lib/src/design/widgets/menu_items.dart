@@ -260,6 +260,7 @@ class DifyMenuRadioItem<T> extends StatelessWidget {
     this.leading,
     this.disabled = false,
     this.closeOnClick = false,
+    this.focusNode,
   });
 
   final T value;
@@ -267,6 +268,9 @@ class DifyMenuRadioItem<T> extends StatelessWidget {
   final Widget? leading;
   final bool disabled;
   final bool closeOnClick;
+
+  /// The row's focus node (focused = highlighted), e.g. to highlight the selected item when the menu opens.
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -278,6 +282,7 @@ class DifyMenuRadioItem<T> extends StatelessWidget {
       disabled: disabled,
       role: SemanticsRole.menuItemRadio,
       checked: checked,
+      focusNode: focusNode,
       onActivate: (keyboard) {
         group?.onChange?.call(value);
         if (closeOnClick) _MenuScope.of(context)?.closeAll(instant: keyboard);

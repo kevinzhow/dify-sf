@@ -2,12 +2,11 @@
 /// plugin form schemas both it and the data source build (tools/utils/to-form-schema.ts), on plain JSON.
 library;
 
-import 'dart:convert';
-
 import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/model_catalog.dart' show renderI18nObject;
 import '../../../../header/checklist/node_validators.dart' show ChecklistTranslate;
 import '../../../../panel_fields/node_config.dart' show Json;
+import '../../../../panel_fields/tool_form_schema.dart';
 
 export '../../../../panel_fields/node_config.dart' show Json;
 
@@ -44,83 +43,6 @@ String labelOf(Object? obj, String language) {
 }
 
 // ---- tools/utils/to-form-schema.ts -----------------------------------------------------------------------------
-
-/// `toType`: a parameter type as the form names it.
-String formTypeOf(String type) => switch (type) {
-  'string' => 'text-input',
-  'number' => 'number-input',
-  'boolean' => 'checkbox',
-  _ => type,
-};
-
-/// `toolParametersToFormSchemas`: each parameter with `variable` (its name), the form `type`, the raw `_type`, empty
-/// `show_on`s and the `human_description` as `tooltip`.
-List<Json> toolParametersToFormSchemas(Object? parameters) => [
-  for (final p in jsList(parameters))
-    if (p is Map)
-      {
-        ...p.cast<String, Object?>(),
-        'variable': p['name'],
-        'type': formTypeOf(jsStr(p['type']) ?? ''),
-        '_type': p['type'],
-        'show_on': const <Object?>[],
-        'options': p['options'] == null
-            ? null
-            : [
-                for (final o in jsList(p['options']))
-                  if (o is Map) {...o.cast<String, Object?>(), 'show_on': const <Object?>[]},
-              ],
-        'tooltip': p['human_description'],
-      },
-];
-
-/// `correctInitialData`.
-Json _correctInitialData(String type, Json target, Object? defaultValue) {
-  if (type == 'text-input' || type == 'secret-input') target['type'] = 'mixed';
-  if (type == 'boolean') {
-    if (defaultValue is String) target['value'] = defaultValue == 'true' || defaultValue == '1';
-    if (defaultValue is bool) target['value'] = defaultValue;
-    if (defaultValue is num) target['value'] = defaultValue == 1;
-  }
-  if (type == 'number-input' && defaultValue is String && defaultValue.isNotEmpty) {
-    target['value'] = _parseFloat(defaultValue);
-  }
-  if (type == 'date' || type == 'date-range') {
-    if (defaultValue is String) target['value'] = defaultValue;
-    if (defaultValue is Map) target['value'] = jsonEncode(defaultValue);
-  }
-  if (type == 'app-selector' || type == 'model-selector') target['value'] = defaultValue;
-  return target;
-}
-
-/// JavaScript's `Number.parseFloat` (the leading number; null for NaN).
-num? _parseFloat(String s) {
-  final m = RegExp(r'^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?').firstMatch(s);
-  if (m == null) return null;
-  final v = double.parse(m[0]!.trim());
-  return v == v.truncateToDouble() && v.abs() < 9e15 ? v.toInt() : v;
-}
-
-/// `Number.parseFloat(String(x))` for form input (null for NaN).
-num? parseFloatJs(Object? x) => _parseFloat(x == null ? '' : '$x');
-
-/// `getConfiguredValue`: [value] with each empty field that has a default set to `{type: constant, value: default}`
-/// (newlines escaped, then corrected for the field's type).
-Json getConfiguredValue(Json value, List<Json> formSchemas) {
-  final next = {...value};
-  for (final s in formSchemas) {
-    final variable = '${s['variable']}';
-    final item = value[variable];
-    if (s.containsKey('default') && (item == null || item == '')) {
-      final d = s['default'];
-      next[variable] = _correctInitialData(jsStr(s['type']) ?? '', {
-        'type': 'constant',
-        'value': d is String ? d.replaceAll('\n', r'\n') : d,
-      }, d);
-    }
-  }
-  return next;
-}
 
 // ---- use-config.ts ---------------------------------------------------------------------------------------------
 

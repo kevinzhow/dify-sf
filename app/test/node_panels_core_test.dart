@@ -3,6 +3,7 @@ import 'package:dify_sf_app/src/editor/config_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/core_bodies.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/core_kit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/panel_edit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -94,13 +95,17 @@ void main() {
       });
       expect(_ids(h, 'code', 'variables'), before);
 
-      // A reorder keeps both items.
+      // A reorder keeps the longest run in order and moves the other item (taken out, put back as a new item: the
+      // protocol has no move), so concurrent edits of the items that stay merge.
       final now = [...crud.inputs['variables']! as List];
       crud.setInputs({
         ...crud.inputs,
         'variables': [now[1], now[0]],
       });
-      expect(_ids(h, 'code', 'variables'), before.reversed);
+      final moved = _ids(h, 'code', 'variables');
+      expect(moved.first, before.last);
+      expect(moved.last, isNot(before.first));
+      expect(crud.inputs['variables'], [now[1], now[0]]);
       await h.dispose(t);
     });
 

@@ -15,7 +15,8 @@ import 'kr_config.dart';
 import 'kr_datasets.dart';
 import 'kr_metadata.dart';
 import 'kr_retrieval_config.dart';
-import 'panel_edit.dart';
+import '../../panel_edit.dart';
+import 'llm_vars.dart';
 
 String _w(String key) => DifyI18n.tr('workflow', key);
 const _p = 'nodes.knowledgeRetrieval';
@@ -110,7 +111,7 @@ class _KnowledgeRetrievalPanelState extends State<KnowledgeRetrievalPanel> {
 
   /// use-config's effect: in a chatflow an empty query becomes the upstream Start node's `sys.query`.
   void _queryDefault() {
-    final start = NodeVars.of(context, props).beforeNodes.where((n) => n.type == 'start').firstOrNull;
+    final start = NodeVars.of(props).beforeNodes.where((n) => n.type == 'start').firstOrNull;
     final current = _input.inputs;
     final query = jsList(current['query_variable_selector']);
     _input.setInputs({
@@ -124,7 +125,7 @@ class _KnowledgeRetrievalPanelState extends State<KnowledgeRetrievalPanel> {
     final readOnly = props.readOnly;
     final inputs = props.data;
     _input.inputs = inputs;
-    final vars = NodeVars.of(context, props);
+    final vars = NodeVars.of(props);
     final datasets = [
       for (final d in _selection.selectedDatasets)
         if (jsTruthy(d['name'])) d,

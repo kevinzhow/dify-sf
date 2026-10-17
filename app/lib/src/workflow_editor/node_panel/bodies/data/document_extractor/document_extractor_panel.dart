@@ -10,6 +10,7 @@ import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
 import '../data_common.dart';
+import '../../../panel_edit.dart';
 
 /// What the panel needs from the backend: `GET /files/support-type`'s `allowed_extensions`, the docs link of the
 /// node (`useNodeHelpLink`) and whether the UI language is Chinese (`LanguagesSupported[1]`, which joins with "、 ").
@@ -104,7 +105,7 @@ class _DocExtractorPanel extends StatelessWidget {
     final p = props;
     final data = p.data;
     final host = DocExtractorHost.of(context);
-    final scope = availableScope(p);
+    final scope = NodeVars.of(p).scope;
     final types = supportTypesShowNames(host.allowedExtensions, chinese: host.chineseSeparator);
     final openUrl = DataPanelHost.of(context).openUrl ?? p.actions.options.openUrl;
     final tertiary = difyStyle(DifyType.bodyXsRegular, DifyColors.textTertiary);

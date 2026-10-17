@@ -1,6 +1,5 @@
 // dify-spec: web/app/components/workflow/nodes/loop/__tests__/condition-item.spec.tsx
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/loop/loop_conditions.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/loop/loop_widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -2,7 +2,6 @@
 /// components/operation-selector.tsx).
 library;
 
-import 'package:flutter/material.dart' show TextField, InputDecoration, InputBorder;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -14,6 +13,7 @@ import '../../../../workflow/var_types.dart';
 import '../../../code_editor/code_editor.dart';
 import '../../../panel_fields/panel_fields.dart';
 import '../../node_panel_bodies.dart';
+import '../../panel_edit.dart';
 import 'assigner_utils.dart';
 import 'core_kit.dart';
 
@@ -318,8 +318,8 @@ class AssignerVarList extends StatelessWidget {
                       if (operation == WriteMode.set && assignedVarType != null)
                         switch (assignedVarType) {
                           'number' => _NumberInput(value: value, onChanged: set),
-                          'string' => _Textarea(
-                            label: selector.isNotEmpty ? selector.join('.') : tw('nodes.assigner.setParameter'),
+                          'string' => DifyTextarea(
+                            semanticLabel: selector.isNotEmpty ? selector.join('.') : tw('nodes.assigner.setParameter'),
                             value: value is String ? value : '${value ?? ''}',
                             onChanged: set,
                           ),
@@ -350,26 +350,6 @@ class AssignerVarList extends StatelessWidget {
       ],
     );
   }
-}
-
-/// BoolValue (panel/chat-variable-panel/components/bool-value.tsx): "True" / "False" option cards.
-class BoolValue extends StatelessWidget {
-  const BoolValue({super.key, required this.value, required this.onChange});
-  final bool value;
-  final ValueChanged<bool> onChange;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    spacing: 4,
-    children: [
-      Expanded(
-        child: OptionCard(title: 'True', selected: value, onSelect: () => onChange(true)),
-      ),
-      Expanded(
-        child: OptionCard(title: 'False', selected: !value, onSelect: () => onChange(false)),
-      ),
-    ],
-  );
 }
 
 String _numText(Object? v) => switch (v) {
@@ -415,94 +395,10 @@ class _NumberInputState extends State<_NumberInput> {
   );
 }
 
-/// dify-ui's Textarea (medium): `min-h-20 rounded-lg px-3 py-2 system-sm-regular` on the input background, the
-/// hover and focus borders of the text controls.
-class _Textarea extends StatefulWidget {
-  const _Textarea({required this.label, required this.value, required this.onChanged});
-  final String label, value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_Textarea> createState() => _TextareaState();
-}
-
-class _TextareaState extends State<_Textarea> {
-  late final _controller = TextEditingController(text: widget.value);
-  final _focus = FocusNode(debugLabel: 'assigner textarea');
-  bool _hovered = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => setState(() {}));
-  }
-
-  @override
-  void didUpdateWidget(_Textarea old) {
-    super.didUpdateWidget(old);
-    if (_controller.text != widget.value) _controller.text = widget.value;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final focused = _focus.hasFocus;
-    final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 80),
-        decoration: BoxDecoration(
-          color: focused
-              ? DifyColors.componentsInputBgActive
-              : _hovered
-              ? DifyColors.componentsInputBgHover
-              : DifyColors.componentsInputBgNormal,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: Border.all(
-            color: focused
-                ? DifyColors.componentsInputBorderActive
-                : _hovered
-                ? DifyColors.componentsInputBorderHover
-                : const Color(0x00000000),
-          ),
-          boxShadow: focused ? DifyShadows.xs : null,
-        ),
-        child: Semantics(
-          label: widget.label,
-          textField: true,
-          child: TextField(
-            controller: _controller,
-            focusNode: _focus,
-            onChanged: widget.onChanged,
-            minLines: 3,
-            maxLines: null,
-            style: style,
-            cursorColor: const Color(0xFF155EEF),
-            cursorWidth: 1,
-            decoration: const InputDecoration(
-              isCollapsed: true,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// panel.tsx.
 Widget assignerPanelBody(BuildContext context, NodePanelProps props) {
   final crud = PanelInputs(props);
-  final vars = panelVars(props);
+  final vars = NodeVars.of(props);
   final scope = vars.scope;
   final config = AssignerConfig(
     rawInputs: () => crud.inputs,
