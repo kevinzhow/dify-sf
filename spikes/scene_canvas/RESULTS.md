@@ -127,6 +127,37 @@ jump (a zoom-to-fit button). `PHASES=zoomback`, `ZB_SEC`; each cell: frames per 
   are a few frames around the jump; the residency pass still checks all 2000 cards every frame (about 0.5 ms), a
   spatial index would make it follow the on-screen cards.
 
+## Two tiers: live when zoomed in, delayed images when zoomed out, status always live
+
+* Live tier: cards at 0.5x or more near the view hold a live `WidgetComponent`; a change recaptures the card within
+  1 to 2 frames if it is on screen, off-screen live cards are refreshed 4 per frame (or at once when they come on
+  screen).
+* Delayed tier: every card's overview (half density) is refreshed in the background when its content changes:
+  on-screen cards first, oldest change first, a card at most every 300 ms (bursts coalesce), only while the view
+  rests. Overviews leave the run status out.
+* Status (running, succeeded, failed) is never in an image: one instanced mesh draws a coloured frame behind every
+  card, coloured per instance, so a change shows in the next frame at any zoom. Opaque, not display-referred: display-
+  referred surfaces are composited without depth order among themselves and the frames covered the cards.
+* Below 0.2x a card is about 33 x 12 px: cards are drawn from one capture per node type (title blurred to a line at
+  that size), one instanced draw per type, instead of 925 separate textures.
+* Residency uses a grid of the cards and skips its pass while the view rests; transparent instances are not
+  depth-sorted (all cards lie in one plane).
+
+Test (`PHASES=run`, `RUN_SCALE`): 2000 nodes, a workflow run sweeps through every node (running, then succeeded or
+failed 0.4 s later, 400 nodes/s, 4000 status changes) while another user renames 20 on-screen nodes per second.
+
+| zoom | cards on screen | fps, p99 interval | overview staleness on screen, p50 / p99 / max |
+|---|---|---|---|
+| 0.15x | 925 | 117.5 fps, p99 14.0 | 15 / 24 / 24 ms |
+| 0.35x | 272 | 119.0 fps, p99 13.8 | 16 / 172 / 275 ms (includes the 300 ms per-card coalescing) |
+| 1x | 36 | 111.7 fps, p99 15.9 | live tier, recaptured on change |
+
+Runs vary by a few FPS (0.35x: 102 to 119 over five runs, 1x: 107 to 117). The zoom-back test still shows no
+placeholders after these changes. On the way: the first version swapped a mesh per status change and gave 91 FPS at
+0.15x (scene graph and bounding-volume rebuilds), and status frames drawn as display-referred covered the cards.
+
+![run, 0.35x](results/run-0.35-mid.png)
+
 ## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
@@ -171,4 +202,4 @@ python3 tool/table.py results
 ```
 
 Switches (environment): `MODE`, `NODES`, `SEM=0` (cards out of the semantics tree), `EDGES=0`, `CARDS=0`, `AA`,
-`PHASES`, `POLICY=every`, `CULL=0`, `OVERVIEW=1`, `OV_BUDGET`, `CAP_BUDGET`, `DENSITY=zoom`, `KEEP`, `PREDICT=1`, `ZB_SEC`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.
+`PHASES`, `POLICY=every`, `CULL=0`, `OVERVIEW=1`, `OV_BUDGET`, `CAP_BUDGET`, `DENSITY=zoom`, `KEEP`, `PREDICT=1`, `ZB_SEC`, `RUN_SCALE`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.

@@ -61,6 +61,9 @@ class GNode {
   final String id;
   final String type;
   final ValueNotifier<String> title;
+
+  /// Run state: idle, running, succeeded, failed.
+  final status = ValueNotifier('idle');
   double x;
   double y;
   Offset get outPort => Offset(x + kNodeW, y + kNodeH / 2);
@@ -138,8 +141,11 @@ Color typeColor(String type) => switch (type) {
 };
 
 class NodeCard extends StatelessWidget {
-  const NodeCard({super.key, required this.node, this.onPainted});
+  const NodeCard({super.key, required this.node, this.onPainted, this.showStatus = true});
   final GNode node;
+
+  /// Overview captures leave the status out: the scene's status frame shows it without delay.
+  final bool showStatus;
 
   /// Called after a frame in which the card repainted with a new title (scene mode recaptures then).
   final VoidCallback? onPainted;
@@ -181,9 +187,17 @@ class NodeCard extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      node.type,
-                      style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w500),
+                    ValueListenableBuilder<String>(
+                      valueListenable: node.status,
+                      builder: (context, status, _) {
+                        if (showStatus && status != 'idle' && onPainted != null) {
+                          SchedulerBinding.instance.addPostFrameCallback((_) => onPainted!());
+                        }
+                        return Text(
+                          showStatus && status != 'idle' ? '${node.type} · $status' : node.type,
+                          style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w500),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -202,6 +216,19 @@ class NodeCard extends StatelessWidget {
 /// Canvas (x right, y down) to world: the camera sits on -Z looking along +Z (world +X is screen-right, +Y up), and
 /// [z] is the distance in front of the canvas plane (toward the camera).
 vm.Vector3 toWorld(Offset p, [double z = 0]) => vm.Vector3(p.dx, -p.dy, -z);
+
+/// The status frame: a quad a few pixels larger than the card, drawn behind it, so its colour shows as a border.
+Geometry? _statusQuad;
+Geometry statusQuad() => _statusQuad ??= () {
+  const w = kNodeW / 2 + 5, h = kNodeH / 2 + 5;
+  return MeshGeometry.fromArrays(
+    positions: Float32List.fromList([w, -h, 0, -w, -h, 0, -w, h, 0, w, h, 0]),
+    texCoords: Float32List.fromList([1, 1, 0, 1, 0, 0, 1, 0]),
+    indices: [0, 1, 3, 3, 1, 2],
+  );
+}();
+
+const statusColors = {'running': Color(0xFF2F6FED), 'succeeded': Color(0xFF1E9E5A), 'failed': Color(0xFFD93A3A)};
 
 /// The card quad. WidgetComponent's own quad is front-facing toward -Z but maps the texture as seen from +Z, so from
 /// a -Z camera it shows the card mirrored; this one flips u. One geometry is shared by every card.
@@ -249,6 +276,84 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   final overviewQueue = <int>[];
   final overviewInFlight = <int, WidgetComponent>{};
   int overviewsDone = 0;
+  // Overviews (or plain placeholders) in one layer, so the skeleton tier can switch it off in one step.
+  final overviewLayer = Node();
+  final placeholderNodes = <Node>[];
+  // Skeleton tier, below 0.2x: one capture per node type (title text blurred to a line at that size anyway),
+  // drawn as one instanced mesh per type.
+  final skeletonLayer = Node()..visible = false;
+  final skeletonMeshes = <String, InstancedMesh>{};
+  final skeletonIndex = <int>[];
+  bool skeletonOn = false;
+  static const skeletonScale = 0.2;
+
+  void _skeletonSwitch(double scale) {
+    final want = skeletonOn ? scale < skeletonScale * 1.05 : scale < skeletonScale * 0.95;
+    if (want == skeletonOn || skeletonMeshes.isEmpty) return;
+    skeletonOn = want;
+    skeletonLayer.visible = want;
+    overviewLayer.visible = !want;
+  }
+
+  void _buildSkeletons() {
+    final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    final types = {for (final n in g.nodes) n.type};
+    final meshes = <String, InstancedMesh>{};
+    for (final t in types) {
+      final material = UnlitMaterial()
+        ..alphaMode = AlphaMode.blend
+        ..displayReferred = true
+        ..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1);
+      meshes[t] = InstancedMesh(geometry: cardQuad(), material: material, sortTransparentInstances: false);
+      final host = Node();
+      late final WidgetComponent c;
+      c = WidgetComponent.bindOnly(
+        child: ExcludeSemantics(
+          child: NodeCard(
+            node: GNode('skeleton', t, '$t 0000', 0, 0),
+            onPainted: () => c.controller.requestCapture(),
+            showStatus: false,
+          ),
+        ),
+        size: const Size(kNodeW, kNodeH),
+        pixelRatio: dpr * skeletonScale,
+        update: WidgetUpdatePolicy.manual,
+        input: WidgetInput.manual,
+        bind: (texture) {
+          material
+            ..baseColorTexture = GpuTextureSource(texture)
+            ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+          SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
+        },
+      );
+      host.addComponent(c);
+      scene.add(host);
+    }
+    for (var i = 0; i < g.nodes.length; i++) {
+      skeletonIndex.add(
+        meshes[g.nodes[i].type]!.addInstance(vm.Matrix4.translation(toWorld(g.nodes[i].center, -0.05))),
+      );
+    }
+    for (final m in meshes.values) {
+      skeletonLayer.addComponent(InstancedMeshComponent(m));
+    }
+    skeletonMeshes.addAll(meshes);
+  }
+
+  // Status frames: one instanced mesh, one instance per card, coloured per instance (idle = scaled to nothing).
+  late final InstancedMesh statusMesh;
+  late final Map<String, vm.Vector4> statusColorValues;
+  int statusChanges = 0;
+  // Delayed tier: cards whose overview is older than their content (first unrendered change, microseconds).
+  final dirtySince = <int?>[];
+  final captureStartedAt = <int>[];
+  final lastOverviewAt = <int>[];
+  final dirty = <int>{};
+  // Staleness of overviews on screen: from the first unrendered change to the new overview.
+  final stalenessMs = <double>[];
+  static const minOverviewIntervalUs = 300000; // a card's overview is refreshed at most every 300 ms
+
+  int nowUs() => DateTime.now().microsecondsSinceEpoch;
   Node? staticEdges;
   Node? liveEdges;
   Set<int> liveEdgeIds = {};
@@ -267,11 +372,27 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
       edgeMaterial = UnlitMaterial()..baseColorFactor = vm.Vector4(0.58, 0.62, 0.68, 1);
       if (kAA.isNotEmpty) scene.antiAliasingMode = AntiAliasingMode.values.byName(kAA);
       placeholderMaterial = UnlitMaterial()..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1);
+      statusColorValues = {for (final e in statusColors.entries) e.key: vm.Vector4(e.value.r, e.value.g, e.value.b, 1)};
+      // All cards lie in one plane: no per-frame depth sort of the instances.
+      statusMesh = InstancedMesh(
+        geometry: statusQuad(),
+        // Opaque scene geometry (not display-referred): display-referred surfaces are composited without depth
+        // order among themselves, which drew the frames over the overview captures.
+        material: UnlitMaterial(),
+        sortTransparentInstances: false,
+      );
+      if (widget.withCards) {
+        scene
+          ..add(Node()..addComponent(InstancedMeshComponent(statusMesh)))
+          ..add(overviewLayer)
+          ..add(skeletonLayer);
+      }
       final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
       for (var i = 0; i < g.nodes.length; i++) {
         final n = Node(name: g.nodes[i].id);
         n.position = toWorld(g.nodes[i].center);
         cards.add(n);
+        grid.putIfAbsent(((g.nodes[i].x / gridCell).floor(), (g.nodes[i].y / gridCell).floor()), () => []).add(i);
         pixelRatios.add(dpr);
         comps.add(null);
         if (widget.withCards) {
@@ -284,12 +405,22 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
               : placeholderMaterial;
           placeholders.add(m);
           hasOverview.add(false);
-          n.add(Node(mesh: Mesh(cardQuad(), m))..position = vm.Vector3(0, 0, 0.05));
+          dirtySince.add(null);
+          captureStartedAt.add(0);
+          lastOverviewAt.add(0);
+          final pn = Node(mesh: Mesh(cardQuad(), m))..position = toWorld(g.nodes[i].center, -0.05);
+          placeholderNodes.add(pn);
+          overviewLayer.add(pn);
+          statusMesh.addInstance(vm.Matrix4.zero());
+          final node = g.nodes[i], si = i;
+          node.status.addListener(() => _showStatus(si, node.status.value));
+          node.title.addListener(() => _markDirty(si));
           if (!kCull) _attach(i, dpr);
         }
         if (kCards && widget.withCards) scene.add(n);
       }
       if (kOverview && widget.withCards) {
+        _buildSkeletons();
         final c = widget.view.center;
         overviewQueue
           ..addAll(List.generate(g.nodes.length, (i) => i))
@@ -312,9 +443,9 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     late final WidgetComponent c;
     c = WidgetComponent(
       child: kSem
-          ? NodeCard(node: g.nodes[i], onPainted: () => c.controller.requestCapture())
+          ? NodeCard(node: g.nodes[i], onPainted: () => _livePainted(i, c))
           : ExcludeSemantics(
-              child: NodeCard(node: g.nodes[i], onPainted: () => c.controller.requestCapture()),
+              child: NodeCard(node: g.nodes[i], onPainted: () => _livePainted(i, c)),
             ),
       size: const Size(kNodeW, kNodeH),
       pixelRatio: pixelRatio,
@@ -350,7 +481,23 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   }
 
   // The card captures itself after its first paint (NodeCard's post-frame callback).
+  // Grid index of the cards (by top-left corner), so residency looks only near the view.
+  static const gridCell = 1000.0;
+  final grid = <(int, int), List<int>>{};
+  final attachedSet = <int>{};
+
+  Iterable<int> nodesIn(Rect r) sync* {
+    final q = r.inflate(max(kNodeW, kNodeH));
+    for (var cx = (q.left / gridCell).floor(); cx <= (q.right / gridCell).floor(); cx++) {
+      for (var cy = (q.top / gridCell).floor(); cy <= (q.bottom / gridCell).floor(); cy++) {
+        final cellNodes = grid[(cx, cy)];
+        if (cellNodes != null) yield* cellNodes;
+      }
+    }
+  }
+
   void _attach(int i, double pixelRatio) {
+    attachedSet.add(i);
     final c = _component(i, pixelRatio);
     cards[i].addComponent(c);
     comps[i] = c;
@@ -360,6 +507,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   }
 
   void _detach(int i) {
+    attachedSet.remove(i);
     cards[i].removeComponent(comps[i]!);
     comps[i] = null;
     attached--;
@@ -373,12 +521,14 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   void _overviewStep() {
     if (!kOverview) return;
     final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
-    while (overviewInFlight.length < kOverviewBudget && overviewQueue.isNotEmpty) {
-      final i = overviewQueue.removeAt(0);
+    while (overviewInFlight.length < kOverviewBudget) {
+      final i = overviewQueue.isNotEmpty ? overviewQueue.removeAt(0) : _nextDirty();
+      if (i == null) break;
+      captureStartedAt[i] = nowUs();
       late final WidgetComponent c;
       c = WidgetComponent.bindOnly(
         child: ExcludeSemantics(
-          child: NodeCard(node: g.nodes[i], onPainted: () => c.controller.requestCapture()),
+          child: NodeCard(node: g.nodes[i], onPainted: () => c.controller.requestCapture(), showStatus: false),
         ),
         size: const Size(kNodeW, kNodeH),
         pixelRatio: dpr * overviewMaxScale,
@@ -391,6 +541,16 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
             ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
           if (!hasOverview[i]) overviewsDone++;
           hasOverview[i] = true;
+          final now = nowUs(), since = dirtySince[i];
+          lastOverviewAt[i] = now;
+          if (since != null && since <= captureStartedAt[i]) {
+            // This capture includes every change so far.
+            if (comps[i] == null && visibleRect(widget.view, viewport).overlaps(g.nodes[i].rect)) {
+              stalenessMs.add((now - since) / 1000);
+            }
+            dirtySince[i] = null;
+            dirty.remove(i);
+          }
           SchedulerBinding.instance.addPostFrameCallback((_) {
             cards[i].removeComponent(c);
             overviewInFlight.remove(i);
@@ -402,9 +562,73 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     }
   }
 
+  // Live cards off screen that changed: recaptured a few per frame, or at once when they come on screen.
+  final liveStale = <int>{};
+  bool onScreen(int i) => visibleRect(widget.view, viewport).overlaps(g.nodes[i].rect);
+
+  void _livePainted(int i, WidgetComponent c) {
+    if (!kOverview || c.controller.texture == null || onScreen(i)) {
+      c.controller.requestCapture();
+    } else {
+      liveStale.add(i);
+    }
+  }
+
+  void _liveStep() {
+    if (liveStale.isEmpty) return;
+    var offscreen = 4;
+    for (final i in [...liveStale]) {
+      final c = comps[i];
+      if (c == null) {
+        liveStale.remove(i);
+      } else if (onScreen(i) || offscreen-- > 0) {
+        c.controller.requestCapture();
+        liveStale.remove(i);
+      }
+    }
+  }
+
+  void _markDirty(int i) {
+    if (!kOverview) return;
+    dirtySince[i] ??= nowUs();
+    dirty.add(i);
+  }
+
+  /// The dirty card to refresh next: on-screen cards first, then the longest-stale; none refreshed again within
+  /// [minOverviewIntervalUs] of its last overview (bursts of changes coalesce into one capture).
+  int? _nextDirty() {
+    if (dirty.isEmpty) return null;
+    final now = nowUs();
+    final view = visibleRect(widget.view, viewport);
+    int? best;
+    var bestKey = (2, 0);
+    for (final i in dirty) {
+      if (overviewInFlight.containsKey(i) || now - lastOverviewAt[i] < minOverviewIntervalUs) continue;
+      final key = (view.overlaps(g.nodes[i].rect) ? 0 : 1, dirtySince[i]!);
+      if (best == null || key.$1 < bestKey.$1 || (key.$1 == bestKey.$1 && key.$2 < bestKey.$2)) {
+        best = i;
+        bestKey = key;
+      }
+    }
+    return best;
+  }
+
+  void _showStatus(int i, String status) {
+    statusChanges++;
+    if (status == 'idle') {
+      statusMesh.setInstanceTransform(i, vm.Matrix4.zero());
+      return;
+    }
+    statusMesh
+      ..setInstanceTransform(i, vm.Matrix4.translation(toWorld(g.nodes[i].center, -0.1)))
+      ..setInstanceColor(i, statusColorValues[status]!);
+  }
+
   // Captures started per frame, so a fast pan spreads its work.
   static final attachBudget = kCapBudget;
   Offset? lastCenter;
+  bool settled = false;
+  int settledAt = 0;
   double lastViewScale = 0;
   int lastMove = 0;
   double lastScale = 0;
@@ -433,8 +657,12 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     lastCenter = v.center;
     lastViewScale = v.scale;
     final moving = now - lastMove < 150000;
+    if (kOverview) _skeletonSwitch(v.scale);
     if (kOverview && moving && initialTarget >= 0) return;
+    _liveStep();
     _overviewStep();
+    // Nothing to attach or release until the view moves again (or a pass ran out of budget).
+    if (settled && lastMove <= settledAt && initialTarget >= 0 && dragging == null) return;
     final view = visibleRect(v, viewport);
     var keep = view.inflate(max(view.width, view.height) / 2);
     if (kPredict && lastScale > 0 && v.scale < lastScale) {
@@ -449,19 +677,28 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     // Releases are spread too: each one unmounts a hosted card.
     var releases = initialTarget < 0 ? 1 << 30 : max(8, attachBudget);
     var first = 0;
-    for (var i = 0; i < cards.length; i++) {
-      final r = g.nodes[i].rect;
-      if (comps[i] != null) {
-        if (!drop.overlaps(r) && !liveDrag(i) && attached > kKeep && releases > 0) {
+    // Only attached cards can be released, and only cards in grid cells near the view can be attached.
+    if (attached > kKeep) {
+      for (final i in [...attachedSet]) {
+        if (releases <= 0) break;
+        if (!drop.overlaps(g.nodes[i].rect) && !liveDrag(i)) {
           _detach(i);
           releases--;
         }
-      } else if (keep.overlaps(r) && v.scale >= (kOverview ? overviewMaxScale : lodScale) && budget > 0) {
-        _attach(i, density);
-        budget--;
-        first++;
       }
     }
+    if (v.scale >= (kOverview ? overviewMaxScale : lodScale)) {
+      for (final i in nodesIn(keep)) {
+        if (budget <= 0) break;
+        if (comps[i] == null && keep.overlaps(g.nodes[i].rect)) {
+          _attach(i, density);
+          budget--;
+          first++;
+        }
+      }
+    }
+    settled = budget > 0 && releases > 0;
+    settledAt = now;
     if (initialTarget < 0) {
       initialTarget = first;
       if (first == 0) {
@@ -509,14 +746,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   }
 
   @override
-  void editTitle(int i, String title) {
-    g.nodes[i].title.value = title;
-    if (kOverview && !overviewInFlight.containsKey(i)) {
-      overviewQueue
-        ..remove(i)
-        ..insert(0, i);
-    }
-  }
+  void editTitle(int i, String title) => g.nodes[i].title.value = title;
 
   @override
   void beginDrag(int i) {
@@ -534,6 +764,16 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
       ..x = topLeft.dx
       ..y = topLeft.dy;
     cards[i].position = toWorld(g.nodes[i].center, 0.5); // lifted above its neighbours while dragged
+    if (g.nodes[i].status.value != 'idle') {
+      statusMesh.setInstanceTransform(i, vm.Matrix4.translation(toWorld(g.nodes[i].center, 0.4)));
+    }
+    if (placeholderNodes.isNotEmpty) placeholderNodes[i].position = toWorld(g.nodes[i].center, 0.45);
+    if (skeletonIndex.isNotEmpty) {
+      skeletonMeshes[g.nodes[i].type]!.setInstanceTransform(
+        skeletonIndex[i],
+        vm.Matrix4.translation(toWorld(g.nodes[i].center, 0.45)),
+      );
+    }
     // Only the dragged node's edges are rebuilt per frame.
     if (liveEdges != null) scene.remove(liveEdges!);
     liveEdges = _edgeNode([for (final k in liveEdgeIds) g.edges[k]]);
@@ -544,6 +784,16 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   void endDrag(int i) {
     dragging = null;
     cards[i].position = toWorld(g.nodes[i].center);
+    if (placeholderNodes.isNotEmpty) placeholderNodes[i].position = toWorld(g.nodes[i].center, -0.05);
+    if (g.nodes[i].status.value != 'idle') {
+      statusMesh.setInstanceTransform(i, vm.Matrix4.translation(toWorld(g.nodes[i].center, -0.1)));
+    }
+    if (skeletonIndex.isNotEmpty) {
+      skeletonMeshes[g.nodes[i].type]!.setInstanceTransform(
+        skeletonIndex[i],
+        vm.Matrix4.translation(toWorld(g.nodes[i].center, -0.05)),
+      );
+    }
     liveEdgeIds = {};
     _rebuildEdges();
   }
@@ -578,6 +828,8 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     'maxAttached': maxAttached,
     'attachedTotal': attachedTotal,
     if (kOverview) 'overviewsDone': overviewsDone,
+    if (kOverview) 'statusChanges': statusChanges,
+    if (kOverview) 'staleness': stalenessMs,
   };
 
   Camera camera() {
@@ -869,7 +1121,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
 
   /// Zoomed in to 2x on the middle of the graph (text made crisp), then a 1 s zoom out to 0.35x and hold: how many
   /// on-screen cards show a placeholder, and for how long.
-  Future<void> _zoomBack() async {
+  Future<void> _waitOverviews() async {
     if (kOverview) {
       // Background overview captures: record the frames while they run, and how long they take.
       final sw0 = Stopwatch()..start();
@@ -885,6 +1137,10 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       results.add(sum);
       stdout.writeln('PERF ${jsonEncode(sum)}');
     }
+  }
+
+  Future<void> _zoomBack() async {
+    await _waitOverviews();
     final saved = (view.center, view.scale);
     view
       ..center = const Offset(3700, 3000)
@@ -927,6 +1183,65 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     await _shot('after-zoomback');
   }
 
+  /// Zoomed out over the graph (RUN_SCALE, default 0.15): a workflow run sweeps through every node (running, then
+  /// succeeded or failed 0.4 s later, 400 nodes/s) while another user renames 20 on-screen nodes per second.
+  Future<void> _runWorkflow() async {
+    await _waitOverviews();
+    final saved = (view.center, view.scale);
+    view
+      ..center = const Offset(3700, 3300)
+      ..scale = double.parse(env('RUN_SCALE', '0.15'));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    final visible = [
+      for (var i = 0; i < graph.nodes.length; i++)
+        if (visibleRect(view, const Size(1600, 1000)).overlaps(graph.nodes[i].rect)) i,
+    ];
+    stdout.writeln('RUN_START');
+    var started = 0, finished = 0, edits = 0;
+    var lastEdit = 0.0;
+    var midShot = false;
+    final c0 = canvas.stats['statusChanges'] as int? ?? 0;
+    await _phase('run', 6, (t) {
+      final run = t - 0.3; // recording starts at 0.3
+      if (run < 0) return;
+      if (run >= 2.5 && !midShot) {
+        midShot = true;
+        unawaited(_shot('run-mid'));
+      }
+      while (started < graph.nodes.length && started / 400 <= run) {
+        graph.nodes[started++].status.value = 'running';
+      }
+      while (finished < started && finished / 400 + 0.4 <= run) {
+        graph.nodes[finished].status.value = finished % 37 == 0 ? 'failed' : 'succeeded';
+        finished++;
+      }
+      while (lastEdit < run) {
+        lastEdit += 0.05;
+        final i = visible[rng.nextInt(visible.length)];
+        canvas.editTitle(i, '${graph.nodes[i].type} $i · edit ${++edits}');
+      }
+    });
+    // Let the last overviews land, then read their staleness.
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    await _shot('run-end');
+    final st = [...(canvas.stats['staleness'] as List<double>? ?? const <double>[])]..sort();
+    double q(double p) => st.isEmpty ? 0 : st[min(st.length - 1, (p * st.length).floor())];
+    final extra = <String, Object>{
+      'visibleCards': visible.length,
+      'statusChanges': (canvas.stats['statusChanges'] as int? ?? 0) - c0,
+      'edits': edits,
+      'overviewRefreshes': st.length,
+      'staleP50Ms': r1(q(.5)),
+      'staleP99Ms': r1(q(.99)),
+      'staleMaxMs': r1(st.isEmpty ? 0 : st.last),
+    };
+    results.last.addAll(extra);
+    stdout.writeln('RUN ${jsonEncode(extra)}');
+    view
+      ..center = saved.$1
+      ..scale = saved.$2;
+  }
+
   Future<void> _shot(String name) async {
     await SchedulerBinding.instance.endOfFrame;
     final dir = Platform.environment['SHOTS'] ?? '/tmp/scene_canvas';
@@ -948,6 +1263,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     await _shot('start');
     final home = view.center;
     if (kPhases.contains('zoomback')) await _zoomBack();
+    if (kPhases.contains('run')) await _runWorkflow();
     // Pan: a 600 px/s diagonal sweep and back.
     await _phase('pan', 4, (t) {
       final s = sin(t * pi / 2);
