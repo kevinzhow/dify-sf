@@ -56,6 +56,11 @@ class SceneTuning {
 
   /// Captures include this much around the card, for its shadow (shadow-lg reaches about 24 px below).
   static const capturePad = 24.0;
+
+  /// At rest, on-screen cards get a capture at exactly the screen's density for the zoom, aligned to the screen's
+  /// pixel grid, so they look as sharp as cards drawn directly (no resampling); this many per frame.
+  static const exactAtRest = true;
+  static const exactBudget = 6;
 }
 
 /// The card border by run status (getNodeStatusBorders) and the selected frame (option-card selected border).
@@ -141,6 +146,10 @@ class SceneRenderer extends CanvasRenderer {
   Offset? _lastCenter;
   double _lastScale = 0;
   int _lastMove = 0;
+
+  /// Pixel-exact captures shown at rest, by slot (see [SceneTuning.exactAtRest]).
+  final _exact = <int, _Exact>{};
+  bool _exactSettled = false;
   bool _settled = false;
   int _settledAt = 0;
 
@@ -191,6 +200,7 @@ class SceneRenderer extends CanvasRenderer {
     }
     if (change.edgesChanged) _rebuildEdges();
     _settled = false;
+    _exactSettled = false;
   }
 
   void _grow(int slot) {
@@ -240,6 +250,7 @@ class SceneRenderer extends CanvasRenderer {
 
   void _removeSlot(int slot) {
     if (slot >= _cardNodes.length) return;
+    _dropExact(slot);
     if (_live[slot] != null) _detach(slot);
     final inflight = _overviewInFlight.remove(slot);
     if (inflight != null && inflight.isAttached) _cardNodes[slot]?.removeComponent(inflight);
@@ -278,6 +289,7 @@ class SceneRenderer extends CanvasRenderer {
     final n = graph.slots[slot];
     final card = _cardNodes[slot];
     if (n == null || card == null) return;
+    _dropExact(slot);
     final lift = _lift(slot);
     // Captures cover everything drawn for the node (the visual rectangle) plus room for the shadow.
     final padded = n.visual.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad);
@@ -590,6 +602,7 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   void _detach(int slot) {
+    _dropExact(slot);
     final old = _replaced.remove(slot);
     if (old != null && old.isAttached) _cardNodes[slot]?.removeComponent(old);
     final c = _live[slot];
@@ -624,6 +637,92 @@ class SceneRenderer extends CanvasRenderer {
         _liveStale.remove(slot);
       }
     }
+  }
+
+  // ----- cards: pixel-exact captures at rest -----
+
+  /// The density and the physical screen position of [n]'s capture area at the current view.
+  (double, double, double) _exactKey(CanvasNode n) {
+    const pad = SceneTuning.capturePad;
+    final at = view.toScreen(n.visual.topLeft - const Offset(pad, pad)) * _dpr;
+    return (view.scale * _dpr, at.dx, at.dy);
+  }
+
+  void _exactStep() {
+    if (!SceneTuning.exactAtRest || _exactSettled || view.scale < SceneTuning.overviewMaxScale) return;
+    var budget = SceneTuning.exactBudget, pending = false;
+    for (final slot in graph.grid.near(view.visible)) {
+      final n = graph.slots[slot], live = _live[slot];
+      if (n == null || !_onScreen(slot) || _moving.contains(slot)) continue;
+      final key = _exactKey(n);
+      if (_exact[slot]?.key == key) continue;
+      if (live == null || live.controller.texture == null || budget <= 0) {
+        pending = true;
+        continue;
+      }
+      _dropExact(slot);
+      _makeExact(slot, n, key);
+      budget--;
+    }
+    _exactSettled = !pending;
+  }
+
+  /// A capture of [n] at [key]'s density whose pixels fall on the screen's: the card is shifted inside the capture by
+  /// the fraction of a pixel its position has, and the quad starts on a whole pixel.
+  void _makeExact(int slot, CanvasNode n, (double, double, double) key) {
+    final (density, px, py) = key;
+    final ix = px.floorToDouble(), iy = py.floorToDouble();
+    final fx = px - ix, fy = py - iy;
+    const pad = SceneTuning.capturePad;
+    final padded = n.visual.size + const Offset(2 * pad, 2 * pad);
+    final w = (padded.width * density + fx).ceil() + 1, h = (padded.height * density + fy).ceil() + 1;
+    late final WidgetComponent c;
+    c = WidgetComponent(
+      child: ExcludeSemantics(
+        child: Builder(
+          builder: (context) => Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: EdgeInsets.only(left: fx / density, top: fy / density),
+              child: _padded(
+                cards.build(context, n, graph, live: true, onPainted: () => c.controller.requestCapture()),
+              ),
+            ),
+          ),
+        ),
+      ),
+      // toImage rounds the size up: just under w x h pixels gives exactly w x h.
+      size: Size((w - 1e-3) / density, (h - 1e-3) / density),
+      pixelRatio: density,
+      worldHeight: 1,
+      geometry: _unitQuad,
+      update: WidgetUpdatePolicy.manual,
+      input: WidgetInput.manual,
+    );
+    final rect = view.toCanvas(Offset(ix, iy) / _dpr) & Size(w / density, h / density);
+    final node = Node(name: '${n.id}-exact')
+      ..position = toWorld(rect.center, _lift(slot))
+      ..scale = vm.Vector3(rect.width, rect.height, 1)
+      ..addComponent(c);
+    scene.add(node);
+    final e = _Exact(key, node, c);
+    _exact[slot] = e;
+    void landed() {
+      if (c.controller.texture == null) return;
+      c.controller.removeListener(landed);
+      if (identical(_exact[slot], e)) _cardNodes[slot]?.visible = false;
+    }
+
+    c.controller.addListener(landed);
+    c.controller.requestCapture();
+  }
+
+  void _dropExact(int slot) {
+    final e = _exact.remove(slot);
+    if (e == null) return;
+    scene.remove(e.node);
+    _cardNodes[slot]?.visible = true;
+    _exactSettled = false;
   }
 
   /// The capture density for the current zoom: the screen's pixel density times the zoom, rounded up to a power of
@@ -778,13 +877,21 @@ class SceneRenderer extends CanvasRenderer {
     if (view.viewport.isEmpty) return;
     _skeletonSwitch();
     final now = _nowUs();
-    if (view.center != _lastCenter || view.scale != _lastScale) _lastMove = now;
+    if (view.center != _lastCenter || view.scale != _lastScale) {
+      _lastMove = now;
+      // Exact captures only fit the view they were made for.
+      for (final slot in [..._exact.keys]) {
+        _dropExact(slot);
+      }
+      _exactSettled = false;
+    }
     _lastCenter = view.center;
     _lastScale = view.scale;
     // Every card already shows real content (live or overview), so capture work waits until the view rests.
     if (now - _lastMove < 150000) return;
     _liveStep();
     _overviewStep();
+    _exactStep();
     if (_settled && _lastMove <= _settledAt && _moving.isEmpty) return;
     final visible = view.visible;
     final keep = visible.inflate(max(visible.width, visible.height) / 2);
@@ -920,4 +1027,12 @@ Geometry _roundedRect(Size size, double radius, {int segments = 8}) {
     texCoords: Float32List(positions.length ~/ 3 * 2),
     indices: indices,
   );
+}
+
+/// A pixel-exact capture of a card for one view (density, screen position).
+class _Exact {
+  _Exact(this.key, this.node, this.component);
+  final (double, double, double) key;
+  final Node node;
+  final WidgetComponent component;
 }

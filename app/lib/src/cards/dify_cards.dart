@@ -14,6 +14,7 @@ import 'bodies/llm_bodies.dart';
 import 'card_chrome.dart';
 import 'card_kit.dart';
 import 'node_body.dart';
+import 'node_extras.dart';
 
 /// Dify's node cards: the shared chrome (nodes/_base/node.tsx) around a body per node type.
 class DifyCards extends CardSpec {
@@ -141,11 +142,27 @@ class DifyCards extends CardSpec {
         1,
         top,
         width,
-        border + header + body.height(ctx) + (chrome == CardChrome.base ? _descHeight(node) : 0) + _bottom + border,
+        border +
+            header +
+            body.height(ctx) +
+            NodeExtras.height(node) +
+            (chrome == CardChrome.base ? _descHeight(node) : 0) +
+            _bottom +
+            border,
       ),
     };
     final bodyTop = chrome.header ? border + header : border;
-    final sources = body.sources(ctx);
+    // Body handles are `top-1/2! -translate-y-1/2!` on their row; with React Flow's own translate(0, -50%) the
+    // handle ends up half its height (8 px) above the row's middle.
+    final own = body.sources(ctx);
+    final failBranch = NodeExtras.failBranchY(node);
+    final sources = {
+      if (own == null)
+        'source': CanvasNode.defaultHandleY
+      else
+        for (final e in own.entries) e.key: bodyTop + e.value - _handleLift,
+      if (failBranch != null) NodeExtras.failBranch: bodyTop + body.height(ctx) + failBranch - _handleLift,
+    };
     return CardLayout(
       card: card,
       visual: isEntry(node.type)
@@ -158,11 +175,7 @@ class DifyCards extends CardSpec {
               card.bottom + 1 + _tabInset,
             )
           : card,
-      sources: sources == null
-          ? const {'source': CanvasNode.defaultHandleY}
-          // Body handles are `top-1/2! -translate-y-1/2!` on their row; with React Flow's own translate(0, -50%) the
-          // handle ends up half its height (8 px) above the row's middle.
-          : {for (final e in sources.entries) e.key: bodyTop + e.value - _handleLift},
+      sources: sources,
       target: body.target,
     );
   }

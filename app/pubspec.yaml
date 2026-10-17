@@ -19,6 +19,7 @@ dependencies:
   flutter_svg: ^2.3.0
 
 dev_dependencies:
+  yaml: ^3.1.4
   flutter_test:
     sdk: flutter
   integration_test:

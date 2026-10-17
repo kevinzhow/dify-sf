@@ -9,6 +9,7 @@ import '../design/dify_tokens.g.dart';
 import 'card_kit.dart';
 import 'dify_cards.dart';
 import 'node_body.dart';
+import 'node_extras.dart';
 
 /// The card as Dify draws it (nodes/_base/node.tsx): the chrome the body asks for ([CardChrome]), entry nodes inside
 /// their START/TRIGGER container, data sources on their tab.
@@ -84,6 +85,7 @@ class DifyNodeCard extends StatelessWidget {
           children: [
             _Header(node: n, status: live ? node.status.value : null),
             body.build(context, ctx),
+            NodeExtras.build(n),
             if (desc.isNotEmpty && n.type != 'start-placeholder')
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),

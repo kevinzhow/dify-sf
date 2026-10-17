@@ -7,6 +7,7 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
 import '../node_body.dart';
+import '../../workflow/var_types.dart';
 
 List<Value> _items(Value? v) => switch (v) {
   VItems(:final items) => [for (final i in items) i.value],
@@ -93,11 +94,15 @@ class EndBody extends NodeBody {
   Widget build(BuildContext context, BodyContext ctx) {
     final refs = _refs(ctx);
     if (refs.isEmpty) return const SizedBox.shrink();
+    final types = VarTypes(lookup: ctx.lookup, start: ctx.start);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
       child: Column(
         children: [
-          for (final (i, r) in refs.indexed) ...[if (i > 0) const SizedBox(height: 2), VariableLabel(ref: r)],
+          for (final (i, r) in refs.indexed) ...[
+            if (i > 0) const SizedBox(height: 2),
+            VariableLabel(ref: r, type: types.typeOf(r.path)),
+          ],
         ],
       ),
     );

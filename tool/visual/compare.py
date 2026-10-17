@@ -82,8 +82,26 @@ def capture_dify(browser, s, app_id, case, out):
     m = [float(v) for v in re.findall(r'-?[\d.]+(?:e-?\d+)?', t)]
     viewport = (m[4], m[5], m[0]) if len(m) == 6 else tuple(case['viewport'])
     shot(page, box, case, out)
+    # Where Dify draws text (every non-empty text node in the canvas), relative to the captured region.
+    rects = page.evaluate(TEXT_RECTS)
+    ox, oy = box['x'] + case['region'][0], box['y'] + case['region'][1]
+    out.with_suffix('.text.json').write_text(json.dumps([[r[0] - ox, r[1] - oy, r[2] - ox, r[3] - oy] for r in rects]))
     ctx.close()
     return box, viewport
+
+
+TEXT_RECTS = """() => {
+  const out = [];
+  const root = document.querySelector('.react-flow');
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (!n.textContent.trim()) continue;
+    const range = document.createRange();
+    range.selectNodeContents(n);
+    for (const r of range.getClientRects()) if (r.width > 0 && r.height > 0) out.push([r.left, r.top, r.right, r.bottom]);
+  }
+  return out;
+}"""
 
 
 def capture_ours(browser, base, doc, case, out, viewport):
@@ -109,13 +127,20 @@ def shot(page, box, case, out):
     page.screenshot(path=str(out), clip={'x': box['x'] + ox, 'y': box['y'] + oy, 'width': w, 'height': h})
 
 
-def similarity(a, b):
+def similarity(a, b, text_rects=()):
+    """Share of pixels within 16/255: over all pixels, and over the pixels outside Dify's text boxes (the acceptance
+    measure; browsers and Flutter rasterise glyphs differently, text placement is checked by alignment_audit.py)."""
     ia = np.asarray(Image.open(a).convert('RGB'), dtype=np.int16)
     ib = np.asarray(Image.open(b).convert('RGB'), dtype=np.int16)
     diff = np.abs(ia - ib).max(axis=2)
+    keep = np.ones(diff.shape, bool)
+    h, w = diff.shape
+    for l, t, r, btm in text_rects:
+        keep[max(0, int(t) - 1):min(h, int(np.ceil(btm)) + 1), max(0, int(l) - 1):min(w, int(np.ceil(r)) + 1)] = False
     same = (diff <= 16).mean()
-    heat = Image.fromarray(np.where(diff > 16, 255, 0).astype(np.uint8))
-    return same, heat
+    non_text = (diff[keep] <= 16).mean()
+    heat = Image.fromarray(np.where(diff > 16, 255, np.where(keep, 0, 60)).astype(np.uint8))
+    return same, non_text, heat
 
 
 def main():
@@ -152,13 +177,15 @@ def main():
                       f'canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} ours {obox["x"]:.2f},{obox["y"]:.2f}')
             finally:
                 s.delete(f'{DIFY}/console/api/apps/{app_id}')
-            same, heat = similarity(web, ours)
+            same, non_text, heat = similarity(web, ours, json.loads(web.with_suffix('.text.json').read_text()))
             heat.save(out / 'diff' / f'{c["id"]}.png')
-            rows.append((c['id'], same))
-            print(f'{c["id"]}: {same * 100:.2f}% of pixels within 16/255')
+            rows.append((c['id'], non_text, same))
+            print(f'{c["id"]}: non-text {non_text * 100:.2f}%, all {same * 100:.2f}% of pixels within 16/255')
         browser.close()
     server.shutdown()
-    (out / 'report.md').write_text('| case | pixels within 16/255 |\n|---|---|\n' + ''.join(f'| {i} | {v * 100:.2f}% |\n' for i, v in rows))
+    (out / 'report.md').write_text(
+        '| case | non-text pixels within 16/255 (pass: 99.5%) | all pixels |\n|---|---|---|\n'
+        + ''.join(f'| {i} | {n * 100:.2f}% | {v * 100:.2f}% |\n' for i, n, v in rows))
 
 
 if __name__ == '__main__':
