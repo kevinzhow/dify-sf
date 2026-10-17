@@ -40,6 +40,11 @@ class DifyI18n implements Translator {
       'app-debug',
       'share',
       'pipeline',
+      'plugin-trigger',
+      'dataset',
+      'dataset-settings',
+      'dataset-creation',
+      'dataset-documents',
     ],
   }) async {
     final b = bundle ?? rootBundle;
