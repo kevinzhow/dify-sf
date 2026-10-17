@@ -30,7 +30,17 @@ class DifyI18n implements Translator {
   static Future<DifyI18n> load(
     String language, {
     AssetBundle? bundle,
-    List<String> namespaces = const ['workflow', 'common', 'plugin', 'tools', 'app', 'time'],
+    List<String> namespaces = const [
+      'workflow',
+      'common',
+      'plugin',
+      'tools',
+      'app',
+      'time',
+      'app-debug',
+      'share',
+      'pipeline',
+    ],
   }) async {
     final b = bundle ?? rootBundle;
     Future<Map<String, Map<String, String>>> read(String lang) async => {
