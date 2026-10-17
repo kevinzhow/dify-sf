@@ -122,6 +122,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       selection: selection,
       cards: widget.cards,
       onUnavailable: _fallBackToWidgets,
+      onSettled: CanvasDefaults.reportRect ? () => debugPrint('CANVAS_SETTLED') : null,
     ),
     CanvasRendererKind.widgets => WidgetRenderer(graph: graph, view: view, selection: selection, cards: widget.cards),
   };

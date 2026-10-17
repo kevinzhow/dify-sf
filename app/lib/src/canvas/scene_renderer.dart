@@ -88,6 +88,7 @@ class SceneRenderer extends CanvasRenderer {
     required this.selection,
     required this.cards,
     required this.onUnavailable,
+    this.onSettled,
   }) {
     Scene.initializeStaticResources().then((_) => _start(), onError: (Object e) => onUnavailable(e));
   }
@@ -95,6 +96,10 @@ class SceneRenderer extends CanvasRenderer {
   final CanvasGraph graph;
   final CanvasViewState view;
   final CanvasSelection selection;
+
+  /// Called each time every card on screen shows its final capture (overviews, live and exact captures done).
+  final VoidCallback? onSettled;
+  bool _reportedSettled = false;
   final CardSpec cards;
   final void Function(Object error) onUnavailable;
 
@@ -871,6 +876,17 @@ class SceneRenderer extends CanvasRenderer {
     }
   }
 
+  void _reportSettled() {
+    final done =
+        _overviewQueue.isEmpty &&
+        _overviewInFlight.isEmpty &&
+        _dirty.isEmpty &&
+        _liveStale.isEmpty &&
+        (_exactSettled || view.scale < SceneTuning.overviewMaxScale || !SceneTuning.exactAtRest);
+    if (done && !_reportedSettled) onSettled?.call();
+    _reportedSettled = done;
+  }
+
   // ----- per frame -----
 
   /// Keeps live components on the cards near the view, releases far ones, sharpens at rest, refreshes overviews.
@@ -889,7 +905,11 @@ class SceneRenderer extends CanvasRenderer {
     _lastCenter = view.center;
     _lastScale = view.scale;
     // Every card already shows real content (live or overview), so capture work waits until the view rests.
-    if (now - _lastMove < 150000) return;
+    if (now - _lastMove < 150000) {
+      _reportedSettled = false;
+      return;
+    }
+    _reportSettled();
     _liveStep();
     _overviewStep();
     _exactStep();

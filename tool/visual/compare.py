@@ -117,17 +117,23 @@ def capture_ours(browser, base, doc, case, out, viewport):
     views = []
     page.on('console', lambda m: rect.append(m.text) if m.text.startswith('CANVAS_RECT') else None)
     page.on('console', lambda m: views.append(m.text) if m.text.startswith('CANVAS_VIEW') else None)
+    settled = []
+    page.on('console', lambda m: settled.append(1) if m.text.startswith('CANVAS_SETTLED') else None)
     x, y, z = viewport
     page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1&name=alice' + (f'&{EXTRA}' if EXTRA else ''))
     t0 = time.time()
     while not rect and time.time() - t0 < 60:
         page.wait_for_timeout(200)
-    page.wait_for_timeout(2500)  # captures and overviews
+    # Until every card on screen shows its final capture (the scene renderer says so), at most 20 s.
+    t1 = time.time()
+    while not settled and time.time() - t1 < 20:
+        page.wait_for_timeout(200)
+    page.wait_for_timeout(500 if settled else 0)
     l, t, w, h = (float(v) for v in rect[-1].split()[1].split(','))
     box = {'x': l, 'y': t, 'width': w, 'height': h}
     shot(page, box, case, out)
     if views:
-        print(f'  ours at rest: {views[-1]}')
+        print(f'  ours at rest: {views[-1]}{"" if settled else " (never settled)"}')
     ctx.close()
     return box
 
