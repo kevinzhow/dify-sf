@@ -22,5 +22,6 @@ Future<void> main(List<String> args) async {
   await DifyI18n.load(options.lang ?? difyLanguageFor(WidgetsBinding.instance.platformDispatcher.locale));
   CanvasDefaults.viewport = CanvasDefaults.parseViewport(options.view);
   CanvasDefaults.reportRect = kIsWeb && Uri.base.queryParameters['visual'] == '1';
+  if (CanvasDefaults.reportRect) CanvasDefaults.select = Uri.base.queryParameters['select'];
   runApp(buildApp(settings, launch: options));
 }

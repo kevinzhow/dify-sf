@@ -25,6 +25,9 @@ abstract final class CanvasDefaults {
   /// Visual tests: print the canvas's rectangle on screen (`CANVAS_RECT left,top,width,height`) once it is laid out.
   static bool reportRect = false;
 
+  /// Visual tests: the node selected once the document is shown (its panel opens, as after a click in Dify).
+  static String? select;
+
   static (double, double, double)? parseViewport(String? s) {
     final p = s?.split(',').map(double.tryParse).toList();
     if (p == null || p.length != 3 || p.contains(null)) return null;
@@ -180,6 +183,11 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   void _fit() {
     final vp = _fitted ? null : CanvasDefaults.viewport;
     _fitted = true;
+    final select = CanvasDefaults.select;
+    if (select != null && c.doc.nodes.containsKey(select)) {
+      CanvasDefaults.select = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? c.selectNode(select) : null);
+    }
     if (vp != null) {
       // React Flow: screen = canvas * zoom + (x, y); our view is the canvas point at the middle of the viewport.
       view

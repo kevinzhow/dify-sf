@@ -83,6 +83,15 @@ def capture_dify(browser, s, app_id, case, out):
     t = page.evaluate("getComputedStyle(document.querySelector('.react-flow__viewport')).transform")
     m = [float(v) for v in re.findall(r'-?[\d.]+(?:e-?\d+)?', t)]
     viewport = (m[4], m[5], m[0]) if len(m) == 6 else tuple(case['viewport'])
+    if case.get('select'):
+        # Open the node's panel as a user would (the viewport is read before: the panel does not move it).
+        node = page.locator(f'.react-flow__node[data-id="{case["select"]}"]')
+        try:
+            node.click(timeout=5000)
+        except Exception:
+            # Off screen (Dify fitted the view elsewhere): React Flow selects on the element's click all the same.
+            node.dispatch_event('click')
+        page.wait_for_timeout(1200)
     shot(page, box, case, out)
     # Where Dify draws text (every non-empty text node in the canvas), relative to the captured region.
     rects = page.evaluate(TEXT_RECTS)
@@ -120,7 +129,8 @@ def capture_ours(browser, base, doc, case, out, viewport):
     settled = []
     page.on('console', lambda m: settled.append(1) if m.text.startswith('CANVAS_SETTLED') else None)
     x, y, z = viewport
-    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1&name=alice' + (f'&{EXTRA}' if EXTRA else ''))
+    select = f'&select={case["select"]}' if case.get('select') else ''
+    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1&name=alice{select}' + (f'&{EXTRA}' if EXTRA else ''))
     t0 = time.time()
     while not rect and time.time() - t0 < 60:
         page.wait_for_timeout(200)
