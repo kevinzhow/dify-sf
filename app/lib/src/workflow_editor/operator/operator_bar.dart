@@ -64,7 +64,8 @@ class _WorkflowOperatorState extends State<WorkflowOperator> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             UndoRedo(history: widget.history, onUndo: a.historyBack, onRedo: a.historyForward),
-            ?widget.variableTrigger,
+            // VariableTrigger's wrapper is `flex items-center`, stretched to the row (the zoom pill's h-9).
+            if (widget.variableTrigger != null) SizedBox(height: 36, child: Center(child: widget.variableTrigger)),
             ListenableBuilder(
               listenable: Listenable.merge([store.showUserComments, store.showUserCursors, store.controlMode]),
               builder: (context, _) => ZoomInOut(
