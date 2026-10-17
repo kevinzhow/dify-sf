@@ -725,16 +725,22 @@ class _OptionCardState extends State<OptionCard> {
               ),
               boxShadow: selected || hovered ? DifyShadows.xs : null,
             ),
-            child: Row(
-              mainAxisAlignment: w.align,
-              children: [
-                DifyText(
+            // Long titles end in an ellipsis where the card has a width (a Flexible needs one).
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final text = DifyText(
                   w.title,
                   selected ? DifyType.systemSmMedium : DifyType.systemSmRegular,
                   color: w.disabled ? DifyColors.textDisabled : DifyColors.textSecondary,
-                ),
-                if (w.tooltip != null) Infotip(label: w.tooltip!, width: 240, content: Text(w.tooltip!)),
-              ],
+                );
+                return Row(
+                  mainAxisAlignment: w.align,
+                  children: [
+                    c.hasBoundedWidth ? Flexible(child: text) : text,
+                    if (w.tooltip != null) Infotip(label: w.tooltip!, width: 240, content: Text(w.tooltip!)),
+                  ],
+                );
+              },
             ),
           ),
         ),

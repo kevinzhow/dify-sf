@@ -23,6 +23,7 @@ class WorkflowEditor extends StatefulWidget {
     this.operator,
     this.panels,
     this.menuOptions = const WorkflowMenuOptions(),
+    this.overlay,
   });
 
   final EditorController controller;
@@ -39,6 +40,9 @@ class WorkflowEditor extends StatefulWidget {
 
   /// panel/index.tsx: `absolute top-14 right-0 bottom-1 z-10 flex`.
   final Widget Function(BuildContext context, CanvasController canvas)? panels;
+
+  /// Drawn over the canvas, under the chrome (the candidate node that follows the pointer).
+  final Widget Function(BuildContext context, CanvasController canvas)? overlay;
 
   /// What the context menus, the node "…" bar and the edit shortcuts call for actions that leave the canvas.
   final WorkflowMenuOptions menuOptions;
@@ -102,6 +106,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   child: WorkflowCanvas(controller: w.controller, canvas: canvas),
                 ),
               ),
+              if (w.overlay != null) Positioned.fill(child: w.overlay!(context, canvas)),
               if (w.header != null)
                 // `absolute top-7 h-0 items-center`: centred 28 px from the top. A 56 px band (not a zero-height box,
                 // which hit testing would ignore) lets the controls take clicks; empty parts of it pass them on.

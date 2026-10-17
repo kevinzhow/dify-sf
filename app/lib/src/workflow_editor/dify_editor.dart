@@ -5,6 +5,7 @@ import '../canvas/canvas_controller.dart';
 import '../cards/card_kit.dart';
 import '../design/dify_tokens.g.dart';
 import '../editor/editor_controller.dart';
+import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
 import 'context_menu/context_menu.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
@@ -16,6 +17,7 @@ import 'node_panel/node_panel.dart';
 import 'operator/operator.dart';
 import 'store/store.dart';
 import 'variable_inspect/trigger.dart';
+import 'block_selector/block_selector.dart';
 import 'workflow_editor.dart';
 
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
@@ -39,6 +41,17 @@ class DifyWorkflowEditor extends StatelessWidget {
   /// The host's actions (add node, export, demo), shown behind the session menu.
   final List<Widget> actions;
 
+  /// Puts a placed candidate (and an iteration's or loop's start node) into the document as one undo step.
+  void _place(CandidatePlacement p) {
+    final doc = controller.doc;
+    controller.addNodes(
+      [
+        for (final json in [p.node, ?p.startNode]) nodeFromDify(json, doc, id: json['id']! as String),
+      ],
+      event: p.historyEvent == 'NoteAdd' ? HistoryEvent.noteAdd : HistoryEvent.nodeAdd,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
@@ -56,35 +69,49 @@ class DifyWorkflowEditor extends StatelessWidget {
         color: DifyColors.textPrimary,
         leadingDistribution: TextLeadingDistribution.even,
       ),
-      child: OperatorShortcuts(
-        history: controller.undo,
-        options: options,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            WorkflowEditor(
-              controller: controller,
-              menuOptions: menuOptions,
-              header: (context, canvas) => _BoundHeader(
+      // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
+      child: ListenableBuilder(
+        listenable: controller,
+        builder: (context, child) => BlockSelectorScope(
+          data: BlockSelectorData(
+            chatMode: meta.isChatflow,
+            nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
+          ),
+          child: child!,
+        ),
+        child: OperatorShortcuts(
+          history: controller.undo,
+          options: options,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              WorkflowEditor(
                 controller: controller,
-                canvas: canvas,
-                meta: meta,
-                session: (anchor) => SessionBadge(
+                menuOptions: menuOptions,
+                header: (context, canvas) => _BoundHeader(
                   controller: controller,
-                  serverLabel: serverLabel,
-                  actions: actions,
-                  anchor: anchor,
-                  pill: false,
+                  canvas: canvas,
+                  meta: meta,
+                  session: (anchor) => SessionBadge(
+                    controller: controller,
+                    serverLabel: serverLabel,
+                    actions: actions,
+                    anchor: anchor,
+                    pill: false,
+                  ),
+                  left: _OfflinePill(controller: controller),
                 ),
-                left: _OfflinePill(controller: controller),
+                // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
+                overlay: (context, canvas) => CandidateNode(canvas: canvas, onPlace: _place),
+                control: workflowControlBuilder(options),
+                operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
+                // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify).
+                panels: (context, canvas) =>
+                    WorkflowPanels(controller: controller, canvas: canvas, options: menuOptions),
               ),
-              control: workflowControlBuilder(options),
-              operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
-              // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify).
-              panels: (context, canvas) => WorkflowPanels(controller: controller, canvas: canvas, options: menuOptions),
-            ),
-            NoticeOverlay(controller: controller),
-          ],
+              NoticeOverlay(controller: controller),
+            ],
+          ),
         ),
       ),
     );

@@ -94,8 +94,17 @@ Future<WorkflowClipboardReadResult> readWorkflowClipboard(String currentClipboar
 String reactFlowTypeOf(Node n) => switch (n.config['_dify_node']) {
   VMap(:final entries) => switch (entries['type']) {
     VString(:final value) => value,
-    _ => 'custom',
+    _ => _defaultReactFlowType(n.type),
   },
+  _ => _defaultReactFlowType(n.type),
+};
+
+/// The React Flow node type Dify gives a block it creates (constants.ts: CUSTOM_SIMPLE_NODE, CUSTOM_ITERATION_START_NODE…).
+String _defaultReactFlowType(String type) => switch (type) {
+  'loop-end' => 'custom-simple',
+  'iteration-start' => 'custom-iteration-start',
+  'loop-start' => 'custom-loop-start',
+  'datasource-empty' => 'custom-data-source-empty',
   _ => 'custom',
 };
 

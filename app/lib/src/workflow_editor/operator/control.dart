@@ -5,6 +5,7 @@ import '../../canvas/canvas_input.dart' show ControlMode;
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
+import '../block_selector/block_selector.dart';
 import '../store/store.dart';
 import 'action_bar.dart';
 import 'actions.dart';
@@ -132,19 +133,40 @@ class _AddBlockState extends State<AddBlock> {
   @override
   Widget build(BuildContext context) {
     final label = tw('common.addBlock');
-    return DifyPopover(
+    final data = BlockSelectorScope.of(context);
+    final store = WorkflowStoreScope.of(context);
+    final p = BlockSelectorPlacements.addBlock;
+    // add-block.tsx: the blocks that may follow Start; the Start tab outside chatflows and RAG pipelines.
+    final available = useAvailableBlocks(
+      'start',
+      availableTypes: availableNodeTypes(chatMode: data.chatMode, agentV2: data.agentV2),
+    ).next;
+    return BlockSelector(
       open: _open,
       onOpenChange: _openChange,
-      placement: DifyPlacement.rightStart,
-      sideOffset: 4,
-      alignOffset: -8,
-      semanticLabel: label,
-      content: Container(
-        constraints: const BoxConstraints(minWidth: 256),
-        padding: const EdgeInsets.all(16),
-        child: Text('Block selector', style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
+      placement: p.placement,
+      sideOffset: p.sideOffset,
+      alignOffset: p.alignOffset,
+      popupMinWidth: 256,
+      availableBlocksTypes: available,
+      showStartTab: !data.chatMode && data.flow == BlockSelectorFlow.app,
+      disabled: widget.disabled,
+      // handleSelect: the chosen block becomes the candidate that follows the pointer until a click places it.
+      onSelect: (type, defaults, {toolDefaultValue}) => store.setCandidateNode(
+        candidateNodeOf(
+          type,
+          defaults,
+          toolDefaultValue: toolDefaultValue,
+          existing: [
+            for (final n in data.nodes)
+              {
+                'id': n.id,
+                'data': {'type': n.type},
+              },
+          ],
+        ),
       ),
-      builder: (context, c) => DifyTipPopup(
+      trigger: (context, c) => DifyTipPopup(
         title: label,
         child: OperatorButton(
           label: label,

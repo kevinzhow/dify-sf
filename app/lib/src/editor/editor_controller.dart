@@ -140,6 +140,18 @@ class EditorController extends ChangeNotifier {
     return id;
   }
 
+  /// Adds nodes built elsewhere (a block placed from the block selector, with an iteration's start node) as one undo
+  /// step, and selects the first.
+  void addNodes(List<Node> nodes, {HistoryEvent event = HistoryEvent.nodeAdd}) {
+    if (nodes.isEmpty) return;
+    undo.begin(event, nodeId: nodes.first.id);
+    for (final n in nodes) {
+      _edit(AddNode(n));
+    }
+    undo.end();
+    selectNode(nodes.first.id);
+  }
+
   /// Connects [sourceHandle] of one node (a branch of an if-else, a class of a question classifier, ...) to another.
   void connect(String sourceId, String targetId, {String? sourceHandle}) {
     if (sourceId == targetId) return;
