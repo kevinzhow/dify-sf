@@ -2,5 +2,11 @@
   {"id": "canvas-basic-llm", "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
   {"id": "canvas-if-else", "fixture": "tool/visual/fixtures/conditional_hello_branching_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
   {"id": "canvas-iteration", "fixture": "tool/visual/fixtures/array_iteration_formatting_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
-  {"id": "canvas-loop", "fixture": "tool/visual/fixtures/increment_loop_with_break_condition_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]}
+  {"id": "canvas-loop", "fixture": "tool/visual/fixtures/increment_loop_with_break_condition_workflow.yml", "viewport": [40, 120, 0.8], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-answer", "fixture": "tool/visual/fixtures/basic_chatflow.yml", "viewport": [0, -178, 1.0], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-tool-template", "fixture": "tool/visual/fixtures/chatflow_time_tool_static_output_workflow.yml", "viewport": [58, -84, 0.73], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-http", "fixture": "tool/visual/fixtures/http_request_with_json_tool_workflow.yml", "viewport": [58, -62, 0.73], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-aggregator", "fixture": "tool/visual/fixtures/dual_switch_variable_aggregator_workflow.yml", "viewport": [38, 27, 0.52], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-assigner", "fixture": "tool/visual/fixtures/test_streaming_conversation_variables.yml", "viewport": [50, -146, 0.99], "window": [1440, 900], "region": [60, 64, 940, 700]},
+  {"id": "canvas-loop-answer", "fixture": "tool/visual/fixtures/loop_contains_answer.yml", "viewport": [63, -71, 0.56], "window": [1440, 900], "region": [60, 64, 940, 700]}
 ]

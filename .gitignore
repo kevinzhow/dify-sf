@@ -14,3 +14,4 @@ __pycache__/
 /server/.swiftpm/
 *.swp
 tool/visual/.venv/
+/build/

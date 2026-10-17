@@ -83,8 +83,7 @@ class EndBody extends NodeBody {
   const EndBody();
 
   List<VarRef> _refs(BodyContext ctx) => [
-    for (final o in _items(ctx['outputs']).whereType<VMap>())
-      if (VarRef.of(o.entries['value_selector'], ctx) case final r?) r,
+    for (final o in _items(ctx['outputs']).whereType<VMap>()) ?VarRef.of(o.entries['value_selector'], ctx),
   ];
 
   @override
@@ -258,7 +257,7 @@ class _ConditionLine extends StatelessWidget {
       ),
       child: Row(
         children: [
-          VariableLabel(ref: ref, inNode: false),
+          Flexible(child: VariableLabel(ref: ref, inNode: false, bare: true)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(

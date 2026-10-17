@@ -5,7 +5,8 @@
 Needs, while it runs (start them only for the run):
   * a local Dify 1.17.1 at $DIFY_URL (default http://localhost) and an account: $DIFY_EMAIL, $DIFY_PASSWORD
   * the dify-sf server at $DIFYSF_URL (default http://127.0.0.1:18080)
-  * our web build: app/build/web (flutter build web --profile), served by this script
+  * our web build: app/build/web (flutter build web --profile), served by this script; $OURS_QUERY adds query
+    parameters to its URL (canvas=widgets: the widget renderer)
 
 For each case: the workflow file (with the case's viewport written into it) is imported into Dify and into dify-sf;
 both editors are opened in the same Chromium at the same window size; the same region of each canvas (relative to
@@ -21,6 +22,8 @@ from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DIFY = os.environ.get('DIFY_URL', 'http://localhost')
 SF = os.environ.get('DIFYSF_URL', 'http://127.0.0.1:18080')
+# Extra query parameters for our app, e.g. canvas=widgets (the widget renderer instead of Flutter Scene).
+EXTRA = os.environ.get('OURS_QUERY', '')
 
 
 def dify_session():
@@ -89,7 +92,7 @@ def capture_ours(browser, base, doc, case, out, viewport):
     rect = []
     page.on('console', lambda m: rect.append(m.text) if m.text.startswith('CANVAS_RECT') else None)
     x, y, z = viewport
-    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1')
+    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1' + (f'&{EXTRA}' if EXTRA else ''))
     t0 = time.time()
     while not rect and time.time() - t0 < 60:
         page.wait_for_timeout(200)
@@ -136,13 +139,17 @@ def main():
         browser = p.chromium.launch()
         for c in cases:
             text = with_viewport((ROOT / c['fixture']).read_text(), *c['viewport'])
+            if not c.get('keepSelection'):
+                # A node saved as selected opens its panel in Dify; canvas cases compare the canvas alone.
+                text = re.sub(r'^(\s+)selected: true$', r'\1selected: false', text, flags=re.M)
             app_id, doc = dify_import(s, text), sf_import(text)
             web = out / 'visual-testing-results/react' / f'{c["id"]}.png'
             ours = out / 'visual-testing-results/android' / f'{c["id"]}.png'
             try:
-                _, viewport = capture_dify(browser, s, app_id, c, web)
-                capture_ours(browser, base, doc, c, ours, viewport)
-                print(f'{c["id"]}: Dify viewport x={viewport[0]:.1f} y={viewport[1]:.1f} zoom={viewport[2]:.3f}')
+                dbox, viewport = capture_dify(browser, s, app_id, c, web)
+                obox = capture_ours(browser, base, doc, c, ours, viewport)
+                print(f'{c["id"]}: Dify viewport x={viewport[0]:.3f} y={viewport[1]:.3f} zoom={viewport[2]:.4f}; '
+                      f'canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} ours {obox["x"]:.2f},{obox["y"]:.2f}')
             finally:
                 s.delete(f'{DIFY}/console/api/apps/{app_id}')
             same, heat = similarity(web, ours)

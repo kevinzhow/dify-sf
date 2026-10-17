@@ -71,7 +71,9 @@ class CanvasInput {
     return hit;
   }
 
-  int stackKey(CanvasNode n) => (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
+  /// Nested nodes lie above their container even when it is selected (React Flow: nested z-index 1001 > the 1000 a
+  /// selected node gets), then selected nodes, then later nodes above earlier ones.
+  int stackKey(CanvasNode n) => (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
 
   /// The node and source handle whose box is under [c] (a little larger when zoomed out).
   (CanvasNode, String)? outPortAt(Offset c) {
@@ -143,7 +145,7 @@ class CanvasInput {
         onApplied?.call('pan');
       case 'move':
         if (!_moved) _beginMove();
-        final d = c - _lastCanvas;
+        final d = _clamped(c - _lastCanvas);
         for (final slot in _moving) {
           final n = graph.slots[slot]!;
           n
@@ -274,19 +276,57 @@ class CanvasInput {
 
   // ----- moving nodes: drawn every frame, sent as at most ~8 small ops per second, and once at the end -----
 
+  /// The nodes the user drags (their containers' children come along).
+  Set<int> _leaders = {};
+
   void _beginMove() {
-    _moving = {...selection.nodes};
+    _leaders = {
+      for (final s in selection.nodes)
+        // A node whose container is also dragged moves with the container.
+        if (!_hasAncestorIn(graph.slots[s]!, selection.nodes)) s,
+    };
+    _moving = {
+      for (final s in _leaders) ...[s, for (final d in graph.descendantsOf(graph.slots[s]!.id)) d.slot],
+    };
     graph.dragging.addAll([for (final s in _moving) graph.slots[s]!.id]);
     renderer().beginMove(_moving);
     _sendTimer = Timer.periodic(const Duration(milliseconds: 125), (_) => _sendMoves());
   }
 
+  bool _hasAncestorIn(CanvasNode n, Set<int> slots) {
+    for (var p = n.parentId; p != null; p = graph[p]?.parentId) {
+      final pn = graph[p];
+      if (pn != null && slots.contains(pn.slot)) return true;
+    }
+    return false;
+  }
+
+  /// Children stay inside their container (Dify's getRestricted{Iteration,Loop}Position: 16 px from the sides, 65 px
+  /// from the top, 20 px from the bottom), so the drag is limited to what keeps every dragged child inside.
+  Offset _clamped(Offset d) {
+    var dx = d.dx, dy = d.dy;
+    for (final slot in _leaders) {
+      final n = graph.slots[slot]!;
+      final parent = n.parentId == null ? null : graph[n.parentId!];
+      if (parent == null) continue;
+      final box = parent.rect, own = Offset(n.x, n.y) - Offset(parent.x, parent.y);
+      final w = n.layout.visual.width + 2, h = n.layout.visual.height + 2; // React Flow's node box
+      dx = dx.clamp(16 - own.dx, box.width + 2 - 16 - w - own.dx);
+      dy = dy.clamp(65 - own.dy, box.height + 2 - 20 - h - own.dy);
+    }
+    return Offset(dx, dy);
+  }
+
+  /// Positions are sent for the dragged nodes only (their children's are relative and do not change); a node inside
+  /// a container sends its position relative to the container.
   void _sendMoves() {
-    for (final slot in _moving) {
+    for (final slot in _leaders) {
       final n = graph.slots[slot];
       if (n == null) continue;
       final doc = n.node.value;
-      final x = n.x.round(), y = n.y.round();
+      final parent = n.parentId == null ? null : graph[n.parentId!];
+      final rel = parent == null ? Offset(n.x, n.y) : Offset(n.x - parent.x, n.y - parent.y);
+      final x = rel.dx.round(), y = rel.dy.round();
       if (doc.x != x || doc.y != y) controller.moveNode(n.id, x, y);
     }
   }

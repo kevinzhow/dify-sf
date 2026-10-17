@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../editor/editor_controller.dart';
@@ -73,9 +75,18 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       },
     );
     view.addListener(a11y.viewMoved);
+    view.addListener(_viewMoved);
     selection.addListener(_selectionChanged);
     c.addListener(_documentChanged);
     _documentChanged();
+  }
+
+  Timer? _rest;
+
+  /// Publishes where the view came to rest (cards tied to the viewport redraw then, not while it moves).
+  void _viewMoved() {
+    _rest?.cancel();
+    _rest = Timer(const Duration(milliseconds: 150), () => graph.restingOrigin.value = view.toScreen(Offset.zero));
   }
 
   CanvasRenderer _makeRenderer(CanvasRendererKind k) => switch (k) {
@@ -166,6 +177,8 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     c.removeListener(_documentChanged);
     selection.removeListener(_selectionChanged);
     view.removeListener(a11y.viewMoved);
+    view.removeListener(_viewMoved);
+    _rest?.cancel();
     renderer.dispose();
     input.dispose();
     a11y.dispose();

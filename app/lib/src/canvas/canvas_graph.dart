@@ -41,6 +41,12 @@ class CanvasNode {
   /// Stacking: later nodes lie above earlier ones (selected nodes above all).
   final int order;
 
+  /// The container (iteration, loop) this node is inside; its position is then relative to the container's.
+  String? parentId;
+
+  /// How deeply nested the node is (0 at the top level); nested nodes and their edges lie above their container.
+  int depth = 0;
+
   /// The document's node (content changes are published here; cards listen).
   final ValueNotifier<Node> node;
 
@@ -68,10 +74,12 @@ class CanvasNode {
   // Handles (node-handle.tsx): 16 x 16 boxes straddling the card's side. React Flow connects at the box's outer side,
   // half way down.
   static const handleBox = 16.0;
-  // Measured from the card's outer edge (Dify positions handles inside the card's 1 px border: -right-[9px] and
-  // top-4 put the box 8 px outside and its middle 25 px down).
+  // Measured from the card's outer edge. Dify positions the 16 px handle box inside the card's 1 px border with
+  // `-right-[9px] top-4 translate-y-0`; React Flow's own `transform: translate(0, -50%)` still applies (Tailwind v4's
+  // `translate-*` set the separate `translate` property), so the box's middle, where edges attach, is 1 + 16 - 8 + 8
+  // = 17 px down, and its outer side 8 px outside the card.
   static const handleOut = 8.0;
-  static const defaultHandleY = 25.0;
+  static const defaultHandleY = 17.0;
 
   /// The target (input) handle's connection point.
   Offset get inPort => Offset(rect.left - handleOut, rect.top + defaultHandleY);
@@ -145,6 +153,28 @@ class CanvasGraph {
   /// Where the nodes are, for hit testing and culling.
   final grid = SpatialGrid();
 
+  /// Where the canvas origin was on screen (React Flow's viewport x, y) when the view last came to rest; cards whose
+  /// content depends on the viewport listen to it (React Flow backgrounds inside containers).
+  final restingOrigin = ValueNotifier(Offset.zero);
+
+  int _depth(Node n, Document doc) {
+    var d = 0;
+    for (var p = parentOf(n); p != null && d < 8; p = doc.nodes[p] == null ? null : parentOf(doc.nodes[p]!)) {
+      d++;
+    }
+    return d;
+  }
+
+  /// A node's descendants (children of containers, recursively).
+  Iterable<CanvasNode> descendantsOf(String id) sync* {
+    for (final n in _byId.values) {
+      if (n.parentId == id) {
+        yield n;
+        yield* descendantsOf(n.id);
+      }
+    }
+  }
+
   Iterable<CanvasNode> get nodes => _byId.values;
   int get length => _byId.length;
   CanvasNode? operator [](String id) => _byId[id];
@@ -155,6 +185,27 @@ class CanvasGraph {
       r = r == null ? n.visual : r.expandToInclude(n.visual);
     }
     return r ?? Rect.zero;
+  }
+
+  /// The container a node sits in (Dify keeps `parentId` in `_dify_node`).
+  static String? parentOf(Node n) => switch (n.config['_dify_node']) {
+    VMap(:final entries) => switch (entries['parentId']) {
+      VString(:final value) when value.isNotEmpty => value,
+      _ => null,
+    },
+    _ => null,
+  };
+
+  /// A container's absolute position (its children's positions are relative to it).
+  Offset absoluteOf(String id, Document doc, [int guard = 0]) {
+    final n = doc.nodes[id];
+    if (n == null) return Offset.zero;
+    final parent = parentOf(n);
+    final own = dragging.contains(id) && _byId[id] != null
+        ? Offset(_byId[id]!.x, _byId[id]!.y) - (parent == null ? Offset.zero : absoluteOf(parent, doc, guard + 1))
+        : Offset(n.x.toDouble(), n.y.toDouble());
+    if (parent == null || guard > 8 || doc.nodes[parent] == null) return own;
+    return absoluteOf(parent, doc, guard + 1) + own;
   }
 
   CanvasChange sync(Document doc) {
@@ -173,6 +224,12 @@ class CanvasGraph {
       if (n == null) {
         final slot = _free.isNotEmpty ? _free.removeLast() : slots.length;
         final c = CanvasNode(slot, node, layoutOf(node, doc), _nextOrder++);
+        final at = absoluteOf(node.id, doc);
+        c
+          ..x = at.dx
+          ..y = at.dy
+          ..parentId = parentOf(node)
+          ..depth = _depth(node, doc);
         if (slot == slots.length) {
           slots.add(c);
         } else {
@@ -183,16 +240,21 @@ class CanvasGraph {
         change.added.add(c);
         continue;
       }
-      if (identical(n.node.value, node)) continue;
-      final old = n.node.value;
-      n.node.value = node;
-      if (!dragging.contains(node.id) && (old.x != node.x || old.y != node.y)) {
+      final at = absoluteOf(node.id, doc);
+      if (!dragging.contains(node.id) && (n.x != at.dx || n.y != at.dy)) {
+        // Moved itself, or its container moved.
         n
-          ..x = node.x.toDouble()
-          ..y = node.y.toDouble();
+          ..x = at.dx
+          ..y = at.dy;
         grid.put(n.slot, n.rect.topLeft);
         change.moved.add(n);
       }
+      if (identical(n.node.value, node)) continue;
+      final old = n.node.value;
+      n.node.value = node;
+      n
+        ..parentId = parentOf(node)
+        ..depth = _depth(node, doc);
       final layout = layoutOf(node, doc);
       if (layout.card != n.layout.card ||
           layout.visual != n.layout.visual ||

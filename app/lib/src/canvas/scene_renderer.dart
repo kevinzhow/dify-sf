@@ -268,8 +268,9 @@ class SceneRenderer extends CanvasRenderer {
   double _lift(int slot) {
     final n = graph.slots[slot];
     if (n == null) return 0;
-    if (_moving.contains(slot)) return 0.5;
-    return (selection.nodes.contains(slot) ? 0.2 : 0) + (n.order % 100000) * 1e-6;
+    if (_moving.contains(slot)) return 0.5 + n.depth * 0.3;
+    // Nested nodes above their container (even a selected one), then selected nodes, then later above earlier.
+    return n.depth * 0.3 + (selection.nodes.contains(slot) ? 0.2 : 0) + (n.order % 100000) * 1e-6;
   }
 
   /// Puts every visual of [slot] where its node is; a moving node is lifted towards the camera.
@@ -411,6 +412,13 @@ class SceneRenderer extends CanvasRenderer {
       _place(s);
     }
     _replaceEdgeNode(_liveEdges, (n) => _liveEdges = n, _edgesWhere(live: true), _edgeMaterial);
+    _replaceEdgeNode(
+      _nestedLiveEdges,
+      (n) => _nestedLiveEdges = n,
+      _edgesWhere(live: true, nested: true),
+      _edgeMaterial,
+      lift: 0.75,
+    );
   }
 
   @override
@@ -425,8 +433,10 @@ class SceneRenderer extends CanvasRenderer {
 
   // ----- edges -----
 
-  Iterable<CanvasEdge> _edgesWhere({required bool live}) => graph.edges.where(
-    (e) => (_moving.contains(e.source) || _moving.contains(e.target)) == live,
+  Iterable<CanvasEdge> _edgesWhere({required bool live, bool nested = false}) => graph.edges.where(
+    (e) =>
+        (_moving.contains(e.source) || _moving.contains(e.target)) == live &&
+        ((graph.slots[e.source]?.depth ?? 0) > 0) == nested,
   );
 
   Node? _edgeNode(
@@ -465,10 +475,28 @@ class SceneRenderer extends CanvasRenderer {
     set(n);
   }
 
+  // Edges inside containers lie above the container's body and below its children.
+  Node? _nestedEdges;
+  Node? _nestedLiveEdges;
+
   void _rebuildEdges() {
     _syncMarkers();
     _replaceEdgeNode(_staticEdges, (n) => _staticEdges = n, _edgesWhere(live: false), _edgeMaterial);
     _replaceEdgeNode(_liveEdges, (n) => _liveEdges = n, _edgesWhere(live: true), _edgeMaterial);
+    _replaceEdgeNode(
+      _nestedEdges,
+      (n) => _nestedEdges = n,
+      _edgesWhere(live: false, nested: true),
+      _edgeMaterial,
+      lift: 0.25,
+    );
+    _replaceEdgeNode(
+      _nestedLiveEdges,
+      (n) => _nestedLiveEdges = n,
+      _edgesWhere(live: true, nested: true),
+      _edgeMaterial,
+      lift: 0.75,
+    );
     _showSelectedEdge();
   }
 

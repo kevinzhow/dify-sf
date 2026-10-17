@@ -63,7 +63,6 @@ class WidgetRenderer extends CanvasRenderer {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return ListenableBuilder(
       listenable: Listenable.merge([_version, view]),
       builder: (context, _) {
@@ -72,18 +71,39 @@ class WidgetRenderer extends CanvasRenderer {
           ..translateByDouble(view.viewport.width / 2, view.viewport.height / 2, 0, 1)
           ..scaleByDouble(view.scale, view.scale, 1, 1)
           ..translateByDouble(-view.center.dx, -view.center.dy, 0, 1);
+        // Per nesting depth: that depth's edges, then its cards (edges inside a container lie above the container
+        // and below its children).
+        final cards = _stacked(visible);
+        final depths = {0, for (final n in cards) n.depth}.toList()..sort();
         final children = <Widget>[
-          RepaintBoundary(
-            child: CustomPaint(
-              painter: _EdgePainter(graph, _edgesVersion.value, live: false, moving: _moving, selected: selection.edge),
+          for (final d in depths) ...[
+            RepaintBoundary(
+              child: CustomPaint(
+                painter: _EdgePainter(
+                  graph,
+                  _edgesVersion.value,
+                  live: false,
+                  moving: _moving,
+                  selected: selection.edge,
+                  depth: d,
+                ),
+              ),
             ),
-          ),
-          if (_moving.isNotEmpty)
-            CustomPaint(
-              painter: _EdgePainter(graph, _version.value, live: true, moving: _moving, selected: selection.edge),
-            ),
+            if (_moving.isNotEmpty)
+              CustomPaint(
+                painter: _EdgePainter(
+                  graph,
+                  _version.value,
+                  live: true,
+                  moving: _moving,
+                  selected: selection.edge,
+                  depth: d,
+                ),
+              ),
+            for (final n in cards)
+              if (n.depth == d) _card(context, n),
+          ],
           if (_preview != null) CustomPaint(painter: _PreviewPainter(_preview!)),
-          for (final n in _stacked(visible)) _card(context, n),
         ];
         return ClipRect(
           child: Transform(
@@ -97,7 +117,7 @@ class WidgetRenderer extends CanvasRenderer {
 
   /// Cards in [visible], bottom to top: selected nodes above the others, later nodes above earlier ones.
   List<CanvasNode> _stacked(Rect visible) {
-    int key(CanvasNode n) => (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
+    int key(CanvasNode n) => (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
     return [
       for (final slot in graph.grid.near(visible))
         if (graph.slots[slot] case final n? when visible.overlaps(n.rect)) n,
@@ -117,7 +137,12 @@ class WidgetRenderer extends CanvasRenderer {
       for (final e in graph.edges) ...[
         if (e.target == n.slot) ('in', ''),
         if (e.source == n.slot)
-          ('out', n.layout.sources.containsKey(e.sourceHandle) ? e.sourceHandle : n.layout.sources.keys.first),
+          (
+            'out',
+            n.layout.sources.containsKey(e.sourceHandle)
+                ? e.sourceHandle
+                : n.layout.sources.keys.firstOrNull ?? 'source',
+          ),
       ],
     };
     // One box covering what is drawn for the node, its selected frame and its handles.
@@ -199,24 +224,18 @@ class WidgetRenderer extends CanvasRenderer {
   }
 }
 
-class _Handle extends StatelessWidget {
-  const _Handle({super.key, required this.color});
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 12,
-    height: 12,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: Theme.of(context).colorScheme.surface,
-      border: Border.all(color: color, width: 2),
-    ),
-  );
-}
-
 class _EdgePainter extends CustomPainter {
-  _EdgePainter(this.graph, this.version, {required this.live, required this.moving, required this.selected});
+  _EdgePainter(
+    this.graph,
+    this.version, {
+    required this.live,
+    required this.moving,
+    required this.selected,
+    this.depth = 0,
+  });
+
+  /// Only edges whose source is at this nesting depth.
+  final int depth;
 
   final CanvasGraph graph;
   final int version;
@@ -230,7 +249,7 @@ class _EdgePainter extends CustomPainter {
       final isLive = moving.contains(e.source) || moving.contains(e.target);
       if (isLive != live) continue;
       final a = graph.slots[e.source], b = graph.slots[e.target];
-      if (a == null || b == null) continue;
+      if (a == null || b == null || a.depth != depth) continue;
       canvas.drawPath(
         _path(edgeCurve(a.outPortFor(e.sourceHandle), b.inPort)),
         Paint()
@@ -242,7 +261,8 @@ class _EdgePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_EdgePainter old) => old.version != version || old.selected != selected || live;
+  bool shouldRepaint(_EdgePainter old) =>
+      old.version != version || old.selected != selected || old.depth != depth || live;
 }
 
 Path _path(List<Offset> pts) {

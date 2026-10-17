@@ -85,30 +85,35 @@ class RemixIcon extends StatelessWidget {
 
 /// The block icon glyph per node type (workflow/block-icon.tsx: Start draws `user-input`, the others
 /// DEFAULT_ICON_MAP).
-String blockGlyph(String type) => 'vender/workflow/${switch (type) {
-  'start' => 'user-input',
-  'start-placeholder' => 'start-placeholder',
-  'llm' => 'llm',
-  'code' => 'code',
-  'end' => 'end',
-  'if-else' => 'if-else',
-  'http-request' => 'http',
-  'answer' => 'answer',
-  'knowledge-retrieval' => 'knowledge-retrieval',
-  'question-classifier' => 'question-classifier',
-  'template-transform' => 'templating-transform',
-  'assigner' => 'assigner',
-  'iteration' => 'iteration',
-  'loop' => 'loop',
-  'loop-end' => 'loop-end',
-  'parameter-extractor' => 'parameter-extractor',
-  'document-extractor' => 'docs-extractor',
-  'list-operator' => 'list-filter',
-  'agent' || 'agent-v2' => 'agent',
-  'knowledge-index' => 'knowledge-base',
-  'datasource' => 'datasource',
-  'trigger-schedule' => 'schedule',
-  'trigger-webhook' => 'webhook-line',
-  'human-input' => 'human-in-loop',
-  _ => 'variable-x', // variable assigner/aggregator, tool, iteration/loop start, trigger plugin
-}}';
+/// The glyph of the small node icon in variable labels (VarBlockIcon: DEFAULT_ICON_MAP, where Start is `home`).
+String varBlockGlyph(String type) =>
+    type == 'start' || type == 'start-placeholder' ? 'vender/workflow/home' : blockGlyph(type);
+
+String blockGlyph(String type) =>
+    'vender/workflow/${switch (type) {
+      'start' => 'user-input',
+      'start-placeholder' => 'start-placeholder',
+      'llm' => 'llm',
+      'code' => 'code',
+      'end' => 'end',
+      'if-else' => 'if-else',
+      'http-request' => 'http',
+      'answer' => 'answer',
+      'knowledge-retrieval' => 'knowledge-retrieval',
+      'question-classifier' => 'question-classifier',
+      'template-transform' => 'templating-transform',
+      'assigner' => 'assigner',
+      'iteration' => 'iteration',
+      'loop' => 'loop',
+      'loop-end' => 'loop-end',
+      'parameter-extractor' => 'parameter-extractor',
+      'document-extractor' => 'docs-extractor',
+      'list-operator' => 'list-filter',
+      'agent' || 'agent-v2' => 'agent',
+      'knowledge-index' => 'knowledge-base',
+      'datasource' => 'datasource',
+      'trigger-schedule' => 'schedule',
+      'trigger-webhook' => 'webhook-line',
+      'human-input' => 'human-in-loop',
+      _ => 'variable-x', // variable assigner/aggregator, tool, iteration/loop start, trigger plugin
+    }}';
