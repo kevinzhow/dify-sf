@@ -293,54 +293,59 @@ void main() {
       expect(snap.integrityProblems, isEmpty);
     });
 
-    test('1.6 restore: undo of a delete brings back node, edges and references; a stale restore of another '
-        "client's delete is a conflict", () async {
-      final before = (await api.snapshot(doc)).doc;
-      final llm = before.nodes['llm']!;
-      final edges = [
-        for (final e in before.edges.values)
-          if (e.source == 'llm' || e.target == 'llm') e,
-      ]..sort((a, b) => a.id.compareTo(b.id));
-      expect(edges.map((e) => e.id), ['e-llm-code', 'e-start-llm']);
-      expect(
-        (await post('cli-r', [(1, 0, const RemoveNode('llm'))])).results.single,
-        isA<AckResult>().having((a) => a.seq, 'seq', 1),
-      );
-      final gone = (await api.snapshot(doc)).doc;
-      expect(gone.nodes['code']!.config['inputs'], const VBroken(OutputRef('llm', 'text')));
-      // Someone who has not seen the delete cannot restore it (stale tombstone) ...
-      final stale = await post('cli-s', [(1, 0, RestoreNode(llm, edges))]);
-      expect(
-        (stale.results.single as RejectResult).reason,
-        const Conflict(node: 'llm', field: null, seq: 1, by: 'cli-r'),
-      );
-      // ... the deleter can (the same base as its delete: an undo pressed right away).
-      final undo = await post('cli-r', [(2, 0, RestoreNode(llm, edges))]);
-      expect(undo.results.single, isA<AckResult>().having((a) => a.seq, 'seq', 2));
-      final back = (await api.snapshot(doc)).doc;
-      expect(back.nodes['llm'], llm);
-      expect(back.edges, before.edges);
-      expect(back.deletedNodes, isEmpty);
-      expect(back.deletedEdges, isEmpty);
-      expect(back.nodes['code']!.config['inputs'], const VRef(OutputRef('llm', 'text')));
-      expect(back.integrityProblems, isEmpty);
-      // The client's own replay of the log gives the server's document, version metadata included.
-      final replay = Templates.example()
-        ..apply(const RemoveNode('llm'), const Stamp(1, 'cli-r'))
-        ..apply(RestoreNode(llm, edges), const Stamp(2, 'cli-r'));
-      expect(replay, back);
-      // A write based on a version before the restore is stale: it names the restore.
-      final late = await post('cli-s', [
-        (2, 0, const SetField('llm', ConfigKey(['prompt']), VString('stale'))),
-      ]);
-      expect(
-        (late.results.single as RejectResult).reason,
-        const Conflict(node: 'llm', field: ConfigKey([]), seq: 2, by: 'cli-r'),
-      );
-      // A second restore: the node exists.
-      final again = await post('cli-r', [(3, 2, RestoreNode(llm, edges))]);
-      expect((again.results.single as RejectResult).reason, const NodeExists('llm'));
-    });
+    test(
+      '1.6 restore: undo of a delete brings back node, edges and references; only the deleter may restore',
+      () async {
+        final before = (await api.snapshot(doc)).doc;
+        final llm = before.nodes['llm']!;
+        final edges = [
+          for (final e in before.edges.values)
+            if (e.source == 'llm' || e.target == 'llm') e,
+        ]..sort((a, b) => a.id.compareTo(b.id));
+        expect(edges.map((e) => e.id), ['e-llm-code', 'e-start-llm']);
+        expect(
+          (await post('cli-r', [(1, 0, const RemoveNode('llm'))])).results.single,
+          isA<AckResult>().having((a) => a.seq, 'seq', 1),
+        );
+        final gone = (await api.snapshot(doc)).doc;
+        expect(gone.nodes['code']!.config['inputs'], const VBroken(OutputRef('llm', 'text')));
+        // Only the deleter may undo a delete: anyone else gets notDeleter, whatever their base ...
+        final other = await post('cli-s', [(1, 0, RestoreNode(llm, edges)), (2, 1, RestoreNode(llm, edges))]);
+        expect(
+          [for (final r in other.results) (r as RejectResult).reason],
+          [
+            const NotDeleter('llm', 'cli-r'),
+            const NotDeleter('llm', 'cli-r'),
+          ],
+        );
+        // ... the deleter can (the same base as its delete: an undo pressed right away).
+        final undo = await post('cli-r', [(2, 0, RestoreNode(llm, edges))]);
+        expect(undo.results.single, isA<AckResult>().having((a) => a.seq, 'seq', 2));
+        final back = (await api.snapshot(doc)).doc;
+        expect(back.nodes['llm'], llm);
+        expect(back.edges, before.edges);
+        expect(back.deletedNodes, isEmpty);
+        expect(back.deletedEdges, isEmpty);
+        expect(back.nodes['code']!.config['inputs'], const VRef(OutputRef('llm', 'text')));
+        expect(back.integrityProblems, isEmpty);
+        // The client's own replay of the log gives the server's document, version metadata included.
+        final replay = Templates.example()
+          ..apply(const RemoveNode('llm'), const Stamp(1, 'cli-r'))
+          ..apply(RestoreNode(llm, edges), const Stamp(2, 'cli-r'));
+        expect(replay, back);
+        // A write based on a version before the restore is stale: it names the restore.
+        final late = await post('cli-s', [
+          (3, 0, const SetField('llm', ConfigKey(['prompt']), VString('stale'))),
+        ]);
+        expect(
+          (late.results.single as RejectResult).reason,
+          const Conflict(node: 'llm', field: ConfigKey([]), seq: 2, by: 'cli-r'),
+        );
+        // A second restore: the node exists.
+        final again = await post('cli-r', [(3, 2, RestoreNode(llm, edges))]);
+        expect((again.results.single as RejectResult).reason, const NodeExists('llm'));
+      },
+    );
 
     test(
       '1.6 restore: streams without proto=1.6 never carry it (snapshot instead of replay, live stream ended)',

@@ -84,6 +84,8 @@ class Notice extends ChangeNotifier {
       );
     case ItemDeleted():
       return (message: 'That item was removed by someone else — your change wasn\'t applied', detail: valuePreview());
+    case NotDeleter(:final node, :final by):
+      return (message: '${clientDisplayName(by)} deleted ${titleOf(node)} — only they can undo that', detail: null);
     case NodeNotFound(:final node):
       return (message: 'Node ${titleOf(node)} doesn\'t exist — your change wasn\'t applied', detail: null);
     case EdgeNotFound():

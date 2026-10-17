@@ -56,16 +56,20 @@ void main() {
     final (d, a, es) = deleted();
     expect(d.validate(RestoreNode(node('ghost')), base: 5, client: 'x'), const NodeNotFound('ghost'));
     expect(d.validate(RestoreNode(node('b')), base: 5, client: 'x'), const NodeExists('b'));
+    // Undo is only of one's own operations: only alice, who deleted it, may restore it (whatever the base), also when
+    // a client replays committed entries.
+    expect(d.validate(RestoreNode(a, es), base: 4, client: 'bob'), const NotDeleter('a', 'alice'));
+    expect(d.validate(RestoreNode(a, es), base: 5, client: 'bob'), const NotDeleter('a', 'alice'));
     expect(
-      d.validate(RestoreNode(a, es), base: 4, client: 'bob'),
-      const Conflict(node: 'a', field: null, seq: 5, by: 'alice'),
-      reason: 'someone else deleted it after the base',
+      d.validate(RestoreNode(a, es), base: 5, client: 'bob', checkConflicts: false),
+      const NotDeleter('a', 'alice'),
     );
+    expect(const NotDeleter('a', 'alice').isStaleBased, isTrue);
     expect(
-      d.validate(RestoreNode(a, es), base: 5, client: 'bob'),
-      isNull,
-      reason: 'having seen the delete, anyone may',
+      RejectReason.fromJson(jsonDecode('{"by":"alice","node":"a","type":"notDeleter"}')),
+      const NotDeleter('a', 'alice'),
     );
+    expect(jsonEncode(const NotDeleter('a', 'alice').toJson()), '{"type":"notDeleter","node":"a","by":"alice"}');
     expect(d.validate(RestoreNode(a, [...es, ...es]), base: 5, client: 'alice'), const Invalid('edge e listed twice'));
     expect(
       d.validate(

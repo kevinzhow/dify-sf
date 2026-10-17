@@ -539,6 +539,8 @@ sealed class RejectReason {
         return ItemDeleted(_str(m, 'item', 'reason'));
       case 'itemExists':
         return ItemExists(_str(m, 'item', 'reason'));
+      case 'notDeleter':
+        return NotDeleter(_str(m, 'node', 'reason'), _str(m, 'by', 'reason'));
       case 'invalid':
         return Invalid(m['message'] is String ? m['message']! as String : '');
       case 'notCommitted':
@@ -558,7 +560,7 @@ sealed class RejectReason {
 
   /// Reasons that are certain to repeat on the server, so a client may warn the user early.
   bool get isStaleBased => switch (this) {
-    Conflict() || NodeDeleted() || DanglingReference() || ItemDeleted() => true,
+    Conflict() || NodeDeleted() || DanglingReference() || ItemDeleted() || NotDeleter() => true,
     _ => false,
   };
 
@@ -695,6 +697,17 @@ final class ItemExists extends RejectReason {
   String get name => 'itemExists';
   @override
   Map<String, Object?> toJson() => {'type': name, 'item': item};
+}
+
+/// Protocol 1.6: a [RestoreNode] of a node that [by] deleted, not the sender. Undo is only of one's own operations.
+final class NotDeleter extends RejectReason {
+  const NotDeleter(this.node, this.by);
+  final String node;
+  final String by;
+  @override
+  String get name => 'notDeleter';
+  @override
+  Map<String, Object?> toJson() => {'type': name, 'node': node, 'by': by};
 }
 
 final class Invalid extends RejectReason {

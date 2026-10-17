@@ -385,15 +385,17 @@ class Document {
     }
   }
 
-  /// Protocol 1.6 [RestoreNode] (undo of a delete). The node's existence is a register whose last write is its
-  /// tombstone: restoring is refused as a stale write if someone else deleted it after [base]. Like a delete, the
-  /// restore rewrites fields of other nodes (broken -> ref); it conflicts with any other client's write, after [base],
-  /// to one of those fields. Only a malformed edge list is refused: an edge that cannot come back is skipped by [apply].
+  /// Protocol 1.6 [RestoreNode] (undo of a delete). Undo is only of one's own operations: only the client whose delete
+  /// made the tombstone may restore the node ([NotDeleter] otherwise, also when replaying committed entries). Like a
+  /// delete, the restore rewrites fields of other nodes (broken -> ref); it conflicts with any other client's write,
+  /// after [base], to one of those fields. Only a malformed edge list is refused: an edge that cannot come back is
+  /// skipped by [apply].
   RejectReason? _validateRestore(Node n, List<Edge> restoredEdges, int base, String client, bool checkConflicts) {
     if (n.id.isEmpty) return const Invalid('empty node id');
     if (nodes.containsKey(n.id)) return NodeExists(n.id);
     final tomb = deletedNodes[n.id];
     if (tomb == null) return NodeNotFound(n.id);
+    if (tomb.client != client) return NotDeleter(n.id, tomb.client);
     for (final key in n.config.keys.toList()..sort()) {
       if (key.startsWith(r'$')) return Invalid('config key $key is reserved');
       // Broken markers are allowed here (the node comes back as it was); references are normalised when applied.
@@ -407,9 +409,6 @@ class Document {
       if (e.source != n.id && e.target != n.id) return Invalid('edge ${e.id} does not touch node ${n.id}');
     }
     if (!checkConflicts) return null;
-    if (tomb.seq > base && tomb.client != client) {
-      return Conflict(node: n.id, field: null, seq: tomb.seq, by: tomb.client);
-    }
     final accepts = _acceptsOutput(n);
     for (final other in nodes.keys.toList()..sort()) {
       for (final key in _reviveRefsWhere(nodes[other]!.config, (r) => r.node == n.id && accepts(r.output)).changed) {
