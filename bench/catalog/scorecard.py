@@ -1,6 +1,6 @@
 """Side-by-side scorecard of the tier-A conflict catalog: Dify 1.17.1 (simulator running Dify's own collaboration code,
 CATALOG-RESULTS.md of the Dify simulator) vs dify-sf (docs/results/catalog-A-difysf.md). Same case ids on both sides.
-usage: scorecard.py DIFY_RESULTS.md DIFYSF_RESULTS.md > docs/results/scorecard-A.md"""
+usage: scorecard.py DIFY_RESULTS.md DIFYSF_RESULTS.md ["Dify column description"] > docs/results/scorecard-A.md"""
 import re, sys
 
 def rows(path, cols):
@@ -20,7 +20,7 @@ print('# Conflict catalog, tier A: Dify vs dify-sf\n')
 print('Same 88 cases on both sides (ids from the shared generator). Each cell: runs in which the metric occurred / runs.')
 print('M1 acknowledged edit lost; M2 silently overwritten (no notice); M3 replicas diverge; M4 dangling reference; M5 edit')
 print('without any outcome. dify-sf refuses the later of two conflicting writes **with a notice** (not M2).\n')
-print('Dify column: Dify 1.17.1 collaboration code in the code-level simulator (ideal main thread, K=30 per case).')
+print('Dify column: ' + (sys.argv[3] if len(sys.argv) > 3 else 'Dify 1.17.1 collaboration code in the code-level simulator (ideal main thread, K=30 per case).'))
 print('dify-sf column: deterministic simulator, protocol 1.4, 20 runs per case with different network seeds.\n')
 lossy_d = lossy_o = 0
 by_rel = {}
