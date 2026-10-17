@@ -1,0 +1,2 @@
+READY mode=hybrid nodes=2000 edges=2282 loadMs=179 window=1600.0x1000.0@1.0 canvas=1600.0x1000.0 shot=1600.0x1000.0
+PERF {"phase":"pan","frames":115,"fps":28.8,"interval_p50":9.2,"interval_p90":132.2,"interval_p99":168.7,"interval_max":174.0,"over_9_6ms":49,"over_16_7ms":36,"build_p50":0.6,"build_p99":77.7,"raster_p50":4.6,"raster_p99":6.5}

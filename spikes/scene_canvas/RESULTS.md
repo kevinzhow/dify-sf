@@ -86,6 +86,22 @@ placeholders are drawn. Texture count, load time and memory then follow what is 
 
 ![culled, 0.4x](results/scene-cull-2000-zoom0.4.png)
 
+## Zoomed out: the whole graph on screen
+
+The phases above never go below 0.4x. Panning at 0.25x and 0.15x with 2000 nodes (1x density, `PHASES=pan`,
+`HOME_VIEW=3600,1800,<zoom>`; raw output `results/far-*.log`):
+
+| 2000 nodes, pan | 0.25x | 0.15x |
+|---|---|---|
+| widgets | 51 fps, p99 107.9 (build p99 73.4) | 89 fps, p99 14.5 (raster p99 11.7) |
+| hybrid | 29 fps, p99 168.7 (build p99 77.7) | 29 fps, p99 130.7 |
+| scene, culled | 120 fps, p99 11.5 | 118 fps, p99 11.2 |
+
+Widget cards break down here: building the cards that pan into view costs up to 73 ms a frame at 0.25x, and at
+0.15x painting about 2000 text cards every frame is raster-bound. The scene draws placeholders below 0.3x (no text),
+so this is not like for like; widgets could switch to simple boxes too, but that is writing a second renderer, while
+culling and level of detail are what Flutter Scene already does.
+
 ## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
@@ -112,8 +128,8 @@ placeholders are drawn. Texture count, load time and memory then follow what is 
 
 ## Recommendation
 
-With per-component culling, cards in Flutter Scene hold up at 2000 nodes and 2x like the widget canvases. Both
-directions work; the scene one keeps cards, edges and future shader or 3D effects in one renderer. Open items for it:
+Cards in Flutter Scene with per-component culling: they hold up at 2000 nodes, at 2x, and zoomed out to the whole
+graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Open items for it:
 an accessibility summary per node (cards are excluded from the semantics tree), pointer and keyboard input on cards,
 zoom-out capture spikes, placeholder look, edge width in screen pixels, the web build. Final 120 Hz acceptance on a
 real 120 Hz screen.

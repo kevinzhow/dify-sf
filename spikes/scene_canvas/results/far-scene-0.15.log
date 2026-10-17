@@ -1,0 +1,2 @@
+READY mode=scene nodes=2000 edges=2282 loadMs=59 window=1600.0x1000.0@1.0 canvas=1600.0x1000.0 shot=1600.0x1000.0
+PERF {"phase":"pan","frames":471,"fps":117.8,"interval_p50":8.4,"interval_p90":9.3,"interval_p99":11.2,"interval_max":12.2,"over_9_6ms":45,"over_16_7ms":0,"build_p50":1.4,"build_p99":1.6,"raster_p50":0.1,"raster_p99":0.4}

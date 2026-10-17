@@ -1,0 +1,2 @@
+READY mode=widgets nodes=2000 edges=2282 loadMs=177 window=1600.0x1000.0@1.0 canvas=1600.0x1000.0 shot=1600.0x1000.0
+PERF {"phase":"pan","frames":204,"fps":51.0,"interval_p50":8.8,"interval_p90":58.9,"interval_p99":107.9,"interval_max":141.9,"over_9_6ms":71,"over_16_7ms":41,"build_p50":0.5,"build_p99":73.4,"raster_p50":5.5,"raster_p99":7.2}
