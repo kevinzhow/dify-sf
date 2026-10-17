@@ -7,6 +7,7 @@ import 'package:collab_client/collab_client.dart';
 import 'bodies/core/core_bodies.dart';
 import 'bodies/data/data_bodies.dart';
 import 'bodies/entry/entry_bodies.dart';
+import 'bodies/llm/llm_bodies.dart';
 
 import 'package:flutter/widgets.dart';
 
@@ -53,7 +54,12 @@ class NodePanelBodies {
   final NodePanelBodyBuilder fallback;
 
   /// The bodies ported so far; other types use [genericNodePanelBody].
-  static const defaults = NodePanelBodies({...corePanelBodies, ...dataPanelBodies, ...entryPanelBodies});
+  static const defaults = NodePanelBodies({
+    ...corePanelBodies,
+    ...dataPanelBodies,
+    ...entryPanelBodies,
+    ...llmPanelBodies,
+  });
 
   NodePanelBodyBuilder of(String type) => bodies[type] ?? fallback;
 }

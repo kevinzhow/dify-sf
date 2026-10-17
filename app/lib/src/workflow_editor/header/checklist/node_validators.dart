@@ -421,10 +421,10 @@ Map<String, Object?>? resolveLLMNodeModel(Object? model, Object? modelSelector, 
   if (!isEnvironmentModelSource(modelSelector)) return model is Map ? model.cast<String, Object?>() : null;
   final selector = modelSelector! as List;
   if (selector.length != 2 || selector[0] != 'env') return null;
-  final env = environmentVariables.firstWhere(
-    (v) => jsGet(v, 'name') == selector[1] && jsGet(v, 'value_type') == 'llm',
-    orElse: () => null,
-  );
+  // (A typed list's firstWhere cannot return null from orElse.)
+  final env = environmentVariables
+      .where((v) => jsGet(v, 'name') == selector[1] && jsGet(v, 'value_type') == 'llm')
+      .firstOrNull;
   final value = jsGet(env, 'value');
   if (value is! Map || !isLLMEnvironmentVariableValue(value) || value['mode'] != jsGet(model, 'mode')) return null;
   return {

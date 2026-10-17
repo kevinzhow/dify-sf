@@ -45,6 +45,7 @@ class DifyI18n implements Translator {
       'dataset-settings',
       'dataset-creation',
       'dataset-documents',
+      'agent-v-2',
     ],
   }) async {
     final b = bundle ?? rootBundle;
