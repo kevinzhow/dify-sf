@@ -1,0 +1,3917 @@
+{
+ "source": "difysim src/catalog/cases.ts (CATALOG.md section 3, tier A)",
+ "cases": [
+  {
+   "id": "A-setTitle-setTitle-R1-T1-F0-2p-01",
+   "title": "两人同时改同一节点标题（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "B-title"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setTitle",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setTitle-R1-T2-F0-2p-01",
+   "title": "两人同时改同一节点标题（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "B-title",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setTitle",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R1-T1-F0-2p-02",
+   "title": "两人同时改同一 LLM 温度（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.2
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.9
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R1-T2-F0-2p-02",
+   "title": "两人同时改同一 LLM 温度（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.2
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.9,
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R1-T1-F0-2p-03",
+   "title": "两人同时改同一代码块（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# A\n"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# B\n"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R1-T2-F0-2p-03",
+   "title": "两人同时改同一代码块（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# A\n"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# B\n",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-moveNode-moveNode-R1-T1-F0-2p-04",
+   "title": "两人同时拖动同一节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 500,
+      "y": 320
+     }
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 560,
+      "y": 80
+     }
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "moveNode",
+    "op_b": "moveNode",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-moveNode-moveNode-R1-T2-F0-2p-04",
+   "title": "两人同时拖动同一节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 500,
+      "y": 320
+     }
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 560,
+      "y": 80
+     },
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "moveNode",
+    "op_b": "moveNode",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setRef-setRef-R1-T1-F0-2p-05",
+   "title": "两人同时改同一引用（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "start",
+      "q"
+     ]
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setRef",
+    "op_b": "setRef",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setRef-setRef-R1-T2-F0-2p-05",
+   "title": "两人同时改同一引用（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "start",
+      "q"
+     ],
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setRef",
+    "op_b": "setRef",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-listRemove-R1-T1-F0-2p-06",
+   "title": "两人同时删同一输出变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "listRemove",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-listRemove-R1-T2-F0-2p-06",
+   "title": "两人同时删同一输出变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "listRemove",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R1-T1-F0-2p-07",
+   "title": "两人同时改同一 if-else 条件值（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "ifelse1",
+     "path": "cond",
+     "value": "A"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "ifelse1",
+     "path": "cond",
+     "value": "B"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R1",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R1-T2-F0-2p-07",
+   "title": "两人同时改同一 if-else 条件值（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "ifelse1",
+     "path": "cond",
+     "value": "A"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "ifelse1",
+     "path": "cond",
+     "value": "B",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R1",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setField-R2-T1-F0-2p-08",
+   "title": "A 改标题，B 改代码（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# B\n"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setField-R2-T2-F0-2p-08",
+   "title": "A 改标题，B 改代码（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# B\n",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setField-R2-T1-F0-2p-09",
+   "title": "A 改标题，B 改描述（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "desc",
+     "value": "B-desc"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setField-R2-T2-F0-2p-09",
+   "title": "A 改标题，B 改描述（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "desc",
+     "value": "B-desc",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-moveNode-R2-T1-F0-2p-10",
+   "title": "A 改标题，B 拖动（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setTitle",
+     "node": "llm1",
+     "value": "A-title"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "moveNode",
+     "node": "llm1",
+     "value": {
+      "x": 760,
+      "y": 340
+     }
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "moveNode",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-moveNode-R2-T2-F0-2p-10",
+   "title": "A 改标题，B 拖动（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setTitle",
+     "node": "llm1",
+     "value": "A-title"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "moveNode",
+     "node": "llm1",
+     "value": {
+      "x": 760,
+      "y": 340
+     },
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "moveNode",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-moveNode-R2-T1-F0-2p-11",
+   "title": "A 改温度，B 拖动（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.1
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "moveNode",
+     "node": "llm1",
+     "value": {
+      "x": 760,
+      "y": 340
+     }
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "moveNode",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-moveNode-R2-T2-F0-2p-11",
+   "title": "A 改温度，B 拖动（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.1
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "moveNode",
+     "node": "llm1",
+     "value": {
+      "x": 760,
+      "y": 340
+     },
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "moveNode",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R2-T1-F0-2p-12",
+   "title": "A 改提示词，B 改温度（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "prompt0",
+     "value": "A prompt"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.3
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R2-T2-F0-2p-12",
+   "title": "A 改提示词，B 改温度（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "prompt0",
+     "value": "A prompt"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.3,
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setRef-R2-T1-F0-2p-13",
+   "title": "A 改标题，B 改引用（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "A-title"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setRef",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setRef-R2-T2-F0-2p-13",
+   "title": "A 改标题，B 改引用（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "A-title"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ],
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setRef",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-moveNode-setField-R2-T1-F0-2p-14",
+   "title": "A 拖动，B 改描述（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 500,
+      "y": 320
+     }
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "desc",
+     "value": "B-desc"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "moveNode",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-moveNode-setField-R2-T2-F0-2p-14",
+   "title": "A 拖动，B 改描述（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 500,
+      "y": 320
+     }
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "code1",
+     "path": "desc",
+     "value": "B-desc",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "moveNode",
+    "op_b": "setField",
+    "rel": "R2",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R3-T1-F0-2p-15",
+   "title": "A 换模型，B 改温度（路径重叠）（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "model",
+     "value": "gpt-4.1"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.2
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R3",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R3-T2-F0-2p-15",
+   "title": "A 换模型，B 改温度（路径重叠）（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "model",
+     "value": "gpt-4.1"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.2,
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R3",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R3-T1-F0-2p-16",
+   "title": "A 改温度，B 换模型（路径重叠，顺序对调）（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.2
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "model",
+     "value": "gpt-4.1"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R3",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R3-T2-F0-2p-16",
+   "title": "A 改温度，B 换模型（路径重叠，顺序对调）（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.2
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "model",
+     "value": "gpt-4.1",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R3",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listInsert-R4-T1-F0-2p-17",
+   "title": "两人各加一个输出变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "a_out"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "b_out"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [
+     {
+      "node": "code1",
+      "path": "outputs",
+      "contains": [
+       "a_out",
+       "b_out"
+      ]
+     }
+    ],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listInsert",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listInsert-R4-T2-F0-2p-17",
+   "title": "两人各加一个输出变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "a_out"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "b_out",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [
+     {
+      "node": "code1",
+      "path": "outputs",
+      "contains": [
+       "a_out",
+       "b_out"
+      ]
+     }
+    ],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listInsert",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listInsert-R4-T1-F0-2p-18",
+   "title": "两人各加一个输入变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "variables",
+     "value": "a_in"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "variables",
+     "value": "b_in"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [
+     {
+      "node": "code1",
+      "path": "variables",
+      "contains": [
+       "a_in",
+       "b_in"
+      ]
+     }
+    ],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listInsert",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listInsert-R4-T2-F0-2p-18",
+   "title": "两人各加一个输入变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "variables",
+     "value": "a_in"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "variables",
+     "value": "b_in",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [
+     {
+      "node": "code1",
+      "path": "variables",
+      "contains": [
+       "a_in",
+       "b_in"
+      ]
+     }
+    ],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listInsert",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listInsert-R4-T1-F0-2p-19",
+   "title": "两人各加一条提示词（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listInsert",
+     "node": "llm1",
+     "path": "prompt",
+     "value": "msg-A"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listInsert",
+     "node": "llm1",
+     "path": "prompt",
+     "value": "msg-B"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [
+     {
+      "node": "llm1",
+      "path": "prompt",
+      "contains": [
+       "msg-A",
+       "msg-B"
+      ]
+     }
+    ],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listInsert",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listInsert-R4-T2-F0-2p-19",
+   "title": "两人各加一条提示词（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listInsert",
+     "node": "llm1",
+     "path": "prompt",
+     "value": "msg-A"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listInsert",
+     "node": "llm1",
+     "path": "prompt",
+     "value": "msg-B",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [
+     {
+      "node": "llm1",
+      "path": "prompt",
+      "contains": [
+       "msg-A",
+       "msg-B"
+      ]
+     }
+    ],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listInsert",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listRemove-R4-T1-F0-2p-20",
+   "title": "A 加输出变量，B 删另一个输出变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "a_out"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listRemove-R4-T2-F0-2p-20",
+   "title": "A 加输出变量，B 删另一个输出变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "a_out"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listRemove-R4-T1-F0-2p-21",
+   "title": "A 加输入变量，B 删另一个输入变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "variables",
+     "value": "a_in"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "variables",
+     "value": "b"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listInsert-listRemove-R4-T2-F0-2p-21",
+   "title": "A 加输入变量，B 删另一个输入变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "variables",
+     "value": "a_in"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "variables",
+     "value": "b",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listInsert",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-listRemove-R4-T1-F0-2p-22",
+   "title": "两人各删一个不同的输出变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "result"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-listRemove-R4-T2-F0-2p-22",
+   "title": "两人各删一个不同的输出变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "extra"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "result",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-listRemove-R4-T1-F0-2p-23",
+   "title": "两人各删一个不同的输入变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "variables",
+     "value": "a"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "variables",
+     "value": "b"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-listRemove-R4-T2-F0-2p-23",
+   "title": "两人各删一个不同的输入变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "variables",
+     "value": "a"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "variables",
+     "value": "b",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "listRemove",
+    "rel": "R4",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setTitle-R5-T1-F0-2p-24",
+   "title": "两人改不同节点的标题（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setTitle",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setTitle-setTitle-R5-T2-F0-2p-24",
+   "title": "两人改不同节点的标题（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setTitle",
+     "node": "code1",
+     "value": "A-title"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setTitle",
+    "op_b": "setTitle",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-moveNode-moveNode-R5-T1-F0-2p-25",
+   "title": "两人拖动不同节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 500,
+      "y": 320
+     }
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "moveNode",
+     "node": "code2",
+     "value": {
+      "x": 1400,
+      "y": 40
+     }
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "moveNode",
+    "op_b": "moveNode",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-moveNode-moveNode-R5-T2-F0-2p-25",
+   "title": "两人拖动不同节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "moveNode",
+     "node": "code1",
+     "value": {
+      "x": 500,
+      "y": 320
+     }
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "moveNode",
+     "node": "code2",
+     "value": {
+      "x": 1400,
+      "y": 40
+     },
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "moveNode",
+    "op_b": "moveNode",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R5-T1-F0-2p-26",
+   "title": "两人改不同节点的字段（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# A\n"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.4
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setField-setField-R5-T2-F0-2p-26",
+   "title": "两人改不同节点的字段（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setField",
+     "node": "code1",
+     "path": "code",
+     "value": "# A\n"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setField",
+     "node": "llm1",
+     "path": "temp",
+     "value": 0.4,
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setField",
+    "op_b": "setField",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addNode-addNode-R5-T1-F0-2p-27",
+   "title": "两人各加一个节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addNode",
+     "node": "newA",
+     "value": {
+      "kind": "code",
+      "x": 400,
+      "y": 420
+     },
+     "from": "start"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "addNode",
+     "node": "newB",
+     "value": {
+      "kind": "template",
+      "x": 720,
+      "y": 420
+     },
+     "from": "code1"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addNode",
+    "op_b": "addNode",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addNode-addNode-R5-T2-F0-2p-27",
+   "title": "两人各加一个节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addNode",
+     "node": "newA",
+     "value": {
+      "kind": "code",
+      "x": 400,
+      "y": 420
+     },
+     "from": "start"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "addNode",
+     "node": "newB",
+     "value": {
+      "kind": "template",
+      "x": 720,
+      "y": 420
+     },
+     "from": "code1",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addNode",
+    "op_b": "addNode",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-setTitle-R5-T1-F0-2p-28",
+   "title": "A 删节点，B 改另一个节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code3"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "setTitle",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-setTitle-R5-T2-F0-2p-28",
+   "title": "A 删节点，B 改另一个节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code3"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "setTitle",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addNode-moveNode-R5-T1-F0-2p-29",
+   "title": "A 加节点，B 拖动另一个节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addNode",
+     "node": "newA",
+     "value": {
+      "kind": "code",
+      "x": 400,
+      "y": 420
+     },
+     "from": "start"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "moveNode",
+     "node": "llm1",
+     "value": {
+      "x": 760,
+      "y": 340
+     }
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addNode",
+    "op_b": "moveNode",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addNode-moveNode-R5-T2-F0-2p-29",
+   "title": "A 加节点，B 拖动另一个节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addNode",
+     "node": "newA",
+     "value": {
+      "kind": "code",
+      "x": 400,
+      "y": 420
+     },
+     "from": "start"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "moveNode",
+     "node": "llm1",
+     "value": {
+      "x": 760,
+      "y": 340
+     },
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addNode",
+    "op_b": "moveNode",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-setTitle-R5-T1-F0-2p-30",
+   "title": "A 连线，B 改另一个节点标题（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "setTitle",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-setTitle-R5-T2-F0-2p-30",
+   "title": "A 连线，B 改另一个节点标题（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "setTitle",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-moveNode-R5-T1-F0-2p-31",
+   "title": "A 断线，B 拖动无关节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "llm1",
+     "to": "ifelse1"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "moveNode",
+     "node": "code2",
+     "value": {
+      "x": 1400,
+      "y": 40
+     }
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "moveNode",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-moveNode-R5-T2-F0-2p-31",
+   "title": "A 断线，B 拖动无关节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "llm1",
+     "to": "ifelse1"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "moveNode",
+     "node": "code2",
+     "value": {
+      "x": 1400,
+      "y": 40
+     },
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "moveNode",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setRef-setRef-R5-T1-F0-2p-32",
+   "title": "两人各改不同节点的引用（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setRef",
+     "node": "code3",
+     "value": [
+      "code1",
+      "result"
+     ]
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setRef",
+    "op_b": "setRef",
+    "rel": "R5",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-setRef-setRef-R5-T2-F0-2p-32",
+   "title": "两人各改不同节点的引用（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setRef",
+     "node": "code3",
+     "value": [
+      "code1",
+      "result"
+     ],
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "setRef",
+    "op_b": "setRef",
+    "rel": "R5",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-setRef-R6-T1-F0-2p-33",
+   "title": "A 删节点 code1，B 让 code2 引用 code1 的输出（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code1"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "setRef",
+    "rel": "R6",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-setRef-R6-T2-F0-2p-33",
+   "title": "A 删节点 code1，B 让 code2 引用 code1 的输出（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code1"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ],
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "setRef",
+    "rel": "R6",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-listInsert-R6-T1-F0-2p-34",
+   "title": "A 删节点 code1，B 给 code1 加输出变量（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code1"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "b_out"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "listInsert",
+    "rel": "R6",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-listInsert-R6-T2-F0-2p-34",
+   "title": "A 删节点 code1，B 给 code1 加输出变量（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code1"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "listInsert",
+     "node": "code1",
+     "path": "outputs",
+     "value": "b_out",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "listInsert",
+    "rel": "R6",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-setTitle-R6-T1-F0-2p-35",
+   "title": "A 删节点 code2，B 改 code2 标题（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code2"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "setTitle",
+    "rel": "R6",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-setTitle-R6-T2-F0-2p-35",
+   "title": "A 删节点 code2，B 改 code2 标题（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code2"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setTitle",
+     "node": "code2",
+     "value": "B-title",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "setTitle",
+    "rel": "R6",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-setRef-R6-T1-F0-2p-36",
+   "title": "A 删 code1 的输出变量 result，B 让 llm1 提示词引用（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "result"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ]
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "setRef",
+    "rel": "R6",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-listRemove-setRef-R6-T2-F0-2p-36",
+   "title": "A 删 code1 的输出变量 result，B 让 llm1 提示词引用（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "listRemove",
+     "node": "code1",
+     "path": "outputs",
+     "value": "result"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setRef",
+     "node": "code2",
+     "value": [
+      "code1",
+      "result"
+     ],
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "listRemove",
+    "op_b": "setRef",
+    "rel": "R6",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-addEdge-R7-T1-F0-2p-37",
+   "title": "两人连同一条线（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-addEdge-R7-T2-F0-2p-37",
+   "title": "两人连同一条线（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-removeNode-R7-T1-F0-2p-38",
+   "title": "A 连线到 code3，B 删 code3（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "removeNode",
+     "node": "code3"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "removeNode",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-removeNode-R7-T2-F0-2p-38",
+   "title": "A 连线到 code3，B 删 code3（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "removeNode",
+     "node": "code3",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "removeNode",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-setTitle-R7-T1-F0-2p-39",
+   "title": "A 断线，B 在同一条线两端的节点上改标题（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "code2",
+     "to": "end"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "setTitle",
+     "node": "end",
+     "value": "B-end"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "setTitle",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-setTitle-R7-T2-F0-2p-39",
+   "title": "A 断线，B 在同一条线两端的节点上改标题（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "code2",
+     "to": "end"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "setTitle",
+     "node": "end",
+     "value": "B-end",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "setTitle",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-removeEdge-R7-T1-F0-2p-40",
+   "title": "两人断开不同的线（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "llm1",
+     "to": "ifelse1"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "removeEdge",
+     "from": "code2",
+     "to": "end"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "removeEdge",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-removeEdge-R7-T2-F0-2p-40",
+   "title": "两人断开不同的线（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "llm1",
+     "to": "ifelse1"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "removeEdge",
+     "from": "code2",
+     "to": "end",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "removeEdge",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-addEdge-R7-T1-F0-2p-41",
+   "title": "A 断线，B 连另一条线到同一节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "code2",
+     "to": "end"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code3",
+     "to": "end"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeEdge-addEdge-R7-T2-F0-2p-41",
+   "title": "A 断线，B 连另一条线到同一节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeEdge",
+     "from": "code2",
+     "to": "end"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code3",
+     "to": "end",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeEdge",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-addEdge-R7-T1-F0-2p-42",
+   "title": "A 连线 start→code3，B 连线 code1→code3（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addEdge",
+     "from": "start",
+     "to": "code3"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addEdge-addEdge-R7-T2-F0-2p-42",
+   "title": "A 连线 start→code3，B 连线 code1→code3（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addEdge",
+     "from": "start",
+     "to": "code3"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addEdge",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-addEdge-R7-T1-F0-2p-43",
+   "title": "A 删节点，B 连线到该节点（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code3"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-removeNode-addEdge-R7-T2-F0-2p-43",
+   "title": "A 删节点，B 连线到该节点（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "removeNode",
+     "node": "code3"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "addEdge",
+     "from": "code1",
+     "to": "code3",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "removeNode",
+    "op_b": "addEdge",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addNode-addNode-R7-T1-F0-2p-44",
+   "title": "A 加节点并连线，B 加另一节点并连到同一上游（并发）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 0,
+     "user": "A",
+     "op": "addNode",
+     "node": "newA",
+     "value": {
+      "kind": "code",
+      "x": 400,
+      "y": 420
+     },
+     "from": "code1"
+    },
+    {
+     "at": 50,
+     "user": "B",
+     "op": "addNode",
+     "node": "newB",
+     "value": {
+      "kind": "template",
+      "x": 720,
+      "y": 420
+     },
+     "from": "code1"
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addNode",
+    "op_b": "addNode",
+    "rel": "R7",
+    "timing": "T1",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  },
+  {
+   "id": "A-addNode-addNode-R7-T2-F0-2p-44",
+   "title": "A 加节点并连线，B 加另一节点并连到同一上游（基于旧版本）",
+   "graph": "fixtures/code-node-basic.yml",
+   "users": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "at": 600,
+     "user": "A",
+     "op": "addNode",
+     "node": "newA",
+     "value": {
+      "kind": "code",
+      "x": 400,
+      "y": 420
+     },
+     "from": "code1"
+    },
+    {
+     "at": 1500,
+     "user": "B",
+     "op": "addNode",
+     "node": "newB",
+     "value": {
+      "kind": "template",
+      "x": 720,
+      "y": 420
+     },
+     "from": "code1",
+     "open_at": 0
+    }
+   ],
+   "faults": [],
+   "settle": "14s",
+   "expect": {
+    "final": [],
+    "notices": []
+   },
+   "repeat": 20,
+   "tags": {
+    "op_a": "addNode",
+    "op_b": "addNode",
+    "rel": "R7",
+    "timing": "T2",
+    "fault": "F0",
+    "users": "2p"
+   },
+   "jitter_ms": 40
+  }
+ ]
+}

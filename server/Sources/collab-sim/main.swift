@@ -5,12 +5,16 @@ import CollabSim
 // Usage: collab-sim [--runs N] [--seed S] [--profile calm|lossy|flaky|crashy|chaos]
 //                   [--mutation skipStaleCheck|skipBrokenMarkers|clientNeverResends|noDedup|sameValueConflicts|lossyDisk]
 //                   [--scenarios-only]
+//        collab-sim --catalog bench/catalog/A-cases.json [--catalog-runs 20] [--catalog-out results.md]
 var runs = 10_000
 var seed: UInt64 = 1
 var profile: Profile?
 var mutation: String?
 var scenariosOnly = false
 var traceSeed: UInt64?
+var catalogPath: String?
+var catalogRuns = 20
+var catalogOut: String?
 
 var args = CommandLine.arguments.dropFirst()
 while let a = args.popFirst() {
@@ -22,11 +26,33 @@ while let a = args.popFirst() {
     case "--scenarios-only": scenariosOnly = true
     case "--trace": traceSeed = UInt64(args.popFirst() ?? "")
     case "--verbose": break
+    case "--catalog": catalogPath = args.popFirst()
+    case "--catalog-runs": catalogRuns = Int(args.popFirst() ?? "") ?? catalogRuns
+    case "--catalog-out": catalogOut = args.popFirst()
     default: print("unknown argument \(a)"); exit(2)
     }
 }
 
 func pad(_ s: String, _ n: Int) -> String { s + String(repeating: " ", count: max(0, n - s.count)) }
+
+if let path = catalogPath {
+    let data = try Data(contentsOf: URL(fileURLWithPath: path))
+    let file = try JSONDecoder().decode(Catalog.File.self, from: data)
+    let results = Catalog.runAll(file.cases, runs: catalogRuns)
+    var md = "| case | title | runs | M1 | M2 | M3 | M4 | M5 | expected final state | outcomes (count) |\n|---|---|---|---|---|---|---|---|---|---|\n"
+    for r in results {
+        let m = ["M1", "M2", "M3", "M4", "M5"].map { "\(r.counts[$0] ?? 0)" }.joined(separator: " | ")
+        let oc = r.outcomes.sorted { $0.value > $1.value }.map { "\($0.key) (\($0.value))" }.joined(separator: "; ")
+        let exp = r.runs == 0 ? "NOT RUN" : (r.expectFailures == 0 ? "ok" : "\(r.expectFailures) failed")
+        md += "| \(r.id) | \(r.title) | \(r.runs) | \(m) | \(exp) | \(oc) |\n"
+    }
+    let bad = results.filter { r in r.runs == 0 || r.expectFailures > 0 || r.counts.values.contains { $0 > 0 } }
+    md += "\n\(results.count) cases x \(catalogRuns) runs; cases with any M1-M5, a failed expectation or not run: \(bad.count)\n"
+    for r in bad { md += "- \(r.id): \(r.sample.joined(separator: " / "))\n" }
+    if let out = catalogOut { try md.write(toFile: out, atomically: true, encoding: .utf8) }
+    print(md)
+    exit(bad.isEmpty ? 0 : 1)
+}
 
 if let t = traceSeed {
     let (w, p, _, _) = Fuzz.execute(seed: t, profile: profile, trace: CommandLine.arguments.contains("--verbose"))

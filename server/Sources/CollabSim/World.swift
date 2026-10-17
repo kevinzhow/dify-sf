@@ -16,6 +16,8 @@ public struct Record: Sendable {
     public var initial: Document
     public var issued: [OpKey: Issued] = [:]
     public var terminals: [OpKey: [Terminal]] = [:]
+    /// Edits the client refused before sending (the user is told why): (client, reason).
+    public var localRefusals: [(ClientID, String)] = []
     public var sameValueOps: Set<OpKey> = []
     public var violations: [String] = []
     public var stats = Stats()
@@ -283,8 +285,9 @@ public struct World: Sendable {
                 rec.stats.bump("op.lost")
             case .conflictDetected:
                 rec.stats.bump("notice.conflictDetectedEarly")
-            case .localInvalid:
+            case .localInvalid(_, let reason):
                 rec.stats.bump("edit.localInvalid")
+                rec.localRefusals.append((id, reason.name))
             }
         }
         if !slots[i].client!.violations.isEmpty {
