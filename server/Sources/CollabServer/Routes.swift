@@ -28,6 +28,7 @@ struct Routes: Sendable {
         r.post("v1", "docs", "import") { req in await handle(req) { try await importDSL(req, id: nil) } }
         r.put("v1", "docs", ":doc", "import") { req in await handle(req) { try await importDSL(req, id: try docId(req)) } }
         r.get("v1", "docs", ":doc", "export") { req in await handle(req) { try await exportDSL(req, try docId(req)) } }
+        r.get("v1", "docs", ":doc", "meta") { req in await handle(req) { try await appMeta(try docId(req)) } }
         r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(try docId(req)) } }
         r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "clients") { req in await handle(req) { try await clientDirectory(try docId(req)) } }
@@ -171,6 +172,15 @@ struct Routes: Sendable {
         }
         headers[.contentType] = "application/x-yaml; charset=utf-8"
         return Response(status: .ok, headers: headers, body: .init(data: Data(try DifyDSL.exportYAML(s.doc, metadata: metadata).utf8)))
+    }
+
+    /// The Dify app metadata (mode, name, variables, features) without the graph; see `DifyDSL.appMeta`. Documents
+    /// that were not imported get the same defaults as their export.
+    private func appMeta(_ id: String) async throws -> Response {
+        try await requireDoc(id)
+        let meta: Value?
+        do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
+        return try json(DifyDSL.appMeta(meta ?? DifyDSL.defaultMetadata(name: id)))
     }
 
     private func docInfo(_ id: String) async throws -> Response {

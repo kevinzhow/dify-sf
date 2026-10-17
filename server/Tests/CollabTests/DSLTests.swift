@@ -97,6 +97,53 @@ struct DSLTests {
         #expect(data["temperature_like"] == .double(0.7))
     }
 
+    @Test func appMetaCarriesModeAndVariablesWithoutTheGraph() throws {
+        let chat = DifyDSL.appMeta(try DifyDSL.importYAML(try load("test_streaming_conversation_variables.yml")).metadata)
+        guard case .map(let m) = chat, case .map(let app)? = m["app"], case .list(let conv)? = m["conversation_variables"],
+              case .map(let v)? = conv.first else { Issue.record("meta shape"); return }
+        #expect(app["mode"] == .string("advanced-chat"))
+        #expect(v["name"] == .string("str") && v["value"] == .string("default"))
+        #expect(m["environment_variables"] == .list([]))
+        guard case .map(let features)? = m["features"] else { Issue.record("features"); return }
+        #expect(features["file_upload"] != nil)
+        #expect(m["workflow"] == nil && m["_edges"] == nil && m["graph"] == nil)
+        #expect(m["kind"] == .string("app") && m["version"] == .string("0.3.1") && m["dependencies"] == .list([]))
+    }
+
+    @Test func appMetaOfANonImportedDocumentIsTheExportDefault() {
+        guard case .map(let m) = DifyDSL.appMeta(DifyDSL.defaultMetadata(name: "doc1")), case .map(let app)? = m["app"] else {
+            Issue.record("meta shape"); return
+        }
+        #expect(app["mode"] == .string("workflow") && app["name"] == .string("doc1"))
+        #expect(m["environment_variables"] == .list([]) && m["conversation_variables"] == .list([]) && m["features"] == .map([:]))
+    }
+
+    @Test func appMetaBlanksSecretEnvironmentValuesLikeDify() throws {
+        let yaml = """
+        app: {name: env, mode: workflow}
+        kind: app
+        version: 0.3.1
+        workflow:
+          environment_variables:
+          - {id: e1, name: api_key, value: sk-not-for-clients, value_type: secret, description: ''}
+          - {id: e2, name: region, value: eu, value_type: string, description: ''}
+          conversation_variables: []
+          features: {}
+          graph:
+            nodes:
+            - id: s
+              data: {type: start, title: Start, variables: []}
+            edges: []
+        """
+        let imported = try DifyDSL.importYAML(yaml)
+        guard case .map(let m) = DifyDSL.appMeta(imported.metadata), case .list(let env)? = m["environment_variables"],
+              env.count == 2, case .map(let secret) = env[0], case .map(let plain) = env[1] else { Issue.record("meta shape"); return }
+        #expect(secret["value"] == .string("") && secret["name"] == .string("api_key") && secret["value_type"] == .string("secret"))
+        #expect(plain["value"] == .string("eu"))
+        // the stored metadata (used by export) is unchanged
+        #expect(try DifyDSL.exportYAML(imported.document, metadata: imported.metadata).contains("sk-not-for-clients"))
+    }
+
     @Test func numbersHaveOneRepresentation() throws {
         #expect(Value.number(1.0) == .int(1))
         #expect(Value.number(0.7) == .double(0.7))

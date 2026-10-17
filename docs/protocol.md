@@ -9,6 +9,7 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* Additive, no version change: **`GET /v1/docs/{doc}/meta`**, the Dify app metadata of a document (section 2).
 * 1.6 (additive; clients older than 1.6 are unaffected): **restoring a deleted node** (undo of a delete).
   * New op `restoreNode`: `{"t":"restoreNode","node":Node,"edges":[Edge,...]}` carries the node as it was before the delete
     (id, type, title, position, config; the config may contain `$broken` markers) and the edges the delete removed, with their
@@ -110,12 +111,35 @@ Transport conventions:
 | POST | `/v1/docs/{doc}/clients` | Issue a fresh unique client id: `201 {"client":"s-<32 hex>"}`, `404` if the document is unknown. Optional body `{"name":"Bo"}` registers a display name (1.3). Use one id per client *instance* (section 9). |
 | PUT | `/v1/docs/{doc}/clients/{client}` | Name (or rename) a client id: body `{"name":"Bo"}` (1.3). |
 | GET | `/v1/docs/{doc}/clients` | Name directory: `{"clients":{"<id>":"<name>"}}` (1.3). |
+| GET | `/v1/docs/{doc}/meta` | Dify app metadata (mode, name, variables, features): `200 {...}` (below), `404` if unknown. Optional, additive. |
 | POST | `/v1/docs/{doc}/ops` | Submit a batch of ops (section 4). |
 | GET | `/v1/docs/{doc}/events` | SSE stream (section 5). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
 node.
+
+### Dify app metadata: `GET /v1/docs/{doc}/meta`
+
+Additive and optional (no protocol version change; clients that do not use it are unaffected). A document imported from a
+Dify workflow file (`POST /v1/docs/import`, `PUT /v1/docs/{doc}/import`) keeps the file's app-level parts, which its export
+(`GET /v1/docs/{doc}/export`) writes back. This endpoint serves them as JSON, without the graph:
+
+```json
+{"app": {"name": "My chat", "mode": "advanced-chat", "icon": "🤖", "icon_background": "#FFEAD5", "description": "", ...},
+ "kind": "app", "version": "0.3.1", "dependencies": [...],
+ "environment_variables": [{"id": "...", "name": "api_key", "value": "", "value_type": "secret", ...}, ...],
+ "conversation_variables": [{"id": "...", "name": "str", "value": "default", "value_type": "string", ...}, ...],
+ "features": {...}}
+```
+
+* `app` is Dify's `app` section as imported (`mode` is `workflow` for a workflow, `advanced-chat` for a chatflow).
+  `environment_variables`, `conversation_variables` and `features` are Dify's `workflow.*` entries of the same names, unchanged,
+  except that a **secret** environment variable (`value_type: secret`) has its `value` replaced by `""` (as Dify's export without
+  secrets). `kind` and `version` are present when the file had them; the lists and `features` are always present (empty if absent).
+* A document that was not imported gets the defaults its export uses: `app` `{"name": "<doc id>", "mode": "workflow", ...}`, no
+  variables, `features` `{}`.
+* The metadata is fixed at import: ops do not change it.
 
 ### CORS
 

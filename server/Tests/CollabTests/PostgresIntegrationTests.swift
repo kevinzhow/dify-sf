@@ -5,6 +5,7 @@ import Foundation
 import Logging
 import PostgresNIO
 import Testing
+import VaporTesting
 @testable import CollabServer
 
 /// Integration tests against a real Postgres. Enabled when TEST_DB_HOST is set (see server/run-db-tests.sh).
@@ -164,6 +165,60 @@ struct PostgresIntegrationTests {
             #expect(app == origApp)
             #expect(nodes.contains { if case .map(let n) = $0, case .map(let d)? = n["data"] { return d["title"] == .string("Renamed") }; return false })
             #expect(try await store.documentMetadata("t-never-imported") == nil)
+        }
+    }
+
+    @Test func metaRouteServesTheAppMetadataWithSecretsBlanked() async throws {
+        let yaml = """
+        app: {name: Meta chat, mode: advanced-chat, icon: "🤖"}
+        kind: app
+        version: 0.3.1
+        workflow:
+          environment_variables:
+          - {id: e1, name: api_key, value: sk-not-for-clients, value_type: secret}
+          - {id: e2, name: region, value: eu, value_type: string}
+          conversation_variables:
+          - {id: c1, name: str, selector: [conversation, str], value: default, value_type: string}
+          features: {opening_statement: hi}
+          graph:
+            nodes:
+            - id: s
+              data: {type: start, title: Start, variables: []}
+            edges: []
+        """
+        try await withStore { store, logger in
+            let registry = DocumentRegistry(store: store, config: ServerConfig.defaults, logger: logger)
+            try await withApp(configure: { app in
+                Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
+            }) { app in
+                try await app.testing { client in
+                    func meta(_ doc: String) async throws -> (Int, Value) {
+                        let res = try await client.get("/v1/docs/\(doc)/meta")
+                        return (res.status.code, try WireJSON.decode(Value.self, from: Data(try await res.body.requireString().utf8)))
+                    }
+                    let imported = "t-\(UUID().uuidString.lowercased().prefix(12))"
+                    let put = try await client.put("/v1/docs/\(imported)/import") { $0.body = .init(string: yaml) }
+                    #expect(put.status.code == 201)
+                    let (status, body) = try await meta(imported)
+                    #expect(status == 200)
+                    guard case .map(let m) = body, case .map(let app)? = m["app"], case .list(let env)? = m["environment_variables"],
+                          case .list(let conv)? = m["conversation_variables"] else { Issue.record("meta shape: \(body)"); return }
+                    #expect(app["mode"] == .string("advanced-chat") && app["name"] == .string("Meta chat"))
+                    func s(_ x: String) -> Value { .string(x) }
+                    #expect(env == [.map(["id": s("e1"), "name": s("api_key"), "value": s(""), "value_type": s("secret")]),
+                                    .map(["id": s("e2"), "name": s("region"), "value": s("eu"), "value_type": s("string")])])
+                    #expect(conv.count == 1 && m["features"] == .map(["opening_statement": s("hi")]))
+                    #expect(m["workflow"] == nil)
+
+                    let plain = try await freshDoc(store)
+                    let (s2, b2) = try await meta(plain)
+                    guard case .map(let d) = b2, case .map(let dApp)? = d["app"] else { Issue.record("default shape: \(b2)"); return }
+                    #expect(s2 == 200 && dApp["mode"] == .string("workflow") && d["environment_variables"] == .list([]))
+
+                    let (s3, _) = try await meta("t-never-created-\(UUID().uuidString.lowercased().prefix(8))")
+                    #expect(s3 == 404)
+                }
+            }
         }
     }
 

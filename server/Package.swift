@@ -57,6 +57,7 @@ let package = Package(
             "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL",
             .product(name: "PostgresNIO", package: "postgres-nio"),
             .product(name: "Configuration", package: "swift-configuration"),
+            .product(name: "VaporTesting", package: "vapor"),
         ]),
     ]
 )

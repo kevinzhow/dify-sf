@@ -163,6 +163,32 @@ public enum DifyDSL {
         ])
     }
 
+    /// What `GET /v1/docs/{doc}/meta` serves: the app-level parts of stored `metadata` (as kept by import, or
+    /// `defaultMetadata`), flattened to `{"app", "kind", "version", "dependencies", "environment_variables",
+    /// "conversation_variables", "features"}`. Graph layout and dify-sf's own bookkeeping are left out. Secret
+    /// environment variables (`value_type: secret`) have their value replaced by `""`, as Dify's export without secrets does.
+    public static func appMeta(_ metadata: Value) -> Value {
+        guard case .map(let top) = metadata else { return .map([:]) }
+        let workflow: [String: Value] = { if case .map(let w)? = top["workflow"] { return w }; return [:] }()
+        var out: [String: Value] = [
+            "app": top["app"] ?? .map([:]),
+            "dependencies": top["dependencies"] ?? .list([]),
+            "environment_variables": workflow["environment_variables"] ?? .list([]),
+            "conversation_variables": workflow["conversation_variables"] ?? .list([]),
+            "features": workflow["features"] ?? .map([:]),
+        ]
+        if let k = top["kind"] { out["kind"] = k }
+        if let v = top["version"] { out["version"] = v }
+        if case .list(let env)? = out["environment_variables"] {
+            out["environment_variables"] = .list(env.map { v in
+                guard case .map(var m) = v, m["value_type"] == .string("secret") else { return v }
+                m["value"] = .string("")
+                return .map(m)
+            })
+        }
+        return .map(out)
+    }
+
     public static func exportYAML(_ doc: Document, metadata: Value) throws -> String {
         try Yams.serialize(node: yamlNode(exportValue(doc, metadata: metadata)), allowUnicode: true)
     }
