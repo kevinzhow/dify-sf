@@ -3,7 +3,7 @@ import CollabCore
 import CollabInvariants
 @testable import CollabSim
 
-@Suite("Named scenarios (S1-S12)")
+@Suite("Named scenarios (S1-S13)")
 struct ScenarioTests {
     @Test(arguments: 0..<Scenarios.all.count)
     func scenario(_ i: Int) {
@@ -32,6 +32,9 @@ struct FuzzTests {
         // Protocol 1.6: restores happen, and clients older than 1.6 are kept off them.
         #expect(report.stats["restore.issued"] > 100)
         #expect(report.stats["sync.legacyStreamEnded"] > 0)
+        // Protocol 1.7: document-level registers are written, and conflict like node config.
+        #expect(report.stats["op.appCommitted"] > 500)
+        #expect(report.stats["reject.app.conflict"] > 0)
     }
 
     @Test func runsAreDeterministic() {
@@ -94,6 +97,12 @@ struct MutationTests {
         #expect(Scenarios.s12_onlyTheDeleterRestores(defects: []).passed)
         let r = Fuzz.runMany(from: 1, count: 2000, defects: .anyoneRestores)
         #expect(r.failureKinds["I7", default: 0] > 0)
+    }
+    @Test func unversionedAppRegistersAreCaughtByI2() {
+        #expect(!Scenarios.s13_staleVariableEditIsAConflict(defects: .appSkipsStamps).passed)
+        #expect(Scenarios.s13_staleVariableEditIsAConflict(defects: []).passed)
+        let r = Fuzz.runMany(from: 1, count: 1000, defects: .appSkipsStamps)
+        #expect(r.failureKinds["I2", default: 0] > 0)
     }
     @Test func ackBeforeFsyncCaughtByI1() {
         let r = Fuzz.runMany(from: 1, count: 300, lossyDisk: true)

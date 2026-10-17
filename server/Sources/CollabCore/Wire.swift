@@ -262,7 +262,7 @@ extension RejectReason: Codable {
 
 extension Document: Codable {
     enum CodingKeys: String, CodingKey {
-        case nodes, edges, deletedNodes, deletedEdges, deletedItems, fieldStamps, touches
+        case nodes, edges, app, deletedNodes, deletedEdges, deletedItems, fieldStamps, touches
     }
     struct FieldStampRow: Codable { var node: NodeID; var field: FieldKey; var seq: Int; var client: ClientID }
     struct TouchRow: Codable { var node: NodeID; var client: ClientID; var seq: Int }
@@ -271,6 +271,8 @@ extension Document: Codable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(nodes.keys.sorted().map { nodes[$0]! }, forKey: .nodes)
         try c.encode(edges.keys.sorted().map { edges[$0]! }, forKey: .edges)
+        // Protocol 1.7: document-level registers; omitted when empty, so documents without them keep the 1.6 shape.
+        if !app.isEmpty { try c.encode(Value.map(app), forKey: .app) }
         try c.encode(deletedNodes, forKey: .deletedNodes)
         try c.encode(deletedEdges, forKey: .deletedEdges)
         try c.encode(deletedItems, forKey: .deletedItems)
@@ -304,7 +306,13 @@ extension Document: Codable {
         }
         var touches: [NodeID: [ClientID: Int]] = [:]
         for r in try c.decode([TouchRow].self, forKey: .touches) { touches[r.node, default: [:]][r.client] = r.seq }
-        self.init(nodes: try c.decode([Node].self, forKey: .nodes), edges: try c.decode([Edge].self, forKey: .edges),
+        var app: [String: Value] = [:]
+        switch try c.decodeIfPresent(Value.self, forKey: .app) {
+        case nil: break
+        case .map(let m)?: app = m
+        default: throw bad(.init(codingPath: c.codingPath, debugDescription: "app must be a map"))
+        }
+        self.init(nodes: try c.decode([Node].self, forKey: .nodes), edges: try c.decode([Edge].self, forKey: .edges), app: app,
                   deletedNodes: try c.decode([NodeID: Stamp].self, forKey: .deletedNodes),
                   deletedEdges: try c.decode([EdgeID: Stamp].self, forKey: .deletedEdges),
                   deletedItems: try c.decode([ItemID: Stamp].self, forKey: .deletedItems),

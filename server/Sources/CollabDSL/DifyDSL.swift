@@ -14,13 +14,42 @@ import Yams
 /// * Arrays become keyed lists (`.items`) only where every element has a unique key (see `keyedLists`); code-node
 ///   `outputs` (a map in Dify) becomes items whose value carries `name`, which is what references point at (protocol 1.4).
 /// * Every `[node, output]` pair whose first element is a node of the graph becomes a reference (`.ref`).
-/// * Everything outside `workflow.graph.nodes/edges` is returned as `metadata` (with the edges' Dify-only fields under
+/// * `workflow.environment_variables` and `workflow.conversation_variables` become keyed lists (item id = the variable's
+///   `id`, item value = the variable object unchanged) and `workflow.features` a map, all three in the document-level
+///   registers (`Document.app`, protocol 1.7), so they are edited collaboratively like node config. A secret environment
+///   variable's value is replaced by a mask and a `secret_ref`; the plaintext is returned in `secrets` for the server to
+///   store, never put into the document.
+/// * Everything else outside `workflow.graph.nodes/edges` is returned as `metadata` (with the edges' Dify-only fields under
 ///   `_edges`); `export` needs it back.
 public enum DifyDSL {
     public struct Imported: Sendable {
         public var document: Document
         public var metadata: Value
+        /// Plaintext of the imported secret environment variables, by the `secret_ref` that replaced them (protocol 1.7).
+        public var secrets: [String: String] = [:]
     }
+
+    /// The document-level keyed lists of Dify variables (protocol 1.7) and the features map.
+    public static let environmentVariables = "environment_variables"
+    public static let conversationVariables = "conversation_variables"
+    public static let features = "features"
+    static let variableLists = [environmentVariables, conversationVariables]
+    /// Item member of a secret environment variable that names its stored plaintext (protocol 1.7). Never exported.
+    public static let secretRefKey = "secret_ref"
+
+    /// Dify's `formatSecret` (web/app/components/workflow/panel/env-panel): longer than 8 UTF-16 units -> the first 6, twelve
+    /// `*`, the last 2; otherwise twenty `*`.
+    public static func maskSecret(_ s: String) -> String {
+        let u = Array(s.utf16)
+        guard u.count > 8 else { return String(repeating: "*", count: 20) }
+        return String(decoding: u[0..<6], as: UTF16.self) + String(repeating: "*", count: 12) + String(decoding: u[(u.count - 2)...], as: UTF16.self)
+    }
+
+    /// A fresh secret reference: `sec-` and 32 hex digits.
+    public static func newSecretRef() -> String { "sec-" + UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "") }
+
+    /// A fresh variable id (a lowercase UUID, like Dify's).
+    public static func newVariableId() -> String { UUID().uuidString.lowercased() }
 
     public struct DSLError: Error, CustomStringConvertible, Sendable {
         public var description: String
@@ -41,12 +70,15 @@ public enum DifyDSL {
 
     // MARK: - Import
 
-    public static func importYAML(_ yaml: String) throws -> Imported {
+    public static func importYAML(_ yaml: String, newId: () -> String = newVariableId,
+                                  newSecretRef: () -> String = newSecretRef) throws -> Imported {
         guard let node = try Yams.compose(yaml: yaml) else { throw DSLError("empty document") }
-        return try importValue(value(of: node))
+        return try importValue(value(of: node), newId: newId, newSecretRef: newSecretRef)
     }
 
-    public static func importValue(_ root: Value) throws -> Imported {
+    /// `newId` names variables that have no usable `id`; `newSecretRef` names the stored plaintext of secret variables.
+    public static func importValue(_ root: Value, newId: () -> String = newVariableId,
+                                   newSecretRef: () -> String = newSecretRef) throws -> Imported {
         guard case .map(var top) = root, case .map(var workflow)? = top["workflow"],
               case .map(var graph)? = workflow["graph"] else { throw DSLError("not a Dify workflow DSL (workflow.graph missing)") }
         guard case .list(let rawNodes)? = graph["nodes"] else { throw DSLError("workflow.graph.nodes missing") }
@@ -96,6 +128,30 @@ public enum DifyDSL {
         graph["nodes"] = nil
         graph["edges"] = nil
         workflow["graph"] = .map(graph)
+        // Protocol 1.7: variables and features move into the document. Anything of an unexpected shape stays in the
+        // metadata and is exported unchanged.
+        var app: [String: Value] = [:]
+        var secrets: [String: String] = [:]
+        for key in variableLists {
+            guard case .list(let xs)? = workflow[key] else { continue }
+            workflow[key] = nil
+            var items = keyedById(xs, newId: newId)
+            if key == environmentVariables {
+                for i in items.indices {
+                    guard case .map(var m) = items[i].value else { continue }
+                    m[secretRefKey] = nil
+                    if m["value_type"] == .string("secret"), let plain = secretText(m["value"]), !plain.isEmpty {
+                        let ref = newSecretRef()
+                        secrets[ref] = plain
+                        m["value"] = .string(maskSecret(plain))
+                        m[secretRefKey] = .string(ref)
+                    }
+                    items[i].value = .map(m)
+                }
+            }
+            app[key] = .items(items)
+        }
+        if case .map? = workflow[features] { app[features] = workflow.removeValue(forKey: features) }
         top["workflow"] = .map(workflow)
         if !edgeExtras.isEmpty { top["_edges"] = .map(edgeExtras) }
         // A reference to an output the target node does not declare (a stale Dify workflow) is imported as an explicit
@@ -111,9 +167,37 @@ public enum DifyDSL {
             }
         }
         for i in nodes.indices { nodes[i].config = nodes[i].config.mapValues(checked) }
-        let doc = Document(nodes: nodes, edges: edges)
+        let doc = Document(nodes: nodes, edges: edges, app: app)
         if let p = doc.integrityProblems.first { throw DSLError("imported workflow is inconsistent: \(p)") }
-        return Imported(document: doc, metadata: .map(top))
+        return Imported(document: doc, metadata: .map(top), secrets: secrets)
+    }
+
+    /// Items keyed by each element's `id`. An element without a unique non-empty string `id` gets a fresh one, written into
+    /// the element (a non-map element keeps its value and only the item gets an id).
+    static func keyedById(_ xs: [Value], newId: () -> String) -> [Item] {
+        var seen = Set<String>()
+        for case .map(let m) in xs { if case .string(let id)? = m["id"], !id.isEmpty { seen.insert(id) } }
+        var used = Set<String>()
+        return xs.map { x in
+            if case .map(let m) = x, case .string(let id)? = m["id"], !id.isEmpty, used.insert(id).inserted { return Item(id: id, value: x) }
+            var id = newId()
+            while seen.contains(id) || used.contains(id) { id = newId() }
+            used.insert(id)
+            guard case .map(var m) = x else { return Item(id: id, value: x) }
+            m["id"] = .string(id)
+            return Item(id: id, value: .map(m))
+        }
+    }
+
+    /// The text of a secret value as Dify stores it (a string; scalars by their text).
+    static func secretText(_ v: Value?) -> String? {
+        switch v {
+        case .string(let s)?: return s
+        case .int(let i)?: return String(i)
+        case .double(let d)?: return "\(d)"
+        case .bool(let b)?: return b ? "true" : "false"
+        default: return nil
+        }
     }
 
     /// Dify positions may be fractional; the document stores integers and keeps the exact value aside.
@@ -164,37 +248,58 @@ public enum DifyDSL {
     }
 
     /// What `GET /v1/docs/{doc}/meta` serves: the app-level parts of stored `metadata` (as kept by import, or
-    /// `defaultMetadata`), flattened to `{"app", "kind", "version", "dependencies", "environment_variables",
-    /// "conversation_variables", "features"}`. Graph layout and dify-sf's own bookkeeping are left out. Secret
-    /// environment variables (`value_type: secret`) have their value replaced by `""`, as Dify's export without secrets does.
-    public static func appMeta(_ metadata: Value) -> Value {
+    /// `defaultMetadata`) and the variables and features of `document` (protocol 1.7), flattened to `{"app", "kind",
+    /// "version", "dependencies", "environment_variables", "conversation_variables", "features"}`. Graph layout and
+    /// dify-sf's own bookkeeping are left out. Secret environment variables carry their mask (never the plaintext) and no
+    /// `secret_ref`; a document imported before 1.7 still has its variables in the metadata, and there a secret's value is
+    /// replaced by `""`, as Dify's export without secrets does.
+    public static func appMeta(_ metadata: Value, document: Document) -> Value {
         guard case .map(let top) = metadata else { return .map([:]) }
         let workflow: [String: Value] = { if case .map(let w)? = top["workflow"] { return w }; return [:] }()
         var out: [String: Value] = [
             "app": top["app"] ?? .map([:]),
             "dependencies": top["dependencies"] ?? .list([]),
-            "environment_variables": workflow["environment_variables"] ?? .list([]),
-            "conversation_variables": workflow["conversation_variables"] ?? .list([]),
-            "features": workflow["features"] ?? .map([:]),
         ]
+        for key in variableLists { out[key] = appValue(key, document, workflow, secrets: nil, meta: true) }
+        out[features] = appValue(features, document, workflow, secrets: nil, meta: true)
         if let k = top["kind"] { out["kind"] = k }
         if let v = top["version"] { out["version"] = v }
-        if case .list(let env)? = out["environment_variables"] {
-            out["environment_variables"] = .list(env.map { v in
-                guard case .map(var m) = v, m["value_type"] == .string("secret") else { return v }
-                m["value"] = .string("")
-                return .map(m)
-            })
-        }
         return .map(out)
     }
 
-    public static func exportYAML(_ doc: Document, metadata: Value) throws -> String {
-        try Yams.serialize(node: yamlNode(exportValue(doc, metadata: metadata)), allowUnicode: true)
+    /// A document-level entry as Dify writes it: from the document, or (documents imported before 1.7) from the metadata,
+    /// or the empty default. Environment variables: `secret_ref` is stripped; a secret's value is the stored plaintext when
+    /// `secrets` is given (export with secrets; `""` for an unknown or missing reference), the mask for `meta`, else `""`.
+    static func appValue(_ key: String, _ doc: Document, _ workflow: [String: Value], secrets: [String: String]?,
+                         meta: Bool = false) -> Value {
+        let fromDocument = doc.app[key] != nil
+        guard let raw = doc.app[key] ?? workflow[key] else { return key == features ? .map([:]) : .list([]) }
+        let v = plainLists(raw)
+        guard key == environmentVariables, case .list(let xs) = v else { return v }
+        return .list(xs.map { x in
+            guard case .map(var m) = x else { return x }
+            let ref = m.removeValue(forKey: secretRefKey)
+            guard m["value_type"] == .string("secret") else { return .map(m) }
+            if meta {
+                if !fromDocument { m["value"] = .string("") }  // legacy metadata holds the plaintext
+            } else if let secrets {
+                if fromDocument { m["value"] = .string(ref.flatMap { if case .string(let r) = $0 { return secrets[r] }; return nil } ?? "") }
+            } else {
+                m["value"] = .string("")
+            }
+            return .map(m)
+        })
     }
 
-    public static func exportValue(_ doc: Document, metadata: Value) throws -> Value {
+    /// `secrets` (ref -> plaintext) given: secret environment variables are exported with their values (Dify's
+    /// `include_secret`); nil: with `""` (Dify's default).
+    public static func exportYAML(_ doc: Document, metadata: Value, secrets: [String: String]? = nil) throws -> String {
+        try Yams.serialize(node: yamlNode(exportValue(doc, metadata: metadata, secrets: secrets)), allowUnicode: true)
+    }
+
+    public static func exportValue(_ doc: Document, metadata: Value, secrets: [String: String]? = nil) throws -> Value {
         guard case .map(var top) = metadata, case .map(var workflow)? = top["workflow"] else { throw DSLError("bad metadata") }
+        for key in variableLists + [features] { workflow[key] = appValue(key, doc, workflow, secrets: secrets) }
         var graph: [String: Value] = { if case .map(let g)? = workflow["graph"] { return g }; return [:] }()
         let edgeExtras: [String: Value] = { if case .map(let e)? = top.removeValue(forKey: "_edges") { return e }; return [:] }()
 

@@ -75,11 +75,12 @@ from the log. Keep-alive pings every 10 s let both sides detect dead connections
 Content registers (title, config paths, list items, node/edge existence) are stale-write protected; identical-value writes are
 no-ops that succeed; layout is last-writer-wins; list items have stable ids so different items never conflict; deleting a node
 rewrites references into explicit `$broken` markers; restoring it (1.6, undo) turns them back and counts as a write of the whole
-node, so writes based on a version before the restore are stale.
+node, so writes based on a version before the restore are stale. Dify's environment variables, conversation variables and
+features are document-level registers (1.7, node id `$app`) under the same rules; secret values stay in a server-side table.
 
 ## Testing strategy
 
-1. `swift test`: unit tests, 42 named scenarios, 10,000 fuzz runs, mutation tests (the checkers must fail when bugs are injected).
+1. `swift test`: unit tests, 46 named scenarios, 10,000 fuzz runs, mutation tests (the checkers must fail when bugs are injected).
 2. `bench/chaos/run.sh`: hundreds of short runs with real processes (server, clients, Postgres, Toxiproxy) and injected faults,
    verified against the database and every client.
 3. `bench/storm/run.sh`: the 100-client storm with a ground-truth ledger, across mixes and network profiles.

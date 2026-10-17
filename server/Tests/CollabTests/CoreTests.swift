@@ -370,6 +370,140 @@ struct RestoreTests {
     }
 }
 
+@Suite("Document-level registers (protocol 1.7)")
+struct AppRegisterTests {
+    static let fixture = #"{"app":{"environment_variables":{"$items":[{"id":"x","value":{"id":"x","name":"x","value":"1"}}]},"features":{"a":true,"b":1}},"deletedEdges":{},"deletedItems":{"y":{"client":"bob","seq":4}},"deletedNodes":{},"edges":[],"fieldStamps":[{"client":"alice","field":{"k":"config","path":["features"]},"node":"$app","seq":2},{"client":"alice","field":{"id":"x","k":"item","path":["environment_variables"]},"node":"$app","seq":1},{"client":"bob","field":{"id":"y","k":"item","path":["environment_variables"]},"node":"$app","seq":4}],"nodes":[{"config":{},"id":"a","title":"","type":"llm","x":0,"y":0}],"touches":[]}"#
+
+    private let app = Document.appNode
+    private let env = ["environment_variables"]
+    private func reason(_ d: Document, _ op: Op, base: Int, by c: ClientID) -> RejectReason? {
+        do throws(RejectReason) { try d.validate(op, base: base, by: c); return nil } catch { return error }
+    }
+    private func variable(_ id: String, _ v: String) -> Value { .map(["id": .string(id), "name": .string(id), "value": .string(v)]) }
+    private func insVar(_ id: String, _ v: String = "1", after: String? = nil) -> Op {
+        .insertItem(app, path: env, item: Item(id: id, value: variable(id, v)), after: after)
+    }
+    private func updVar(_ id: String, _ v: String) -> Op { .updateItem(app, path: env, id: id, value: variable(id, v)) }
+
+    @Test func itemOpsWorkOnTheAppNode() throws {
+        var d = Document(nodes: [node("a")])
+        try d.validate(insVar("x"), base: 0, by: "alice")
+        d.apply(insVar("x"), at: stamp(1, "alice"))
+        d.apply(insVar("y", after: "x"), at: stamp(2, "alice"))
+        #expect(d.app["environment_variables"] == .items([Item(id: "x", value: variable("x", "1")), Item(id: "y", value: variable("y", "1"))]))
+        d.apply(updVar("y", "2"), at: stamp(3, "bob"))
+        d.apply(.removeItem(app, path: env, id: "x"), at: stamp(4, "bob"))
+        #expect(d.app["environment_variables"] == .items([Item(id: "y", value: variable("y", "2"))]))
+        #expect(d.deletedItems["x"] == stamp(4, "bob"))
+        #expect(d.fieldStamps[app]?[.item(env, "y")] == stamp(3, "bob") && d.fieldStamps[app]?[.item(env, "x")] == stamp(4, "bob"))
+        // No touches: nothing can delete $app.
+        #expect(d.touches[app] == nil && d.nodes[app] == nil)
+        #expect(reason(d, updVar("x", "3"), base: 4, by: "alice") == .itemDeleted("x"))
+        #expect(reason(d, insVar("x"), base: 4, by: "alice") == .itemExists("x"))
+        #expect(reason(d, .removeItem(app, path: env, id: "x"), base: 0, by: "alice") == nil)  // already gone: success
+        #expect(reason(d, updVar("ghost", "3"), base: 4, by: "alice") == .itemNotFound("ghost"))
+        #expect(d.integrityProblems.isEmpty)
+    }
+
+    @Test func configWritesWorkOnTheAppNode() throws {
+        var d = Document()
+        let f = Op.setField(app, .config(["features", "opening_statement"]), .string("hi"))
+        try d.validate(f, base: 0, by: "alice")
+        d.apply(f, at: stamp(1, "alice"))
+        #expect(d.app["features"] == .map(["opening_statement": .string("hi")]))
+        #expect(reason(d, .setField(app, .config(["features", "opening_statement", "x"]), .int(1)), base: 1, by: "alice")
+                == .invalid("bad path [\"features\", \"opening_statement\", \"x\"]"))
+        #expect(reason(d, .setField(app, .config(["$k"]), .int(1)), base: 1, by: "alice") == .invalid("reserved key in path"))
+    }
+
+    @Test func staleWritesConflictDifferentVariablesDoNot() throws {
+        var d = Document()
+        d.apply(insVar("x"), at: stamp(1, "alice"))
+        d.apply(insVar("y"), at: stamp(2, "alice"))
+        d.apply(updVar("x", "A"), at: stamp(3, "alice"))
+        d.apply(.setField(app, .config(["features", "a"]), .int(1)), at: stamp(4, "alice"))
+        // Bob saw version 2: a different variable is fine, the same one is a conflict naming alice's write.
+        try d.validate(updVar("y", "B"), base: 2, by: "bob")
+        #expect(reason(d, updVar("x", "B"), base: 2, by: "bob") == .conflict(Conflict(node: app, field: .item(env, "x"), seq: 3, by: "alice")))
+        #expect(reason(d, .removeItem(app, path: env, id: "x"), base: 2, by: "bob")
+                == .conflict(Conflict(node: app, field: .item(env, "x"), seq: 3, by: "alice")))
+        // Same-value rule (1.2): writing what is there is no conflict, and a pure no-op.
+        try d.validate(updVar("x", "A"), base: 2, by: "bob")
+        let before = d
+        d.apply(updVar("x", "A"), at: stamp(5, "bob"))
+        #expect(d == before)
+        // Overlap rules: a whole-list or whole-map replace conflicts with newer item/member writes; siblings do not.
+        #expect(reason(d, .setField(app, .config(env), .items([])), base: 2, by: "bob")
+                == .conflict(Conflict(node: app, field: .item(env, "x"), seq: 3, by: "alice")))
+        #expect(reason(d, .setField(app, .config(["features"]), .map([:])), base: 2, by: "bob")
+                == .conflict(Conflict(node: app, field: .config(["features", "a"]), seq: 4, by: "alice")))
+        try d.validate(.setField(app, .config(["features", "b"]), .int(2)), base: 2, by: "bob")
+        try d.validate(updVar("x", "again"), base: 2, by: "alice")  // own writes never conflict
+        // App registers and node registers are independent.
+        try d.validate(insVar("z"), base: 0, by: "bob")
+    }
+
+    @Test func everythingElseNamingTheAppNodeIsInvalid() {
+        var d = Document(nodes: [node("a")])
+        d.apply(.removeNode("a"), at: stamp(1, "alice"))
+        let d2 = Document(nodes: [node("a"), node("b")])
+        #expect(reason(d2, .removeNode(app), base: 0, by: "c") == .invalid("removeNode is not allowed on $app"))
+        #expect(reason(d2, .moveNode(app, x: 1, y: 1), base: 0, by: "c") == .invalid("moveNode is not allowed on $app"))
+        #expect(reason(d2, .setField(app, .title, .string("t")), base: 0, by: "c") == .invalid("title is not allowed on $app"))
+        #expect(reason(d2, .addEdge(Edge(id: "e", source: app, target: "a")), base: 0, by: "c") == .invalid("edge endpoint is not allowed on $app"))
+        #expect(reason(d2, .addEdge(Edge(id: "e", source: "a", target: app)), base: 0, by: "c") == .invalid("edge endpoint is not allowed on $app"))
+        // Reserved ids: nothing named `$...` can be added or restored.
+        #expect(reason(d2, .addNode(Node(id: app, type: "llm")), base: 0, by: "c") == .invalid("node id $app is reserved (ids starting with $)"))
+        #expect(reason(d2, .addNode(Node(id: "$x", type: "llm")), base: 0, by: "c") == .invalid("node id $x is reserved (ids starting with $)"))
+        #expect(reason(d, .restoreNode(Node(id: "$x", type: "llm"), edges: []), base: 1, by: "alice")
+                == .invalid("node id $x is reserved (ids starting with $)"))
+        // No references in $app values, live or broken.
+        let r = Value.ref(OutputRef(node: "b", output: "o"))
+        #expect(reason(d2, .setField(app, .config(["features", "r"]), r), base: 0, by: "c") == .invalid("references are not allowed in $app"))
+        #expect(reason(d2, .insertItem(app, path: env, item: Item(id: "v", value: .map(["s": r])), after: nil), base: 0, by: "c")
+                == .invalid("references are not allowed in $app"))
+        #expect(reason(d2, .setField(app, .config(["features", "r"]), .brokenRef(OutputRef(node: "b", output: "o"))), base: 0, by: "c")
+                == .invalid("brokenRef is server-written only"))
+        // Other `$` ids are simply unknown.
+        #expect(reason(d2, .setField("$other", .config(["p"]), .int(1)), base: 0, by: "c") == .nodeNotFound("$other"))
+        // Applying a refused op never changes anything.
+        var d3 = d2
+        d3.apply(.setField(app, .title, .string("t")), at: stamp(1, "c"))
+        d3.apply(.removeNode(app), at: stamp(2, "c"))
+        d3.apply(.addEdge(Edge(id: "e", source: app, target: "a")), at: stamp(3, "c"))
+        #expect(d3 == d2)
+    }
+
+    @Test func wireShapeAndStreamGating() throws {
+        #expect(try WireJSON.encodeString(insVar("x")) ==
+                #"{"after":null,"item":{"id":"x","value":{"id":"x","name":"x","value":"1"}},"node":"$app","path":["environment_variables"],"t":"insertItem"}"#)
+        var d = Document(nodes: [node("a")])
+        // Without app registers a document keeps the 1.6 shape.
+        #expect(!(try WireJSON.encodeString(d)).contains("\"app\""))
+        d.apply(insVar("x"), at: stamp(1, "alice"))
+        d.apply(.setField(app, .config(["features"]), .map(["b": .int(1), "a": .bool(true)])), at: stamp(2, "alice"))
+        let json = try WireJSON.encodeString(d)
+        #expect(json.contains(#""app":{"environment_variables":{"$items":[{"id":"x","value":{"id":"x","name":"x","value":"1"}}]},"features":{"a":true,"b":1}}"#))
+        #expect(json.contains(#"{"client":"alice","field":{"id":"x","k":"item","path":["environment_variables"]},"node":"$app","seq":1}"#))
+        #expect(try WireJSON.decode(Document.self, from: try WireJSON.encode(d)) == d)
+        // Cross-implementation fixture: the Dart port (packages/collab_client test/app_registers_test.dart) decodes and
+        // encodes exactly this document.
+        d.apply(insVar("y"), at: stamp(3, "alice"))
+        d.apply(.removeItem(app, path: env, id: "y"), at: stamp(4, "bob"))
+        #expect(try WireJSON.encodeString(d) == Self.fixture)
+        #expect(throws: (any Error).self) {
+            try WireJSON.decode(Document.self, from: #"{"nodes":[],"edges":[],"app":[],"deletedNodes":{},"deletedEdges":{},"deletedItems":{},"fieldStamps":[],"touches":[]}"#)
+        }
+        // Streams: $app writes need proto >= 1.7; nothing else changed.
+        #expect(insVar("x").touchesApp && updVar("x", "1").touchesApp && Op.removeItem(app, path: env, id: "x").touchesApp)
+        #expect(Op.setField(app, .config(["f"]), .int(1)).touchesApp && !set("a", ["p"], "x").touchesApp)
+        #expect(StreamCompat.streamCarries(insVar("x"), proto: "1.7") && StreamCompat.streamCarries(insVar("x"), proto: "2.0"))
+        #expect(!StreamCompat.streamCarries(insVar("x"), proto: "1.6") && !StreamCompat.streamCarries(insVar("x"), proto: nil))
+        #expect(StreamCompat.streamCarries(set("a", ["p"], "x"), proto: "1.6"))
+        #expect(StreamCompat.acceptsAll("1.7") && !StreamCompat.acceptsAll("1.6") && protocolVersion == "1.7")
+    }
+}
+
 @Suite("Wire format")
 struct WireTests {
     private func roundTrip<T: Codable & Equatable>(_ v: T) throws {

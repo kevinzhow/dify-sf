@@ -30,14 +30,17 @@ public enum Scenarios {
         s12_undoOwnDelete, { s12_staleWriteAfterRestore(defects: []) }, { s12_restoreSkipsEdgeToDeletedNode(defects: []) },
         { s12_onlyTheDeleterRestores(defects: []) }, s12_restoreConflictsWithUnseenCascade, s12_restoreBeforeTheDeleteIsConfirmed,
         s12_oldClientNeverSeesARestore,
+        s13_differentVariablesNeverConflict, { s13_staleVariableEditIsAConflict(defects: []) }, s13_appTakesOnlyRegisterWrites,
+        s13_oldClientsNeverSeeAppWrites,
     ]
 
     // MARK: helpers
 
     static func world(clients: Int = 2, volatile: Bool = false, snapshotEvery: Int = 64, drop: Double = 0,
-                      nodes: Int = 5, defects: ProtocolDefects = [], legacy: Set<Int> = []) -> World {
+                      nodes: Int = 5, defects: ProtocolDefects = [], legacy: Set<Int> = [], legacy16: Set<Int> = []) -> World {
         var cfg = SimConfig()
         cfg.legacySlots = legacy
+        cfg.legacy16Slots = legacy16
         cfg.clientCount = clients
         cfg.initialNodes = nodes
         cfg.snapshotEvery = snapshotEvery
@@ -815,5 +818,90 @@ public enum Scenarios {
         r.expect(ok && w.slots[1].client!.view.nodes["n2"] != nil && w.slots[2].client!.view.nodes["n2"] != nil,
                  "both old clients caught up with a snapshot that has the node back")
         return finish("S12g a client older than 1.6 never receives a restoreNode commit", &w, &r)
+    }
+
+    // MARK: S13 - document-level registers (protocol 1.7)
+
+    static let envPath = ["environment_variables"]
+    static func envVar(_ id: String, _ value: String) -> Item {
+        Item(id: id, value: .map(["id": .string(id), "name": .string(id), "value": .string(value), "value_type": .string("string")]))
+    }
+    static func appVars(_ d: Document?) -> [Item] {
+        if case .items(let xs)? = d?.app[envPath[0]] { return xs }
+        return []
+    }
+
+    static func s13_differentVariablesNeverConflict() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world()
+        w.userEdit(0, .insertItem(Document.appNode, path: envPath, item: envVar("a", "1"), after: nil))
+        w.userEdit(0, .insertItem(Document.appNode, path: envPath, item: envVar("b", "1"), after: "a"))
+        w.drain()
+        let x = w.userEdit(0, .updateItem(Document.appNode, path: envPath, id: "a", value: envVar("a", "A's").value))!
+        let y = w.userEdit(1, .updateItem(Document.appNode, path: envPath, id: "b", value: envVar("b", "B's").value))!
+        let z = w.userEdit(1, .setField(Document.appNode, .config(["features", "opening_statement"]), .string("hi")))!
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", x)) && isCommitted(w.terminals("c1", y)) && isCommitted(w.terminals("c1", z)),
+                 "edits of different variables and of a feature all commit")
+        r.expect(appVars(w.serverDoc) == [envVar("a", "A's"), envVar("b", "B's")], "both variables carry their edit, in order")
+        return finish("S13 concurrent edits of different variables never conflict", &w, &r)
+    }
+
+    /// A stale edit of a variable someone else changed is a conflict; the newer value is kept. Fails with `appSkipsStamps`.
+    public static func s13_staleVariableEditIsAConflict(defects: ProtocolDefects) -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world(defects: defects)
+        w.userEdit(0, .insertItem(Document.appNode, path: envPath, item: envVar("a", "1"), after: nil))
+        w.drain()
+        w.dropLink(1)  // B edits offline (a stale tab)
+        let mine = w.userEdit(0, .updateItem(Document.appNode, path: envPath, id: "a", value: envVar("a", "A's").value))!
+        let feat = w.userEdit(0, .setField(Document.appNode, .config(["features", "x"]), .int(1)))!
+        w.drain()
+        let stale = w.userEdit(1, .updateItem(Document.appNode, path: envPath, id: "a", value: envVar("a", "B's").value))!
+        let staleFeat = w.userEdit(1, .setField(Document.appNode, .config(["features"]), .map([:])))!
+        let same = w.userEdit(1, .updateItem(Document.appNode, path: envPath, id: "a", value: envVar("a", "A's").value))
+        w.restoreLink(1)
+        w.drain()
+        r.expect(isCommitted(w.terminals("c0", mine)) && isCommitted(w.terminals("c0", feat)), "A's edits committed")
+        r.expect(isRejected(w.terminals("c1", stale), "conflict"), "B never saw A's edit: conflict")
+        r.expect(isRejected(w.terminals("c1", staleFeat), "conflict"), "a stale whole-map write conflicts with a newer member write")
+        r.expect(same == nil || isCommitted(w.terminals("c1", same!)) || isRejected(w.terminals("c1", same!), "conflict"),
+                 "a write of the current value is never lost")
+        r.expect(appVars(w.serverDoc) == [envVar("a", "A's")], "A's value is kept")
+        return finish("S13b a stale variable edit is a conflict", &w, &r)
+    }
+
+    static func s13_appTakesOnlyRegisterWrites() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world()
+        let app = Document.appNode
+        let refused: [Op] = [
+            .setField(app, .title, .string("t")), .moveNode(app, x: 1, y: 1), .removeNode(app),
+            .addNode(Node(id: "$x", type: "llm")), .addEdge(Edge(id: "e9", source: "n1", target: app)),
+            .setField(app, .config(["features", "r"]), ref("n1")),
+            .insertItem(app, path: envPath, item: Item(id: "v", value: .map(["r": ref("n1")])), after: nil),
+        ]
+        for op in refused {
+            r.expect(w.userEdit(0, op) == nil && w.rec.localRefusals.last.map { $0 == ("c0", "invalid") } == true, "refused: \(op)")
+        }
+        r.expect(w.userEdit(0, .setField(app, .config(["features", "a"]), .string("ok"))) != nil, "a config write is accepted")
+        w.drain()
+        r.expect(w.serverDoc!.app["features"] == .map(["a": .string("ok")]), "and committed")
+        return finish("S13c $app takes config and item writes only", &w, &r)
+    }
+
+    static func s13_oldClientsNeverSeeAppWrites() -> ScenarioResult {
+        var r = ScenarioResult(name: "")
+        var w = world(clients: 3, legacy: [1], legacy16: [2])
+        w.dropLink(2)  // c2 (1.6) is offline while the variable is added: its catch-up range contains the write
+        let res = w.userEdit(0, .insertItem(Document.appNode, path: envPath, item: envVar("a", "1"), after: nil))!
+        w.drain()
+        w.restoreLink(2)
+        r.expect(isCommitted(w.terminals("c0", res)), "variable committed")
+        r.expect(w.rec.stats["sync.legacyStreamEnded"] >= 1, "the 1.5 client's live stream was ended instead of carrying the write")
+        let ok = w.settle()
+        r.expect(ok && appVars(w.slots[1].client!.view) == [envVar("a", "1")] && appVars(w.slots[2].client!.view) == [envVar("a", "1")],
+                 "both old clients caught up with a snapshot that has the variable")
+        return finish("S13d clients older than 1.7 never receive a $app commit", &w, &r)
     }
 }

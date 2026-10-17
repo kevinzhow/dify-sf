@@ -28,6 +28,9 @@ public struct Oracle {
 
     public init(_ doc: Document) {
         for n in doc.nodes.values { nodes[n.id] = Self.make(n) }
+        // Protocol 1.7: the document-level registers are written like the config of a pseudo node that always exists (no
+        // references can point at it or live in it, so the cascades below leave it alone).
+        nodes[Document.appNode] = Self.make(Node(id: Document.appNode, type: Document.appNode, config: doc.app))
         edges = doc.edges
         for (id, s) in doc.deletedNodes { nodeDeletedAt[id] = s.seq }
         for (id, s) in doc.deletedEdges { edgeDeletedAt[id] = s.seq }
@@ -246,10 +249,14 @@ public struct Oracle {
     }
 
     public func matches(_ doc: Document) -> String? {
-        if Set(nodes.keys) != Set(doc.nodes.keys) {
-            return "node sets differ: oracle \(nodes.keys.sorted()) vs doc \(doc.nodes.keys.sorted())"
+        let app = nodes[Document.appNode]?.leaves ?? [:]
+        let real = nodes.filter { $0.key != Document.appNode }
+        if Set(real.keys) != Set(doc.nodes.keys) {
+            return "node sets differ: oracle \(real.keys.sorted()) vs doc \(doc.nodes.keys.sorted())"
         }
-        for id in nodes.keys.sorted() {
+        let docApp = Self.make(Node(id: Document.appNode, type: Document.appNode, config: doc.app)).leaves
+        if app != docApp { return "app registers differ: oracle \(app) vs doc \(docApp)" }
+        for id in real.keys.sorted() {
             let d = Self.make(doc.nodes[id]!)
             if d != nodes[id]! { return "node \(id) differs: oracle \(nodes[id]!) vs doc \(d)" }
         }

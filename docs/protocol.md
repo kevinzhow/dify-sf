@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.6
+# dify-sf collaboration protocol, version 1.7
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,30 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.7 (additive; clients older than 1.7 are unaffected): **document-level registers** (`app`): Dify's environment
+  variables, conversation variables and features live in the collaborative document instead of read-only import metadata.
+  * The document gains a map `app` of registers (snapshot key `"app"`, omitted when empty). Ops address it through the
+    reserved node id **`$app`**, which always exists: `setField` with a `config` field, `insertItem`, `removeItem` and
+    `updateItem` work on it exactly as on a node's config, under the same conflict rules (stale-write rule, same-value rule,
+    overlap rules, item tombstones). Everything else naming `$app` (`removeNode`, `moveNode`, `restoreNode`, a `title` field,
+    an edge endpoint) is `invalid`, and so is a node id starting with `$` in `addNode`/`restoreNode`. Values in `$app` contain
+    no references (`$ref`/`$broken`: `invalid`). Exact rules: section 6, "Document-level registers".
+  ```json
+  {"t":"insertItem","node":"$app","path":["environment_variables"],"item":{"id":"6f1c...","value":{"id":"6f1c...","name":"region","value":"eu","value_type":"string","description":""}},"after":null}
+  {"t":"setField","node":"$app","field":{"k":"config","path":["features","opening_statement"]},"value":"Hello"}
+  ```
+  * The Dify mapping (import/export) uses three keys: `environment_variables` and `conversation_variables` (keyed lists,
+    item id = the variable's `id`, item value = the Dify variable object unchanged) and `features` (a map, Dify's
+    `workflow.features` unchanged). Import moves them from the file into `app`; export writes them from the document.
+    `GET /v1/docs/{doc}/meta` keeps its shape and serves them from the document at head.
+  * **Secret environment variables** never put their value into ops, the log, snapshots or the stream. New endpoint
+    `POST /v1/docs/{doc}/secrets` `{"value":"..."}` -> `201 {"ref":"sec-<32 hex>","masked":"<mask>"}` stores the plaintext on the
+    server; the client then writes the variable with ordinary item ops, with `"value": "<mask>"` and an extra member
+    `"secret_ref": "<ref>"`. Export blanks secrets unless `?include_secret=true` (section 2).
+  * Streams: a commit that writes `$app` is protocol 1.7. A stream opened without `proto` >= `1.7` never carries one (snapshot
+    instead of replay, live stream ended), exactly like `restoreNode` for streams below 1.6. Clients send `proto=1.7`. A
+    snapshot always has its `app` key (when non-empty) whatever the stream's `proto`: decoders ignore keys they do not know,
+    and the `fieldStamps` rows under node `$app` and the item tombstones are rows of the 1.6 shape (section 3).
 * Additive, no version change: **`GET /v1/docs/{doc}/meta`**, the Dify app metadata of a document (section 2).
 * 1.6 (additive; clients older than 1.6 are unaffected): **restoring a deleted node** (undo of a delete).
   * New op `restoreNode`: `{"t":"restoreNode","node":Node,"edges":[Edge,...]}` carries the node as it was before the delete
@@ -112,6 +136,9 @@ Transport conventions:
 | PUT | `/v1/docs/{doc}/clients/{client}` | Name (or rename) a client id: body `{"name":"Bo"}` (1.3). |
 | GET | `/v1/docs/{doc}/clients` | Name directory: `{"clients":{"<id>":"<name>"}}` (1.3). |
 | GET | `/v1/docs/{doc}/meta` | Dify app metadata (mode, name, variables, features): `200 {...}` (below), `404` if unknown. Optional, additive. |
+| POST | `/v1/docs/{doc}/secrets` | 1.7. Store the plaintext of a secret environment variable: body `{"value":"..."}` -> `201 {"ref":"sec-<32 hex>","masked":"..."}` (below); `400` without a string `value`, `404` if the document is unknown. |
+| POST, PUT | `/v1/docs/import`, `/v1/docs/{doc}/import` | Create a document from a Dify workflow file (1.5). |
+| GET | `/v1/docs/{doc}/export` | The document as a Dify workflow file (YAML, or `?format=json`); secret environment variables are `""` unless `?include_secret=true` (1.7). |
 | POST | `/v1/docs/{doc}/ops` | Submit a batch of ops (section 4). |
 | GET | `/v1/docs/{doc}/events` | SSE stream (section 5). |
 
@@ -121,9 +148,10 @@ node.
 
 ### Dify app metadata: `GET /v1/docs/{doc}/meta`
 
-Additive and optional (no protocol version change; clients that do not use it are unaffected). A document imported from a
-Dify workflow file (`POST /v1/docs/import`, `PUT /v1/docs/{doc}/import`) keeps the file's app-level parts, which its export
-(`GET /v1/docs/{doc}/export`) writes back. This endpoint serves them as JSON, without the graph:
+Additive and optional (clients that do not use it are unaffected). A document imported from a Dify workflow file
+(`POST /v1/docs/import`, `PUT /v1/docs/{doc}/import`) keeps the file's app-level parts, which its export
+(`GET /v1/docs/{doc}/export`) writes back; since 1.7 its variables and features are part of the document itself
+(document-level registers, section 3). This endpoint serves them as JSON, without the graph:
 
 ```json
 {"app": {"name": "My chat", "mode": "advanced-chat", "icon": "🤖", "icon_background": "#FFEAD5", "description": "", ...},
@@ -134,12 +162,32 @@ Dify workflow file (`POST /v1/docs/import`, `PUT /v1/docs/{doc}/import`) keeps t
 ```
 
 * `app` is Dify's `app` section as imported (`mode` is `workflow` for a workflow, `advanced-chat` for a chatflow).
-  `environment_variables`, `conversation_variables` and `features` are Dify's `workflow.*` entries of the same names, unchanged,
-  except that a **secret** environment variable (`value_type: secret`) has its `value` replaced by `""` (as Dify's export without
-  secrets). `kind` and `version` are present when the file had them; the lists and `features` are always present (empty if absent).
+  `environment_variables`, `conversation_variables` and `features` are the document's (1.7: the registers of the same names
+  at head, items as plain lists, so the response follows every edit), in Dify's shape: a **secret** environment variable
+  (`value_type: secret`) carries its mask as `value`, never the plaintext, and no `secret_ref`. `kind` and `version` are
+  present when the file had them; the lists and `features` are always present (empty if absent).
+* Documents imported before 1.7 still keep their variables and features in the import metadata and have no registers for
+  them; for such a document the entries come from the metadata, with a secret's `value` replaced by `""`.
 * A document that was not imported gets the defaults its export uses: `app` `{"name": "<doc id>", "mode": "workflow", ...}`, no
   variables, `features` `{}`.
-* The metadata is fixed at import: ops do not change it.
+* The rest of the metadata (`app`, `kind`, `version`, `dependencies`) is fixed at import: ops do not change it. Variables and
+  features change with ops on `$app` (1.7).
+
+### Secrets: `POST /v1/docs/{doc}/secrets` (1.7)
+
+Secret environment variables (`value_type: secret`) are edited like any other variable, but their plaintext never enters
+an op, the log, a snapshot or the event stream:
+
+1. `POST /v1/docs/{doc}/secrets` with `{"value":"sk-..."}` stores the plaintext on the server (by document and reference) and
+   answers `201 {"ref":"sec-<32 hex>","masked":"<mask>"}`. `<mask>` is Dify's `formatSecret`: for a value longer than 8
+   (UTF-16 code units), its first 6 characters, twelve `*` and its last 2; otherwise twenty `*`.
+2. The client writes the variable with ordinary item ops on `$app` (`insertItem`/`updateItem` on `environment_variables`), the
+   item value being the Dify variable object with `"value": "<mask>"` and an extra member `"secret_ref": "<ref>"`.
+
+Importing a Dify file stores each non-empty secret value the same way (the item gets the mask and a `secret_ref`); an empty
+secret stays `""` without a reference. `GET /v1/docs/{doc}/export` never writes `secret_ref`; a secret's `value` is `""`
+(Dify's default) unless `?include_secret=true` (Dify's option of the same name), which writes the stored plaintext (`""` for an
+unknown or missing reference). Stored secrets are never deleted, also not when the variable is removed.
 
 ### CORS
 
@@ -197,6 +245,7 @@ A config value. Plain JSON maps onto it directly:
 {
   "nodes":  [Node, ...],                      // sorted by id
   "edges":  [Edge, ...],                      // sorted by id
+  "app":    {"key": Value, ...},              // 1.7: document-level registers (sorted keys); omitted when empty
   "deletedNodes": {"id": {"seq":9,"client":"c1"}},   // tombstones: ids are never reused
   "deletedEdges": {"id": Stamp},
   "deletedItems": {"id": Stamp},
@@ -204,6 +253,12 @@ A config value. Plain JSON maps onto it directly:
   "touches":     [{"node":"n1","client":"c2","seq":7}]                    // last content change per (node, client)
 }
 ```
+
+`app` (1.7) holds the **document-level registers**: a map of Values like a node's config, addressed by ops through the
+reserved node id `$app` (section 6, "Document-level registers"). Absent or `{}` means empty. Its stamps are ordinary
+`fieldStamps` rows with `"node":"$app"`; removed items are ordinary `deletedItems` tombstones; it has no `touches`.
+Decoders must ignore top-level keys they do not know: a snapshot carries `app` whatever `proto` the stream was opened with
+(a client older than 1.7 keeps a document without it, and never receives an op that writes it).
 
 `fieldStamps`, `touches` and the tombstones are **part of the document**: the conflict rules (section 6) are
 decided by running `validate`/`apply` on this state, on the server and on every client alike. A client that wants
@@ -235,6 +290,9 @@ Every op is an object with a `t` discriminator:
 | `updateItem` | `node, path, itemId, value` | Replaces one item's value. |
 | `restoreNode` | `node: Node, edges: [Edge]` | 1.6. Brings back a deleted node (undo of a delete) with the edges its delete removed, original ids. `edges` may be omitted (= `[]`). Section 6, "Restore". |
 
+`node` may be `$app` (1.7) in `setField` (config fields only), `insertItem`, `removeItem` and `updateItem`: the write goes to the
+document-level registers. Node ids starting with `$` are reserved: `addNode`/`restoreNode` of one is `invalid`.
+
 Examples:
 
 ```json
@@ -243,6 +301,7 @@ Examples:
 {"t":"insertItem","node":"code","path":["outputs"],"item":{"id":"7c1e","value":{"name":"result","type":"string"}},"after":null}
 {"t":"removeNode","node":"n3"}
 {"t":"restoreNode","node":{"id":"n3","type":"code","title":"Parse","x":40,"y":80,"config":{"in":{"$broken":{"node":"n1","output":"text"}}}},"edges":[{"id":"e7","source":"n1","sourceHandle":"out","target":"n3","targetHandle":"in"}]}
+{"t":"updateItem","node":"$app","path":["environment_variables"],"itemId":"6f1c","value":{"id":"6f1c","name":"api_key","value":"sk-abc************yz","value_type":"secret","secret_ref":"sec-0123456789abcdef0123456789abcdef","description":""}}
 ```
 
 ## 4. Submitting ops: `POST /v1/docs/{doc}/ops`
@@ -333,8 +392,9 @@ Query parameters (all optional):
 * `client`: the client id. Needed for `committed` in snapshot events.
 * `from`: the client's lowest unresolved `cseq`. Snapshot events then include `committed` for `cseq >= from`.
 * `lastEventId`: same as the `Last-Event-ID` header (for clients that cannot set headers). The header wins if both are present.
-* `proto` (1.6): the protocol version the client implements, `major.minor` (e.g. `1.6`); anything else is `400 bad_request`.
-  Without it (or below `1.6`) the stream never carries a `restoreNode` commit (see the resume rules below).
+* `proto` (1.6): the protocol version the client implements, `major.minor` (e.g. `1.7`); anything else is `400 bad_request`.
+  Without it (or below `1.6`) the stream never carries a `restoreNode` commit; below `1.7` it never carries a commit that
+  writes `$app` (see the resume rules below).
 
 Request header `Last-Event-ID: N`: "I have applied everything up to and including seq N." Omit it if you have no
 state.
@@ -377,10 +437,11 @@ Resume rules (decided by the server when the stream opens, with `head` = current
 | `head - N > maxReplay` (default 2000) | `snapshot` at head, `ready` |
 | `N > head` (the server lost data, or wrong document) | `snapshot` at head, `ready`. The client must adopt it even though it goes backwards. |
 | replay case, no `proto` >= `1.6`, and `(N, head]` contains a `restoreNode` | `snapshot` at head, `ready` (1.6) |
+| replay case, no `proto` >= `1.7`, and `(N, head]` contains a commit that writes `$app` | `snapshot` at head, `ready` (1.7) |
 
-Live part (1.6): when a `restoreNode` is committed, the server ends every stream opened without `proto` >= `1.6` instead of
-sending it the commit. Such a client sees the stream end, reconnects with its `Last-Event-ID` and is caught up with a snapshot
-(previous row).
+Live part (1.6, 1.7): when a `restoreNode` is committed, the server ends every stream opened without `proto` >= `1.6` instead of
+sending it the commit; when a commit that writes `$app` is committed, every stream opened without `proto` >= `1.7`. Such a
+client sees the stream end, reconnects with its `Last-Event-ID` and is caught up with a snapshot (previous rows).
 
 A snapshot can therefore arrive on **any** (re)connect; clients must always handle it. After the catch-up the server
 streams new `commit` events as they are committed.
@@ -489,6 +550,23 @@ Consequences for concurrent ops:
 * A restore cannot bring back an edge that a `removeEdge` deleted, nor an edge that a different delete removed (for example the
   earlier delete of the other endpoint). Undo in reverse order (last delete first) restores everything.
 
+**Document-level registers (1.7).** The document's `app` map is written through the reserved node id `$app`, which always
+exists (never `nodeNotFound`/`nodeDeleted`). Allowed: `setField` with a `config` field, `insertItem`, `removeItem`, `updateItem`;
+validation and effect are those of the same op on a node whose config is `app`, with the same conflict rules: each config path
+and each list item is a register, stamped in `fieldStamps` under node `$app` (stale-write rule, same-value rule, the overlap
+rules above, removed items tombstoned in `deletedItems`). Item ids share the document's tombstones (`itemExists` for an id used
+anywhere before). Differences:
+
+* `$app` has no title, position, edges or touches: `setField` with `{"k":"title"}`, `moveNode`, `removeNode`, `restoreNode` and an
+  edge with `$app` as `source` or `target` are `invalid` (`"title is not allowed on $app"`, `"moveNode is not allowed on $app"`,
+  `"removeNode is not allowed on $app"`, `"edge endpoint is not allowed on $app"`). Nothing deletes it, so there is no
+  delete-vs-edit rule for it.
+* Node ids starting with `$` are reserved: `addNode` and `restoreNode` of such an id are `invalid` (`"node id $x is reserved
+  (ids starting with $)"`). Any other op naming a `$` id other than `$app` is `nodeNotFound`.
+* Values written to `$app` contain no references: a `$ref` is `invalid` (`"references are not allowed in $app"`), a `$broken`
+  is `invalid` as everywhere. (Dify's selectors of environment and conversation variables, `["env","x"]` and
+  `["conversation","x"]`, are plain lists in node configs, not references.)
+
 ## 7. Reject reasons
 
 `reason` is an object with a `type`:
@@ -505,7 +583,7 @@ Consequences for concurrent ops:
 | `itemDeleted` | `item` | The item was removed. |
 | `itemExists` | `item` | Item id already used (even if removed). |
 | `notDeleter` | `node`, `by` | 1.6, `restoreNode` only: the node was deleted by `by`, not by you; only the deleter may undo a delete. |
-| `invalid` | `message` | Malformed op / bad path / forbidden value (e.g. `$broken`, reserved key, float). |
+| `invalid` | `message` | Malformed op / bad path / forbidden value (e.g. `$broken`, reserved key, float) / an op `$app` does not take or a reserved `$` node id (1.7). |
 | `notCommitted` | none | The cseq was handled (abandoned below a `floor`) but never committed. |
 | `clientIdInUse` | none | This `(client, cseq)` was already used for a *different* op: another process shares your client id. Nothing was applied. Stop using this id (section 9). |
 
@@ -545,7 +623,7 @@ the view, do not resend it, and finish it when the stream delivers `seq` (or a s
 finished as rejected: remove it from the view, tell the user (with the op, so they can re-apply it). `gap`: resend from the oldest unresolved op.
 
 **Stream handling.** Open the stream with `Last-Event-ID = lastSeq` (omit if no state) and `client`, `from = oldest unresolved cseq`,
-`proto` = the protocol version you implement (1.6).
+`proto` = the protocol version you implement (1.7).
 Apply `commit` events in order to `confirmed`; if the commit is your own (`client`, `cseq` match an outbox op) the op is finished as
 committed. On `snapshot`, replace `confirmed`, set `lastSeq`, finish ops listed in `committed`. After every change recompute `view`;
 a pending op that no longer validates because of a newer remote commit raises an early `conflictDetected` warning (once) and is hidden
@@ -581,6 +659,12 @@ obtain a new one, start again at `cseq = 1`, and re-create (re-send as new ops) 
 `restoreNode` with them (as a new op, `base = lastSeq` as usual). Only undo your own deletes: a restore of a node someone else
 deleted is `notDeleter`. If it is rejected with `conflict`, the document changed in a way the undo would overwrite; show it like any
 conflict.
+
+**Document-level registers (1.7).** Edit variables and features with item and config ops on node `$app`, like node config;
+conflicts are reported the same way. To set a secret environment variable, first `POST /v1/docs/{doc}/secrets` with the
+plaintext, then write the variable with `value` = the returned mask and `secret_ref` = the returned reference; keep the
+`secret_ref` of a secret variable when you edit its other members. Dify does not put variable edits into the workflow
+history; the reference client's undo does not record writes of `$app` either.
 
 ## 10. Examples
 

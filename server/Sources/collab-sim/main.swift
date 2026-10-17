@@ -4,7 +4,8 @@ import CollabSim
 
 // Usage: collab-sim [--runs N] [--seed S] [--profile calm|lossy|flaky|crashy|chaos]
 //                   [--mutation skipStaleCheck|skipBrokenMarkers|clientNeverResends|noDedup|sameValueConflicts|
-//                               equalValueRestamps|restoreSkipsStamps|restoreIgnoresEndpoints|anyoneRestores|lossyDisk]
+//                               equalValueRestamps|restoreSkipsStamps|restoreIgnoresEndpoints|anyoneRestores|
+//                               appSkipsStamps|lossyDisk]
 //                   [--scenarios-only]
 //        collab-sim --catalog bench/catalog/A-cases.json [--catalog-runs 20] [--catalog-out results.md]
 var runs = 10_000
@@ -95,6 +96,7 @@ case "equalValueRestamps": defects = .equalValueRestamps
 case "restoreSkipsStamps": defects = .restoreSkipsStamps
 case "restoreIgnoresEndpoints": defects = .restoreIgnoresEndpoints
 case "anyoneRestores": defects = .anyoneRestores
+case "appSkipsStamps": defects = .appSkipsStamps
 case "lossyDisk": lossy = true
 case nil: break
 default: print("unknown mutation"); exit(2)

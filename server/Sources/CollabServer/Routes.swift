@@ -29,6 +29,7 @@ struct Routes: Sendable {
         r.put("v1", "docs", ":doc", "import") { req in await handle(req) { try await importDSL(req, id: try docId(req)) } }
         r.get("v1", "docs", ":doc", "export") { req in await handle(req) { try await exportDSL(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "meta") { req in await handle(req) { try await appMeta(try docId(req)) } }
+        r.post("v1", "docs", ":doc", "secrets") { req in await handle(req) { try await storeSecret(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(try docId(req)) } }
         r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "clients") { req in await handle(req) { try await clientDirectory(try docId(req)) } }
@@ -147,7 +148,10 @@ struct Routes: Sendable {
         do { imported = try DifyDSL.importYAML(text) } catch { throw ServerError.badRequest("not an importable Dify workflow: \(error)") }
         let docId = id ?? UUID().uuidString.lowercased()
         let created: Bool
-        do { created = try await store.createDocument(id: docId, initial: imported.document, metadata: imported.metadata) } catch {
+        do {
+            created = try await store.createDocument(id: docId, initial: imported.document, metadata: imported.metadata,
+                                                     secrets: imported.secrets)
+        } catch {
             throw ServerError.unavailable("\(error)")
         }
         let head: Int
@@ -158,29 +162,54 @@ struct Routes: Sendable {
     }
 
     /// The current state as a Dify workflow file: YAML, or `?format=json`. Documents that were not imported get a
-    /// minimal app skeleton.
+    /// minimal app skeleton. Secret environment variables are exported with `""` unless `?include_secret=true` (Dify's
+    /// option of the same name): then with their stored plaintext (protocol 1.7).
     private func exportDSL(_ req: Request, _ id: String) async throws -> Response {
         let meta: Value?
         do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
         let s = try await registry.sequencer(id).currentSnapshot()
         let metadata = meta ?? DifyDSL.defaultMetadata(name: id)
+        let q = query(req)
+        var secrets: [String: String]?
+        if q["include_secret"] == "true" {
+            do { secrets = try await store.secrets(id) } catch { throw ServerError.unavailable("\(error)") }
+        }
         var headers = HTTPFields()
-        if query(req)["format"] == "json" {
-            let v = try DifyDSL.exportValue(s.doc, metadata: metadata)
+        if q["format"] == "json" {
+            let v = try DifyDSL.exportValue(s.doc, metadata: metadata, secrets: secrets)
             headers[.contentType] = "application/json"
             return Response(status: .ok, headers: headers, body: .init(data: try WireJSON.encode(v)))
         }
         headers[.contentType] = "application/x-yaml; charset=utf-8"
-        return Response(status: .ok, headers: headers, body: .init(data: Data(try DifyDSL.exportYAML(s.doc, metadata: metadata).utf8)))
+        let yaml = try DifyDSL.exportYAML(s.doc, metadata: metadata, secrets: secrets)
+        return Response(status: .ok, headers: headers, body: .init(data: Data(yaml.utf8)))
     }
 
-    /// The Dify app metadata (mode, name, variables, features) without the graph; see `DifyDSL.appMeta`. Documents
-    /// that were not imported get the same defaults as their export.
+    /// The Dify app metadata (mode, name, variables, features) without the graph; see `DifyDSL.appMeta`. Variables and
+    /// features come from the document at head (protocol 1.7). Documents that were not imported get the same defaults as
+    /// their export.
     private func appMeta(_ id: String) async throws -> Response {
         try await requireDoc(id)
         let meta: Value?
         do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
-        return try json(DifyDSL.appMeta(meta ?? DifyDSL.defaultMetadata(name: id)))
+        let s = try await registry.sequencer(id).currentSnapshot()
+        return try json(DifyDSL.appMeta(meta ?? DifyDSL.defaultMetadata(name: id), document: s.doc))
+    }
+
+    /// Protocol 1.7: `POST /secrets` `{"value": "..."}` stores the plaintext of a secret environment variable and answers
+    /// `201 {"ref": "sec-<32 hex>", "masked": "<Dify's mask>"}`. The client then writes the variable with ordinary item ops,
+    /// with `value` = the mask and `secret_ref` = the reference; the plaintext never enters ops, the log or snapshots.
+    private func storeSecret(_ req: Request, _ doc: String) async throws -> Response {
+        struct SecretBody: Decodable { var value: String }
+        let data = try await body(req)
+        guard let value = (try? WireJSON.decode(SecretBody.self, from: data))?.value else {
+            throw ServerError.badRequest("body must be {\"value\": string}")
+        }
+        try await requireDoc(doc)
+        let ref = DifyDSL.newSecretRef()
+        do { try await store.storeSecret(doc, ref: ref, value: value) } catch { throw ServerError.unavailable("\(error)") }
+        struct Stored: Encodable { var ref: String; var masked: String }
+        return try json(Stored(ref: ref, masked: DifyDSL.maskSecret(value)), status: .created)
     }
 
     private func docInfo(_ id: String) async throws -> Response {
@@ -281,18 +310,25 @@ struct Routes: Sendable {
             fromParam = n
         }
         let from = fromParam
-        // Protocol 1.6: `proto` is the version the client implements; older clients never get a restoreNode commit.
-        if let p = q["proto"], StreamCompat.parse(p) == nil { throw ServerError.badRequest("bad proto") }
-        let acceptsRestore = StreamCompat.acceptsRestore(q["proto"])
+        // Protocol 1.6: `proto` is the version the client implements; older clients never get a commit they cannot decode
+        // (restoreNode below 1.6, `$app` writes below 1.7).
+        let proto = q["proto"]
+        if let p = proto, StreamCompat.parse(p) == nil { throw ServerError.badRequest("bad proto") }
 
         let sequencer = await registry.sequencer(doc)
-        var subscription = try await sequencer.subscribe(lastEventId: lastEventId, maxReplay: config.maxReplay,
-                                                         acceptsRestore: acceptsRestore)
-        if !acceptsRestore, case .replay(let after) = subscription.plan, after < subscription.head {
+        var subscription = try await sequencer.subscribe(lastEventId: lastEventId, maxReplay: config.maxReplay, proto: proto)
+        if !StreamCompat.acceptsAll(proto), case .replay(let after) = subscription.plan, after < subscription.head {
             do {
-                if try await store.logContainsOp(doc, type: "restoreNode", after: after, through: subscription.head) {
-                    subscription.plan = .snapshot  // `doc` was captured at `head` for exactly this case
+                let head = subscription.head
+                // `doc` was captured at `head` for exactly this case.
+                var unsupported = false
+                if !StreamCompat.acceptsRestore(proto) {
+                    unsupported = try await store.logContainsOp(doc, type: "restoreNode", after: after, through: head)
                 }
+                if !unsupported, !StreamCompat.acceptsApp(proto) {
+                    unsupported = try await store.logTouchesApp(doc, after: after, through: head)
+                }
+                if unsupported { subscription.plan = .snapshot }
             } catch {
                 await sequencer.unsubscribe(subscription.id)
                 throw error

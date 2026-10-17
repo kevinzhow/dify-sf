@@ -85,7 +85,7 @@ struct PostgresIntegrationTests {
             #expect(try await !store.logContainsOp(doc, type: "restoreNode", after: 0, through: 2))
             // An old (1.5) stream's replay would carry the restore: the route turns it into a snapshot; the
             // subscription captured the document for that.
-            let sub = try await restarted.subscribe(lastEventId: 1, maxReplay: 100, acceptsRestore: false)
+            let sub = try await restarted.subscribe(lastEventId: 1, maxReplay: 100, proto: nil)
             #expect(sub.plan == .replay(after: 1) && sub.doc == snap.doc)
             await restarted.unsubscribe(sub.id)
         }
@@ -205,7 +205,8 @@ struct PostgresIntegrationTests {
                           case .list(let conv)? = m["conversation_variables"] else { Issue.record("meta shape: \(body)"); return }
                     #expect(app["mode"] == .string("advanced-chat") && app["name"] == .string("Meta chat"))
                     func s(_ x: String) -> Value { .string(x) }
-                    #expect(env == [.map(["id": s("e1"), "name": s("api_key"), "value": s(""), "value_type": s("secret")]),
+                    // 1.7: a secret is served masked (never the plaintext, never its reference).
+                    #expect(env == [.map(["id": s("e1"), "name": s("api_key"), "value": s("sk-not************ts"), "value_type": s("secret")]),
                                     .map(["id": s("e2"), "name": s("region"), "value": s("eu"), "value_type": s("string")])])
                     #expect(conv.count == 1 && m["features"] == .map(["opening_statement": s("hi")]))
                     #expect(m["workflow"] == nil)
@@ -217,6 +218,86 @@ struct PostgresIntegrationTests {
 
                     let (s3, _) = try await meta("t-never-created-\(UUID().uuidString.lowercased().prefix(8))")
                     #expect(s3 == 404)
+                }
+            }
+        }
+    }
+
+    @Test func appRegistersSecretsAndOldStreams() async throws {
+        let yaml = """
+        app: {name: Env, mode: workflow}
+        workflow:
+          environment_variables:
+          - {id: e1, name: api_key, value: sk-imported-secret, value_type: secret}
+          conversation_variables: []
+          features: {}
+          graph:
+            nodes:
+            - id: s
+              data: {type: start, title: Start, variables: []}
+            edges: []
+        """
+        try await withStore { store, logger in
+            let registry = DocumentRegistry(store: store, config: ServerConfig.defaults, logger: logger)
+            try await withApp(configure: { app in
+                Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
+            }) { app in
+                try await app.testing { client in
+                    func json(_ text: String) throws -> Value { try WireJSON.decode(Value.self, from: Data(text.utf8)) }
+                    func getJSON(_ path: String) async throws -> Value { try json(try await client.get(.init(stringLiteral: path)).body.requireString()) }
+                    func env(_ v: Value, workflow: Bool) -> [Value] {
+                        guard case .map(var m) = v else { return [] }
+                        if workflow, case .map(let w)? = m["workflow"] { m = w }
+                        if case .list(let xs)? = m["environment_variables"] { return xs }
+                        return []
+                    }
+                    func member(_ v: Value, _ k: String) -> Value? { if case .map(let m) = v { return m[k] }; return nil }
+                    let doc = "t-\(UUID().uuidString.lowercased().prefix(12))"
+                    #expect(try await client.put("/v1/docs/\(doc)/import") { $0.body = .init(string: yaml) }.status.code == 201)
+
+                    // The imported secret is stored aside; the document has its mask and reference only.
+                    let snap = try await client.get("/v1/docs/\(doc)/snapshot")
+                    let snapText = try await snap.body.requireString()
+                    #expect(!snapText.contains("sk-imported-secret") && snapText.contains("sk-imp************et"))
+                    #expect(try await store.secrets(doc).values.sorted() == ["sk-imported-secret"])
+
+                    // POST /secrets: 201 {ref, masked}; validation; unknown document.
+                    let stored = try await client.post("/v1/docs/\(doc)/secrets") { $0.body = .init(string: #"{"value":"sk-typed-in-the-panel"}"#) }
+                    #expect(stored.status.code == 201)
+                    guard case .map(let sm) = try json(try await stored.body.requireString()), case .string(let ref)? = sm["ref"] else { Issue.record("secret"); return }
+                    #expect(ref.hasPrefix("sec-") && ref.count == 36 && sm["masked"] == .string("sk-typ************el"))
+                    #expect(try await client.post("/v1/docs/\(doc)/secrets") { $0.body = .init(string: #"{"v":1}"#) }.status.code == 400)
+                    #expect(try await client.post("/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/secrets") {
+                        $0.body = .init(string: #"{"value":"x"}"#)
+                    }.status.code == 404)
+
+                    // The panel writes a second secret variable with ordinary ops.
+                    let item: Value = .map(["id": .string("e2"), "name": .string("other"), "value": .string("sk-typ************el"),
+                                            "value_type": .string("secret"), "secret_ref": .string(ref)])
+                    let op = Op.insertItem(Document.appNode, path: ["environment_variables"], item: Item(id: "e2", value: item), after: "e1")
+                    let r = try await registry.sequencer(doc).submit(req("alice", [(1, 0, op)]))
+                    #expect(r.results == [.ack(cseq: 1, seq: 1)])
+                    #expect(try await store.logTouchesApp(doc, after: 0, through: 1))
+                    #expect(try await !store.logTouchesApp(doc, after: 1, through: 1))
+
+                    // Meta follows the document: masks, no references.
+                    let metaEnv = env(try await getJSON("/v1/docs/\(doc)/meta"), workflow: false)
+                    #expect(metaEnv.map { member($0, "value") } == [.string("sk-imp************et"), .string("sk-typ************el")])
+                    #expect(metaEnv.allSatisfy { member($0, "secret_ref") == nil })
+                    // Export: "" by default, the plaintext with include_secret; never a reference.
+                    let plain = env(try await getJSON("/v1/docs/\(doc)/export?format=json"), workflow: true)
+                    #expect(plain.map { member($0, "value") } == [.string(""), .string("")])
+                    let full = env(try await getJSON("/v1/docs/\(doc)/export?format=json&include_secret=true"), workflow: true)
+                    #expect(full.map { member($0, "value") } == [.string("sk-imported-secret"), .string("sk-typed-in-the-panel")])
+                    #expect((plain + full).allSatisfy { member($0, "secret_ref") == nil })
+                    let yamlOut = try await client.get("/v1/docs/\(doc)/export?include_secret=true").body.requireString()
+                    #expect(yamlOut.contains("sk-typed-in-the-panel"))
+
+                    // A 1.6 stream never carries the $app commit: its catch-up becomes a snapshot.
+                    let seqr = await registry.sequencer(doc)
+                    let old = try await seqr.subscribe(lastEventId: 0, maxReplay: 100, proto: "1.6")
+                    #expect(old.plan == .replay(after: 0) && old.doc != nil)  // the route turns it into a snapshot (doc captured)
+                    await seqr.unsubscribe(old.id)
                 }
             }
         }

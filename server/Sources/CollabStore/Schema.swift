@@ -8,6 +8,7 @@
 /// * `rejections` and `client_state.high` make the per-client cseq high-water mark durable, so a retransmit of
 ///   a rejected op gets the original reason, also after a restart.
 /// * `snapshots` are checkpoints of the materialised document; recovery = latest snapshot + replay of `ops`.
+/// * `secrets` holds the plaintext of secret environment variables (protocol 1.7), never part of a document.
 public enum Schema {
     public static let statements: [String] = [
         """
@@ -74,6 +75,17 @@ public enum Schema {
             doc_id     text  PRIMARY KEY REFERENCES documents(id),
             dsl        jsonb NOT NULL,
             updated_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        // Protocol 1.7: plaintext of secret environment variables, by opaque reference. Documents (ops, log, snapshots,
+        // streams) carry only the reference and a mask. Rows are never deleted (a removed variable leaves its row).
+        """
+        CREATE TABLE IF NOT EXISTS secrets (
+            doc_id     text NOT NULL REFERENCES documents(id),
+            ref        text NOT NULL,
+            value      text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (doc_id, ref)
         )
         """,
         // Databases created before the idempotency-key fingerprint existed.

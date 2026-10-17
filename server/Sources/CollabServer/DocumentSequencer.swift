@@ -34,7 +34,7 @@ actor DocumentSequencer {
         var head: Int
         var plan: ResumePlan
         /// The document at `head`, captured atomically with the registration: for `.snapshot` plans, and for streams of
-        /// clients older than 1.6 (whose replay may have to become a snapshot, see `StreamCompat`).
+        /// clients older than this protocol version (whose replay may have to become a snapshot, see `StreamCompat`).
         var doc: Document?
         var live: AsyncStream<String>
     }
@@ -47,8 +47,9 @@ actor DocumentSequencer {
     /// Highest seq already pushed to subscribers.
     private var published = 0
     private var subs: [Int: AsyncStream<String>.Continuation] = [:]
-    /// Subscribers whose stream must not carry `restoreNode` commits (clients older than protocol 1.6).
-    private var legacySubs: Set<Int> = []
+    /// Subscribers of clients older than this protocol version, with their `proto`: their streams must not carry the
+    /// commits they cannot decode (`StreamCompat`).
+    private var legacySubs: [Int: String?] = [:]
     private var nextSub = 0
     private var busy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -305,14 +306,12 @@ actor DocumentSequencer {
 
     private func broadcast(_ entry: LogEntry) {
         guard !subs.isEmpty, let frame = try? StreamEvent.commit(entry).sseFrame() else { return }
-        if !StreamCompat.streamCarries(entry.op, proto: nil) {
-            // A client older than 1.6 cannot decode this op: end its stream. It reconnects from its last seq and,
-            // because the range contains this entry, is caught up with a snapshot.
-            for id in legacySubs {
-                subs[id]?.finish()
-                subs[id] = nil
-            }
-            legacySubs = []
+        for (id, proto) in legacySubs where !StreamCompat.streamCarries(entry.op, proto: proto) {
+            // An older client cannot decode this op: end its stream. It reconnects from its last seq and, because the
+            // range contains this entry, is caught up with a snapshot.
+            subs[id]?.finish()
+            subs[id] = nil
+            legacySubs[id] = nil
         }
         for (id, c) in subs {
             if case .dropped = c.yield(frame) {
@@ -335,8 +334,9 @@ actor DocumentSequencer {
 
     /// Registers a stream subscriber atomically with respect to commits: it receives every entry after `head`
     /// through `live`, and the caller is responsible for the catch-up up to `head`.
-    func subscribe(lastEventId: Int?, maxReplay: Int, acceptsRestore: Bool = true) async throws -> Subscription {
-        try await exclusive {
+    func subscribe(lastEventId: Int?, maxReplay: Int, proto: String? = protocolVersion) async throws -> Subscription {
+        let legacy = !StreamCompat.acceptsAll(proto)
+        return try await exclusive {
             let live = try await ensureLoaded()
             let head = live.core.seq
             let plan = resumePlan(lastEventId: lastEventId, head: head, maxReplay: maxReplay)
@@ -344,13 +344,13 @@ actor DocumentSequencer {
             nextSub += 1
             let id = nextSub
             subs[id] = cont
-            if !acceptsRestore { legacySubs.insert(id) }
+            if legacy { legacySubs[id] = .some(proto) }
             cont.onTermination = { [weak self] _ in
                 guard let self else { return }
                 Task { await self.unsubscribe(id) }
             }
             var doc: Document?
-            if plan == .snapshot || !acceptsRestore { doc = live.core.doc }  // copy-on-write: no copy is made here
+            if plan == .snapshot || legacy { doc = live.core.doc }  // copy-on-write: no copy is made here
             return Subscription(id: id, head: head, plan: plan, doc: doc, live: stream)
         }
     }
@@ -358,7 +358,7 @@ actor DocumentSequencer {
     func unsubscribe(_ id: Int) {
         subs[id]?.finish()
         subs[id] = nil
-        legacySubs.remove(id)
+        legacySubs[id] = nil
     }
 
     func ping() {
@@ -373,7 +373,7 @@ actor DocumentSequencer {
     func finishAllStreams() {
         for (_, c) in subs { c.finish() }
         subs = [:]
-        legacySubs = []
+        legacySubs = [:]
     }
 
     var subscriberCount: Int { subs.count }

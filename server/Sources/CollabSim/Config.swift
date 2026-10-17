@@ -15,8 +15,11 @@ public struct SimConfig: Sendable {
     public var burstRate = 0.10         // chance that an edit is a fast burst of 2-5 edits
     public var reapplyRate = 0.6        // chance a user re-applies an edit that lost a conflict
     public var restoreRate = 0.07       // chance an edit is the undo of a committed delete (protocol 1.6), when one exists
-    public var legacyFraction = 0.0     // share of clients older than 1.6 (their streams must never carry restoreNode)
+    public var legacyFraction = 0.0     // share of clients older than 1.7 (half of them older than 1.6): their streams must
+                                        // never carry what they cannot decode
     public var legacySlots: Set<Int> = []  // these clients are older than 1.6 regardless of `legacyFraction` (scenarios)
+    public var legacy16Slots: Set<Int> = []  // these clients implement 1.6 but not 1.7 (scenarios)
+    public var appRate = 0.1            // chance an edit writes the document-level registers (protocol 1.7)
 
     // network (per message)
     public var maxDelay = 3

@@ -17,16 +17,25 @@ public struct Document: Hashable, Sendable {
     public private(set) var fieldStamps: [NodeID: [FieldKey: Stamp]] = [:]
     /// Last seq at which each client changed a node's content in any way (used for delete-vs-edit).
     public private(set) var touches: [NodeID: [ClientID: Int]] = [:]
+    /// Protocol 1.7: document-level registers (Dify's environment variables, conversation variables, features). Ops address
+    /// them through the reserved node id `Document.appNode` ("$app") with `setField` (config paths), `insertItem`,
+    /// `removeItem` and `updateItem`, under the same conflict rules as a node's config. Values contain no references.
+    public private(set) var app: [String: Value] = [:]
 
-    public init(nodes: [Node] = [], edges: [Edge] = []) {
+    /// The reserved node id of the document-level registers (protocol 1.7). It always exists; it has no title, position,
+    /// edges or touches, and can be neither added, removed nor restored. Real node ids never start with `$`.
+    public static let appNode: NodeID = "$app"
+
+    public init(nodes: [Node] = [], edges: [Edge] = [], app: [String: Value] = [:]) {
         self.nodes = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
         self.edges = Dictionary(uniqueKeysWithValues: edges.map { ($0.id, $0) })
+        self.app = app
     }
 
     /// Full-state initializer used when decoding a snapshot.
-    init(nodes: [Node], edges: [Edge], deletedNodes: [NodeID: Stamp], deletedEdges: [EdgeID: Stamp],
+    init(nodes: [Node], edges: [Edge], app: [String: Value] = [:], deletedNodes: [NodeID: Stamp], deletedEdges: [EdgeID: Stamp],
          deletedItems: [ItemID: Stamp], fieldStamps: [NodeID: [FieldKey: Stamp]], touches: [NodeID: [ClientID: Int]]) {
-        self.init(nodes: nodes, edges: edges)
+        self.init(nodes: nodes, edges: edges, app: app)
         self.deletedNodes = deletedNodes
         self.deletedEdges = deletedEdges
         self.deletedItems = deletedItems
@@ -55,6 +64,9 @@ public struct Document: Hashable, Sendable {
             if nodes[e.source] == nil || nodes[e.target] == nil {
                 problems.append("edge \(id) has missing endpoint")
             }
+        }
+        for key in app.keys.sorted() where !app[key]!.liveRefs.isEmpty || app[key]!.containsBrokenRef {
+            problems.append("\(Self.appNode).\(key) contains a reference")
         }
         return problems
     }
@@ -113,6 +125,7 @@ public struct Document: Hashable, Sendable {
         switch op {
         case .addNode(let n):
             guard !n.id.isEmpty else { throw .invalid("empty node id") }
+            guard !n.id.hasPrefix("$") else { throw .invalid("node id \(n.id) is reserved (ids starting with $)") }
             guard nodes[n.id] == nil, deletedNodes[n.id] == nil else { throw .nodeExists(n.id) }
             for key in n.config.keys.sorted() {
                 guard !key.hasPrefix("$") else { throw .invalid("config key \(key) is reserved") }
@@ -120,6 +133,7 @@ public struct Document: Hashable, Sendable {
             }
 
         case .removeNode(let id):
+            try requireNotApp(id, "removeNode")
             try requireLive(id)
             if checkConflicts {
                 if let c = nodeConflict(id, base: base, client: client) { throw .conflict(c) }
@@ -134,6 +148,7 @@ public struct Document: Hashable, Sendable {
             }
 
         case .moveNode(let id, _, _):
+            try requireNotApp(id, "moveNode")
             try requireLive(id)
 
         case .setField(let id, let key, let value):
@@ -142,13 +157,15 @@ public struct Document: Hashable, Sendable {
             switch key {
             case .item: throw .invalid("list items are written with the item ops")
             case .title:
+                try requireNotApp(id, "title")
                 guard case .string = value else { throw .invalid("title must be a string") }
                 current = .string(nodes[id]!.title)
             case .config(let path):
-                guard ConfigTree.canSet(nodes[id]!.config, path) else { throw .invalid("bad path \(path)") }
+                let cfg = config(of: id)!
+                guard ConfigTree.canSet(cfg, path) else { throw .invalid("bad path \(path)") }
                 guard !path.contains(where: { $0.hasPrefix("$") }) else { throw .invalid("reserved key in path") }
-                try checkValue(value, selfNode: nil)
-                current = ConfigTree.get(nodes[id]!.config, path)
+                try checkValue(value, selfNode: nil, inApp: id == Self.appNode)
+                current = ConfigTree.get(cfg, path)
             }
             try checkStale(id, key, base: base, client: client, isSameValue: current == value,
                            enabled: checkConflicts, defects: defects)
@@ -156,6 +173,8 @@ public struct Document: Hashable, Sendable {
         case .addEdge(let e):
             guard !e.id.isEmpty else { throw .invalid("empty edge id") }
             guard edges[e.id] == nil, deletedEdges[e.id] == nil else { throw .edgeExists(e.id) }
+            try requireNotApp(e.source, "edge endpoint")
+            try requireNotApp(e.target, "edge endpoint")
             try requireLive(e.source)
             try requireLive(e.target)
             for other in edges.values where other.source == e.source && other.sourceHandle == e.sourceHandle
@@ -168,16 +187,17 @@ public struct Document: Hashable, Sendable {
 
         case .insertItem(let id, let path, let item, _):
             try requireLive(id)
-            guard !path.isEmpty, ConfigTree.canSet(nodes[id]!.config, path),
+            let cfg = config(of: id)!
+            guard !path.isEmpty, ConfigTree.canSet(cfg, path),
                   !path.contains(where: { $0.hasPrefix("$") }) else { throw .invalid("bad list path \(path)") }
             guard !item.id.isEmpty else { throw .invalid("empty item id") }
-            switch ConfigTree.list(in: nodes[id]!.config, at: path) {
+            switch ConfigTree.list(in: cfg, at: path) {
             case .notAList: throw .invalid("\(path) is not a keyed list")
             case .found(let items): if items.contains(where: { $0.id == item.id }) { throw .itemExists(item.id) }
             case .absent: break
             }
             guard deletedItems[item.id] == nil else { throw .itemExists(item.id) }
-            try checkValue(item.value, selfNode: nil)
+            try checkValue(item.value, selfNode: nil, inApp: id == Self.appNode)
 
         case .removeItem(let id, let path, let itemId):
             try requireLive(id)
@@ -195,7 +215,7 @@ public struct Document: Hashable, Sendable {
         case .updateItem(let id, let path, let itemId, let value):
             try requireLive(id)
             guard case .present(let existing) = try lookupItem(id, path, itemId, tombstoneIsSuccess: false) else { return }
-            try checkValue(value, selfNode: nil)
+            try checkValue(value, selfNode: nil, inApp: id == Self.appNode)
             try checkStale(id, .item(path, itemId), base: base, client: client, isSameValue: existing == value,
                            enabled: checkConflicts, defects: defects)
             if checkConflicts { try checkOutputRemoval(op, base: base, client: client) }  // renaming an output
@@ -212,6 +232,7 @@ public struct Document: Hashable, Sendable {
     private func validateRestore(_ n: Node, _ restoredEdges: [Edge], base: Int, client: ClientID,
                                  checkConflicts: Bool, defects: ProtocolDefects) throws(RejectReason) {
         guard !n.id.isEmpty else { throw .invalid("empty node id") }
+        guard !n.id.hasPrefix("$") else { throw .invalid("node id \(n.id) is reserved (ids starting with $)") }
         if nodes[n.id] != nil { throw .nodeExists(n.id) }
         guard let tomb = deletedNodes[n.id] else { throw .nodeNotFound(n.id) }
         if tomb.client != client && !defects.contains(.anyoneRestores) { throw .notDeleter(n.id, by: tomb.client) }
@@ -276,7 +297,7 @@ public struct Document: Hashable, Sendable {
 
     private func lookupItem(_ node: NodeID, _ path: [String], _ id: ItemID,
                             tombstoneIsSuccess: Bool) throws(RejectReason) -> ItemState {
-        if case .found(let items) = ConfigTree.list(in: nodes[node]!.config, at: path),
+        if case .found(let items) = ConfigTree.list(in: config(of: node)!, at: path),
            let item = items.first(where: { $0.id == id }) {
             return .present(item.value)
         }
@@ -294,15 +315,26 @@ public struct Document: Hashable, Sendable {
         throw .conflict(c)
     }
 
+    /// `$app` (protocol 1.7) always exists.
     private func requireLive(_ id: NodeID) throws(RejectReason) {
-        if nodes[id] != nil { return }
+        if nodes[id] != nil || id == Self.appNode { return }
         throw deletedNodes[id] != nil ? .nodeDeleted(id) : .nodeNotFound(id)
     }
 
-    /// Clients may only write live refs to existing nodes; broken markers are server-only.
-    private func checkValue(_ v: Value, selfNode: NodeID?) throws(RejectReason) {
+    /// `$app` takes config and item writes only (protocol 1.7).
+    private func requireNotApp(_ id: NodeID, _ what: String) throws(RejectReason) {
+        if id == Self.appNode { throw .invalid("\(what) is not allowed on \(Self.appNode)") }
+    }
+
+    /// The config a register write addresses: a live node's, or the document-level registers for `$app`.
+    private func config(of id: NodeID) -> [String: Value]? { id == Self.appNode ? app : nodes[id]?.config }
+
+    /// Clients may only write live refs to existing nodes; broken markers are server-only. `$app` values (protocol 1.7)
+    /// contain no references at all.
+    private func checkValue(_ v: Value, selfNode: NodeID?, inApp: Bool = false) throws(RejectReason) {
         if let p = v.structuralProblem { throw .invalid(p) }
         if v.containsBrokenRef { throw .invalid("brokenRef is server-written only") }
+        if inApp && !v.liveRefs.isEmpty { throw .invalid("references are not allowed in \(Self.appNode)") }
         for r in v.liveRefs where r.node != selfNode {
             guard let target = nodes[r.node] else { throw .danglingReference(r.node) }
             if let outs = Self.declaredOutputs(of: target), !outs.contains(r.output) { throw .danglingReference(r.node) }
@@ -366,21 +398,20 @@ public struct Document: Hashable, Sendable {
             nodes[id]!.y = y
 
         case .setField(let id, let key, let value):
-            guard nodes[id] != nil else { return }
+            guard let cfg = config(of: id) else { return }
             switch key {
             case .item: return
             case .title:
-                guard case .string(let s) = value else { return }
+                guard id != Self.appNode, case .string(let s) = value else { return }
                 // Same value: a pure no-op for conflict tracking (no stamp, no touch).
                 if nodes[id]!.title == s && !defects.contains(.equalValueRestamps) { return }
                 nodes[id]!.title = s
             case .config(let path):
-                guard ConfigTree.canSet(nodes[id]!.config, path) else { return }
-                if ConfigTree.get(nodes[id]!.config, path) == value && !defects.contains(.equalValueRestamps) { return }  // same value: no-op
-                ConfigTree.set(&nodes[id]!.config, path[...], value)
+                guard ConfigTree.canSet(cfg, path) else { return }
+                if ConfigTree.get(cfg, path) == value && !defects.contains(.equalValueRestamps) { return }  // same value: no-op
+                setConfig(of: id, path, value)
             }
-            stampField(id, key, stamp)
-            touch(id, stamp)
+            stampWrite(id, key, stamp, defects)
 
         case .addEdge(let e):
             guard edges[e.id] == nil, deletedEdges[e.id] == nil,
@@ -395,9 +426,9 @@ public struct Document: Hashable, Sendable {
             deletedEdges[id] = stamp
 
         case .insertItem(let id, let path, let item, let after):
-            guard nodes[id] != nil, ConfigTree.canSet(nodes[id]!.config, path), deletedItems[item.id] == nil else { return }
+            guard let cfg = config(of: id), ConfigTree.canSet(cfg, path), deletedItems[item.id] == nil else { return }
             var items: [Item]
-            switch ConfigTree.list(in: nodes[id]!.config, at: path) {
+            switch ConfigTree.list(in: cfg, at: path) {
             case .notAList: return
             case .absent: items = []
             case .found(let xs): items = xs
@@ -406,30 +437,27 @@ public struct Document: Hashable, Sendable {
             // Anchor gone (concurrently removed) => append. Deterministic: every replica applies in server order.
             let at = after.flatMap { a in items.firstIndex { $0.id == a } }.map { $0 + 1 } ?? (after == nil ? 0 : items.count)
             items.insert(item, at: at)
-            ConfigTree.set(&nodes[id]!.config, path[...], .items(items))
-            stampField(id, .item(path, item.id), stamp)
-            touch(id, stamp)
+            setConfig(of: id, path, .items(items))
+            stampWrite(id, .item(path, item.id), stamp, defects)
 
         case .removeItem(let id, let path, let itemId):
-            guard nodes[id] != nil, case .found(var items) = ConfigTree.list(in: nodes[id]!.config, at: path),
+            guard let cfg = config(of: id), case .found(var items) = ConfigTree.list(in: cfg, at: path),
                   let at = items.firstIndex(where: { $0.id == itemId }) else { return }
             let removedName = outputNameRemoved(by: op)
             items.remove(at: at)
-            ConfigTree.set(&nodes[id]!.config, path[...], .items(items))
+            setConfig(of: id, path, .items(items))
             deletedItems[itemId] = stamp
-            stampField(id, .item(path, itemId), stamp)
-            touch(id, stamp)
+            stampWrite(id, .item(path, itemId), stamp, defects)
             breakOutputRefs(removedName, stamp, defects)
 
         case .updateItem(let id, let path, let itemId, let value):
-            guard nodes[id] != nil, case .found(var items) = ConfigTree.list(in: nodes[id]!.config, at: path),
+            guard let cfg = config(of: id), case .found(var items) = ConfigTree.list(in: cfg, at: path),
                   let at = items.firstIndex(where: { $0.id == itemId }),
                   items[at].value != value || defects.contains(.equalValueRestamps) else { return }
             let removedName = outputNameRemoved(by: op)
             items[at].value = value
-            ConfigTree.set(&nodes[id]!.config, path[...], .items(items))
-            stampField(id, .item(path, itemId), stamp)
-            touch(id, stamp)
+            setConfig(of: id, path, .items(items))
+            stampWrite(id, .item(path, itemId), stamp, defects)
             breakOutputRefs(removedName, stamp, defects)
 
         case .restoreNode(let n, let restoredEdges):
@@ -481,7 +509,20 @@ public struct Document: Hashable, Sendable {
         }
     }
 
+    private mutating func setConfig(of id: NodeID, _ path: [String], _ value: Value) {
+        if id == Self.appNode { ConfigTree.set(&app, path[...], value) } else { ConfigTree.set(&nodes[id]!.config, path[...], value) }
+    }
+
+    /// Versions a content write: the register's stamp and, for a node, the author's touch (`$app` has no touches: nothing
+    /// deletes it).
+    private mutating func stampWrite(_ id: NodeID, _ key: FieldKey, _ stamp: Stamp, _ defects: ProtocolDefects) {
+        if id == Self.appNode && defects.contains(.appSkipsStamps) { return }
+        stampField(id, key, stamp)
+        touch(id, stamp)
+    }
+
     private mutating func touch(_ node: NodeID, _ stamp: Stamp) {
+        guard node != Self.appNode else { return }
         touches[node, default: [:]][stamp.client] = stamp.seq
     }
 

@@ -43,8 +43,10 @@ struct Packet: Sendable {
 public struct Slot: Sendable {
     public let id: ClientID
     public let journaled: Bool
-    /// Plays a client older than protocol 1.6: no `proto` on its stream, never restores.
-    public var legacy = false
+    /// The `proto` this client announces: nil plays a client older than 1.6 (never restores), "1.6" one older than 1.7
+    /// (never writes `$app`); their streams must never carry what they cannot decode.
+    public var proto: String? = protocolVersion
+    public var legacy: Bool { !StreamCompat.acceptsAll(proto) }
     public var client: Client?
     var durable: ClientDurable?
     public var linkUp = true
@@ -90,9 +92,9 @@ public struct World: Sendable {
     /// Committed deletes that can be undone: the node as its deleter saw it, its edges, and who deleted it.
     private var restorable: [NodeID: (node: Node, edges: [Edge], by: ClientID)] = [:]
 
-    private func config(legacy: Bool) -> ClientConfig {
+    private func config(proto: String?) -> ClientConfig {
         var c = clientConfig
-        if legacy { c.proto = nil }
+        c.proto = proto
         return c
     }
 
@@ -115,11 +117,18 @@ public struct World: Sendable {
         let ids = clientIDs ?? (0..<cfg.clientCount).map { "c\($0)" }
         for (k, id) in ids.enumerated() {
             let journaled = !rng.chance(cfg.volatileFraction)
-            let legacy = (cfg.legacyFraction > 0 && rng.chance(cfg.legacyFraction)) || cfg.legacySlots.contains(k)
+            var proto: String? = protocolVersion
+            if cfg.legacySlots.contains(k) {
+                proto = nil
+            } else if cfg.legacy16Slots.contains(k) {
+                proto = "1.6"
+            } else if cfg.legacyFraction > 0 && rng.chance(cfg.legacyFraction) {
+                proto = rng.chance(0.5) ? nil : "1.6"
+            }
             var cc = clientConfig
-            if legacy { cc.proto = nil }
+            cc.proto = proto
             var slot = Slot(id: id, journaled: journaled, client: Client(id: id, journaled: journaled, defects: cfg.defects, config: cc))
-            slot.legacy = legacy
+            slot.proto = proto
             slots.append(slot)
         }
         self.rng = rng
@@ -301,6 +310,7 @@ public struct World: Sendable {
             case .committed(let cseq, let seq):
                 rec.terminals[OpKey(client: id, cseq: cseq), default: []].append(.committed(seq: seq))
                 rec.stats.bump("op.committed")
+                if rec.issued[OpKey(client: id, cseq: cseq)]?.op.touchesApp == true { rec.stats.bump("op.appCommitted") }
                 if let m = slots[i].deleteMemo.removeValue(forKey: cseq) { restorable[m.node.id] = (m.node, m.edges, id) }
             case .rejected(let cseq, let op, let reason):
                 slots[i].deleteMemo[cseq] = nil
@@ -308,6 +318,7 @@ public struct World: Sendable {
                 rec.terminals[OpKey(client: id, cseq: cseq), default: []].append(.rejected(reason))
                 rec.stats.bump("op.rejected")
                 rec.stats.bump("reject." + reason.name)
+                if op.touchesApp { rec.stats.bump("reject.app." + reason.name) }
                 if case .conflict = reason, !calm, rng.chance(cfg.reapplyRate) {
                     switch op {
                     case .setField, .updateItem: slots[i].reapplyQueue.append(op)
@@ -400,7 +411,7 @@ public struct World: Sendable {
     public mutating func restartClient(_ i: Int) {
         slots[i].restartAt = nil
         guard slots[i].client == nil, let d = slots[i].durable else { return }
-        slots[i].client = Client(restoring: d, journaled: slots[i].journaled, defects: cfg.defects, config: config(legacy: slots[i].legacy))
+        slots[i].client = Client(restoring: d, journaled: slots[i].journaled, defects: cfg.defects, config: config(proto: slots[i].proto))
         boot(i)
     }
 
@@ -491,13 +502,15 @@ public struct World: Sendable {
         let ids = view.nodes.keys.sorted()
         // Undo of a delete (protocol 1.6): the user's own. Sometimes a user tries to undo someone else's delete, which
         // the protocol refuses (`notDeleter`, already by the local pre-check).
-        if !slots[i].legacy, rng.chance(cfg.restoreRate) {
+        if StreamCompat.acceptsRestore(slots[i].proto), rng.chance(cfg.restoreRate) {
             let gone = restorable.keys.sorted().filter { view.nodes[$0] == nil && view.deletedNodes[$0] != nil }
             let own = gone.filter { restorable[$0]!.by == slots[i].id }
             if let id = rng.pick(rng.chance(0.1) ? gone : own) {
                 return (.restoreNode(restorable[id]!.node, edges: restorable[id]!.edges), false)
             }
         }
+        // Document-level registers (protocol 1.7): variables and features, by clients that implement 1.7.
+        if StreamCompat.acceptsApp(slots[i].proto), rng.chance(cfg.appRate) { return genAppOp(view, ids) }
         if ids.count < 3 { return (newNodeOp(ids), false) }
         let roll = rng.int(0...99)
         let node = rng.pick(ids)!
@@ -543,6 +556,41 @@ public struct World: Sendable {
             itemCounter += 1
             let fresh = (0..<rng.int(0...3)).map { k in Item(id: "i\(itemCounter)_\(k)", value: .int(k)) }
             return (.setField(node, .config(Self.listPath), .items(fresh)), false)
+        }
+    }
+
+    static let appListPath = ["vars"]
+
+    /// An edit of the document-level registers (`$app`, protocol 1.7): a keyed list of variables and a features map, a
+    /// same-value hot register, and the occasional op `$app` does not take (refused locally).
+    private mutating func genAppOp(_ view: Document, _ ids: [NodeID]) -> (Op, Bool)? {
+        let app = Document.appNode
+        let vars: [Item] = { if case .items(let xs)? = view.app[Self.appListPath[0]] { return xs }; return [] }()
+        func variable(_ name: String) -> Value { .map(["name": .string(name), "value": .string("v\(rng.int(0...3))")]) }
+        switch rng.int(0...99) {
+        case 0..<30:
+            itemCounter += 1
+            let after = vars.isEmpty || rng.chance(0.3) ? nil : rng.pick(vars)!.id
+            return (.insertItem(app, path: Self.appListPath, item: Item(id: "v\(itemCounter)", value: variable("x\(itemCounter)")),
+                                after: after), false)
+        case 30..<55:
+            guard let it = rng.pick(vars) else { return nil }
+            return (.updateItem(app, path: Self.appListPath, id: it.id, value: variable(it.id)), false)
+        case 55..<65:
+            guard let it = rng.pick(vars) else { return nil }
+            return (.removeItem(app, path: Self.appListPath, id: it.id), false)
+        case 65..<82:
+            return (.setField(app, .config(["features", rng.pick(["a", "b"])!]), .string("f\(rng.int(0...3))")), false)
+        case 82..<88:
+            return (.setField(app, .config(["features"]), .map(["a": .string("f\(rng.int(0...3))")])), false)
+        case 88..<95:
+            return (.setField(app, .config(["hot"]), .string("HOT")), true)
+        default:
+            switch rng.int(0...2) {
+            case 0: return (.setField(app, .title, .string("t")), false)
+            case 1: return (.moveNode(app, x: 1, y: 1), false)
+            default: return (.setField(app, .config(["features", "r"]), .ref(OutputRef(node: rng.pick(ids) ?? "n0", output: "out"))), false)
+            }
         }
     }
 

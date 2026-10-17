@@ -88,6 +88,18 @@ public enum Op: Hashable, Sendable {
     case restoreNode(Node, edges: [Edge])
 }
 
+extension Op {
+    /// Protocol 1.7: the op writes a document-level register (node `Document.appNode`). Only `setField`, `insertItem`,
+    /// `removeItem` and `updateItem` can (every other op naming `$app` is invalid and never committed).
+    public var touchesApp: Bool {
+        switch self {
+        case .setField(let n, _, _), .insertItem(let n, _, _, _), .removeItem(let n, _, _), .updateItem(let n, _, _, _):
+            return n == Document.appNode
+        default: return false
+        }
+    }
+}
+
 /// Server version stamp: which committed op (global sequence) last wrote something, and who.
 public struct Stamp: Hashable, Codable, Sendable {
     public var seq: Int
@@ -193,4 +205,6 @@ public struct ProtocolDefects: OptionSet, Sendable {
     public static let restoreIgnoresEndpoints = ProtocolDefects(rawValue: 1 << 7)
     /// Anyone may restore a deleted node, not only its deleter (server and client pre-check alike).
     public static let anyoneRestores = ProtocolDefects(rawValue: 1 << 8)
+    /// Writes to document-level registers (`$app`, protocol 1.7) are not versioned: a stale writer overwrites them silently.
+    public static let appSkipsStamps = ProtocolDefects(rawValue: 1 << 9)
 }

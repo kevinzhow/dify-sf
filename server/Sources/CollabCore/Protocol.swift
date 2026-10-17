@@ -144,7 +144,8 @@ public struct StreamOpen: Hashable, Sendable {
     /// Client-side stream generation (not sent on the wire; lets drivers ignore events of dead streams).
     public var generation: Int
     /// `proto` query parameter (protocol 1.6): the protocol version the client implements. nil = a client older than
-    /// 1.6, which never receives a `restoreNode` commit (see `StreamCompat`).
+    /// 1.6. A stream never carries a commit its client cannot decode (`restoreNode` below 1.6, `$app` writes below 1.7;
+    /// see `StreamCompat`).
     public var proto: String?
     public init(client: ClientID?, lastEventId: Int?, from: Int?, generation: Int = 0, proto: String? = protocolVersion) {
         self.client = client
@@ -156,12 +157,13 @@ public struct StreamOpen: Hashable, Sendable {
 }
 
 /// The protocol version this code implements (docs/protocol.md).
-public let protocolVersion = "1.6"
+public let protocolVersion = "1.7"
 
-/// Keeping event streams of clients older than 1.6 free of ops they cannot decode. Such a stream (no `proto`, or
-/// `proto` < 1.6) never carries a `restoreNode` commit: a catch-up range that contains one is answered with a snapshot
-/// at head instead of a replay, and a live `restoreNode` commit ends the stream (the client reconnects and catches up
-/// with a snapshot). Both are things every client already handles (protocol section 5).
+/// Keeping event streams of older clients free of ops they cannot decode. A stream opened without `proto`, or with
+/// `proto` < 1.6, never carries a `restoreNode` commit; one with `proto` < 1.7 never carries a commit that writes a
+/// document-level register (`Op.touchesApp`). A catch-up range that contains such a commit is answered with a snapshot at
+/// head instead of a replay, and a live one ends the stream (the client reconnects and catches up with a snapshot). Both
+/// are things every client already handles (protocol section 5).
 public enum StreamCompat {
     /// Parses a `proto` value (`major.minor`). nil = not a version (the server answers 400).
     public static func parse(_ proto: String) -> (major: Int, minor: Int)? {
@@ -171,15 +173,25 @@ public enum StreamCompat {
         return (major, minor)
     }
 
-    /// True when a stream opened with `proto` may carry `restoreNode` commits.
-    public static func acceptsRestore(_ proto: String?) -> Bool {
+    /// True when `proto` names version 1.`minor` or later (nil and unparsable values: never).
+    static func atLeast(_ proto: String?, minor: Int) -> Bool {
         guard let p = proto.flatMap(parse) else { return false }
-        return p.major > 1 || (p.major == 1 && p.minor >= 6)
+        return p.major > 1 || (p.major == 1 && p.minor >= minor)
     }
+
+    /// True when a stream opened with `proto` may carry `restoreNode` commits (1.6).
+    public static func acceptsRestore(_ proto: String?) -> Bool { atLeast(proto, minor: 6) }
+
+    /// True when a stream opened with `proto` may carry commits that write document-level registers (1.7).
+    public static func acceptsApp(_ proto: String?) -> Bool { atLeast(proto, minor: 7) }
+
+    /// True when a stream opened with `proto` may carry every commit (its client implements this version or later).
+    public static func acceptsAll(_ proto: String?) -> Bool { acceptsRestore(proto) && acceptsApp(proto) }
 
     /// True when `op` may be sent as a commit event on a stream opened with `proto`.
     public static func streamCarries(_ op: Op, proto: String?) -> Bool {
         if case .restoreNode = op { return acceptsRestore(proto) }
+        if op.touchesApp { return acceptsApp(proto) }
         return true
     }
 }

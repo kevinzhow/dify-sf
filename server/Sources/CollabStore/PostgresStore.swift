@@ -80,8 +80,30 @@ public struct PostgresStore: Sendable {
         }
     }
 
-    public func createDocument(id: String, initial: Document, metadata: Value? = nil) async throws -> Bool {
-        try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata) }
+    /// Creates the document (seed state, optional Dify metadata, secrets of an imported file) in one transaction. Returns
+    /// false, writing nothing, if it already existed.
+    public func createDocument(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Bool {
+        try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata, secrets: secrets) }
+    }
+
+    /// Stores the plaintext of a secret environment variable under `ref` (protocol 1.7). Idempotent for the same value.
+    public func storeSecret(_ id: String, ref: String, value: String) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                INSERT INTO secrets (doc_id, ref, value) VALUES (\(id), \(ref), \(value)) ON CONFLICT (doc_id, ref) DO NOTHING
+                """, logger: self.logger)
+        }
+    }
+
+    /// ref -> plaintext of every secret of the document.
+    public func secrets(_ id: String) async throws -> [String: String] {
+        try await bounded {
+            var out: [String: String] = [:]
+            for try await (r, v) in try await self.client.query("SELECT ref, value FROM secrets WHERE doc_id = \(id)", logger: self.logger).decode((String, String).self) {
+                out[r] = v
+            }
+            return out
+        }
     }
 
     public func documentHead(_ id: String) async throws -> Int? { try await bounded { try await self.documentHeadImpl(id) } }
@@ -98,6 +120,11 @@ public struct PostgresStore: Sendable {
     /// Whether the log has an op of type `t` (the wire discriminator) with `after < seq <= through`.
     public func logContainsOp(_ id: String, type t: String, after: Int, through: Int) async throws -> Bool {
         try await bounded { try await self.logContainsOpImpl(id, type: t, after: after, through: through) }
+    }
+    /// Whether the log has a commit that writes a document-level register (node `$app`, protocol 1.7) with
+    /// `after < seq <= through`.
+    public func logTouchesApp(_ id: String, after: Int, through: Int) async throws -> Bool {
+        try await bounded { try await self.logTouchesAppImpl(id, after: after, through: through) }
     }
     public func committedMap(_ id: String, client c: ClientID, from: Int, through: Int) async throws -> [Int: Int] {
         try await bounded { try await self.committedMapImpl(id, client: c, from: from, through: through) }
@@ -123,7 +150,7 @@ public struct PostgresStore: Sendable {
     // MARK: - Documents
 
     /// Creates the document with its seed state (snapshot at seq 0). Returns false if it already existed.
-    func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil) async throws -> Bool {
+    func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Bool {
         let state = try WireJSON.encodeString(initial)
         let meta = try metadata.map { try WireJSON.encodeString($0) }
         return try await client.withTransaction(logger: logger) { c in
@@ -134,6 +161,9 @@ public struct PostgresStore: Sendable {
                 _ = try await c.query("INSERT INTO snapshots (doc_id, seq, state) VALUES (\(id), 0, \(state)::text::jsonb)", logger: logger)
                 if let meta {
                     _ = try await c.query("INSERT INTO doc_meta (doc_id, dsl) VALUES (\(id), \(meta)::text::jsonb)", logger: logger)
+                }
+                for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) {
+                    _ = try await c.query("INSERT INTO secrets (doc_id, ref, value) VALUES (\(id), \(ref), \(value))", logger: logger)
                 }
             }
             return created
@@ -192,6 +222,15 @@ public struct PostgresStore: Sendable {
     func logContainsOpImpl(_ id: String, type t: String, after: Int, through: Int) async throws -> Bool {
         let rows = try await client.query(
             "SELECT EXISTS (SELECT 1 FROM ops WHERE doc_id = \(id) AND seq > \(after) AND seq <= \(through) AND op->>'t' = \(t))",
+            logger: logger)
+        for try await found in rows.decode(Bool.self) { return found }
+        return false
+    }
+
+    func logTouchesAppImpl(_ id: String, after: Int, through: Int) async throws -> Bool {
+        let app = Document.appNode
+        let rows = try await client.query(
+            "SELECT EXISTS (SELECT 1 FROM ops WHERE doc_id = \(id) AND seq > \(after) AND seq <= \(through) AND op->>'node' = \(app))",
             logger: logger)
         for try await found in rows.decode(Bool.self) { return found }
         return false
