@@ -19,6 +19,7 @@ import 'store/store.dart';
 import 'variable_inspect/trigger.dart';
 import 'block_selector/block_selector.dart';
 import 'canvas_plus/canvas_plus_buttons.dart';
+import 'node_insertion/insert_block.dart';
 import 'workflow_editor.dart';
 
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
@@ -94,6 +95,23 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     ).show(context, anchor: screen & Size.zero);
   }
 
+  /// The node menu's Change Block (change-block.tsx): the block selector at the node, replacing it with the block
+  /// picked.
+  void _changeBlock(String nodeId, String sourceHandle) {
+    final context = _inner, canvas = _canvas;
+    final node = canvas?.graph?[nodeId];
+    if (context == null || canvas == null || node == null) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final r = canvas.view.rectToScreen(node.rect);
+    WorkflowActions(
+      controller: controller,
+      canvas: canvas,
+      store: WorkflowStoreScope.of(context),
+      options: WorkflowMenuOptions(isChatMode: meta.isChatflow),
+    ).showChangeBlockSelector(context, nodeId, sourceHandle, anchor: box.localToGlobal(r.topLeft) & r.size);
+  }
+
   /// Puts a placed candidate (and an iteration's or loop's start node) into the document as one undo step.
   void _place(CandidatePlacement p) {
     final doc = controller.doc;
@@ -109,7 +127,11 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
     const options = OperatorOptions(collaborationEnabled: true);
-    final menuOptions = WorkflowMenuOptions(isChatMode: meta.isChatflow, onAddBlock: _addBlockAt);
+    final menuOptions = WorkflowMenuOptions(
+      isChatMode: meta.isChatflow,
+      onAddBlock: _addBlockAt,
+      onChangeBlock: _changeBlock,
+    );
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
     // spacing would widen every label).
     return DefaultTextStyle(
