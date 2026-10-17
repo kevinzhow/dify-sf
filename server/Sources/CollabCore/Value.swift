@@ -33,6 +33,9 @@ public indirect enum Value: Hashable, Sendable {
     case null
     case bool(Bool)
     case int(Int)
+    /// A finite number with a fractional part (protocol 1.5). Integral numbers are always `.int`, so every number has
+    /// exactly one representation and survives a JSON round trip unchanged.
+    case double(Double)
     case string(String)
     case ref(OutputRef)
     case brokenRef(OutputRef)
@@ -102,8 +105,18 @@ extension Value {
                 if let p = v.structuralProblem { return p }
             }
             return nil
+        case .double(let d):
+            if !d.isFinite { return "numbers must be finite" }
+            if d == d.rounded(.towardZero) { return "integral number \(d) must be written as an int" }
+            return nil
         default: return nil
         }
+    }
+
+    /// The canonical value of a JSON number: `.int` if integral and in range, else `.double`.
+    public static func number(_ d: Double) -> Value {
+        if d.isFinite, d == d.rounded(.towardZero), abs(d) < 9.0e15 { return .int(Int(d)) }
+        return .double(d)
     }
 }
 

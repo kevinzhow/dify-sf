@@ -242,7 +242,10 @@ struct WireTests {
         #expect(try WireJSON.encodeString(v) ==
                 #"{"a":1,"b":[null,true,"s"],"i":{"$items":[{"id":"x","value":2}]},"r":{"$ref":{"node":"n","output":"o"}}}"#)
         try roundTrip(v)
-        #expect(throws: (any Error).self) { try WireJSON.decode(Value.self, from: "1.5") }
+        // protocol 1.5: fractional numbers are doubles, integral ones stay ints (one representation per number)
+        #expect(try WireJSON.decode(Value.self, from: "1.5") == .double(1.5))
+        #expect(try WireJSON.decode(Value.self, from: "2.0") == .int(2))
+        #expect(try WireJSON.encodeString(Value.double(0.7)) == "0.7")
         #expect(throws: (any Error).self) { try WireJSON.decode(Value.self, from: #"{"$weird":1}"#) }
     }
 

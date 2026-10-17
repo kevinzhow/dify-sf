@@ -30,6 +30,9 @@ extension Value: Codable {
         case .int(let i):
             var c = encoder.singleValueContainer()
             try c.encode(i)
+        case .double(let d):
+            var c = encoder.singleValueContainer()
+            try c.encode(d)
         case .string(let s):
             var c = encoder.singleValueContainer()
             try c.encode(s)
@@ -77,8 +80,9 @@ extension Value: Codable {
         if c.decodeNil() { self = .null; return }
         if let b = try? c.decode(Bool.self) { self = .bool(b); return }
         if let i = try? c.decode(Int.self) { self = .int(i); return }
+        if let d = try? c.decode(Double.self) { self = .number(d); return }
         if let s = try? c.decode(String.self) { self = .string(s); return }
-        throw bad(.init(codingPath: decoder.codingPath, debugDescription: "unsupported value (numbers must be 64-bit integers)"))
+        throw bad(.init(codingPath: decoder.codingPath, debugDescription: "unsupported value"))
     }
 }
 

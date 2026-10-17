@@ -16,6 +16,7 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", exact: "2.13.0"),
         .package(url: "https://github.com/apple/swift-configuration.git", exact: "1.2.2"),
         .package(url: "https://github.com/swift-server/async-http-client.git", exact: "1.35.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2"),
     ],
     targets: [
         // Pure protocol logic: document model, ops, wire format, sequencer, client state machine. No I/O.
@@ -25,6 +26,8 @@ let package = Package(
         // Deterministic simulator: seeded PRNG, lossy network, fault injection.
         .target(name: "CollabSim", dependencies: ["CollabCore", "CollabInvariants"]),
         .executableTarget(name: "collab-sim", dependencies: ["CollabSim"]),
+        // Dify workflow files (DSL, YAML) <-> documents.
+        .target(name: "CollabDSL", dependencies: ["CollabCore", .product(name: "Yams", package: "Yams")]),
         // Postgres persistence (plain SQL via postgres-nio).
         .target(name: "CollabStore", dependencies: [
             "CollabCore",
@@ -51,7 +54,7 @@ let package = Package(
         ]),
         .executableTarget(name: "collab-bench", dependencies: ["CollabHarness"]),
         .testTarget(name: "CollabTests", dependencies: [
-            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer",
+            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL",
             .product(name: "PostgresNIO", package: "postgres-nio"),
             .product(name: "Configuration", package: "swift-configuration"),
         ]),

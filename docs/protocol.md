@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.4
+# dify-sf collaboration protocol, version 1.5
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,10 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.5 (additive; clients that decode values must accept it): **fractional numbers.** A config value may be a JSON number
+  with a fractional part (Dify settings such as `temperature: 0.7`). Every number has one form: integral numbers are
+  integers (on the wire `2.0` is the number 2 and is stored and served as `2`); a fractional number is a finite double.
+  Encoders write the shortest representation that reads back to the same double.
 * 1.4 (**stricter validation; clients that pre-check locally, e.g. the Dart port, must apply it**): **declared outputs are
   part of reference integrity.** A node's declared outputs are the names of the items of its `outputs` keyed list (an
   item's `name`, or its id if it has none); a node without an `outputs` list accepts references to any output name.
