@@ -66,7 +66,11 @@ void main() {
     await settle(t, 500);
     expect(clipboard, contains('exported demo'));
 
-    await t.pageBack();
+    if (find.byKey(const Key('back-to-documents')).evaluate().isEmpty) {
+      await t.tap(find.byKey(const Key('session-menu')));
+      await t.pump(const Duration(milliseconds: 300));
+    }
+    await t.tap(find.byKey(const Key('back-to-documents')));
     await t.pumpWidget(const SizedBox());
     await backend.dispose();
     await t.pump(const Duration(seconds: 20));

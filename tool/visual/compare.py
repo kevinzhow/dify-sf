@@ -118,7 +118,7 @@ def capture_ours(browser, base, doc, case, out, viewport):
     page.on('console', lambda m: rect.append(m.text) if m.text.startswith('CANVAS_RECT') else None)
     page.on('console', lambda m: views.append(m.text) if m.text.startswith('CANVAS_VIEW') else None)
     x, y, z = viewport
-    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1' + (f'&{EXTRA}' if EXTRA else ''))
+    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1&name=alice' + (f'&{EXTRA}' if EXTRA else ''))
     t0 = time.time()
     while not rect and time.time() - t0 < 60:
         page.wait_for_timeout(200)

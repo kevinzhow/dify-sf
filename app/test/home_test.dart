@@ -55,7 +55,11 @@ void main() {
     expect(saved.getString('userName'), 'Kim');
     expect(demo.server.names.values, ['Kim'], reason: 'the issued id is registered with the name (protocol 1.3)');
 
-    await t.pageBack();
+    if (find.byKey(const Key('back-to-documents')).evaluate().isEmpty) {
+      await t.tap(find.byKey(const Key('session-menu')));
+      await t.pump(const Duration(milliseconds: 300));
+    }
+    await t.tap(find.byKey(const Key('back-to-documents')));
     await t.pumpWidget(const SizedBox());
     await demo.dispose();
     await t.pump(const Duration(seconds: 20));

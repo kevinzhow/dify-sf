@@ -9,6 +9,7 @@ import '../editor/notice_overlay.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
 import 'header/features_trigger.dart';
+import 'header/titles.dart';
 import 'header/workflow_header.dart';
 import 'operator/operator.dart';
 import 'store/store.dart';
@@ -42,7 +43,14 @@ class DifyWorkflowEditor extends StatelessWidget {
             header: (context, canvas) => _BoundHeader(
               controller: controller,
               canvas: canvas,
-              left: SessionBadge(controller: controller, serverLabel: serverLabel, actions: actions),
+              session: (anchor) => SessionBadge(
+                controller: controller,
+                serverLabel: serverLabel,
+                actions: actions,
+                anchor: anchor,
+                pill: false,
+              ),
+              left: _OfflinePill(controller: controller),
             ),
             control: workflowControlBuilder(options),
             operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
@@ -63,9 +71,12 @@ class DifyWorkflowEditor extends StatelessWidget {
 
 /// The header with its data bound to the session ([EditorHeaderBinding] needs the editor's store, found in scope).
 class _BoundHeader extends StatefulWidget {
-  const _BoundHeader({required this.controller, required this.canvas, this.left});
+  const _BoundHeader({required this.controller, required this.canvas, required this.session, this.left});
   final EditorController controller;
   final CanvasController canvas;
+
+  /// Dify's auto-saved line, opening dify-sf's session menu.
+  final Widget Function(Widget anchor) session;
   final Widget? left;
 
   @override
@@ -111,6 +122,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
         currentUserId: widget.controller.session.clientId,
         handleNodeSelect: b.selectNode,
         handleNodesCancelSelected: b.cancelSelection,
+        title: widget.session(const EditingTitle()),
         left: widget.left,
         middle: FeaturesTrigger(
           hooks: WorkflowPublishHooks(
@@ -127,11 +139,28 @@ class _BoundHeaderState extends State<_BoundHeader> {
 /// the link state, unsaved edits, the last seq, this client's identity and the host's actions. Saving progress itself
 /// is Dify's own "Auto-Saved … / Syncing" line.
 class SessionBadge extends StatelessWidget {
-  const SessionBadge({super.key, required this.controller, this.serverLabel = '', this.actions = const []});
+  const SessionBadge({
+    super.key,
+    required this.controller,
+    this.serverLabel = '',
+    this.actions = const [],
+    this.anchor,
+    this.pill = true,
+    this.menu = true,
+  });
 
   final EditorController controller;
   final String serverLabel;
   final List<Widget> actions;
+
+  /// What opens the session menu (Dify's auto-saved line); null: a small cloud icon.
+  final Widget? anchor;
+
+  /// Whether the offline pill is part of this widget.
+  final bool pill;
+
+  /// Whether the session menu is part of this widget.
+  final bool menu;
 
   static const _small = TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary);
 
@@ -151,9 +180,7 @@ class SessionBadge extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Back to the document list (Dify leaves this to its app sidebar, which the editor does not include).
-          if (ModalRoute.of(context)?.canPop ?? false) const BackButton(),
-          if (s.link != LinkState.live) ...[
+          if (pill && s.link != LinkState.live) ...[
             Icon(Icons.circle, size: 8, color: color),
             const SizedBox(width: 4),
             Text(label, style: _small),
@@ -164,53 +191,85 @@ class SessionBadge extends StatelessWidget {
               child: const Text('Reconnect now', style: TextStyle(fontSize: 12)),
             ),
           ],
-          MenuAnchor(
-            menuChildren: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+          if (menu)
+            Flexible(
+              child: MenuAnchor(
+                menuChildren: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.circle, size: 8, color: color, key: const Key('link-dot')),
-                        const SizedBox(width: 6),
-                        Text(label, key: const Key('link-state'), style: _small),
-                        const SizedBox(width: 12),
-                        Text(
-                          s.pending == 0 ? 'All edits saved' : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
-                          key: const Key('pending-count'),
-                          style: s.pending == 0 ? _small : _small.copyWith(color: DifyColors.textWarning),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.circle, size: 8, color: color, key: const Key('link-dot')),
+                            const SizedBox(width: 6),
+                            Text(label, key: const Key('link-state'), style: _small),
+                            const SizedBox(width: 12),
+                            Text(
+                              s.pending == 0
+                                  ? 'All edits saved'
+                                  : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
+                              key: const Key('pending-count'),
+                              style: s.pending == 0 ? _small : _small.copyWith(color: DifyColors.textWarning),
+                            ),
+                            const SizedBox(width: 12),
+                            Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: _small),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: _small),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · '
+                          '${controller.docId} · $serverLabel',
+                          style: _small,
+                        ),
+                        if (s.lastError != null)
+                          Text(s.lastError!, style: _small.copyWith(color: DifyColors.textDestructive)),
+                        if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
+                        // Back to the document list (Dify leaves this to its app sidebar, which the editor does not have).
+                        if (ModalRoute.of(context)?.canPop ?? false)
+                          TextButton.icon(
+                            key: const Key('back-to-documents'),
+                            icon: const Icon(Icons.arrow_back, size: 16),
+                            label: const Text('Documents', style: TextStyle(fontSize: 12)),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                          ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · '
-                      '${controller.docId} · $serverLabel',
-                      style: _small,
-                    ),
-                    if (s.lastError != null)
-                      Text(s.lastError!, style: _small.copyWith(color: DifyColors.textDestructive)),
-                    if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
-                  ],
-                ),
+                  ),
+                ],
+                builder: (context, menu, _) => anchor != null
+                    ? GestureDetector(
+                        key: const Key('session-menu'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => menu.isOpen ? menu.close() : menu.open(),
+                        child: MouseRegion(cursor: SystemMouseCursors.click, child: anchor),
+                      )
+                    : IconButton(
+                        key: const Key('session-menu'),
+                        tooltip: 'Collaboration session',
+                        iconSize: 16,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.cloud_done_outlined,
+                          color: s.link == LinkState.live ? DifyColors.textTertiary : color,
+                        ),
+                        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+                      ),
               ),
-            ],
-            builder: (context, menu, _) => IconButton(
-              key: const Key('session-menu'),
-              tooltip: 'Collaboration session',
-              iconSize: 16,
-              visualDensity: VisualDensity.compact,
-              icon: Icon(Icons.cloud_done_outlined, color: s.link == LinkState.live ? DifyColors.textTertiary : color),
-              onPressed: () => menu.isOpen ? menu.close() : menu.open(),
             ),
-          ),
         ],
       );
     },
   );
+}
+
+/// dify-sf's link state while it is not live, with "Reconnect now" (nothing while live, as in Dify).
+class _OfflinePill extends StatelessWidget {
+  const _OfflinePill({required this.controller});
+  final EditorController controller;
+
+  @override
+  Widget build(BuildContext context) => SessionBadge(controller: controller, menu: false);
 }
