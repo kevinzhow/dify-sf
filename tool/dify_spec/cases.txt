@@ -29,6 +29,7 @@ web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextme
 web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should not render the menu when the referenced edge no longer exists
 web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should open the edge menu for the right-clicked edge
 web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should delete the right-clicked edge and close the menu when delete is clicked
+web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should delete the right-clicked edge with %s after switching from a selected node
 web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should keep bundled multi-selection nodes intact when delete runs after right-clicking an edge
 web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should retarget the menu and selected edge when right-clicking a different edge
 web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx :: EdgeContextmenu > should hide the menu when the target edge disappears after opening it
@@ -69,6 +70,7 @@ web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: Selectio
 web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should open create snippet dialog with selected graph from the top menu item
 web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should hide create snippet action without snippets create-and-modify permission
 web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should add input fields for variable references outside of the selected graph
+web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should hide create snippet when selection contains %s node
 web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should stay hidden when only one node is selected
 web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should align selected nodes to the left and save history
 web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx :: SelectionContextmenu > should distribute selected nodes horizontally
@@ -276,6 +278,7 @@ web/app/components/workflow/block-selector/snippets/__tests__/snippet-tags-filte
 web/app/components/workflow/block-selector/snippets/__tests__/use-insert-snippet.spec.tsx :: useInsertSnippet > Insert Flow > should append remapped snippet graph into current workflow graph
 web/app/components/workflow/block-selector/snippets/__tests__/use-insert-snippet.spec.tsx :: useInsertSnippet > Insert Flow > should remap variable selectors that reference nodes inside the snippet
 web/app/components/workflow/block-selector/snippets/__tests__/use-insert-snippet.spec.tsx :: useInsertSnippet > Insert Flow > should remap structural node ids inside a loop snippet
+web/app/components/workflow/block-selector/snippets/__tests__/use-insert-snippet.spec.tsx :: useInsertSnippet > Insert Flow > should connect inserted snippet nodes inside the %s container
 web/app/components/workflow/block-selector/snippets/__tests__/use-insert-snippet.spec.tsx :: useInsertSnippet > Insert Flow > should show error toast when fetching snippet workflow fails
 web/app/components/workflow/block-selector/tool/__tests__/action-item.spec.tsx :: ToolActionItem > should select tools with default params and track the selection
 web/app/components/workflow/block-selector/tool/__tests__/action-item.spec.tsx :: ToolActionItem > should not select disabled tools and should show added state
@@ -343,8 +346,10 @@ web/app/components/workflow/collaboration/core/__tests__/collaboration-manager.s
 web/app/components/workflow/collaboration/core/__tests__/collaboration-manager.socket-and-subscriptions.spec.ts :: CollaborationManager socket and subscription behavior > graph view state reporting > reports visibility changes while connected and stops after force disconnect
 web/app/components/workflow/collaboration/core/__tests__/collaboration-manager.socket-and-subscriptions.spec.ts :: CollaborationManager socket and subscription behavior > graph view state reporting > re-reports both hidden and visible state after status with increasing sequences
 web/app/components/workflow/collaboration/hooks/__tests__/use-collaboration.spec.ts :: useCollaboration > connects, reacts to manager updates, and disconnects on unmount
+web/app/components/workflow/collaboration/hooks/__tests__/use-collaboration.spec.ts :: useCollaboration > does not connect or track cursors when a collaboration gate is disabled
 web/app/components/workflow/collaboration/services/__tests__/cursor-service.spec.ts :: CursorService > emits transformed positions with throttle and distance guard
 web/app/components/workflow/collaboration/services/__tests__/cursor-service.spec.ts :: CursorService > stops tracking and forwards cursor updates to registered handler
+web/app/components/workflow/comment/__tests__/comment-close-focus.spec.tsx :: Comment keyboard focus lifecycle > restores the current marker after $open and $close, so arrow keys still move it
 web/app/components/workflow/comment/__tests__/comment-close-focus.spec.tsx :: Comment keyboard focus lifecycle > restores the last viewed comment marker after navigating to another thread
 web/app/components/workflow/comment/__tests__/comment-close-focus.spec.tsx :: Comment keyboard focus lifecycle > closes safely when comment markers have been hidden
 web/app/components/workflow/comment/__tests__/comment-thread-focus.spec.tsx :: Comment thread focus > keeps focus on the marker after saving a keyboard move with its thread open
@@ -479,6 +484,7 @@ web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklis
 web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should detect disconnected nodes
 web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should detect validation errors from checkValid
 web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should validate legacy Agent nodes when their metadata is hidden by Agent v2
+web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should report a missing $referenceType reference from inline agents
 web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should report a missing model from inline agents and open their configuration panel
 web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should not report available file and skill references from inline agents
 web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts :: useChecklist > should report uninstalled tools from inline agents and open their configuration panel
@@ -571,8 +577,11 @@ web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.
 web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.tsx :: node keyboard interactions > moves a Tab-focused unselected node without moving a separate selection
 web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.tsx :: node keyboard interactions > moves from the title button through collaboration and keeps its native activation
 web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.tsx :: node keyboard interactions > keeps selected children stationary relative to a moving selected container
+web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.tsx :: node keyboard interactions > clamps a child to its %s container and skips empty history at the boundary
+web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.tsx :: node keyboard interactions > does not move in %s state
 web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts :: useNodePluginInstallation > should return the noop installation state for non plugin-dependent nodes
 web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts :: useNodePluginInstallation > should report loading and invalidate built-in tools while the collection is resolving
+web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts :: useNodePluginInstallation > should resolve matched %s tool collections without dimming
 web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts :: useNodePluginInstallation > should keep plugin tool collections installable without collection state
 web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts :: useNodePluginInstallation > should not allow installing missing tool plugins without plugin install permission
 web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts :: useNodePluginInstallation > should flag missing trigger plugins and invalidate trigger data after installation
@@ -611,6 +620,9 @@ web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: us
 web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: useNodesInteractions > uses metadata defaults during add/change/paste and reads collaborative nodes on resize
 web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: useNodesInteractions > paste title handling > preserves the original title when the destination canvas has no conflict
 web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: useNodesInteractions > paste title handling > renames pasted nodes only when the destination canvas already uses the title
+web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: useNodesInteractions > container paste target detection > pastes a copied %s as a top-level node when the source container remains selected
+web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: useNodesInteractions > nested container paste behavior > should not paste %s into an iteration container
+web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts :: useNodesInteractions > nested container paste behavior > should paste human-input into a %s container
 web/app/components/workflow/hooks/__tests__/use-nodes-meta-data.spec.tsx :: useNodesMetaData > returns empty metadata collections when the hooks store has no node map
 web/app/components/workflow/hooks/__tests__/use-nodes-meta-data.spec.tsx :: useNodesMetaData > resolves built-in tool metadata from tool providers
 web/app/components/workflow/hooks/__tests__/use-nodes-meta-data.spec.tsx :: useNodesMetaData > prefers workflow store data for datasource nodes and keeps generic metadata for normal blocks
@@ -819,6 +831,8 @@ web/app/components/workflow/nodes/_base/components/__tests__/code-generator-butt
 web/app/components/workflow/nodes/_base/components/__tests__/field.spec.tsx :: Field > should toggle folded children when supportFold is enabled
 web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileTypeItem > should render built-in file types and toggle the selected type on click
 web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileTypeItem > should render the custom tag editor and emit custom extensions
+web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileUploadSetting > should associate file type errors with the checkboxes in feature panel mode %s
+web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileUploadSetting > should associate extension errors only with the named tag input in feature panel mode %s
 web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileUploadSetting > should let keyboard users change upload methods while preserving the rest of the settings
 web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileUploadSetting > should keep empty and updated upload method selections controlled by the payload
 web/app/components/workflow/nodes/_base/components/__tests__/file-support.spec.tsx :: File upload support components > FileUploadSetting > should update file types, upload methods, and upload limits
@@ -868,6 +882,7 @@ web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.ts
 web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle > should show the start tab when adding a node after the source node
 web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle > should toggle the source add trigger
 web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle > should keep the source add trigger visible when the node is selected
+web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle auto-open > should auto-open immediately for %s nodes
 web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle auto-open > should skip source auto-open in chat mode and only reset the start selector flag
 web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle auto-open > should use the workflow store fallback when the selector setters are unavailable
 web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx :: node-handle > NodeSourceHandle auto-open > should not auto-open when the node type is not a workflow entry node
@@ -1133,6 +1148,7 @@ web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/pan
 web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > does not remove prompt output tokens when declared outputs are changed from the output list
 web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > renames prompt output tokens when a referenced declared output is renamed from the output list
 web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > renders declared outputs from workflow draft graph data
+web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > adds custom output %s to workflow draft node data
 web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > submits the output editor with a scoped Mod+Enter shortcut
 web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > cancels the output editor with a scoped Escape shortcut
 web/app/components/workflow/nodes/agent-v2/__tests__/panel.spec.tsx :: agent/panel > reveals output editor advanced options with the collapsible trigger
@@ -1300,6 +1316,7 @@ web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx 
 web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > parseCurl > should return an error for invalid curl input
 web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > parseCurl > should parse form data and attach typed content headers
 web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > parseCurl > should parse raw payloads and preserve equals signs in the body value
+web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > parseCurl > should return a descriptive error for %s
 web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > component actions > should import a parsed curl node and reselect the node after saving
 web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > component actions > should notify the user when the curl command is invalid
 web/app/components/workflow/nodes/http/components/__tests__/curl-panel.spec.tsx :: curl-panel > component actions > should keep the panel open when parsing returns no node and no error
@@ -1400,6 +1417,7 @@ web/app/components/workflow/nodes/human-input/components/delivery-method/__tests
 web/app/components/workflow/nodes/human-input/components/delivery-method/__tests__/upgrade-modal.spec.tsx :: renders upgrade copy and handles hide and pricing actions
 web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx :: human-input/delivery-method/recipient/email-input > should map selected members, show the placeholder on focus, and select a member from the list
 web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx :: human-input/delivery-method/recipient/email-input > should add external emails, select existing members, and ignore invalid or duplicate values
+web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx :: human-input/delivery-method/recipient/email-input > should allow Tab to leave "$value" and add a valid email only once
 web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx :: human-input/delivery-method/recipient/email-input > should allow Shift+Tab to return to the previous control
 web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx :: human-input/delivery-method/recipient/email-input > should keep typing focused and stop keyboard events from reaching workflow listeners
 web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx :: human-input/delivery-method/recipient/email-input > should delete the last recipient with backspace, flag missing members as errors, and stop focusing when disabled
@@ -1487,6 +1505,7 @@ web/app/components/workflow/nodes/knowledge-base/__tests__/utils.spec.ts :: know
 web/app/components/workflow/nodes/knowledge-base/__tests__/utils.spec.ts :: knowledge-base validation issue > returns retrieval-setting-required when retrieval search method is missing
 web/app/components/workflow/nodes/knowledge-base/__tests__/utils.spec.ts :: knowledge-base validation issue > returns reranking-model-required when reranking is enabled without a model
 web/app/components/workflow/nodes/knowledge-base/__tests__/utils.spec.ts :: knowledge-base validation issue > returns reranking-model-invalid when the configured reranking model is unavailable
+web/app/components/workflow/nodes/knowledge-base/__tests__/utils.spec.ts :: knowledge-base validation messaging > maps %s to the expected translation key
 web/app/components/workflow/nodes/knowledge-base/__tests__/utils.spec.ts :: knowledge-base validation messaging > returns an empty string when there is no issue
 web/app/components/workflow/nodes/knowledge-base/components/__tests__/embedding-model.spec.tsx :: EmbeddingModel > should pass the selected model configuration and warning state to the selector field
 web/app/components/workflow/nodes/knowledge-base/components/__tests__/embedding-model.spec.tsx :: EmbeddingModel > should pass an undefined value when the embedding model is incomplete
@@ -1670,7 +1689,9 @@ web/app/components/workflow/nodes/llm/hooks/__tests__/use-llm-prompt-config.spec
 web/app/components/workflow/nodes/llm/hooks/__tests__/use-llm-prompt-config.spec.ts :: use-llm-prompt-config > handles completion prompt branches, including the non-jinja early return and jinja rename flow
 web/app/components/workflow/nodes/llm/hooks/__tests__/use-llm-structured-output-config.spec.ts :: use-llm-structured-output-config > detects supported models and updates structured output state
 web/app/components/workflow/nodes/llm/hooks/__tests__/use-llm-structured-output-config.spec.ts :: use-llm-structured-output-config > returns undefined support when the model is missing from the list
+web/app/components/workflow/nodes/loop/__tests__/condition-item.spec.tsx :: ConditionItem > should render legacy boolean string $value as $expected
 web/app/components/workflow/nodes/loop/__tests__/condition-item.spec.tsx :: ConditionItem > should reset the value to boolean false when selecting a boolean variable
+web/app/components/workflow/nodes/loop/__tests__/use-config.helpers.spec.ts :: loop use-config helpers > canUseAsLoopInput > should accept %s loop inputs
 web/app/components/workflow/nodes/loop/__tests__/use-config.helpers.spec.ts :: loop use-config helpers > canUseAsLoopInput > should reject non-array loop inputs
 web/app/components/workflow/nodes/loop/__tests__/use-config.helpers.spec.ts :: loop use-config helpers > should update error handling, loop count and logical operators immutably
 web/app/components/workflow/nodes/loop/__tests__/use-config.helpers.spec.ts :: loop use-config helpers > should add, update and remove break conditions for regular and file attributes
@@ -1697,6 +1718,7 @@ web/app/components/workflow/nodes/loop/__tests__/variable-selectors.spec.tsx :: 
 web/app/components/workflow/nodes/loop/__tests__/variable-selectors.spec.tsx :: writes a variable expression when selecting a numeric comparison value
 web/app/components/workflow/nodes/loop/__tests__/variable-selectors.spec.tsx :: updates the selected condition variable through its controlled popup
 web/app/components/workflow/nodes/loop/components/loop-variables/__tests__/form-item.spec.tsx :: Loop variable constant input > reports numeric edits and clearing as strings to the loop draft
+web/app/components/workflow/nodes/loop/components/loop-variables/__tests__/form-item.spec.tsx :: Loop variable constant input > names an unnamed %s constant until its variable is named
 web/app/components/workflow/nodes/loop/components/loop-variables/__tests__/item.spec.tsx :: Loop variable item > normalizes the variable name through its labeled input
 web/app/components/workflow/nodes/loop/components/loop-variables/__tests__/item.spec.tsx :: Loop variable item > removes the current variable from its named icon command
 web/app/components/workflow/nodes/loop-start/__tests__/index.spec.tsx :: LoopStartNode > Rendering > should render the source handle in the ReactFlow context
@@ -1719,6 +1741,7 @@ web/app/components/workflow/nodes/parameter-extractor/__tests__/use-single-run-f
 web/app/components/workflow/nodes/parameter-extractor/__tests__/use-single-run-form-params.spec.ts :: parameter-extractor/use-single-run-form-params > skips malformed prompt variables when collecting dependent vars
 web/app/components/workflow/nodes/parameter-extractor/components/__tests__/reasoning-mode-picker.spec.tsx :: parameter-extractor/reasoning-mode-picker > switches between prompt and function call reasoning modes
 web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/import-from-tool.spec.tsx :: parameter-extractor/extract-parameter/import-from-tool > imports llm parameters from a built-in tool through the real block selector
+web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/import-from-tool.spec.tsx :: parameter-extractor/extract-parameter/import-from-tool > imports llm parameters from $collectionType tool collections
 web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/item.spec.tsx :: parameter-extractor/extract-parameter/item > renders parameter details and forwards edit and delete actions
 web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/update.spec.tsx :: parameter-extractor/extract-parameter/update > opens from the add trigger and saves a new parameter
 web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/update.spec.tsx :: parameter-extractor/extract-parameter/update > rejects invalid variable names before saving
@@ -1955,6 +1978,7 @@ web/app/components/workflow/note-node/__tests__/index.spec.tsx :: NoteNode > sho
 web/app/components/workflow/note-node/__tests__/index.spec.tsx :: NoteNode > should hide the toolbar for temporary notes
 web/app/components/workflow/note-node/__tests__/index.spec.tsx :: NoteNode > should clear the selected state when clicking outside the note
 web/app/components/workflow/note-node/note-editor/__tests__/context.spec.tsx :: NoteEditorContextProvider > Rendering > should render children with the note editor store defaults
+web/app/components/workflow/note-node/note-editor/__tests__/context.spec.tsx :: NoteEditorContextProvider > Editor State Initialization > should use an empty editor state when $name
 web/app/components/workflow/note-node/note-editor/__tests__/context.spec.tsx :: NoteEditorContextProvider > Editor State Initialization > should restore lexical content and forward editable prop
 web/app/components/workflow/note-node/note-editor/__tests__/editor.spec.tsx :: Editor > Rendering > should render the placeholder text and content editable surface
 web/app/components/workflow/note-node/note-editor/__tests__/editor.spec.tsx :: Editor > Rendering > should render linked text with distinct link styling
@@ -1976,8 +2000,11 @@ web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__t
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/component.spec.tsx :: link editor component > cancels a newly created empty link when clicking outside the editor
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/component.spec.tsx :: link editor component > renders the inline link editor and saves the edited url
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/component.spec.tsx :: link editor component > saves the edited url when pressing Enter
+web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/focus.browser.spec.tsx :: dismisses the entire link popup with Escape from the %s until explicitly reopened
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/focus.browser.spec.tsx :: keeps focus on the outside action when it dismisses link editing
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/focus.browser.spec.tsx :: opens link editing with %s from the keyboard
+web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/focus.browser.spec.tsx :: removes the selected link with %s from the keyboard
+web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/focus.browser.spec.tsx :: opens a different link after dismissing the first when its URL is %s
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/hooks.spec.tsx :: link editor hooks > useOpenLink > should show the link operator when the current selection is a link with a URL
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/hooks.spec.tsx :: link editor hooks > useOpenLink > should clear the link operator when the current selection is not a link
 web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/__tests__/hooks.spec.tsx :: link editor hooks > useOpenLink > should show the link operator immediately when clicking a link target
@@ -2020,6 +2047,7 @@ web/app/components/workflow/operator/__tests__/index.spec.tsx :: Operator > shou
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > opens the menu and exports the current view as png
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > does not open the menu when the workflow is read only
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > shows a preview when exporting the whole workflow
+web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > exports the current view with %s
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > exports the whole workflow as svg
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > returns early when there is no app or knowledge name
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > returns early when the viewport element is missing
@@ -2027,6 +2055,7 @@ web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActi
 web/app/components/workflow/operator/__tests__/more-actions.spec.tsx :: MoreActions > logs export failures and lets the preview close
 web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx :: workflow zoom controls > zooms out and zooms in when the viewport is within the supported range
 web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx :: workflow zoom controls > zooms to a preset value and syncs the draft
+web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx :: workflow zoom controls > zooms to %s and syncs the draft
 web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx :: workflow zoom controls > toggles collaboration options without syncing the draft
 web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx :: workflow zoom controls > keeps the show-user-comments action disabled in comment mode
 web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx :: workflow zoom controls > does not open the menu when the workflow is read only
@@ -2048,7 +2077,12 @@ web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx :: InputsPanel
 web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx :: InputsPanel > Disabled States > should disable the run button while a local file is still uploading
 web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx :: InputsPanel > Disabled States > should disable the run button while the workflow is already running
 web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx :: InputsPanel > Disabled States > should disable the run button and skip execution when test/run permission is missing
+web/app/components/workflow/panel/__tests__/panel-width-integration.spec.tsx :: preview width limits inside the workflow Panel > %s exposes the reachable maximum and restores canvas space after deselection
 web/app/components/workflow/panel/__tests__/panel-width-integration.spec.tsx :: preview width limits inside the workflow Panel > allows the debug panel to grow by pointer while the selected node panel is wider than its minimum
+web/app/components/workflow/panel/__tests__/panel-width-integration.spec.tsx :: preview width limits inside the workflow Panel > %s keeps its size and ARIA range consistent when the canvas shrinks without a selected node
+web/app/components/workflow/panel/__tests__/panel-width.spec.ts :: getPreviewPanelMaxWidth > uses the caller fallback before canvas width is measured (%s)
+web/app/components/workflow/panel/__tests__/panel-width.spec.ts :: getPreviewPanelMaxWidth > reserves space for the canvas and an open node panel (selected: $hasSelectedNode)
+web/app/components/workflow/panel/__tests__/panel-width.spec.ts :: getPreviewPanelMaxWidth > keeps the preview usable on a $canvasWidth px canvas (selected: $hasSelectedNode)
 web/app/components/workflow/panel/__tests__/record.spec.tsx :: Record > renders the run title and passes run and trace URLs to the run panel
 web/app/components/workflow/panel/__tests__/record.spec.tsx :: Record > updates the workflow canvas with a fallback viewport when the response omits one
 web/app/components/workflow/panel/__tests__/record.spec.tsx :: Record > uses the response viewport when one is available
@@ -2365,6 +2399,7 @@ web/app/components/workflow/run/__tests__/index.spec.tsx :: RunPanel > loads run
 web/app/components/workflow/run/__tests__/index.spec.tsx :: RunPanel > switches between detail, tracing, and result tabs with real child panels
 web/app/components/workflow/run/__tests__/index.spec.tsx :: RunPanel > reports run-detail and tracing failures through toast.error
 web/app/components/workflow/run/__tests__/meta.spec.tsx :: Meta > renders loading placeholders while the run is in progress
+web/app/components/workflow/run/__tests__/meta.spec.tsx :: Meta > renders the %s status label
 web/app/components/workflow/run/__tests__/meta.spec.tsx :: Meta > renders explicit metadata values and hides steps when requested
 web/app/components/workflow/run/__tests__/meta.spec.tsx :: Meta > falls back to default values when metadata is missing
 web/app/components/workflow/run/__tests__/node.spec.tsx :: Run NodePanel > renders the running state in the header without the finished summary
@@ -2648,6 +2683,8 @@ web/app/components/workflow/utils/__tests__/node.spec.ts :: getTopLeftNodePositi
 web/app/components/workflow/utils/__tests__/node.spec.ts :: getTopLeftNodePosition > should handle a single node
 web/app/components/workflow/utils/__tests__/node.spec.ts :: getTopLeftNodePosition > should handle negative positions
 web/app/components/workflow/utils/__tests__/node.spec.ts :: getNestedNodePosition > should compute relative position of child to parent
+web/app/components/workflow/utils/__tests__/node.spec.ts :: hasRetryNode > should return true for %s
+web/app/components/workflow/utils/__tests__/node.spec.ts :: hasRetryNode > should return false for %s
 web/app/components/workflow/utils/__tests__/node.spec.ts :: hasRetryNode > should return false when nodeType is undefined
 web/app/components/workflow/utils/__tests__/node.spec.ts :: getNodeCustomTypeByNodeDataType > should return CUSTOM_SIMPLE_NODE for LoopEnd
 web/app/components/workflow/utils/__tests__/node.spec.ts :: getNodeCustomTypeByNodeDataType > should return undefined for other types
@@ -2693,6 +2730,7 @@ web/app/components/workflow/utils/__tests__/variable.spec.ts :: variableTransfor
 web/app/components/workflow/utils/__tests__/variable.spec.ts :: variableTransformer > string → array (template to selector) > should handle a single-segment path
 web/app/components/workflow/utils/__tests__/variable.spec.ts :: variableTransformer > array → string (selector to template) > should join an array into a template variable
 web/app/components/workflow/utils/__tests__/variable.spec.ts :: variableTransformer > array → string (selector to template) > should join a single-element array
+web/app/components/workflow/utils/__tests__/variable.spec.ts :: isExceptionVariable > should return true for error_message with %s node type
 web/app/components/workflow/utils/__tests__/variable.spec.ts :: isExceptionVariable > should return true for error_type with %s node type
 web/app/components/workflow/utils/__tests__/variable.spec.ts :: isExceptionVariable > should return false for error_message with non-error-handle node types
 web/app/components/workflow/utils/__tests__/variable.spec.ts :: isExceptionVariable > should return false for normal variables with error-handle node types
@@ -2705,6 +2743,7 @@ web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: getWorkflo
 web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: getWorkflowEntryNode > should return undefined when no entry node exists
 web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: getWorkflowEntryNode > should prefer trigger node over start node
 web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: isWorkflowEntryNode > should return true for Start
+web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: isWorkflowEntryNode > should return true for %s
 web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: isWorkflowEntryNode > should return false for non-entry types
 web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: isTriggerWorkflow > should return true when nodes contain a trigger node
 web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts :: isTriggerWorkflow > should return false when no trigger nodes exist
@@ -2761,6 +2800,7 @@ web/app/components/workflow/utils/__tests__/workflow.spec.ts :: canRunBySingle >
 web/app/components/workflow/utils/__tests__/workflow.spec.ts :: canRunBySingle > should return false for Answer node
 web/app/components/workflow/utils/__tests__/workflow.spec.ts :: isSupportCustomRunForm > should return true for DataSource
 web/app/components/workflow/utils/__tests__/workflow.spec.ts :: isSupportCustomRunForm > should return false for other types
+web/app/components/workflow/utils/__tests__/workflow.spec.ts :: hasErrorHandleNode > should return true for %s
 web/app/components/workflow/utils/__tests__/workflow.spec.ts :: hasErrorHandleNode > should return false for non-error-handle types
 web/app/components/workflow/utils/__tests__/workflow.spec.ts :: hasErrorHandleNode > should return false when undefined
 web/app/components/workflow/utils/__tests__/workflow.spec.ts :: getNodesConnectedSourceOrTargetHandleIdsMap > should add handle ids when type is add
@@ -2896,6 +2936,7 @@ web/app/components/workflow/workflow-preview/components/__tests__/node-handle.sp
 web/app/components/workflow/workflow-preview/components/__tests__/zoom-in-out.spec.tsx :: workflow preview zoom controls > Inline Controls > should zoom out and zoom in when the viewport is within the supported range
 web/app/components/workflow/workflow-preview/components/__tests__/zoom-in-out.spec.tsx :: workflow preview zoom controls > Inline Controls > should block zooming out when the viewport is already at the minimum scale
 web/app/components/workflow/workflow-preview/components/__tests__/zoom-in-out.spec.tsx :: workflow preview zoom controls > Inline Controls > should block zooming in when the viewport is already at the maximum scale
+web/app/components/workflow/workflow-preview/components/__tests__/zoom-in-out.spec.tsx :: workflow preview zoom controls > Preset Menu > should zoom to %s when selecting that preset
 web/app/components/workflow/workflow-preview/components/__tests__/zoom-in-out.spec.tsx :: workflow preview zoom controls > Preset Menu > should fit the viewport when selecting the fit option
 web/app/components/workflow/workflow-preview/components/nodes/__tests__/base.spec.tsx :: workflow preview base node card > renders the title, description, child content, and connection handles
 web/app/components/workflow/workflow-preview/components/nodes/__tests__/base.spec.tsx :: workflow preview base node card > uses the iteration layout and parallel badge for iteration nodes
@@ -3025,6 +3066,7 @@ web/app/components/header/account-setting/model-provider-page/__tests__/supports
 web/app/components/header/account-setting/model-provider-page/__tests__/supports-credits.spec.ts :: providerSupportsCredits > returns false when the provider is not listed in trial_models
 web/app/components/header/account-setting/model-provider-page/__tests__/supports-credits.spec.ts :: providerSupportsCredits > returns false when system hosting is disabled
 web/app/components/header/account-setting/model-provider-page/__tests__/supports-credits.spec.ts :: providerSupportsCredits > returns false for an undefined provider
+web/app/components/header/account-setting/model-provider-page/__tests__/supports-credits.spec.ts :: providerSupportsCredits > returns false outside Cloud when deployment edition is %s
 web/app/components/header/account-setting/model-provider-page/__tests__/utils.spec.ts :: utils > sizeFormat > should format size less than 1000
 web/app/components/header/account-setting/model-provider-page/__tests__/utils.spec.ts :: utils > sizeFormat > should format size greater than 1000
 web/app/components/header/account-setting/model-provider-page/__tests__/utils.spec.ts :: utils > modelTypeFormat > should format text embedding type
@@ -3048,6 +3090,7 @@ web/app/components/header/account-setting/model-provider-page/model-auth/__tests
 web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/add-custom-model.spec.tsx :: AddCustomModel > should show existing model rows as disabled for create-only users
 web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/add-custom-model.spec.tsx :: AddCustomModel > should call handleOpenModalForAddNewCustomModel when clicking "Add New Model" in list
 web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/add-custom-model.spec.tsx :: AddCustomModel > should show tooltip when no models and custom tokens not allowed
+web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/config-model.spec.tsx :: ConfigModel > keeps the $name action focusable and unavailable while loading
 web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/credential-selector.spec.tsx :: CredentialSelector > should render selected credential name when selectedCredential is provided
 web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/credential-selector.spec.tsx :: CredentialSelector > should render placeholder when selectedCredential is missing
 web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/credential-selector.spec.tsx :: CredentialSelector > should call onSelect when a credential item is clicked
@@ -3455,6 +3498,7 @@ web/app/components/header/account-setting/model-provider-page/provider-added-car
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should remove from summary without loading plugin detail
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should only render an interactive summary version when marketplace updates are allowed
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should use the summary latest version when updating a marketplace plugin
+web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should show the refreshed summary version after a marketplace %s
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should keep the loaded detail when refreshing the summary fails
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should render version controls for marketplace plugins and handle manual version selection
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/provider-card-actions.spec.tsx :: ProviderCardActions > should show a compact debug badge after the version for debugging plugins
@@ -3502,6 +3546,7 @@ web/app/components/header/account-setting/model-provider-page/provider-added-car
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-credential-panel-state.spec.ts :: useCredentialPanelState > Derived metadata > should hide priority switcher when provider not in trial_models
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-credential-panel-state.spec.ts :: useCredentialPanelState > Derived metadata > should expose credential name from provider
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-credential-panel-state.spec.ts :: useCredentialPanelState > Derived metadata > should expose credits amount
+web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-credential-panel-state.spec.ts :: isDestructiveVariant > should return %s for variant %s
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-trial-credits.spec.ts :: useTrialCredits > when workspace data is available > should return the remaining credits and reset date
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-trial-credits.spec.ts :: useTrialCredits > when workspace data is available > should keep the hook out of loading state during a background refetch
 web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/use-trial-credits.spec.ts :: useTrialCredits > when workspace data is missing or exhausted > should report loading while the first workspace request is pending
@@ -3634,6 +3679,9 @@ packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapp
 packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > ContextMenuContent > should apply custom top placement and keep point-anchor alignment stable when custom positioning props are provided
 packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > ContextMenuContent > should forward popup attributes and handlers directly
 packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > ContextMenuSubContent > should position sub-content at right-start with default placement when props are omitted
+packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > variant prop behavior > should remain interactive and set data-variant on item when variant is %s
+packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > variant prop behavior > should remain interactive and set data-variant on submenu trigger when variant is %s
+packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > variant prop behavior > should remain interactive and set data-variant on link item when variant is %s
 packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > ContextMenuLinkItem close behavior > should keep link semantics and not leak closeOnClick prop when closeOnClick is false
 packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > ContextMenuTrigger interaction > should open menu when right-clicking trigger area
 packages/dify-ui/src/context-menu/__tests__/index.spec.tsx :: context-menu wrapper > ContextMenuSeparator > should render separator and keep surrounding rows when separator is between items
@@ -3652,9 +3700,12 @@ packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wra
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuSubContent > should position sub-content at left-start with default placement when props are omitted
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuSubContent > should apply custom placement and forward popup props for sub-content
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuSubTrigger > should render submenu trigger content when trigger children are provided
+packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuSubTrigger > should remain interactive and set data-variant on submenu trigger when variant is %s
+packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuItem > should remain interactive and set data-variant when variant is %s
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuLinkItem > should render as anchor and keep href/target attributes when link props are provided
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuLinkItem > should keep link semantics and not leak closeOnClick prop when closeOnClick is false
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuLinkItem > should preserve link semantics when render prop uses a custom anchor element
+packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuLinkItem > should remain interactive and set data-variant when variant is %s
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuSeparator > should forward passthrough props and handlers when separator props are provided
 packages/dify-ui/src/dropdown-menu/__tests__/index.spec.tsx :: dropdown-menu wrapper > DropdownMenuSeparator > should keep surrounding menu rows rendered when separator is placed between items
 packages/dify-ui/src/field/__tests__/index.spec.tsx :: Field primitives > should associate label, description, and error with the control
@@ -3682,6 +3733,7 @@ packages/dify-ui/src/input-group/__tests__/index.spec.tsx :: InputGroup > should
 packages/dify-ui/src/input-group/__tests__/index.spec.tsx :: InputGroup > should preserve an interactive add-on as the focus owner
 packages/dify-ui/src/input-group/__tests__/index.spec.tsx :: InputGroup > should not handle pointer events from portalled add-on content
 packages/dify-ui/src/input-group/__tests__/index.spec.tsx :: InputGroup > should keep a visually leading interactive add-on after the input in focus order
+packages/dify-ui/src/input-group/__tests__/index.spec.tsx :: Invalid focus colors > preserves error colors through keyboard and pointer focus in %s
 packages/dify-ui/src/kbd/__tests__/index.spec.tsx :: Kbd > renders a native kbd element with the default gray variant
 packages/dify-ui/src/kbd/__tests__/index.spec.tsx :: Kbd > marks disabled keycaps visually without adding widget semantics
 packages/dify-ui/src/kbd/__tests__/index.spec.tsx :: Kbd > merges custom classes with the design-system recipe
@@ -3702,9 +3754,11 @@ packages/dify-ui/src/number-field/__tests__/index.spec.tsx :: NumberField wrappe
 packages/dify-ui/src/number-field/__tests__/index.spec.tsx :: NumberField wrapper > Control buttons > should keep the fallback aria labels when aria-label is omitted in props
 packages/dify-ui/src/number-field/__tests__/index.spec.tsx :: NumberField wrapper > Control buttons > should rely on aria-labelledby when provided instead of injecting a fallback aria-label
 packages/dify-ui/src/number-field/__tests__/index.spec.tsx :: NumberField wrapper > Control buttons > should forward passthrough props to control buttons
+packages/dify-ui/src/number-field/__tests__/index.spec.tsx :: Invalid focus colors > preserves error colors through keyboard and pointer focus in %s
 packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > renders the pagination structure with semantic navigation
 packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > uses one-based page changes for previous, next, and page buttons
 packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > does not report a page change when the current page is activated
+packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > keeps a compact page window %s
 packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > uses sibling and boundary counts as the page range contract
 packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > disables previous at the first page
 packages/dify-ui/src/pagination/__tests__/index.spec.tsx :: Pagination primitive > disables next at the last page

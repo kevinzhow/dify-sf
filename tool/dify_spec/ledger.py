@@ -20,6 +20,8 @@ CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|co
 def cases(text):
     # A call whose name is on the next line (formatters wrap long names) is joined onto the call's line.
     text = re.sub(r'\b(describe|it|test|group|testWidgets)\(\s*\n\s*([\'"`])', r'\1(\2', text)
+    # `it.each(table)('name', …)`: the table may span lines; the case is named like a plain `it('name')`.
+    text = re.sub(r'\b(describe|it|test)\.each\s*(?:`[^`]*`|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))\s*\(\s*', r'\1(', text)
     stack, out = [], []
     for line in text.splitlines():
         m = CALL.match(line)
@@ -50,7 +52,7 @@ def ported(repo):
     for f in (repo / 'app/test/dify_spec').rglob('*_test.dart'):
         text = f.read_text()
         specs = re.findall(r'//\s*dify-spec:\s*(\S+)', text)
-        names = cases(text.replace('group(', 'describe(').replace('testWidgets(', 'test('))
+        names = cases(text.replace('group(', 'describe(').replace('testWidgets(', 'test(').replace('\\$', '$'))
         for s in specs:
             done.update((s, n) for n in names)
     return done

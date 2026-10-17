@@ -14,8 +14,9 @@ import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
 import 'edge_curve.dart';
 
-/// How a left-button drag on empty canvas and the wheel behave (Dify's control modes).
-enum ControlMode { pointer, hand }
+/// How a left-button drag on empty canvas and the wheel behave (Dify's control modes; Dify's stored values are the
+/// names). In comment mode a drag on empty canvas does nothing (placing comments is the comment layer's).
+enum ControlMode { pointer, hand, comment }
 
 /// Pointer and keyboard input on the canvas, hit-tested in canvas coordinates, behaving like Dify's editor:
 /// * click selects one node (no modifier multi-select; multi-select is the box), a click near an edge selects it;
@@ -134,7 +135,7 @@ class CanvasInput {
       onApplied?.call('select');
     } else if (mode == ControlMode.pointer) {
       _gesture = 'marquee';
-    } else {
+    } else if (mode == ControlMode.hand) {
       _gesture = 'pan';
       _panCenter = view.center;
     }
