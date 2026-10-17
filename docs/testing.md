@@ -22,6 +22,7 @@ The conflict catalog reports the same as M1 (I1), M2 (I2), M3 (I3), M4 (I4), M5 
 |---|---|---|---|
 | unit + Postgres | document rules, sequencer, wire format, store | - | `cd server && ./run-db-tests.sh` |
 | Dify DSL round trip | Dify's own 24 sample workflows: import -> export gives the same file (parsed, ignoring UI selection), import(export) gives the same document; edits show up in the export | - | part of the unit suite (`DSLTests`) |
+| Dify acceptance | the same 24 samples through a real local Dify: Dify's reading of dify-sf's export equals its reading of the original; a workflow edited in dify-sf imports with the edits | - | `bench/dify-acceptance/roundtrip_via_dify.py` (docs/results/dify-dsl-acceptance.md) |
 | named scenarios | 35 hand-scripted interleavings (S1-S11: stale tabs, crashes before/after commit, delete vs edit, lists, same value) | scripted | `collab-sim --scenarios-only` |
 | deterministic fuzz | random clients, ops and schedules in a simulated world (lossy reordering network, client/server crashes, long offline) | all, random | `collab-sim --runs 20000` |
 | mutation tests | the same fuzz with a protocol defect switched on (skip stale check, skip broken markers, no dedup, early ack, ...) | defect | `collab-sim --runs 1000 --mutation <name>`: must find violations |
