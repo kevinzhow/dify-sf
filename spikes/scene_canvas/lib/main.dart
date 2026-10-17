@@ -9,6 +9,7 @@
 // phase plus a summary, saves screenshots to $SHOTS (default /tmp/scene_canvas), and exits.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' show Timeline;
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -17,6 +18,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
@@ -32,6 +35,9 @@ final kCards = env('CARDS', '1') == '1';
 final kAA = env('AA', '');
 // SEM=0 keeps the hosted cards out of the semantics tree (a canvas would expose its own summary instead).
 final kSem = env('SEM', '1') == '1';
+// A11Y=1 (default): the canvas exposes its own compact semantics (one node per on-screen card, or one summary node
+// when more than 200 are on screen), rebuilt when the view rests.
+final kA11y = env('A11Y', '1') == '1';
 // Debug switches for card rendering: POLICY=manual|every, DREF=0 (lit material), RECAP=<ms> (capture all again later).
 final kPolicy = env('POLICY', 'manual');
 final kDref = env('DREF', '1') == '1';
@@ -228,6 +234,17 @@ Geometry statusQuad() => _statusQuad ??= () {
   );
 }();
 
+/// The selection/hover frame: larger than the status frame, so both show when a running node is selected.
+Geometry? _highlightQuad;
+Geometry highlightQuad() => _highlightQuad ??= () {
+  const w = kNodeW / 2 + 9, h = kNodeH / 2 + 9;
+  return MeshGeometry.fromArrays(
+    positions: Float32List.fromList([w, -h, 0, -w, -h, 0, -w, h, 0, w, h, 0]),
+    texCoords: Float32List.fromList([1, 1, 0, 1, 0, 0, 1, 0]),
+    indices: [0, 1, 3, 3, 1, 2],
+  );
+}();
+
 const statusColors = {'running': Color(0xFF2F6FED), 'succeeded': Color(0xFF1E9E5A), 'failed': Color(0xFFD93A3A)};
 
 /// The card quad. WidgetComponent's own quad is front-facing toward -Z but maps the texture as seen from +Z, so from
@@ -381,8 +398,15 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
         material: UnlitMaterial(),
         sortTransparentInstances: false,
       );
+      highlightMesh = InstancedMesh(
+        geometry: highlightQuad(),
+        material: UnlitMaterial(),
+        sortTransparentInstances: false,
+      );
+      highlightEdgeMaterial = UnlitMaterial()..baseColorFactor = selectedColor;
       if (widget.withCards) {
         scene
+          ..add(Node()..addComponent(InstancedMeshComponent(highlightMesh)))
           ..add(Node()..addComponent(InstancedMeshComponent(statusMesh)))
           ..add(overviewLayer)
           ..add(skeletonLayer);
@@ -392,7 +416,8 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
         final n = Node(name: g.nodes[i].id);
         n.position = toWorld(g.nodes[i].center);
         cards.add(n);
-        grid.putIfAbsent(((g.nodes[i].x / gridCell).floor(), (g.nodes[i].y / gridCell).floor()), () => []).add(i);
+        cellOf.add(_cellFor(i));
+        grid.putIfAbsent(cellOf[i], () => []).add(i);
         pixelRatios.add(dpr);
         comps.add(null);
         if (widget.withCards) {
@@ -412,6 +437,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
           placeholderNodes.add(pn);
           overviewLayer.add(pn);
           statusMesh.addInstance(vm.Matrix4.zero());
+          highlightMesh.addInstance(vm.Matrix4.zero());
           final node = g.nodes[i], si = i;
           node.status.addListener(() => _showStatus(si, node.status.value));
           node.title.addListener(() => _markDirty(si));
@@ -615,6 +641,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
 
   void _showStatus(int i, String status) {
     statusChanges++;
+    a11yDirty = true;
     if (status == 'idle') {
       statusMesh.setInstanceTransform(i, vm.Matrix4.zero());
       return;
@@ -628,6 +655,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   static final attachBudget = kCapBudget;
   Offset? lastCenter;
   bool settled = false;
+  bool a11yDirty = false;
   int settledAt = 0;
   double lastViewScale = 0;
   int lastMove = 0;
@@ -656,13 +684,19 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     if (v.center != lastCenter || v.scale != lastViewScale) lastMove = now;
     lastCenter = v.center;
     lastViewScale = v.scale;
-    final moving = now - lastMove < 150000;
+    final viewMoving = now - lastMove < 150000;
     if (kOverview) _skeletonSwitch(v.scale);
-    if (kOverview && moving && initialTarget >= 0) return;
+    // Semantics follow the view at rest, and other changes at most every 250 ms.
+    if (!viewMoving && (a11yBuiltAt < lastMove || (a11yDirty && now - a11yBuiltAt > 250000))) {
+      a11yBuiltAt = now;
+      a11yDirty = false;
+      _updateA11y();
+    }
+    if (kOverview && viewMoving && initialTarget >= 0) return;
     _liveStep();
     _overviewStep();
     // Nothing to attach or release until the view moves again (or a pass ran out of budget).
-    if (settled && lastMove <= settledAt && initialTarget >= 0 && dragging == null) return;
+    if (settled && lastMove <= settledAt && initialTarget >= 0 && moving.isEmpty) return;
     final view = visibleRect(v, viewport);
     var keep = view.inflate(max(view.width, view.height) / 2);
     if (kPredict && lastScale > 0 && v.scale < lastScale) {
@@ -708,8 +742,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     }
   }
 
-  int? dragging;
-  bool liveDrag(int i) => dragging == i;
+  bool liveDrag(int i) => moving.contains(i);
 
   Float32List _segments(Iterable<GEdge> edges) {
     final out = <double>[];
@@ -749,53 +782,338 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   void editTitle(int i, String title) => g.nodes[i].title.value = title;
 
   @override
-  void beginDrag(int i) {
-    dragging = i;
-    liveEdgeIds = {
-      for (var k = 0; k < g.edges.length; k++)
-        if (g.edges[k].source == i || g.edges[k].target == i) k,
-    };
-    _rebuildEdges();
-  }
+  void beginDrag(int i) => _beginMove({i});
 
   @override
-  void dragTo(int i, Offset topLeft) {
-    g.nodes[i]
-      ..x = topLeft.dx
-      ..y = topLeft.dy;
-    cards[i].position = toWorld(g.nodes[i].center, 0.5); // lifted above its neighbours while dragged
+  void dragTo(int i, Offset topLeft) => _moveBy(topLeft - Offset(g.nodes[i].x, g.nodes[i].y));
+
+  @override
+  void endDrag(int i) => _endMove();
+
+  // ----- moving nodes -----
+
+  final moving = <int>{};
+
+  /// Puts every visual of node [i] where the node is; a moving node is lifted towards the camera.
+  void _placeNode(int i) {
+    final lift = moving.contains(i) ? 0.5 : 0.0, c = g.nodes[i].center;
+    cards[i].position = toWorld(c, lift);
+    if (placeholderNodes.isNotEmpty) placeholderNodes[i].position = toWorld(c, lift - 0.05);
     if (g.nodes[i].status.value != 'idle') {
-      statusMesh.setInstanceTransform(i, vm.Matrix4.translation(toWorld(g.nodes[i].center, 0.4)));
+      statusMesh.setInstanceTransform(i, vm.Matrix4.translation(toWorld(c, lift - 0.1)));
     }
-    if (placeholderNodes.isNotEmpty) placeholderNodes[i].position = toWorld(g.nodes[i].center, 0.45);
     if (skeletonIndex.isNotEmpty) {
       skeletonMeshes[g.nodes[i].type]!.setInstanceTransform(
         skeletonIndex[i],
-        vm.Matrix4.translation(toWorld(g.nodes[i].center, 0.45)),
+        vm.Matrix4.translation(toWorld(c, lift - 0.05)),
       );
     }
-    // Only the dragged node's edges are rebuilt per frame.
+    _updateHighlight(i);
+  }
+
+  void _beginMove(Set<int> nodes) {
+    moving
+      ..clear()
+      ..addAll(nodes);
+    liveEdgeIds = {
+      for (var k = 0; k < g.edges.length; k++)
+        if (moving.contains(g.edges[k].source) || moving.contains(g.edges[k].target)) k,
+    };
+    _rebuildEdges();
+    for (final i in moving) {
+      _placeNode(i);
+    }
+  }
+
+  void _moveBy(Offset d) {
+    for (final i in moving) {
+      g.nodes[i]
+        ..x += d.dx
+        ..y += d.dy;
+      _placeNode(i);
+    }
+    // Only the moving nodes' edges are rebuilt per frame.
     if (liveEdges != null) scene.remove(liveEdges!);
     liveEdges = _edgeNode([for (final k in liveEdgeIds) g.edges[k]]);
     if (liveEdges != null) scene.add(liveEdges!);
   }
 
-  @override
-  void endDrag(int i) {
-    dragging = null;
-    cards[i].position = toWorld(g.nodes[i].center);
-    if (placeholderNodes.isNotEmpty) placeholderNodes[i].position = toWorld(g.nodes[i].center, -0.05);
-    if (g.nodes[i].status.value != 'idle') {
-      statusMesh.setInstanceTransform(i, vm.Matrix4.translation(toWorld(g.nodes[i].center, -0.1)));
-    }
-    if (skeletonIndex.isNotEmpty) {
-      skeletonMeshes[g.nodes[i].type]!.setInstanceTransform(
-        skeletonIndex[i],
-        vm.Matrix4.translation(toWorld(g.nodes[i].center, -0.05)),
-      );
+  void _endMove() {
+    final done = [...moving];
+    moving.clear();
+    for (final i in done) {
+      _placeNode(i);
+      _regrid(i);
     }
     liveEdgeIds = {};
     _rebuildEdges();
+  }
+
+  final cellOf = <(int, int)>[];
+  (int, int) _cellFor(int i) => ((g.nodes[i].x / gridCell).floor(), (g.nodes[i].y / gridCell).floor());
+
+  void _regrid(int i) {
+    final now = _cellFor(i);
+    if (now == cellOf[i]) return;
+    grid[cellOf[i]]?.remove(i);
+    grid.putIfAbsent(now, () => []).add(i);
+    cellOf[i] = now;
+  }
+
+  // ----- selection and hover: one instanced frame per card, never in a capture -----
+
+  final selected = <int>{};
+  int? hovered;
+  late final InstancedMesh highlightMesh;
+  static final selectedColor = vm.Vector4(0.16, 0.42, 0.95, 1);
+  static final hoverColor = vm.Vector4(0.62, 0.74, 0.98, 1);
+
+  void _updateHighlight(int i) {
+    final on = selected.contains(i) || hovered == i;
+    if (!on) {
+      highlightMesh.setInstanceTransform(i, vm.Matrix4.zero());
+      return;
+    }
+    final lift = moving.contains(i) ? 0.5 : 0.0;
+    highlightMesh
+      ..setInstanceTransform(i, vm.Matrix4.translation(toWorld(g.nodes[i].center, lift - 0.15)))
+      ..setInstanceColor(i, selected.contains(i) ? selectedColor : hoverColor);
+  }
+
+  void _select(Iterable<int> nodes, {bool toggle = false}) {
+    final before = {...selected};
+    if (!toggle) selected.clear();
+    for (final i in nodes) {
+      if (toggle && before.contains(i)) {
+        selected.remove(i);
+      } else {
+        selected.add(i);
+      }
+    }
+    for (final i in {...before, ...selected}) {
+      _updateHighlight(i);
+    }
+    a11yDirty = true;
+  }
+
+  void _hover(int? i) {
+    if (i == hovered) return;
+    final old = hovered;
+    hovered = i;
+    if (old != null) _updateHighlight(old);
+    if (i != null) _updateHighlight(i);
+  }
+
+  // ----- pointer input: hit testing in canvas coordinates -----
+
+  Offset toCanvas(Offset local) =>
+      widget.view.center + (local - Offset(viewport.width / 2, viewport.height / 2)) / widget.view.scale;
+
+  int? hitNode(Offset c) {
+    int? hit;
+    for (final i in nodesIn(Rect.fromCenter(center: c, width: 1, height: 1))) {
+      if (g.nodes[i].rect.contains(c)) hit = i;
+    }
+    return hit;
+  }
+
+  /// The node whose output port is under [c] (within 10 screen pixels).
+  int? hitOutPort(Offset c) {
+    final r = max(10 / widget.view.scale, 4.0);
+    for (final i in nodesIn(Rect.fromCenter(center: c, width: 2 * r, height: 2 * r))) {
+      if ((g.nodes[i].outPort - c).distance <= r) return i;
+    }
+    return null;
+  }
+
+  String gesture = 'none'; // none, pan, move, connect, marquee
+  Offset downLocal = Offset.zero;
+  Offset lastCanvas = Offset.zero;
+  Offset panCenter = Offset.zero;
+  bool movedSinceDown = false;
+  int? connectFrom;
+  Node? connectPreview;
+  final marquee = ValueNotifier<Rect?>(null);
+
+  /// Box selection needs Shift (forced by the benchmark, which cannot hold a key).
+  bool forceMarquee = false;
+  bool get marqueeModifier => forceMarquee || HardwareKeyboard.instance.isShiftPressed;
+
+  /// Called when an input has changed what is drawn (the benchmark times event to frame).
+  void Function(String kind)? onInputApplied;
+
+  void _onDown(PointerDownEvent e) {
+    if (e.buttons & kPrimaryButton == 0) return;
+    downLocal = e.localPosition;
+    final c = toCanvas(e.localPosition);
+    lastCanvas = c;
+    movedSinceDown = false;
+    final port = hitOutPort(c);
+    final hit = hitNode(c);
+    if (port != null) {
+      gesture = 'connect';
+      connectFrom = port;
+    } else if (hit != null) {
+      gesture = 'move';
+      if (!selected.contains(hit)) _select([hit], toggle: HardwareKeyboard.instance.isShiftPressed);
+      onInputApplied?.call('select');
+    } else if (marqueeModifier) {
+      gesture = 'marquee';
+    } else {
+      gesture = 'pan';
+      panCenter = widget.view.center;
+    }
+  }
+
+  void _onMove(PointerMoveEvent e) {
+    final c = toCanvas(e.localPosition);
+    if (!movedSinceDown && (e.localPosition - downLocal).distance < 3) return;
+    switch (gesture) {
+      case 'pan':
+        widget.view.center = panCenter - (e.localPosition - downLocal) / widget.view.scale;
+        onInputApplied?.call('pan');
+      case 'move':
+        if (!movedSinceDown) _beginMove({...selected});
+        _moveBy(c - lastCanvas);
+        onInputApplied?.call('move');
+      case 'connect':
+        _showConnectPreview(g.nodes[connectFrom!].outPort, c);
+        onInputApplied?.call('connect');
+      case 'marquee':
+        marquee.value = Rect.fromPoints(downLocal, e.localPosition);
+        onInputApplied?.call('marquee');
+    }
+    movedSinceDown = true;
+    lastCanvas = c;
+  }
+
+  void _onUp(PointerUpEvent e) {
+    final c = toCanvas(e.localPosition);
+    switch (gesture) {
+      case 'move':
+        if (movedSinceDown) _endMove();
+      case 'pan':
+        if (!movedSinceDown) {
+          _select(const []); // a click on empty canvas clears the selection
+          onInputApplied?.call('select');
+        }
+      case 'connect':
+        _showConnectPreview(null, null);
+        final target = hitNode(c);
+        if (target != null && target != connectFrom) {
+          g.edges.add(GEdge(connectFrom!, target));
+          _rebuildEdges();
+          onInputApplied?.call('connected');
+        }
+        connectFrom = null;
+      case 'marquee':
+        final r = marquee.value;
+        marquee.value = null;
+        if (r != null) {
+          final cr = Rect.fromPoints(toCanvas(r.topLeft), toCanvas(r.bottomRight));
+          _select([
+            for (final i in nodesIn(cr))
+              if (cr.overlaps(g.nodes[i].rect)) i,
+          ]);
+          onInputApplied?.call('select');
+        }
+    }
+    gesture = 'none';
+  }
+
+  void _onHover(PointerHoverEvent e) {
+    final h = hitNode(toCanvas(e.localPosition));
+    if (h != hovered) {
+      _hover(h);
+      onInputApplied?.call('hover');
+    }
+  }
+
+  void _onSignal(PointerSignalEvent e) {
+    if (e is! PointerScrollEvent) return;
+    // Zoom around the pointer: the canvas point under it stays put.
+    final v = widget.view, c = toCanvas(e.localPosition);
+    v.scale = (v.scale * exp(-e.scrollDelta.dy / 400)).clamp(0.05, 4.0);
+    v.center = c - (e.localPosition - Offset(viewport.width / 2, viewport.height / 2)) / v.scale;
+    onInputApplied?.call('zoom');
+  }
+
+  void _showConnectPreview(Offset? from, Offset? to) {
+    if (connectPreview != null) scene.remove(connectPreview!);
+    connectPreview = null;
+    if (from == null || to == null || !kEdges) return;
+    final dx = max(40.0, (to.dx - from.dx).abs() / 2);
+    final c1 = from + Offset(dx, 0), c2 = to - Offset(dx, 0);
+    final out = <double>[];
+    vm.Vector3? prev;
+    for (var k = 0; k <= 16; k++) {
+      final t = k / 16, u = 1 - t;
+      final p = toWorld(from * (u * u * u) + c1 * (3 * u * u * t) + c2 * (3 * u * t * t) + to * (t * t * t), 0.6);
+      if (prev != null) out.addAll([prev.x, prev.y, prev.z, p.x, p.y, p.z]);
+      prev = p;
+    }
+    connectPreview = Node(
+      mesh: Mesh(
+        LineSegmentsGeometry(LineSegmentData(positions: Float32List.fromList(out)), width: 2.5),
+        highlightEdgeMaterial,
+      ),
+    );
+    scene.add(connectPreview!);
+  }
+
+  late final UnlitMaterial highlightEdgeMaterial;
+
+  // ----- accessibility: the canvas's own compact semantics -----
+
+  /// What the semantics layer shows: per-card entries (screen rect, label) or one summary; rebuilt at rest.
+  final a11y = ValueNotifier<(List<(Rect, int)>, String?)>((const [], null));
+  int a11yBuiltAt = -1;
+  int a11yBuilds = 0;
+  static const a11yMaxCards = 200;
+
+  void _updateA11y() {
+    if (!kA11y || viewport.isEmpty) return;
+    final v = widget.view, view = visibleRect(v, viewport);
+    final on = [
+      for (final i in nodesIn(view))
+        if (view.overlaps(g.nodes[i].rect)) i,
+    ];
+    Rect screenRect(int i) {
+      final r = g.nodes[i].rect;
+      final o = Offset(viewport.width / 2, viewport.height / 2);
+      return Rect.fromPoints((r.topLeft - v.center) * v.scale + o, (r.bottomRight - v.center) * v.scale + o);
+    }
+
+    a11yBuilds++;
+    if (on.length <= a11yMaxCards) {
+      a11y.value = ([for (final i in on) (screenRect(i), i)], null);
+      return;
+    }
+    final byStatus = <String, int>{};
+    for (final i in on) {
+      byStatus.update(g.nodes[i].status.value, (n) => n + 1, ifAbsent: () => 1);
+    }
+    final parts = [
+      for (final e in byStatus.entries)
+        if (e.key != 'idle') '${e.value} ${e.key}',
+    ];
+    a11y.value = (
+      [
+        for (final i in selected)
+          if (on.contains(i)) (screenRect(i), i),
+      ],
+      '${on.length} nodes in view${parts.isEmpty ? '' : ', ${parts.join(', ')}'}. Zoom in to read them.',
+    );
+  }
+
+  String a11yLabel(int i) {
+    final n = g.nodes[i];
+    return [
+      n.title.value,
+      '${n.type} node',
+      if (n.status.value != 'idle') n.status.value,
+      if (selected.contains(i)) 'selected',
+    ].join(', ');
   }
 
   /// Visible cards get a capture at the screen's pixel density for the current zoom (rounded up to a power of 2,
@@ -825,6 +1143,8 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
 
   @override
   Map<String, Object> get stats => {
+    'a11yBuilds': a11yBuilds,
+    'a11yNodes': a11y.value.$1.length + (a11y.value.$2 == null ? 0 : 1),
     'maxAttached': maxAttached,
     'attachedTotal': attachedTotal,
     if (kOverview) 'overviewsDone': overviewsDone,
@@ -848,7 +1168,45 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     return LayoutBuilder(
       builder: (context, c) {
         viewport = c.biggest;
-        return SceneView(scene, cameraBuilder: (_) => camera(), onTick: (_, _) => _residency());
+        return Listener(
+          onPointerDown: _onDown,
+          onPointerMove: _onMove,
+          onPointerUp: _onUp,
+          onPointerHover: _onHover,
+          onPointerSignal: _onSignal,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              SceneView(scene, cameraBuilder: (_) => camera(), onTick: (_, _) => _residency()),
+              if (kA11y)
+                ValueListenableBuilder<(List<(Rect, int)>, String?)>(
+                  valueListenable: a11y,
+                  builder: (context, a, _) => Stack(
+                    children: [
+                      if (a.$2 != null) Positioned.fill(child: Semantics(container: true, label: a.$2)),
+                      for (final (r, i) in a.$1)
+                        Positioned.fromRect(
+                          rect: r,
+                          child: Semantics(
+                            container: true,
+                            button: true,
+                            selected: selected.contains(i),
+                            label: a11yLabel(i),
+                            onTap: () => _select([i]),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              IgnorePointer(
+                child: ValueListenableBuilder<Rect?>(
+                  valueListenable: marquee,
+                  builder: (context, r, _) => CustomPaint(painter: MarqueePainter(r)),
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
@@ -969,6 +1327,28 @@ class WidgetCanvasState extends State<WidgetCanvas> with SingleTickerProviderSta
       },
     );
   }
+}
+
+class MarqueePainter extends CustomPainter {
+  MarqueePainter(this.rect);
+  final Rect? rect;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = rect;
+    if (r == null) return;
+    canvas
+      ..drawRect(r, Paint()..color = const Color(0x1F2A6BF2))
+      ..drawRect(
+        r,
+        Paint()
+          ..color = const Color(0xFF2A6BF2)
+          ..style = PaintingStyle.stroke,
+      );
+  }
+
+  @override
+  bool shouldRepaint(MarqueePainter old) => old.rect != rect;
 }
 
 class EdgePainter extends CustomPainter {
@@ -1242,6 +1622,161 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
       ..scale = saved.$2;
   }
 
+  /// Synthetic mouse input on the scene canvas: hover, click-select, drag a node, connect two nodes, pan, wheel zoom,
+  /// box select. For each input that changed what is drawn: time from that change to the end of rasterizing the next
+  /// frame (FrameTiming and Timeline.now share the monotonic clock). Each gesture's outcome is checked.
+  Future<void> _inputTest() async {
+    final sc = canvasKey.currentState;
+    if (sc is! SceneCanvasState) return;
+    view
+      ..center = const Offset(3700, 3000)
+      ..scale = 1;
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    final box = canvasKey.currentContext!.findRenderObject()! as RenderBox;
+    final vp = box.size;
+    Offset screen(Offset c) => box.localToGlobal((c - view.center) * view.scale + Offset(vp.width / 2, vp.height / 2));
+    final applied = <(String, int)>[];
+    sc.onInputApplied = (kind) => applied.add((kind, Timeline.now));
+    var pointer = 10;
+    final checks = <String, bool>{};
+    Future<void> step([int ms = 8]) => Future<void>.delayed(Duration(milliseconds: ms));
+    void send(PointerEvent e) => GestureBinding.instance.handlePointerEvent(e);
+    Future<void> drag(Offset from, Offset to, int steps) async {
+      final id = ++pointer;
+      send(PointerDownEvent(pointer: id, position: from, buttons: kPrimaryButton));
+      await step();
+      for (var k = 1; k <= steps; k++) {
+        send(PointerMoveEvent(pointer: id, position: Offset.lerp(from, to, k / steps)!, buttons: kPrimaryButton));
+        await step();
+      }
+      send(PointerUpEvent(pointer: id, position: to));
+      await step(60);
+    }
+
+    final onScreen = [
+      for (var i = 0; i < graph.nodes.length; i++)
+        if (visibleRect(view, vp).deflate(60).contains(graph.nodes[i].rect.center)) i,
+    ];
+    final p = Phase('input', 0);
+    final sw0 = Stopwatch()..start();
+    current = p;
+    // Hover across 30 cards.
+    for (var k = 0; k < 30; k++) {
+      send(PointerHoverEvent(position: screen(graph.nodes[onScreen[k % onScreen.length]].center)));
+      await step(40);
+    }
+    // Click to select 20 cards.
+    var clicksOk = true;
+    for (var k = 0; k < 20; k++) {
+      final i = onScreen[(k * 3) % onScreen.length], id = ++pointer;
+      send(PointerDownEvent(pointer: id, position: screen(graph.nodes[i].center), buttons: kPrimaryButton));
+      send(PointerUpEvent(pointer: id, position: screen(graph.nodes[i].center)));
+      await step(60);
+      clicksOk &= sc.selected.length == 1 && sc.selected.contains(i);
+    }
+    checks['click selects the card'] = clicksOk;
+    // Drag the selected card by (360, 180) screen pixels.
+    final k0 = onScreen[5];
+    final before = Offset(graph.nodes[k0].x, graph.nodes[k0].y);
+    final from = screen(graph.nodes[k0].center);
+    await drag(from, from + const Offset(360, 180), 90);
+    final moved = Offset(graph.nodes[k0].x, graph.nodes[k0].y) - before;
+    checks['drag moves the card by the pointer distance'] = (moved - const Offset(360, 180)).distance < 4;
+    // Connect: from a card's output port to another card.
+    final a = onScreen[1], b = onScreen[onScreen.length - 2], edges0 = graph.edges.length;
+    await drag(screen(graph.nodes[a].outPort), screen(graph.nodes[b].center), 40);
+    checks['dragging from a port connects'] =
+        graph.edges.length == edges0 + 1 && graph.edges.last.source == a && graph.edges.last.target == b;
+    // Pan from an empty spot between rows.
+    final empty = Offset(graph.nodes[onScreen[0]].x + 150, graph.nodes[onScreen[0]].y + 130);
+    final c0 = view.center;
+    await drag(screen(empty), screen(empty) + const Offset(-360, -180), 90);
+    checks['dragging empty canvas pans'] = ((view.center - c0) - const Offset(360, 180)).distance < 4;
+    // Wheel zoom, in and out.
+    final s0 = view.scale;
+    for (var k = 0; k < 20; k++) {
+      send(PointerScrollEvent(position: screen(view.center), scrollDelta: Offset(0, k < 10 ? -40 : 40)));
+      await step(16);
+    }
+    checks['wheel zoom returns to the same zoom'] = (view.scale - s0).abs() < 1e-6;
+    // Box select a 3 x 2 block of cards (Shift is forced: a benchmark cannot hold a key).
+    sc.forceMarquee = true;
+    // A card near the middle of the (now panned) view, with two cards to its right and one row below.
+    final n0 = graph.nodes.firstWhere(
+      (n) => visibleRect(view, vp).deflate(300).contains(n.rect.center) && n.x < 22 * 300,
+    );
+    final boxFrom = screen(Offset(n0.x - 20, n0.y - 20));
+    await drag(boxFrom, screen(Offset(n0.x + 2 * 300 + 100, n0.y + 180 + 60)), 40);
+    sc.forceMarquee = false;
+    checks['box select picks the 3 x 2 block'] = sc.selected.length == 6;
+    if (kA11y) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      final cardsInView = [
+        for (final n in graph.nodes)
+          if (visibleRect(view, vp).overlaps(n.rect)) n,
+      ].length;
+      final labels = semanticsLabels();
+      checks['semantics: one node per card in view'] = labels.where((l) => l.contains(' node')).length == cardsInView;
+      checks['semantics: selected cards say so'] = labels.where((l) => l.endsWith('selected')).length == 6;
+      view.scale = 0.2;
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      checks['semantics: one summary when zoomed out'] = semanticsLabels().any((l) => l.contains('nodes in view'));
+      view.scale = 1;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+    current = null;
+    sc.onInputApplied = null;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    final frames = [...p.timings]
+      ..sort(
+        (x, y) => x
+            .timestampInMicroseconds(ui.FramePhase.buildStart)
+            .compareTo(y.timestampInMicroseconds(ui.FramePhase.buildStart)),
+      );
+    final lat = <String, List<double>>{};
+    for (final (kind, t) in applied) {
+      for (final f in frames) {
+        if (f.timestampInMicroseconds(ui.FramePhase.buildStart) >= t) {
+          (lat[kind] ??= []).add((f.timestampInMicroseconds(ui.FramePhase.rasterFinish) - t) / 1000);
+          break;
+        }
+      }
+    }
+    final summary = summarize(Phase('input', sw0.elapsedMilliseconds / 1000)..timings.addAll(p.timings));
+    final extra = <String, Object>{
+      'latencyMs': {
+        for (final e in lat.entries)
+          e.key: {
+            'n': e.value.length,
+            'p50': r1(pct(e.value, .5)),
+            'p99': r1(pct(e.value, .99)),
+            'max': r1(e.value.reduce(max)),
+          },
+      },
+      'checks': checks,
+    };
+    summary.addAll(extra);
+    results.add(summary);
+    stdout.writeln('PERF ${jsonEncode(summary)}');
+    stdout.writeln('INPUT ${jsonEncode(extra)}');
+    await _shot('after-input');
+  }
+
+  List<String> semanticsLabels() {
+    final out = <String>[];
+    void visit(SemanticsNode n) {
+      if (n.label.isNotEmpty) out.add(n.label);
+      n.visitChildren((c) {
+        visit(c);
+        return true;
+      });
+    }
+
+    final root = RendererBinding.instance.renderViews.first.owner?.semanticsOwner?.rootSemanticsNode;
+    if (root != null) visit(root);
+    return out;
+  }
+
   Future<void> _shot(String name) async {
     await SchedulerBinding.instance.endOfFrame;
     final dir = Platform.environment['SHOTS'] ?? '/tmp/scene_canvas';
@@ -1264,6 +1799,7 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     final home = view.center;
     if (kPhases.contains('zoomback')) await _zoomBack();
     if (kPhases.contains('run')) await _runWorkflow();
+    if (kPhases.contains('input')) await _inputTest();
     // Pan: a 600 px/s diagonal sweep and back.
     await _phase('pan', 4, (t) {
       final s = sin(t * pi / 2);

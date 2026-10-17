@@ -158,6 +158,46 @@ placeholders after these changes. On the way: the first version swapped a mesh p
 
 ![run, 0.35x](results/run-0.35-mid.png)
 
+## Input and accessibility
+
+The canvas hit-tests in canvas coordinates itself (screen to canvas through the camera, then the grid index); Dify's
+cards have no fields on the canvas, so no input is forwarded into card widgets. Click selects (Shift toggles), drag
+moves the selection, drag from the output port connects (with a preview edge), drag on empty canvas pans, Shift-drag
+box-selects, the wheel zooms around the pointer. Selection and hover are instanced frames like the status, so they
+show in the next frame without a capture.
+
+`PHASES=input` sends synthetic mouse events (2000 nodes, 1x). Time from the input changing what is drawn to the end of
+rasterizing the next frame, in ms (display latency after that is the compositor's):
+
+| input | events | p50 | p99 | max |
+|---|---|---|---|---|
+| hover highlight | 30 | 6.2 | 10.5 | 10.5 |
+| click select | 22 | 6.6 | 11.9 | 11.9 |
+| drag a node (per move) | 90 | 7.1 | 15.3 | 15.3 |
+| connect preview (per move) | 40 | 6.0 | 10.0 | 10.0 |
+| edge created | 1 | 8.5 | 8.5 | 8.5 |
+| pan (per move) | 90 | 5.1 | 12.0 | 12.0 |
+| wheel zoom (per notch) | 20 | 4.4 | 6.9 | 6.9 |
+| box select (per move) | 40 | 5.1 | 21.6 | 21.6 |
+
+* click selects the card: pass
+* drag moves the card by the pointer distance: pass
+* dragging from a port connects: pass
+* dragging empty canvas pans: pass
+* wheel zoom returns to the same zoom: pass
+* box select picks the 3 x 2 block: pass
+* semantics: one node per card in view: pass
+* semantics: selected cards say so: pass
+* semantics: one summary when zoomed out: pass
+
+The one slow box-select event is the first frame of the overlay. Accessibility: the cards stay out of the semantics
+tree; at rest the canvas exposes one node per on-screen card (title, type, status, selected; tap selects), or one
+summary node (counts by status, plus the selected cards) when more than 200 are on screen. It is rebuilt when the view
+rests and at most every 250 ms for other changes. With it on, the standard phases at 2000 nodes run the same as with
+it off (pan 121 / 118 fps, zoom 119 / 120, edits 116 / 117, drag 116 / 115; `results/a11y-std-*.log`).
+
+![after the input test](results/input-after.png)
+
 ## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
@@ -186,7 +226,6 @@ placeholders after these changes. On the way: the first version swapped a mesh p
 
 Cards in Flutter Scene with per-component culling: they hold up at 2000 nodes, at 2x, and zoomed out to the whole
 graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Open items for it:
-an accessibility summary per node (cards are excluded from the semantics tree), pointer and keyboard input on cards,
 placeholder look before the overviews arrive, edge width in screen pixels, the web build. Final 120 Hz acceptance on a
 real 120 Hz screen.
 
@@ -202,4 +241,4 @@ python3 tool/table.py results
 ```
 
 Switches (environment): `MODE`, `NODES`, `SEM=0` (cards out of the semantics tree), `EDGES=0`, `CARDS=0`, `AA`,
-`PHASES`, `POLICY=every`, `CULL=0`, `OVERVIEW=1`, `OV_BUDGET`, `CAP_BUDGET`, `DENSITY=zoom`, `KEEP`, `PREDICT=1`, `ZB_SEC`, `RUN_SCALE`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.
+`PHASES`, `POLICY=every`, `CULL=0`, `OVERVIEW=1`, `OV_BUDGET`, `CAP_BUDGET`, `DENSITY=zoom`, `KEEP`, `PREDICT=1`, `ZB_SEC`, `RUN_SCALE`, `A11Y=0`, `HOME_VIEW=x,y,scale`; bench: `W`, `H`, `SCALE`, `SHOOT_AT`.
