@@ -1,11 +1,13 @@
 import 'dart:math';
 import 'dart:ui';
 
-/// The curve of an edge from an output port [a] to an input port [b] (horizontal tangents at both ends), as
-/// [segments] + 1 points in canvas coordinates. Renderers draw it and hit testing measures against it.
-List<Offset> edgeCurve(Offset a, Offset b, {int segments = 16}) {
-  final dx = max(40.0, (b.dx - a.dx).abs() / 2);
-  final c1 = a + Offset(dx, 0), c2 = b - Offset(dx, 0);
+/// Dify's edge path: React Flow's bezier with curvature 0.16 from a source handle on the right to a target handle on
+/// the left, both ends pulled 8 px into the handles (custom-edge.tsx). [source] and [target] are the handle points;
+/// set [inset] to 0 for the line dragged out of a handle (custom-connection-line.tsx).
+List<Offset> edgeCurve(Offset source, Offset target, {double inset = 8, int segments = 24}) {
+  final a = source - Offset(inset, 0), b = target + Offset(inset, 0);
+  final c1 = Offset(a.dx + _controlOffset(b.dx - a.dx), a.dy);
+  final c2 = Offset(b.dx - _controlOffset(b.dx - a.dx), b.dy);
   return [
     for (var i = 0; i <= segments; i++)
       () {
@@ -14,6 +16,11 @@ List<Offset> edgeCurve(Offset a, Offset b, {int segments = 16}) {
       }(),
   ];
 }
+
+/// React Flow's calculateControlOffset: half the horizontal distance when the target is to the right, otherwise
+/// curvature * 25 * sqrt(-distance).
+double _controlOffset(double distance, {double curvature = 0.16}) =>
+    distance >= 0 ? 0.5 * distance : curvature * 25 * sqrt(-distance);
 
 /// Distance from [p] to the polyline [pts].
 double distanceToPolyline(Offset p, List<Offset> pts) {

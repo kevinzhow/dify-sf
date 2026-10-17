@@ -24,6 +24,9 @@ class CanvasNode {
   /// Run status shown on the canvas: idle, running, succeeded, failed, exception.
   final status = ValueNotifier('idle');
 
+  /// The pointer is over the card (Dify raises its shadow).
+  final hovered = ValueNotifier(false);
+
   /// Position on the canvas; follows the document except while this client drags the node.
   double x;
   double y;
@@ -33,8 +36,23 @@ class CanvasNode {
   String get type => node.value.type;
   Rect get rect => Rect.fromLTWH(x, y, size.width, size.height);
   Offset get center => rect.center;
-  Offset get inPort => Offset(x, y + size.height / 2);
-  Offset get outPort => Offset(x + size.width, y + size.height / 2);
+  // Handles (node-handle.tsx): 16 x 16 boxes whose top is 16 px below the card's top, straddling the card's side by
+  // 9 px. React Flow connects at the box's outer side, half way down.
+  static const handleBox = 16.0;
+  static const handleTop = 16.0;
+  static const handleOut = 9.0;
+
+  /// The target (input) handle's connection point.
+  Offset get inPort => Offset(x - handleOut, y + handleTop + handleBox / 2);
+
+  /// The source (output) handle's connection point.
+  Offset get outPort => Offset(x + size.width + handleOut, y + handleTop + handleBox / 2);
+
+  /// The source handle's hit box.
+  Rect get outHandle => Rect.fromLTWH(x + size.width + handleOut - handleBox, y + handleTop, handleBox, handleBox);
+
+  /// The target handle's hit box.
+  Rect get inHandle => Rect.fromLTWH(x - handleOut, y + handleTop, handleBox, handleBox);
 }
 
 class CanvasEdge {

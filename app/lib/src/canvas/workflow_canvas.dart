@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../editor/editor_controller.dart';
 import 'canvas_a11y.dart';
+import 'canvas_background.dart';
 import 'canvas_graph.dart';
 import 'canvas_input.dart';
 import 'canvas_renderer.dart';
@@ -125,7 +126,14 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     if (!_fitted && graph.length > 0 && !view.viewport.isEmpty) _fit();
   }
 
+  int? _hovered;
+
   void _selectionChanged() {
+    if (selection.hovered != _hovered) {
+      if (_hovered != null) graph.slots[_hovered!]?.hovered.value = false;
+      _hovered = selection.hovered;
+      if (_hovered != null) graph.slots[_hovered!]?.hovered.value = true;
+    }
     renderer.selectionChanged(selection.changed);
     a11y.changed();
   }
@@ -205,12 +213,14 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
               onPointerCancel: input.up,
               onPointerHover: input.hover,
               onPointerSignal: input.signal,
+              onPointerPanZoomStart: input.panZoomStart,
+              onPointerPanZoomUpdate: input.panZoomUpdate,
               behavior: HitTestBehavior.opaque,
               child: ClipRect(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ColoredBox(key: const Key('canvas-background'), color: scheme.surfaceContainerLowest),
+                    CanvasBackground(key: const Key('canvas-background'), view: view),
                     renderer.build(context),
                     IgnorePointer(
                       child: ValueListenableBuilder<Rect?>(

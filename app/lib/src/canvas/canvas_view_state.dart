@@ -8,8 +8,9 @@ class CanvasViewState extends ChangeNotifier {
   // ignore: prefer_initializing_formals
   CanvasViewState({Offset center = Offset.zero, double scale = 1}) : _center = center, _scale = scale;
 
-  static const minScale = 0.05;
-  static const maxScale = 4.0;
+  // Dify: minZoom 0.25, React Flow's default maxZoom 2.
+  static const minScale = 0.25;
+  static const maxScale = 2.0;
 
   Offset _center;
   double _scale;

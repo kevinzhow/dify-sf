@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
@@ -74,30 +75,14 @@ class WidgetRenderer extends CanvasRenderer {
         final children = <Widget>[
           RepaintBoundary(
             child: CustomPaint(
-              painter: _EdgePainter(
-                graph,
-                _edgesVersion.value,
-                live: false,
-                moving: _moving,
-                selected: selection.edge,
-                color: scheme.outline,
-                selectedColor: scheme.primary,
-              ),
+              painter: _EdgePainter(graph, _edgesVersion.value, live: false, moving: _moving, selected: selection.edge),
             ),
           ),
           if (_moving.isNotEmpty)
             CustomPaint(
-              painter: _EdgePainter(
-                graph,
-                _version.value,
-                live: true,
-                moving: _moving,
-                selected: selection.edge,
-                color: scheme.outline,
-                selectedColor: scheme.primary,
-              ),
+              painter: _EdgePainter(graph, _version.value, live: true, moving: _moving, selected: selection.edge),
             ),
-          if (_preview != null) CustomPaint(painter: _PreviewPainter(_preview!, scheme.primary)),
+          if (_preview != null) CustomPaint(painter: _PreviewPainter(_preview!)),
           for (final n in _stacked(visible)) _card(context, n),
         ];
         return ClipRect(
@@ -120,32 +105,52 @@ class WidgetRenderer extends CanvasRenderer {
   }
 
   Widget _card(BuildContext context, CanvasNode n) {
-    final scheme = Theme.of(context).colorScheme;
-    final selected = selection.nodes.contains(n.slot), hovered = selection.hovered == n.slot;
-    final status = n.status.value;
-    final frame = selected
-        ? scheme.primary
-        : status == 'running'
-        ? const Color(0xFF2F6FED)
-        : status == 'succeeded'
-        ? const Color(0xFF1E9E5A)
-        : status == 'failed'
-        ? const Color(0xFFD93A3A)
-        : hovered
-        ? scheme.primary.withValues(alpha: 0.4)
-        : null;
-    const handle = 12.0;
+    final selected = selection.nodes.contains(n.slot);
+    final status = switch (n.status.value) {
+      'running' || 'paused' => DifyColors.stateAccentSolid,
+      'succeeded' => DifyColors.stateSuccessSolid,
+      'failed' => DifyColors.stateDestructiveSolid,
+      'exception' => DifyColors.stateWarningSolid,
+      _ => null,
+    };
+    final connectedIn = graph.edges.any((e) => e.target == n.slot);
+    final connectedOut = graph.edges.any((e) => e.source == n.slot);
+    // The box covers the card, its selected frame (1 px outside) and the handles (9 px outside).
+    const out = CanvasNode.handleOut;
+    Widget marker(bool on) => SizedBox(
+      width: CanvasNode.handleBox,
+      height: CanvasNode.handleBox,
+      child: on
+          ? const Padding(
+              padding: EdgeInsets.fromLTRB(6, 4, 8, 4),
+              child: ColoredBox(color: DifyColors.workflowLinkLineHandle),
+            )
+          : null,
+    );
     return Positioned(
-      left: n.x - handle / 2,
-      top: n.y,
-      width: n.size.width + handle,
-      height: n.size.height,
+      left: n.x - out,
+      top: n.y - 1,
+      width: n.size.width + 2 * out,
+      height: n.size.height + 2,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          if (selected)
+            Positioned(
+              left: out - 1,
+              top: 0,
+              width: n.size.width + 2,
+              height: n.size.height + 2,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                  border: Border.all(color: DifyColors.componentsOptionCardOptionSelectedBorder),
+                ),
+              ),
+            ),
           Positioned(
-            left: handle / 2,
-            top: 0,
+            left: out,
+            top: 1,
             width: n.size.width,
             height: n.size.height,
             child: KeyedSubtree(
@@ -154,8 +159,8 @@ class WidgetRenderer extends CanvasRenderer {
                 child: DecoratedBox(
                   position: DecorationPosition.foreground,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: frame == null ? null : Border.all(color: frame, width: 2),
+                    borderRadius: BorderRadius.circular(DifyRadius.nodeCard),
+                    border: status == null ? null : Border.all(color: status),
                   ),
                   child: cards.build(context, n, live: true),
                 ),
@@ -164,13 +169,16 @@ class WidgetRenderer extends CanvasRenderer {
           ),
           Positioned(
             left: 0,
-            top: n.size.height / 2 - handle / 2,
-            child: _Handle(key: Key('in-${n.id}'), color: scheme.outline),
+            top: 1 + CanvasNode.handleTop,
+            child: KeyedSubtree(key: Key('in-${n.id}'), child: marker(connectedIn)),
           ),
           Positioned(
             right: 0,
-            top: n.size.height / 2 - handle / 2,
-            child: _Handle(key: Key('out-${n.id}'), color: scheme.primary),
+            top: 1 + CanvasNode.handleTop,
+            child: KeyedSubtree(
+              key: Key('out-${n.id}'),
+              child: Transform.flip(flipX: true, child: marker(connectedOut)),
+            ),
           ),
         ],
       ),
@@ -201,23 +209,13 @@ class _Handle extends StatelessWidget {
 }
 
 class _EdgePainter extends CustomPainter {
-  _EdgePainter(
-    this.graph,
-    this.version, {
-    required this.live,
-    required this.moving,
-    required this.selected,
-    required this.color,
-    required this.selectedColor,
-  });
+  _EdgePainter(this.graph, this.version, {required this.live, required this.moving, required this.selected});
 
   final CanvasGraph graph;
   final int version;
   final bool live;
   final Set<int> moving;
   final String? selected;
-  final Color color;
-  final Color selectedColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -226,18 +224,12 @@ class _EdgePainter extends CustomPainter {
       if (isLive != live) continue;
       final a = graph.slots[e.source], b = graph.slots[e.target];
       if (a == null || b == null) continue;
-      final pts = edgeCurve(a.outPort, b.inPort);
-      final path = Path()..moveTo(pts.first.dx, pts.first.dy);
-      for (final p in pts.skip(1)) {
-        path.lineTo(p.dx, p.dy);
-      }
-      final sel = e.id == selected;
       canvas.drawPath(
-        path,
+        _path(edgeCurve(a.outPort, b.inPort)),
         Paint()
-          ..color = sel ? selectedColor : color
+          ..color = e.id == selected ? DifyColors.workflowLinkLineHandle : DifyColors.workflowLinkLineNormal
           ..style = PaintingStyle.stroke
-          ..strokeWidth = sel ? 3 : 1.5,
+          ..strokeWidth = 2,
       );
     }
   }
@@ -246,22 +238,25 @@ class _EdgePainter extends CustomPainter {
   bool shouldRepaint(_EdgePainter old) => old.version != version || old.selected != selected || live;
 }
 
+Path _path(List<Offset> pts) {
+  final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+  for (final p in pts.skip(1)) {
+    path.lineTo(p.dx, p.dy);
+  }
+  return path;
+}
+
+/// The line dragged out of a handle (custom-connection-line.tsx): no inset, #D0D5DD, 2 px.
 class _PreviewPainter extends CustomPainter {
-  _PreviewPainter(this.line, this.color);
+  _PreviewPainter(this.line);
   final (Offset, Offset) line;
-  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final pts = edgeCurve(line.$1, line.$2);
-    final path = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (final p in pts.skip(1)) {
-      path.lineTo(p.dx, p.dy);
-    }
     canvas.drawPath(
-      path,
+      _path(edgeCurve(line.$1, line.$2, inset: 0)),
       Paint()
-        ..color = color
+        ..color = const Color(0xFFD0D5DD)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );

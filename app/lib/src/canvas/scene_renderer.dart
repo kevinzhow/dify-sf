@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_scene/scene.dart';
 import 'package:vector_math/vector_math.dart' as vm;
 
+import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
@@ -49,16 +50,21 @@ class SceneTuning {
 
   /// A card's overview is refreshed at most this often (bursts of changes coalesce).
   static const overviewIntervalUs = 300000;
-  static const edgeWidthPx = 1.5;
-  static const statusPad = 3.0;
-  static const highlightPad = 5.0;
+
+  /// Edges are 2 canvas units wide (React Flow draws them in canvas space, so they scale with the zoom).
+  static const edgeWidth = 2.0;
+
+  /// Captures include this much around the card, for its shadow (shadow-lg reaches about 24 px below).
+  static const capturePad = 24.0;
 }
 
+/// The card border by run status (getNodeStatusBorders) and the selected frame (option-card selected border).
 const _statusColors = {
-  'running': Color(0xFF2F6FED),
-  'succeeded': Color(0xFF1E9E5A),
-  'failed': Color(0xFFD93A3A),
-  'exception': Color(0xFFF79009),
+  'running': DifyColors.stateAccentSolid,
+  'paused': DifyColors.stateAccentSolid,
+  'succeeded': DifyColors.stateSuccessSolid,
+  'failed': DifyColors.stateDestructiveSolid,
+  'exception': DifyColors.stateWarningSolid,
 };
 
 /// Draws the canvas with Flutter Scene.
@@ -117,17 +123,18 @@ class SceneRenderer extends CanvasRenderer {
   final _skeletonRequested = <String>{};
   bool _skeletonOn = false;
 
-  late final InstancedMesh _statusMesh;
-  late final InstancedMesh _highlightMesh;
+  late final _RoundedFrames _statusFrames;
+  late final _RoundedFrames _selectedFrames;
+  late final InstancedMesh _markers;
+  final _connectedIn = <int>{};
+  final _connectedOut = <int>{};
   late final UnlitMaterial _edgeMaterial;
   late final UnlitMaterial _selectedEdgeMaterial;
   late final UnlitMaterial _previewMaterial;
-  final _edgeGeometries = <LineSegmentsGeometry>[];
   Node? _staticEdges;
   Node? _liveEdges;
   Node? _selectedEdge;
   Node? _preview;
-  double _edgeWidthScale = 0;
 
   Set<int> _moving = {};
   Offset? _lastCenter;
@@ -142,16 +149,17 @@ class SceneRenderer extends CanvasRenderer {
   void _start() {
     if (_disposed) return;
     scene.toneMapping = ToneMappingMode.linear; // a flat 2D canvas: colours pass through unchanged
-    _edgeMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFF94A3B8));
-    _selectedEdgeMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFF296DFF));
-    _previewMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFF296DFF));
-    // Opaque scene geometry, all in one plane: no per-frame depth sort of instances. (Display-referred surfaces are
-    // composited without depth order among themselves, which would draw the frames over the cards.)
-    _statusMesh = InstancedMesh(geometry: _unitQuad, material: UnlitMaterial(), sortTransparentInstances: false);
-    _highlightMesh = InstancedMesh(geometry: _unitQuad, material: UnlitMaterial(), sortTransparentInstances: false);
+    // Dify's edge colours (custom-edge.tsx, custom-connection-line.tsx).
+    _edgeMaterial = UnlitMaterial()..baseColorFactor = srgb(DifyColors.workflowLinkLineNormal);
+    _selectedEdgeMaterial = UnlitMaterial()..baseColorFactor = srgb(DifyColors.workflowLinkLineHandle);
+    _previewMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFFD0D5DD));
+    // Opaque scene geometry behind the cards. (Display-referred surfaces are composited without depth order among
+    // themselves, which would draw the frames over the cards.)
+    _statusFrames = _RoundedFrames(scene);
+    _selectedFrames = _RoundedFrames(scene);
+    _markers = InstancedMesh(geometry: _unitQuad, material: UnlitMaterial(), sortTransparentInstances: false);
     scene
-      ..add(Node()..addComponent(InstancedMeshComponent(_highlightMesh)))
-      ..add(Node()..addComponent(InstancedMeshComponent(_statusMesh)))
+      ..add(Node()..addComponent(InstancedMeshComponent(_markers)))
       ..add(_overviewLayer)
       ..add(_skeletonLayer);
     _ready.value = true;
@@ -196,8 +204,9 @@ class SceneRenderer extends CanvasRenderer {
       _captureStartedAt.add(0);
       _lastOverviewAt.add(0);
       _skeleton.add(null);
-      _statusMesh.addInstance(vm.Matrix4.zero());
-      _highlightMesh.addInstance(vm.Matrix4.zero());
+      _markers
+        ..addInstance(vm.Matrix4.zero(), color: srgb(DifyColors.workflowLinkLineHandle))
+        ..addInstance(vm.Matrix4.zero(), color: srgb(DifyColors.workflowLinkLineHandle));
     }
   }
 
@@ -246,8 +255,11 @@ class SceneRenderer extends CanvasRenderer {
     final sk = _skeleton[slot];
     if (sk != null) _skeletonMeshes[sk.$1]?.setInstanceTransform(sk.$2, vm.Matrix4.zero());
     _skeleton[slot] = null;
-    _statusMesh.setInstanceTransform(slot, vm.Matrix4.zero());
-    _highlightMesh.setInstanceTransform(slot, vm.Matrix4.zero());
+    _statusFrames.clear(slot);
+    _selectedFrames.clear(slot);
+    _markers
+      ..setInstanceTransform(2 * slot, vm.Matrix4.zero())
+      ..setInstanceTransform(2 * slot + 1, vm.Matrix4.zero());
     _overviewQueue.remove(slot);
     _dirty.remove(slot);
     _liveStale.remove(slot);
@@ -268,50 +280,67 @@ class SceneRenderer extends CanvasRenderer {
     final card = _cardNodes[slot];
     if (n == null || card == null) return;
     final lift = _lift(slot);
+    final padded = n.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad);
     card
       ..position = toWorld(n.center, lift)
-      ..scale = vm.Vector3(n.size.width, n.size.height, 1);
+      ..scale = vm.Vector3(padded.width, padded.height, 1);
     _placeholderNodes[slot]
       ?..position = toWorld(n.center, lift - 0.05)
-      ..scale = vm.Vector3(n.size.width, n.size.height, 1);
+      ..scale = vm.Vector3(padded.width, padded.height, 1);
     final sk = _skeleton[slot];
-    if (sk != null) _skeletonMeshes[sk.$1]!.setInstanceTransform(sk.$2, _box(n.center, n.size, lift - 0.05));
+    if (sk != null) _skeletonMeshes[sk.$1]!.setInstanceTransform(sk.$2, _box(n.center, padded, lift - 0.05));
     _statusChanged(slot);
     _highlight(slot);
+    _placeMarkers(slot);
+  }
+
+  /// The handles' visible markers (node-handle.tsx `after:`): 2 x 8 bars, 6 px inside the handle box's outer side and
+  /// 4 px below its top, only on sides that have an edge.
+  void _placeMarkers(int slot) {
+    final n = graph.slots[slot];
+    if (n == null) return;
+    final lift = _lift(slot) + 0.02;
+    final inBar = Rect.fromLTWH(n.inHandle.left + 6, n.inHandle.top + 4, 2, 8);
+    final outBar = Rect.fromLTWH(n.outHandle.right - 8, n.outHandle.top + 4, 2, 8);
+    _markers
+      ..setInstanceTransform(
+        2 * slot,
+        _connectedIn.contains(slot) ? _box(inBar.center, inBar.size, lift) : vm.Matrix4.zero(),
+      )
+      ..setInstanceTransform(
+        2 * slot + 1,
+        _connectedOut.contains(slot) ? _box(outBar.center, outBar.size, lift) : vm.Matrix4.zero(),
+      );
   }
 
   // ----- status and selection frames -----
 
+  /// The card's own 1 px border in the run status colour: a rounded rectangle the size of the card (radius 15)
+  /// behind it, seen through the card's transparent border.
   void _statusChanged(int slot) {
     final n = graph.slots[slot];
     final color = n == null ? null : _statusColors[n.status.value];
     if (n == null || color == null) {
-      _statusMesh.setInstanceTransform(slot, vm.Matrix4.zero());
+      _statusFrames.clear(slot);
       return;
     }
-    const pad = SceneTuning.statusPad * 2;
-    _statusMesh
-      ..setInstanceTransform(
-        slot,
-        _box(n.center, n.size + const Offset(pad, pad), _lift(slot) - 0.1),
-      )
-      ..setInstanceColor(slot, srgb(color));
+    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _lift(slot) - 0.1);
   }
 
+  /// The selected frame: 1 px outside the card (radius 16), option-card selected border.
   void _highlight(int slot) {
     final n = graph.slots[slot];
-    final selected = selection.nodes.contains(slot), hovered = selection.hovered == slot;
-    if (n == null || (!selected && !hovered)) {
-      _highlightMesh.setInstanceTransform(slot, vm.Matrix4.zero());
+    if (n == null || !selection.nodes.contains(slot)) {
+      _selectedFrames.clear(slot);
       return;
     }
-    const pad = SceneTuning.highlightPad * 2;
-    _highlightMesh
-      ..setInstanceTransform(
-        slot,
-        _box(n.center, n.size + const Offset(pad, pad), _lift(slot) - 0.15),
-      )
-      ..setInstanceColor(slot, srgb(selected ? const Color(0xFF296DFF) : const Color(0xFFA6C2FF)));
+    _selectedFrames.set(
+      slot,
+      n.rect.inflate(1),
+      DifyRadius.xxl,
+      srgb(DifyColors.componentsOptionCardOptionSelectedBorder),
+      _lift(slot) - 0.15,
+    );
   }
 
   @override
@@ -369,7 +398,6 @@ class SceneRenderer extends CanvasRenderer {
     Iterable<CanvasEdge> edges,
     UnlitMaterial material, {
     double lift = -1,
-    double widthPx = SceneTuning.edgeWidthPx,
   }) {
     final out = <double>[];
     for (final e in edges) {
@@ -384,9 +412,8 @@ class SceneRenderer extends CanvasRenderer {
     if (out.isEmpty) return null;
     final geometry = LineSegmentsGeometry(
       LineSegmentData(positions: Float32List.fromList(out)),
-      width: widthPx / view.scale,
+      width: SceneTuning.edgeWidth,
     );
-    _edgeGeometries.add(geometry);
     return Node(mesh: Mesh(geometry, material))..position = toWorld(Offset.zero, lift);
   }
 
@@ -396,18 +423,24 @@ class SceneRenderer extends CanvasRenderer {
     Iterable<CanvasEdge> edges,
     UnlitMaterial material, {
     double lift = -1,
-    double widthPx = SceneTuning.edgeWidthPx,
   }) {
-    if (old != null) {
-      scene.remove(old);
-      _edgeGeometries.remove(old.mesh?.primitives.first.geometry);
-    }
-    final n = _edgeNode(edges, material, lift: lift, widthPx: widthPx);
+    if (old != null) scene.remove(old);
+    final n = _edgeNode(edges, material, lift: lift);
     if (n != null) scene.add(n);
     set(n);
   }
 
   void _rebuildEdges() {
+    final wasIn = {..._connectedIn}, wasOut = {..._connectedOut};
+    _connectedIn
+      ..clear()
+      ..addAll(graph.edges.map((e) => e.target));
+    _connectedOut
+      ..clear()
+      ..addAll(graph.edges.map((e) => e.source));
+    for (final slot in {...wasIn, ...wasOut, ..._connectedIn, ..._connectedOut}) {
+      if (slot < _cardNodes.length) _placeMarkers(slot);
+    }
     _replaceEdgeNode(_staticEdges, (n) => _staticEdges = n, _edgesWhere(live: false), _edgeMaterial);
     _replaceEdgeNode(_liveEdges, (n) => _liveEdges = n, _edgesWhere(live: true), _edgeMaterial);
     _showSelectedEdge();
@@ -421,7 +454,6 @@ class SceneRenderer extends CanvasRenderer {
       [if (id != null) ...graph.edges.where((e) => e.id == id)],
       _selectedEdgeMaterial,
       lift: -0.9,
-      widthPx: 3,
     );
   }
 
@@ -430,29 +462,21 @@ class SceneRenderer extends CanvasRenderer {
     if (!_ready.value) return;
     if (_preview != null) {
       scene.remove(_preview!);
-      _edgeGeometries.remove(_preview!.mesh?.primitives.first.geometry);
       _preview = null;
     }
     if (from == null || to == null) return;
-    final pts = edgeCurve(from, to);
+    final pts = edgeCurve(from, to, inset: 0);
     final out = <double>[];
     for (var k = 0; k + 1 < pts.length; k++) {
       final p = toWorld(pts[k], 0.6), q = toWorld(pts[k + 1], 0.6);
       out.addAll([p.x, p.y, p.z, q.x, q.y, q.z]);
     }
-    final geometry = LineSegmentsGeometry(LineSegmentData(positions: Float32List.fromList(out)), width: 2 / view.scale);
-    _edgeGeometries.add(geometry);
+    final geometry = LineSegmentsGeometry(
+      LineSegmentData(positions: Float32List.fromList(out)),
+      width: SceneTuning.edgeWidth,
+    );
     _preview = Node(mesh: Mesh(geometry, _previewMaterial));
     scene.add(_preview!);
-  }
-
-  void _edgeWidths() {
-    if (view.scale == _edgeWidthScale) return;
-    final ratio = _edgeWidthScale == 0 ? 1.0 : _edgeWidthScale / view.scale;
-    _edgeWidthScale = view.scale;
-    for (final g in _edgeGeometries) {
-      g.width = g.width * ratio;
-    }
   }
 
   // ----- cards: live components -----
@@ -464,10 +488,10 @@ class SceneRenderer extends CanvasRenderer {
       // Cards stay out of the semantics tree; the canvas exposes its own summary (CanvasA11y).
       child: ExcludeSemantics(
         child: Builder(
-          builder: (context) => cards.build(context, n, live: true, onPainted: () => _livePainted(slot, c)),
+          builder: (context) => _padded(cards.build(context, n, live: true, onPainted: () => _livePainted(slot, c))),
         ),
       ),
-      size: n.size,
+      size: n.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
       pixelRatio: density,
       worldHeight: 1,
       geometry: _unitQuad,
@@ -564,10 +588,10 @@ class SceneRenderer extends CanvasRenderer {
       child: ExcludeSemantics(
         child: Builder(
           builder: (context) =>
-              cards.build(context, sample, live: false, onPainted: () => c.controller.requestCapture()),
+              _padded(cards.build(context, sample, live: false, onPainted: () => c.controller.requestCapture())),
         ),
       ),
-      size: sample.size,
+      size: sample.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
       pixelRatio: _dpr * SceneTuning.skeletonScale * 2,
       update: WidgetUpdatePolicy.manual,
       input: WidgetInput.manual,
@@ -652,10 +676,11 @@ class SceneRenderer extends CanvasRenderer {
       c = WidgetComponent.bindOnly(
         child: ExcludeSemantics(
           child: Builder(
-            builder: (context) => cards.build(context, n, live: false, onPainted: () => c.controller.requestCapture()),
+            builder: (context) =>
+                _padded(cards.build(context, n, live: false, onPainted: () => c.controller.requestCapture())),
           ),
         ),
-        size: n.size,
+        size: n.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad),
         pixelRatio: _dpr * SceneTuning.overviewMaxScale,
         update: WidgetUpdatePolicy.manual,
         input: WidgetInput.manual,
@@ -687,7 +712,6 @@ class SceneRenderer extends CanvasRenderer {
   /// Keeps live components on the cards near the view, releases far ones, sharpens at rest, refreshes overviews.
   void _tick() {
     if (view.viewport.isEmpty) return;
-    _edgeWidths();
     _skeletonSwitch();
     final now = _nowUs();
     if (view.center != _lastCenter || view.scale != _lastScale) _lastMove = now;
@@ -732,6 +756,9 @@ class SceneRenderer extends CanvasRenderer {
     _settledAt = now;
   }
 
+  /// The card with room around it for its shadow (the capture covers [SceneTuning.capturePad] on every side).
+  Widget _padded(Widget card) => Padding(padding: const EdgeInsets.all(SceneTuning.capturePad), child: card);
+
   Camera _camera() => OrthographicCamera(
     position: toWorld(view.center, 50),
     target: toWorld(view.center),
@@ -753,4 +780,80 @@ class SceneRenderer extends CanvasRenderer {
     _disposed = true;
     _ready.dispose();
   }
+}
+
+/// Rounded rectangles behind the cards (status border, selected frame), one instance per slot. Instances share a
+/// geometry only when they have the same size, so corners keep their radius; one instanced mesh per size.
+class _RoundedFrames {
+  _RoundedFrames(this.scene);
+
+  final Scene scene;
+  final _meshes = <(int, int, int), InstancedMesh>{};
+  final _free = <(int, int, int), List<int>>{};
+  final _of = <int, ((int, int, int), int)>{};
+
+  void set(int slot, Rect rect, double radius, vm.Vector4 color, double lift) {
+    final key = ((rect.width * 2).round(), (rect.height * 2).round(), (radius * 2).round());
+    final have = _of[slot];
+    if (have != null && have.$1 != key) clear(slot);
+    final at = _of[slot]?.$2 ?? _alloc(key, rect.size, radius);
+    _of[slot] = (key, at);
+    _meshes[key]!
+      ..setInstanceTransform(at, vm.Matrix4.translation(toWorld(rect.center, lift)))
+      ..setInstanceColor(at, color);
+  }
+
+  void clear(int slot) {
+    final have = _of.remove(slot);
+    if (have == null) return;
+    _meshes[have.$1]!.setInstanceTransform(have.$2, vm.Matrix4.zero());
+    _free.putIfAbsent(have.$1, () => []).add(have.$2);
+  }
+
+  int _alloc((int, int, int) key, Size size, double radius) {
+    final free = _free[key];
+    if (free != null && free.isNotEmpty) return free.removeLast();
+    final mesh = _meshes.putIfAbsent(key, () {
+      final m = InstancedMesh(
+        geometry: _roundedRect(size, radius),
+        material: UnlitMaterial(),
+        sortTransparentInstances: false,
+      );
+      scene.add(Node()..addComponent(InstancedMeshComponent(m)));
+      return m;
+    });
+    return mesh.addInstance(vm.Matrix4.zero());
+  }
+}
+
+/// A filled rounded rectangle centred on the origin, as a triangle fan, facing the -Z camera.
+Geometry _roundedRect(Size size, double radius, {int segments = 8}) {
+  final w = size.width / 2, h = size.height / 2, r = min(radius, min(w, h));
+  final pts = <Offset>[];
+  for (final (cx, cy, a0) in [
+    (w - r, h - r, 0.0),
+    (-w + r, h - r, pi / 2),
+    (-w + r, -h + r, pi),
+    (w - r, -h + r, 1.5 * pi),
+  ]) {
+    for (var i = 0; i <= segments; i++) {
+      final a = a0 + i / segments * pi / 2;
+      pts.add(Offset(cx + r * cos(a), cy + r * sin(a)));
+    }
+  }
+  final positions = <double>[0, 0, 0];
+  for (final p in pts) {
+    // Canvas y grows downwards and world y upwards; the shape is symmetric, so only the winding matters.
+    positions.addAll([p.dx, -p.dy, 0]);
+  }
+  final indices = <int>[];
+  for (var i = 1; i <= pts.length; i++) {
+    final j = i == pts.length ? 1 : i + 1;
+    indices.addAll([0, i, j]); // same winding as the card quad (front-facing for the -Z camera)
+  }
+  return MeshGeometry.fromArrays(
+    positions: Float32List.fromList(positions),
+    texCoords: Float32List(positions.length ~/ 3 * 2),
+    indices: indices,
+  );
 }

@@ -12,6 +12,7 @@ import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -92,7 +93,8 @@ void main() {
     final center = t.getCenter(bg);
 
     await binding.watchPerformance(() async {
-      final g = await t.startGesture(center);
+      // Middle-button drag pans (a left-button drag on empty canvas draws a selection box, as in Dify).
+      final g = await t.startGesture(center, kind: PointerDeviceKind.mouse, buttons: kMiddleMouseButton);
       for (var i = 0; i < 120; i++) {
         await g.moveBy(Offset(i.isEven ? 6 : -5, 3));
         await t.pump(const Duration(milliseconds: 16));

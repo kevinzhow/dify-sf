@@ -12,9 +12,15 @@ import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
 import 'edge_curve.dart';
 
-/// Pointer and keyboard input on the canvas, hit-tested in canvas coordinates: click selects (Shift toggles), drag
-/// moves the selection, drag from an output port connects, drag on empty canvas pans (Shift: box select), the wheel
-/// zooms around the pointer, a click near an edge selects it, Delete/Backspace removes the selection.
+/// How a left-button drag on empty canvas and the wheel behave (Dify's control modes).
+enum ControlMode { pointer, hand }
+
+/// Pointer and keyboard input on the canvas, hit-tested in canvas coordinates, behaving like Dify's editor:
+/// * click selects one node (no modifier multi-select; multi-select is the box), a click near an edge selects it;
+/// * drag moves the selection, drag from a source handle connects;
+/// * pointer mode: drag on empty canvas draws a selection box, the wheel pans, Ctrl/Cmd + wheel zooms;
+///   hand mode: drag on empty canvas pans, the wheel zooms; the middle button always pans;
+/// * Delete/Backspace removes the selection.
 /// Every change to the document goes through [EditorController].
 class CanvasInput {
   CanvasInput({
@@ -34,8 +40,7 @@ class CanvasInput {
   /// The box being dragged out (screen coordinates), for the overlay.
   final marquee = ValueNotifier<Rect?>(null);
 
-  /// Box select without holding Shift (tests and benchmarks cannot hold a key).
-  bool forceMarquee = false;
+  ControlMode mode = ControlMode.pointer;
 
   /// Called after an input changed what is drawn (benchmarks time input to frame).
   void Function(String kind)? onApplied;
@@ -50,7 +55,7 @@ class CanvasInput {
   Timer? _sendTimer;
 
   static const _slop = 3.0;
-  static const _portRadiusPx = 10.0;
+  static const _portSlackPx = 4.0;
   static const _edgeRadiusPx = 6.0;
 
   // ----- hit testing -----
@@ -68,11 +73,12 @@ class CanvasInput {
 
   int stackKey(CanvasNode n) => (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
 
+  /// The node whose source handle box is under [c] (a little larger when zoomed out).
   CanvasNode? outPortAt(Offset c) {
-    final r = max(_portRadiusPx / view.scale, 4.0);
-    for (final slot in graph.grid.near(Rect.fromCenter(center: c, width: 2 * r, height: 2 * r))) {
+    final slack = max(0.0, _portSlackPx / view.scale - 2);
+    for (final slot in graph.grid.near(Rect.fromCenter(center: c, width: 40, height: 40))) {
       final n = graph.slots[slot];
-      if (n != null && (n.outPort - c).distance <= r) return n;
+      if (n != null && n.outHandle.inflate(slack).contains(c)) return n;
     }
     return null;
   }
@@ -97,23 +103,26 @@ class CanvasInput {
   // ----- pointer -----
 
   void down(PointerDownEvent e) {
-    if (e.buttons & kPrimaryButton == 0) return;
     _downLocal = e.localPosition;
     final c = view.toCanvas(e.localPosition);
     _lastCanvas = c;
     _moved = false;
+    if (e.buttons & kMiddleMouseButton != 0) {
+      _gesture = 'pan';
+      _panCenter = view.center;
+      return;
+    }
+    if (e.buttons & kPrimaryButton == 0) return;
     final port = outPortAt(c), hit = nodeAt(c);
     if (port != null) {
       _gesture = 'connect';
       _connectFrom = port;
     } else if (hit != null) {
       _gesture = 'move';
-      if (!selection.nodes.contains(hit.slot)) {
-        selection.selectNodes([hit.slot], toggle: HardwareKeyboard.instance.isShiftPressed);
-      }
+      if (!selection.nodes.contains(hit.slot)) selection.selectNodes([hit.slot]);
       controller.selectNode(hit.id);
       onApplied?.call('select');
-    } else if (forceMarquee || HardwareKeyboard.instance.isShiftPressed) {
+    } else if (mode == ControlMode.pointer) {
       _gesture = 'marquee';
     } else {
       _gesture = 'pan';
@@ -157,9 +166,10 @@ class CanvasInput {
     switch (_gesture) {
       case 'move':
         if (_moved) _endMove();
-      case 'pan':
-        if (!_moved) {
+      case 'pan' || 'marquee' when !_moved:
+        {
           // A click on empty canvas: select the edge under it, or clear the selection.
+          marquee.value = null;
           final edge = edgeAt(c);
           selection.selectEdge(edge?.id);
           if (edge != null) {
@@ -169,6 +179,8 @@ class CanvasInput {
           }
           onApplied?.call('select');
         }
+      case 'pan':
+        break;
       case 'connect':
         renderer().connectPreview(null, null);
         final target = nodeAt(c);
@@ -202,10 +214,36 @@ class CanvasInput {
 
   void exit(PointerExitEvent e) => selection.hover(null);
 
+  /// The wheel pans in pointer mode and zooms with Ctrl/Cmd (or in hand mode), around the pointer.
   void signal(PointerSignalEvent e) {
+    if (e is PointerScaleEvent) {
+      view.zoomAt(e.localPosition, e.scale);
+      onApplied?.call('zoom');
+      return;
+    }
     if (e is! PointerScrollEvent) return;
-    view.zoomAt(e.localPosition, exp(-e.scrollDelta.dy / 400));
-    onApplied?.call('zoom');
+    final keys = HardwareKeyboard.instance;
+    if (mode == ControlMode.hand || keys.isControlPressed || keys.isMetaPressed) {
+      view.zoomAt(e.localPosition, exp(-e.scrollDelta.dy / 400));
+      onApplied?.call('zoom');
+    } else {
+      view.center += e.scrollDelta / view.scale;
+      onApplied?.call('pan');
+    }
+  }
+
+  // Trackpad: two fingers pan, pinch zooms.
+  double _lastPinch = 1;
+
+  void panZoomStart(PointerPanZoomStartEvent e) => _lastPinch = 1;
+
+  void panZoomUpdate(PointerPanZoomUpdateEvent e) {
+    view.center -= e.panDelta / view.scale;
+    if (e.scale != _lastPinch) {
+      view.zoomAt(e.localPosition, e.scale / _lastPinch);
+      _lastPinch = e.scale;
+    }
+    onApplied?.call('pan');
   }
 
   /// Delete/Backspace removes the selected edge or nodes.
