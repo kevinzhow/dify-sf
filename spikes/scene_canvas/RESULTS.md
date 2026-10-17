@@ -198,6 +198,19 @@ it off (pan 121 / 118 fps, zoom 119 / 120, edits 116 / 117, drag 116 / 115; `res
 
 ![after the input test](results/input-after.png)
 
+## Finish: colour, edge width, sharpening, first look
+
+* Linear tone mapping (a flat 2D canvas needs no filmic curve), and colours converted from sRGB, so status and
+  selection colours reach the screen exactly (the success frame measures 30, 158, 90 = #1E9E5A).
+* Edges keep 1.5 screen pixels at every zoom (their world width follows the zoom).
+* Until a card's own overview exists, its placeholder shows its node type's card, never a plain block.
+* At rest, on-screen cards captured below the density the zoom needs are recaptured, 8 per frame, the old capture
+  kept until the new one lands (no flash): after a jump from 1x to 2x all on-screen cards are sharp within 197 ms
+  (`PHASES=autosharp`).
+* Status frame 3 px, selection 5 px (to be matched to Dify's look when aligning the UI).
+
+![2x after automatic sharpening](results/autosharp-2x.png)
+
 ## Findings (before culling, all cards resident)
 
 1. **All three canvases hold about 120 FPS at 1x up to 2000 nodes.** The app's current canvas (rebuilding the
@@ -225,8 +238,7 @@ it off (pan 121 / 118 fps, zoom 119 / 120, edits 116 / 117, drag 116 / 115; `res
 ## Recommendation
 
 Cards in Flutter Scene with per-component culling: they hold up at 2000 nodes, at 2x, and zoomed out to the whole
-graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Open items for it:
-placeholder look before the overviews arrive, edge width in screen pixels, the web build. Final 120 Hz acceptance on a
+graph, where widget cards (and the hybrid) break down. Cards, edges and future shader or 3D effects share one renderer. Open item for it: the web build. Final 120 Hz acceptance on a
 real 120 Hz screen.
 
 Not covered yet: pointer and keyboard input on scene cards (`WidgetInput.automatic`), text input inside cards, the

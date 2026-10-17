@@ -226,7 +226,7 @@ vm.Vector3 toWorld(Offset p, [double z = 0]) => vm.Vector3(p.dx, -p.dy, -z);
 /// The status frame: a quad a few pixels larger than the card, drawn behind it, so its colour shows as a border.
 Geometry? _statusQuad;
 Geometry statusQuad() => _statusQuad ??= () {
-  const w = kNodeW / 2 + 5, h = kNodeH / 2 + 5;
+  const w = kNodeW / 2 + 3, h = kNodeH / 2 + 3;
   return MeshGeometry.fromArrays(
     positions: Float32List.fromList([w, -h, 0, -w, -h, 0, -w, h, 0, w, h, 0]),
     texCoords: Float32List.fromList([1, 1, 0, 1, 0, 0, 1, 0]),
@@ -237,13 +237,19 @@ Geometry statusQuad() => _statusQuad ??= () {
 /// The selection/hover frame: larger than the status frame, so both show when a running node is selected.
 Geometry? _highlightQuad;
 Geometry highlightQuad() => _highlightQuad ??= () {
-  const w = kNodeW / 2 + 9, h = kNodeH / 2 + 9;
+  const w = kNodeW / 2 + 5, h = kNodeH / 2 + 5;
   return MeshGeometry.fromArrays(
     positions: Float32List.fromList([w, -h, 0, -w, -h, 0, -w, h, 0, w, h, 0]),
     texCoords: Float32List.fromList([1, 1, 0, 1, 0, 0, 1, 0]),
     indices: [0, 1, 3, 3, 1, 2],
   );
 }();
+
+/// A screen colour (sRGB) as the scene's linear colour, so it reaches the screen unchanged (linear tone mapping).
+vm.Vector4 srgb(double r, double g, double b) {
+  double lin(double c) => c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4).toDouble();
+  return vm.Vector4(lin(r), lin(g), lin(b), 1);
+}
 
 const statusColors = {'running': Color(0xFF2F6FED), 'succeeded': Color(0xFF1E9E5A), 'failed': Color(0xFFD93A3A)};
 
@@ -320,7 +326,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
       final material = UnlitMaterial()
         ..alphaMode = AlphaMode.blend
         ..displayReferred = true
-        ..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1);
+        ..baseColorFactor = srgb(0.97, 0.96, 1.0);
       meshes[t] = InstancedMesh(geometry: cardQuad(), material: material, sortTransparentInstances: false);
       final host = Node();
       late final WidgetComponent c;
@@ -340,6 +346,14 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
           material
             ..baseColorTexture = GpuTextureSource(texture)
             ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+          // Until a card has its own overview, its placeholder shows its type's card.
+          for (var i = 0; i < g.nodes.length; i++) {
+            if (g.nodes[i].type == t && !hasOverview[i]) {
+              placeholders[i]
+                ..baseColorTexture = GpuTextureSource(texture)
+                ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+            }
+          }
           SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
         },
       );
@@ -386,10 +400,12 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     super.initState();
     Scene.initializeStaticResources().then((_) {
       if (!mounted) return;
-      edgeMaterial = UnlitMaterial()..baseColorFactor = vm.Vector4(0.58, 0.62, 0.68, 1);
+      edgeMaterial = UnlitMaterial()..baseColorFactor = srgb(0.58, 0.62, 0.68);
       if (kAA.isNotEmpty) scene.antiAliasingMode = AntiAliasingMode.values.byName(kAA);
-      placeholderMaterial = UnlitMaterial()..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1);
-      statusColorValues = {for (final e in statusColors.entries) e.key: vm.Vector4(e.value.r, e.value.g, e.value.b, 1)};
+      // A flat 2D canvas: colours pass through unchanged (no filmic curve on status and selection colours).
+      scene.toneMapping = ToneMappingMode.linear;
+      placeholderMaterial = UnlitMaterial()..baseColorFactor = srgb(0.97, 0.96, 1.0);
+      statusColorValues = {for (final e in statusColors.entries) e.key: srgb(e.value.r, e.value.g, e.value.b)};
       // All cards lie in one plane: no per-frame depth sort of the instances.
       statusMesh = InstancedMesh(
         geometry: statusQuad(),
@@ -424,7 +440,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
           // Stands in for the card until (and while not) it has a capture; just behind where the capture draws.
           final m = kOverview
               ? (UnlitMaterial()
-                  ..baseColorFactor = vm.Vector4(0.97, 0.96, 1.0, 1)
+                  ..baseColorFactor = srgb(0.97, 0.96, 1.0)
                   ..alphaMode = AlphaMode.blend
                   ..displayReferred = true)
               : placeholderMaterial;
@@ -532,7 +548,32 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     maxAttached = max(maxAttached, ++attached);
   }
 
+  /// Replaces card [i]'s capture with one at [pixelRatio]; the old one stays until the new one has landed.
+  Future<void> _upgrade(int i, double pixelRatio) {
+    final old = comps[i]!, c = _component(i, pixelRatio), done = Completer<void>();
+    replaced[i] = old;
+    void landed() {
+      if (c.controller.texture == null) return;
+      c.controller.removeListener(landed);
+      if (identical(replaced[i], old)) replaced.remove(i);
+      if (old.isAttached) cards[i].removeComponent(old);
+      if (!done.isCompleted) done.complete();
+    }
+
+    c.controller.addListener(landed);
+    cards[i].addComponent(c);
+    comps[i] = c;
+    pixelRatios[i] = pixelRatio;
+    attachedTotal++;
+    return done.future;
+  }
+
+  /// Captures being replaced by [_upgrade], kept until the new one lands.
+  final replaced = <int, WidgetComponent>{};
+
   void _detach(int i) {
+    final old = replaced.remove(i);
+    if (old != null && old.isAttached) cards[i].removeComponent(old);
     attachedSet.remove(i);
     cards[i].removeComponent(comps[i]!);
     comps[i] = null;
@@ -677,6 +718,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
 
   /// Keeps a WidgetComponent on the cards within half a viewport of the view and drops those beyond a whole one.
   void _residency() {
+    _edgeWidths();
     if (!kCull || !widget.withCards || viewport.isEmpty) return;
     final v = widget.view;
     // With overviews every card already shows real content, so capture work waits until the view rests.
@@ -731,7 +773,18 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
         }
       }
     }
-    settled = budget > 0 && releases > 0;
+    // At rest, on-screen cards captured below the zoom's density are recaptured (a few per frame, no flash).
+    var sharpens = 8;
+    if (!viewMoving) {
+      for (final i in [...attachedSet]) {
+        if (sharpens <= 0) break;
+        if (pixelRatios[i] < density && view.overlaps(g.nodes[i].rect)) {
+          _upgrade(i, density);
+          sharpens--;
+        }
+      }
+    }
+    settled = budget > 0 && releases > 0 && sharpens > 0;
     settledAt = now;
     if (initialTarget < 0) {
       initialTarget = first;
@@ -760,11 +813,27 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     final data = _segments(edges);
     if (data.isEmpty || !kEdges) return null;
     // Edges sit behind the cards.
-    return Node(mesh: Mesh(LineSegmentsGeometry(LineSegmentData(positions: data), width: 2), edgeMaterial))
-      ..position = toWorld(Offset.zero, -1);
+    final geometry = LineSegmentsGeometry(LineSegmentData(positions: data), width: edgeWidthPx / widget.view.scale);
+    edgeGeometries.add(geometry);
+    return Node(mesh: Mesh(geometry, edgeMaterial))..position = toWorld(Offset.zero, -1);
+  }
+
+  // Edges keep a constant width on screen: their world width follows the zoom.
+  static const edgeWidthPx = 1.5;
+  final edgeGeometries = <LineSegmentsGeometry>[];
+  double edgeWidthScale = 0;
+
+  void _edgeWidths() {
+    final scale = widget.view.scale;
+    if (scale == edgeWidthScale) return;
+    edgeWidthScale = scale;
+    for (final geometry in edgeGeometries) {
+      geometry.width = edgeWidthPx / scale;
+    }
   }
 
   void _rebuildEdges() {
+    edgeGeometries.clear();
     for (final n in [staticEdges, liveEdges]) {
       if (n != null) scene.remove(n);
     }
@@ -833,7 +902,10 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
       _placeNode(i);
     }
     // Only the moving nodes' edges are rebuilt per frame.
-    if (liveEdges != null) scene.remove(liveEdges!);
+    if (liveEdges != null) {
+      scene.remove(liveEdges!);
+      edgeGeometries.remove((liveEdges!.mesh!.primitives.first.geometry));
+    }
     liveEdges = _edgeNode([for (final k in liveEdgeIds) g.edges[k]]);
     if (liveEdges != null) scene.add(liveEdges!);
   }
@@ -865,8 +937,8 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   final selected = <int>{};
   int? hovered;
   late final InstancedMesh highlightMesh;
-  static final selectedColor = vm.Vector4(0.16, 0.42, 0.95, 1);
-  static final hoverColor = vm.Vector4(0.62, 0.74, 0.98, 1);
+  static final selectedColor = srgb(0.16, 0.42, 0.95);
+  static final hoverColor = srgb(0.62, 0.74, 0.98);
 
   void _updateHighlight(int i) {
     final on = selected.contains(i) || hovered == i;
@@ -1125,15 +1197,7 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
     final pending = <Future<void>>[];
     for (var i = 0; i < cards.length; i++) {
       if (comps[i] == null || pixelRatios[i] == want || !visible.overlaps(g.nodes[i].rect)) continue;
-      _detach(i);
-      _attach(i, want);
-      final c = comps[i]!, done = Completer<void>();
-      void l() {
-        if (c.controller.texture != null && !done.isCompleted) done.complete();
-      }
-
-      c.controller.addListener(l);
-      pending.add(done.future);
+      pending.add(_upgrade(i, want));
     }
     await Future.wait(pending);
   }
@@ -1142,7 +1206,18 @@ class SceneCanvasState extends State<SceneCanvas> with CanvasHandle {
   int get liveWidgets => attached;
 
   @override
+  /// On-screen cards with a capture below the density the zoom needs (blurry).
+  int get unsharpOnScreen {
+    final view = visibleRect(widget.view, viewport), want = densityForZoom();
+    return [
+      for (final i in attachedSet)
+        if (view.overlaps(g.nodes[i].rect) && pixelRatios[i] < want) i,
+    ].length;
+  }
+
+  @override
   Map<String, Object> get stats => {
+    'unsharpOnScreen': unsharpOnScreen,
     'a11yBuilds': a11yBuilds,
     'a11yNodes': a11y.value.$1.length + (a11y.value.$2 == null ? 0 : 1),
     'maxAttached': maxAttached,
@@ -1800,6 +1875,23 @@ class _SpikeAppState extends State<SpikeApp> with SingleTickerProviderStateMixin
     if (kPhases.contains('zoomback')) await _zoomBack();
     if (kPhases.contains('run')) await _runWorkflow();
     if (kPhases.contains('input')) await _inputTest();
+    if (kPhases.contains('autosharp')) {
+      // Zoom in by a jump and let the view rest: on-screen cards must end up captured at the new density.
+      view
+        ..center = const Offset(3700, 3000)
+        ..scale = 1;
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      view.scale = 2;
+      final sw1 = Stopwatch()..start();
+      var unsharp = -1;
+      while (sw1.elapsedMilliseconds < 3000) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        unsharp = canvas.stats['unsharpOnScreen'] as int? ?? -1;
+        if (unsharp == 0) break;
+      }
+      stdout.writeln('AUTOSHARP ${jsonEncode({'unsharpOnScreen': unsharp, 'ms': sw1.elapsedMilliseconds})}');
+      await _shot('autosharp');
+    }
     // Pan: a 600 px/s diagonal sweep and back.
     await _phase('pan', 4, (t) {
       final s = sin(t * pi / 2);

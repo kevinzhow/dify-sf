@@ -1,0 +1,3 @@
+READY mode=scene nodes=2000 edges=2282 loadMs=226 window=1600.0x1000.0@1.0 canvas=1600.0x1000.0 shot=1600.0x1000.0
+AUTOSHARP {"unsharpOnScreen":0,"ms":197}
+SUMMARY {"mode":"scene","nodes":2000,"edges":2282,"loadMs":226,"sharpenMs":0,"sharpenFrames":58,"sharpenWorstBuildMs":6.6,"rssMb":246,"maxRssMb":263,"liveWidgets":42,"unsharpOnScreen":0,"a11yBuilds":4,"a11yNodes":12,"maxAttached":174,"attachedTotal":288,"overviewsDone":1008,"statusChanges":0,"staleness":[],"phases":[]}
