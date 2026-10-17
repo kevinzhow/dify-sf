@@ -1,0 +1,10 @@
+| mutant | caught by | trace length |
+|---|---|---|
+| EarlyAck | Inv_Acked | 6 |
+| EqualStamp | Inv_P2 | 7 |
+| NoCascade | Inv_P4 | 3 |
+| NoDedup | Inv_Log | 4 |
+| NoFrom | Inv_Truth | 14 |
+| NoResend | deadlock (no convergence) | 4 |
+| NoStale | Inv_P2 | 5 |
+| NoTouch | Inv_P2 | 5 |

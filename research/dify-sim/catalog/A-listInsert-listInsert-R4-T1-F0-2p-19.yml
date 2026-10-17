@@ -1,0 +1,38 @@
+id: A-listInsert-listInsert-R4-T1-F0-2p-19
+title: 两人各加一条提示词（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: listInsert
+    node: llm1
+    path: prompt
+    value: msg-A
+  - at: 50
+    user: B
+    op: listInsert
+    node: llm1
+    path: prompt
+    value: msg-B
+faults: []
+settle: 14s
+expect:
+  final:
+    - node: llm1
+      path: prompt
+      contains:
+        - msg-A
+        - msg-B
+  notices: []
+repeat: 20
+tags:
+  op_a: listInsert
+  op_b: listInsert
+  rel: R4
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

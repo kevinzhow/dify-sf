@@ -1,0 +1,31 @@
+id: A-removeNode-setTitle-R5-T2-F0-2p-28
+title: A 删节点，B 改另一个节点（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: removeNode
+    node: code3
+  - at: 1500
+    user: B
+    op: setTitle
+    node: code2
+    value: B-title
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeNode
+  op_b: setTitle
+  rel: R5
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

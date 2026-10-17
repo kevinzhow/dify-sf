@@ -1,0 +1,10 @@
+PASS CE-A stale view reverts remote field (title lost, A acked)  -> {'outputs': {'o0': 1}, 'title': 't0', 'desc': 'B-desc', 'variables': ['x0']}
+PASS CE-A' control: concurrent in network (doc not ahead of view) merges fine  -> {'outputs': {'o0': 1}, 'title': 'A-title', 'desc': 'B-desc', 'variables': ['x0']}
+PASS CE-B same field: one acknowledged edit silently disappears  -> B-same
+PASS CE-C object-valued list: concurrent adds, one lost  -> {'ob': 3, 'o0': 1}
+PASS CE-D index list: stale-view append deletes the remote item  -> ['x0', 'b']
+PASS CE-E index list: removed item x0 resurrected  -> ['x0', 'x1b']
+PASS CE-F delete vs concurrent edit: B's acknowledged edit silently gone
+PASS CE-F' zombie: deleted node re-created by a stale-view edit  -> {'outputs': {}, 'title': 'B-zombie', 'desc': 'e0', 'variables': []}
+PASS CE-G reference to a deleted node stays (no marker, no cleanup)  -> n2
+ALL PASS

@@ -1,0 +1,32 @@
+id: A-removeEdge-setTitle-R7-T2-F0-2p-39
+title: A 断线，B 在同一条线两端的节点上改标题（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: removeEdge
+    from: code2
+    to: end
+  - at: 1500
+    user: B
+    op: setTitle
+    node: end
+    value: B-end
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeEdge
+  op_b: setTitle
+  rel: R7
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

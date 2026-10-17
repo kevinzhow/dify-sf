@@ -1,0 +1,9 @@
+node_modules/
+.venv/
+dist/
+.toolchain/
+__pycache__/
+*.pyc
+real-browser/shots/
+formal/tools/tla2tools.jar
+formal/states/

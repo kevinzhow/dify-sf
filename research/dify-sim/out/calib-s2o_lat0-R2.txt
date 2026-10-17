@@ -1,0 +1,24 @@
+{"i":0,"real":"oa+ob","dist":{"oa+ob":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":1128,"byteEq":true,"diff":[]}
+{"i":1,"real":"oa","dist":{"oa":4,"oa+ob":26},"pReal":0.13333333333333333,"lat":0,"gap":0,"dAB_ms":-1564,"byteEq":true,"diff":[]}
+{"i":3,"real":"ob","dist":{"oa":30},"pReal":0,"lat":0,"gap":0,"dAB_ms":-67,"byteEq":null,"diff":[]}
+{"i":4,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-169,"byteEq":true,"diff":[]}
+{"i":5,"real":"oa+ob","dist":{"oa+ob":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":1147,"byteEq":true,"diff":[]}
+{"i":6,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-807,"byteEq":true,"diff":[]}
+{"i":8,"real":"ob","dist":{"ob":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":266,"byteEq":true,"diff":[]}
+{"i":9,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-502,"byteEq":true,"diff":[]}
+{"i":10,"real":"ob","dist":{"ob":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":561,"byteEq":true,"diff":[]}
+{"i":11,"real":"oa+ob","dist":{"oa+ob":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":1303,"byteEq":true,"diff":[]}
+{"i":13,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":160,"byteEq":true,"diff":[]}
+{"i":14,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-652,"byteEq":true,"diff":[]}
+{"i":15,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-113,"byteEq":true,"diff":[]}
+{"i":16,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-29,"byteEq":true,"diff":[]}
+{"i":17,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":241,"byteEq":true,"diff":[]}
+{"i":18,"real":"ob","dist":{"oa":18,"ob":12},"pReal":0.4,"lat":0,"gap":0,"dAB_ms":-251,"byteEq":true,"diff":[]}
+{"i":19,"real":"ob","dist":{"oa":18,"ob":12},"pReal":0.4,"lat":0,"gap":0,"dAB_ms":180,"byteEq":true,"diff":[]}
+{"i":20,"real":"oa+ob","dist":{"oa+ob":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-928,"byteEq":true,"diff":[]}
+{"i":23,"real":"ob","dist":{"oa":28,"ob":2},"pReal":0.06666666666666667,"lat":0,"gap":0,"dAB_ms":49,"byteEq":true,"diff":[]}
+{"i":25,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-45,"byteEq":true,"diff":[]}
+{"i":27,"real":"ob","dist":{"oa":17,"ob":13},"pReal":0.43333333333333335,"lat":0,"gap":0,"dAB_ms":888,"byteEq":true,"diff":[]}
+{"i":28,"real":"oa","dist":{"ob":30},"pReal":0,"lat":0,"gap":0,"dAB_ms":151,"byteEq":null,"diff":[]}
+{"i":29,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":116,"byteEq":true,"diff":[]}
+SUMMARY {"n":23,"meanPredictedLoss":0.7884057971014492,"realLossRate":0.8260869565217391,"meanPReal":0.6710144927536232,"byteEq":21,"byteChecked":21}

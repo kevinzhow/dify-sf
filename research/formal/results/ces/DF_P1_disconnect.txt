@@ -1,0 +1,38 @@
+Error: Invariant Inv_P1 is violated
+--- State 1: Initial predicate
+    leader = 1
+    dirty = <<FALSE>>
+    dsave = <<FALSE>>
+    up = <<TRUE>>
+    conn = <<TRUE>>
+    trusted = <<TRUE>>
+    vis = <<TRUE>>
+    hash = <<1>>
+    fl = 0
+    phase = run
+    view[1] = nodes=['n1', 'n2'] n1[] | n2[]
+    store = hash=1 nodes=['n1', 'n2'] n1[] | n2[]
+    issued = 
+    net = 0 msgs to []
+--- State 2: Edit
+    dsave = <<TRUE>>
+    view[1] = nodes=['n1', 'n2'] n1[f1=v1] | n2[]
+    issued = <<1,1>>:setField(n1.f1:=v1)
+--- State 3: Disconnect
+    leader = 0
+    conn = <<FALSE>>
+    trusted = <<FALSE>>
+    fl = 1
+--- State 4: Quiesce
+    phase = heal
+--- State 5: Reconnect
+    conn = <<TRUE>>
+--- State 6: Elect
+    leader = 1
+    trusted = <<TRUE>>
+    view[1] = nodes=['n1', 'n2'] n1[] | n2[]
+--- State 7: Fire
+    dsave = <<FALSE>>
+    hash = <<2>>
+    store = hash=2 nodes=['n1', 'n2'] n1[] | n2[]
+[7 states]

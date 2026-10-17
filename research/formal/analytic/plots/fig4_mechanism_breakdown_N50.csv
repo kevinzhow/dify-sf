@@ -1,0 +1,16 @@
+latency,mechanism,percent_of_edits
+L = 800 ms  (400 ms one-way),a_lww,1.2484269299971469
+L = 800 ms  (400 ms one-way),b_revert,0.05870695881870473
+L = 800 ms  (400 ms one-way),c_list,0.05870695881870473
+L = 800 ms  (400 ms one-way),d_delete,0.13587088630102084
+L = 800 ms  (400 ms one-way),e_persist,0.008122833087820441
+L = 100 ms  (50 ms one-way),a_lww,0.2325067563895113
+L = 100 ms  (50 ms one-way),b_revert,0.05870695881870473
+L = 100 ms  (50 ms one-way),c_list,0.05870695881870473
+L = 100 ms  (50 ms one-way),d_delete,0.023997919522402378
+L = 100 ms  (50 ms one-way),e_persist,0.003358071496160181
+L = 4 s  (2 s one-way),a_lww,4.797883901565909
+L = 4 s  (2 s one-way),b_revert,0.05870695881870473
+L = 4 s  (2 s one-way),c_list,0.05870695881870473
+L = 4 s  (2 s one-way),d_delete,0.644044979115913
+L = 4 s  (2 s one-way),e_persist,0.029904600363981643

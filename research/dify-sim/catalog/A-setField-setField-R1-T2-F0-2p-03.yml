@@ -1,0 +1,36 @@
+id: A-setField-setField-R1-T2-F0-2p-03
+title: 两人同时改同一代码块（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: setField
+    node: code1
+    path: code
+    value: |
+      # A
+  - at: 1500
+    user: B
+    op: setField
+    node: code1
+    path: code
+    value: |
+      # B
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setField
+  op_b: setField
+  rel: R1
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

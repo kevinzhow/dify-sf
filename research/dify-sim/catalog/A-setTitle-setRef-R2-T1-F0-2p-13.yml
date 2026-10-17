@@ -1,0 +1,33 @@
+id: A-setTitle-setRef-R2-T1-F0-2p-13
+title: A 改标题，B 改引用（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setTitle
+    node: code2
+    value: A-title
+  - at: 50
+    user: B
+    op: setRef
+    node: code2
+    value:
+      - code1
+      - result
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setTitle
+  op_b: setRef
+  rel: R2
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

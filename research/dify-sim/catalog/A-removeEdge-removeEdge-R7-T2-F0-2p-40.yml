@@ -1,0 +1,32 @@
+id: A-removeEdge-removeEdge-R7-T2-F0-2p-40
+title: 两人断开不同的线（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: removeEdge
+    from: llm1
+    to: ifelse1
+  - at: 1500
+    user: B
+    op: removeEdge
+    from: code2
+    to: end
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeEdge
+  op_b: removeEdge
+  rel: R7
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

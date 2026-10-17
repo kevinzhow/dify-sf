@@ -1,0 +1,43 @@
+[S6A #0] ['OK'] lost=[] div=[] 
+== S6A: 1 runs: {'OK': 1}
+[S6B #0] ['OK'] lost=[] div=[] 
+== S6B: 1 runs: {'OK': 1}
+[S6C #0] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+== S6C: 1 runs: {'LOST_EDIT': 1}
+[S6D #0] ['OK'] lost=[] div=[] 
+== S6D: 1 runs: {'OK': 1}
+[S6E #0] ['OK'] lost=[] div=[] 
+== S6E: 1 runs: {'OK': 1}
+[S6F #0] ['OK'] lost=[] div=[] 
+== S6F: 1 runs: {'OK': 1}
+[S3A #0] ['OK'] lost=[] div=[] 
+== S3A: 1 runs: {'OK': 1}
+[S3B #0] ['OK'] lost=[] div=[] 
+== S3B: 1 runs: {'OK': 1}
+[S3C #0] ['LOST_EDIT', 'DIVERGENCE'] lost=['B:c3.title'] div=['B:title:c3', 'C:title:c3'] 
+== S3C: 1 runs: {'LOST_EDIT+DIVERGENCE': 1}
+[S4A #0] ['OK'] lost=[] div=[] 
+== S4A: 1 runs: {'OK': 1}
+[S4B #0] ['OK'] lost=[] div=[] 
+== S4B: 1 runs: {'OK': 1}
+[S4C #0] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+== S4C: 1 runs: {'LOST_EDIT': 1}
+[S5A #0] ['LOST_EDIT', 'DIVERGENCE'] lost=['A:c1.title'] div=['B:title:c1'] 
+== S5A: 1 runs: {'LOST_EDIT+DIVERGENCE': 1}
+[S5B #0] ['LOST_EDIT', 'DIVERGENCE'] lost=['A:c1.title'] div=['B:title:c1'] 
+== S5B: 1 runs: {'LOST_EDIT+DIVERGENCE': 1}
+[S5C #0] ['LOST_EDIT', 'DIVERGENCE'] lost=['B:c3.title'] div=['A:title:c3'] 
+== S5C: 1 runs: {'LOST_EDIT+DIVERGENCE': 1}
+[S5D #0] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+== S5D: 1 runs: {'LOST_EDIT': 1}
+[S7A #0] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+== S7A: 1 runs: {'LOST_EDIT+BROKEN_REFERENCE': 1}
+[S7B #0] ['OK', 'BROKEN_REFERENCE'] lost=[] div=[] 
+== S7B: 1 runs: {'OK+BROKEN_REFERENCE': 1}
+[S8 #0] ['LOST_EDIT'] lost=['EXT:c4.title'] div=[] 
+== S8: 1 runs: {'LOST_EDIT': 1}
+aiohttp package not installed
+aiohttp package not installed
+aiohttp package not installed
+[S9 #0] ['HARNESS_ERROR'] lost=None div=None ConnectionError: Unexpected connection error
+== S9: 1 runs: {'HARNESS_ERROR': 1}

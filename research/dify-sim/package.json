@@ -1,0 +1,23 @@
+{
+  "name": "difysim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "es-toolkit": "1.52.0",
+    "esbuild": "0.28.2",
+    "immer": "11.1.18",
+    "loro-crdt": "1.15.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "yaml": "2.9.1"
+  },
+  "type": "module",
+  "private": true
+}

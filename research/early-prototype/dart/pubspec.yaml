@@ -1,0 +1,8 @@
+name: collab_client
+description: Dart port of the optimistic collaboration client state machine (prototype).
+version: 0.0.1
+publish_to: none
+environment:
+  sdk: ^3.0.0
+dev_dependencies:
+  test: ^1.24.0

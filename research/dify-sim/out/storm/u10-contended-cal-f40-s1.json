@@ -1,0 +1,218 @@
+{
+ "out": {
+  "cfg": {
+   "users": 10,
+   "nodes": 500,
+   "durationS": 60,
+   "mix": "contended",
+   "seed": 1,
+   "focus": 40,
+   "calibrated": true
+  },
+  "wall": {
+   "readyS": 3,
+   "stormS": 80.8,
+   "totalS": 84.4
+  },
+  "virtual": {
+   "readyAtMs": 4000,
+   "endMs": 114000,
+   "events": 8883
+  },
+  "edits": {
+   "attempted": 389,
+   "performed": 389,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "same-value": {
+     "n": 112,
+     "landed": 31,
+     "superseded": 81,
+     "m1": 0,
+     "m2": 0
+    },
+    "disjoint": {
+     "n": 128,
+     "landed": 47,
+     "superseded": 81,
+     "m1": 0,
+     "m2": 0
+    },
+    "diff-value": {
+     "n": 121,
+     "landed": 7,
+     "superseded": 111,
+     "m1": 0,
+     "m2": 3
+    },
+    "list": {
+     "n": 28,
+     "landed": 27,
+     "superseded": 0,
+     "m1": 1,
+     "m2": 0
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 156,
+   "lost": 1,
+   "silentOverwritten": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 128,
+     "landed": 47,
+     "superseded": 81,
+     "m1": 0,
+     "m2": 0
+    },
+    "list": {
+     "n": 28,
+     "landed": 27,
+     "superseded": 0,
+     "m1": 1,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 112,
+   "landed": 31,
+   "lost": 0,
+   "superseded": 81
+  },
+  "diffValue": {
+   "n": 121,
+   "landed": 7,
+   "silentOverwrites": 3,
+   "lostOther": 0,
+   "superseded": 111
+  },
+  "M": {
+   "M1": 1,
+   "M2": 3,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "divergence": {
+   "liveTabs": 10,
+   "differFromDraft": 0,
+   "fieldDiffs": 0,
+   "distinctClientStates": 1,
+   "draftDigest": "1d7b587dd940"
+  },
+  "saves": {
+   "total": 10,
+   "ok": 10,
+   "conflict409": 0,
+   "firstOkAtS": 63.2,
+   "lastOkAtS": 65.1
+  },
+  "saveLatencyMs": {
+   "n": 112,
+   "p50": 17643.922303493644,
+   "p90": 49539.18574669729,
+   "p99": 58576.76267211546,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 306,
+   "p50": 148.14858489128528,
+   "p90": 186.19157119791635,
+   "p99": 329.6614957199854,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 0,
+  "server": {
+   "eventsIn": {
+    "user_connect": 10,
+    "graph_event": 517,
+    "collaboration_event": 28
+   },
+   "bytesIn": 136081414,
+   "bytesOut": 1188220335,
+   "graphEventBytes": 2831527,
+   "graphUpdatesOut": 4612,
+   "oversizeKicks": 0,
+   "syncRequests": 9,
+   "syncOk": 9,
+   "syncFail": 0,
+   "syncTimeout": 0,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 10,
+   "posts": 10,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 4188210
+  },
+  "tabs": {
+   "total": 10,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 6137,
+   "bytesUpMB": 136.1,
+   "ingest": {
+    "delivered": 3190,
+    "applied": 2207,
+    "pruned": 983
+   }
+  },
+  "faults": {},
+  "examples": [
+   {
+    "type": "M2",
+    "tid": "n109|title",
+    "by": "U6",
+    "t": 39750,
+    "value": "U6-t26"
+   },
+   {
+    "type": "M2",
+    "tid": "n231|title",
+    "by": "U2",
+    "t": 61109,
+    "value": "U2-t40"
+   },
+   {
+    "type": "M2",
+    "tid": "n364|title",
+    "by": "U1",
+    "t": 43363,
+    "value": "U1-t29"
+   },
+   {
+    "type": "M1",
+    "tid": "n333|outputs+#o_U9_14",
+    "by": "U9",
+    "t": 24576,
+    "value": "o_U9_14"
+   }
+  ],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "1d7b587dd940c8f0e2deabfd1ac1b39fb816e64711f7f909a868682f83c5694c",
+  "tabs": {
+   "U0": "1d7b587dd940",
+   "U1": "1d7b587dd940",
+   "U2": "1d7b587dd940",
+   "U3": "1d7b587dd940",
+   "U4": "1d7b587dd940",
+   "U5": "1d7b587dd940",
+   "U6": "1d7b587dd940",
+   "U7": "1d7b587dd940",
+   "U8": "1d7b587dd940",
+   "U9": "1d7b587dd940"
+  },
+  "ledger": "389:1:3",
+  "saves": "U0:true:67202,U0:true:68001,U0:true:68140,U0:true:68279,U0:true:68423,U0:true:68565,U0:true:68704,U0:true:68842,U0:true:68982,U0:true:69124"
+ }
+}

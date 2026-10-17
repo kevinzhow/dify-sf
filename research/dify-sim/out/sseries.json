@@ -1,0 +1,910 @@
+[
+ {
+  "id": "S1",
+  "doc": "A: rename c1 + drag c2; B: rename c3 + drag c4 (different nodes)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S1L",
+  "doc": "S1 with 400 ms one-way websocket latency",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F1"
+  }
+ },
+ {
+  "id": "S1N",
+  "doc": "A edits c1.title, B edits c1.desc (same node, different fields)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 14,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 14,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S1NL",
+  "doc": "S1N with 400 ms websocket latency",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F1"
+  }
+ },
+ {
+  "id": "S1NR",
+  "doc": "S1N with 250 ms rAF delay on both tabs (busy main thread)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 46,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 46,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0+cpu"
+  }
+ },
+ {
+  "id": "S2",
+  "doc": "A and B rename the same node title concurrently",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 33,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 33,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S2L",
+  "doc": "S2 with 400 ms latency",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 60,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 60,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F1"
+  }
+ },
+ {
+  "id": "S2O",
+  "doc": "A and B each add a different output variable to code node c2",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 44,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 44,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S2OL",
+  "doc": "S2O with 400 ms latency",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F1"
+  }
+ },
+ {
+  "id": "S2OS",
+  "doc": "S2O but B starts 3 s after A (control)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S2OM",
+  "doc": "S2O but B starts 0.8 s after A",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S3A",
+  "doc": "B hidden while leader A edits+saves; B returns and edits c3",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T4",
+   "rel": "R5"
+  }
+ },
+ {
+  "id": "S3B",
+  "doc": "leader A hidden while B edits; A returns",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T4",
+   "rel": "R5"
+  }
+ },
+ {
+  "id": "S3C",
+  "doc": "stale hash after leader hand-off: A(leader),B,C; A edits+saves, A closes, new leader edits",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 120,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T4",
+   "fault": "F4"
+  }
+ },
+ {
+  "id": "S4A",
+  "doc": "follower B loses websocket for 12 s while A edits; B reconnects, then edits",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T3",
+   "fault": "F2"
+  }
+ },
+ {
+  "id": "S4B",
+  "doc": "B edits (focus already in title field) AFTER its websocket dropped; then reconnects",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 60
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 60
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T3",
+   "fault": "F2"
+  }
+ },
+ {
+  "id": "S4C",
+  "doc": "single user A: edit, websocket drops 1.5 s later (inside debounce), returns 8 s later",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T3",
+   "fault": "F2"
+  }
+ },
+ {
+  "id": "S4D",
+  "doc": "leader A drops silently (blackhole) for 60 s right after B edits; B should take over",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 119,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T3",
+   "fault": "F4"
+  }
+ },
+ {
+  "id": "S5A",
+  "doc": "leader A edits then closes the tab gracefully 0.5 s later",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "fault": "F3",
+   "timing": "T1"
+  }
+ },
+ {
+  "id": "S5B",
+  "doc": "leader A edits then crashes 0.5 s later; B stays open",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S5C",
+  "doc": "FOLLOWER B edits and closes 0.5 s later; leader A idle (then crashes later)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S5D",
+  "doc": "single user: edit, crash 0.5 s later",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "fault": "F3",
+   "users": "1p"
+  }
+ },
+ {
+  "id": "S6A",
+  "doc": "single user: 4 quick edits then close after 0.3 s",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S6B",
+  "doc": "single user: 4 quick edits then reload after 0.3 s",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S6C",
+  "doc": "single user: 4 quick edits then crash after 0.3 s",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 240,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S6D",
+  "doc": "single user: 4 quick edits then nav after 0.3 s",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S6E",
+  "doc": "single user: 4 quick edits then wait after 0.3 s",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F0"
+  }
+ },
+ {
+  "id": "S6F",
+  "doc": "single user, LARGE workflow (100 code nodes, \u224872 KB JSON): edit one title, close 0.5 s later (keepalive 64 KiB limit)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S6G",
+  "doc": "single user, 30-node workflow (23 KB): same as S6F (control)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "fault": "F3"
+  }
+ },
+ {
+  "id": "S7A",
+  "doc": "A deletes c2 while B renames c2 and drags c3",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 51,
+   "M2": 0,
+   "M3": 0,
+   "M4": 50,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 51,
+   "M2": 0,
+   "M3": 0,
+   "M4": 50,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R7",
+   "timing": "T1"
+  }
+ },
+ {
+  "id": "S7AL",
+  "doc": "S7A with 400 ms latency",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 60,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 60,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F1"
+  }
+ },
+ {
+  "id": "S7B",
+  "doc": "single user baseline: delete c4 (end node references it)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 60,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 60,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "rel": "R6",
+   "users": "1p"
+  }
+ },
+ {
+  "id": "S8",
+  "doc": "draft changed out-of-band (API) while leader tab open; tab then makes two edits",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "users": "1p",
+   "timing": "T2"
+  }
+ },
+ {
+  "id": "S9",
+  "doc": "DSL import (workflow_update broadcast) while B has an edit inside its 5 s debounce window",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 60,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T2"
+  }
+ },
+ {
+  "id": "S3E",
+  "doc": "A edits+saves, A leaves; B (new leader, stale hash) edits and closes 1 s later",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 60,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T4",
+   "fault": "F4"
+  }
+ },
+ {
+  "id": "S10",
+  "doc": "A edits and saves; B (open and visible all along) then edits twice (control)",
+  "K": 60,
+  "uiSd": 50,
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "tags": {
+   "timing": "T2"
+  }
+ }
+]

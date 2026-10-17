@@ -1,0 +1,39 @@
+id: A-listInsert-listInsert-R4-T2-F0-2p-17
+title: 两人各加一个输出变量（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: listInsert
+    node: code1
+    path: outputs
+    value: a_out
+  - at: 1500
+    user: B
+    op: listInsert
+    node: code1
+    path: outputs
+    value: b_out
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final:
+    - node: code1
+      path: outputs
+      contains:
+        - a_out
+        - b_out
+  notices: []
+repeat: 20
+tags:
+  op_a: listInsert
+  op_b: listInsert
+  rel: R4
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,282 @@
+nodes:
+  - id: start
+    type: custom
+    position:
+      x: 80
+      y: 200
+    positionAbsolute:
+      x: 80
+      y: 200
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: start
+      title: Start
+      desc: ""
+      variables:
+        - variable: q
+          label: q
+          type: text-input
+          required: false
+          max_length: 48
+          options: []
+  - id: code1
+    type: custom
+    position:
+      x: 400
+      y: 200
+    positionAbsolute:
+      x: 400
+      y: 200
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: code
+      title: Code 1
+      desc: first
+      code_language: python3
+      code: |
+        def main(a: str) -> dict:
+            return {'result': a}
+      variables:
+        - variable: a
+          value_selector:
+            - start
+            - q
+        - variable: b
+          value_selector:
+            - start
+            - q
+      outputs:
+        result:
+          type: string
+          children: null
+        extra:
+          type: string
+          children: null
+  - id: llm1
+    type: custom
+    position:
+      x: 720
+      y: 200
+    positionAbsolute:
+      x: 720
+      y: 200
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: llm
+      title: LLM 1
+      desc: ask
+      model:
+        provider: openai
+        name: gpt-4o
+        mode: chat
+        completion_params:
+          temperature: 0.7
+      prompt_template:
+        - id: p0
+          role: system
+          text: You are helpful.
+        - id: p1
+          role: user
+          text: "{{#code1.result#}}"
+      context:
+        enabled: false
+        variable_selector: []
+      vision:
+        enabled: false
+  - id: ifelse1
+    type: custom
+    position:
+      x: 1040
+      y: 200
+    positionAbsolute:
+      x: 1040
+      y: 200
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: if-else
+      title: Branch
+      desc: ""
+      _targetBranches:
+        - id: "true"
+          name: IF
+        - id: "false"
+          name: ELSE
+      cases:
+        - case_id: "true"
+          logical_operator: and
+          conditions:
+            - id: c1
+              variable_selector:
+                - llm1
+                - text
+              comparison_operator: contains
+              value: yes
+              varType: string
+  - id: code2
+    type: custom
+    position:
+      x: 1360
+      y: 100
+    positionAbsolute:
+      x: 1360
+      y: 100
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: code
+      title: Code 2
+      desc: second
+      code_language: python3
+      code: |
+        def main(a: str) -> dict:
+            return {'result': a}
+      variables:
+        - variable: a
+          value_selector:
+            - llm1
+            - text
+      outputs:
+        result:
+          type: string
+          children: null
+  - id: code3
+    type: custom
+    position:
+      x: 1360
+      y: 320
+    positionAbsolute:
+      x: 1360
+      y: 320
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: code
+      title: Code 3
+      desc: third
+      code_language: python3
+      code: |
+        def main(a: str) -> dict:
+            return {'result': a}
+      variables:
+        - variable: a
+          value_selector:
+            - llm1
+            - text
+      outputs:
+        result:
+          type: string
+          children: null
+  - id: end
+    type: custom
+    position:
+      x: 1680
+      y: 200
+    positionAbsolute:
+      x: 1680
+      y: 200
+    width: 244
+    height: 90
+    sourcePosition: right
+    targetPosition: left
+    data:
+      type: end
+      title: End
+      desc: ""
+      outputs:
+        - variable: out
+          value_selector:
+            - code2
+            - result
+edges:
+  - id: start-source-code1-target
+    type: custom
+    source: start
+    sourceHandle: source
+    target: code1
+    targetHandle: target
+    data:
+      sourceType: start
+      targetType: code
+      isInIteration: false
+      isInLoop: false
+    zIndex: 0
+  - id: code1-source-llm1-target
+    type: custom
+    source: code1
+    sourceHandle: source
+    target: llm1
+    targetHandle: target
+    data:
+      sourceType: code
+      targetType: llm
+      isInIteration: false
+      isInLoop: false
+    zIndex: 0
+  - id: llm1-source-ifelse1-target
+    type: custom
+    source: llm1
+    sourceHandle: source
+    target: ifelse1
+    targetHandle: target
+    data:
+      sourceType: llm
+      targetType: if-else
+      isInIteration: false
+      isInLoop: false
+    zIndex: 0
+  - id: ifelse1-true-code2-target
+    type: custom
+    source: ifelse1
+    sourceHandle: "true"
+    target: code2
+    targetHandle: target
+    data:
+      sourceType: if-else
+      targetType: code
+      isInIteration: false
+      isInLoop: false
+    zIndex: 0
+  - id: ifelse1-false-code3-target
+    type: custom
+    source: ifelse1
+    sourceHandle: "false"
+    target: code3
+    targetHandle: target
+    data:
+      sourceType: if-else
+      targetType: code
+      isInIteration: false
+      isInLoop: false
+    zIndex: 0
+  - id: code2-source-end-target
+    type: custom
+    source: code2
+    sourceHandle: source
+    target: end
+    targetHandle: target
+    data:
+      sourceType: code
+      targetType: end
+      isInIteration: false
+      isInLoop: false
+    zIndex: 0
+viewport:
+  x: 0
+  y: 0
+  zoom: 0.6

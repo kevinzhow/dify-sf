@@ -1,0 +1,31 @@
+id: A-removeNode-listInsert-R6-T1-F0-2p-34
+title: A 删节点 code1，B 给 code1 加输出变量（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: removeNode
+    node: code1
+  - at: 50
+    user: B
+    op: listInsert
+    node: code1
+    path: outputs
+    value: b_out
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeNode
+  op_b: listInsert
+  rel: R6
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

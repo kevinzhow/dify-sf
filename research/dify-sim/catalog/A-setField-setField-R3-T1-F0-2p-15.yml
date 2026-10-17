@@ -1,0 +1,33 @@
+id: A-setField-setField-R3-T1-F0-2p-15
+title: A 换模型，B 改温度（路径重叠）（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setField
+    node: llm1
+    path: model
+    value: gpt-4.1
+  - at: 50
+    user: B
+    op: setField
+    node: llm1
+    path: temp
+    value: 0.2
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setField
+  op_b: setField
+  rel: R3
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,17 @@
+DF_P1_stale_view       Error: Invariant Inv_P1 is violated. 40385 states generated, 15040 distinct states found, 3336 states left on queue. The depth of the complete state graph search is 9. 
+DF_P2_same_field       Error: Invariant Inv_P2 is violated. 89 states generated, 74 distinct states found, 52 states left on queue. The depth of the complete state graph search is 6. 
+DF_P5_silent_drop      Error: Invariant Inv_P5 is violated. 21337 states generated, 9483 distinct states found, 4345 states left on queue. The depth of the complete state graph search is 9. 
+DF_P1_list_whole       Error: Invariant Inv_P1 is violated. 2549 states generated, 978 distinct states found, 219 states left on queue. The depth of the complete state graph search is 9. 
+DF_P1_list_index       Progress(11) at 2026-10-16 22:30:10: 33,647 states generated (33,647 s/min), 16,516 distinct states found (16,516 ds/min), 11,679 states left on queue. Error: Invariant Inv_P1 is violated. 234578 states generated, 103470 distinct states fou
+DF_P1_zombie           Progress(9) at 2026-10-16 22:30:26: 20,424 states generated (20,424 s/min), 7,936 distinct states found (7,936 ds/min), 2,335 states left on queue. Error: Invariant Inv_P1 is violated. 24651 states generated, 8957 distinct states found, 156
+DF_P2_delete_edit      Error: Invariant Inv_P2 is violated. 200 states generated, 143 distinct states found, 104 states left on queue. The depth of the complete state graph search is 6. 
+DF_P4_dangling         Error: Invariant Inv_P4 is violated. 159 states generated, 82 distinct states found, 0 states left on queue. The depth of the complete state graph search is 6. 
+DF_P4_dangling_edge    Error: Invariant Inv_P4 is violated. 4582 states generated, 2011 distinct states found, 844 states left on queue. The depth of the complete state graph search is 9. 
+DF_P1_tab_crash        Error: Invariant Inv_P1 is violated. 58 states generated, 36 distinct states found, 0 states left on queue. The depth of the complete state graph search is 5. 
+DF_P1_disconnect       Error: Invariant Inv_P1 is violated. 188 states generated, 117 distinct states found, 10 states left on queue. The depth of the complete state graph search is 7. 
+DF_P1_relay_restart    Error: Invariant Inv_P1 is violated. 186 states generated, 116 distinct states found, 10 states left on queue. The depth of the complete state graph search is 7. 
+DF_P3_store_lag        Error: Invariant Inv_P3 is violated. 3397 states generated, 1646 distinct states found, 702 states left on queue. The depth of the complete state graph search is 9. 
+DF_any_P1              Progress(5) at 2026-10-16 22:31:14: 12,564 states generated (12,564 s/min), 9,593 distinct states found (9,593 ds/min), 9,253 states left on queue. Progress(7) at 2026-10-16 22:32:14: 1,240,586 states generated (1,228,022 s/min), 780,500 di
+DF_any_P2              Error: Invariant Inv_P2 is violated. 148 states generated, 147 distinct states found, 130 states left on queue. The depth of the complete state graph search is 4. 
+DF_any_P3              Progress(6) at 2026-10-16 22:39:24: 28,322 states generated (28,322 s/min), 21,220 distinct states found (21,220 ds/min), 20,150 states left on queue. Progress(8) at 2026-10-16 22:40:24: 1,873,787 states generated (1,845,465 s/min), 1,185,4
+DF_any_P4              Progress(7) at 2026-10-16 22:47:18: 32,188 states generated (32,188 s/min), 24,089 distinct states found (24,089 ds/min), 22,975 states left on queue. Progress(8) at 2026-10-16 22:48:18: 1,842,056 states generated (1,809,868 s/min), 1,160,5

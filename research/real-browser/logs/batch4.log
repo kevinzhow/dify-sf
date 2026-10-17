@@ -1,0 +1,145 @@
+[S3D #2] ['OK'] lost=[] div=[] 
+[S3D #1] ['OK'] lost=[] div=[] 
+[S3D #0] ['OK'] lost=[] div=[] 
+[S3D #4] ['OK'] lost=[] div=[] 
+[S3D #3] ['OK'] lost=[] div=[] 
+[S3D #5] ['OK'] lost=[] div=[] 
+[S3D #7] ['LOST_EDIT', 'DIVERGENCE'] lost=['B:c3.title'] div=['A:title:c3', 'B:title:c3'] 
+[S3D #8] ['OK'] lost=[] div=[] 
+[S3D #6] ['OK'] lost=[] div=[] 
+[S3D #9] ['OK'] lost=[] div=[] 
+[S3D #11] ['OK'] lost=[] div=[] 
+[S3D #10] ['OK'] lost=[] div=[] 
+[S3D #13] ['OK'] lost=[] div=[] 
+[S3D #12] ['OK'] lost=[] div=[] 
+[S3D #14] ['OK'] lost=[] div=[] 
+[S3D #15] ['OK'] lost=[] div=[] 
+[S3D #17] ['OK'] lost=[] div=[] 
+[S3D #16] ['OK'] lost=[] div=[] 
+[S3D #18] ['OK'] lost=[] div=[] 
+[S3D #19] ['OK'] lost=[] div=[] 
+== S3D: 20 runs: {'OK': 19, 'LOST_EDIT+DIVERGENCE': 1}
+[S3E #2] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #1] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #0] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #3] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #5] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #4] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #6] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #8] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #7] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #9] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #10] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #11] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #12] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #13] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #14] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #15] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #16] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #17] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #18] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+[S3E #19] ['LOST_EDIT'] lost=['B:c3.title'] div=[] 
+== S3E: 20 runs: {'LOST_EDIT': 20}
+[S10 #1] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #2] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #0] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #3] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #4] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #5] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #6] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #7] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #8] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #9] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #10] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #11] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #12] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #13] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #14] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #15] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #16] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #17] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #18] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+[S10 #19] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__
+== S10: 20 runs: {'HARNESS_ERROR': 20}
+[S9X #2] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #1] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #0] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #3] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #5] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #4] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #6] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #7] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #8] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #9] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #10] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #11] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #12] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #13] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #14] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #15] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #16] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #17] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #18] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+[S9X #19] ['LOST_EDIT', 'DIVERGENCE', 'IMPORT_OVERWRITTEN'] lost=['B:c3.title'] div=['A!=B:titles', 'A:title:c3', 'A:title:c4'] 
+== S9X: 20 runs: {'LOST_EDIT+DIVERGENCE+IMPORT_OVERWRITTEN': 20}
+[S7A #0] ['OK', 'BROKEN_REFERENCE'] lost=[] div=[] 
+[S7A #1] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #2] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #3] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #4] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #5] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #6] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #7] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #9] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #10] ['OK', 'BROKEN_REFERENCE'] lost=[] div=[] 
+[S7A #8] ['OK', 'BROKEN_REFERENCE'] lost=[] div=[] 
+[S7A #12] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #13] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #14] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #11] ['OK', 'BROKEN_REFERENCE'] lost=[] div=[] 
+[S7A #15] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #16] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #18] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+[S7A #19] ['OK', 'DELETE_REVERTED'] lost=[] div=[] 
+[S7A #17] ['LOST_EDIT', 'BROKEN_REFERENCE'] lost=['B:c2.title'] div=[] 
+== S7A: 20 runs: {'OK+BROKEN_REFERENCE': 4, 'LOST_EDIT+BROKEN_REFERENCE': 15, 'OK+DELETE_REVERTED': 1}

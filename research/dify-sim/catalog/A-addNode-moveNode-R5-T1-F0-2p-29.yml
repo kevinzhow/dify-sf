@@ -1,0 +1,37 @@
+id: A-addNode-moveNode-R5-T1-F0-2p-29
+title: A 加节点，B 拖动另一个节点（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: addNode
+    node: newA
+    value:
+      kind: code
+      x: 400
+      y: 420
+    from: start
+  - at: 50
+    user: B
+    op: moveNode
+    node: llm1
+    value:
+      x: 760
+      y: 340
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: addNode
+  op_b: moveNode
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

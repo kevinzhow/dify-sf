@@ -32,10 +32,13 @@ Configuration is read with swift-configuration from environment variables or `--
 
 ```sh
 cd server
-./run-swift.sh test -c release -Xswiftc -enable-testing     # unit + 34 scenarios + 10,000 fuzz runs + mutation tests (~1 min)
+./run-swift.sh test -c release -Xswiftc -enable-testing     # unit + 35 scenarios + 10,000 fuzz runs + mutation tests (~1 min)
 ./run-swift.sh run -c release collab-sim --runs 20000       # standalone simulator: scenarios + fuzz
 ./run-swift.sh run -c release collab-sim --runs 1000 --mutation skipStaleCheck   # prove the checkers can fail
 ```
+
+Every test layer, its faults and its invariants: [`docs/testing.md`](docs/testing.md). The conflict catalog shared with
+the Dify measurements: `collab-sim --catalog bench/catalog/A-cases.json`.
 
 ## Chaos (real processes)
 
@@ -55,3 +58,9 @@ bench/storm/run.sh sweep        # every network profile (latency, jitter, loss, 
 ```
 
 Results (JSON + markdown) are written to `bench/*/results/<timestamp>/`.
+
+## Dify comparison
+
+[`docs/results/dify-vs-difysf.md`](docs/results/dify-vs-difysf.md) compares Dify 1.17.1 and dify-sf from four sources (real
+browser, a simulator running Dify's own collaboration code, a closed-form formula, dify-sf's own tests). The methods and
+raw results for the Dify side are in [`research/`](research/README.md).

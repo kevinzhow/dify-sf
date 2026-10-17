@@ -1,0 +1,35 @@
+id: A-setRef-setRef-R5-T1-F0-2p-32
+title: 两人各改不同节点的引用（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setRef
+    node: code2
+    value:
+      - code1
+      - result
+  - at: 50
+    user: B
+    op: setRef
+    node: code3
+    value:
+      - code1
+      - result
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setRef
+  op_b: setRef
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,34 @@
+id: A-moveNode-setField-R2-T1-F0-2p-14
+title: A 拖动，B 改描述（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: moveNode
+    node: code1
+    value:
+      x: 500
+      y: 320
+  - at: 50
+    user: B
+    op: setField
+    node: code1
+    path: desc
+    value: B-desc
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: moveNode
+  op_b: setField
+  rel: R2
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

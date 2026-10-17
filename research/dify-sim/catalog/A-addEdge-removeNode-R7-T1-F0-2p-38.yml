@@ -1,0 +1,30 @@
+id: A-addEdge-removeNode-R7-T1-F0-2p-38
+title: A 连线到 code3，B 删 code3（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: addEdge
+    from: code1
+    to: code3
+  - at: 50
+    user: B
+    op: removeNode
+    node: code3
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: addEdge
+  op_b: removeNode
+  rel: R7
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

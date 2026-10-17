@@ -1,0 +1,30 @@
+Error: Invariant Cov_ClientCrash is violated
+--- State 1: Initial predicate
+    seen = (c1:0,c2:0)
+    high = (c1:0,c2:0)
+    sess = {c1,c2}
+    conn = (c1:TRUE,c2:TRUE)
+    sopen = (c1:TRUE,c2:TRUE)
+    hasSt = (c1:TRUE,c2:TRUE)
+    fl = 0
+    phase = run
+    dur = 0
+    log = 
+    server = nodes=['n1', 'n2'] n1[] | n2[]
+    outbox[c1] = 
+    outbox[c2] = 
+    toS = 
+    acked = 
+    notified = 
+    ovw = 
+--- State 2: Edit
+    outbox[c1] = cs1@base0:none <<c1,1>>:setField(n1.f1:=v1)
+    toS = c1/cs1@0 <<c1,1>>:setField(n1.f1:=v1)
+--- State 3: ClientCrash
+    sess = {c2}
+    conn = (c1:FALSE,c2:TRUE)
+    sopen = (c1:FALSE,c2:TRUE)
+    hasSt = (c1:FALSE,c2:TRUE)
+    fl = 1
+    toS = 
+[3 states]

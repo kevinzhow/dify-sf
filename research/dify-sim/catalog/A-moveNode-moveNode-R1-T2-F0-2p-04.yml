@@ -1,0 +1,36 @@
+id: A-moveNode-moveNode-R1-T2-F0-2p-04
+title: 两人同时拖动同一节点（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: moveNode
+    node: code1
+    value:
+      x: 500
+      y: 320
+  - at: 1500
+    user: B
+    op: moveNode
+    node: code1
+    value:
+      x: 560
+      y: 80
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: moveNode
+  op_b: moveNode
+  rel: R1
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

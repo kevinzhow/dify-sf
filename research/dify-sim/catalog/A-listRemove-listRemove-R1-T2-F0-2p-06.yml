@@ -1,0 +1,34 @@
+id: A-listRemove-listRemove-R1-T2-F0-2p-06
+title: 两人同时删同一输出变量（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: listRemove
+    node: code1
+    path: outputs
+    value: extra
+  - at: 1500
+    user: B
+    op: listRemove
+    node: code1
+    path: outputs
+    value: extra
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: listRemove
+  op_b: listRemove
+  rel: R1
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

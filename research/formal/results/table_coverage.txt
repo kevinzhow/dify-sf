@@ -1,0 +1,8 @@
+Cov_Rejected: is violated [6 states]
+Cov_RejectDelete: is violated [6 states]
+Cov_EqualAccept: is violated [5 states]
+Cov_Broken: is violated [5 states]
+Cov_Concurrent: is violated [5 states]
+Cov_DupInFlight: is violated [3 states]
+Cov_ServerCrash: is violated [4 states]
+Cov_ClientCrash: is violated [3 states]

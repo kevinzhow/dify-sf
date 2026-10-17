@@ -1,0 +1,3312 @@
+[
+ {
+  "id": "A-setTitle-setTitle-R1-T1-F0-2p-01",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00\u8282\u70b9\u6807\u9898\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setTitle",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setTitle-R1-T2-F0-2p-01",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00\u8282\u70b9\u6807\u9898\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setTitle",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R1-T1-F0-2p-02",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00 LLM \u6e29\u5ea6\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R1-T2-F0-2p-02",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00 LLM \u6e29\u5ea6\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R1-T1-F0-2p-03",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00\u4ee3\u7801\u5757\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R1-T2-F0-2p-03",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00\u4ee3\u7801\u5757\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-moveNode-moveNode-R1-T1-F0-2p-04",
+  "title": "\u4e24\u4eba\u540c\u65f6\u62d6\u52a8\u540c\u4e00\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "moveNode",
+   "op_b": "moveNode",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-moveNode-moveNode-R1-T2-F0-2p-04",
+  "title": "\u4e24\u4eba\u540c\u65f6\u62d6\u52a8\u540c\u4e00\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "moveNode",
+   "op_b": "moveNode",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setRef-setRef-R1-T1-F0-2p-05",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00\u5f15\u7528\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setRef",
+   "op_b": "setRef",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 29,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 29,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setRef-setRef-R1-T2-F0-2p-05",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00\u5f15\u7528\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setRef",
+   "op_b": "setRef",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-listRemove-R1-T1-F0-2p-06",
+  "title": "\u4e24\u4eba\u540c\u65f6\u5220\u540c\u4e00\u8f93\u51fa\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "listRemove",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-listRemove-R1-T2-F0-2p-06",
+  "title": "\u4e24\u4eba\u540c\u65f6\u5220\u540c\u4e00\u8f93\u51fa\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "listRemove",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R1-T1-F0-2p-07",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00 if-else \u6761\u4ef6\u503c\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R1",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 29,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 29,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R1-T2-F0-2p-07",
+  "title": "\u4e24\u4eba\u540c\u65f6\u6539\u540c\u4e00 if-else \u6761\u4ef6\u503c\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R1",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 30,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setField-R2-T1-F0-2p-08",
+  "title": "A \u6539\u6807\u9898\uff0cB \u6539\u4ee3\u7801\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 9,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 9,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setField-R2-T2-F0-2p-08",
+  "title": "A \u6539\u6807\u9898\uff0cB \u6539\u4ee3\u7801\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setField-R2-T1-F0-2p-09",
+  "title": "A \u6539\u6807\u9898\uff0cB \u6539\u63cf\u8ff0\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 8,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 8,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setField-R2-T2-F0-2p-09",
+  "title": "A \u6539\u6807\u9898\uff0cB \u6539\u63cf\u8ff0\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-moveNode-R2-T1-F0-2p-10",
+  "title": "A \u6539\u6807\u9898\uff0cB \u62d6\u52a8\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "moveNode",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-moveNode-R2-T2-F0-2p-10",
+  "title": "A \u6539\u6807\u9898\uff0cB \u62d6\u52a8\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "moveNode",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-moveNode-R2-T1-F0-2p-11",
+  "title": "A \u6539\u6e29\u5ea6\uff0cB \u62d6\u52a8\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "moveNode",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-moveNode-R2-T2-F0-2p-11",
+  "title": "A \u6539\u6e29\u5ea6\uff0cB \u62d6\u52a8\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "moveNode",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R2-T1-F0-2p-12",
+  "title": "A \u6539\u63d0\u793a\u8bcd\uff0cB \u6539\u6e29\u5ea6\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 11,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 11,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R2-T2-F0-2p-12",
+  "title": "A \u6539\u63d0\u793a\u8bcd\uff0cB \u6539\u6e29\u5ea6\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setRef-R2-T1-F0-2p-13",
+  "title": "A \u6539\u6807\u9898\uff0cB \u6539\u5f15\u7528\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setRef",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 9,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 9,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setRef-R2-T2-F0-2p-13",
+  "title": "A \u6539\u6807\u9898\uff0cB \u6539\u5f15\u7528\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setRef",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-moveNode-setField-R2-T1-F0-2p-14",
+  "title": "A \u62d6\u52a8\uff0cB \u6539\u63cf\u8ff0\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "moveNode",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-moveNode-setField-R2-T2-F0-2p-14",
+  "title": "A \u62d6\u52a8\uff0cB \u6539\u63cf\u8ff0\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "moveNode",
+   "op_b": "setField",
+   "rel": "R2",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R3-T1-F0-2p-15",
+  "title": "A \u6362\u6a21\u578b\uff0cB \u6539\u6e29\u5ea6\uff08\u8def\u5f84\u91cd\u53e0\uff09\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R3",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R3-T2-F0-2p-15",
+  "title": "A \u6362\u6a21\u578b\uff0cB \u6539\u6e29\u5ea6\uff08\u8def\u5f84\u91cd\u53e0\uff09\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R3",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R3-T1-F0-2p-16",
+  "title": "A \u6539\u6e29\u5ea6\uff0cB \u6362\u6a21\u578b\uff08\u8def\u5f84\u91cd\u53e0\uff0c\u987a\u5e8f\u5bf9\u8c03\uff09\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R3",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 29,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 29,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R3-T2-F0-2p-16",
+  "title": "A \u6539\u6e29\u5ea6\uff0cB \u6362\u6a21\u578b\uff08\u8def\u5f84\u91cd\u53e0\uff0c\u987a\u5e8f\u5bf9\u8c03\uff09\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R3",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listInsert-listInsert-R4-T1-F0-2p-17",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u4e2a\u8f93\u51fa\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listInsert",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": [
+   {
+    "node": "code1",
+    "path": "outputs",
+    "contains": [
+     "a_out",
+     "b_out"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "A-listInsert-listInsert-R4-T2-F0-2p-17",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u4e2a\u8f93\u51fa\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listInsert",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": [
+   {
+    "node": "code1",
+    "path": "outputs",
+    "contains": [
+     "a_out",
+     "b_out"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "A-listInsert-listInsert-R4-T1-F0-2p-18",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u4e2a\u8f93\u5165\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listInsert",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 9,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 9,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": [
+   {
+    "node": "code1",
+    "path": "variables",
+    "contains": [
+     "a_in",
+     "b_in"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "A-listInsert-listInsert-R4-T2-F0-2p-18",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u4e2a\u8f93\u5165\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listInsert",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": [
+   {
+    "node": "code1",
+    "path": "variables",
+    "contains": [
+     "a_in",
+     "b_in"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "A-listInsert-listInsert-R4-T1-F0-2p-19",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u6761\u63d0\u793a\u8bcd\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listInsert",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 16,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 16,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": [
+   {
+    "node": "llm1",
+    "path": "prompt",
+    "contains": [
+     "msg-A",
+     "msg-B"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "A-listInsert-listInsert-R4-T2-F0-2p-19",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u6761\u63d0\u793a\u8bcd\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listInsert",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": [
+   {
+    "node": "llm1",
+    "path": "prompt",
+    "contains": [
+     "msg-A",
+     "msg-B"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "A-listInsert-listRemove-R4-T1-F0-2p-20",
+  "title": "A \u52a0\u8f93\u51fa\u53d8\u91cf\uff0cB \u5220\u53e6\u4e00\u4e2a\u8f93\u51fa\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listInsert-listRemove-R4-T2-F0-2p-20",
+  "title": "A \u52a0\u8f93\u51fa\u53d8\u91cf\uff0cB \u5220\u53e6\u4e00\u4e2a\u8f93\u51fa\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listInsert-listRemove-R4-T1-F0-2p-21",
+  "title": "A \u52a0\u8f93\u5165\u53d8\u91cf\uff0cB \u5220\u53e6\u4e00\u4e2a\u8f93\u5165\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 13,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 13,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listInsert-listRemove-R4-T2-F0-2p-21",
+  "title": "A \u52a0\u8f93\u5165\u53d8\u91cf\uff0cB \u5220\u53e6\u4e00\u4e2a\u8f93\u5165\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listInsert",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-listRemove-R4-T1-F0-2p-22",
+  "title": "\u4e24\u4eba\u5404\u5220\u4e00\u4e2a\u4e0d\u540c\u7684\u8f93\u51fa\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-listRemove-R4-T2-F0-2p-22",
+  "title": "\u4e24\u4eba\u5404\u5220\u4e00\u4e2a\u4e0d\u540c\u7684\u8f93\u51fa\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-listRemove-R4-T1-F0-2p-23",
+  "title": "\u4e24\u4eba\u5404\u5220\u4e00\u4e2a\u4e0d\u540c\u7684\u8f93\u5165\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 28,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 28,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-listRemove-R4-T2-F0-2p-23",
+  "title": "\u4e24\u4eba\u5404\u5220\u4e00\u4e2a\u4e0d\u540c\u7684\u8f93\u5165\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "listRemove",
+   "rel": "R4",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setTitle-R5-T1-F0-2p-24",
+  "title": "\u4e24\u4eba\u6539\u4e0d\u540c\u8282\u70b9\u7684\u6807\u9898\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setTitle",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setTitle-setTitle-R5-T2-F0-2p-24",
+  "title": "\u4e24\u4eba\u6539\u4e0d\u540c\u8282\u70b9\u7684\u6807\u9898\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setTitle",
+   "op_b": "setTitle",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-moveNode-moveNode-R5-T1-F0-2p-25",
+  "title": "\u4e24\u4eba\u62d6\u52a8\u4e0d\u540c\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "moveNode",
+   "op_b": "moveNode",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-moveNode-moveNode-R5-T2-F0-2p-25",
+  "title": "\u4e24\u4eba\u62d6\u52a8\u4e0d\u540c\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "moveNode",
+   "op_b": "moveNode",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R5-T1-F0-2p-26",
+  "title": "\u4e24\u4eba\u6539\u4e0d\u540c\u8282\u70b9\u7684\u5b57\u6bb5\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setField-setField-R5-T2-F0-2p-26",
+  "title": "\u4e24\u4eba\u6539\u4e0d\u540c\u8282\u70b9\u7684\u5b57\u6bb5\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setField",
+   "op_b": "setField",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addNode-addNode-R5-T1-F0-2p-27",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u4e2a\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addNode",
+   "op_b": "addNode",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addNode-addNode-R5-T2-F0-2p-27",
+  "title": "\u4e24\u4eba\u5404\u52a0\u4e00\u4e2a\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addNode",
+   "op_b": "addNode",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-setTitle-R5-T1-F0-2p-28",
+  "title": "A \u5220\u8282\u70b9\uff0cB \u6539\u53e6\u4e00\u4e2a\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "setTitle",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-setTitle-R5-T2-F0-2p-28",
+  "title": "A \u5220\u8282\u70b9\uff0cB \u6539\u53e6\u4e00\u4e2a\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "setTitle",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addNode-moveNode-R5-T1-F0-2p-29",
+  "title": "A \u52a0\u8282\u70b9\uff0cB \u62d6\u52a8\u53e6\u4e00\u4e2a\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addNode",
+   "op_b": "moveNode",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addNode-moveNode-R5-T2-F0-2p-29",
+  "title": "A \u52a0\u8282\u70b9\uff0cB \u62d6\u52a8\u53e6\u4e00\u4e2a\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addNode",
+   "op_b": "moveNode",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-setTitle-R5-T1-F0-2p-30",
+  "title": "A \u8fde\u7ebf\uff0cB \u6539\u53e6\u4e00\u4e2a\u8282\u70b9\u6807\u9898\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "setTitle",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-setTitle-R5-T2-F0-2p-30",
+  "title": "A \u8fde\u7ebf\uff0cB \u6539\u53e6\u4e00\u4e2a\u8282\u70b9\u6807\u9898\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "setTitle",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-moveNode-R5-T1-F0-2p-31",
+  "title": "A \u65ad\u7ebf\uff0cB \u62d6\u52a8\u65e0\u5173\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "moveNode",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-moveNode-R5-T2-F0-2p-31",
+  "title": "A \u65ad\u7ebf\uff0cB \u62d6\u52a8\u65e0\u5173\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "moveNode",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setRef-setRef-R5-T1-F0-2p-32",
+  "title": "\u4e24\u4eba\u5404\u6539\u4e0d\u540c\u8282\u70b9\u7684\u5f15\u7528\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "setRef",
+   "op_b": "setRef",
+   "rel": "R5",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-setRef-setRef-R5-T2-F0-2p-32",
+  "title": "\u4e24\u4eba\u5404\u6539\u4e0d\u540c\u8282\u70b9\u7684\u5f15\u7528\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "setRef",
+   "op_b": "setRef",
+   "rel": "R5",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-setRef-R6-T1-F0-2p-33",
+  "title": "A \u5220\u8282\u70b9 code1\uff0cB \u8ba9 code2 \u5f15\u7528 code1 \u7684\u8f93\u51fa\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "setRef",
+   "rel": "R6",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 30,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 30,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 1,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-setRef-R6-T2-F0-2p-33",
+  "title": "A \u5220\u8282\u70b9 code1\uff0cB \u8ba9 code2 \u5f15\u7528 code1 \u7684\u8f93\u51fa\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "setRef",
+   "rel": "R6",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 30,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 30,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 1,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-listInsert-R6-T1-F0-2p-34",
+  "title": "A \u5220\u8282\u70b9 code1\uff0cB \u7ed9 code1 \u52a0\u8f93\u51fa\u53d8\u91cf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "listInsert",
+   "rel": "R6",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-listInsert-R6-T2-F0-2p-34",
+  "title": "A \u5220\u8282\u70b9 code1\uff0cB \u7ed9 code1 \u52a0\u8f93\u51fa\u53d8\u91cf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "listInsert",
+   "rel": "R6",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-setTitle-R6-T1-F0-2p-35",
+  "title": "A \u5220\u8282\u70b9 code2\uff0cB \u6539 code2 \u6807\u9898\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "setTitle",
+   "rel": "R6",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 29,
+   "M2": 0,
+   "M3": 0,
+   "M4": 18,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 29,
+   "M2": 0,
+   "M3": 0,
+   "M4": 18,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 1,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-setTitle-R6-T2-F0-2p-35",
+  "title": "A \u5220\u8282\u70b9 code2\uff0cB \u6539 code2 \u6807\u9898\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "setTitle",
+   "rel": "R6",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 30,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 30,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 1,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-setRef-R6-T1-F0-2p-36",
+  "title": "A \u5220 code1 \u7684\u8f93\u51fa\u53d8\u91cf result\uff0cB \u8ba9 llm1 \u63d0\u793a\u8bcd\u5f15\u7528\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "setRef",
+   "rel": "R6",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-listRemove-setRef-R6-T2-F0-2p-36",
+  "title": "A \u5220 code1 \u7684\u8f93\u51fa\u53d8\u91cf result\uff0cB \u8ba9 llm1 \u63d0\u793a\u8bcd\u5f15\u7528\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "listRemove",
+   "op_b": "setRef",
+   "rel": "R6",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-addEdge-R7-T1-F0-2p-37",
+  "title": "\u4e24\u4eba\u8fde\u540c\u4e00\u6761\u7ebf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-addEdge-R7-T2-F0-2p-37",
+  "title": "\u4e24\u4eba\u8fde\u540c\u4e00\u6761\u7ebf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-removeNode-R7-T1-F0-2p-38",
+  "title": "A \u8fde\u7ebf\u5230 code3\uff0cB \u5220 code3\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "removeNode",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 2,
+   "M2": 0,
+   "M3": 0,
+   "M4": 28,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 2,
+   "M2": 0,
+   "M3": 0,
+   "M4": 28,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 1,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 28,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-removeNode-R7-T2-F0-2p-38",
+  "title": "A \u8fde\u7ebf\u5230 code3\uff0cB \u5220 code3\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "removeNode",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 30,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 1,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-setTitle-R7-T1-F0-2p-39",
+  "title": "A \u65ad\u7ebf\uff0cB \u5728\u540c\u4e00\u6761\u7ebf\u4e24\u7aef\u7684\u8282\u70b9\u4e0a\u6539\u6807\u9898\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "setTitle",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-setTitle-R7-T2-F0-2p-39",
+  "title": "A \u65ad\u7ebf\uff0cB \u5728\u540c\u4e00\u6761\u7ebf\u4e24\u7aef\u7684\u8282\u70b9\u4e0a\u6539\u6807\u9898\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "setTitle",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-removeEdge-R7-T1-F0-2p-40",
+  "title": "\u4e24\u4eba\u65ad\u5f00\u4e0d\u540c\u7684\u7ebf\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "removeEdge",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-removeEdge-R7-T2-F0-2p-40",
+  "title": "\u4e24\u4eba\u65ad\u5f00\u4e0d\u540c\u7684\u7ebf\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "removeEdge",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-addEdge-R7-T1-F0-2p-41",
+  "title": "A \u65ad\u7ebf\uff0cB \u8fde\u53e6\u4e00\u6761\u7ebf\u5230\u540c\u4e00\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeEdge-addEdge-R7-T2-F0-2p-41",
+  "title": "A \u65ad\u7ebf\uff0cB \u8fde\u53e6\u4e00\u6761\u7ebf\u5230\u540c\u4e00\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeEdge",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-addEdge-R7-T1-F0-2p-42",
+  "title": "A \u8fde\u7ebf start\u2192code3\uff0cB \u8fde\u7ebf code1\u2192code3\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addEdge-addEdge-R7-T2-F0-2p-42",
+  "title": "A \u8fde\u7ebf start\u2192code3\uff0cB \u8fde\u7ebf code1\u2192code3\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addEdge",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-addEdge-R7-T1-F0-2p-43",
+  "title": "A \u5220\u8282\u70b9\uff0cB \u8fde\u7ebf\u5230\u8be5\u8282\u70b9\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 11,
+   "M2": 0,
+   "M3": 0,
+   "M4": 19,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 11,
+   "M2": 0,
+   "M3": 0,
+   "M4": 19,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 19,
+  "expectFinal": []
+ },
+ {
+  "id": "A-removeNode-addEdge-R7-T2-F0-2p-43",
+  "title": "A \u5220\u8282\u70b9\uff0cB \u8fde\u7ebf\u5230\u8be5\u8282\u70b9\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "removeNode",
+   "op_b": "addEdge",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addNode-addNode-R7-T1-F0-2p-44",
+  "title": "A \u52a0\u8282\u70b9\u5e76\u8fde\u7ebf\uff0cB \u52a0\u53e6\u4e00\u8282\u70b9\u5e76\u8fde\u5230\u540c\u4e00\u4e0a\u6e38\uff08\u5e76\u53d1\uff09",
+  "tags": {
+   "op_a": "addNode",
+   "op_b": "addNode",
+   "rel": "R7",
+   "timing": "T1",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ },
+ {
+  "id": "A-addNode-addNode-R7-T2-F0-2p-44",
+  "title": "A \u52a0\u8282\u70b9\u5e76\u8fde\u7ebf\uff0cB \u52a0\u53e6\u4e00\u8282\u70b9\u5e76\u8fde\u5230\u540c\u4e00\u4e0a\u6e38\uff08\u57fa\u4e8e\u65e7\u7248\u672c\uff09",
+  "tags": {
+   "op_a": "addNode",
+   "op_b": "addNode",
+   "rel": "R7",
+   "timing": "T2",
+   "fault": "F0",
+   "users": "2p"
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "K": 30,
+  "counts": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "errors": 0,
+  "serialBaseline": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "M4_collab": 0,
+  "expectFinal": []
+ }
+]

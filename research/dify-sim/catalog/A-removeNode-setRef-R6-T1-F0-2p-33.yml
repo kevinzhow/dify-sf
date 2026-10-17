@@ -1,0 +1,32 @@
+id: A-removeNode-setRef-R6-T1-F0-2p-33
+title: A 删节点 code1，B 让 code2 引用 code1 的输出（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: removeNode
+    node: code1
+  - at: 50
+    user: B
+    op: setRef
+    node: code2
+    value:
+      - code1
+      - result
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeNode
+  op_b: setRef
+  rel: R6
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

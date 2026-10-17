@@ -1,0 +1,96 @@
+# S1N seed=2 M1=1  examples=[{"type":"M1","tid":"c1|desc","by":"B","t":4550,"value":"B-desc"}]
+      0.0 ms  B   EDIT c1|desc := "B-desc"  canvas before: c1.title="Code 1" c1.desc=""
+      0.0 ms  B   SEND graph_event 2850B
+     54.9 ms  A   RECV graph_update (CRDT import) 
+     58.8 ms  A   EDIT c1|title := "A-c1"  canvas before: c1.title="Code 1" c1.desc=""
+     58.8 ms  A   SEND graph_event 2651B
+    121.3 ms  B   RECV graph_update (CRDT import) 
+    130.0 ms  A   rAF frame 1 cb; canvas: c1.title="A-c1" c1.desc=""
+    166.5 ms  A   rAF frame 1 cb; canvas: c1.title="A-c1" c1.desc=""
+    174.3 ms  B   rAF frame 1 cb; canvas: c1.title="Code 1" c1.desc="B-desc"
+    264.7 ms  B   rAF frame 1 cb; canvas: c1.title="A-c1" c1.desc=""  (changed)
+   5000.0 ms  B   SEND collaboration_event:sync_request 4070B
+   5129.5 ms  DB  POST draft by A ok=true nodes=6
+   5234.5 ms  DB  POST draft by A ok=true nodes=6
+FINAL stored draft: {"c1":{"title":"A-c1","desc":""},"c2":["result"]}
+
+# S2O seed=1 M1=1  examples=[{"type":"M1","tid":"c2|outputs+#oa","by":"A","t":4312,"value":"oa"}]
+      0.0 ms  A   EDIT c2|outputs+#oa := "oa"  canvas before: c2.outputs=["result"]
+      0.0 ms  A   SEND graph_event 2626B
+     30.0 ms  A   SEND graph_event 2650B
+     69.5 ms  B   RECV graph_update (CRDT import) 
+     88.5 ms  B   EDIT c2|outputs+#ob := "ob"  canvas before: c2.outputs=["result"]
+     88.5 ms  B   SEND graph_event 2873B
+    109.5 ms  B   RECV graph_update (CRDT import) 
+    118.5 ms  B   SEND graph_event 2921B
+    151.7 ms  B   rAF frame 2 cb; canvas: c2.outputs=["result","ob"]
+    179.3 ms  A   RECV graph_update (CRDT import) 
+    188.2 ms  B   rAF frame 1 cb; canvas: c2.outputs=["result","ob"]
+    261.5 ms  A   rAF frame 1 cb; canvas: c2.outputs=["result","oa"]
+    309.9 ms  A   rAF frame 1 cb; canvas: c2.outputs=["result","ob"]  (changed)
+   5090.2 ms  DB  POST draft by A ok=true nodes=6
+   5118.5 ms  B   SEND collaboration_event:sync_request 4146B
+   5239.7 ms  DB  POST draft by A ok=true nodes=6
+FINAL stored draft: {"c1":{"title":"Code 1","desc":""},"c2":["result","ob"]}
+
+# S2L seed=1 M2=1  examples=[{"type":"M2","tid":"c1|title","by":"B","t":9663,"value":"B-same"}]
+      0.0 ms  A   EDIT c1|title := "A-same"  canvas before: c1.title="Code 1"
+      0.0 ms  A   SEND graph_event 2626B
+     30.8 ms  B   EDIT c1|title := "B-same"  canvas before: c1.title="Code 1"
+     30.8 ms  B   SEND graph_event 2851B
+    790.2 ms  B   RECV graph_update (CRDT import) 
+    819.6 ms  A   RECV graph_update (CRDT import) 
+    828.4 ms  B   rAF frame 1 cb; canvas: c1.title="B-same"
+    874.9 ms  B   rAF frame 1 cb; canvas: c1.title="A-same"  (changed)
+   5030.8 ms  B   SEND collaboration_event:sync_request 4034B
+   5424.2 ms  DB  POST draft by A ok=true nodes=6
+   6251.9 ms  DB  POST draft by A ok=true nodes=6
+FINAL stored draft: {"c1":{"title":"A-same","desc":""},"c2":["result"]}
+
+# S3C seed=1 M1=1  examples=[{"type":"M1","tid":"c3|title","by":"B","t":15600,"value":"L-c3"}]
+      0.0 ms  A   EDIT c1|title := "A-c1"  canvas before: c3.title="Code 3"
+      0.0 ms  A   SEND graph_event 2626B
+     49.4 ms  C   RECV graph_update (CRDT import) 
+     62.2 ms  B   RECV graph_update (CRDT import) 
+    102.4 ms  C   rAF frame 1 cb; canvas: c3.title="Code 3"
+    108.6 ms  B   rAF frame 1 cb; canvas: c3.title="Code 3"
+    156.4 ms  C   rAF frame 1 cb; canvas: c3.title="Code 3"
+    183.7 ms  B   rAF frame 1 cb; canvas: c3.title="Code 3"
+   5055.9 ms  DB  POST draft by A ok=true nodes=6
+   9000.0 ms  A   SEND collaboration_event:graph_view_state 146B
+   9078.2 ms  B   SEND collaboration_event:graph_view_state 146B
+   9088.3 ms  C   SEND collaboration_event:graph_view_state 146B
+  12300.0 ms  B   EDIT c3|title := "L-c3"  canvas before: c3.title="Code 3"
+  12300.0 ms  B   SEND graph_event 2877B
+  12400.2 ms  C   RECV graph_update (CRDT import) 
+  12443.5 ms  C   rAF frame 1 cb; canvas: c3.title="Code 3"
+  12502.5 ms  C   rAF frame 1 cb; canvas: c3.title="L-c3"  (changed)
+  17371.9 ms  DB  POST draft by B ok=false nodes=6
+FINAL stored draft: {"c1":{"title":"A-c1","desc":""},"c2":["result"]}
+
+# S5A seed=1 M1=1  examples=[{"type":"M1","tid":"c1|title","by":"A","t":2200,"value":"A-c1"}]
+      0.0 ms  A   EDIT c1|title := "A-c1"  canvas before: c1.title="Code 1"
+      0.0 ms  A   SEND graph_event 2626B
+     69.5 ms  B   RECV graph_update (CRDT import) 
+    123.5 ms  B   rAF frame 1 cb; canvas: c1.title="Code 1"
+    162.4 ms  B   rAF frame 1 cb; canvas: c1.title="A-c1"  (changed)
+    500.0 ms  A   SEND collaboration_event:graph_view_state 146B
+    579.5 ms  B   SEND collaboration_event:graph_view_state 146B
+FINAL stored draft: {"c1":{"title":"Code 1","desc":""},"c2":["result"]}
+
+# S8 seed=1 M1=1  examples=[{"type":"M1","tid":"c4|title","by":"EXT","t":1000,"value":"EXT-c4"}]
+      0.0 ms  DB  POST draft by EXT ok=true nodes=6
+   1500.0 ms  A   EDIT c1|title := "A-c1"  canvas before: c4.title="Code 4" c1.title="Code 1"
+   1500.0 ms  A   SEND graph_event 2626B
+   6579.4 ms  DB  POST draft by A ok=false nodes=6
+  10500.0 ms  A   EDIT c2|title := "A-c2"  canvas before: c4.title="Code 4" c1.title="A-c1"
+  10500.0 ms  A   SEND graph_event 2651B
+  15571.0 ms  DB  POST draft by A ok=true nodes=6
+FINAL stored draft: {"c1":{"title":"A-c1","desc":""},"c2":["result"]}
+
+# S6F seed=1 M1=1  examples=[{"type":"M1","tid":"c1|title","by":"A","t":1300,"value":"A-c1"}]
+      0.0 ms  A   EDIT c1|title := "A-c1"  canvas before: c1.title="Code 1"
+      0.0 ms  A   SEND graph_event 39864B
+    500.0 ms  A   SEND collaboration_event:graph_view_state 146B
+FINAL stored draft: {"c1":{"title":"Code 1","desc":""},"c2":["result"]}
+

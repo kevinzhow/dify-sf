@@ -1,0 +1,1972 @@
+[S6A #0] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #1] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #2] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #3] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #4] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #5] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #6] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #7] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #8] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #10] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #9] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #11] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #12] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #13] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #14] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #15] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #16] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #17] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #18] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6A #19] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+== S6A: 20 runs: {'LOST_EDIT': 20}
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #1] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #2] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #0] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #3] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #4] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+[S6B #5] ['HARNESS_ERROR'] lost=None div=None KeyError: 'Page.wait_for_selector: "Route.continue_: \'code\'"'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #6] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #7] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #8] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #9] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #10] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #11] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #12] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+[S6B #13] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #14] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #15] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #16] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #17] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py", line 312, in _on_route
+    handled = await route_handler.handle(route)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 456, in handle
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 443, in handle
+    return await self._handle_internal(route)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_helper.py", line 484, in _handle_internal
+    await asyncio.ensure_future(coro_or_future)
+  File "research/real-browser/lib/harness.py", line 248, in on_route
+    await route.continue_()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 22352, in continue_
+    await self._impl_obj.continue_(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 558, in continue_
+    return await self._handle_route(_inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 508, in _handle_route
+    raise e
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 504, in _handle_route
+    await callback()
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 556, in _inner
+    await self._inner_continue(False)
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 562, in _inner_continue
+    await self._race_with_page_close(
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 604, in _race_with_page_close
+    raise cast(BaseException, fut.exception())
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 78, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 636, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+KeyError: "Route.continue_: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #18] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6B #19] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.wait_for_selector: 'code'"
+== S6B: 20 runs: {'HARNESS_ERROR': 20}
+[S6C #1] ['OK'] lost=[] div=[] 
+[S6C #0] ['OK'] lost=[] div=[] 
+[S6C #2] ['OK'] lost=[] div=[] 
+[S6C #3] ['OK'] lost=[] div=[] 
+[S6C #5] ['OK'] lost=[] div=[] 
+[S6C #4] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6C #7] ['OK'] lost=[] div=[] 
+[S6C #6] ['LOST_EDIT'] lost=['A:c1.title', 'A:c2.title', 'A:c3.pos', 'A:c4.title'] div=[] 
+[S6C #8] ['OK'] lost=[] div=[] 
+[S6C #10] ['OK'] lost=[] div=[] 
+[S6C #9] ['OK'] lost=[] div=[] 
+[S6C #11] ['OK'] lost=[] div=[] 
+[S6C #12] ['OK'] lost=[] div=[] 
+[S6C #13] ['OK'] lost=[] div=[] 
+[S6C #14] ['OK'] lost=[] div=[] 
+[S6C #15] ['OK'] lost=[] div=[] 
+[S6C #16] ['OK'] lost=[] div=[] 
+[S6C #17] ['OK'] lost=[] div=[] 
+[S6C #18] ['OK'] lost=[] div=[] 
+[S6C #19] ['OK'] lost=[] div=[] 
+== S6C: 20 runs: {'OK': 18, 'LOST_EDIT': 2}
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #2] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #1] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #0] ['PEER_MISSING'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #3] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #4] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #5] ['PEER_MISSING'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #6] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #8] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #7] ['PEER_MISSING'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #9] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #10] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #11] ['PEER_MISSING'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #12] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #14] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #13] ['PEER_MISSING'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #15] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #16] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #17] ['PEER_MISSING'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 705, in _channel_close_server
+    self._on_server_close(event["code"], event["reason"])
+                          ~~~~~^^^^^^^^
+KeyError: 'code'
+[S6D #18] ['PEER_MISSING'] lost=[] div=[] 
+[S6D #19] ['PEER_MISSING'] lost=[] div=[] 
+== S6D: 20 runs: {'PEER_MISSING': 20}
+[S6E #2] ['OK'] lost=[] div=[] 
+[S6E #1] ['OK'] lost=[] div=[] 
+[S6E #0] ['OK'] lost=[] div=[] 
+[S6E #3] ['OK'] lost=[] div=[] 
+[S6E #4] ['OK'] lost=[] div=[] 
+[S6E #5] ['OK'] lost=[] div=[] 
+[S6E #6] ['OK'] lost=[] div=[] 
+[S6E #7] ['OK'] lost=[] div=[] 
+[S6E #8] ['OK'] lost=[] div=[] 
+[S6E #9] ['OK'] lost=[] div=[] 
+[S6E #10] ['OK'] lost=[] div=[] 
+[S6E #11] ['OK'] lost=[] div=[] 
+[S6E #13] ['OK'] lost=[] div=[] 
+[S6E #12] ['OK'] lost=[] div=[] 
+[S6E #14] ['OK'] lost=[] div=[] 
+[S6E #15] ['OK'] lost=[] div=[] 
+[S6E #16] ['OK'] lost=[] div=[] 
+[S6E #17] ['OK'] lost=[] div=[] 
+[S6E #19] ['OK'] lost=[] div=[] 
+[S6E #18] ['OK'] lost=[] div=[] 
+== S6E: 20 runs: {'OK': 20}
+[S6F #1] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #0] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #2] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #3] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #4] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #5] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #6] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #7] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #8] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #9] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #10] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #11] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #12] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #13] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #14] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #15] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #16] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #17] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #18] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6F #19] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+== S6F: 20 runs: {'LOST_EDIT': 20}
+[S6G #1] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #2] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #0] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #3] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #4] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #5] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #6] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #8] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #7] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #9] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #11] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #10] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #12] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #13] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #14] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #15] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #17] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #16] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #18] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S6G #19] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+== S6G: 20 runs: {'LOST_EDIT': 20}

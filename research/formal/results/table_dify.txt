@@ -1,0 +1,23 @@
+| config | verdict | trace length | distinct states explored | time |
+|---|---|---|---|---|
+| DF_P1_stale_view | VIOLATED Inv_P1 | 9 | 15,040 | 03s |
+| DF_P2_same_field | VIOLATED Inv_P2 | 3 | 74 | 01s |
+| DF_P5_silent_drop | VIOLATED Inv_P5 | 9 | 9,483 | 03s |
+| DF_P1_list_whole | VIOLATED Inv_P1 | 9 | 978 | 02s |
+| DF_P1_list_index | VIOLATED Inv_P1 | 9 | 103,470 | 12s |
+| DF_P1_zombie | VIOLATED Inv_P1 | 9 | 8,957 | 05s |
+| DF_P2_delete_edit | VIOLATED Inv_P2 | 3 | 143 | 01s |
+| DF_P4_dangling | VIOLATED Inv_P4 | 5 | 82 | 01s |
+| DF_P4_dangling_edge | VIOLATED Inv_P4 | 9 | 2,011 | 02s |
+| DF_P1_tab_crash | VIOLATED Inv_P1 | 4 | 36 | 01s |
+| DF_P1_disconnect | VIOLATED Inv_P1 | 7 | 117 | 01s |
+| DF_P1_relay_restart | VIOLATED Inv_P1 | 7 | 116 | 01s |
+| DF_P3_store_lag | VIOLATED Inv_P3 | 8 | 1,646 | 02s |
+| DF_any_P1 | VIOLATED Inv_P1 | 6 | 10,519,705 | 08min 48s |
+| DF_any_P2 | VIOLATED Inv_P2 | 4 | 147 | 01s |
+| DF_any_P3 | VIOLATED Inv_P3 | 6 | 12,561,920 | 10min 28s |
+| DF_any_P4 | VIOLATED Inv_P4 | 6 | 4,121,064 | 03min 28s |
+| DF_any_P5 | VIOLATED Inv_P5 | 6 | 11,493,152 | 09min 36s |
+| DF_cov_stale_hash | VIOLATED Cov_StaleLeaderHash | 5 | 191 | 01s |
+| DF_OK_disjoint | HOLDS (exhaustive) | - | 4,533,450 | 31min 39s |
+| DF_P1_hide_after_edit | VIOLATED Inv_P1 | 8 | 3,216 | 03s |

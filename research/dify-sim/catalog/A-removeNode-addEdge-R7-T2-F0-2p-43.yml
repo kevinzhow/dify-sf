@@ -1,0 +1,31 @@
+id: A-removeNode-addEdge-R7-T2-F0-2p-43
+title: A 删节点，B 连线到该节点（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: removeNode
+    node: code3
+  - at: 1500
+    user: B
+    op: addEdge
+    from: code1
+    to: code3
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeNode
+  op_b: addEdge
+  rel: R7
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

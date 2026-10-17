@@ -1,0 +1,347 @@
+{
+ "out": {
+  "cfg": {
+   "users": 10,
+   "nodes": 500,
+   "durationS": 600,
+   "mix": "formula",
+   "seed": 1,
+   "focus": null,
+   "calibrated": true,
+   "lambda": 0.1,
+   "hotShare": null,
+   "hotNodes": null,
+   "linkMs": [
+    2000,
+    2000
+   ]
+  },
+  "wall": {
+   "readyS": 3,
+   "stormS": 61,
+   "totalS": 64.2
+  },
+  "virtual": {
+   "readyAtMs": 24500,
+   "endMs": 664500,
+   "events": 14578
+  },
+  "edits": {
+   "attempted": 584,
+   "performed": 584,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 387,
+     "landed": 32,
+     "superseded": 306,
+     "m1": 31,
+     "m2": 18
+    },
+    "list": {
+     "n": 79,
+     "landed": 32,
+     "superseded": 0,
+     "m1": 47,
+     "m2": 0
+    },
+    "diff-value": {
+     "n": 118,
+     "landed": 12,
+     "superseded": 90,
+     "m1": 0,
+     "m2": 16
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 466,
+   "lost": 78,
+   "silentOverwritten": 18,
+   "byClass": {
+    "disjoint": {
+     "n": 387,
+     "landed": 32,
+     "superseded": 306,
+     "m1": 31,
+     "m2": 18
+    },
+    "list": {
+     "n": 79,
+     "landed": 32,
+     "superseded": 0,
+     "m1": 47,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 0,
+   "landed": 0,
+   "lost": 0,
+   "superseded": 0
+  },
+  "diffValue": {
+   "n": 118,
+   "landed": 12,
+   "silentOverwrites": 16,
+   "lostOther": 0,
+   "superseded": 90
+  },
+  "M": {
+   "M1": 78,
+   "M2": 34,
+   "M3": 10,
+   "M4": 32,
+   "M5": 0
+  },
+  "vsTabs": {
+   "byClass": {
+    "disjoint": {
+     "n": 387,
+     "landed": 62,
+     "superseded": 324,
+     "m1": 1,
+     "m2": 0
+    },
+    "list": {
+     "n": 79,
+     "landed": 78,
+     "superseded": 0,
+     "m1": 1,
+     "m2": 0
+    },
+    "diff-value": {
+     "n": 118,
+     "landed": 12,
+     "superseded": 102,
+     "m1": 0,
+     "m2": 4
+    }
+   },
+   "chainLost": {
+    "diff-value": 5,
+    "disjoint": 1
+   },
+   "examples": [
+    {
+     "type": "M2",
+     "tid": "n430|title",
+     "by": "U0",
+     "t": 604805,
+     "value": "U0-t54"
+    },
+    {
+     "type": "M2",
+     "tid": "n230|title",
+     "by": "U6",
+     "t": 467478,
+     "value": "U6-t39"
+    },
+    {
+     "type": "M2",
+     "tid": "n470|title",
+     "by": "U5",
+     "t": 457456,
+     "value": "U5-t37"
+    },
+    {
+     "type": "M2",
+     "tid": "n412|title",
+     "by": "U3",
+     "t": 598647,
+     "value": "U3-t50"
+    },
+    {
+     "type": "M1",
+     "tid": "n183|uf_U8",
+     "by": "U8",
+     "t": 286951,
+     "value": "U8-f37"
+    },
+    {
+     "type": "M1",
+     "tid": "n138|variables+#v_U4_68",
+     "by": "U4",
+     "t": 594693,
+     "value": "v_U4_68"
+    }
+   ]
+  },
+  "divergence": {
+   "liveTabs": 10,
+   "differFromDraft": 10,
+   "fieldDiffs": 690,
+   "distinctClientStates": 1,
+   "draftDigest": "dbb0c77f5c8b"
+  },
+  "saves": {
+   "total": 155,
+   "ok": 155,
+   "conflict409": 0,
+   "firstOkAtS": 11.3,
+   "lastOkAtS": 637.3
+  },
+  "saveLatencyMs": {
+   "n": 76,
+   "p50": 270339.9227403051,
+   "p90": 382710.9011559176,
+   "p99": 392159.8752107383,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 205,
+   "p50": 4110.924296446465,
+   "p90": 4137.7852539183295,
+   "p99": 4162.608935333876,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 32,
+  "server": {
+   "eventsIn": {
+    "user_connect": 10,
+    "graph_event": 619,
+    "collaboration_event": 388
+   },
+   "bytesIn": 274833379,
+   "bytesOut": 1560251495,
+   "graphEventBytes": 10682509,
+   "graphUpdatesOut": 5571,
+   "oversizeKicks": 0,
+   "syncRequests": 344,
+   "syncOk": 2,
+   "syncFail": 0,
+   "syncTimeout": 342,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 10,
+   "posts": 156,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 65323777
+  },
+  "tabs": {
+   "total": 10,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 10271,
+   "bytesUpMB": 274.9,
+   "ingest": {
+    "delivered": 3691,
+    "applied": 3669,
+    "pruned": 22
+   }
+  },
+  "faults": {},
+  "examples": [
+   {
+    "type": "M2",
+    "tid": "n462|uf_U0",
+    "by": "U0",
+    "t": 619783,
+    "value": "U0-p56"
+   },
+   {
+    "type": "M2",
+    "tid": "n468|uf_U7",
+    "by": "U7",
+    "t": 606953,
+    "value": "U7-p54"
+   },
+   {
+    "type": "M2",
+    "tid": "n277|uf_U6",
+    "by": "U6",
+    "t": 616193,
+    "value": "U6-p56"
+   },
+   {
+    "type": "M2",
+    "tid": "n430|title",
+    "by": "U0",
+    "t": 604805,
+    "value": "U0-t54"
+   },
+   {
+    "type": "M2",
+    "tid": "n430|title",
+    "by": "U8",
+    "t": 610309,
+    "value": "U8-t62"
+   },
+   {
+    "type": "M2",
+    "tid": "n203|uf_U8",
+    "by": "U8",
+    "t": 617375,
+    "value": "U8-p63"
+   },
+   {
+    "type": "M2",
+    "tid": "n170|uf_U2",
+    "by": "U2",
+    "t": 587353,
+    "value": "U2-p64"
+   },
+   {
+    "type": "M2",
+    "tid": "n58|uf_U4",
+    "by": "U4",
+    "t": 613720,
+    "value": "U4-p72"
+   },
+   {
+    "type": "M2",
+    "tid": "n398|title",
+    "by": "U2",
+    "t": 504139,
+    "value": "U2-t54"
+   },
+   {
+    "type": "M2",
+    "tid": "n337|title",
+    "by": "U3",
+    "t": 616388,
+    "value": "U3-t53"
+   },
+   {
+    "type": "M2",
+    "tid": "n135|title",
+    "by": "U6",
+    "t": 595853,
+    "value": "U6-t53"
+   },
+   {
+    "type": "M2",
+    "tid": "n236|title",
+    "by": "U5",
+    "t": 571888,
+    "value": "U5-t50"
+   }
+  ],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "dbb0c77f5c8b757acc26a4f6687759f2b9e9bd04f57383a67282c7d3967a1553",
+  "tabs": {
+   "U0": "e15b15cd3719",
+   "U1": "e15b15cd3719",
+   "U2": "e15b15cd3719",
+   "U3": "e15b15cd3719",
+   "U4": "e15b15cd3719",
+   "U5": "e15b15cd3719",
+   "U6": "e15b15cd3719",
+   "U7": "e15b15cd3719",
+   "U8": "e15b15cd3719",
+   "U9": "e15b15cd3719"
+  },
+  "ledger": "584:78:34",
+  "saves": "U0:true:35774,U0:true:39837,U0:true:43900,U0:true:47963,U0:true:52031,U0:true:56096,U0:true:60160,U0:true:64221,U0:true:68285,U0:true:72351,U0:true:76414,U0:true:80477,U0:true:84547,U0:true:88613,U0:true:92678,U0:true:96742,U0:true:100809,U0:true:104873,U0:true:108939,U0:true:113007,U0:true:117068,U0:true:121135,U0:true:125201,U0:true:129267,U0:true:133330,U0:true:137396,U0:true:141463,U0:true:145530,U0:true:149598,U0:true:153665,U0:true:157728,U0:true:161796,U0:true:165862,U0:true:169931,U0:true:173998,U0:true:178066,U0:true:182129,U0:true:186194,U0:true:190257,U0:true:194321,U0:true:198383,U0:true:202451,U0:true:206518,U0:true:210581,U0:true:214643,U0:true:218709,U0:true:222771,U0:true:226836,U0:true:230904,U0:true:234966,U0:true:239030,U0:true:243099,U0:true:247164,U0:true:251226,U0:true:255287,U0:true:259350,U0:true:263416,U0:true:267480,U0:true:271542,U0:true:275609,U0:true:279672,U0:true:283735,U0:true:287797,U0:true:291867,U0:true:295934,U0:true:299998,U0:true:304065,U0:true:308128,U0:true:312196,U0:true:316260,U0:true:320323,U0:true:324389,U0:true:328456,U0:true:332519,U0:true:336584,U0:true:340651,U0:true:344711,U0:true:348778,U0:true:352839,U0:true:356904,U0:true:360973,U0:true:365035,U0:true:369101,U0:true:373163,U0:true:377233,U0:true:381296,U0:true:385357,U0:true:389422,U0:true:393492,U0:true:397554,U0:true:401617,U0:true:405682,U0:true:409743,U0:true:413811,U0:true:417875,U0:true:421941,U0:true:426005,U0:true:430065,U0:true:434129,U0:true:438191,U0:true:442255,U0:true:446318,U0:true:450385,U0:true:454453,U0:true:458520,U0:true:462581,U0:true:466647,U0:true:470716,U0:true:474785,U0:true:478849,U0:true:482913,U0:true:486978,U0:true:491043,U0:true:495107,U0:true:499171,U0:true:503235,U0:true:507296,U0:true:511356,U0:true:515419,U0:true:519483,U0:true:523546,U0:true:527611,U0:true:531677,U0:true:535744,U0:true:539811,U0:true:543876,U0:true:547941,U0:true:552007,U0:true:556068,U0:true:560132,U0:true:564194,U0:true:568258,U0:true:572324,U0:true:576392,U0:true:580458,U0:true:584524,U0:true:588586,U0:true:592648,U0:true:596710,U0:true:600778,U0:true:604845,U0:true:608912,U0:true:612974,U0:true:617041,U0:true:621106,U0:true:625171,U0:true:629238,U0:true:633299,U0:true:637363,U0:true:641425,U0:true:645493,U0:true:649555,U0:true:653623,U0:true:657687,U0:true:661753"
+ }
+}

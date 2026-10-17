@@ -1,0 +1,18 @@
+{"i":1,"real":"oa","dist":{"oa+ob":30},"pReal":0,"lat":0,"gap":0,"dAB_ms":-141,"byteEq":null,"diff":[]}
+{"i":2,"real":"oa","dist":{"oa+ob":30},"pReal":0,"lat":0,"gap":0,"dAB_ms":-184,"byteEq":null,"diff":[]}
+{"i":3,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-159,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+{"i":4,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-215,"byteEq":true,"diff":[]}
+{"i":5,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-160,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+{"i":6,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-180,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+{"i":7,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-198,"byteEq":true,"diff":[]}
+{"i":0,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-140,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+{"i":1,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-90,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+{"i":2,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-163,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+{"i":3,"real":"ob","dist":{"oa+ob":21,"ob":9},"pReal":0.3,"lat":0,"gap":40,"dAB_ms":-134,"byteEq":true,"diff":[]}
+{"i":4,"real":"ob","dist":{"oa+ob":10,"ob":20},"pReal":0.6666666666666666,"lat":0,"gap":40,"dAB_ms":-97,"byteEq":false,"diff":["node c2.data.outputs.var_3: undefined != {\"type\":\"string\"}"]}
+{"i":0,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-187,"byteEq":true,"diff":[]}
+{"i":1,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-200,"byteEq":true,"diff":[]}
+{"i":2,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-227,"byteEq":true,"diff":[]}
+{"i":3,"real":"oa","dist":{"oa+ob":17,"ob":13},"pReal":0,"lat":0,"gap":0,"dAB_ms":-162,"byteEq":null,"diff":[]}
+{"i":4,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-133,"byteEq":false,"diff":["node c2.data.outputs.var_2: undefined != {\"type\":\"string\"}"]}
+SUMMARY {"n":17,"meanPredictedLoss":0.788235294117647,"realLossRate":1,"meanPReal":0.6686274509803921,"byteEq":6,"byteChecked":14}

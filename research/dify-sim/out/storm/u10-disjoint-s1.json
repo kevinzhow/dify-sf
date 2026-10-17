@@ -1,0 +1,175 @@
+{
+ "out": {
+  "cfg": {
+   "users": 10,
+   "nodes": 500,
+   "durationS": 120,
+   "mix": "disjoint",
+   "seed": 1,
+   "focus": null,
+   "calibrated": false
+  },
+  "wall": {
+   "readyS": 2.7,
+   "stormS": 159.9,
+   "totalS": 162.8
+  },
+  "virtual": {
+   "readyAtMs": 4000,
+   "endMs": 174000,
+   "events": 28539
+  },
+  "edits": {
+   "attempted": 788,
+   "performed": 788,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 616,
+     "landed": 535,
+     "superseded": 81,
+     "m1": 0,
+     "m2": 0
+    },
+    "list": {
+     "n": 172,
+     "landed": 172,
+     "superseded": 0,
+     "m1": 0,
+     "m2": 0
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 788,
+   "lost": 0,
+   "silentOverwritten": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 616,
+     "landed": 535,
+     "superseded": 81,
+     "m1": 0,
+     "m2": 0
+    },
+    "list": {
+     "n": 172,
+     "landed": 172,
+     "superseded": 0,
+     "m1": 0,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 0,
+   "landed": 0,
+   "lost": 0,
+   "superseded": 0
+  },
+  "diffValue": {
+   "n": 0,
+   "landed": 0,
+   "silentOverwrites": 0,
+   "lostOther": 0,
+   "superseded": 0
+  },
+  "M": {
+   "M1": 0,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "divergence": {
+   "liveTabs": 10,
+   "differFromDraft": 0,
+   "fieldDiffs": 0,
+   "distinctClientStates": 1,
+   "draftDigest": "c89cb373b8df"
+  },
+  "saves": {
+   "total": 10,
+   "ok": 10,
+   "conflict409": 0,
+   "firstOkAtS": 123.4,
+   "lastOkAtS": 125.3
+  },
+  "saveLatencyMs": {
+   "n": 707,
+   "p50": 59634.53007823699,
+   "p90": 110042.38085661473,
+   "p99": 121847.74449835885,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 1911,
+   "p50": 80.55086714809659,
+   "p90": 140.2020477661572,
+   "p99": 166.71694022330485,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 0,
+  "server": {
+   "eventsIn": {
+    "user_connect": 10,
+    "graph_event": 1611,
+    "collaboration_event": 28
+   },
+   "bytesIn": 476548420,
+   "bytesOut": 4247846769,
+   "graphEventBytes": 2849031,
+   "graphUpdatesOut": 14458,
+   "oversizeKicks": 0,
+   "syncRequests": 9,
+   "syncOk": 9,
+   "syncFail": 0,
+   "syncTimeout": 0,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 10,
+   "posts": 10,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 4230690
+  },
+  "tabs": {
+   "total": 10,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 26623,
+   "bytesUpMB": 476.5,
+   "ingest": {
+    "delivered": 10075,
+    "applied": 9706,
+    "pruned": 369
+   }
+  },
+  "faults": {},
+  "examples": [],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "c89cb373b8df85785c0a9f59751a5bfeceae052a0129d380053ab27b4866bbc2",
+  "tabs": {
+   "U0": "c89cb373b8df",
+   "U1": "c89cb373b8df",
+   "U2": "c89cb373b8df",
+   "U3": "c89cb373b8df",
+   "U4": "c89cb373b8df",
+   "U5": "c89cb373b8df",
+   "U6": "c89cb373b8df",
+   "U7": "c89cb373b8df",
+   "U8": "c89cb373b8df",
+   "U9": "c89cb373b8df"
+  },
+  "ledger": "788:0:0",
+  "saves": "U0:true:127427,U0:true:127606,U0:true:128121,U0:true:128360,U0:true:128504,U0:true:128646,U0:true:128786,U0:true:128923,U0:true:129122,U0:true:129264"
+ }
+}

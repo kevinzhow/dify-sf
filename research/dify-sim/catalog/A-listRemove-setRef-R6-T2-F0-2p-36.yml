@@ -1,0 +1,35 @@
+id: A-listRemove-setRef-R6-T2-F0-2p-36
+title: A 删 code1 的输出变量 result，B 让 llm1 提示词引用（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: listRemove
+    node: code1
+    path: outputs
+    value: result
+  - at: 1500
+    user: B
+    op: setRef
+    node: code2
+    value:
+      - code1
+      - result
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: listRemove
+  op_b: setRef
+  rel: R6
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,275 @@
+{
+ "out": {
+  "cfg": {
+   "users": 25,
+   "nodes": 500,
+   "durationS": 60,
+   "mix": "disjoint",
+   "seed": 1,
+   "focus": 40,
+   "calibrated": true
+  },
+  "wall": {
+   "readyS": 10.6,
+   "stormS": 590.2,
+   "totalS": 601.2
+  },
+  "virtual": {
+   "readyAtMs": 6150,
+   "endMs": 116150,
+   "events": 50601
+  },
+  "edits": {
+   "attempted": 991,
+   "performed": 991,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 666,
+     "landed": 72,
+     "superseded": 589,
+     "m1": 0,
+     "m2": 5
+    },
+    "list": {
+     "n": 325,
+     "landed": 314,
+     "superseded": 0,
+     "m1": 11,
+     "m2": 0
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 991,
+   "lost": 11,
+   "silentOverwritten": 5,
+   "byClass": {
+    "disjoint": {
+     "n": 666,
+     "landed": 72,
+     "superseded": 589,
+     "m1": 0,
+     "m2": 5
+    },
+    "list": {
+     "n": 325,
+     "landed": 314,
+     "superseded": 0,
+     "m1": 11,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 0,
+   "landed": 0,
+   "lost": 0,
+   "superseded": 0
+  },
+  "diffValue": {
+   "n": 0,
+   "landed": 0,
+   "silentOverwrites": 0,
+   "lostOther": 0,
+   "superseded": 0
+  },
+  "M": {
+   "M1": 11,
+   "M2": 5,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "divergence": {
+   "liveTabs": 25,
+   "differFromDraft": 0,
+   "fieldDiffs": 0,
+   "distinctClientStates": 1,
+   "draftDigest": "20e571d9e881"
+  },
+  "saves": {
+   "total": 25,
+   "ok": 25,
+   "conflict409": 0,
+   "firstOkAtS": 63.2,
+   "lastOkAtS": 67.2
+  },
+  "saveLatencyMs": {
+   "n": 386,
+   "p50": 28142.563447036577,
+   "p90": 55481.25102654955,
+   "p99": 61671.729389821776,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 1107,
+   "p50": 118.54211968771779,
+   "p90": 175.38481048965332,
+   "p99": 209.57497497304212,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 0,
+  "server": {
+   "eventsIn": {
+    "user_connect": 25,
+    "graph_event": 1635,
+    "collaboration_event": 73
+   },
+   "bytesIn": 512459353,
+   "bytesOut": 11991057334,
+   "graphEventBytes": 7554840,
+   "graphUpdatesOut": 38949,
+   "oversizeKicks": 0,
+   "syncRequests": 24,
+   "syncOk": 24,
+   "syncFail": 0,
+   "syncTimeout": 0,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 25,
+   "posts": 25,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 10815675
+  },
+  "tabs": {
+   "total": 25,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 42160,
+   "bytesUpMB": 512.5,
+   "ingest": {
+    "delivered": 33966,
+    "applied": 22371,
+    "pruned": 11595
+   }
+  },
+  "faults": {},
+  "examples": [
+   {
+    "type": "M2",
+    "tid": "n319|cond",
+    "by": "U19",
+    "t": 65492,
+    "value": "U19-cond-65"
+   },
+   {
+    "type": "M2",
+    "tid": "n416|template",
+    "by": "U8",
+    "t": 58648,
+    "value": "U8-template-54"
+   },
+   {
+    "type": "M1",
+    "tid": "n262|variables+#v_U15_1",
+    "by": "U15",
+    "t": 7769,
+    "value": "v_U15_1"
+   },
+   {
+    "type": "M2",
+    "tid": "n319|title",
+    "by": "U13",
+    "t": 63983,
+    "value": "U13-title-62"
+   },
+   {
+    "type": "M2",
+    "tid": "n495|title",
+    "by": "U23",
+    "t": 40625,
+    "value": "U23-title-39"
+   },
+   {
+    "type": "M1",
+    "tid": "n196|outputs+#o_U10_11",
+    "by": "U10",
+    "t": 15196,
+    "value": "o_U10_11"
+   },
+   {
+    "type": "M1",
+    "tid": "n270|outputs+#o_U11_9",
+    "by": "U11",
+    "t": 16411,
+    "value": "o_U11_9"
+   },
+   {
+    "type": "M2",
+    "tid": "n262|title",
+    "by": "U5",
+    "t": 37734,
+    "value": "U5-title-29"
+   },
+   {
+    "type": "M1",
+    "tid": "n379|outputs+#o_U1_23",
+    "by": "U1",
+    "t": 31411,
+    "value": "o_U1_23"
+   },
+   {
+    "type": "M1",
+    "tid": "n224|outputs+#o_U14_26",
+    "by": "U14",
+    "t": 31917,
+    "value": "o_U14_26"
+   },
+   {
+    "type": "M1",
+    "tid": "n53|outputs+#o_U4_32",
+    "by": "U4",
+    "t": 37187,
+    "value": "o_U4_32"
+   },
+   {
+    "type": "M1",
+    "tid": "n333|outputs+#o_U0_40",
+    "by": "U0",
+    "t": 41610,
+    "value": "o_U0_40"
+   }
+  ],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "20e571d9e88189b63b8aff1d6575969be2809c44c20682aada26076071e1cb7f",
+  "tabs": {
+   "U0": "20e571d9e881",
+   "U1": "20e571d9e881",
+   "U2": "20e571d9e881",
+   "U3": "20e571d9e881",
+   "U4": "20e571d9e881",
+   "U5": "20e571d9e881",
+   "U6": "20e571d9e881",
+   "U7": "20e571d9e881",
+   "U8": "20e571d9e881",
+   "U9": "20e571d9e881",
+   "U10": "20e571d9e881",
+   "U11": "20e571d9e881",
+   "U12": "20e571d9e881",
+   "U13": "20e571d9e881",
+   "U14": "20e571d9e881",
+   "U15": "20e571d9e881",
+   "U16": "20e571d9e881",
+   "U17": "20e571d9e881",
+   "U18": "20e571d9e881",
+   "U19": "20e571d9e881",
+   "U20": "20e571d9e881",
+   "U21": "20e571d9e881",
+   "U22": "20e571d9e881",
+   "U23": "20e571d9e881",
+   "U24": "20e571d9e881"
+  },
+  "ledger": "991:11:5",
+  "saves": "U0:true:69355,U0:true:70096,U0:true:70241,U0:true:70382,U0:true:70521,U0:true:70661,U0:true:70802,U0:true:70946,U0:true:71090,U0:true:71230,U0:true:71374,U0:true:71515,U0:true:71657,U0:true:71800,U0:true:71942,U0:true:72082,U0:true:72221,U0:true:72361,U0:true:72502,U0:true:72645,U0:true:72785,U0:true:72929,U0:true:73070,U0:true:73214,U0:true:73357"
+ }
+}

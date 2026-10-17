@@ -1,0 +1,18 @@
+{"i":1,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-141,"byteEq":true,"diff":[]}
+{"i":2,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-184,"byteEq":true,"diff":[]}
+{"i":3,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-159,"byteEq":true,"diff":[]}
+{"i":4,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-215,"byteEq":false,"diff":["node c2.data.outputs.var_2: {\"type\":\"string\"} != undefined"]}
+{"i":5,"real":"oa","dist":{"oa":20,"ob":10},"pReal":0.6666666666666666,"lat":0,"gap":0,"dAB_ms":-160,"byteEq":true,"diff":[]}
+{"i":6,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-180,"byteEq":true,"diff":[]}
+{"i":7,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-198,"byteEq":false,"diff":["node c2.data.outputs.var_2: {\"type\":\"string\"} != undefined"]}
+{"i":0,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-140,"byteEq":true,"diff":[]}
+{"i":1,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-90,"byteEq":true,"diff":[]}
+{"i":2,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-163,"byteEq":true,"diff":[]}
+{"i":3,"real":"ob","dist":{"ob":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-134,"byteEq":false,"diff":["node c2.data.outputs.var_3: {\"type\":\"string\"} != undefined"]}
+{"i":4,"real":"ob","dist":{"ob":30},"pReal":1,"lat":0,"gap":40,"dAB_ms":-97,"byteEq":true,"diff":[]}
+{"i":0,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-187,"byteEq":true,"diff":[]}
+{"i":1,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-200,"byteEq":true,"diff":[]}
+{"i":2,"real":"oa","dist":{"oa":30},"pReal":1,"lat":0,"gap":0,"dAB_ms":-227,"byteEq":true,"diff":[]}
+{"i":3,"real":"oa","dist":{"ob":18,"oa":12},"pReal":0.4,"lat":0,"gap":0,"dAB_ms":-162,"byteEq":true,"diff":[]}
+{"i":4,"real":"oa","dist":{"oa":18,"ob":12},"pReal":0.6,"lat":0,"gap":0,"dAB_ms":-133,"byteEq":true,"diff":[]}
+SUMMARY {"n":17,"meanPredictedLoss":1,"realLossRate":1,"meanPReal":0.8745098039215685,"byteEq":14,"byteChecked":17}

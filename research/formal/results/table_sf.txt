@@ -1,0 +1,15 @@
+| config | verdict | distinct states | depth | time |
+|---|---|---|---|---|
+| SF_2c2o_f0_narrow | **HOLDS (exhaustive)** | 2,902,404 | 16 | 03min 04s |
+| SF_2c2o_f0_regs | **HOLDS (exhaustive)** | 4,729,682 | 16 | 05min 05s |
+| SF_2c2o_f0_lists | **HOLDS (exhaustive)** | 207,634 | 16 | 19s |
+| SF_2c2o_f0_move | **HOLDS (exhaustive)** | 9,290,606 | 16 | 08min 30s |
+| SF_2c2o_f0_struct | **HOLDS (exhaustive)** | 27,627,518 | 16 | 25min 18s |
+| SF_2c2o_f2_field | **HOLDS (exhaustive)** | 8,544,956 | 20 | 08min 02s |
+| SF_2c2o_f1_narrow | **HOLDS (exhaustive)** | 37,566,562 | 19 | 01h 00min |
+| SF_2c2o_f1_lists | **HOLDS (exhaustive)** | 2,936,790 | 19 | 02min 35s |
+| SF_2c2o_f1_move | no violation, PARTIAL (time limit) | 61,706,791 | 14 | limit |
+| SF_3c1o_f2_all | no violation, PARTIAL (time limit) | 28,822,416 | 11 | limit |
+| SF_3c2o_f0_field | no violation, PARTIAL (time limit) | 95,457,045 | 15 | limit |
+| SF_3c2o_f1_field | no violation, PARTIAL (time limit) | 20,636,984 | 12 | limit |
+| SF_2c3o_f1_field | no violation, PARTIAL (time limit) | 118,221,683 | 14 | limit |

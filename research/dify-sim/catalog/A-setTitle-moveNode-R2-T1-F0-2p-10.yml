@@ -1,0 +1,33 @@
+id: A-setTitle-moveNode-R2-T1-F0-2p-10
+title: A 改标题，B 拖动（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setTitle
+    node: llm1
+    value: A-title
+  - at: 50
+    user: B
+    op: moveNode
+    node: llm1
+    value:
+      x: 760
+      y: 340
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setTitle
+  op_b: moveNode
+  rel: R2
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

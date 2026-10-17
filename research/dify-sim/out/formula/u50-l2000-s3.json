@@ -1,0 +1,1151 @@
+{
+ "out": {
+  "cfg": {
+   "users": 50,
+   "nodes": 500,
+   "durationS": 100,
+   "mix": "formula",
+   "seed": 3,
+   "focus": null,
+   "calibrated": true,
+   "lambda": 0.1,
+   "hotShare": null,
+   "hotNodes": null,
+   "linkMs": [
+    2000,
+    2000
+   ]
+  },
+  "wall": {
+   "readyS": 18.3,
+   "stormS": 1520,
+   "totalS": 1550.3
+  },
+  "virtual": {
+   "readyAtMs": 24450,
+   "endMs": 164450,
+   "events": 43893
+  },
+  "edits": {
+   "attempted": 552,
+   "performed": 552,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "list": {
+     "n": 86,
+     "landed": 16,
+     "superseded": 0,
+     "m1": 70,
+     "m2": 0
+    },
+    "disjoint": {
+     "n": 363,
+     "landed": 42,
+     "superseded": 210,
+     "m1": 76,
+     "m2": 35
+    },
+    "diff-value": {
+     "n": 103,
+     "landed": 12,
+     "superseded": 57,
+     "m1": 0,
+     "m2": 34
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 449,
+   "lost": 146,
+   "silentOverwritten": 35,
+   "byClass": {
+    "disjoint": {
+     "n": 363,
+     "landed": 42,
+     "superseded": 210,
+     "m1": 76,
+     "m2": 35
+    },
+    "list": {
+     "n": 86,
+     "landed": 16,
+     "superseded": 0,
+     "m1": 70,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 0,
+   "landed": 0,
+   "lost": 0,
+   "superseded": 0
+  },
+  "diffValue": {
+   "n": 103,
+   "landed": 12,
+   "silentOverwrites": 34,
+   "lostOther": 0,
+   "superseded": 57
+  },
+  "M": {
+   "M1": 146,
+   "M2": 69,
+   "M3": 50,
+   "M4": 16,
+   "M5": 0
+  },
+  "vsTabs": {
+   "byClass": {
+    "list": {
+     "n": 86,
+     "landed": 86,
+     "superseded": 0,
+     "m1": 0,
+     "m2": 0
+    },
+    "disjoint": {
+     "n": 363,
+     "landed": 118,
+     "superseded": 245,
+     "m1": 0,
+     "m2": 0
+    },
+    "diff-value": {
+     "n": 103,
+     "landed": 12,
+     "superseded": 69,
+     "m1": 0,
+     "m2": 22
+    }
+   },
+   "chainLost": {
+    "diff-value": 27
+   },
+   "examples": [
+    {
+     "type": "M2",
+     "tid": "n333|title",
+     "by": "U22",
+     "t": 119285,
+     "value": "U22-t11"
+    },
+    {
+     "type": "M2",
+     "tid": "n467|title",
+     "by": "U29",
+     "t": 25665,
+     "value": "U29-t1"
+    },
+    {
+     "type": "M2",
+     "tid": "n177|title",
+     "by": "U41",
+     "t": 39571,
+     "value": "U41-t3"
+    },
+    {
+     "type": "M2",
+     "tid": "n177|title",
+     "by": "U36",
+     "t": 72047,
+     "value": "U36-t8"
+    },
+    {
+     "type": "M2",
+     "tid": "n182|title",
+     "by": "U21",
+     "t": 25869,
+     "value": "U21-t1"
+    },
+    {
+     "type": "M2",
+     "tid": "n182|title",
+     "by": "U34",
+     "t": 89892,
+     "value": "U34-t9"
+    },
+    {
+     "type": "M2",
+     "tid": "n182|title",
+     "by": "U49",
+     "t": 117078,
+     "value": "U49-t9"
+    },
+    {
+     "type": "M2",
+     "tid": "n360|title",
+     "by": "U28",
+     "t": 42886,
+     "value": "U28-t3"
+    },
+    {
+     "type": "M2",
+     "tid": "n360|title",
+     "by": "U23",
+     "t": 75989,
+     "value": "U23-t5"
+    },
+    {
+     "type": "M2",
+     "tid": "n360|title",
+     "by": "U21",
+     "t": 107103,
+     "value": "U21-t7"
+    },
+    {
+     "type": "M2",
+     "tid": "n396|title",
+     "by": "U19",
+     "t": 26195,
+     "value": "U19-t1"
+    },
+    {
+     "type": "M2",
+     "tid": "n356|title",
+     "by": "U31",
+     "t": 26347,
+     "value": "U31-t1"
+    }
+   ]
+  },
+  "titleTrace": [
+   [
+    "n333|title",
+    "U3",
+    24544,
+    "Code 333",
+    "U3-t1"
+   ],
+   [
+    "n467|title",
+    "U48",
+    24920,
+    "Code 467",
+    "U48-t1"
+   ],
+   [
+    "n177|title",
+    "U24",
+    25506,
+    "Code 177",
+    "U24-t1"
+   ],
+   [
+    "n182|title",
+    "U47",
+    25537,
+    "Code 182",
+    "U47-t1"
+   ],
+   [
+    "n467|title",
+    "U29",
+    25665,
+    "Code 467",
+    "U29-t1"
+   ],
+   [
+    "n333|title",
+    "U22",
+    25686,
+    "Code 333",
+    "U22-t1"
+   ],
+   [
+    "n360|title",
+    "U4",
+    25844,
+    "Code 360",
+    "U4-t1"
+   ],
+   [
+    "n182|title",
+    "U21",
+    25869,
+    "Code 182",
+    "U21-t1"
+   ],
+   [
+    "n396|title",
+    "U19",
+    26195,
+    "Code 396",
+    "U19-t1"
+   ],
+   [
+    "n356|title",
+    "U31",
+    26347,
+    "Code 356",
+    "U31-t1"
+   ],
+   [
+    "n356|title",
+    "U10",
+    26401,
+    "Code 356",
+    "U10-t1"
+   ],
+   [
+    "n401|title",
+    "U4",
+    26524,
+    "Code 401",
+    "U4-t2"
+   ],
+   [
+    "n238|title",
+    "U28",
+    26833,
+    "Code 238",
+    "U28-t2"
+   ],
+   [
+    "n401|title",
+    "U26",
+    28290,
+    "Code 401",
+    "U26-t3"
+   ],
+   [
+    "n396|title",
+    "U6",
+    28381,
+    "Code 396",
+    "U6-t2"
+   ],
+   [
+    "n333|title",
+    "U29",
+    28938,
+    "U3-t1",
+    "U29-t3"
+   ],
+   [
+    "n228|title",
+    "U31",
+    29053,
+    "Code 228",
+    "U31-t3"
+   ],
+   [
+    "n418|title",
+    "U35",
+    29612,
+    "Code 418",
+    "U35-t2"
+   ],
+   [
+    "n64|title",
+    "U46",
+    29978,
+    "Code 64",
+    "U46-t2"
+   ],
+   [
+    "n356|title",
+    "U46",
+    32831,
+    "U10-t1",
+    "U46-t4"
+   ],
+   [
+    "n182|title",
+    "U40",
+    33391,
+    "U47-t1",
+    "U40-t4"
+   ],
+   [
+    "n333|title",
+    "U35",
+    33547,
+    "U29-t3",
+    "U35-t3"
+   ],
+   [
+    "n396|title",
+    "U5",
+    33715,
+    "U6-t2",
+    "U5-t2"
+   ],
+   [
+    "n238|title",
+    "U37",
+    34466,
+    "U28-t2",
+    "U37-t2"
+   ],
+   [
+    "n356|title",
+    "U45",
+    36396,
+    "U10-t1",
+    "U45-t3"
+   ],
+   [
+    "n64|title",
+    "U7",
+    36996,
+    "U46-t2",
+    "U7-t4"
+   ],
+   [
+    "n177|title",
+    "U41",
+    39571,
+    "U24-t1",
+    "U41-t3"
+   ],
+   [
+    "n177|title",
+    "U20",
+    40197,
+    "U24-t1",
+    "U20-t3"
+   ],
+   [
+    "n360|title",
+    "U28",
+    42886,
+    "U4-t1",
+    "U28-t3"
+   ],
+   [
+    "n396|title",
+    "U38",
+    43499,
+    "U5-t2",
+    "U38-t4"
+   ],
+   [
+    "n360|title",
+    "U5",
+    44116,
+    "U4-t1",
+    "U5-t4"
+   ],
+   [
+    "n177|title",
+    "U12",
+    46154,
+    "U20-t3",
+    "U12-t2"
+   ],
+   [
+    "n228|title",
+    "U0",
+    47333,
+    "U31-t3",
+    "U0-t3"
+   ],
+   [
+    "n418|title",
+    "U8",
+    49067,
+    "U35-t2",
+    "U8-t4"
+   ],
+   [
+    "n238|title",
+    "U2",
+    51640,
+    "U37-t2",
+    "U2-t4"
+   ],
+   [
+    "n396|title",
+    "U29",
+    52432,
+    "U38-t4",
+    "U29-t4"
+   ],
+   [
+    "n333|title",
+    "U17",
+    52812,
+    "U35-t3",
+    "U17-t6"
+   ],
+   [
+    "n238|title",
+    "U32",
+    52933,
+    "U37-t2",
+    "U32-t6"
+   ],
+   [
+    "n401|title",
+    "U17",
+    55409,
+    "U26-t3",
+    "U17-t7"
+   ],
+   [
+    "n228|title",
+    "U24",
+    56466,
+    "U0-t3",
+    "U24-t5"
+   ],
+   [
+    "n467|title",
+    "U30",
+    57290,
+    "U48-t1",
+    "U30-t3"
+   ],
+   [
+    "n238|title",
+    "U28",
+    58048,
+    "U32-t6",
+    "U28-t4"
+   ],
+   [
+    "n333|title",
+    "U38",
+    59106,
+    "U17-t6",
+    "U38-t6"
+   ],
+   [
+    "n333|title",
+    "U21",
+    60255,
+    "U17-t6",
+    "U21-t4"
+   ],
+   [
+    "n396|title",
+    "U40",
+    61283,
+    "U29-t4",
+    "U40-t8"
+   ],
+   [
+    "n238|title",
+    "U33",
+    61337,
+    "U32-t6",
+    "U33-t4"
+   ],
+   [
+    "n401|title",
+    "U41",
+    61712,
+    "U17-t7",
+    "U41-t5"
+   ],
+   [
+    "n64|title",
+    "U8",
+    62503,
+    "U7-t4",
+    "U8-t5"
+   ],
+   [
+    "n467|title",
+    "U31",
+    63155,
+    "U30-t3",
+    "U31-t5"
+   ],
+   [
+    "n418|title",
+    "U31",
+    64259,
+    "U8-t4",
+    "U31-t6"
+   ],
+   [
+    "n64|title",
+    "U41",
+    64663,
+    "U7-t4",
+    "U41-t6"
+   ],
+   [
+    "n238|title",
+    "U25",
+    64943,
+    "U28-t4",
+    "U25-t4"
+   ],
+   [
+    "n360|title",
+    "U41",
+    66356,
+    "U5-t4",
+    "U41-t7"
+   ],
+   [
+    "n228|title",
+    "U6",
+    67363,
+    "U24-t5",
+    "U6-t9"
+   ],
+   [
+    "n333|title",
+    "U45",
+    67426,
+    "U21-t4",
+    "U45-t5"
+   ],
+   [
+    "n360|title",
+    "U8",
+    67742,
+    "U5-t4",
+    "U8-t6"
+   ],
+   [
+    "n228|title",
+    "U39",
+    70562,
+    "U24-t5",
+    "U39-t4"
+   ],
+   [
+    "n418|title",
+    "U37",
+    71029,
+    "U31-t6",
+    "U37-t6"
+   ],
+   [
+    "n64|title",
+    "U12",
+    71129,
+    "U41-t6",
+    "U12-t6"
+   ],
+   [
+    "n238|title",
+    "U11",
+    71701,
+    "U25-t4",
+    "U11-t6"
+   ],
+   [
+    "n177|title",
+    "U36",
+    72047,
+    "U12-t2",
+    "U36-t8"
+   ],
+   [
+    "n177|title",
+    "U30",
+    74457,
+    "U12-t2",
+    "U30-t6"
+   ],
+   [
+    "n333|title",
+    "U37",
+    74612,
+    "U45-t5",
+    "U37-t8"
+   ],
+   [
+    "n360|title",
+    "U23",
+    75989,
+    "U8-t6",
+    "U23-t5"
+   ],
+   [
+    "n418|title",
+    "U22",
+    76056,
+    "U37-t6",
+    "U22-t5"
+   ],
+   [
+    "n401|title",
+    "U1",
+    77305,
+    "U41-t5",
+    "U1-t3"
+   ],
+   [
+    "n418|title",
+    "U16",
+    77564,
+    "U37-t6",
+    "U16-t7"
+   ],
+   [
+    "n360|title",
+    "U11",
+    78808,
+    "U8-t6",
+    "U11-t7"
+   ],
+   [
+    "n401|title",
+    "U15",
+    79737,
+    "U41-t5",
+    "U15-t4"
+   ],
+   [
+    "n64|title",
+    "U34",
+    81597,
+    "U12-t6",
+    "U34-t8"
+   ],
+   [
+    "n401|title",
+    "U25",
+    85451,
+    "U15-t4",
+    "U25-t7"
+   ],
+   [
+    "n401|title",
+    "U28",
+    86277,
+    "U15-t4",
+    "U28-t6"
+   ],
+   [
+    "n228|title",
+    "U18",
+    87028,
+    "U39-t4",
+    "U18-t6"
+   ],
+   [
+    "n64|title",
+    "U47",
+    87730,
+    "U34-t8",
+    "U47-t12"
+   ],
+   [
+    "n228|title",
+    "U4",
+    88865,
+    "U39-t4",
+    "U4-t11"
+   ],
+   [
+    "n182|title",
+    "U34",
+    89892,
+    "U40-t4",
+    "U34-t9"
+   ],
+   [
+    "n182|title",
+    "U39",
+    91896,
+    "U40-t4",
+    "U39-t6"
+   ],
+   [
+    "n356|title",
+    "U23",
+    94613,
+    "U45-t3",
+    "U23-t8"
+   ],
+   [
+    "n418|title",
+    "U29",
+    95062,
+    "U16-t7",
+    "U29-t8"
+   ],
+   [
+    "n356|title",
+    "U13",
+    97491,
+    "U45-t3",
+    "U13-t12"
+   ],
+   [
+    "n177|title",
+    "U24",
+    99644,
+    "U30-t6",
+    "U24-t12"
+   ],
+   [
+    "n333|title",
+    "U6",
+    100938,
+    "U37-t8",
+    "U6-t10"
+   ],
+   [
+    "n64|title",
+    "U26",
+    101119,
+    "U47-t12",
+    "U26-t5"
+   ],
+   [
+    "n182|title",
+    "U10",
+    101722,
+    "U39-t6",
+    "U10-t7"
+   ],
+   [
+    "n467|title",
+    "U11",
+    102747,
+    "U31-t5",
+    "U11-t12"
+   ],
+   [
+    "n360|title",
+    "U14",
+    103344,
+    "U11-t7",
+    "U14-t8"
+   ],
+   [
+    "n360|title",
+    "U31",
+    105302,
+    "U11-t7",
+    "U31-t10"
+   ],
+   [
+    "n182|title",
+    "U39",
+    106436,
+    "U10-t7",
+    "U39-t9"
+   ],
+   [
+    "n360|title",
+    "U21",
+    107103,
+    "U11-t7",
+    "U21-t7"
+   ],
+   [
+    "n418|title",
+    "U33",
+    109485,
+    "U29-t8",
+    "U33-t12"
+   ],
+   [
+    "n360|title",
+    "U14",
+    110014,
+    "U31-t10",
+    "U14-t10"
+   ],
+   [
+    "n401|title",
+    "U21",
+    113884,
+    "U25-t7",
+    "U21-t8"
+   ],
+   [
+    "n182|title",
+    "U37",
+    114383,
+    "U39-t9",
+    "U37-t15"
+   ],
+   [
+    "n182|title",
+    "U49",
+    117078,
+    "U39-t9",
+    "U49-t9"
+   ],
+   [
+    "n333|title",
+    "U22",
+    119285,
+    "U6-t10",
+    "U22-t11"
+   ],
+   [
+    "n64|title",
+    "U47",
+    120358,
+    "U26-t5",
+    "U47-t15"
+   ],
+   [
+    "n356|title",
+    "U17",
+    120358,
+    "U23-t8",
+    "U17-t14"
+   ],
+   [
+    "n177|title",
+    "U29",
+    120562,
+    "U24-t12",
+    "U29-t9"
+   ],
+   [
+    "n228|title",
+    "U6",
+    121361,
+    "U4-t11",
+    "U6-t14"
+   ],
+   [
+    "n333|title",
+    "U38",
+    121435,
+    "U6-t10",
+    "U38-t11"
+   ],
+   [
+    "n360|title",
+    "U41",
+    122534,
+    "U14-t10",
+    "U41-t13"
+   ],
+   [
+    "n238|title",
+    "U3",
+    122886,
+    "U11-t6",
+    "U3-t17"
+   ],
+   [
+    "n418|title",
+    "U39",
+    124089,
+    "U33-t12",
+    "U39-t11"
+   ]
+  ],
+  "divergence": {
+   "liveTabs": 50,
+   "differFromDraft": 50,
+   "fieldDiffs": 6600,
+   "distinctClientStates": 1,
+   "draftDigest": "ad4e0fe36f5c"
+  },
+  "saves": {
+   "total": 33,
+   "ok": 33,
+   "conflict409": 0,
+   "firstOkAtS": 7.8,
+   "lastOkAtS": 137.9
+  },
+  "saveLatencyMs": {
+   "n": 70,
+   "p50": 7696.84780495186,
+   "p90": 26628.031701587606,
+   "p99": 130557.55697292538,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 206,
+   "p50": 4063.966025676,
+   "p90": 4121.870207648117,
+   "p99": 4146.407592585121,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 16,
+  "server": {
+   "eventsIn": {
+    "user_connect": 50,
+    "graph_event": 690,
+    "collaboration_event": 522
+   },
+   "bytesIn": 311744231,
+   "bytesOut": 9570853494,
+   "graphEventBytes": 43075348,
+   "graphUpdatesOut": 33787,
+   "oversizeKicks": 0,
+   "syncRequests": 335,
+   "syncOk": 2,
+   "syncFail": 0,
+   "syncTimeout": 333,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 50,
+   "posts": 34,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 14267825
+  },
+  "tabs": {
+   "total": 50,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 47930,
+   "bytesUpMB": 311.7,
+   "ingest": {
+    "delivered": 25419,
+    "applied": 25296,
+    "pruned": 123
+   }
+  },
+  "faults": {},
+  "examples": [
+   {
+    "type": "M2",
+    "tid": "n415|uf_U32",
+    "by": "U32",
+    "t": 89980,
+    "value": "U32-p10"
+   },
+   {
+    "type": "M2",
+    "tid": "n333|title",
+    "by": "U22",
+    "t": 119285,
+    "value": "U22-t11"
+   },
+   {
+    "type": "M2",
+    "tid": "n333|title",
+    "by": "U38",
+    "t": 121435,
+    "value": "U38-t11"
+   },
+   {
+    "type": "M2",
+    "tid": "n399|uf_U41",
+    "by": "U41",
+    "t": 115353,
+    "value": "U41-p11"
+   },
+   {
+    "type": "M2",
+    "tid": "n313|uf_U43",
+    "by": "U43",
+    "t": 117881,
+    "value": "U43-p10"
+   },
+   {
+    "type": "M2",
+    "tid": "n423|uf_U36",
+    "by": "U36",
+    "t": 120205,
+    "value": "U36-p14"
+   },
+   {
+    "type": "M2",
+    "tid": "n143|uf_U14",
+    "by": "U14",
+    "t": 119401,
+    "value": "U14-p11"
+   },
+   {
+    "type": "M2",
+    "tid": "n467|title",
+    "by": "U29",
+    "t": 25665,
+    "value": "U29-t1"
+   },
+   {
+    "type": "M2",
+    "tid": "n467|title",
+    "by": "U11",
+    "t": 102747,
+    "value": "U11-t12"
+   },
+   {
+    "type": "M2",
+    "tid": "n327|uf_U16",
+    "by": "U16",
+    "t": 121879,
+    "value": "U16-p10"
+   },
+   {
+    "type": "M2",
+    "tid": "n354|uf_U13",
+    "by": "U13",
+    "t": 93883,
+    "value": "U13-p11"
+   },
+   {
+    "type": "M2",
+    "tid": "n16|uf_U42",
+    "by": "U42",
+    "t": 87165,
+    "value": "U42-p10"
+   }
+  ],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "ad4e0fe36f5ca715aed38b0de89a66f947dc004781c0137c23ffa3fc0cf2e7fa",
+  "tabs": {
+   "U0": "4feaf4ca66a6",
+   "U1": "4feaf4ca66a6",
+   "U2": "4feaf4ca66a6",
+   "U3": "4feaf4ca66a6",
+   "U4": "4feaf4ca66a6",
+   "U5": "4feaf4ca66a6",
+   "U6": "4feaf4ca66a6",
+   "U7": "4feaf4ca66a6",
+   "U8": "4feaf4ca66a6",
+   "U9": "4feaf4ca66a6",
+   "U10": "4feaf4ca66a6",
+   "U11": "4feaf4ca66a6",
+   "U12": "4feaf4ca66a6",
+   "U13": "4feaf4ca66a6",
+   "U14": "4feaf4ca66a6",
+   "U15": "4feaf4ca66a6",
+   "U16": "4feaf4ca66a6",
+   "U17": "4feaf4ca66a6",
+   "U18": "4feaf4ca66a6",
+   "U19": "4feaf4ca66a6",
+   "U20": "4feaf4ca66a6",
+   "U21": "4feaf4ca66a6",
+   "U22": "4feaf4ca66a6",
+   "U23": "4feaf4ca66a6",
+   "U24": "4feaf4ca66a6",
+   "U25": "4feaf4ca66a6",
+   "U26": "4feaf4ca66a6",
+   "U27": "4feaf4ca66a6",
+   "U28": "4feaf4ca66a6",
+   "U29": "4feaf4ca66a6",
+   "U30": "4feaf4ca66a6",
+   "U31": "4feaf4ca66a6",
+   "U32": "4feaf4ca66a6",
+   "U33": "4feaf4ca66a6",
+   "U34": "4feaf4ca66a6",
+   "U35": "4feaf4ca66a6",
+   "U36": "4feaf4ca66a6",
+   "U37": "4feaf4ca66a6",
+   "U38": "4feaf4ca66a6",
+   "U39": "4feaf4ca66a6",
+   "U40": "4feaf4ca66a6",
+   "U41": "4feaf4ca66a6",
+   "U42": "4feaf4ca66a6",
+   "U43": "4feaf4ca66a6",
+   "U44": "4feaf4ca66a6",
+   "U45": "4feaf4ca66a6",
+   "U46": "4feaf4ca66a6",
+   "U47": "4feaf4ca66a6",
+   "U48": "4feaf4ca66a6",
+   "U49": "4feaf4ca66a6"
+  },
+  "ledger": "552:146:69",
+  "saves": "U0:true:32226,U0:true:36288,U0:true:40352,U0:true:44417,U0:true:48478,U0:true:52538,U0:true:56606,U0:true:60674,U0:true:64740,U0:true:68807,U0:true:72873,U0:true:76937,U0:true:81002,U0:true:85069,U0:true:89136,U0:true:93198,U0:true:97263,U0:true:101329,U0:true:105396,U0:true:109461,U0:true:113528,U0:true:117596,U0:true:121658,U0:true:125721,U0:true:129786,U0:true:133852,U0:true:137921,U0:true:141981,U0:true:146048,U0:true:150111,U0:true:154171,U0:true:158239,U0:true:162305"
+ }
+}

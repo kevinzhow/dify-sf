@@ -1,0 +1,33 @@
+id: A-setTitle-setField-R2-T2-F0-2p-09
+title: A 改标题，B 改描述（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: setTitle
+    node: code1
+    value: A-title
+  - at: 1500
+    user: B
+    op: setField
+    node: code1
+    path: desc
+    value: B-desc
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setTitle
+  op_b: setField
+  rel: R2
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

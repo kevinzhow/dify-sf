@@ -1,0 +1,48 @@
+Error: Invariant Inv_P1 is violated
+--- State 1: Initial predicate
+    leader = 1
+    dirty = <<FALSE,FALSE>>
+    dsave = <<FALSE,FALSE>>
+    up = <<TRUE,TRUE>>
+    conn = <<TRUE,TRUE>>
+    trusted = <<TRUE,TRUE>>
+    vis = <<TRUE,TRUE>>
+    hash = <<1,1>>
+    fl = 0
+    phase = run
+    view[1] = nodes=['n1', 'n2'] n1[] | n2[]
+    view[2] = nodes=['n1', 'n2'] n1[] | n2[]
+    store = hash=1 nodes=['n1', 'n2'] n1[] | n2[]
+    issued = 
+    net = 0 msgs to []
+--- State 2: Edit
+    dsave = <<TRUE,FALSE>>
+    view[1] = nodes=['n1', 'n2'] n1[ L=<<<<1,1>>>>] | n2[]
+    issued = <<1,1>>:listInsert(n1,<<1,1>>)
+    net = 1 msgs to ['2']
+--- State 3: ImportUpdate
+    dirty = <<FALSE,TRUE>>
+    net = 0 msgs to []
+--- State 4: Edit
+    dsave = <<TRUE,TRUE>>
+    view[2] = nodes=['n1', 'n2'] n1[ L=<<<<2,1>>>>] | n2[]
+    issued = <<1,1>>:listInsert(n1,<<1,1>>), <<2,1>>:listInsert(n1,<<2,1>>)
+    net = 1 msgs to ['1']
+--- State 5: Fire
+    dsave = <<FALSE,TRUE>>
+    hash = <<2,1>>
+    store = hash=2 nodes=['n1', 'n2'] n1[ L={<<1,1>>}] | n2[]
+--- State 6: Quiesce
+    phase = heal
+--- State 7: Refresh
+    dirty = <<FALSE,FALSE>>
+--- State 8: ImportUpdate
+    dirty = <<TRUE,FALSE>>
+    net = 0 msgs to []
+--- State 9: Fire
+    dirty = <<FALSE,FALSE>>
+    dsave = <<FALSE,FALSE>>
+    hash = <<3,3>>
+    view[1] = nodes=['n1', 'n2'] n1[ L=<<<<2,1>>>>] | n2[]
+    store = hash=3 nodes=['n1', 'n2'] n1[ L={<<2,1>>}] | n2[]
+[9 states]

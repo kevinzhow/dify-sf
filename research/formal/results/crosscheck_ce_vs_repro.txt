@@ -1,0 +1,32 @@
+counterexample                                       prop   repro scenarios exhibiting it (bad/valid)        scenarios the model says are safe (bad/valid)
+CE1 stale-view revert (same node, other field)       P1/P5  S1N 3/20, S1N-quiet 1/20, S1NR 12/20             S1NL 0/20, S1 0/20, S1L 0/20
+                                                     note: S1NL (400 ms) must be safe: skip-if-equal makes network-concurrent whole-node writes harmless
+CE2 same field, concurrent (LWW)                     P2     S2L 20/20                                        -
+                                                     note: S2 (no latency) is labelled OK by the harness only because the loser's ack is read after it was overwritten; see analytic/NOTES.md 4
+CE3 object-valued list (code outputs)                P1     S2O 19/19, S2OL 20/20                            S2OM 0/20, S2OS 0/20
+                                                     note: windows: S2OM (0.8 s) / S2OS (3 s) safe
+CE4 index-synced Loro list (variables/prompt)        P1     -                                                -  <-- no real-browser observation
+                                                     note: NO real-browser scenario yet (replay on real Loro only: formal/replay/replay_ce.py CE-D/CE-E)
+CE5 zombie node / delete vs concurrent edit          P1/P2  S7A 15/15, S7AL 20/20                            -
+                                                     note: S7A/S7AL: delete vs concurrent rename + drag
+CE6 dangling reference after delete (sequential)     P4     S7B 20/20                                        -
+                                                     note: S7B: single-user delete of a referenced node; code reading: use-nodes-interactions.ts handleNodeDelete does not rewrite references
+CE7 tab closes/crashes before the 5 s debounce       P1     S5A 20/20, S5B 20/20, S5C 20/20, S5D 19/20, S6C 20/20 S6A 0/20, S6B 0/20, S6D 0/20, S6E 0/20
+                                                     note: graceful close / reload / navigation (S6A,B,D) flush OK; SIGKILL (S6C) loses; follower closes then leader dies (S5C) = permanent loss (model: DF_any_P1/P3/P5, 6 states)
+CE12 stale hash: new leader's first save fails (M9/M2) P1/P3  S3C 20/20, S3E 20/20                             -
+                                                     note: model: reachable state leader has unsaved edit and hash != store.hash (coverage probe, TLC trace in results/ces); the failed save is not retried
+CE8 websocket drop inside the debounce window        P1     S4C 20/20                                        S4A 0/20, S4B 0/20
+CE9 stale hash after leader hand-off / store lag     P3/P1  S3C 20/20, S3E 20/20                             S3A 0/20, S3B 0/20
+                                                     note: S3A/S3B (other tab hidden while someone edits) are safe in the repro; the model agrees (hide only hurts a tab that edited and hid inside the debounce window, CE11)
+CE11 edit, then hide the tab inside the 5 s debounce P1     -                                                S3A 0/20, S3B 0/20  <-- no real-browser observation
+                                                     note: NO repro scenario (S3D is adjacent: show -> 500 ms refresh cancels the pending debounce); code: canPersistLocalGraph() is false while hidden, the debounce is not re-armed
+CE10 relay restart loses unsaved edits               P1     -                                                -  <-- no real-browser observation
+                                                     note: NO repro scenario (relay restart not injected); mechanism = same reload-from-draft path as CE8 (S4C)
+
+Repro mechanisms (repro/REPORT.md) the formal model does NOT cover or covers only partly:
+  - M2/S8 external write + 'swap hash only, keep canvas' | observed: S8 20/20, A2 20/20 | model: partly: SaveBy refreshes only the hash and never retries, but external (non-collab) writers are not modelled
+  - M12/S9* import / restore bypasses the CRDT | observed: S9 20/20, S9Y 20/20, S9ZC 20/20 | model: NOT modelled (new mechanism found by the repro, not by the formal model)
+  - M3/S6F,S6G keepalive 64 KB limit | observed: S6F 19/20 | model: NOT modelled (HTTP transport limit)
+  - M10/S4D leader blackholed: no retry of sync_request | observed: S4D 10/10 | model: partly: Fire fails without retry; undetected blackhole (no disconnect event) not modelled
+  - M13/A3,A4 features / variables saved without hash | observed: A3,A4 20/20 | model: NOT modelled (outside the graph)
+  - M14/A5 server has no referential integrity (empty graph, dangling edges) | observed: A5 20/20, S7B 20/20 | model: modelled: P4 (DF_P4_dangling)

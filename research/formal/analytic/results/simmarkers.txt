@@ -1,0 +1,25 @@
+done in 285s, 148 chunks
+mixed 10 0.05 hot edits 288616 lost 402 sim/hot-event 0.00139  model 0.00138
+mixed 25 0.05 hot edits 108886 lost 404 sim/hot-event 0.00371  model 0.00368
+mixed 50 0.05 hot edits 53539 lost 430 sim/hot-event 0.00803  model 0.00748
+mixed 100 0.05 hot edits 26654 lost 395 sim/hot-event 0.01482  model 0.01499
+mixed 10 0.4 hot edits 69380 lost 405 sim/hot-event 0.00584  model 0.00577
+mixed 25 0.4 hot edits 26408 lost 405 sim/hot-event 0.01534  model 0.01512
+mixed 50 0.4 hot edits 13231 lost 380 sim/hot-event 0.02872  model 0.03003
+mixed 100 0.4 hot edits 6888 lost 385 sim/hot-event 0.05589  model 0.05759
+mixed 10 2.0 hot edits 16012 lost 367 sim/hot-event 0.02292  model 0.02484
+mixed 25 2.0 hot edits 6514 lost 392 sim/hot-event 0.06018  model 0.06119
+mixed 50 2.0 hot edits 3587 lost 381 sim/hot-event 0.10622  model 0.11119
+mixed 100 2.0 hot edits 3009 lost 498 sim/hot-event 0.16550  model 0.18571
+uniform 10 0.05 hot edits 399798 lost 52 sim/hot-event 0.00013  model 0.00017
+uniform 25 0.05 hot edits 399918 lost 163 sim/hot-event 0.00041  model 0.00044
+uniform 50 0.05 hot edits 204053 lost 169 sim/hot-event 0.00083  model 0.00090
+uniform 100 0.05 hot edits 101059 lost 185 sim/hot-event 0.00183  model 0.00182
+uniform 10 0.4 hot edits 399798 lost 232 sim/hot-event 0.00058  model 0.00070
+uniform 25 0.4 hot edits 215229 lost 382 sim/hot-event 0.00177  model 0.00186
+uniform 50 0.4 hot edits 105899 lost 432 sim/hot-event 0.00408  model 0.00378
+uniform 100 0.4 hot edits 52769 lost 446 sim/hot-event 0.00845  model 0.00759
+uniform 10 2.0 hot edits 128277 lost 375 sim/hot-event 0.00292  model 0.00312
+uniform 25 2.0 hot edits 48551 lost 423 sim/hot-event 0.00871  model 0.00823
+uniform 50 2.0 hot edits 24126 lost 418 sim/hot-event 0.01733  model 0.01651
+uniform 100 2.0 hot edits 12306 lost 410 sim/hot-event 0.03332  model 0.03227

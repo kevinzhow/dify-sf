@@ -1,0 +1,39 @@
+Error: Invariant Inv_P2 is violated
+--- State 1: Initial predicate
+    seen = (c1:0,c2:0)
+    high = (c1:0,c2:0)
+    sess = {c1,c2}
+    conn = (c1:TRUE,c2:TRUE)
+    sopen = (c1:TRUE,c2:TRUE)
+    hasSt = (c1:TRUE,c2:TRUE)
+    fl = 0
+    phase = run
+    dur = 0
+    log = 
+    server = nodes=['n1', 'n2'] n1[] | n2[]
+    outbox[c1] = 
+    outbox[c2] = 
+    toS = 
+    acked = 
+    notified = 
+    ovw = 
+--- State 2: Edit
+    outbox[c1] = cs1@base0:none <<c1,1>>:setField(n1.f1:=v1)
+    toS = c1/cs1@0 <<c1,1>>:setField(n1.f1:=v1)
+--- State 3: Edit
+    outbox[c2] = cs1@base0:none <<c2,1>>:setField(n1.f1:=v2)
+    toS = c1/cs1@0 <<c1,1>>:setField(n1.f1:=v1) ; c2/cs1@0 <<c2,1>>:setField(n1.f1:=v2)
+--- State 4: ServerHandles
+    high = (c1:1,c2:0)
+    dur = 1
+    log = #1 c1/1@base0 <<c1,1>>:setField(n1.f1:=v1)
+    server = nodes=['n1', 'n2'] n1[f1=v1] | n2[]
+    toS = c2/cs1@0 <<c2,1>>:setField(n1.f1:=v2)
+--- State 5: ServerHandles
+    high = (c1:1,c2:1)
+    dur = 2
+    log = #1 c1/1@base0 <<c1,1>>:setField(n1.f1:=v1) ; #2 c2/1@base0 <<c2,1>>:setField(n1.f1:=v2)
+    server = nodes=['n1', 'n2'] n1[f1=v2] | n2[]
+    toS = 
+    ovw = <<c1,1>>:setField(n1.f1:=v1) overwritten-by <<c2,1>>:setField(n1.f1:=v2)
+[5 states]

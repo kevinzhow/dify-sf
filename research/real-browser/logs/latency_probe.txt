@@ -1,0 +1,2 @@
+one-way latency 0 ms -> B sees A's edit after [0.09, 0.07, 0.08] s
+one-way latency 400 ms -> B sees A's edit after [0.88, 0.84, 0.81] s

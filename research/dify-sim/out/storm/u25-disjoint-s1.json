@@ -1,0 +1,198 @@
+{
+ "out": {
+  "cfg": {
+   "users": 25,
+   "nodes": 500,
+   "durationS": 120,
+   "mix": "disjoint",
+   "seed": 1,
+   "focus": null,
+   "calibrated": false
+  },
+  "wall": {
+   "readyS": 6.3,
+   "stormS": 1682.3,
+   "totalS": 1689.1
+  },
+  "virtual": {
+   "readyAtMs": 6150,
+   "endMs": 176150,
+   "events": 129052
+  },
+  "edits": {
+   "attempted": 1988,
+   "performed": 1988,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 1557,
+     "landed": 1092,
+     "superseded": 464,
+     "m1": 1,
+     "m2": 0
+    },
+    "list": {
+     "n": 431,
+     "landed": 431,
+     "superseded": 0,
+     "m1": 0,
+     "m2": 0
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 1988,
+   "lost": 1,
+   "silentOverwritten": 0,
+   "byClass": {
+    "disjoint": {
+     "n": 1557,
+     "landed": 1092,
+     "superseded": 464,
+     "m1": 1,
+     "m2": 0
+    },
+    "list": {
+     "n": 431,
+     "landed": 431,
+     "superseded": 0,
+     "m1": 0,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 0,
+   "landed": 0,
+   "lost": 0,
+   "superseded": 0
+  },
+  "diffValue": {
+   "n": 0,
+   "landed": 0,
+   "silentOverwrites": 0,
+   "lostOther": 0,
+   "superseded": 0
+  },
+  "M": {
+   "M1": 1,
+   "M2": 0,
+   "M3": 0,
+   "M4": 0,
+   "M5": 0
+  },
+  "divergence": {
+   "liveTabs": 25,
+   "differFromDraft": 0,
+   "fieldDiffs": 0,
+   "distinctClientStates": 1,
+   "draftDigest": "ac6becd37984"
+  },
+  "saves": {
+   "total": 25,
+   "ok": 25,
+   "conflict409": 0,
+   "firstOkAtS": 123.4,
+   "lastOkAtS": 126.8
+  },
+  "saveLatencyMs": {
+   "n": 1523,
+   "p50": 54658.741450078436,
+   "p90": 109100.94619764997,
+   "p99": 121745.78340584128,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 4384,
+   "p50": 79.24106794881664,
+   "p90": 141.14978747771238,
+   "p99": 167.18940979338367,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 0,
+  "server": {
+   "eventsIn": {
+    "user_connect": 25,
+    "graph_event": 4010,
+    "collaboration_event": 73
+   },
+   "bytesIn": 1532769700,
+   "bytesOut": 36409273436,
+   "graphEventBytes": 7592840,
+   "graphUpdatesOut": 95949,
+   "oversizeKicks": 0,
+   "syncRequests": 24,
+   "syncOk": 24,
+   "syncFail": 0,
+   "syncTimeout": 0,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 25,
+   "posts": 25,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 10783400
+  },
+  "tabs": {
+   "total": 25,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 164666,
+   "bytesUpMB": 1532.8,
+   "ingest": {
+    "delivered": 84154,
+    "applied": 81158,
+    "pruned": 2996
+   }
+  },
+  "faults": {},
+  "examples": [
+   {
+    "type": "M1",
+    "tid": "n86|model",
+    "by": "U23",
+    "t": 58996,
+    "value": "gpt-57-U23"
+   }
+  ],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "ac6becd37984400ab9d0ffd7e552310071faf6eac9bcdc77ec384c0a53bf7b09",
+  "tabs": {
+   "U0": "ac6becd37984",
+   "U1": "ac6becd37984",
+   "U2": "ac6becd37984",
+   "U3": "ac6becd37984",
+   "U4": "ac6becd37984",
+   "U5": "ac6becd37984",
+   "U6": "ac6becd37984",
+   "U7": "ac6becd37984",
+   "U8": "ac6becd37984",
+   "U9": "ac6becd37984",
+   "U10": "ac6becd37984",
+   "U11": "ac6becd37984",
+   "U12": "ac6becd37984",
+   "U13": "ac6becd37984",
+   "U14": "ac6becd37984",
+   "U15": "ac6becd37984",
+   "U16": "ac6becd37984",
+   "U17": "ac6becd37984",
+   "U18": "ac6becd37984",
+   "U19": "ac6becd37984",
+   "U20": "ac6becd37984",
+   "U21": "ac6becd37984",
+   "U22": "ac6becd37984",
+   "U23": "ac6becd37984",
+   "U24": "ac6becd37984"
+  },
+  "ledger": "1988:1:0",
+  "saves": "U0:true:129506,U0:true:129646,U0:true:129791,U0:true:129932,U0:true:130071,U0:true:130211,U0:true:130352,U0:true:130496,U0:true:130640,U0:true:130780,U0:true:130924,U0:true:131065,U0:true:131207,U0:true:131350,U0:true:131492,U0:true:131632,U0:true:131771,U0:true:131911,U0:true:132052,U0:true:132195,U0:true:132335,U0:true:132479,U0:true:132620,U0:true:132764,U0:true:132907"
+ }
+}

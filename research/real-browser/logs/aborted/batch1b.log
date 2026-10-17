@@ -1,0 +1,318 @@
+[S2OS #0] ['OK'] lost=[] div=[] 
+[S2OS #1] ['OK'] lost=[] div=[] 
+[S2OS #3] ['OK'] lost=[] div=[] 
+[S2OS #2] ['OK'] lost=[] div=[] 
+[S2OS #4] ['OK'] lost=[] div=[] 
+[S2OS #5] ['OK'] lost=[] div=[] 
+[S2OS #6] ['OK'] lost=[] div=[] 
+[S2OS #7] ['OK'] lost=[] div=[] 
+[S2OS #8] ['OK'] lost=[] div=[] 
+[S2OS #9] ['OK'] lost=[] div=[] 
+[S2OS #10] ['OK'] lost=[] div=[] 
+[S2OS #11] ['OK'] lost=[] div=[] 
+[S2OS #12] ['OK'] lost=[] div=[] 
+[S2OS #13] ['OK'] lost=[] div=[] 
+[S2OS #14] ['OK'] lost=[] div=[] 
+[S2OS #15] ['OK'] lost=[] div=[] 
+[S2OS #16] ['OK'] lost=[] div=[] 
+[S2OS #17] ['OK'] lost=[] div=[] 
+[S2OS #18] ['OK'] lost=[] div=[] 
+[S2OS #19] ['OK'] lost=[] div=[] 
+== S2OS: 20 runs: {'OK': 20}
+[S2OM #0] ['OK'] lost=[] div=[] 
+[S2OM #1] ['OK'] lost=[] div=[] 
+[S2OM #2] ['OK'] lost=[] div=[] 
+[S2OM #3] ['OK'] lost=[] div=[] 
+[S2OM #5] ['OK'] lost=[] div=[] 
+[S2OM #4] ['OK'] lost=[] div=[] 
+[S2OM #7] ['OK'] lost=[] div=[] 
+[S2OM #6] ['OK'] lost=[] div=[] 
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #8] ['HARNESS_ERROR'] lost=None div=None KeyError: "Locator.blur: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #9] ['LOST_EDIT'] lost=['A:c2.outputs'] div=[] 
+[S2OM #10] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__node[data-id=\"c2\"]").first
+    - locator resolved to <div data-id="c2" tabindex="0" role="button" data-testid="rf__node-c2" aria-describedby="react-flow__node-desc-1" class="react-flow__node react-flow__node-cust
+[S2OM #11] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "http://localhost/app/997bfc81-c250-4cda-8b9e-ee67c25afae7/workflow", waiting until "load"
+
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #12] ['HARNESS_ERROR'] lost=None div=None KeyError: "BrowserContext.add_cookies: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #14] ['HARNESS_ERROR'] lost=None div=None KeyError: "BrowserContext.add_cookies: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #15] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.route_web_socket: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #16] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.route_web_socket: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #17] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.route_web_socket: 'code'"
+[S2OM #18] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "http://localhost/app/26be4dd6-8de7-4401-a129-4615766237cc/workflow", waiting until "load"
+
+[S2OM #13] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.wait_for_selector: Timeout 90000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__node[data-id=\"c1\"]") to be visible
+
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S2OM #19] ['HARNESS_ERROR'] lost=None div=None KeyError: "BrowserContext.add_cookies: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+== S2OM: 20 runs: {'OK': 8, 'HARNESS_ERROR': 11, 'LOST_EDIT': 1}
+(node:1946578) TimeoutNegativeWarning: -1339.839 is a negative number.
+Timeout duration was set to 1.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S1NR #1] ['HARNESS_ERROR'] lost=None div=None KeyError: "Locator.count: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S1NR #0] ['HARNESS_ERROR'] lost=None div=None KeyError: "Locator.count: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S1NR #2] ['HARNESS_ERROR'] lost=None div=None KeyError: "Page.route_web_socket: 'code'"
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S1NR #3] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "http://localhost/app/d1ab9e18-24b1-49c6-9439-c5f20385aa4d/workflow", waiting until "load"
+
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+[S1NR #5] ['OK'] lost=[] div=[] 
+[S1NR #6] ['LOST_EDIT'] lost=['B:c1.desc'] div=[] 
+[S1NR #7] ['OK'] lost=[] div=[] 
+[S1NR #4] ['HARNESS_ERROR'] lost=None div=None TimeoutError: Page.wait_for_selector: Timeout 90000ms exceeded.
+Call log:
+  - waiting for locator(".react-flow__node[data-id=\"c1\"]") to be visible
+
+[S1NR #8] ['LOST_EDIT'] lost=['B:c1.desc'] div=[] 
+[S1NR #9] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S1NR #10] ['OK'] lost=[] div=[] 
+[S1NR #11] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S1NR #12] ['OK'] lost=[] div=[] 
+[S1NR #13] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S1NR #14] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S1NR #15] ['OK'] lost=[] div=[] 
+[S1NR #16] ['OK'] lost=[] div=[] 
+[S1NR #17] ['LOST_EDIT'] lost=['A:c1.title'] div=[] 
+[S1NR #18] ['LOST_EDIT'] lost=['B:c1.desc'] div=[] 
+[S1NR #19] ['LOST_EDIT'] lost=['B:c1.desc'] div=[] 
+== S1NR: 20 runs: {'HARNESS_ERROR': 5, 'OK': 6, 'LOST_EDIT': 9}

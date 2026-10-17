@@ -1,0 +1,33 @@
+id: A-setField-setField-R2-T1-F0-2p-12
+title: A 改提示词，B 改温度（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setField
+    node: llm1
+    path: prompt0
+    value: A prompt
+  - at: 50
+    user: B
+    op: setField
+    node: llm1
+    path: temp
+    value: 0.3
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setField
+  op_b: setField
+  rel: R2
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

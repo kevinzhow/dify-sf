@@ -1,0 +1,30 @@
+Error: Invariant Inv_P4 is violated
+--- State 1: Initial predicate
+    leader = 1
+    dirty = <<FALSE>>
+    dsave = <<FALSE>>
+    up = <<TRUE>>
+    conn = <<TRUE>>
+    trusted = <<TRUE>>
+    vis = <<TRUE>>
+    hash = <<1>>
+    fl = 0
+    phase = run
+    view[1] = nodes=['n1', 'n2'] n1[] | n2[]
+    store = hash=1 nodes=['n1', 'n2'] n1[] | n2[]
+    issued = 
+    net = 0 msgs to []
+--- State 2: Edit
+    dsave = <<TRUE>>
+    view[1] = nodes=['n1', 'n2'] n1[] | n2[r=n1]
+    issued = <<1,1>>:setRef(n2.r:=n1)
+--- State 3: Edit
+    view[1] = nodes=['n2'] n2[r=n1]
+    issued = <<1,1>>:setRef(n2.r:=n1), <<1,2>>:removeNode(n1)
+--- State 4: Fire
+    dsave = <<FALSE>>
+    hash = <<2>>
+    store = hash=2 nodes=['n2'] n2[r=n1]
+--- State 5: Quiesce
+    phase = heal
+[5 states]

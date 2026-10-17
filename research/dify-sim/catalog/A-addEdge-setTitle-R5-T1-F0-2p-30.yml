@@ -1,0 +1,31 @@
+id: A-addEdge-setTitle-R5-T1-F0-2p-30
+title: A 连线，B 改另一个节点标题（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: addEdge
+    from: code1
+    to: code3
+  - at: 50
+    user: B
+    op: setTitle
+    node: code2
+    value: B-title
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: addEdge
+  op_b: setTitle
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

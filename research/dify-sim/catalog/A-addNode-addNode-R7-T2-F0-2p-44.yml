@@ -1,0 +1,40 @@
+id: A-addNode-addNode-R7-T2-F0-2p-44
+title: A 加节点并连线，B 加另一节点并连到同一上游（基于旧版本）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 600
+    user: A
+    op: addNode
+    node: newA
+    value:
+      kind: code
+      x: 400
+      y: 420
+    from: code1
+  - at: 1500
+    user: B
+    op: addNode
+    node: newB
+    value:
+      kind: template
+      x: 720
+      y: 420
+    from: code1
+    open_at: 0
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: addNode
+  op_b: addNode
+  rel: R7
+  timing: T2
+  fault: F0
+  users: 2p
+jitter_ms: 40

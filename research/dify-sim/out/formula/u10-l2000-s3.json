@@ -1,0 +1,1104 @@
+{
+ "out": {
+  "cfg": {
+   "users": 10,
+   "nodes": 500,
+   "durationS": 600,
+   "mix": "formula",
+   "seed": 3,
+   "focus": null,
+   "calibrated": true,
+   "lambda": 0.1,
+   "hotShare": null,
+   "hotNodes": null,
+   "linkMs": [
+    2000,
+    2000
+   ]
+  },
+  "wall": {
+   "readyS": 3,
+   "stormS": 60.9,
+   "totalS": 64.1
+  },
+  "virtual": {
+   "readyAtMs": 24450,
+   "endMs": 664450,
+   "events": 14796
+  },
+  "edits": {
+   "attempted": 601,
+   "performed": 601,
+   "blockedByOverlay": 0,
+   "skippedNoTab": 0,
+   "byClass": {
+    "list": {
+     "n": 85,
+     "landed": 34,
+     "superseded": 0,
+     "m1": 51,
+     "m2": 0
+    },
+    "disjoint": {
+     "n": 405,
+     "landed": 44,
+     "superseded": 305,
+     "m1": 28,
+     "m2": 28
+    },
+    "diff-value": {
+     "n": 111,
+     "landed": 12,
+     "superseded": 85,
+     "m1": 0,
+     "m2": 14
+    }
+   }
+  },
+  "lostDisjointEdits": {
+   "n": 490,
+   "lost": 79,
+   "silentOverwritten": 28,
+   "byClass": {
+    "disjoint": {
+     "n": 405,
+     "landed": 44,
+     "superseded": 305,
+     "m1": 28,
+     "m2": 28
+    },
+    "list": {
+     "n": 85,
+     "landed": 34,
+     "superseded": 0,
+     "m1": 51,
+     "m2": 0
+    }
+   }
+  },
+  "sameValue": {
+   "n": 0,
+   "landed": 0,
+   "lost": 0,
+   "superseded": 0
+  },
+  "diffValue": {
+   "n": 111,
+   "landed": 12,
+   "silentOverwrites": 14,
+   "lostOther": 0,
+   "superseded": 85
+  },
+  "M": {
+   "M1": 79,
+   "M2": 42,
+   "M3": 10,
+   "M4": 34,
+   "M5": 0
+  },
+  "vsTabs": {
+   "byClass": {
+    "list": {
+     "n": 85,
+     "landed": 84,
+     "superseded": 0,
+     "m1": 1,
+     "m2": 0
+    },
+    "disjoint": {
+     "n": 405,
+     "landed": 72,
+     "superseded": 333,
+     "m1": 0,
+     "m2": 0
+    },
+    "diff-value": {
+     "n": 111,
+     "landed": 12,
+     "superseded": 97,
+     "m1": 0,
+     "m2": 2
+    }
+   },
+   "chainLost": {
+    "diff-value": 4
+   },
+   "examples": [
+    {
+     "type": "M2",
+     "tid": "n68|title",
+     "by": "U4",
+     "t": 104746,
+     "value": "U4-t12"
+    },
+    {
+     "type": "M1",
+     "tid": "n357|variables+#v_U8_8",
+     "by": "U8",
+     "t": 110037,
+     "value": "v_U8_8"
+    },
+    {
+     "type": "M2",
+     "tid": "n62|title",
+     "by": "U7",
+     "t": 509708,
+     "value": "U7-t44"
+    }
+   ]
+  },
+  "titleTrace": [
+   [
+    "n379|title",
+    "U0",
+    25160,
+    "Code 379",
+    "U0-t1"
+   ],
+   [
+    "n379|title",
+    "U6",
+    28381,
+    "Code 379",
+    "U6-t2"
+   ],
+   [
+    "n150|title",
+    "U7",
+    28904,
+    "Code 150",
+    "U7-t2"
+   ],
+   [
+    "n313|title",
+    "U9",
+    31455,
+    "Code 313",
+    "U9-t2"
+   ],
+   [
+    "n400|title",
+    "U8",
+    35828,
+    "Code 400",
+    "U8-t2"
+   ],
+   [
+    "n379|title",
+    "U3",
+    38883,
+    "U6-t2",
+    "U3-t4"
+   ],
+   [
+    "n84|title",
+    "U1",
+    39605,
+    "Code 84",
+    "U1-t2"
+   ],
+   [
+    "n474|title",
+    "U3",
+    41133,
+    "Code 474",
+    "U3-t5"
+   ],
+   [
+    "n313|title",
+    "U5",
+    44116,
+    "U9-t2",
+    "U5-t4"
+   ],
+   [
+    "n400|title",
+    "U8",
+    49067,
+    "U8-t2",
+    "U8-t4"
+   ],
+   [
+    "n400|title",
+    "U6",
+    49799,
+    "U8-t2",
+    "U6-t5"
+   ],
+   [
+    "n185|title",
+    "U2",
+    51640,
+    "Code 185",
+    "U2-t4"
+   ],
+   [
+    "n379|title",
+    "U9",
+    54431,
+    "U3-t4",
+    "U9-t3"
+   ],
+   [
+    "n474|title",
+    "U5",
+    55171,
+    "U3-t5",
+    "U5-t5"
+   ],
+   [
+    "n474|title",
+    "U7",
+    71751,
+    "U5-t5",
+    "U7-t8"
+   ],
+   [
+    "n185|title",
+    "U3",
+    73993,
+    "U2-t4",
+    "U3-t11"
+   ],
+   [
+    "n68|title",
+    "U6",
+    100938,
+    "Code 68",
+    "U6-t10"
+   ],
+   [
+    "n68|title",
+    "U6",
+    103700,
+    "U6-t10",
+    "U6-t12"
+   ],
+   [
+    "n68|title",
+    "U4",
+    104746,
+    "Code 68",
+    "U4-t12"
+   ],
+   [
+    "n358|title",
+    "U9",
+    104789,
+    "Code 358",
+    "U9-t5"
+   ],
+   [
+    "n400|title",
+    "U8",
+    111326,
+    "U6-t5",
+    "U8-t9"
+   ],
+   [
+    "n248|title",
+    "U2",
+    126854,
+    "Code 248",
+    "U2-t11"
+   ],
+   [
+    "n379|title",
+    "U6",
+    129094,
+    "U9-t3",
+    "U6-t16"
+   ],
+   [
+    "n150|title",
+    "U1",
+    129503,
+    "U7-t2",
+    "U1-t11"
+   ],
+   [
+    "n150|title",
+    "U4",
+    136968,
+    "U1-t11",
+    "U4-t15"
+   ],
+   [
+    "n355|title",
+    "U4",
+    147754,
+    "Code 355",
+    "U4-t20"
+   ],
+   [
+    "n313|title",
+    "U5",
+    147802,
+    "U5-t4",
+    "U5-t15"
+   ],
+   [
+    "n68|title",
+    "U6",
+    152023,
+    "U6-t12",
+    "U6-t18"
+   ],
+   [
+    "n150|title",
+    "U2",
+    154442,
+    "U4-t15",
+    "U2-t12"
+   ],
+   [
+    "n379|title",
+    "U3",
+    158319,
+    "U6-t16",
+    "U3-t20"
+   ],
+   [
+    "n150|title",
+    "U2",
+    170382,
+    "U2-t12",
+    "U2-t13"
+   ],
+   [
+    "n84|title",
+    "U8",
+    171830,
+    "U1-t2",
+    "U8-t15"
+   ],
+   [
+    "n400|title",
+    "U0",
+    186870,
+    "U8-t9",
+    "U0-t10"
+   ],
+   [
+    "n68|title",
+    "U7",
+    202889,
+    "U6-t18",
+    "U7-t19"
+   ],
+   [
+    "n474|title",
+    "U9",
+    205618,
+    "U7-t8",
+    "U9-t14"
+   ],
+   [
+    "n84|title",
+    "U2",
+    206794,
+    "U8-t15",
+    "U2-t18"
+   ],
+   [
+    "n185|title",
+    "U9",
+    207493,
+    "U3-t11",
+    "U9-t15"
+   ],
+   [
+    "n358|title",
+    "U9",
+    217439,
+    "U9-t5",
+    "U9-t16"
+   ],
+   [
+    "n185|title",
+    "U6",
+    218668,
+    "U9-t15",
+    "U6-t25"
+   ],
+   [
+    "n379|title",
+    "U5",
+    233298,
+    "U3-t20",
+    "U5-t24"
+   ],
+   [
+    "n358|title",
+    "U2",
+    234962,
+    "U9-t16",
+    "U2-t20"
+   ],
+   [
+    "n84|title",
+    "U8",
+    240172,
+    "U2-t18",
+    "U8-t20"
+   ],
+   [
+    "n248|title",
+    "U3",
+    242227,
+    "U2-t11",
+    "U3-t27"
+   ],
+   [
+    "n355|title",
+    "U8",
+    244893,
+    "U4-t20",
+    "U8-t22"
+   ],
+   [
+    "n313|title",
+    "U5",
+    248267,
+    "U5-t15",
+    "U5-t25"
+   ],
+   [
+    "n248|title",
+    "U8",
+    248837,
+    "U3-t27",
+    "U8-t24"
+   ],
+   [
+    "n150|title",
+    "U7",
+    251189,
+    "U2-t13",
+    "U7-t24"
+   ],
+   [
+    "n84|title",
+    "U5",
+    253688,
+    "U8-t20",
+    "U5-t26"
+   ],
+   [
+    "n62|title",
+    "U6",
+    258922,
+    "Code 62",
+    "U6-t29"
+   ],
+   [
+    "n313|title",
+    "U6",
+    268292,
+    "U5-t25",
+    "U6-t30"
+   ],
+   [
+    "n358|title",
+    "U6",
+    270498,
+    "U2-t20",
+    "U6-t31"
+   ],
+   [
+    "n248|title",
+    "U3",
+    274337,
+    "U8-t24",
+    "U3-t31"
+   ],
+   [
+    "n150|title",
+    "U2",
+    275667,
+    "U7-t24",
+    "U2-t24"
+   ],
+   [
+    "n379|title",
+    "U0",
+    281307,
+    "U5-t24",
+    "U0-t21"
+   ],
+   [
+    "n313|title",
+    "U8",
+    282510,
+    "U6-t30",
+    "U8-t28"
+   ],
+   [
+    "n474|title",
+    "U2",
+    282593,
+    "U9-t14",
+    "U2-t25"
+   ],
+   [
+    "n400|title",
+    "U0",
+    284183,
+    "U0-t10",
+    "U0-t22"
+   ],
+   [
+    "n313|title",
+    "U7",
+    299905,
+    "U8-t28",
+    "U7-t27"
+   ],
+   [
+    "n400|title",
+    "U1",
+    300973,
+    "U0-t22",
+    "U1-t23"
+   ],
+   [
+    "n62|title",
+    "U0",
+    303748,
+    "U6-t29",
+    "U0-t24"
+   ],
+   [
+    "n355|title",
+    "U3",
+    311759,
+    "U8-t22",
+    "U3-t37"
+   ],
+   [
+    "n358|title",
+    "U9",
+    312935,
+    "U6-t31",
+    "U9-t23"
+   ],
+   [
+    "n355|title",
+    "U8",
+    331544,
+    "U3-t37",
+    "U8-t34"
+   ],
+   [
+    "n185|title",
+    "U8",
+    341073,
+    "U6-t25",
+    "U8-t35"
+   ],
+   [
+    "n62|title",
+    "U2",
+    356592,
+    "U0-t24",
+    "U2-t34"
+   ],
+   [
+    "n185|title",
+    "U6",
+    366328,
+    "U8-t35",
+    "U6-t41"
+   ],
+   [
+    "n379|title",
+    "U1",
+    369268,
+    "U0-t21",
+    "U1-t26"
+   ],
+   [
+    "n185|title",
+    "U0",
+    384121,
+    "U6-t41",
+    "U0-t35"
+   ],
+   [
+    "n84|title",
+    "U5",
+    387060,
+    "U5-t26",
+    "U5-t41"
+   ],
+   [
+    "n150|title",
+    "U5",
+    387064,
+    "U2-t24",
+    "U5-t42"
+   ],
+   [
+    "n84|title",
+    "U5",
+    390103,
+    "U5-t41",
+    "U5-t44"
+   ],
+   [
+    "n379|title",
+    "U5",
+    398457,
+    "U1-t26",
+    "U5-t45"
+   ],
+   [
+    "n150|title",
+    "U4",
+    400131,
+    "U5-t42",
+    "U4-t39"
+   ],
+   [
+    "n313|title",
+    "U9",
+    403278,
+    "U7-t27",
+    "U9-t31"
+   ],
+   [
+    "n248|title",
+    "U6",
+    412904,
+    "U3-t31",
+    "U6-t48"
+   ],
+   [
+    "n358|title",
+    "U9",
+    414434,
+    "U9-t23",
+    "U9-t33"
+   ],
+   [
+    "n185|title",
+    "U6",
+    418228,
+    "U0-t35",
+    "U6-t49"
+   ],
+   [
+    "n379|title",
+    "U1",
+    418789,
+    "U5-t45",
+    "U1-t30"
+   ],
+   [
+    "n185|title",
+    "U2",
+    423098,
+    "U6-t49",
+    "U2-t37"
+   ],
+   [
+    "n358|title",
+    "U0",
+    424257,
+    "U9-t33",
+    "U0-t40"
+   ],
+   [
+    "n474|title",
+    "U3",
+    435669,
+    "U2-t25",
+    "U3-t48"
+   ],
+   [
+    "n355|title",
+    "U6",
+    437942,
+    "U8-t34",
+    "U6-t54"
+   ],
+   [
+    "n379|title",
+    "U2",
+    442479,
+    "U1-t30",
+    "U2-t39"
+   ],
+   [
+    "n68|title",
+    "U0",
+    447698,
+    "U7-t19",
+    "U0-t42"
+   ],
+   [
+    "n355|title",
+    "U8",
+    454994,
+    "U6-t54",
+    "U8-t51"
+   ],
+   [
+    "n313|title",
+    "U8",
+    459924,
+    "U9-t31",
+    "U8-t52"
+   ],
+   [
+    "n185|title",
+    "U6",
+    466706,
+    "U2-t37",
+    "U6-t59"
+   ],
+   [
+    "n355|title",
+    "U7",
+    466949,
+    "U8-t51",
+    "U7-t39"
+   ],
+   [
+    "n62|title",
+    "U4",
+    479200,
+    "U2-t34",
+    "U4-t45"
+   ],
+   [
+    "n185|title",
+    "U7",
+    500910,
+    "U6-t59",
+    "U7-t42"
+   ],
+   [
+    "n313|title",
+    "U4",
+    501765,
+    "U8-t52",
+    "U4-t49"
+   ],
+   [
+    "n62|title",
+    "U4",
+    508973,
+    "U4-t45",
+    "U4-t52"
+   ],
+   [
+    "n62|title",
+    "U7",
+    509708,
+    "U4-t45",
+    "U7-t44"
+   ],
+   [
+    "n379|title",
+    "U1",
+    516210,
+    "U2-t39",
+    "U1-t38"
+   ],
+   [
+    "n358|title",
+    "U3",
+    518083,
+    "U0-t40",
+    "U3-t58"
+   ],
+   [
+    "n248|title",
+    "U7",
+    539329,
+    "U6-t48",
+    "U7-t46"
+   ],
+   [
+    "n400|title",
+    "U7",
+    547641,
+    "U1-t23",
+    "U7-t47"
+   ],
+   [
+    "n355|title",
+    "U0",
+    556987,
+    "U7-t39",
+    "U0-t54"
+   ],
+   [
+    "n150|title",
+    "U0",
+    557393,
+    "U4-t39",
+    "U0-t55"
+   ],
+   [
+    "n379|title",
+    "U4",
+    560344,
+    "U1-t38",
+    "U4-t66"
+   ],
+   [
+    "n358|title",
+    "U2",
+    561011,
+    "U3-t58",
+    "U2-t52"
+   ],
+   [
+    "n313|title",
+    "U9",
+    561497,
+    "U4-t49",
+    "U9-t43"
+   ],
+   [
+    "n400|title",
+    "U0",
+    565982,
+    "U7-t47",
+    "U0-t57"
+   ],
+   [
+    "n150|title",
+    "U4",
+    566098,
+    "U0-t55",
+    "U4-t69"
+   ],
+   [
+    "n355|title",
+    "U4",
+    573079,
+    "U0-t54",
+    "U4-t70"
+   ],
+   [
+    "n474|title",
+    "U7",
+    576795,
+    "U3-t48",
+    "U7-t49"
+   ],
+   [
+    "n474|title",
+    "U2",
+    589329,
+    "U7-t49",
+    "U2-t59"
+   ],
+   [
+    "n84|title",
+    "U6",
+    591163,
+    "U5-t44",
+    "U6-t70"
+   ],
+   [
+    "n84|title",
+    "U0",
+    608793,
+    "U6-t70",
+    "U0-t63"
+   ],
+   [
+    "n358|title",
+    "U4",
+    613781,
+    "U2-t52",
+    "U4-t72"
+   ],
+   [
+    "n68|title",
+    "U9",
+    623762,
+    "U0-t42",
+    "U9-t50"
+   ]
+  ],
+  "divergence": {
+   "liveTabs": 10,
+   "differFromDraft": 10,
+   "fieldDiffs": 770,
+   "distinctClientStates": 1,
+   "draftDigest": "b6973e854ad0"
+  },
+  "saves": {
+   "total": 156,
+   "ok": 156,
+   "conflict409": 0,
+   "firstOkAtS": 7.8,
+   "lastOkAtS": 638
+  },
+  "saveLatencyMs": {
+   "n": 90,
+   "p50": 260355.9382381552,
+   "p90": 367747.5605046382,
+   "p99": 379183.69680682884,
+   "neverSaved": 0
+  },
+  "visibilityLatencyMs": {
+   "n": 244,
+   "p50": 4108.527355908533,
+   "p90": 4138.320245828625,
+   "p99": 4157.545623527025,
+   "neverVisible": 0,
+   "observers": 3
+  },
+  "dangling": 34,
+  "server": {
+   "eventsIn": {
+    "user_connect": 10,
+    "graph_event": 636,
+    "collaboration_event": 350
+   },
+   "bytesIn": 266883544,
+   "bytesOut": 1588095152,
+   "graphEventBytes": 10695781,
+   "graphUpdatesOut": 5724,
+   "oversizeKicks": 0,
+   "syncRequests": 306,
+   "syncOk": 2,
+   "syncFail": 0,
+   "syncTimeout": 304,
+   "leaderChanges": 0,
+   "sessionsPruned": 0
+  },
+  "http": {
+   "gets": 10,
+   "posts": 157,
+   "post409": 0,
+   "keepaliveDropped64k": 0,
+   "keepalive": 0,
+   "bytesUp": 65766001
+  },
+  "tabs": {
+   "total": 10,
+   "uncaught": 0,
+   "consoleErrors": 0,
+   "rafCallbacks": 10508,
+   "bytesUpMB": 266.9,
+   "ingest": {
+    "delivered": 3775,
+    "applied": 3747,
+    "pruned": 28
+   }
+  },
+  "faults": {},
+  "examples": [
+   {
+    "type": "M2",
+    "tid": "n379|title",
+    "by": "U4",
+    "t": 560344,
+    "value": "U4-t66"
+   },
+   {
+    "type": "M2",
+    "tid": "n426|uf_U8",
+    "by": "U8",
+    "t": 591735,
+    "value": "U8-p63"
+   },
+   {
+    "type": "M2",
+    "tid": "n363|uf_U1",
+    "by": "U1",
+    "t": 612413,
+    "value": "U1-p40"
+   },
+   {
+    "type": "M2",
+    "tid": "n374|uf_U6",
+    "by": "U6",
+    "t": 597677,
+    "value": "U6-p72"
+   },
+   {
+    "type": "M2",
+    "tid": "n347|uf_U9",
+    "by": "U9",
+    "t": 622574,
+    "value": "U9-p49"
+   },
+   {
+    "type": "M2",
+    "tid": "n130|uf_U2",
+    "by": "U2",
+    "t": 620183,
+    "value": "U2-p65"
+   },
+   {
+    "type": "M2",
+    "tid": "n446|uf_U3",
+    "by": "U3",
+    "t": 530240,
+    "value": "U3-f60"
+   },
+   {
+    "type": "M2",
+    "tid": "n220|uf_U4",
+    "by": "U4",
+    "t": 622689,
+    "value": "U4-p74"
+   },
+   {
+    "type": "M2",
+    "tid": "n150|title",
+    "by": "U4",
+    "t": 566098,
+    "value": "U4-t69"
+   },
+   {
+    "type": "M2",
+    "tid": "n366|uf_U4",
+    "by": "U4",
+    "t": 394474,
+    "value": "U4-f38"
+   },
+   {
+    "type": "M2",
+    "tid": "n313|title",
+    "by": "U9",
+    "t": 561497,
+    "value": "U9-t43"
+   },
+   {
+    "type": "M2",
+    "tid": "n241|uf_U0",
+    "by": "U0",
+    "t": 597211,
+    "value": "U0-p62"
+   }
+  ],
+  "errors": [],
+  "uncaughtSample": []
+ },
+ "fingerprint": {
+  "draft": "b6973e854ad041e0a89976053de109428d306783c79dfb0444e7734a661da894",
+  "tabs": {
+   "U0": "8e3aff695a35",
+   "U1": "8e3aff695a35",
+   "U2": "8e3aff695a35",
+   "U3": "8e3aff695a35",
+   "U4": "8e3aff695a35",
+   "U5": "8e3aff695a35",
+   "U6": "8e3aff695a35",
+   "U7": "8e3aff695a35",
+   "U8": "8e3aff695a35",
+   "U9": "8e3aff695a35"
+  },
+  "ledger": "601:79:42",
+  "saves": "U0:true:32224,U0:true:36436,U0:true:40500,U0:true:44561,U0:true:48626,U0:true:52691,U0:true:56755,U0:true:60816,U0:true:64885,U0:true:68951,U0:true:73016,U0:true:77082,U0:true:81147,U0:true:85210,U0:true:89272,U0:true:93336,U0:true:97395,U0:true:101463,U0:true:105525,U0:true:109584,U0:true:113650,U0:true:117713,U0:true:121775,U0:true:125840,U0:true:129903,U0:true:133964,U0:true:138034,U0:true:142097,U0:true:146160,U0:true:150226,U0:true:154289,U0:true:158353,U0:true:162419,U0:true:166487,U0:true:170557,U0:true:174620,U0:true:178687,U0:true:182757,U0:true:186823,U0:true:190884,U0:true:194945,U0:true:199006,U0:true:203072,U0:true:207141,U0:true:211211,U0:true:215279,U0:true:219341,U0:true:223409,U0:true:227474,U0:true:231541,U0:true:235609,U0:true:239672,U0:true:243736,U0:true:247801,U0:true:251861,U0:true:255921,U0:true:259990,U0:true:264057,U0:true:268124,U0:true:272191,U0:true:276257,U0:true:280321,U0:true:284386,U0:true:288453,U0:true:292519,U0:true:296582,U0:true:300647,U0:true:304712,U0:true:308780,U0:true:312845,U0:true:316912,U0:true:320979,U0:true:325042,U0:true:329105,U0:true:333170,U0:true:337236,U0:true:341305,U0:true:345365,U0:true:349431,U0:true:353495,U0:true:357555,U0:true:361622,U0:true:365689,U0:true:369754,U0:true:373818,U0:true:377882,U0:true:381949,U0:true:386012,U0:true:390075,U0:true:394141,U0:true:398202,U0:true:402267,U0:true:406333,U0:true:410397,U0:true:414467,U0:true:418528,U0:true:422591,U0:true:426656,U0:true:430724,U0:true:434784,U0:true:438846,U0:true:442914,U0:true:446979,U0:true:451046,U0:true:455114,U0:true:459179,U0:true:463245,U0:true:467306,U0:true:471369,U0:true:475434,U0:true:479505,U0:true:483573,U0:true:487641,U0:true:491708,U0:true:495775,U0:true:499842,U0:true:503906,U0:true:507968,U0:true:512031,U0:true:516092,U0:true:520158,U0:true:524220,U0:true:528281,U0:true:532343,U0:true:536406,U0:true:540468,U0:true:544534,U0:true:548602,U0:true:552669,U0:true:556729,U0:true:560792,U0:true:564858,U0:true:568923,U0:true:572989,U0:true:577057,U0:true:581126,U0:true:585188,U0:true:589252,U0:true:593317,U0:true:597379,U0:true:601442,U0:true:605505,U0:true:609567,U0:true:613633,U0:true:617697,U0:true:621760,U0:true:625830,U0:true:629892,U0:true:633956,U0:true:638021,U0:true:642085,U0:true:646152,U0:true:650214,U0:true:654283,U0:true:658351,U0:true:662419"
+ }
+}

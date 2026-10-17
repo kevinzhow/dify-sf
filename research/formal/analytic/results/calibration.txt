@@ -1,0 +1,29 @@
+=== max-likelihood fit (sigma_eps=0.03):  L0=45 ms   r=25 ms   delta=300 ms   logL=-50.96
+    95% profile-likelihood ranges:  r in [15, 35] ms;  L0 in [35, 50] ms;  delta in [300, 300] ms
+    (n=20 per scenario => ranges are wide; delta and r are only jointly constrained)
+
+scenario   kind    n obs k   rate      CP 95% CI | model p  E[k] P(|k-E|>=obs)  verdict
+S1N        diff   20     3    15% [   3%,  38%] |    0.16   3.2         1.000  consistent
+S1N-quiet  diff   20     1     5% [   0%,  25%] |    0.08   1.6         1.000  consistent
+S1NR       diff   20    12    60% [  36%,  81%] |    0.54  10.9         0.791  consistent
+S1NL       diff   20     0     0% [   0%,  17%] |    0.00   0.0         1.000  consistent
+S2         lww    20     0     0% [   0%,  17%] |    0.89  17.8         0.000  harness flag not informative (see below)
+S2L        lww    20    20   100% [  83%, 100%] |    1.00  20.0         1.000  harness flag not informative (see below)
+S2O        lww    19    19   100% [  82%, 100%] |    0.87  16.5         0.130  consistent
+S2OL       lww    20    20   100% [  83%, 100%] |    1.00  20.0         1.000  consistent
+S2OM       lww    20     0     0% [   0%,  17%] |    0.00   0.0         1.000  consistent
+S2OS       lww    20     0     0% [   0%,  17%] |    0.00   0.0         1.000  consistent
+
+S2: 'first (earlier) edit wins' in 7/20 runs (35%, CP [15%,59%]);  if every pair were separated (later edit saw the earlier one) this would be 0%; doc-concurrent coin-flip zone gives 50% x P(|G|<L) -> model 34%  (=> P(|G|<L) ~ 70% observed)
+S2L: 'first (earlier) edit wins' in 9/20 runs (45%, CP [23%,68%]);  if every pair were separated (later edit saw the earlier one) this would be 0%; doc-concurrent coin-flip zone gives 50% x P(|G|<L) -> model 50%  (=> P(|G|<L) ~ 90% observed)
+S2O: 'first (earlier) edit wins' in 7/19 runs (37%, CP [16%,62%]);  if every pair were separated (later edit saw the earlier one) this would be 0%; doc-concurrent coin-flip zone gives 50% x P(|G|<L) -> model 33%  (=> P(|G|<L) ~ 74% observed)
+
+NOTES
+ * S2 (no latency): harness flagged 0/20 because the loser's own tab already showed the winner when the ack was read (acked=False),
+   not because nothing was dropped: in every run exactly ONE of two different titles survived; the later-in-time edit lost in
+   the 'first wins' runs above, i.e. real LWW drops that the harness labelled OK.  S2L (400 ms) shows the same drops flagged 20/20.
+ * S1NL 0/20 is predicted by the model (window moved to |G| in (L, L+r) = (0.8, 0.8+r) while observed gaps are 0.15-0.4 s);
+   but 0/20 vs the no-latency rate (4/40 pooled S1N+quiet = 10 pct) is only weak evidence: P(0/20 | p=0.10) = 0.12.
+ * S2O/S2OL: 39/39 lost, and S2OM (gap ~0.6 s) / S2OS 0/40 => window (L0+r) between max observed lost gap and 0.56 s.
+
+rule-of-thumb check: pooled S1N+quiet loss 4/40 = 10%; gap spread 1.37 s  ->  r ~ P*spread/2 = 69 ms (crude)

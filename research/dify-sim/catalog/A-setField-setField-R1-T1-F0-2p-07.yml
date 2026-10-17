@@ -1,0 +1,33 @@
+id: A-setField-setField-R1-T1-F0-2p-07
+title: 两人同时改同一 if-else 条件值（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setField
+    node: ifelse1
+    path: cond
+    value: A
+  - at: 50
+    user: B
+    op: setField
+    node: ifelse1
+    path: cond
+    value: B
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setField
+  op_b: setField
+  rel: R1
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

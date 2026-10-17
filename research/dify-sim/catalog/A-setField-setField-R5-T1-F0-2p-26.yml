@@ -1,0 +1,34 @@
+id: A-setField-setField-R5-T1-F0-2p-26
+title: 两人改不同节点的字段（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setField
+    node: code1
+    path: code
+    value: |
+      # A
+  - at: 50
+    user: B
+    op: setField
+    node: llm1
+    path: temp
+    value: 0.4
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setField
+  op_b: setField
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

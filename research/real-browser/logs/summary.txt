@@ -1,0 +1,58 @@
+scenario       runs valid not-OK   rate  verdicts
+S1-nocollab      20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S1               20    20      0     0%  {'OK': 20}
+S10-nocollab     20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S10              20    20      0     0%  {'OK': 20}
+S1L              20    20      0     0%  {'OK': 20}
+S1N-nocollab     20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S1N-quiet        20    20      1     5%  {'OK': 19, 'LOST_EDIT': 1}
+S1N              20    20      3    15%  {'OK': 17, 'LOST_EDIT': 3}
+S1NL             20    20      0     0%  {'OK': 20}
+S1NR             20    20     12    60%  {'LOST_EDIT': 12, 'OK': 8}
+S2-nocollab      20    20     20   100%  {'DIVERGENCE+LWW_ONE_EDIT_DROPPED': 20}
+S2               20    20      0     0%  {'OK': 20}
+S2L              20    20     20   100%  {'OK+LWW_ONE_EDIT_DROPPED': 20}
+S2O              20    19     19   100%  {'HARNESS_ERROR': 1, 'LOST_EDIT': 19}
+S2OL             20    20     20   100%  {'LOST_EDIT': 20}
+S2OM             20    20      0     0%  {'OK': 20}
+S2OS             20    20      0     0%  {'OK': 20}
+S3A-nocollab     20    20     20   100%  {'DIVERGENCE': 20}
+S3A              20    20      0     0%  {'OK': 20}
+S3B              20    20      0     0%  {'OK': 20}
+S3C              20    20     20   100%  {'DIVERGENCE+LOST_EDIT+PERMANENT_LOSS': 20}
+S3D-nocollab     20    20      2    10%  {'LOST_EDIT': 2, 'OK': 18}
+S3D              20    20      1     5%  {'OK': 19, 'LOST_EDIT+DIVERGENCE': 1}
+S3E              20    20     20   100%  {'LOST_EDIT': 20}
+S4A              20    20      0     0%  {'OK': 20}
+S4B              20    20      0     0%  {'OK': 20}
+S4C              20    20     20   100%  {'LOST_EDIT': 20}
+S4D              10    10     10   100%  {'LOST_EDIT+DIVERGENCE': 10}
+S5A-nocollab     20    20     20   100%  {'DIVERGENCE': 20}
+S5A              20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S5B              20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S5C              20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S5D              20    20     19    95%  {'LOST_EDIT': 19, 'OK': 1}
+S6A-nocollab     20    20      0     0%  {'OK': 20}
+S6A              20    20      0     0%  {'OK': 20}
+S6B-nocollab     20    20      0     0%  {'OK': 20}
+S6B              20    20      0     0%  {'OK': 20}
+S6C-nocollab     20    20     20   100%  {'LOST_EDIT': 20}
+S6C              20    20     20   100%  {'LOST_EDIT': 20}
+S6D-nocollab     20    20      0     0%  {'OK': 20}
+S6D              20    20      0     0%  {'OK': 20}
+S6E              20    20      0     0%  {'OK': 20}
+S6F-nocollab     20    20     20   100%  {'LOST_EDIT': 20}
+S6F              20    20     19    95%  {'LOST_EDIT': 19, 'OK': 1}
+S6G              20    20      2    10%  {'OK': 18, 'LOST_EDIT': 2}
+S7A-r2           20    20     20   100%  {'OK+BROKEN_REFERENCE': 4, 'LOST_EDIT+BROKEN_REFERENCE': 15, 'OK+DELETE_REVERTED': 1}
+S7A              20    15     15   100%  {'LOST_EDIT+DIVERGENCE+BROKEN_REFERENCE': 1, 'LOST_EDIT+BROKEN_REFERENCE': 8, 'OK+DELETE_REVERTED': 4, 'LOST_EDIT+PEER_MISSING+DELETE_REVERTED': 1, 'HARNESS_ERROR': 5, 'OK+BROKEN_REFERENCE': 1}
+S7AL             20    20     20   100%  {'LOST_EDIT+BROKEN_REFERENCE': 20}
+S7B              20    20     20   100%  {'OK+BROKEN_REFERENCE': 20}
+S8-nocollab      20    20     20   100%  {'LOST_EDIT': 20}
+S8               20    20     20   100%  {'LOST_EDIT': 20}
+S9               20    20     20   100%  {'LOST_EDIT+DIVERGENCE': 20}
+S9X              20    20     20   100%  {'LOST_EDIT+DIVERGENCE+IMPORT_OVERWRITTEN': 20}
+S9Y              20    20     20   100%  {'LOST_EDIT+DIVERGENCE+IMPORT_OVERWRITTEN': 20}
+S9ZA             10    10      0     0%  {'OK': 10}
+S9ZB             10    10      0     0%  {'OK': 10}
+S9ZC             20    20     20   100%  {'IMPORT_OVERWRITTEN': 20}

@@ -1,0 +1,31 @@
+id: A-setTitle-setTitle-R5-T1-F0-2p-24
+title: 两人改不同节点的标题（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: setTitle
+    node: code1
+    value: A-title
+  - at: 50
+    user: B
+    op: setTitle
+    node: code2
+    value: B-title
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: setTitle
+  op_b: setTitle
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,9 @@
+{"i":0,"real":"B","dist":{"A":18,"B":12},"pReal":0.4,"lat":400,"gap":0,"dAB_ms":4,"byteEq":true,"diff":[]}
+{"i":1,"real":"A","dist":{"A":18,"B":12},"pReal":0.6,"lat":400,"gap":0,"dAB_ms":-1,"byteEq":true,"diff":[]}
+{"i":2,"real":"A","dist":{"A":18,"B":12},"pReal":0.6,"lat":400,"gap":0,"dAB_ms":17,"byteEq":true,"diff":[]}
+{"i":3,"real":"B","dist":{"A":18,"B":12},"pReal":0.4,"lat":400,"gap":0,"dAB_ms":2,"byteEq":true,"diff":[]}
+{"i":4,"real":"B","dist":{"A":18,"B":12},"pReal":0.4,"lat":400,"gap":0,"dAB_ms":5,"byteEq":true,"diff":[]}
+{"i":5,"real":"B","dist":{"A":18,"B":12},"pReal":0.4,"lat":400,"gap":0,"dAB_ms":5,"byteEq":true,"diff":[]}
+{"i":6,"real":"B","dist":{"A":18,"B":12},"pReal":0.4,"lat":400,"gap":0,"dAB_ms":4,"byteEq":true,"diff":[]}
+{"i":7,"real":"A","dist":{"A":18,"B":12},"pReal":0.6,"lat":400,"gap":0,"dAB_ms":7,"byteEq":true,"diff":[]}
+SUMMARY {"n":8,"meanPredictedLoss":1,"realLossRate":1,"meanPReal":0.475,"byteEq":8,"byteChecked":8}

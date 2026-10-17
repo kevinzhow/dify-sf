@@ -1,0 +1,518 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 127 and seed 8766644479548013746 with 3 workers on 16 cores with 18204MB heap and 64MB offheap memory [pid: 426271] (Linux 7.0.0-38-generic amd64, Eclipse Adoptium 21.0.12.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file <tlc-workdir>/jobs/SFmut_NoStale/DifySF.tla
+Parsing file <tlc-workdir>/jobs/SFmut_NoStale/Common.tla
+Parsing file /tmp/TLC.tla
+Parsing file /tmp/Naturals.tla
+Parsing file /tmp/FiniteSets.tla
+Parsing file /tmp/Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module Common
+Semantic processing of module TLC
+Semantic processing of module DifySF
+Starting... (2026-10-17 01:01:44)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-10-17 01:01:45.
+Error: Invariant Inv_P2 is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ phase = "run"
+/\ lw = ( n1 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n2 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n3 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) )
+/\ sess = {c1, c2}
+/\ log = <<>>
+/\ conn = (c1 :> TRUE @@ c2 :> TRUE)
+/\ toS = {}
+/\ ncs = (c1 :> 1 @@ c2 :> 1)
+/\ ovw = {}
+/\ outbox = (c1 :> <<>> @@ c2 :> <<>>)
+/\ issued = {}
+/\ high = (c1 :> 0 @@ c2 :> 0)
+/\ fl = 0
+/\ sd = [ nodes |-> {n1, n2},
+  dead |-> {},
+  val |->
+      ( n1 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n2 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n3 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") ),
+  ver |->
+      ( n1 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n2 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n3 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) ),
+  tch |->
+      ( n1 :> (c1 :> 0 @@ c2 :> 0) @@
+        n2 :> (c1 :> 0 @@ c2 :> 0) @@
+        n3 :> (c1 :> 0 @@ c2 :> 0) ),
+  its |-> (n1 :> {} @@ n2 :> {} @@ n3 :> {}),
+  idead |-> {},
+  edges |-> {},
+  edead |-> {} ]
+/\ dur = 0
+/\ acked = {}
+/\ sopen = (c1 :> TRUE @@ c2 :> TRUE)
+/\ hasSt = (c1 :> TRUE @@ c2 :> TRUE)
+/\ notified = {}
+/\ seen = (c1 :> 0 @@ c2 :> 0)
+
+State 2: <Edit line 184, col 5 to line 200, col 85 of module DifySF>
+/\ phase = "run"
+/\ lw = ( n1 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n2 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n3 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) )
+/\ sess = {c1, c2}
+/\ log = <<>>
+/\ conn = (c1 :> TRUE @@ c2 :> TRUE)
+/\ toS = { [ c |-> c1,
+    base |-> 0,
+    op |->
+        [ n |-> n1,
+          g |-> f1,
+          v |-> v1,
+          kind |-> "setField",
+          it |-> "-",
+          e |-> <<"-", "-">>,
+          id |-> <<c1, 1>> ],
+    cs |-> 1 ] }
+/\ ncs = (c1 :> 2 @@ c2 :> 1)
+/\ ovw = {}
+/\ outbox = ( c1 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v1,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c1, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> @@
+  c2 :> <<>> )
+/\ issued = { [ n |-> n1,
+    g |-> f1,
+    v |-> v1,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c1, 1>> ] }
+/\ high = (c1 :> 0 @@ c2 :> 0)
+/\ fl = 0
+/\ sd = [ nodes |-> {n1, n2},
+  dead |-> {},
+  val |->
+      ( n1 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n2 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n3 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") ),
+  ver |->
+      ( n1 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n2 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n3 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) ),
+  tch |->
+      ( n1 :> (c1 :> 0 @@ c2 :> 0) @@
+        n2 :> (c1 :> 0 @@ c2 :> 0) @@
+        n3 :> (c1 :> 0 @@ c2 :> 0) ),
+  its |-> (n1 :> {} @@ n2 :> {} @@ n3 :> {}),
+  idead |-> {},
+  edges |-> {},
+  edead |-> {} ]
+/\ dur = 0
+/\ acked = {}
+/\ sopen = (c1 :> TRUE @@ c2 :> TRUE)
+/\ hasSt = (c1 :> TRUE @@ c2 :> TRUE)
+/\ notified = {}
+/\ seen = (c1 :> 0 @@ c2 :> 0)
+
+State 3: <Edit line 184, col 5 to line 200, col 85 of module DifySF>
+/\ phase = "run"
+/\ lw = ( n1 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n2 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n3 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) )
+/\ sess = {c1, c2}
+/\ log = <<>>
+/\ conn = (c1 :> TRUE @@ c2 :> TRUE)
+/\ toS = { [ c |-> c1,
+    base |-> 0,
+    op |->
+        [ n |-> n1,
+          g |-> f1,
+          v |-> v1,
+          kind |-> "setField",
+          it |-> "-",
+          e |-> <<"-", "-">>,
+          id |-> <<c1, 1>> ],
+    cs |-> 1 ],
+  [ c |-> c2,
+    base |-> 0,
+    op |->
+        [ n |-> n1,
+          g |-> f1,
+          v |-> v2,
+          kind |-> "setField",
+          it |-> "-",
+          e |-> <<"-", "-">>,
+          id |-> <<c2, 1>> ],
+    cs |-> 1 ] }
+/\ ncs = (c1 :> 2 @@ c2 :> 2)
+/\ ovw = {}
+/\ outbox = ( c1 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v1,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c1, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> @@
+  c2 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v2,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c2, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> )
+/\ issued = { [ n |-> n1,
+    g |-> f1,
+    v |-> v1,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c1, 1>> ],
+  [ n |-> n1,
+    g |-> f1,
+    v |-> v2,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c2, 1>> ] }
+/\ high = (c1 :> 0 @@ c2 :> 0)
+/\ fl = 0
+/\ sd = [ nodes |-> {n1, n2},
+  dead |-> {},
+  val |->
+      ( n1 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n2 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n3 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") ),
+  ver |->
+      ( n1 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n2 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n3 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) ),
+  tch |->
+      ( n1 :> (c1 :> 0 @@ c2 :> 0) @@
+        n2 :> (c1 :> 0 @@ c2 :> 0) @@
+        n3 :> (c1 :> 0 @@ c2 :> 0) ),
+  its |-> (n1 :> {} @@ n2 :> {} @@ n3 :> {}),
+  idead |-> {},
+  edges |-> {},
+  edead |-> {} ]
+/\ dur = 0
+/\ acked = {}
+/\ sopen = (c1 :> TRUE @@ c2 :> TRUE)
+/\ hasSt = (c1 :> TRUE @@ c2 :> TRUE)
+/\ notified = {}
+/\ seen = (c1 :> 0 @@ c2 :> 0)
+
+State 4: <ServerHandles line 351, col 20 to line 351, col 45 of module DifySF>
+/\ phase = "run"
+/\ lw = ( n1 :>
+      ( f1 :>
+            { [ c |-> c1,
+                v |-> v1,
+                k |-> 1,
+                op |->
+                    [ n |-> n1,
+                      g |-> f1,
+                      v |-> v1,
+                      kind |-> "setField",
+                      it |-> "-",
+                      e |-> <<"-", "-">>,
+                      id |-> <<c1, 1>> ] ] } @@
+        "r" :> {} @@
+        "p" :> {} ) @@
+  n2 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n3 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) )
+/\ sess = {c1, c2}
+/\ log = << [ c |-> c1,
+     base |-> 0,
+     op |->
+         [ n |-> n1,
+           g |-> f1,
+           v |-> v1,
+           kind |-> "setField",
+           it |-> "-",
+           e |-> <<"-", "-">>,
+           id |-> <<c1, 1>> ],
+     cs |-> 1 ] >>
+/\ conn = (c1 :> TRUE @@ c2 :> TRUE)
+/\ toS = { [ c |-> c2,
+    base |-> 0,
+    op |->
+        [ n |-> n1,
+          g |-> f1,
+          v |-> v2,
+          kind |-> "setField",
+          it |-> "-",
+          e |-> <<"-", "-">>,
+          id |-> <<c2, 1>> ],
+    cs |-> 1 ] }
+/\ ncs = (c1 :> 2 @@ c2 :> 2)
+/\ ovw = {}
+/\ outbox = ( c1 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v1,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c1, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> @@
+  c2 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v2,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c2, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> )
+/\ issued = { [ n |-> n1,
+    g |-> f1,
+    v |-> v1,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c1, 1>> ],
+  [ n |-> n1,
+    g |-> f1,
+    v |-> v2,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c2, 1>> ] }
+/\ high = (c1 :> 1 @@ c2 :> 0)
+/\ fl = 0
+/\ sd = [ nodes |-> {n1, n2},
+  dead |-> {},
+  val |->
+      ( n1 :> (f1 :> v1 @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n2 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n3 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") ),
+  ver |->
+      ( n1 :>
+            ( f1 :> [seq |-> 1, by |-> c1] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n2 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n3 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) ),
+  tch |->
+      ( n1 :> (c1 :> 1 @@ c2 :> 0) @@
+        n2 :> (c1 :> 0 @@ c2 :> 0) @@
+        n3 :> (c1 :> 0 @@ c2 :> 0) ),
+  its |-> (n1 :> {} @@ n2 :> {} @@ n3 :> {}),
+  idead |-> {},
+  edges |-> {},
+  edead |-> {} ]
+/\ dur = 1
+/\ acked = {}
+/\ sopen = (c1 :> TRUE @@ c2 :> TRUE)
+/\ hasSt = (c1 :> TRUE @@ c2 :> TRUE)
+/\ notified = {}
+/\ seen = (c1 :> 0 @@ c2 :> 0)
+
+State 5: <ServerHandles line 351, col 20 to line 351, col 45 of module DifySF>
+/\ phase = "run"
+/\ lw = ( n1 :>
+      ( f1 :>
+            { [ c |-> c1,
+                v |-> v1,
+                k |-> 1,
+                op |->
+                    [ n |-> n1,
+                      g |-> f1,
+                      v |-> v1,
+                      kind |-> "setField",
+                      it |-> "-",
+                      e |-> <<"-", "-">>,
+                      id |-> <<c1, 1>> ] ],
+              [ c |-> c2,
+                v |-> v2,
+                k |-> 2,
+                op |->
+                    [ n |-> n1,
+                      g |-> f1,
+                      v |-> v2,
+                      kind |-> "setField",
+                      it |-> "-",
+                      e |-> <<"-", "-">>,
+                      id |-> <<c2, 1>> ] ] } @@
+        "r" :> {} @@
+        "p" :> {} ) @@
+  n2 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) @@
+  n3 :> (f1 :> {} @@ "r" :> {} @@ "p" :> {}) )
+/\ sess = {c1, c2}
+/\ log = << [ c |-> c1,
+     base |-> 0,
+     op |->
+         [ n |-> n1,
+           g |-> f1,
+           v |-> v1,
+           kind |-> "setField",
+           it |-> "-",
+           e |-> <<"-", "-">>,
+           id |-> <<c1, 1>> ],
+     cs |-> 1 ],
+   [ c |-> c2,
+     base |-> 0,
+     op |->
+         [ n |-> n1,
+           g |-> f1,
+           v |-> v2,
+           kind |-> "setField",
+           it |-> "-",
+           e |-> <<"-", "-">>,
+           id |-> <<c2, 1>> ],
+     cs |-> 1 ] >>
+/\ conn = (c1 :> TRUE @@ c2 :> TRUE)
+/\ toS = {}
+/\ ncs = (c1 :> 2 @@ c2 :> 2)
+/\ ovw = { << [ n |-> n1,
+       g |-> f1,
+       v |-> v1,
+       kind |-> "setField",
+       it |-> "-",
+       e |-> <<"-", "-">>,
+       id |-> <<c1, 1>> ],
+     [ n |-> n1,
+       g |-> f1,
+       v |-> v2,
+       kind |-> "setField",
+       it |-> "-",
+       e |-> <<"-", "-">>,
+       id |-> <<c2, 1>> ] >> }
+/\ outbox = ( c1 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v1,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c1, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> @@
+  c2 :>
+      << [ base |-> 0,
+           op |->
+               [ n |-> n1,
+                 g |-> f1,
+                 v |-> v2,
+                 kind |-> "setField",
+                 it |-> "-",
+                 e |-> <<"-", "-">>,
+                 id |-> <<c2, 1>> ],
+           out |-> "none",
+           cs |-> 1 ] >> )
+/\ issued = { [ n |-> n1,
+    g |-> f1,
+    v |-> v1,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c1, 1>> ],
+  [ n |-> n1,
+    g |-> f1,
+    v |-> v2,
+    kind |-> "setField",
+    it |-> "-",
+    e |-> <<"-", "-">>,
+    id |-> <<c2, 1>> ] }
+/\ high = (c1 :> 1 @@ c2 :> 1)
+/\ fl = 0
+/\ sd = [ nodes |-> {n1, n2},
+  dead |-> {},
+  val |->
+      ( n1 :> (f1 :> v2 @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n2 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") @@
+        n3 :> (f1 :> "v0" @@ "r" :> NoRef @@ "p" :> "v0") ),
+  ver |->
+      ( n1 :>
+            ( f1 :> [seq |-> 2, by |-> c2] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n2 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) @@
+        n3 :>
+            ( f1 :> [seq |-> 0, by |-> 0] @@
+              "r" :> [seq |-> 0, by |-> 0] @@
+              "p" :> [seq |-> 0, by |-> 0] ) ),
+  tch |->
+      ( n1 :> (c1 :> 1 @@ c2 :> 2) @@
+        n2 :> (c1 :> 0 @@ c2 :> 0) @@
+        n3 :> (c1 :> 0 @@ c2 :> 0) ),
+  its |-> (n1 :> {} @@ n2 :> {} @@ n3 :> {}),
+  idead |-> {},
+  edges |-> {},
+  edead |-> {} ]
+/\ dur = 2
+/\ acked = {}
+/\ sopen = (c1 :> TRUE @@ c2 :> TRUE)
+/\ hasSt = (c1 :> TRUE @@ c2 :> TRUE)
+/\ notified = {}
+/\ seen = (c1 :> 0 @@ c2 :> 0)
+
+129 states generated, 66 distinct states found, 27 states left on queue.
+The depth of the complete state graph search is 8.
+The average outdegree of the complete state graph is 2 (minimum is 0, the maximum 6 and the 95th percentile is 5).
+Finished in 01s at (2026-10-17 01:01:45)

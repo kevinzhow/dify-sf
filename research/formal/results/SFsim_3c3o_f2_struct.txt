@@ -1,0 +1,25 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running Random Simulation with seed -6595139745535830916 with 3 workers on 16 cores with 18204MB heap and 64MB offheap memory [pid: 413552] (Linux 7.0.0-38-generic amd64, Eclipse Adoptium 21.0.12.1 x86_64).
+Parsing file <tlc-workdir>/jobs/SFsim_3c3o_f2_struct/DifySF.tla
+Parsing file <tlc-workdir>/jobs/SFsim_3c3o_f2_struct/Common.tla
+Parsing file /tmp/TLC.tla
+Parsing file /tmp/Naturals.tla
+Parsing file /tmp/FiniteSets.tla
+Parsing file /tmp/Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module Common
+Semantic processing of module TLC
+Semantic processing of module DifySF
+Starting... (2026-10-17 00:57:48)
+Computed 1 initial states...
+Progress: 1755889 states checked.
+Progress: 3503762 states checked.
+Progress: 5057167 states checked.
+Progress: 6564453 states checked.
+Progress: 8206257 states checked.
+Progress: 9839046 states checked.
+Progress: 11425182 states checked.
+Progress: 13009732 states checked.
+Progress: 14728027 states checked.

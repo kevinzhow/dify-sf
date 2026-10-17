@@ -1,0 +1,39 @@
+id: A-addNode-addNode-R5-T1-F0-2p-27
+title: 两人各加一个节点（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: addNode
+    node: newA
+    value:
+      kind: code
+      x: 400
+      y: 420
+    from: start
+  - at: 50
+    user: B
+    op: addNode
+    node: newB
+    value:
+      kind: template
+      x: 720
+      y: 420
+    from: code1
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: addNode
+  op_b: addNode
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,38 @@
+id: A-listInsert-listInsert-R4-T1-F0-2p-18
+title: 两人各加一个输入变量（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: listInsert
+    node: code1
+    path: variables
+    value: a_in
+  - at: 50
+    user: B
+    op: listInsert
+    node: code1
+    path: variables
+    value: b_in
+faults: []
+settle: 14s
+expect:
+  final:
+    - node: code1
+      path: variables
+      contains:
+        - a_in
+        - b_in
+  notices: []
+repeat: 20
+tags:
+  op_a: listInsert
+  op_b: listInsert
+  rel: R4
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

@@ -1,0 +1,33 @@
+id: A-removeEdge-moveNode-R5-T1-F0-2p-31
+title: A 断线，B 拖动无关节点（并发）
+graph: fixtures/code-node-basic.yml
+users:
+  - A
+  - B
+steps:
+  - at: 0
+    user: A
+    op: removeEdge
+    from: llm1
+    to: ifelse1
+  - at: 50
+    user: B
+    op: moveNode
+    node: code2
+    value:
+      x: 1400
+      y: 40
+faults: []
+settle: 14s
+expect:
+  final: []
+  notices: []
+repeat: 20
+tags:
+  op_a: removeEdge
+  op_b: moveNode
+  rel: R5
+  timing: T1
+  fault: F0
+  users: 2p
+jitter_ms: 40

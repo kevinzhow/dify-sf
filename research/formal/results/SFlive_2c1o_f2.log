@@ -1,0 +1,39 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 61 and seed -3438467023651247662 with 4 workers on 16 cores with 18204MB heap and 64MB offheap memory [pid: 427051] (Linux 7.0.0-38-generic amd64, Eclipse Adoptium 21.0.12.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file <tlc-workdir>/jobs/SFlive_2c1o_f2/DifySF.tla
+Parsing file <tlc-workdir>/jobs/SFlive_2c1o_f2/Common.tla
+Parsing file /tmp/TLC.tla
+Parsing file /tmp/Naturals.tla
+Parsing file /tmp/FiniteSets.tla
+Parsing file /tmp/Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module Common
+Semantic processing of module TLC
+Semantic processing of module DifySF
+Starting... (2026-10-17 01:01:59)
+Implied-temporal checking--satisfiability problem has 1 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-10-17 01:02:00.
+Checking temporal properties for the current state space with 3921 total distinct states at (2026-10-17 01:02:03)
+Finished checking temporal properties in 00s at 2026-10-17 01:02:03
+Progress(5) at 2026-10-17 01:02:03: 6,273 states generated (6,273 s/min), 3,921 distinct states found (3,921 ds/min), 3,397 states left on queue.
+Checking temporal properties for the current state space with 164088 total distinct states at (2026-10-17 01:03:03)
+Finished checking temporal properties in 02s at 2026-10-17 01:03:05
+Progress(9) at 2026-10-17 01:03:05: 477,036 states generated (470,763 s/min), 164,090 distinct states found (160,169 ds/min), 78,195 states left on queue.
+Checking temporal properties for the current state space with 297309 total distinct states at (2026-10-17 01:04:05)
+Finished checking temporal properties in 07s at 2026-10-17 01:04:12
+Progress(11) at 2026-10-17 01:04:12: 1,107,651 states generated (630,615 s/min), 297,346 distinct states found (133,256 ds/min), 51,764 states left on queue.
+Progress(12) at 2026-10-17 01:04:33: 1,373,266 states generated, 324,370 distinct states found, 0 states left on queue.
+Checking temporal properties for the complete state space with 324370 total distinct states at (2026-10-17 01:04:33)
+Finished checking temporal properties in 09s at 2026-10-17 01:04:43
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.8E-8
+  based on the actual fingerprints:  val = 4.9E-9
+1373266 states generated, 324370 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 12.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 22 and the 95th percentile is 4).
+Finished in 02min 44s at (2026-10-17 01:04:43)

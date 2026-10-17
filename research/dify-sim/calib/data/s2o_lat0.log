@@ -1,0 +1,165 @@
+0 ok
+1 ok
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+2 KeyError: "Locator.blur: 'code'"
+3 ok
+4 ok
+5 ok
+6 ok
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+7 TimeoutError: Locator.blur: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("input[placeholder=\"Variable name\"]").nth(2)
+
+8 ok
+9 ok
+10 ok
+11 ok
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+12 TimeoutError: Locator.blur: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("input[placeholder=\"Variable name\"]").nth(2)
+
+13 ok
+14 ok
+15 ok
+16 ok
+17 ok
+18 ok
+19 ok
+20 ok
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+21 TimeoutError: Locator.blur: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("input[placeholder=\"Variable name\"]").nth(2)
+
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+22 TimeoutError: Locator.blur: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("input[placeholder=\"Variable name\"]").nth(2)
+
+23 ok
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+24 TimeoutError: Locator.blur: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("input[placeholder=\"Variable name\"]").nth(2)
+
+25 ok
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+Error occurred in event listener
+Traceback (most recent call last):
+  File "research/real-browser/.venv/lib/python3.12/site-packages/pyee/asyncio.py", line 79, in _emit_run
+    coro: Any = f(*args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^
+  File "research/real-browser/.venv/lib/python3.12/site-packages/playwright/_impl/_network.py", line 699, in _channel_close_page
+    self._on_page_close(event["code"], event["reason"])
+                        ~~~~~^^^^^^^^
+KeyError: 'code'
+26 TimeoutError: Locator.blur: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator("input[placeholder=\"Variable name\"]").nth(2)
+
+27 ok
+28 ok
+29 ok
