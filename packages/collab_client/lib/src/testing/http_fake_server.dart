@@ -10,6 +10,7 @@ import '../model/templates.dart';
 import '../wire/messages.dart';
 import 'fake_accounts.dart';
 import 'fake_comments.dart';
+import 'fake_dsl.dart';
 import 'fake_server.dart';
 
 /// The protocol served over real HTTP and SSE sockets, backed by in-memory [FakeServer]s (one per
@@ -197,11 +198,12 @@ class HttpFakeServer {
         }
         if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2], account);
         if (seg.length == 4 && seg[3] == 'secrets' && req.method == 'POST') return await _storeSecret(req, seg[2]);
+        if (seg.length == 4 && seg[3] == 'replace' && req.method == 'POST') return await _replace(req, seg[2], account);
         if (seg.length >= 4 && seg.length <= 7 && seg[3] == 'comments') return await _comments(req, seg, account);
         if (seg.length == 4 && seg[3] == 'meta' && req.method == 'GET') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
-          return await _json(req, 200, appMeta(seg[2], d.doc));
+          return await _json(req, 200, appMeta(seg[2], d.doc, app: d.difyApp));
         }
       }
       await _error(req, 404, 'not_found', 'no such route');
@@ -229,6 +231,64 @@ class HttpFakeServer {
     if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
     final (:ref, :masked) = d.storeSecret(value);
     await _json(req, 201, {'ref': ref, 'masked': masked});
+  }
+
+  /// `POST /v1/docs/{doc}/replace` (docs/protocol.md section 2, "Replacing a document"), on [FakeServer.replace]. The body is
+  /// the YAML, or JSON `{"yaml", "client"?, "cseq"?, "confirm"?}`; `client`, `cseq`, `confirm` may be query parameters.
+  Future<void> _replace(HttpRequest req, String docId, String? account) async {
+    final text = await utf8.decoder.bind(req).join();
+    final q = req.uri.queryParameters;
+    var yaml = text;
+    var client = q['client'];
+    var cseq = int.tryParse(q['cseq'] ?? '');
+    var confirm = q['confirm'] == 'true';
+    try {
+      final json = jsonDecode(text);
+      if (json is Map<String, Object?> && json['yaml'] is String) {
+        yaml = json['yaml']! as String;
+        if (json['client'] is String) client = json['client']! as String;
+        if (json['cseq'] is int) cseq = json['cseq']! as int;
+        if (json['confirm'] is bool) confirm = json['confirm']! as bool;
+      }
+    } on FormatException {
+      // YAML
+    }
+    if (client == null || client.isEmpty) {
+      return await _error(req, 400, 'bad_request', "client (the caller's client id) is required");
+    }
+    if (cseq == null || cseq < 1) {
+      return await _error(req, 400, 'bad_request', "cseq (the client's next cseq, >= 1) is required");
+    }
+    final d = docs[docId];
+    if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+    if (account != null) {
+      try {
+        d.requireOwnClient(client, account);
+      } on FakeAuthError catch (e) {
+        return await _error(req, e.status, e.code, e.message);
+      }
+    }
+    final Object? root;
+    try {
+      root = FakeDifyDsl.parseYaml(yaml);
+    } on Object catch (e) {
+      return await _error(req, 400, 'bad_request', 'Invalid YAML format: $e');
+    }
+    try {
+      await _json(req, 200, d.replace(client: client, cseq: cseq, root: root, confirm: confirm));
+    } on FakeReplaceError catch (e) {
+      if (e.importedVersion != null) {
+        return await _json(req, e.status, {
+          'error': {
+            'code': e.code,
+            'message': e.message,
+            'imported_dsl_version': e.importedVersion,
+            'current_dsl_version': FakeDifyDsl.currentDslVersion,
+          },
+        });
+      }
+      await _error(req, e.status, e.code, e.message);
+    }
   }
 
   /// The canvas comments routes (`/v1/docs/{doc}/comments...`), on the document's [FakeServer.comments].
@@ -324,15 +384,18 @@ class HttpFakeServer {
 
   /// `GET /v1/docs/{doc}/meta` for a document that was not imported: the defaults of the reference server, with the
   /// variables and features of the document at head (protocol 1.7; secrets masked, never a `secret_ref`).
-  static Map<String, Object?> appMeta(String docId, Document doc) => {
-    'app': {
-      'name': docId,
-      'mode': 'workflow',
-      'description': '',
-      'icon': '🤖',
-      'icon_background': '#FFEAD5',
-      'use_icon_as_answer_icon': false,
-    },
+  /// [app]: Dify's `app` section of the file that replaced the document (`POST /replace`), if any.
+  static Map<String, Object?> appMeta(String docId, Document doc, {Map<String, Object?>? app}) => {
+    'app':
+        app ??
+        {
+          'name': docId,
+          'mode': 'workflow',
+          'description': '',
+          'icon': '🤖',
+          'icon_background': '#FFEAD5',
+          'use_icon_as_answer_icon': false,
+        },
     'kind': 'app',
     'version': '0.3.1',
     'dependencies': const <Object?>[],

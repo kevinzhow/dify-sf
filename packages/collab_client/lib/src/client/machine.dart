@@ -216,6 +216,12 @@ class ClientMachine {
   /// edits are refused locally (as [LocalInvalid] with [Forbidden]).
   bool get editsForbidden => _forbidden;
 
+  // Replacing the document (`POST /replace`, docs/protocol.md section 9, "Replacing the document")
+  bool _replacing = false;
+
+  /// A replacement is under way ([beginReplace]): new edits are refused locally.
+  bool get replacing => _replacing;
+
   final List<_Pending> _outbox = [];
   final List<ClientEvent> _events = [];
   final Random _random;
@@ -290,6 +296,11 @@ class ClientMachine {
       _events.add(LocalInvalid(op: op, reason: reason));
       return const EditResult(null, [], reason);
     }
+    if (_replacing) {
+      const reason = Invalid('the document is being replaced');
+      _events.add(LocalInvalid(op: op, reason: reason));
+      return const EditResult(null, [], reason);
+    }
     if (!hasState) {
       const reason = Invalid('not synced yet');
       _events.add(LocalInvalid(op: op, reason: reason));
@@ -309,6 +320,32 @@ class ClientMachine {
     viewRevision++;
     return EditResult(cseq, _flushIfIdle(now));
   }
+
+  // ---- replacing the document --------------------------------------------------------------------
+
+  /// Starts replacing the document (`POST /v1/docs/{doc}/replace`): from now on new edits are refused locally (as
+  /// [LocalInvalid]) until [finishReplace] or [abortReplace]. Send the request once [replaceCseq] is not null.
+  void beginReplace() => _replacing = true;
+
+  /// The cseq a replacement may reserve (= [nextCseq]) once the server has handled every cseq below it: no unresolved
+  /// op, no pending `floor`, no POST in flight, synced, allowed to edit, the id not compromised. Null until then.
+  int? get replaceCseq {
+    if (!_replacing || _outbox.isNotEmpty || !hasState || _forbidden || _idCompromised || _floor != null) return null;
+    if (_inFlightSince != null) return null;
+    return nextCseq;
+  }
+
+  /// The replacement was committed (or replayed): continue at [next] (`next_cseq` of the answer) and accept edits again.
+  void finishReplace(int next) {
+    _replacing = false;
+    if (next > nextCseq) {
+      nextCseq = next;
+      durableRevision++;
+    }
+  }
+
+  /// The replacement was refused or given up: nothing was reserved; accept edits again.
+  void abortReplace() => _replacing = false;
 
   // ---- timers and transport signals --------------------------------------------------------------
 

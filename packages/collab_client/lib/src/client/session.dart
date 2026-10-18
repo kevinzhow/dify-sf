@@ -10,6 +10,7 @@ import 'display_name.dart';
 import 'durable.dart';
 import 'events.dart';
 import 'machine.dart';
+import 'replace.dart';
 import 'store.dart';
 import 'transport.dart';
 
@@ -239,6 +240,69 @@ class CollabSession {
 
   /// The OS says connectivity is back: reconnect immediately and resend.
   void networkAvailable() => _feed(() => _machine.networkAvailable(_clock()));
+
+  /// Replaces the document with a Dify workflow file (`POST /v1/docs/{doc}/replace`, docs/protocol.md section 9, "Replacing
+  /// the document"): refuses new edits, waits until every local op is resolved, then calls [send] with this session's
+  /// client id and the cseq to reserve (typically `(id, cseq) => api.replaceDocument(doc, yaml, id, cseq: cseq)`), and
+  /// continues at the answer's `next_cseq`. A timeout, a transport error or a `5xx` is retried with the identical
+  /// request (the server answers a committed replacement as `replayed`); any other failure is rethrown with nothing
+  /// changed. Completes once the stream has delivered the replacement (or after [settleTimeout]), so [view] shows it.
+  /// Edits are accepted again afterwards, also after a failure. Throws [TimeoutException] if the local ops do not
+  /// resolve within [readyTimeout].
+  Future<ReplaceResult> replaceDocument(
+    Future<ReplaceResult> Function(String clientId, int cseq) send, {
+    Duration readyTimeout = const Duration(seconds: 30),
+    Duration settleTimeout = const Duration(seconds: 10),
+  }) async {
+    if (!_running) throw StateError('the session is not running');
+    if (_machine.replacing) throw StateError('a replacement is already under way');
+    _machine.beginReplace();
+    _afterMachine();
+    try {
+      final ready = Stopwatch()..start();
+      int? cseq;
+      while ((cseq = _machine.replaceCseq) == null) {
+        if (!_running) throw StateError('the session stopped');
+        if (_machine.editsForbidden) {
+          throw const TransportException('editing is not allowed', statusCode: 403, code: 'forbidden');
+        }
+        if (ready.elapsed > readyTimeout) throw TimeoutException('local edits did not resolve', readyTimeout);
+        await _nextChange(tickInterval);
+      }
+      final id = _machine.id;
+      ReplaceResult result;
+      var attempt = 0;
+      while (true) {
+        try {
+          result = await send(id, cseq!);
+          break;
+        } on DslVersionUnconfirmed {
+          rethrow;
+        } on TransportException catch (e) {
+          final uncertain = e.timeout || e.statusCode == null || e.statusCode! >= 500;
+          if (!uncertain || !_running || ++attempt >= 4) rethrow;
+          await Future<void>.delayed(Duration(milliseconds: 500 << attempt));
+        }
+      }
+      _machine.finishReplace(result.nextCseq);
+      _afterMachine();
+      await _persistedFuture();
+      final settle = Stopwatch()..start();
+      while (_running && _machine.lastSeq < result.head && settle.elapsed < settleTimeout) {
+        await _nextChange(tickInterval);
+      }
+      return result;
+    } finally {
+      if (_machine.replacing) {
+        _machine.abortReplace();
+        _afterMachine();
+      }
+    }
+  }
+
+  /// Waits for the next announced change, at most [max].
+  Future<void> _nextChange(Duration max) =>
+      _changes.stream.first.timeout(max, onTimeout: () {}).catchError((Object _) {});
 
   /// Completes when every local op has a terminal outcome and the stream is live.
   Future<void> settled() {
