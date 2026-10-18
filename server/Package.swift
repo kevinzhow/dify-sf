@@ -23,6 +23,12 @@ let package = Package(
         .package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2"),
         // Already in the graph through Vapor (same version as Package.resolved): SHA-256 for token hashes, PBKDF2 for passwords.
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "4.5.2"),
+        // Vendored copy of swift-smtp 2.19.0 (password-reset mail, Dify's ext_mail `smtp`): a maintained Swift 6 SMTP client on
+        // swift-nio, whose manifest is reduced to its SwiftSMTP library because upstream's also requires Vapor 4
+        // (see Vendor/swift-smtp/PATCHES.md).
+        .package(path: "Vendor/swift-smtp"),
+        // Already in the graph through Vapor (same version as Package.resolved): the tests' stub SMTP server.
+        .package(url: "https://github.com/apple/swift-nio.git", exact: "2.104.0"),
     ],
     targets: [
         // Pure protocol logic: document model, ops, wire format, sequencer, client state machine. No I/O.
@@ -47,6 +53,7 @@ let package = Package(
             .product(name: "Configuration", package: "swift-configuration"),
             .product(name: "Crypto", package: "swift-crypto"),
             .product(name: "CryptoExtras", package: "swift-crypto"),
+            .product(name: "SwiftSMTP", package: "swift-smtp"),
         ]),
         .executableTarget(name: "collab-server", dependencies: ["CollabServer"]),
         // Real HTTP/SSE driver around the pure client state machine (used by the chaos/storm harness).
@@ -66,6 +73,7 @@ let package = Package(
             .product(name: "PostgresNIO", package: "postgres-nio"),
             .product(name: "Configuration", package: "swift-configuration"),
             .product(name: "VaporTesting", package: "vapor"),
+            .product(name: "NIOPosix", package: "swift-nio"),
         ]),
     ]
 )

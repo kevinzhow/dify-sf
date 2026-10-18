@@ -9,6 +9,13 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* Additive, no version change: **password reset** (section 2, "Password reset"): Dify 1.17.1's forgot-password flow with a
+  six-digit code by mail (`POST /v1/forgot-password`, `/v1/forgot-password/validity`, `/v1/forgot-password/resets`), the
+  system features the sign-in page reads (`GET /v1/system-features`: `is_email_setup`), the server's SMTP configuration,
+  and, dify-sf only, owners' and admins' one-time reset links for servers without mail
+  (`POST /v1/workspace/members/{id}/reset-password-link`). Setting a password this way revokes every session of the account.
+  New error codes: `mail_not_configured`, `invalid_email`, `email_code_error`, `password_mismatch`, `account_not_found` (400),
+  `email_send_ip_limit`, `password_reset_rate_limit_exceeded`, `email_password_reset_limit` (429).
 * Additive, no version change: **replacing a document from a Dify workflow file**, `POST /v1/docs/{doc}/replace` (Dify's
   "Import DSL" in the editor, which overwrites the open app's draft; section 2, "Replacing a document"). The server commits
   the replacement as ordinary ops of the caller's client id (cseqs reserved by the caller, section 9, "Replacing the
@@ -183,6 +190,9 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | GET | `/v1/workspace/members` | member | The members (1.8). |
 | POST, PUT, DELETE | `/v1/workspace/members/...` | privileged | Invite, change a role, remove (1.8). |
 | POST | `/v1/activate/check`, `/v1/activate` | public | Accept an invitation (1.8). |
+| GET | `/v1/system-features` | public | Sign-in options; whether the server sends mail ("Password reset"). |
+| POST | `/v1/forgot-password`, `/v1/forgot-password/validity`, `/v1/forgot-password/resets` | public | Reset a forgotten password with a code by mail ("Password reset"). |
+| POST | `/v1/workspace/members/{id}/reset-password-link` | privileged | dify-sf only: a one-time reset link for a member ("Password reset"). |
 | POST | `/v1/docs` | edit | Create a document with a server-generated id. Body optional: `{"template":"example"\|"empty"}`. `201 {"id","head":0,"created":true}`. |
 | PUT | `/v1/docs/{doc}` | edit | Create the document if absent (idempotent). Body optional as above. `201` if created, `200` if it existed: `{"id","head","created":bool}`. |
 | GET | `/v1/docs/{doc}` | member | Metadata: `200 {"id","head"}`, `404` if unknown. |
@@ -207,7 +217,8 @@ node.
 ### Accounts (1.8)
 
 Email + password accounts as in Dify 1.17.1's community edition: **one workspace per server**, created by the install
-(`POST /v1/setup`); everyone else joins by invitation. No email codes, no third-party sign-in, no mail server.
+(`POST /v1/setup`); everyone else joins by invitation. No email-code sign-in, no third-party sign-in; mail is optional and
+only resets passwords ("Password reset").
 
 **Accounts and roles.** An account has an `id` (a UUID), an `email` (unique ignoring case), a `name`, an optional
 `avatar_url`, a `status` (`active`; `pending` = invited, not activated; `banned`), optional `interface_language` and
@@ -256,7 +267,7 @@ with milliseconds; absent members are unset).
 | POST | `/v1/activate/check` | `{"token"}` | `200 {"is_valid":true,"data":{"email","workspace_name","account_status":"pending","requires_setup":true}}` or `{"is_valid":false}` (also `GET /v1/activate/check?token=`, Dify's form; the last two members are Dify's and always these values for a valid link) |
 | POST | `/v1/activate` | `{"token","name","password","interface_language"?,"timezone"?}` | `200` signed in; sets the invited account's name and password and activates it. `400 invalid_token` for an unknown, expired (72 hours) or used token |
 
-* **Invitations.** There is no mail server: as Dify does when mail is not configured, the answer carries each activation link
+* **Invitations.** Invitations are not mailed: as Dify does when mail is not configured, the answer carries each activation link
   (relative to the web app; the app builds `/activate?token=...` into its own URL). Inviting a new email creates a `pending`
   account with the role; inviting an existing account that is no longer a member makes it a member again (it signs in with
   its old password; its link is not valid for activation). The workspace's name is `"<owner name>'s Workspace"` (Dify's default).
@@ -277,6 +288,41 @@ with milliseconds; absent members are unset).
 * **Test harnesses** use real accounts: the chaos/storm harness installs a test account on its fresh database
   (`POST /v1/setup`) or signs in with it; all its clients share that account, each with its own client id. There is no
   test-only switch that turns authentication off.
+
+### Password reset
+
+Additive (no protocol version change). Dify 1.17.1's forgot-password flow (`/console/api/forgot-password`, its web app's
+`/reset-password` pages): a six-digit code by mail, then a new password. Servers without mail answer `400 mail_not_configured`
+to the first step and say so in the system features, where the sign-in page disables "Forgot your password?"; there, owners
+and admins hand out one-time reset links instead (dify-sf only; Dify's community edition resets passwords on its command line).
+
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| GET | `/v1/system-features` | - | `200 {"enable_email_code_login":false,"enable_email_password_login":true,"is_allow_register":false,"is_email_setup":bool}` (the members of Dify's `/console/api/system-features` the sign-in page reads). `is_email_setup`: mail is configured |
+| POST | `/v1/forgot-password` | `{"email","language"?}` | `200 {"result":"success","data":"<token>"}`: a code went to the email. **The same answer for an email without an account** (that address gets Dify's "not associated with any account" mail instead; no code). `language`: `zh-Hans` mails in Chinese, anything else in English. `400 bad_request` for an invalid email, `400 mail_not_configured` without mail, `429 email_send_ip_limit`, `429 password_reset_rate_limit_exceeded` (below) |
+| POST | `/v1/forgot-password/validity` | `{"email","code","token"}` | `200 {"is_valid":true,"email":"<lower-cased>","token":"<reset token>"}`: the code was right; `token` is spent and the answer's token resets the password. `400 invalid_token` (unknown, used, replaced by a newer code, or expired), `400 invalid_email` (not the token's email), `400 email_code_error` (wrong code; counts, below), `429 email_password_reset_limit` |
+| POST | `/v1/forgot-password/resets` | `{"token","new_password","password_confirm"}` | `200 {"result":"success"}`: the password is set, **every session of the account is revoked**, the token and every other reset token or link of the account are spent, and an invited account that had not activated yet becomes active (its invitation link is then spent). `400 invalid_password` (Dify's rule, both fields), `400 password_mismatch`, `400 invalid_token` (unknown, used or expired reset token or link), `400 account_not_found` |
+| POST | `/v1/workspace/members/{id}/reset-password-link` | - | **dify-sf only.** `201 {"url":"/reset-password/set-password?email=...&token=...","expires_at"}`: a one-time link (relative to the web app, like invitation links) whose token goes to `/forgot-password/resets`. Privileged; any member but the owner, and the owner for itself only (`403 forbidden`); `404` for a non-member. A new link replaces the member's earlier one; email codes do not affect links. Works without mail. Admins never set or see another member's password |
+
+* **Codes and tokens** (Dify's `RESET_PASSWORD_TOKEN_EXPIRY_MINUTES`): six random digits, valid **5 minutes**, as is the reset
+  token after a right code. A new code for an email replaces its earlier code and reset token (Dify's one current token per
+  account). Tokens are 32 random bytes (base64url); the server stores only their SHA-256, and for a code only the SHA-256 of
+  token and code. Admin links are valid 24 hours.
+* **Rate limits** (Dify's, kept per server process like the login limit): **one mail per address per 60 seconds**
+  (`429 password_reset_rate_limit_exceeded`, "Please try again in 1 minutes."), for addresses with and without an account
+  alike; **mails per IP**: more than 50 within a minute of each other are refused (`429 email_send_ip_limit`), and a second
+  excess within 10 minutes blocks the IP for an hour (the IP is the `Forwarded` / `X-Forwarded-For` client, else the peer, as
+  Dify); **wrong codes**: every wrong code for an email counts and renews a 24-hour window; with **more than 5** the email is
+  locked (`429 email_password_reset_limit`, even with the right code) until the window passes; a right code clears the count.
+* **Mail** (Dify's `MAIL_TYPE=smtp`): `COLLAB_MAIL_SMTP_HOST`, `COLLAB_MAIL_SMTP_PORT` (default by TLS mode: 465, 587, 25),
+  `COLLAB_MAIL_SMTP_TLS` (`ssl` = implicit TLS, the default; `starttls` = STARTTLS required; `none`),
+  `COLLAB_MAIL_SMTP_USERNAME` and `COLLAB_MAIL_SMTP_PASSWORD` (authenticates only when both are set), `COLLAB_MAIL_FROM`
+  (`Name <address>` or an address), `COLLAB_MAIL_TIMEOUT_SECONDS` (10). Mail is configured when host and sender are set. Mails
+  are Dify's templates (English and Chinese) and go out in the background: answers do not wait for the mail server, and
+  failures are only logged.
+* **Configuration**: `COLLAB_AUTH_RESET_PASSWORD_TOKEN_MINUTES` (5), `COLLAB_AUTH_RESET_PASSWORD_SEND_INTERVAL_SECONDS` (60),
+  `COLLAB_AUTH_FORGOT_PASSWORD_MAX_FAILURES` (5), `COLLAB_AUTH_FORGOT_PASSWORD_LOCKOUT_SECONDS` (86400),
+  `COLLAB_AUTH_EMAIL_SEND_IP_LIMIT_PER_MINUTE` (50), `COLLAB_AUTH_RESET_LINK_HOURS` (24).
 
 ### Dify app metadata: `GET /v1/docs/{doc}/meta`
 
@@ -510,6 +556,8 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |
 | 429 | `login_rate_limited` | 1.8: too many failed sign-ins for this email (Dify's rule). | Wait (24 hours by default). |
+| 400 | `mail_not_configured`, `invalid_email`, `email_code_error`, `password_mismatch`, `account_not_found` | Password reset: no mail on this server; not the code's email; a wrong code; the new passwords differ; the account is gone. | Tell the user. |
+| 429 | `email_send_ip_limit`, `password_reset_rate_limit_exceeded`, `email_password_reset_limit` | Password reset: too many mails from this IP; a mail for this address in the last minute; too many wrong codes. | Wait. |
 | 503 | `unavailable` | Database unavailable, or the commit outcome was uncertain. | Retry the identical request with backoff. **Safe**: ops are idempotent. |
 | 500 | `internal` | Server bug. | Retry with backoff. |
 

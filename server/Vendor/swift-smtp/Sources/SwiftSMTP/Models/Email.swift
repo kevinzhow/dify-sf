@@ -1,0 +1,273 @@
+public import struct Foundation.Data
+public import struct Foundation.Date
+public import struct NIO.ByteBuffer
+
+@usableFromInline
+internal enum AnyEmail: Sendable, Equatable {
+    case regular(Email)
+    case precomposed(PrecomposedEmail)
+
+    var senderAddress: String {
+        switch self {
+        case .regular(let email): email.sender.emailAddress
+        case .precomposed(let email): email.senderAddress
+        }
+    }
+
+    var recipientAddresses: Array<String> {
+        switch self {
+        case .regular(let email): email.allRecipients.map(\.emailAddress)
+        case .precomposed(let email): email.recipientAddresses
+        }
+    }
+
+    var messagePayload: MessagePayload {
+        switch self {
+        case .regular(let email): .newlyComposed(email, date: Date())
+        case .precomposed(let email):.precomposed(email.message)
+        }
+    }
+
+    @inlinable
+    func validate() throws {
+        switch self {
+        case .regular(let email): try email.validate()
+        case .precomposed(let email): try email.validate()
+        }
+    }
+}
+
+/// Represents an email whose message is pre-composed (e.g. a pre-built RFC 2822 payload).
+/// Use this type when the canonical RFC 2822 bytes for the message already exist, e.g. when the same bytes
+/// must be delivered to SMTP `DATA` and stored verbatim via IMAP `APPEND`, when the message has been DKIM-signed and
+/// must not be re-serialised, or when forwarding a message retrieved from another mail store.
+///
+/// The SMTP envelope addresses (`senderAddress` / `recipientAddresses`) are independent of the RFC 2822 `From:` / `To:` / `Cc:` headers.
+/// Pass the actual SMTP envelope here — typically including any BCC recipients that do not appear in the message headers.
+///
+/// - SeeAlso: ``Email``
+public struct PrecomposedEmail: Sendable, Equatable {
+    /// The email address of the sender of the email.
+    public var senderAddress: String
+    /// The email addresses of the recipients of the email.
+    public var recipientAddresses: Array<String>
+
+    /// The pre-composed message payload.
+    ///
+    /// The encoder applies dot-stuffing per RFC 5321 §4.5.2 and adds a trailing `<CRLF>` to the payload before the
+    /// `<CRLF>.<CRLF>` terminator if the payload does not already end with one.
+    /// Bare LFs in the payload pass through unchanged — strict servers may reject such payloads.
+    ///
+    /// No maximum message size is enforced. Developers are responsible for keeping the message within reasonable sizes.
+    public var message: ByteBuffer
+
+    /// Create a new pre-composed email.
+    /// - Parameters:
+    ///   - senderAddress: The email address of the sender of the email.
+    ///   - recipientAddresses: The email addresses of the recipients of the email.
+    ///   - message: The pre-composed message payload.
+    public init(senderAddress: String, recipientAddresses: Array<String>, message: ByteBuffer) {
+        self.senderAddress = senderAddress
+        self.recipientAddresses = recipientAddresses
+        self.message = message
+    }
+
+    /// Create a new pre-composed email.
+    /// - Parameters:
+    ///   - senderAddress: The email address of the sender of the email.
+    ///   - recipientAddresses: The email addresses of the recipients of the email.
+    ///   - messageData: The pre-composed message payload as `Data`. Will be converted to a `ByteBuffer`.
+    ///
+    /// - Note: The `messageData` parameter will be converted to `ByteBuffer`. For improved performance, consider using `ByteBuffer` from the start.
+    @inlinable
+    public init(senderAddress: String, recipientAddresses: Array<String>, messageData: Data) {
+        self.init(senderAddress: senderAddress,
+                  recipientAddresses: recipientAddresses,
+                  message: ByteBuffer(bytes: messageData))
+    }
+}
+
+/// Represents an email whose message will be MIME-encoded when sent to the server.
+/// Use this type, when a new message should be composed, w/o any existing SMTP payload.
+/// - SeeAlso: ``PrecomposedEmail``
+public struct Email: Sendable, Equatable {
+    /// The sender of the email.
+    public var sender: Contact
+    /// An optional reply-to address.
+    public var replyTo: Contact?
+
+    /// The recipients of the email.
+    public var recipients: Array<Contact>
+    /// The (carbon-)copy recipients of the email.
+    public var cc: Array<Contact>
+    /// The blind (carbon-)copy recipients of the email.
+    public var bcc: Array<Contact>
+
+    /// The subject of the email.
+    public var subject: String
+    /// The body of the email.
+    public var body: Body
+
+    /// The attachments to attach to the email.
+    public var attachments: Array<Attachment>
+
+    @inlinable
+    internal var allRecipients: Array<Contact> { recipients + cc + bcc }
+
+    /// Creates a new email with the given parameters.
+    /// - Parameters:
+    ///   - sender: The sender of the email.
+    ///   - replyTo: The optional reply-to address. Defaults to nil.
+    ///   - recipients: The list of recipients of the email.
+    ///   - cc: The list of (carbon-)copy recipients. Defaults to an empty array.
+    ///   - bcc: The list of blind (carbon-)copy recipients. Defaults to an empty array.
+    ///   - subject: The subject of the email.
+    ///   - body: The body of the email.
+    ///   - attachments: The list of attachments of the email. Defaults to an empty array.
+    public init(sender: Contact,
+                replyTo: Contact? = nil,
+                recipients: Array<Contact>,
+                cc: Array<Contact> = [],
+                bcc: Array<Contact> = [],
+                subject: String,
+                body: Body,
+                attachments: Array<Attachment> = []) {
+        self.sender = sender
+        self.replyTo = replyTo
+        self.recipients = recipients
+        self.cc = cc
+        self.bcc = bcc
+        self.subject = subject
+        self.body = body
+        self.attachments = attachments
+    }
+}
+
+extension Email {
+    /// Represents an email contact.
+    public struct Contact: Sendable, Hashable {
+        /// The (full) name of the contact. Can be `nil`.
+        public var name: String?
+        /// The email address of the contact.
+        /// - Precondition: Must not be empty!
+        public var emailAddress: String {
+            didSet {
+                assert(!emailAddress.isEmpty)
+            }
+        }
+
+        internal var asMIME: String {
+            guard let name else { return emailAddress }
+            let quotedName = #""\#(name.replacingOccurrences(of: #"""#, with: #"\"#))""#
+            return "\(quotedName) <\(emailAddress)>"
+        }
+
+        /// Creates a new email contact with the given parameters.
+        /// - Parameters:
+        ///   - name: The (full) name of the contact. Defaults to `nil`.
+        ///   - emailAddress: The email address of the contact. Must not be empty.
+        public init(name: String? = nil, emailAddress: String) {
+            assert(!emailAddress.isEmpty)
+            self.name = name
+            self.emailAddress = emailAddress
+        }
+    }
+
+    // TODO: The whole "body" & "attachments" part should be refactored to allow some kind of dynamic composition.
+    //       This would also make multipart handling easier (alternative, mixed, related)...
+
+    /// Represents the body of an email.
+    public enum Body: Sendable, Hashable {
+        /// A plain text body with no formatting.
+        case plain(String)
+        /// An HTML formatted body.
+        case html(String)
+        /// A body containing both, plain text and HTML. The recipient's client will determine what to show.
+        case universal(plain: String, html: String)
+    }
+
+    /// Represents an email attachment.
+    public struct Attachment: Sendable, Equatable {
+        /// Defines the attachment kind. Relates to how email clients show it.
+        /// This controls the `Content-Disposition` header of the attachment's MIME-part.
+        /// The content id be used for referencing the attachment in the email body.
+        /// Note that the content id must be unique. The recommended format is to use `<some-generated-value>@domain.example.com`.
+        public enum Kind: Sendable, Hashable {
+            /// A default attachment, that is shown by email clients as such. The content ID is optional.
+            /// - Parameter contentID: The content ID of the attachment.
+            case attachment(contentID: String?)
+            /// An inline attachment, that can be referenced in HTML emails. A content ID is required.
+            /// - Parameter contentID: The content ID of the attachment for later referencing.
+            case inline(contentID: String)
+
+            @usableFromInline
+            internal var contentID: String? {
+                switch self {
+                case .attachment(let contentID), .inline(let contentID as String?): contentID
+                }
+            }
+        }
+
+        /// The kind of the attachment.
+        public var kind: Kind
+        /// The (file) name of the attachment.
+        public var name: String
+        /// The content type of the attachment.
+        public var contentType: String
+        /// The data of the attachment.
+        public var data: Data // TODO: Use ByteBuffer
+
+        internal var isInline: Bool {
+            switch kind {
+            case .attachment(_): false
+            case .inline(_): true
+            }
+        }
+
+        /// The content id of this attachment. Defined via ``kind``.
+        /// - SeeAlso: ``Kind``
+        @inlinable
+        public var contentID: String? { kind.contentID }
+
+        /// Creates a new email attachment with the given parameters.
+        /// - Parameters:
+        ///   - kind: The kind of this attachment.
+        ///   - name: The (file) name of the attachment.
+        ///   - contentType: The content type of the attachment.
+        ///   - data: The data of the attachment.
+        public init(kind: Kind, name: String, contentType: String, data: Data) {
+            self.kind = kind
+            self.name = name
+            self.contentType = contentType
+            self.data = data
+        }
+
+        /// Creates a new email attachment with the given parameters. The resulting attachment is of kind `.attachment(contentID: nil)`.
+        /// - Parameters:
+        ///   - name: The (file) name of the attachment.
+        ///   - contentType: The content type of the attachment.
+        ///   - data: The data of the attachment.
+        public init(name: String, contentType: String, data: Data) {
+            self.init(kind: .attachment(contentID: nil), name: name, contentType: contentType, data: data)
+        }
+
+        /// Creates a new email attachment with the given parameters.
+        /// - Parameters:
+        ///   - kind: The kind of this attachment.
+        ///   - name: The (file) name of the attachment.
+        ///   - contentType: The content type of the attachment.
+        ///   - contents: The contents of the attachment.
+        public init(kind: Kind, name: String, contentType: String, contents: ByteBuffer) {
+            self.init(kind: kind, name: name, contentType: contentType, data: Data(contents.readableBytesView))
+        }
+
+        /// Creates a new email attachment with the given parameters. The resulting attachment is of kind `.attachment(contentID: nil)`.
+        /// - Parameters:
+        ///   - name: The (file) name of the attachment.
+        ///   - contentType: The content type of the attachment.
+        ///   - contents: The contents of the attachment.
+        public init(name: String, contentType: String, contents: ByteBuffer) {
+            self.init(kind: .attachment(contentID: nil), name: name, contentType: contentType, contents: contents)
+        }
+    }
+}

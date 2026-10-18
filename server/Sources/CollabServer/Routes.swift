@@ -8,6 +8,8 @@ import Vapor
 
 /// HTTP surface (docs/protocol.md, section 2).
 struct Routes: Sendable {
+    /// Forgot password: Dify's mail and code limits (per process).
+    let passwordResetLimits = PasswordResetLimits()
     let registry: DocumentRegistry
     let store: PostgresStore
     let config: ServerConfig

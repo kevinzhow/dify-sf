@@ -181,6 +181,23 @@ public enum Schema {
             created_at timestamptz NOT NULL DEFAULT now()
         )
         """,
+        // Forgot password (Dify's `reset_password:token:*` in Redis) and the admins' reset links, by SHA-256 of the token.
+        // `phase`: `verify` (an email code was sent; `code_hash` = SHA-256 of token and code), `reset` (the code was right),
+        // `link` (an admin's reset link). `account_id` is NULL for an email without an account (Dify answers alike).
+        """
+        CREATE TABLE IF NOT EXISTS password_resets (
+            token_hash text        PRIMARY KEY,
+            account_id text        REFERENCES accounts(id) ON DELETE CASCADE,
+            email      text        NOT NULL,
+            code_hash  text,
+            phase      text        NOT NULL,
+            created_by text,
+            expires_at timestamptz NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS password_resets_by_email ON password_resets (lower(email))",
+        "CREATE INDEX IF NOT EXISTS password_resets_by_account ON password_resets (account_id)",
         // A client id belongs to the account that obtained it (POST /clients) or used it first; ops under it from any other
         // account are refused (protocol 1.8). Never changes once written.
         """

@@ -29,6 +29,11 @@ public struct ServerConfig: Sendable {
     /// Fault injection for tests: extra delay (milliseconds) before every commit. 0 in production.
     public var testCommitDelayMillis: Int
     public var logLevel: String
+    /// Outgoing mail (Dify's `MAIL_TYPE=smtp`, `SMTP_*`, `MAIL_DEFAULT_SEND_FROM`): unset = no mail (`MailConfig`).
+    public var mail: MailConfig
+    /// Forgot password (Dify's `RESET_PASSWORD_TOKEN_EXPIRY_MINUTES`, `FORGOT_PASSWORD_LOCKOUT_DURATION`,
+    /// `EMAIL_SEND_IP_LIMIT_PER_MINUTE`) and the admins' reset links (`PasswordResetConfig`).
+    public var passwordReset: PasswordResetConfig
     /// Browser origins allowed to call the API (CORS). Entries: exact origin, `scheme://host:*` (any port), or `*`.
     public var corsAllowedOrigins: [String]
     /// TEST ONLY: deliberately break the server so that the harness can prove it notices
@@ -61,6 +66,8 @@ public struct ServerConfig: Sendable {
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
         testCommitDelayMillis = reader.int(forKey: "collab.test.commitDelayMillis", default: 0)
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
+        mail = MailConfig(reader: reader)
+        passwordReset = PasswordResetConfig(reader: reader)
         corsAllowedOrigins = reader.string(forKey: "collab.cors.allowedOrigins", default: "http://localhost:*,http://127.0.0.1:*,http://[::1]:*")
             .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         testDefect = reader.string(forKey: "collab.test.defect", default: "")
