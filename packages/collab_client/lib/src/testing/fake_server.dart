@@ -5,14 +5,26 @@ import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
 import '../wire/messages.dart';
+import 'fake_accounts.dart';
 import 'fake_comments.dart';
 
 /// An in-memory implementation of the server side of docs/protocol.md for one document: the sequencer
 /// rules (idempotency by `(client, cseq)`, gaps, floor/resolveFrom, stale-write validation), the committed
 /// log, and the resume rules of the event stream. Used by tests, the headless CLI's self-hosted mode and
 /// the app's demo mode. Deterministic and synchronous; network behaviour lives in `FakeTransport`.
+///
+/// Accounts (protocol 1.8): with [accounts], every request needs a signed-in member (the transports send their
+/// `TokenProvider`'s token; see [FakeAccounts]), writes need the edit role, client ids belong to the account that got or
+/// first used them ([clientAccounts]), names come from the accounts and comments are by account. Without [accounts]
+/// (the default) nothing is checked and names are the clients' display names, as before 1.8.
 class FakeServer {
-  FakeServer({Document? initial, this.maxReplay = 2000}) : doc = initial ?? Templates.example();
+  FakeServer({Document? initial, this.maxReplay = 2000, this.accounts}) : doc = initial ?? Templates.example();
+
+  /// The workspace's accounts; null = no authentication (pre-1.8 behaviour).
+  final FakeAccounts? accounts;
+
+  /// client id -> account id (protocol 1.8; with [accounts] only).
+  final Map<String, String> clientAccounts = {};
 
   Document doc;
   int get head => log.length;
@@ -28,11 +40,52 @@ class FakeServer {
   final Map<String, Map<int, String>> _fingerprints = {};
   int _issued = 0;
 
-  /// Display names by client id (protocol 1.3).
+  /// Display names by client id (protocol 1.3; without [accounts]).
   final Map<String, String> names = {};
 
-  /// The document's canvas comments (`/comments`), beside the document (not in it, not in the log).
-  late final FakeComments comments = FakeComments(() => names);
+  /// The document's canvas comments (`/comments`), beside the document (not in it, not in the log). With [accounts] the
+  /// authors are accounts; without, client ids.
+  late final FakeComments comments = FakeComments(
+    () => accounts == null
+        ? {for (final e in names.entries) e.key: (name: e.value, avatarUrl: null)}
+        : {for (final a in accounts!.byId.values) a.id: (name: a.name, avatarUrl: a.avatarUrl)},
+    members: () => accounts?.byId.values.where((a) => a.role != null).map((a) => a.id).toSet(),
+  );
+
+  /// The name shown for [client]: its account's name (1.8), else its display name (1.3).
+  String? nameOf(String client) {
+    final a = accounts;
+    if (a == null) return names[client];
+    final id = clientAccounts[client];
+    return id == null ? null : a.byId[id]?.name;
+  }
+
+  /// `GET /clients` (protocol 1.8 shape): client id -> `{"account","name","avatar_url"?}`. Without [accounts], every named
+  /// client id is its own "account".
+  Map<String, Map<String, Object?>> directory() {
+    final a = accounts;
+    if (a == null) {
+      return {
+        for (final e in names.entries) e.key: {'account': e.key, 'name': e.value},
+      };
+    }
+    return {
+      for (final e in clientAccounts.entries)
+        if (a.byId[e.value] != null)
+          e.key: {'account': e.value, 'name': a.byId[e.value]!.name, 'avatar_url': ?a.byId[e.value]!.avatarUrl},
+    };
+  }
+
+  /// Protocol 1.8: [client] must belong to [account]; a free id is bound to it ([bind]) or left alone. Throws
+  /// `403 forbidden` for someone else's id.
+  void requireOwnClient(String client, String account, {bool bind = true}) {
+    final owner = clientAccounts[client];
+    if (owner == null) {
+      if (bind) clientAccounts[client] = account;
+      return;
+    }
+    if (owner != account) throw FakeAuthError(403, 'forbidden', 'client id $client belongs to another account');
+  }
 
   /// Plaintext of secret environment variables by reference (protocol 1.7, `POST /v1/docs/{doc}/secrets`).
   final Map<String, String> secrets = {};
@@ -46,24 +99,36 @@ class FakeServer {
     return (ref: ref, masked: AppRegisters.maskSecret(value));
   }
 
-  /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits, optionally named (protocol 1.3).
-  String issueClientId({String? name}) {
+  /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits. With [account] (1.8) it is bound to it and
+  /// [name] is ignored; without, [name] registers a display name (protocol 1.3).
+  String issueClientId({String? name, String? account}) {
     final id = 's-${(++_issued).toRadixString(16).padLeft(32, '0')}';
-    if (name != null) names[id] = name;
+    if (account != null) {
+      clientAccounts[id] = account;
+    } else if (name != null) {
+      names[id] = name;
+    }
     return id;
   }
 
-  /// `PUT /v1/docs/{doc}/clients/{client}` (protocol 1.3).
-  void setClientName(String client, String name) => names[client] = name;
+  /// `PUT /v1/docs/{doc}/clients/{client}`: with [account] (1.8) it binds a free id (`403` for someone else's) and
+  /// ignores [name]; without, it names the id (protocol 1.3).
+  void setClientName(String client, String name, {String? account}) {
+    if (account != null) {
+      requireOwnClient(client, account);
+    } else {
+      names[client] = name;
+    }
+  }
 
   /// Fills in `byName` at answer time, like the reference server: a retransmit may carry a name registered later.
   RejectReason _named(RejectReason r) => switch (r) {
-    Conflict(:final node, :final field, :final seq, :final by) when names[by] != null => Conflict(
+    Conflict(:final node, :final field, :final seq, :final by) when nameOf(by) != null => Conflict(
       node: node,
       field: field,
       seq: seq,
       by: by,
-      byName: names[by],
+      byName: nameOf(by),
     ),
     _ => r,
   };

@@ -58,7 +58,8 @@ void main() {
       expect(c.positionY, 180.0);
       expect(c.createdAt, DateTime.utc(2026, 10, 18, 9, 12, 3, 512));
       expect(c.resolvedAt, DateTime.utc(2023, 11, 14, 22, 13, 20));
-      expect(c.mentions, const [CommentMention(client: 's-b', name: 'Bo'), CommentMention(client: 's-x')]);
+      // 1.3-era mentions (`client`) still parse; since 1.8 they are accounts.
+      expect(c.mentions, const [CommentMention(account: 's-b', name: 'Bo'), CommentMention(account: 's-x')]);
       expect(c.replies.single.createdByName, isNull);
       expect(c.replyCount, 1);
       expect(Comment.fromJson(c.toJson()).toJson(), c.toJson());

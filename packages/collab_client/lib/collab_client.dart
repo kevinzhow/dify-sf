@@ -1,6 +1,13 @@
 /// Pure-Dart client for the dify-sf collaboration protocol (docs/protocol.md).
 library;
 
+export 'src/auth/account.dart';
+export 'src/auth/auth_api.dart';
+export 'src/auth/auth_session.dart';
+export 'src/auth/token_store.dart';
+export 'src/auth/token_store_io.dart'
+    if (dart.library.js_interop) 'src/auth/token_store_web.dart'
+    show FileTokenStore, LocalStorageTokenStore;
 export 'src/client/comments_api.dart';
 export 'src/client/display_name.dart';
 export 'src/client/durable.dart';

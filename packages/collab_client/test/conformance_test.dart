@@ -2,7 +2,9 @@
 ///
 ///     DIFYSF_URL=http://127.0.0.1:8080 dart test test/conformance_test.dart
 ///
-/// Each test creates its own document, so it is safe to run against a shared server.
+/// Each test creates its own document, so it is safe to run against a shared server. Protocol 1.8: it signs in as
+/// `DIFYSF_EMAIL` / `DIFYSF_PASSWORD` (default: a test account, installed as the owner on a fresh server; on a server
+/// set up by someone else, pass the owner's or an admin's credentials) and invites an editor and a read-only member.
 @TestOn('vm')
 @Timeout(Duration(minutes: 3))
 library;
@@ -20,6 +22,9 @@ import 'support/helpers.dart';
 
 final String? _url = Platform.environment['DIFYSF_URL'];
 
+final String _email = Platform.environment['DIFYSF_EMAIL'] ?? 'conformance@example.com';
+final String _password = Platform.environment['DIFYSF_PASSWORD'] ?? 'conformance-pass-1';
+
 String _docId() =>
     'conf-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 20).toRadixString(36)}';
 
@@ -32,12 +37,40 @@ void main() {
   late DocsApi api;
   late String doc;
   late HttpTransport t;
+  // Protocol 1.8: the owner (or an admin) this run signs in as, an editor and a read-only (`normal`) member.
+  late AuthSession owner;
+  late AuthSession editor;
+  late AuthSession viewer;
+
+  Future<AuthSession> member(String role) async {
+    final email = 'conf-$role-${_docId()}@example.com';
+    final link = (await owner.invite(emails: [email], role: role)).single;
+    final s = AuthSession(api: HttpAuthApi(base));
+    await s.activate(
+      token: link.token!,
+      name: 'Conf ${role[0].toUpperCase()}${role.substring(1)}',
+      password: 'member-pass-1',
+    );
+    return s;
+  }
+
+  setUpAll(() async {
+    owner = AuthSession(api: HttpAuthApi(base));
+    if (await owner.api.setupStatus() == SetupStatus.notStarted) {
+      await owner.setup(email: _email, name: 'Conformance', password: _password);
+    } else {
+      await owner.login(email: _email, password: _password);
+    }
+    expect(owner.currentAccount!.isPrivileged, isTrue, reason: 'sign in as the owner or an admin (DIFYSF_EMAIL)');
+    editor = await member(AccountRole.editor);
+    viewer = await member(AccountRole.normal);
+  });
 
   setUp(() async {
-    api = DocsApi(base);
+    api = DocsApi(base, auth: owner);
     doc = _docId();
     await api.ensure(doc, template: 'example');
-    t = HttpTransport(baseUrl: base, docId: doc);
+    t = HttpTransport(baseUrl: base, docId: doc, auth: owner);
   });
   tearDown(() {
     t.close();
@@ -53,6 +86,110 @@ void main() {
     ),
     timeout: const Duration(seconds: 10),
   );
+
+  group('accounts (1.8)', () {
+    test('setup is done; sign-in answers the same for unknown emails and wrong passwords', () async {
+      expect(await owner.api.setupStatus(), SetupStatus.finished);
+      await expectLater(
+        owner.api.setup(email: 'x@example.com', name: 'X', password: 'x-pass-123'),
+        throwsA(isA<TransportException>().having((e) => (e.statusCode, e.code), 'error', (409, 'setup_done'))),
+      );
+      Future<TransportException> refused(String email, String password) async {
+        try {
+          await owner.api.login(email: email, password: password);
+        } on TransportException catch (e) {
+          return e;
+        }
+        fail('signed in');
+      }
+
+      final unknown = await refused('nobody-${_docId()}@example.com', 'wrong-pass-1');
+      final wrong = await refused(viewer.currentAccount!.email, 'wrong-pass-1');
+      expect((unknown.statusCode, unknown.code, unknown.message), (wrong.statusCode, wrong.code, wrong.message));
+      expect(wrong.code, 'invalid_credentials');
+    });
+
+    test('no token is 401 everywhere but setup, login, refresh, activation and health', () async {
+      final anonymous = DocsApi(base);
+      addTearDown(anonymous.close);
+      expect(await anonymous.healthy(), isTrue);
+      await expectLater(
+        anonymous.snapshot(doc),
+        throwsA(isA<TransportException>().having((e) => e.unauthorized, '401', isTrue)),
+      );
+      for (final path in ['/v1/docs/$doc/events', '/v1/docs/$doc/clients', '/v1/account', '/v1/workspace/members']) {
+        expect((await http.get(base.replace(path: path))).statusCode, 401, reason: path);
+      }
+      expect(
+        (await http.get(
+          base.replace(path: '/v1/docs/$doc/snapshot'),
+          headers: {'authorization': 'Bearer nope'},
+        )).statusCode,
+        401,
+      );
+      expect((await HttpAuthApi(base).checkInvitation('nope')).isValid, isFalse);
+    });
+
+    test('refresh rotates; logout revokes the session only', () async {
+      final s = AuthSession(api: HttpAuthApi(base));
+      await s.login(email: _email, password: _password);
+      final old = s.tokens!;
+      expect(await s.refresh(), isTrue);
+      expect(s.tokens, isNot(old));
+      await expectLater(
+        s.api.refresh(old.refreshToken),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 's', 401)),
+      );
+      final current = s.tokens!;
+      await s.logout();
+      await expectLater(
+        s.api.account(current.accessToken),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 's', 401)),
+      );
+      expect((await owner.account()).id, isNotEmpty); // another session of the same account
+    });
+
+    test('roles: read-only members read and stream but cannot write; secrets only for the privileged', () async {
+      final view = HttpTransport(baseUrl: base, docId: doc, auth: viewer);
+      addTearDown(view.close);
+      final id = await view.issueClientId();
+      await expectLater(
+        view.submit(
+          SubmitRequest(
+            client: id,
+            ops: [OutgoingOp(cseq: 1, base: 0, op: setPrompt('llm', 'no'))],
+          ),
+          timeout: const Duration(seconds: 10),
+        ),
+        throwsA(isA<TransportException>().having((e) => e.forbidden, 'forbidden', isTrue)),
+      );
+      final events = await view.openStream(StreamOpen(client: id)).firstWhere((e) => e is ReadyEvent);
+      expect(events, isA<ReadyEvent>());
+      final viewerDocs = DocsApi(base, auth: viewer);
+      addTearDown(viewerDocs.close);
+      expect((await viewerDocs.snapshot(doc)).seq, 0);
+      expect(await viewerDocs.exportDifyDsl(doc), contains('graph'));
+      await expectLater(
+        viewerDocs.ensure('conf-ro-${_docId()}'),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 's', 403)),
+      );
+      await expectLater(
+        viewerDocs.storeSecret(doc, 'x'),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 's', 403)),
+      );
+      final editorDocs = DocsApi(base, auth: editor);
+      addTearDown(editorDocs.close);
+      await expectLater(
+        editorDocs.exportDifyDsl(doc, includeSecret: true),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 's', 403)),
+      );
+      expect(await api.exportDifyDsl(doc, includeSecret: true), contains('graph'));
+      // The event stream also takes the token as ?access_token= (for the browser's EventSource).
+      final q = HttpTransport(baseUrl: base, docId: doc, auth: viewer, accessTokenInQuery: true);
+      addTearDown(q.close);
+      expect(await q.openStream(const StreamOpen()).firstWhere((e) => e is ReadyEvent), isA<ReadyEvent>());
+    });
+  });
 
   group('document endpoints', () {
     test('healthz, create, ensure, info, snapshot', () async {
@@ -72,7 +209,7 @@ void main() {
     });
 
     test('posting to an unknown document is a 404', () async {
-      final ghost = HttpTransport(baseUrl: base, docId: 'ghost-${_docId()}');
+      final ghost = HttpTransport(baseUrl: base, docId: 'ghost-${_docId()}', auth: owner);
       await expectLater(
         ghost.submit(const SubmitRequest(client: 'c'), timeout: const Duration(seconds: 5)),
         throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
@@ -83,7 +220,7 @@ void main() {
     test('malformed bodies are 400, not 5xx', () async {
       final res = await http.post(
         base.replace(path: '/v1/docs/$doc/ops'),
-        headers: {'content-type': 'application/json'},
+        headers: {'content-type': 'application/json', 'authorization': 'Bearer ${owner.accessToken}'},
         body: '{nope',
       );
       expect(res.statusCode, 400);
@@ -225,7 +362,7 @@ void main() {
       expect(ids, everyElement(matches(RegExp(r'^s-[0-9a-f]{32}$'))));
       expect(await api.issueClientId(doc), matches(RegExp(r'^s-')));
       await expectLater(
-        HttpTransport(baseUrl: base, docId: 'ghost-${_docId()}').issueClientId(),
+        HttpTransport(baseUrl: base, docId: 'ghost-${_docId()}', auth: owner).issueClientId(),
         throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
       );
     });
@@ -247,35 +384,48 @@ void main() {
       expect((await api.snapshot(doc)).seq, 1);
     });
 
-    test('1.3 display names: issue named, rename, directory, byName on conflicts', () async {
-      final bo = await t.issueClientId(name: 'Bo');
-      final anon = await api.issueClientId(doc);
-      expect(await api.clientNames(doc), {bo: 'Bo'});
-      await post(bo, [(1, 0, setPrompt('llm', 'bo'))]); // seq 1
-      await post(anon, [
-        (1, 0, setStr('llm', ['model', 'name'], 'anon')),
-      ]); // seq 2
-      final x = await t.issueClientId();
-      final r = await post(x, [
-        (1, 0, setPrompt('llm', 'x')),
-        (2, 0, setStr('llm', ['model', 'name'], 'x')),
-      ]);
-      final named = (r.results[0] as RejectResult).reason as Conflict;
-      final plain = (r.results[1] as RejectResult).reason as Conflict;
-      expect((named.by, named.byName), (bo, 'Bo'));
-      expect((plain.by, plain.byName), (anon, null));
-      // A name registered later shows up on the retransmitted answer.
-      await t.setClientName(anon, 'Ann');
-      final again = await post(x, [
-        (2, 0, setStr('llm', ['model', 'name'], 'x')),
-      ]);
-      expect(((again.results.single as RejectResult).reason as Conflict).byName, 'Ann');
-      await api.setClientName(doc, bo, 'Bob');
-      expect(await api.clientNames(doc), {bo: 'Bob', anon: 'Ann'});
-      await expectLater(
-        t.issueClientId(name: 'a\nb'),
-        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 400)),
+    test('1.8 client ids belong to accounts: directory, byName, foreign ids refused', () async {
+      final mine = await t.issueClientId(name: 'ignored');
+      final ed = HttpTransport(baseUrl: base, docId: doc, auth: editor);
+      addTearDown(ed.close);
+      final theirs = await ed.issueClientId();
+      final me = owner.currentAccount!, them = editor.currentAccount!;
+      expect(await api.clientDirectory(doc), {
+        mine: ClientIdentity(account: me.id, name: me.name),
+        theirs: ClientIdentity(account: them.id, name: them.name),
+      });
+      expect(await api.clientNames(doc), {mine: me.name, theirs: them.name});
+      await post(mine, [(1, 0, setPrompt('llm', 'mine'))]); // seq 1
+      // A stale write by the editor: the conflict names the owner's account.
+      final r = await ed.submit(
+        SubmitRequest(
+          client: theirs,
+          ops: [OutgoingOp(cseq: 1, base: 0, op: setPrompt('llm', 'theirs'))],
+        ),
+        timeout: const Duration(seconds: 10),
       );
+      final c = (r.results.single as RejectResult).reason as Conflict;
+      expect((c.by, c.byName), (mine, me.name));
+      // Someone else's client id: the whole batch is 403, nothing applied.
+      await expectLater(
+        ed.submit(
+          SubmitRequest(
+            client: mine,
+            ops: [OutgoingOp(cseq: 2, base: 1, op: setPrompt('llm', 'impostor'))],
+          ),
+          timeout: const Duration(seconds: 10),
+        ),
+        throwsA(isA<TransportException>().having((e) => e.forbidden, 'forbidden', isTrue)),
+      );
+      // A self-chosen id belongs to the first account that uses it (PUT /clients binds it).
+      final chosen = 'conf-tab-${_docId()}';
+      await ed.setClientName(chosen, 'ignored');
+      await expectLater(
+        t.setClientName(chosen, 'mine?'),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 's', 403)),
+      );
+      expect((await api.clientDirectory(doc))[chosen]?.account, them.id);
+      expect((await api.snapshot(doc)).seq, 1);
     });
 
     test('1.4 declared outputs: a ref to a missing output is refused; removing an output breaks refs to it', () async {
@@ -407,7 +557,10 @@ void main() {
         ]);
         final older = await catchUp(const StreamOpen(lastEventId: 0, proto: '1.5'));
         expect(older.first, isA<SnapshotEvent>(), reason: 'proto below 1.6 counts as old');
-        final bad = await http.get(base.replace(path: '/v1/docs/$doc/events', query: 'proto=latest'));
+        final bad = await http.get(
+          base.replace(path: '/v1/docs/$doc/events', query: 'proto=latest'),
+          headers: {'authorization': 'Bearer ${owner.accessToken}'},
+        );
         expect(bad.statusCode, 400);
       },
     );
@@ -474,7 +627,7 @@ workflow:
       expect(vars.items.single.id, 'q');
       expect((vars.items.single.value as VMap).entries['value_selector'], const VRef(OutputRef('s', 'q')));
       // edit, then export
-      final t = HttpTransport(baseUrl: base, docId: id);
+      final t = HttpTransport(baseUrl: base, docId: id, auth: owner);
       final r = await t.submit(
         const SubmitRequest(
           client: 'cli-dsl',
@@ -613,13 +766,13 @@ workflow:
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'
         ..headers['Access-Control-Request-Method'] = 'POST'
-        ..headers['Access-Control-Request-Headers'] = 'content-type, last-event-id';
+        ..headers['Access-Control-Request-Headers'] = 'content-type, authorization, last-event-id';
       final res = await pre.send();
       expect(res.statusCode, inInclusiveRange(200, 204));
       expect(res.headers['access-control-allow-origin'], 'http://localhost:5555');
       expect(
         res.headers['access-control-allow-headers']!.toLowerCase(),
-        allOf(contains('last-event-id'), contains('content-type')),
+        allOf(contains('last-event-id'), contains('content-type'), contains('authorization')),
       );
       expect(res.headers['access-control-allow-methods'], allOf(contains('POST'), contains('PUT'), contains('DELETE')));
       final get = http.Request('GET', base.replace(path: '/v1/docs/$doc'))..headers['Origin'] = 'http://localhost:5555';
@@ -629,58 +782,60 @@ workflow:
       expect((await foreign.send()).headers.containsKey('access-control-allow-origin'), isFalse);
     });
 
-    test('canvas comments: author rules, replies, idempotent resolve, the comments event (no id)', () async {
-      final comments = api.comments(doc);
-      await api.setClientName(doc, 'cli-a', 'Alice');
+    test('canvas comments: accounts as authors, replies, idempotent resolve, the comments event (no id)', () async {
+      final comments = api.comments(doc); // the owner's
+      final edComments = DocsApi(base, auth: editor).comments(doc);
+      final me = owner.currentAccount!, ed = editor.currentAccount!;
       final events = <StreamEvent>[];
       final sub = t.openStream(const StreamOpen(lastEventId: 0)).listen((e) => e is PingEvent ? null : events.add(e));
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
-      final c = await comments.create(
-        author: 'cli-a',
-        x: 120.5,
-        y: -40,
-        content: 'check',
-        mentions: ['cli-b', 'cli-b'],
-      );
-      expect((c.positionX, c.positionY, c.createdBy, c.createdByName), (120.5, -40.0, 'cli-a', 'Alice'));
-      expect(c.mentions.map((m) => m.client), ['cli-b']);
+      final c = await comments.create(x: 120.5, y: -40, content: 'check', mentions: [ed.id, ed.id, 'not-a-member']);
+      expect((c.positionX, c.positionY, c.createdBy, c.createdByName), (120.5, -40.0, me.id, me.name));
+      expect(c.mentions, [CommentMention(account: ed.id, name: ed.name)]);
       expect(c.id, hasLength(36));
       await post('cli-a', [(1, 0, setPrompt('llm', 'x'))]);
-      final c2 = await comments.create(author: 'cli-b', x: 0, y: 0, content: 'second');
+      final c2 = await edComments.create(x: 0, y: 0, content: 'second');
       expect((await comments.list()).map((x) => x.id), [c2.id, c.id]);
+      expect((await comments.mentionUsers()).map((u) => u.id), containsAll([me.id, ed.id]));
 
       await expectLater(
-        comments.update(c.id, author: 'cli-b', x: 1, y: 1),
+        edComments.update(c.id, x: 1, y: 1),
         throwsA(isA<TransportException>().having((e) => e.notAuthor, 'not_author', isTrue)),
       );
-      await expectLater(comments.delete(c.id, author: 'cli-b'), throwsA(isA<TransportException>()));
-      final moved = await comments.update(c.id, author: 'cli-a', x: 300, y: 400);
+      await expectLater(edComments.delete(c.id), throwsA(isA<TransportException>()));
+      final moved = await comments.update(c.id, x: 300, y: 400);
       expect((moved.positionX, moved.content), (300.0, 'check'));
       await expectLater(
-        comments.create(author: 'cli-a', x: 0, y: 0, content: 'x' * 1001),
+        comments.create(x: 0, y: 0, content: 'x' * 1001),
         throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 400)),
       );
-
-      final r = await comments.reply(c.id, author: 'cli-b', content: 'on it', mentions: ['cli-a']);
-      expect(r.mentions.single.name, 'Alice');
+      // A read-only member reads, but does not write.
+      final viewerComments = DocsApi(base, auth: viewer).comments(doc);
+      expect(await viewerComments.list(), hasLength(2));
       await expectLater(
-        comments.editReply(c.id, r.id, author: 'cli-a', content: 'mine now'),
+        viewerComments.reply(c.id, content: 'me too'),
+        throwsA(isA<TransportException>().having((e) => e.forbidden, 'forbidden', isTrue)),
+      );
+
+      final r = await edComments.reply(c.id, content: 'on it', mentions: [me.id]);
+      expect(r.mentions.single.name, me.name);
+      await expectLater(
+        comments.editReply(c.id, r.id, content: 'mine now'),
         throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 403)),
       );
-      expect((await comments.editReply(c.id, r.id, author: 'cli-b', content: 'done')).content, 'done');
+      expect((await edComments.editReply(c.id, r.id, content: 'done')).content, 'done');
       expect((await comments.get(c.id)).replyCount, 1);
-      await comments.deleteReply(c.id, r.id, author: 'cli-b');
+      await edComments.deleteReply(c.id, r.id);
 
-      final first = await comments.resolve(c.id, author: 'cli-b');
-      final again = await comments.resolve(c.id, author: 'cli-a');
-      expect((first.resolved, again.resolvedBy, again.resolvedAt), (true, 'cli-b', first.resolvedAt));
-      await comments.delete(c.id, author: 'cli-a');
+      final first = await edComments.resolve(c.id);
+      final again = await comments.resolve(c.id);
+      expect((first.resolved, again.resolvedBy, again.resolvedAt), (true, ed.id, first.resolvedAt));
+      await comments.delete(c.id);
       await expectLater(
         comments.get(c.id),
         throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
       );
-      expect(await comments.clientNames(), containsPair('cli-a', 'Alice'));
 
       await Future<void>.delayed(const Duration(milliseconds: 500));
       await sub.cancel();
@@ -748,7 +903,7 @@ workflow:
       final shared = await t.issueClientId();
       CollabSession open() => CollabSession(
         clientId: shared,
-        transport: HttpTransport(baseUrl: base, docId: doc),
+        transport: HttpTransport(baseUrl: base, docId: doc, auth: owner),
         store: MemoryStore(),
       );
       final a = open();
@@ -844,7 +999,7 @@ workflow:
     test('two sessions converge and a conflict is reported with the winner', () async {
       CollabSession open(String id) => CollabSession(
         clientId: id,
-        transport: HttpTransport(baseUrl: base, docId: doc),
+        transport: HttpTransport(baseUrl: base, docId: doc, auth: owner),
         store: MemoryStore(),
       );
       final a = open('cli-s1');
@@ -881,6 +1036,7 @@ workflow:
           ratePerClient: 8,
           seed: 42,
           crashesPerClientPerMinute: 10,
+          auth: owner,
         ),
       ).run();
       expect(report.violations, isEmpty);

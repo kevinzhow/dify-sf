@@ -1,9 +1,12 @@
 import 'package:clock/clock.dart';
 
+import '../auth/account.dart';
+import '../auth/auth_session.dart';
 import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../model/comments.dart';
 import '../wire/messages.dart';
+import 'fake_accounts.dart';
 import 'fake_server.dart';
 import 'fake_transport.dart';
 
@@ -20,13 +23,18 @@ final class FakeCommentsError implements Exception {
 
 /// The canvas comments of one in-memory document, with the reference server's rules (docs/protocol.md, "Comments"):
 /// Dify's content limits, author-only edit/move/delete (`403 not_author`), idempotent resolve, replies, mentions
-/// filtered to valid client ids once each, newest first. Answers are wire JSON, exactly as the server sends them.
-/// Every change is announced to the listeners (the stream's `event: comments`).
+/// filtered to members (or, without accounts, to valid ids) once each, newest first. Answers are wire JSON, exactly as
+/// the server sends them. Every change is announced to the listeners (the stream's `event: comments`).
+///
+/// The `client` arguments name the acting author: an account id with accounts (protocol 1.8), a client id without.
 class FakeComments {
-  FakeComments(this._names);
+  FakeComments(this._names, {Set<String>? Function()? members}) : _members = members ?? (() => null);
 
-  /// The display names (client id -> name) at answer time.
-  final Map<String, String> Function() _names;
+  /// Author id -> name and avatar at answer time.
+  final Map<String, ({String name, String? avatarUrl})> Function() _names;
+
+  /// The workspace members' account ids (mentions are filtered to them); null = no accounts (valid ids are kept).
+  final Set<String>? Function() _members;
   final Map<String, _FakeComment> _byId = {};
   int _issued = 0;
   final List<void Function(CommentsEvent)> _listeners = [];
@@ -184,11 +192,12 @@ class FakeComments {
 
   List<String>? _mentions(Object? ids) {
     if (ids == null) return null;
-    if (ids is! List<Object?> || ids.any((e) => e is! String)) _bad('mentioned_client_ids must be a list of strings');
+    if (ids is! List<Object?> || ids.any((e) => e is! String)) _bad('mentioned_user_ids must be a list of strings');
+    final members = _members();
     final seen = <String>{};
     return [
       for (final id in ids.cast<String>())
-        if (_clientId.hasMatch(id) && seen.add(id)) id,
+        if ((members == null ? _clientId.hasMatch(id) : members.contains(id)) && seen.add(id)) id,
     ];
   }
 
@@ -222,15 +231,20 @@ class FakeComments {
 
   // ---- wire JSON -----------------------------------------------------------------------------------
 
-  Map<String, Object?> _mention(String client, Map<String, String> names) => {'client': client, 'name': ?names[client]};
+  Map<String, Object?> _mention(String id, Map<String, ({String name, String? avatarUrl})> names) => {
+    'account': id,
+    'name': ?names[id]?.name,
+    'avatar_url': ?names[id]?.avatarUrl,
+  };
 
-  Map<String, Object?> _replyJson(_FakeReply r, [Map<String, String>? names]) {
+  Map<String, Object?> _replyJson(_FakeReply r, [Map<String, ({String name, String? avatarUrl})>? names]) {
     final n = names ?? _names();
     return {
       'id': r.id,
       'content': r.content,
       'created_by': r.createdBy,
-      'created_by_name': ?n[r.createdBy],
+      'created_by_name': ?n[r.createdBy]?.name,
+      'created_by_avatar_url': ?n[r.createdBy]?.avatarUrl,
       'created_at': r.createdAt.toIso8601String(),
       'updated_at': r.updatedAt.toIso8601String(),
       'mentions': [for (final m in r.mentions) _mention(m, n)],
@@ -245,12 +259,14 @@ class FakeComments {
       'position_y': c.y,
       'content': c.content,
       'created_by': c.createdBy,
-      'created_by_name': ?n[c.createdBy],
+      'created_by_name': ?n[c.createdBy]?.name,
+      'created_by_avatar_url': ?n[c.createdBy]?.avatarUrl,
       'created_at': c.createdAt.toIso8601String(),
       'updated_at': c.updatedAt.toIso8601String(),
       'resolved': c.resolved,
       'resolved_by': ?c.resolvedBy,
-      'resolved_by_name': ?(c.resolvedBy == null ? null : n[c.resolvedBy]),
+      'resolved_by_name': ?(c.resolvedBy == null ? null : n[c.resolvedBy]?.name),
+      'resolved_by_avatar_url': ?(c.resolvedBy == null ? null : n[c.resolvedBy]?.avatarUrl),
       'resolved_at': ?c.resolvedAt?.toIso8601String(),
       'mentions': [for (final m in c.mentions) _mention(m, n)],
       'replies': [for (final r in c.replies) _replyJson(r, n)],
@@ -304,82 +320,119 @@ class _FakeReply {
 
 /// [CommentsApi] on an in-memory [FakeServer] (its [FakeServer.comments]), through the reachability of a [FakeNetwork]
 /// (refused or partitioned: the call fails like a connect error). Refusals become [TransportException]s with the
-/// status and code of the real server.
+/// status and code of the real server. With accounts on the server (protocol 1.8) the author is the account of [auth]'s
+/// token (a `401` refreshes once), reads need a member and writes the edit role; without, the `author` arguments are the
+/// author ids.
 class FakeCommentsApi implements CommentsApi {
-  FakeCommentsApi(this.server, {FakeNetwork? network}) : network = network ?? FakeNetwork();
+  FakeCommentsApi(this.server, {FakeNetwork? network, this.auth}) : network = network ?? FakeNetwork();
 
   final FakeServer server;
   final FakeNetwork network;
+  final TokenProvider? auth;
 
   /// Requests that reached the server (for assertions about refetches).
   int requests = 0;
 
-  Future<T> _call<T>(T Function(FakeComments c) f) async {
+  /// One request: [f] gets the comments and the acting author id (the account with accounts, else [author]).
+  Future<T> _call<T>(String? author, T Function(FakeComments c, String? by) f, {bool write = false}) async {
     await Future<void>.microtask(() {}); // asynchronous like a request (no timer: widget tests stay clean)
     if (network.refused || network.partitioned) throw const TransportException('connection refused');
     requests++;
+    final accounts = server.accounts;
+    String? by = author;
+    if (accounts != null) {
+      final token = auth?.accessToken;
+      try {
+        by = accounts.principal(token, edit: write).id;
+      } on FakeAuthError catch (e) {
+        if (e.status == 401 && auth != null && token != null && await auth!.refresh(failedToken: token)) {
+          return _call(author, f, write: write);
+        }
+        throw e.toTransport();
+      }
+    }
     try {
-      return f(server.comments);
+      return f(server.comments, by);
     } on FakeCommentsError catch (e) {
       throw TransportException(e.message, statusCode: e.status, code: e.code);
     }
   }
 
   @override
-  Future<List<Comment>> list() => _call((c) => [for (final j in c.list()) Comment.fromJson(j)]);
+  Future<List<Comment>> list() => _call(null, (c, _) => [for (final j in c.list()) Comment.fromJson(j)]);
 
   @override
-  Future<Comment> get(String id) => _call((c) => Comment.fromJson(c.get(id)));
+  Future<Comment> get(String id) => _call(null, (c, _) => Comment.fromJson(c.get(id)));
 
   @override
   Future<Comment> create({
-    required String author,
+    String? author,
     required double x,
     required double y,
     required String content,
     List<String> mentions = const [],
-  }) => _call((c) => Comment.fromJson(c.create(client: author, x: x, y: y, content: content, mentions: mentions)));
+  }) => _call(
+    author,
+    (c, by) => Comment.fromJson(c.create(client: by, x: x, y: y, content: content, mentions: mentions)),
+    write: true,
+  );
 
   @override
-  Future<Comment> update(
-    String id, {
-    required String author,
-    String? content,
-    double? x,
-    double? y,
-    List<String>? mentions,
-  }) => _call((c) => Comment.fromJson(c.update(id, client: author, content: content, x: x, y: y, mentions: mentions)));
+  Future<Comment> update(String id, {String? author, String? content, double? x, double? y, List<String>? mentions}) =>
+      _call(
+        author,
+        (c, by) => Comment.fromJson(c.update(id, client: by, content: content, x: x, y: y, mentions: mentions)),
+        write: true,
+      );
 
   @override
-  Future<void> delete(String id, {required String author}) => _call((c) => c.delete(id, client: author));
+  Future<void> delete(String id, {String? author}) => _call(author, (c, by) => c.delete(id, client: by), write: true);
 
   @override
-  Future<Comment> resolve(String id, {required String author}) =>
-      _call((c) => Comment.fromJson(c.resolve(id, client: author)));
+  Future<Comment> resolve(String id, {String? author}) =>
+      _call(author, (c, by) => Comment.fromJson(c.resolve(id, client: by)), write: true);
 
   @override
-  Future<CommentReply> reply(
-    String id, {
-    required String author,
-    required String content,
-    List<String> mentions = const [],
-  }) => _call((c) => CommentReply.fromJson(c.reply(id, client: author, content: content, mentions: mentions)));
+  Future<CommentReply> reply(String id, {String? author, required String content, List<String> mentions = const []}) =>
+      _call(
+        author,
+        (c, by) => CommentReply.fromJson(c.reply(id, client: by, content: content, mentions: mentions)),
+        write: true,
+      );
 
   @override
   Future<CommentReply> editReply(
     String id,
     String replyId, {
-    required String author,
+    String? author,
     required String content,
     List<String> mentions = const [],
   }) => _call(
-    (c) => CommentReply.fromJson(c.editReply(id, replyId, client: author, content: content, mentions: mentions)),
+    author,
+    (c, by) => CommentReply.fromJson(c.editReply(id, replyId, client: by, content: content, mentions: mentions)),
+    write: true,
   );
 
   @override
-  Future<void> deleteReply(String id, String replyId, {required String author}) =>
-      _call((c) => c.deleteReply(id, replyId, client: author));
+  Future<void> deleteReply(String id, String replyId, {String? author}) =>
+      _call(author, (c, by) => c.deleteReply(id, replyId, client: by), write: true);
 
   @override
-  Future<Map<String, String>> clientNames() => _call((_) => Map.of(server.names));
+  Future<List<MentionUser>> mentionUsers() => _call(null, (_, _) {
+    final a = server.accounts;
+    if (a == null) {
+      return [for (final e in server.names.entries) MentionUser(id: e.key, name: e.value, email: '', role: '')];
+    }
+    return [for (final u in a.mentionUsers(auth?.accessToken)) MentionUser.fromJson(u)];
+  });
+
+  @override
+  Future<Map<String, ClientIdentity>> clientDirectory() => _call(
+    null,
+    (_, _) => {for (final e in server.directory().entries) e.key: ClientIdentity.fromJson(e.value)},
+  );
+
+  @override
+  Future<Map<String, String>> clientNames() async =>
+      (await clientDirectory()).map((client, who) => MapEntry(client, who.name));
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../auth/auth_session.dart';
 import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../wire/messages.dart';
@@ -19,21 +20,32 @@ import 'sse_parser.dart';
 /// * [openStream] emits a [PingEvent] for every inbound chunk (keep-alive comments included) so the
 ///   machine can run its "no bytes for N seconds" watchdog; it ends with an error or done when the
 ///   connection ends or the server sends something unparseable.
+///
+/// Protocol 1.8: with [auth], every request (ops, stream, client ids, secrets, comments) carries the signed-in user's
+/// `Authorization: Bearer` token, and a `401` is repeated once after a token refresh (see [AuthSession]). Without [auth]
+/// no token is sent (servers before 1.8, and the in-memory fakes without accounts).
 class HttpTransport implements CollabTransport {
   HttpTransport({
     required Uri baseUrl,
     required this.docId,
     http.Client? client,
+    this.auth,
     this.connectTimeout = const Duration(seconds: 10),
     this.lastEventIdInQuery = false,
+    this.accessTokenInQuery = false,
   }) : _base = baseUrl,
-       _client = client ?? http.Client(),
-       _ownsClient = client == null;
+       _client = auth == null
+           ? (client ?? http.Client())
+           : AuthenticatedClient(client ?? http.Client(), auth, closeInner: client == null),
+       _ownsClient = client == null || auth != null;
 
   final Uri _base;
   final String docId;
   final http.Client _client;
   final bool _ownsClient;
+
+  /// The signed-in user whose token goes into every request (protocol 1.8); null = no token.
+  final TokenProvider? auth;
 
   /// How long to wait for response headers when opening the stream.
   final Duration connectTimeout;
@@ -42,6 +54,11 @@ class HttpTransport implements CollabTransport {
   /// protocol 1.1 the server answers CORS preflights and allows `Last-Event-ID`, so browsers can use the header
   /// like everybody else. Kept for servers that predate 1.1.
   final bool lastEventIdInQuery;
+
+  /// Also send the access token as `?access_token=` on the event stream (protocol 1.8; the server accepts it there for the
+  /// browser's native EventSource, which cannot set headers). Not needed with this transport, which streams with
+  /// `fetch`/HTTP and sends the header.
+  final bool accessTokenInQuery;
 
   Uri _url(String suffix, [Map<String, String>? query]) => _base.replace(
     path:
@@ -169,6 +186,7 @@ class HttpTransport implements CollabTransport {
           if (open.from != null) 'from': '${open.from}',
           if (open.lastEventId != null && lastEventIdInQuery) 'lastEventId': '${open.lastEventId}',
           if (open.proto != null) 'proto': open.proto!,
+          if (accessTokenInQuery && auth?.accessToken != null) 'access_token': auth!.accessToken!,
         };
         final req =
             http.AbortableRequest('GET', _url('/events', query.isEmpty ? null : query), abortTrigger: abort.future)

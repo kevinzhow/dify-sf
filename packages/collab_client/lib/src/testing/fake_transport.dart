@@ -3,9 +3,11 @@ import 'dart:math';
 
 import 'package:clock/clock.dart';
 
+import '../auth/auth_session.dart';
 import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../wire/messages.dart';
+import 'fake_accounts.dart';
 import 'fake_comments.dart';
 import 'fake_server.dart';
 
@@ -65,11 +67,32 @@ class FakeNetwork {
 }
 
 /// A [CollabTransport] that talks to an in-memory [FakeServer] through a simulated [FakeNetwork].
+///
+/// With accounts on the server (protocol 1.8) every request carries [auth]'s token: no valid token is `401` (refreshed
+/// once, then the error), ops need the edit role and a client id of the caller's account (`403 forbidden`), as on the
+/// real server.
 class FakeTransport implements CollabTransport {
-  FakeTransport(this.server, {FakeNetwork? network}) : network = network ?? FakeNetwork();
+  FakeTransport(this.server, {FakeNetwork? network, this.auth}) : network = network ?? FakeNetwork();
 
   final FakeServer server;
   final FakeNetwork network;
+
+  /// The signed-in user (with accounts on the server).
+  final TokenProvider? auth;
+
+  /// The caller's account id when the server has accounts (null without); throws [FakeAuthError].
+  String? _principal({bool edit = false}) => server.accounts?.principal(auth?.accessToken, edit: edit).id;
+
+  /// Runs [f] with the accounts check; a `401` refreshes the token once and runs it again.
+  Future<T> _authed<T>(Future<T> Function() f) async {
+    final token = auth?.accessToken;
+    try {
+      return await f();
+    } on TransportException catch (e) {
+      if (e.statusCode == 401 && auth != null && token != null && await auth!.refresh(failedToken: token)) return f();
+      rethrow;
+    }
+  }
 
   final Set<Timer> _timers = {};
 
@@ -91,7 +114,22 @@ class FakeTransport implements CollabTransport {
   int streamsOpened = 0;
 
   @override
-  Future<SubmitResponse> submit(SubmitRequest request, {required Duration timeout}) {
+  Future<SubmitResponse> submit(SubmitRequest request, {required Duration timeout}) =>
+      _authed(() => _submit(request, timeout: timeout));
+
+  /// Protocol 1.8 checks of a POST that reached the server: `401`, `403` for a read-only role or another account's
+  /// client id. Null = accepted.
+  TransportException? _refusal(SubmitRequest request) {
+    if (server.accounts == null) return null;
+    try {
+      server.requireOwnClient(request.client, _principal(edit: true)!);
+      return null;
+    } on FakeAuthError catch (e) {
+      return e.toTransport();
+    }
+  }
+
+  Future<SubmitResponse> _submit(SubmitRequest request, {required Duration timeout}) {
     final done = Completer<SubmitResponse>();
     final timers = <Timer>[];
     void fail(TransportException e) {
@@ -111,6 +149,11 @@ class FakeTransport implements CollabTransport {
     timers.add(
       _timer(network.latency(), () {
         if (done.isCompleted) return; // the client gave up before the request arrived: it never reaches the server
+        final refused = _refusal(request);
+        if (refused != null) {
+          timers.add(_timer(network.latency(), () => fail(refused)));
+          return;
+        }
         if (network.chance(network.serverError)) {
           if (network.chance(network.commitBefore503)) {
             postsReceived++;
@@ -142,25 +185,31 @@ class FakeTransport implements CollabTransport {
   }
 
   @override
-  late final CommentsApi comments = FakeCommentsApi(server, network: network);
+  late final CommentsApi comments = FakeCommentsApi(server, network: network, auth: auth);
+
+  /// One quick request with the accounts checks (and a refresh after a `401`).
+  Future<T> _request<T>(T Function() f) => _authed(() async {
+    if (network.refused || network.partitioned) throw const TransportException('connection refused');
+    try {
+      return f();
+    } on FakeAuthError catch (e) {
+      throw e.toTransport();
+    }
+  });
 
   @override
-  Future<String> issueClientId({String? name}) async {
-    if (network.refused || network.partitioned) throw const TransportException('connection refused');
-    return server.issueClientId(name: name);
-  }
+  Future<String> issueClientId({String? name}) =>
+      _request(() => server.issueClientId(name: name, account: _principal()));
 
   @override
-  Future<({String ref, String masked})> storeSecret(String value) async {
-    if (network.refused || network.partitioned) throw const TransportException('connection refused');
+  Future<({String ref, String masked})> storeSecret(String value) => _request(() {
+    _principal(edit: true);
     return server.storeSecret(value);
-  }
+  });
 
   @override
-  Future<void> setClientName(String client, String name) async {
-    if (network.refused || network.partitioned) throw const TransportException('connection refused');
-    server.setClientName(client, name);
-  }
+  Future<void> setClientName(String client, String name) =>
+      _request(() => server.setClientName(client, name, account: _principal()));
 
   @override
   Stream<StreamEvent> openStream(StreamOpen open) {
@@ -220,6 +269,18 @@ class _FakeStream {
   void _connect() {
     if (_closed) return;
     if (net.partitioned || net.blockStreams) return;
+    if (server.accounts != null) {
+      final token = transport.auth?.accessToken;
+      try {
+        final account = server.accounts!.principal(token).id;
+        if (open.client != null) server.requireOwnClient(open.client!, account, bind: false);
+      } on FakeAuthError catch (e) {
+        // A 401 refreshes the token for the next attempt; the machine reconnects with backoff.
+        if (e.status == 401 && token != null) unawaited(transport.auth?.refresh(failedToken: token));
+        fail(e.toTransport());
+        return;
+      }
+    }
     _connected = true;
     final events = server.catchUp(
       lastEventId: open.lastEventId,

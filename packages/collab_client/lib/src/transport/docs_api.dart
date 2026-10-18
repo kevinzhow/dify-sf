@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../auth/account.dart';
+import '../auth/auth_session.dart';
 import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../model/document.dart';
@@ -66,14 +68,18 @@ final class DocMeta {
   bool get isChatflow => appMode == 'advanced-chat';
 }
 
-/// The document-level endpoints (everything except ops and events).
+/// The document-level endpoints (everything except ops and events). Protocol 1.8: pass the signed-in user's [auth] and
+/// every request carries its bearer token (refreshed once on a `401`); without it no token is sent.
 class DocsApi {
-  DocsApi(this.baseUrl, {http.Client? client, this.timeout = const Duration(seconds: 10)})
-    : _client = client ?? http.Client();
+  DocsApi(this.baseUrl, {http.Client? client, this.auth, this.timeout = const Duration(seconds: 10)})
+    : _client = auth == null ? (client ?? http.Client()) : AuthenticatedClient(client ?? http.Client(), auth);
 
   final Uri baseUrl;
   final Duration timeout;
   final http.Client _client;
+
+  /// The signed-in user (protocol 1.8); null = no token.
+  final TokenProvider? auth;
 
   Uri _url(String path) {
     final base = baseUrl.path.endsWith('/') ? baseUrl.path.substring(0, baseUrl.path.length - 1) : baseUrl.path;
@@ -104,8 +110,9 @@ class DocsApi {
     return DocInfo.fromJson(jsonDecode(res.body));
   }
 
-  /// `POST /v1/docs/{id}/clients` (protocol 1.1): a fresh unique client id for one client instance, optionally
-  /// with a display name (protocol 1.3).
+  /// `POST /v1/docs/{id}/clients` (protocol 1.1): a fresh unique client id for one client instance. Since protocol 1.8
+  /// it belongs to the signed-in account (ops under it from another account are refused); [name] is ignored by 1.8
+  /// servers (names are the accounts' names).
   Future<String> issueClientId(String id, {String? name}) async {
     final req = http.Request('POST', _url('/v1/docs/$id/clients'))
       ..headers['Content-Type'] = 'application/json'
@@ -115,7 +122,8 @@ class DocsApi {
     return (jsonDecode(res.body) as Map<String, Object?>)['client']! as String;
   }
 
-  /// `PUT /v1/docs/{id}/clients/{client}` (protocol 1.3): names or renames a client id.
+  /// `PUT /v1/docs/{id}/clients/{client}`: since protocol 1.8 it binds a self-chosen [client] id to the signed-in
+  /// account (`403` if it belongs to another one); [name] is ignored. (1.3: it named the id.)
   Future<void> setClientName(String id, String client, String name) async {
     final req = http.Request('PUT', _url('/v1/docs/$id/clients/${Uri.encodeComponent(client)}'))
       ..headers['Content-Type'] = 'application/json'
@@ -124,17 +132,17 @@ class DocsApi {
     if (res.statusCode != 200) throw _error(res);
   }
 
-  /// `GET /v1/docs/{id}/clients` (protocol 1.3): display names of the clients that registered one.
-  Future<Map<String, String>> clientNames(String id) async {
+  /// `GET /v1/docs/{id}/clients` (protocol 1.8): client id -> the account it belongs to (id, name, avatar). Several ids
+  /// of one account (tabs, devices) are one user.
+  Future<Map<String, ClientIdentity>> clientDirectory(String id) async {
     final res = await _guard(() => _client.get(_url('/v1/docs/$id/clients')).timeout(timeout));
     if (res.statusCode != 200) throw _error(res);
-    final clients = (jsonDecode(res.body) as Map<String, Object?>)['clients'];
-    if (clients is! Map<String, Object?>) return const {};
-    return {
-      for (final e in clients.entries)
-        if (e.value is String) e.key: e.value! as String,
-    };
+    return parseClientDirectory(jsonDecode(utf8.decode(res.bodyBytes)));
   }
+
+  /// Client id -> account name, from [clientDirectory] (protocol 1.3's name directory, now with account names).
+  Future<Map<String, String>> clientNames(String id) async =>
+      (await clientDirectory(id)).map((client, who) => MapEntry(client, who.name));
 
   /// `POST /v1/docs/import` (server-generated id) or `PUT /v1/docs/{id}/import`: a document from a Dify workflow
   /// file (YAML). An existing document is left alone (`created: false`), so a retried import is harmless.
@@ -190,7 +198,7 @@ class DocsApi {
     return DocMeta.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>);
   }
 
-  /// The canvas comments of document [id] (`/v1/docs/{id}/comments`), over this API's HTTP client.
+  /// The canvas comments of document [id] (`/v1/docs/{id}/comments`), over this API's HTTP client (and its token).
   CommentsApi comments(String id) => HttpCommentsApi(baseUrl: baseUrl, docId: id, client: _client, timeout: timeout);
 
   /// `GET /v1/docs/{id}/snapshot`: the full document at the current head.
@@ -235,4 +243,18 @@ class DocsApi {
   }
 
   void close() => _client.close();
+}
+
+/// The `clients` map of `GET /v1/docs/{doc}/clients`: protocol 1.8's `{"<client id>": {"account","name","avatar_url"?}}`.
+/// Entries of the 1.3 shape (`"<client id>": "<name>"`) become identities whose account is the client id.
+Map<String, ClientIdentity> parseClientDirectory(Object? json) {
+  final clients = json is Map<String, Object?> ? json['clients'] : null;
+  if (clients is! Map<String, Object?>) return const {};
+  return {
+    for (final e in clients.entries)
+      if (e.value is Map<String, Object?>)
+        e.key: ClientIdentity.fromJson(e.value)
+      else if (e.value is String)
+        e.key: ClientIdentity(account: e.key, name: e.value! as String),
+  };
 }

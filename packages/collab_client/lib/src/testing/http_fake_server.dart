@@ -8,6 +8,7 @@ import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
 import '../wire/messages.dart';
+import 'fake_accounts.dart';
 import 'fake_comments.dart';
 import 'fake_server.dart';
 
@@ -15,22 +16,31 @@ import 'fake_server.dart';
 /// document). Meant for exercising the real transport (and for running the CLI/app without the Swift
 /// server). Its fault switches model the failures a real network produces: connections cut mid-stream,
 /// streams that go silent without closing (half-open), swallowed responses, 5xx answers, chunked writes.
+///
+/// Accounts (protocol 1.8): with [accounts] it serves the account endpoints (`/v1/setup`, `/v1/auth/...`,
+/// `/v1/account...`, `/v1/workspace/members...`, `/v1/activate...`) and every document endpoint requires
+/// `Authorization: Bearer` (the event stream also `?access_token=`), with the reference server's roles and client-id
+/// binding. Without [accounts] nothing is checked (pre-1.8 behaviour).
 class HttpFakeServer {
-  HttpFakeServer._(this._http, this.pingInterval);
+  HttpFakeServer._(this._http, this.pingInterval, this.accounts);
 
   static Future<HttpFakeServer> start({
     int port = 0,
     Duration pingInterval = const Duration(seconds: 10),
     InternetAddress? address,
+    FakeAccounts? accounts,
   }) async {
     final http = await HttpServer.bind(address ?? InternetAddress.loopbackIPv4, port);
-    final s = HttpFakeServer._(http, pingInterval);
+    final s = HttpFakeServer._(http, pingInterval, accounts);
     http.listen(s._handle);
     return s;
   }
 
   final HttpServer _http;
   final Duration pingInterval;
+
+  /// The workspace's accounts; null = no authentication.
+  final FakeAccounts? accounts;
   final Map<String, FakeServer> docs = {};
   final Random _random = Random(7);
 
@@ -61,8 +71,10 @@ class HttpFakeServer {
   int postCount = 0;
   final List<Socket> _streams = [];
 
-  FakeServer doc(String id, {String? template}) =>
-      docs.putIfAbsent(id, () => FakeServer(initial: Templates.named(template) ?? Templates.example()));
+  FakeServer doc(String id, {String? template}) => docs.putIfAbsent(
+    id,
+    () => FakeServer(initial: Templates.named(template) ?? Templates.example(), accounts: accounts),
+  );
 
   /// Abruptly closes every open stream socket.
   void dropStreams() {
@@ -107,13 +119,32 @@ class HttpFakeServer {
         req.response
           ..statusCode = 204
           ..headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-          ..headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Last-Event-ID, Cache-Control')
+          ..headers.set(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Accept, Authorization, Last-Event-ID, Cache-Control',
+          )
           ..headers.set('Access-Control-Max-Age', '600');
         return await req.response.close();
       }
       final seg = req.uri.pathSegments;
       if (req.method == 'GET' && req.uri.path == '/healthz') return await _json(req, 200, {'status': 'ok'});
+      if (accounts != null && seg.length >= 2 && seg[0] == 'v1' && seg[1] != 'docs') return await _auth(req, seg);
       if (seg.length >= 2 && seg[0] == 'v1' && seg[1] == 'docs') {
+        // Protocol 1.8: who is asking (401 without a valid token; 403 for writes by read-only roles).
+        String? account;
+        if (accounts != null) {
+          final isStream = seg.length == 4 && seg[3] == 'events';
+          final token = _bearer(req) ?? (isStream ? req.uri.queryParameters['access_token'] : null);
+          final write = _isWrite(req.method, seg);
+          final exportSecret =
+              seg.length == 4 && seg[3] == 'export' && req.uri.queryParameters['include_secret'] == 'true';
+          try {
+            account = accounts!.principal(token, edit: write, privileged: exportSecret).id;
+          } on FakeAuthError catch (e) {
+            await utf8.decoder.bind(req).join();
+            return await _error(req, e.status, e.code, e.message);
+          }
+        }
         if (seg.length == 2 && req.method == 'POST') return await _createDoc(req, null);
         if (seg.length == 3 && req.method == 'PUT') return await _createDoc(req, seg[2]);
         if (seg.length == 3 && req.method == 'GET') {
@@ -127,32 +158,46 @@ class HttpFakeServer {
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
           return await _json(req, 200, {'seq': d.head, 'doc': d.doc.toJson()});
         }
-        if (seg.length == 4 && seg[3] == 'ops' && req.method == 'POST') return await _ops(req, seg[2]);
+        if (seg.length == 4 && seg[3] == 'ops' && req.method == 'POST') return await _ops(req, seg[2], account);
         if (seg.length == 4 && seg[3] == 'clients' && req.method == 'POST') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
-          final (:name, :bad) = _name(await utf8.decoder.bind(req).join());
+          final body = await utf8.decoder.bind(req).join();
+          if (account != null) {
+            final id = d.issueClientId(account: account);
+            return await _json(req, 201, {'client': id, 'account': account, 'name': accounts!.byId[account]!.name});
+          }
+          final (:name, :bad) = _name(body);
           if (bad) return await _error(req, 400, 'bad_request', 'name must be 1-64 bytes without control characters');
           return await _json(req, 201, {'client': d.issueClientId(name: name), 'name': ?name});
         }
         if (seg.length == 4 && seg[3] == 'clients' && req.method == 'GET') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
-          return await _json(req, 200, {'clients': d.names});
+          return await _json(req, 200, {'clients': d.directory()});
         }
         if (seg.length == 5 && seg[3] == 'clients' && req.method == 'PUT') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
-          final (:name, :bad) = _name(await utf8.decoder.bind(req).join());
+          final body = await utf8.decoder.bind(req).join();
+          if (account != null) {
+            try {
+              d.requireOwnClient(seg[4], account);
+            } on FakeAuthError catch (e) {
+              return await _error(req, e.status, e.code, e.message);
+            }
+            return await _json(req, 200, {'client': seg[4], 'account': account, 'name': accounts!.byId[account]!.name});
+          }
+          final (:name, :bad) = _name(body);
           if (bad || name == null) {
             return await _error(req, 400, 'bad_request', 'name must be 1-64 bytes without control characters');
           }
           d.setClientName(seg[4], name);
           return await _json(req, 200, {'client': seg[4], 'name': name});
         }
-        if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2]);
+        if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2], account);
         if (seg.length == 4 && seg[3] == 'secrets' && req.method == 'POST') return await _storeSecret(req, seg[2]);
-        if (seg.length >= 4 && seg.length <= 7 && seg[3] == 'comments') return await _comments(req, seg);
+        if (seg.length >= 4 && seg.length <= 7 && seg[3] == 'comments') return await _comments(req, seg, account);
         if (seg.length == 4 && seg[3] == 'meta' && req.method == 'GET') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
@@ -187,7 +232,7 @@ class HttpFakeServer {
   }
 
   /// The canvas comments routes (`/v1/docs/{doc}/comments...`), on the document's [FakeServer.comments].
-  Future<void> _comments(HttpRequest req, List<String> seg) async {
+  Future<void> _comments(HttpRequest req, List<String> seg, String? account) async {
     final d = docs[seg[2]];
     final text = await utf8.decoder.bind(req).join();
     if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
@@ -201,12 +246,24 @@ class HttpFakeServer {
         return await _error(req, 400, 'bad_request', 'malformed JSON');
       }
     }
-    final c = d.comments, m = req.method, client = body['client'] as String?, query = req.uri.queryParameters['client'];
+    // 1.8: the author is the caller's account; without accounts, the `client` of the body or query.
+    final c = d.comments, m = req.method;
+    final client = account ?? body['client'] as String?, query = account ?? req.uri.queryParameters['client'];
+    final mentions = body.containsKey('mentioned_user_ids') ? body['mentioned_user_ids'] : body['mentioned_client_ids'];
     final id = seg.length > 4 ? seg[4] : null;
     try {
       switch ((seg.length, m)) {
         case (4, 'GET'):
           return await _json(req, 200, {'comments': c.list()});
+        case (5, 'GET') when id == 'mention-users':
+          final a = accounts;
+          return await _json(req, 200, {
+            'users': a == null
+                ? [
+                    for (final e in d.names.entries) {'id': e.key, 'name': e.value, 'email': '', 'role': ''},
+                  ]
+                : a.mentionUsers(_bearer(req)),
+          });
         case (4, 'POST'):
           return await _json(
             req,
@@ -216,7 +273,7 @@ class HttpFakeServer {
               x: body['position_x'],
               y: body['position_y'],
               content: body['content'],
-              mentions: body['mentioned_client_ids'],
+              mentions: mentions,
             ),
           );
         case (5, 'GET'):
@@ -231,7 +288,7 @@ class HttpFakeServer {
               content: body['content'],
               x: body['position_x'],
               y: body['position_y'],
-              mentions: body['mentioned_client_ids'],
+              mentions: mentions,
             ),
           );
         case (5, 'DELETE'):
@@ -244,13 +301,13 @@ class HttpFakeServer {
           return await _json(
             req,
             201,
-            c.reply(id!, client: client, content: body['content'], mentions: body['mentioned_client_ids']),
+            c.reply(id!, client: client, content: body['content'], mentions: mentions),
           );
         case (7, 'PUT') when seg[5] == 'replies':
           return await _json(
             req,
             200,
-            c.editReply(id!, seg[6], client: client, content: body['content'], mentions: body['mentioned_client_ids']),
+            c.editReply(id!, seg[6], client: client, content: body['content'], mentions: mentions),
           );
         case (7, 'DELETE') when seg[5] == 'replies':
           c.deleteReply(id!, seg[6], client: query);
@@ -296,7 +353,7 @@ class HttpFakeServer {
     await _json(req, existed ? 200 : 201, {'id': docId, 'head': d.head, 'created': !existed});
   }
 
-  Future<void> _ops(HttpRequest req, String docId) async {
+  Future<void> _ops(HttpRequest req, String docId, String? account) async {
     final d = docs[docId];
     if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
     final text = await utf8.decoder.bind(req).join();
@@ -316,6 +373,13 @@ class HttpFakeServer {
         for (final o in ops) OutgoingOp(cseq: o['cseq']! as int, base: o['base']! as int, op: Op.fromJson(o['op'])),
       ],
     );
+    if (account != null) {
+      try {
+        d.requireOwnClient(request.client, account);
+      } on FakeAuthError catch (e) {
+        return await _error(req, e.status, e.code, e.message);
+      }
+    }
     final response = d.submit(request);
     if (postDelay > Duration.zero) await Future<void>.delayed(postDelay);
     if (swallowResponses) return; // the client will time out
@@ -326,9 +390,17 @@ class HttpFakeServer {
     await _json(req, 200, response.toJson());
   }
 
-  Future<void> _events(HttpRequest req, String docId) async {
+  Future<void> _events(HttpRequest req, String docId, String? account) async {
     final d = docs[docId];
     if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+    final client = req.uri.queryParameters['client'];
+    if (account != null && client != null) {
+      try {
+        d.requireOwnClient(client, account, bind: false);
+      } on FakeAuthError catch (e) {
+        return await _error(req, e.status, e.code, e.message);
+      }
+    }
     final header = req.headers.value('last-event-id');
     final last = int.tryParse(header ?? req.uri.queryParameters['lastEventId'] ?? '');
     streamResumePoints.add(last);
@@ -425,6 +497,115 @@ class HttpFakeServer {
       _streams.remove(socket);
       socket.destroy();
     }
+  }
+
+  /// The account endpoints (with [accounts]).
+  Future<void> _auth(HttpRequest req, List<String> seg) async {
+    final a = accounts!;
+    final text = await utf8.decoder.bind(req).join();
+    Map<String, Object?> body = const {};
+    if (text.trim().isNotEmpty) {
+      try {
+        final json = jsonDecode(text);
+        if (json is Map<String, Object?>) body = json;
+      } on FormatException {
+        return await _error(req, 400, 'bad_request', 'malformed JSON');
+      }
+    }
+    final token = _bearer(req), m = req.method, path = seg.skip(1).join('/');
+    try {
+      switch ((m, path)) {
+        case ('GET', 'setup'):
+          return await _json(req, 200, {'step': a.setupStatus()});
+        case ('POST', 'setup'):
+          return await _json(
+            req,
+            201,
+            a.setup(
+              email: body['email'],
+              name: body['name'],
+              password: body['password'],
+              language: body['interface_language'] ?? body['language'],
+              timezone: body['timezone'],
+            ),
+          );
+        case ('POST', 'auth/login'):
+          return await _json(
+            req,
+            200,
+            a.login(email: body['email'], password: body['password'], inviteToken: body['invite_token']),
+          );
+        case ('POST', 'auth/refresh'):
+          return await _json(req, 200, a.refresh(body['refresh_token']));
+        case ('POST', 'auth/logout'):
+          a.logout(token);
+          req.response.statusCode = 204;
+          return await req.response.close();
+        case ('GET', 'account'):
+          return await _json(req, 200, a.account(token));
+        case ('PUT', 'account/name'):
+          return await _json(req, 200, a.updateName(token, body['name']));
+        case ('PUT', 'account/password'):
+          a.updatePassword(
+            token,
+            password: body['password'],
+            newPassword: body['new_password'],
+            repeatNewPassword: body['repeat_new_password'],
+          );
+          req.response.statusCode = 204;
+          return await req.response.close();
+        case ('GET', 'workspace/members'):
+          return await _json(req, 200, {'accounts': a.members(token)});
+        case ('POST', 'workspace/members/invite-email'):
+          return await _json(req, 201, {
+            'invitation_results': a.invite(token, emails: body['emails'], role: body['role']),
+          });
+        case ('POST', 'activate/check'):
+          return await _json(req, 200, a.checkInvitation(body['token']));
+        case ('GET', 'activate/check'):
+          return await _json(req, 200, a.checkInvitation(req.uri.queryParameters['token']));
+        case ('POST', 'activate'):
+          return await _json(
+            req,
+            200,
+            a.activate(
+              token: body['token'],
+              name: body['name'],
+              password: body['password'],
+              interfaceLanguage: body['interface_language'],
+              timezone: body['timezone'],
+            ),
+          );
+      }
+      if (seg.length == 5 && seg[1] == 'workspace' && seg[2] == 'members' && seg[4] == 'update-role' && m == 'PUT') {
+        a.updateRole(token, seg[3], body['role']);
+        return await _json(req, 200, {'result': 'success'});
+      }
+      if (seg.length == 4 && seg[1] == 'workspace' && seg[2] == 'members' && m == 'DELETE') {
+        a.removeMember(token, seg[3]);
+        return await _json(req, 200, {'result': 'success'});
+      }
+    } on FakeAuthError catch (e) {
+      return await _error(req, e.status, e.code, e.message);
+    }
+    await _error(req, 404, 'not_found', 'no such route');
+  }
+
+  static String? _bearer(HttpRequest req) {
+    final h = req.headers.value('authorization');
+    if (h == null || !h.toLowerCase().startsWith('bearer ')) return null;
+    final t = h.substring(7).trim();
+    return t.isEmpty ? null : t;
+  }
+
+  /// Whether a document request needs the edit role (protocol 1.8).
+  static bool _isWrite(String method, List<String> seg) {
+    if (seg.length == 2) return method == 'POST'; // create
+    if (seg.length == 3) return method == 'PUT' || (seg[2] == 'import' && method == 'POST');
+    final what = seg[3];
+    if (what == 'clients' || what == 'events' || what == 'snapshot' || what == 'meta' || what == 'export') return false;
+    if (what == 'comments') return method != 'GET';
+    return method != 'GET'; // ops, secrets, import
   }
 
   static String _frame(String event, int? id, Object? data) =>

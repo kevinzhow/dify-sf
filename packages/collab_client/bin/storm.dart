@@ -6,6 +6,9 @@
 ///
 /// Without --url, a self-hosted in-memory protocol server on loopback is used (add --chaos to make its
 /// network misbehave). Exit code 0 = all guarantees held, 1 = a violation was found, 2 = bad usage.
+///
+/// Against a real server (protocol 1.8) every client signs in as --email / --password (default: the environment's
+/// DIFYSF_EMAIL / DIFYSF_PASSWORD, else a test account); on a fresh server that account is installed as the owner.
 library;
 
 import 'dart:async';
@@ -32,6 +35,8 @@ Future<void> main(List<String> argv) async {
     ..addOption('settle-timeout', help: 'Seconds to wait for all outcomes after the storm.', defaultsTo: '60')
     ..addOption('journal-dir', help: 'Directory for journals (default: a temp dir).')
     ..addOption('ledger', help: 'Write the full ground-truth ledger (JSON) to this file.')
+    ..addOption('email', help: 'Account to sign in with (real servers, protocol 1.8).')
+    ..addOption('password', help: 'Its password.')
     ..addFlag('chaos', help: 'Self-hosted server only: inject cut/stalled streams, lost answers and 503s.')
     ..addFlag('no-verify-log', help: 'Skip replaying the server log to check the ledger against it.')
     ..addFlag('quiet', abbr: 'q')
@@ -64,6 +69,24 @@ Future<void> main(List<String> argv) async {
   final seed = int.parse(args['seed'] as String);
   final doc = args['doc'] as String;
 
+  AuthSession? auth;
+  if (hosted == null) {
+    final env = Platform.environment;
+    final email = args['email'] as String? ?? env['DIFYSF_EMAIL'] ?? 'storm@example.com';
+    final password = args['password'] as String? ?? env['DIFYSF_PASSWORD'] ?? 'storm-pass-1';
+    auth = AuthSession(api: HttpAuthApi(url));
+    try {
+      if (await auth.api.setupStatus() == SetupStatus.notStarted) {
+        await auth.setup(email: email, name: 'Storm', password: password);
+      } else {
+        await auth.login(email: email, password: password);
+      }
+    } on TransportException catch (e) {
+      stderr.writeln('cannot sign in as $email: $e');
+      exit(2);
+    }
+  }
+
   final config = StormConfig(
     url: url,
     doc: doc,
@@ -80,6 +103,7 @@ Future<void> main(List<String> argv) async {
     // Hosted servers ping every 2 s, so a 10 s silence watchdog still has margin; real servers use 30 s.
     clientConfig: hosted == null ? const ClientConfig() : const ClientConfig(streamSilence: 10000),
     postTimeout: hosted == null ? const Duration(seconds: 10) : const Duration(seconds: 3),
+    auth: auth,
   );
 
   Timer? chaos;

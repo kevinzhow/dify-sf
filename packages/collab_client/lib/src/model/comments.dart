@@ -1,29 +1,40 @@
 /// Canvas comments (docs/protocol.md, section 2 "Comments"): Dify 1.17.1's workflow comments as a server resource beside
 /// the document (not in the document, the op log, snapshots, the export or undo). Field names follow Dify's
-/// `WorkflowCommentDetail`; authors are client ids with their registered display names.
+/// `WorkflowCommentDetail`. Protocol 1.8: authors, resolvers and mentions are **account ids** with the accounts' names and
+/// avatars (before 1.8: client ids with their display names).
 library;
 
-/// A mentioned client (`{"client", "name"?}`).
+/// A mentioned account (`{"account", "name"?, "avatar_url"?}`; 1.3-era answers say `client` instead of `account`).
 final class CommentMention {
-  const CommentMention({required this.client, this.name});
+  const CommentMention({required this.account, this.name, this.avatarUrl});
 
   factory CommentMention.fromJson(Object? json) {
     final m = _map(json, 'mention');
-    return CommentMention(client: _str(m, 'client'), name: m['name'] as String?);
+    return CommentMention(
+      account: m['account'] is String ? m['account']! as String : _str(m, 'client'),
+      name: m['name'] as String?,
+      avatarUrl: m['avatar_url'] as String?,
+    );
   }
 
-  final String client;
+  /// The mentioned account's id.
+  final String account;
 
-  /// The client's display name when it registered one.
+  /// The account's name (absent for an id that matches no account).
   final String? name;
+  final String? avatarUrl;
 
-  Map<String, Object?> toJson() => {'client': client, 'name': ?name};
+  /// The mentioned id under its pre-1.8 name (it was a client id). Same as [account]; prefer [account].
+  String get client => account;
+
+  Map<String, Object?> toJson() => {'account': account, 'name': ?name, 'avatar_url': ?avatarUrl};
 
   @override
-  bool operator ==(Object other) => other is CommentMention && other.client == client && other.name == name;
+  bool operator ==(Object other) =>
+      other is CommentMention && other.account == account && other.name == name && other.avatarUrl == avatarUrl;
 
   @override
-  int get hashCode => Object.hash(client, name);
+  int get hashCode => Object.hash(account, name, avatarUrl);
 }
 
 /// A reply in a comment's thread.
@@ -33,6 +44,7 @@ final class CommentReply {
     required this.content,
     required this.createdBy,
     this.createdByName,
+    this.createdByAvatarUrl,
     required this.createdAt,
     required this.updatedAt,
     this.mentions = const [],
@@ -45,6 +57,7 @@ final class CommentReply {
       content: _str(m, 'content'),
       createdBy: _str(m, 'created_by'),
       createdByName: m['created_by_name'] as String?,
+      createdByAvatarUrl: m['created_by_avatar_url'] as String?,
       createdAt: _requiredTime(m, 'created_at'),
       updatedAt: _requiredTime(m, 'updated_at'),
       mentions: _mentions(m['mentions']),
@@ -54,9 +67,10 @@ final class CommentReply {
   final String id;
   final String content;
 
-  /// The author's client id.
+  /// The author's account id (1.8).
   final String createdBy;
   final String? createdByName;
+  final String? createdByAvatarUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<CommentMention> mentions;
@@ -66,6 +80,7 @@ final class CommentReply {
     'content': content,
     'created_by': createdBy,
     'created_by_name': ?createdByName,
+    'created_by_avatar_url': ?createdByAvatarUrl,
     'created_at': createdAt.toUtc().toIso8601String(),
     'updated_at': updatedAt.toUtc().toIso8601String(),
     'mentions': [for (final x in mentions) x.toJson()],
@@ -81,11 +96,13 @@ final class Comment {
     required this.content,
     required this.createdBy,
     this.createdByName,
+    this.createdByAvatarUrl,
     required this.createdAt,
     required this.updatedAt,
     this.resolved = false,
     this.resolvedBy,
     this.resolvedByName,
+    this.resolvedByAvatarUrl,
     this.resolvedAt,
     this.mentions = const [],
     this.replies = const [],
@@ -105,11 +122,13 @@ final class Comment {
       content: _str(m, 'content'),
       createdBy: _str(m, 'created_by'),
       createdByName: m['created_by_name'] as String?,
+      createdByAvatarUrl: m['created_by_avatar_url'] as String?,
       createdAt: _requiredTime(m, 'created_at'),
       updatedAt: _requiredTime(m, 'updated_at'),
       resolved: m['resolved'] as bool? ?? false,
       resolvedBy: m['resolved_by'] as String?,
       resolvedByName: m['resolved_by_name'] as String?,
+      resolvedByAvatarUrl: m['resolved_by_avatar_url'] as String?,
       resolvedAt: _time(m, 'resolved_at'),
       mentions: _mentions(m['mentions']),
       replies: replies,
@@ -124,14 +143,18 @@ final class Comment {
   final double positionY;
   final String content;
 
-  /// The author's client id.
+  /// The author's account id (1.8).
   final String createdBy;
   final String? createdByName;
+  final String? createdByAvatarUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool resolved;
+
+  /// The resolver's account id (1.8).
   final String? resolvedBy;
   final String? resolvedByName;
+  final String? resolvedByAvatarUrl;
   final DateTime? resolvedAt;
   final List<CommentMention> mentions;
   final List<CommentReply> replies;
@@ -150,11 +173,13 @@ final class Comment {
     content: content ?? this.content,
     createdBy: createdBy,
     createdByName: createdByName,
+    createdByAvatarUrl: createdByAvatarUrl,
     createdAt: createdAt,
     updatedAt: updatedAt,
     resolved: resolved ?? this.resolved,
     resolvedBy: resolvedBy,
     resolvedByName: resolvedByName,
+    resolvedByAvatarUrl: resolvedByAvatarUrl,
     resolvedAt: resolvedAt,
     mentions: mentions,
     replies: replies ?? this.replies,
@@ -168,11 +193,13 @@ final class Comment {
     'content': content,
     'created_by': createdBy,
     'created_by_name': ?createdByName,
+    'created_by_avatar_url': ?createdByAvatarUrl,
     'created_at': createdAt.toUtc().toIso8601String(),
     'updated_at': updatedAt.toUtc().toIso8601String(),
     'resolved': resolved,
     'resolved_by': ?resolvedBy,
     'resolved_by_name': ?resolvedByName,
+    'resolved_by_avatar_url': ?resolvedByAvatarUrl,
     'resolved_at': ?resolvedAt?.toUtc().toIso8601String(),
     'mentions': [for (final x in mentions) x.toJson()],
     'replies': [for (final r in replies) r.toJson()],

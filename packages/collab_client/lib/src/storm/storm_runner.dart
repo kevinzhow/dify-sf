@@ -10,6 +10,7 @@ import '../client/store.dart';
 import '../model/ops.dart';
 import '../store/file_store.dart';
 import '../testing/random_edits.dart';
+import '../auth/auth_session.dart';
 import '../transport/docs_api.dart';
 import '../transport/http_transport.dart';
 import '../wire/messages.dart';
@@ -33,7 +34,12 @@ class StormConfig {
     this.verifyLog = true,
     this.clientConfig = const ClientConfig(),
     this.postTimeout = const Duration(seconds: 10),
+    this.auth,
   });
+
+  /// The signed-in account every client uses (protocol 1.8; each client has its own client id). null = no token (a
+  /// server without accounts, e.g. the self-hosted in-memory one).
+  final TokenProvider? auth;
 
   final Uri url;
   final String doc;
@@ -155,10 +161,10 @@ class StormRunner {
   Future<StormReport> run() async {
     _clock.start();
     final rng = Random(config.seed);
-    final api = DocsApi(config.url);
+    final api = DocsApi(config.url, auth: config.auth);
     final info = await api.ensure(config.doc, template: config.template);
     _log('document ${info.id} at head ${info.head}');
-    final auditor = config.verifyLog ? _LogAuditor(config.url, config.doc) : null;
+    final auditor = config.verifyLog ? _LogAuditor(config.url, config.doc, auth: config.auth) : null;
     unawaited(auditor?.start());
 
     final dir = config.journalDir ?? Directory.systemTemp.createTempSync('collab_storm').path;
@@ -325,10 +331,11 @@ class StormRunner {
 /// `Last-Event-ID` like any client. It is how the ledger is checked against the server's real log even when
 /// the log is far longer than the server will replay.
 class _LogAuditor {
-  _LogAuditor(this.url, this.doc);
+  _LogAuditor(this.url, this.doc, {this.auth});
 
   final Uri url;
   final String doc;
+  final TokenProvider? auth;
   final List<LogEntry> log = [];
   int startSeq = 0;
   int lastSeq = 0;
@@ -338,7 +345,7 @@ class _LogAuditor {
 
   Future<void> start() async {
     while (!_stopped) {
-      final t = _transport = HttpTransport(baseUrl: url, docId: doc);
+      final t = _transport = HttpTransport(baseUrl: url, docId: doc, auth: auth);
       try {
         await for (final e in t.openStream(StreamOpen(lastEventId: _started ? lastSeq : null))) {
           switch (e) {
@@ -409,7 +416,7 @@ class _StormClient {
     _booting = true;
     incarnation++;
     final s = CollabSession(
-      transport: HttpTransport(baseUrl: runner.config.url, docId: runner.config.doc),
+      transport: HttpTransport(baseUrl: runner.config.url, docId: runner.config.doc, auth: runner.config.auth),
       store: store,
       journaled: journaled,
       config: runner.config.clientConfig,

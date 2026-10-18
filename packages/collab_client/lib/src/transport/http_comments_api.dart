@@ -3,19 +3,26 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../auth/account.dart';
+import '../auth/auth_session.dart';
 import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../model/comments.dart';
+import 'docs_api.dart';
 
-/// [CommentsApi] against the real server (`/v1/docs/{doc}/comments`, docs/protocol.md section 2 "Comments").
+/// [CommentsApi] against the real server (`/v1/docs/{doc}/comments`, docs/protocol.md section 2 "Comments"). The author
+/// is the account of the request's bearer token (protocol 1.8): pass [auth], or a [client] that already adds it (the
+/// transports hand theirs over). An `author` argument is still sent as `client` (1.8 servers ignore it; servers and
+/// fakes without accounts use it).
 class HttpCommentsApi implements CommentsApi {
   HttpCommentsApi({
     required Uri baseUrl,
     required this.docId,
     http.Client? client,
+    TokenProvider? auth,
     this.timeout = const Duration(seconds: 10),
   }) : _base = baseUrl,
-       _client = client ?? http.Client();
+       _client = auth == null ? (client ?? http.Client()) : AuthenticatedClient(client ?? http.Client(), auth);
 
   final Uri _base;
   final String docId;
@@ -43,7 +50,7 @@ class HttpCommentsApi implements CommentsApi {
 
   @override
   Future<Comment> create({
-    required String author,
+    String? author,
     required double x,
     required double y,
     required String content,
@@ -53,14 +60,14 @@ class HttpCommentsApi implements CommentsApi {
       'POST',
       '/comments',
       ok: 201,
-      body: {'client': author, 'position_x': x, 'position_y': y, 'content': content, 'mentioned_client_ids': mentions},
+      body: {'client': ?author, 'position_x': x, 'position_y': y, 'content': content, 'mentioned_user_ids': mentions},
     ),
   );
 
   @override
   Future<Comment> update(
     String id, {
-    required String author,
+    String? author,
     String? content,
     double? x,
     double? y,
@@ -71,27 +78,27 @@ class HttpCommentsApi implements CommentsApi {
       _c(id),
       ok: 200,
       body: {
-        'client': author,
+        'client': ?author,
         'content': ?content,
         'position_x': ?x,
         'position_y': ?y,
-        'mentioned_client_ids': ?mentions,
+        'mentioned_user_ids': ?mentions,
       },
     ),
   );
 
   @override
-  Future<void> delete(String id, {required String author}) =>
-      _send('DELETE', _c(id), ok: 204, query: {'client': author});
+  Future<void> delete(String id, {String? author}) =>
+      _send('DELETE', _c(id), ok: 204, query: author == null ? null : {'client': author});
 
   @override
-  Future<Comment> resolve(String id, {required String author}) async =>
-      Comment.fromJson(await _send('POST', '${_c(id)}/resolve', ok: 200, body: {'client': author}));
+  Future<Comment> resolve(String id, {String? author}) async =>
+      Comment.fromJson(await _send('POST', '${_c(id)}/resolve', ok: 200, body: {'client': ?author}));
 
   @override
   Future<CommentReply> reply(
     String id, {
-    required String author,
+    String? author,
     required String content,
     List<String> mentions = const [],
   }) async => CommentReply.fromJson(
@@ -99,7 +106,7 @@ class HttpCommentsApi implements CommentsApi {
       'POST',
       '${_c(id)}/replies',
       ok: 201,
-      body: {'client': author, 'content': content, 'mentioned_client_ids': mentions},
+      body: {'client': ?author, 'content': content, 'mentioned_user_ids': mentions},
     ),
   );
 
@@ -107,7 +114,7 @@ class HttpCommentsApi implements CommentsApi {
   Future<CommentReply> editReply(
     String id,
     String replyId, {
-    required String author,
+    String? author,
     required String content,
     List<String> mentions = const [],
   }) async => CommentReply.fromJson(
@@ -115,24 +122,33 @@ class HttpCommentsApi implements CommentsApi {
       'PUT',
       '${_c(id)}/replies/${Uri.encodeComponent(replyId)}',
       ok: 200,
-      body: {'client': author, 'content': content, 'mentioned_client_ids': mentions},
+      body: {'client': ?author, 'content': content, 'mentioned_user_ids': mentions},
     ),
   );
 
   @override
-  Future<void> deleteReply(String id, String replyId, {required String author}) =>
-      _send('DELETE', '${_c(id)}/replies/${Uri.encodeComponent(replyId)}', ok: 204, query: {'client': author});
+  Future<void> deleteReply(String id, String replyId, {String? author}) => _send(
+    'DELETE',
+    '${_c(id)}/replies/${Uri.encodeComponent(replyId)}',
+    ok: 204,
+    query: author == null ? null : {'client': author},
+  );
 
   @override
-  Future<Map<String, String>> clientNames() async {
-    final json = await _send('GET', '/clients', ok: 200) as Map<String, Object?>;
-    final clients = json['clients'];
-    if (clients is! Map<String, Object?>) return const {};
-    return {
-      for (final e in clients.entries)
-        if (e.value is String) e.key: e.value! as String,
-    };
+  Future<List<MentionUser>> mentionUsers() async {
+    final json = await _send('GET', '/comments/mention-users', ok: 200) as Map<String, Object?>;
+    final users = json['users'];
+    if (users is! List<Object?>) throw const TransportException('malformed mention users');
+    return [for (final u in users) MentionUser.fromJson(u)];
   }
+
+  @override
+  Future<Map<String, ClientIdentity>> clientDirectory() async =>
+      parseClientDirectory(await _send('GET', '/clients', ok: 200));
+
+  @override
+  Future<Map<String, String>> clientNames() async =>
+      (await clientDirectory()).map((client, who) => MapEntry(client, who.name));
 
   /// One request; the decoded JSON body (null for 204). Any other status, a timeout or a connect error throws a
   /// [TransportException] (with the server's error code, e.g. `not_author`).

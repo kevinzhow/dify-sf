@@ -49,6 +49,13 @@ class TransportException implements Exception {
 
   bool get payloadTooLarge => statusCode == 413;
 
+  /// Not signed in, or the access token is no longer valid (`401 unauthorized`, protocol 1.8). Requests through an
+  /// `AuthSession` have already refreshed once; this means the user has to sign in again.
+  bool get unauthorized => statusCode == 401;
+
+  /// The caller's role does not allow this, or the client id belongs to another account (`403 forbidden`, protocol 1.8).
+  bool get forbidden => statusCode == 403 && code == 'forbidden';
+
   /// A comment or reply was edited, moved or deleted by someone other than its author (`403 not_author`).
   bool get notAuthor => statusCode == 403 && code == 'not_author';
 
