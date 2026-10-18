@@ -14,7 +14,7 @@ class _ExportBackend extends DemoBackend {
   @override
   bool get supportsDifyDsl => true;
   @override
-  Future<String> exportDifyDsl(String docId) async {
+  Future<String> exportDifyDsl(String docId, {bool includeSecret = false}) async {
     if (fail) throw StateError('offline');
     return 'kind: app';
   }
