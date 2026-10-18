@@ -20,7 +20,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|---|---|---|
 | [Canvas & interactions](#canvas) | 15 | 3 | 2 | 3 | 1 | 24 |
 | [Node cards (shared chrome)](#node-chrome) | 11 |  | 3 |  |  | 14 |
-| [Edges & connections](#edges) | 5 | 1 |  |  | 1 | 7 |
+| [Edges & connections](#edges) | 6 |  |  |  | 1 | 7 |
 | [Block selector & node insertion](#block-selector) | 6 | 4 | 1 | 1 |  | 12 |
 | [Context menus & node actions](#context-menus) | 4 | 1 | 2 |  |  | 7 |
 | [Keyboard shortcuts & clipboard](#shortcuts) | 6 |  |  | 1 |  | 7 |
@@ -39,7 +39,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: Code](#node-code) | 1 |  |  |  |  | 1 |
 | [Node: Template](#node-template) | 1 |  |  |  |  | 1 |
 | [Node: HTTP Request](#node-http) | 2 |  |  |  |  | 2 |
-| [Node: Variable Aggregator](#node-aggregator) | 1 | 1 |  |  |  | 2 |
+| [Node: Variable Aggregator](#node-aggregator) | 2 |  |  |  |  | 2 |
 | [Node: Variable Assigner](#node-assigner) | 1 |  |  |  |  | 1 |
 | [Node: Tool](#node-tool) | 1 | 2 |  |  |  | 3 |
 | [Node: Iteration](#node-iteration) | 2 |  |  |  |  | 2 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **146** | **41** | **39** | **11** | **10** | **247** |
+| **Total** | **148** | **39** | **39** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -131,7 +131,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Edges: drag from a source handle to connect (connection line, validity rules, no cycles) | ported |  | spec `workflow/custom-connection-line.spec.tsx`, spec `workflow/hooks/use-workflow.spec.ts` |
 | Edges: click selects, Delete / Backspace and edge menu delete | ported |  | spec `workflow/hooks/use-edges-interactions.spec.ts`, spec `workflow/hooks/use-edges-interactions.helpers.spec.ts`, spec `workflow/hooks/use-edges-interactions-without-sync.spec.ts`, spec `workflow/workflow-edge-events.spec.tsx` |
 | Edges: midpoint "+" inserts a node between the two ends | ported |  | `app/test/canvas_plus_test.dart` |
-| Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup | partial | The connecting / entering payloads are kept in the store, but no card draws the entering highlight and nothing on the canvas shows the add-variable popup when a connection lands on an aggregator (the _showAddVariablePopup flag is only cleared by the panel); the entering-state ledger case is still to do. | spec `workflow/hooks/use-nodes-interactions.spec.ts` |
+| Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup | ported |  | spec `workflow/hooks/use-nodes-interactions.spec.ts`, `app/test/workflow_editor/aggregator_canvas_test.dart` |
 | Reference integrity: no dangling references to deleted nodes or removed outputs | dify-sf only | Enforced by dify-sf's protocol (1.4 declared outputs, brokenRef rejections); Dify can leave dangling references after concurrent edits. | `docs/protocol.md`, `app/test/notices_test.dart` |
 
 <a id="block-selector"></a>
@@ -348,7 +348,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Variable Aggregator card: groups and variables, drop-target states, add-variable popup | partial | Groups and variables are drawn, but the card is static: no drop-target / hover border states while connecting and its '+' opens no add-variable popup (the root group title is the literal English 'Assign variables'). | spec `workflow/nodes/variable-assigner/components/add-variable`, visual `canvas-aggregator` |
+| Variable Aggregator card: groups and variables, drop-target states, add-variable popup | ported |  | spec `workflow/nodes/variable-assigner/components/add-variable`, `app/test/workflow_editor/aggregator_canvas_test.dart`, visual `canvas-aggregator` |
 | Variable Aggregator panel: output type, variables, group mode | ported |  | spec `workflow/nodes/variable-assigner`, spec `workflow/nodes/variable-assigner/components`, spec `workflow/nodes/variable-assigner/components/var-list`, visual `panel-variable-aggregator` |
 
 <a id="node-assigner"></a>

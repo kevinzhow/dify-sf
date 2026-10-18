@@ -396,9 +396,8 @@ features:
   area: edges
   title: 'Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup'
   dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts, web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx]
-  status: partial
-  reason: The connecting / entering payloads are kept in the store, but no card draws the entering highlight and nothing on the canvas shows the add-variable popup when a connection lands on an aggregator (the _showAddVariablePopup flag is only cleared by the panel); the entering-state ledger case is still to do.
-  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts']
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts', app/test/workflow_editor/aggregator_canvas_test.dart]
   ours: [app/lib/src/workflow_editor/workflow_editor.dart, app/lib/src/workflow_editor/store/workflow_store.dart]
 - id: edges.dangling-refs
   area: edges
@@ -1054,9 +1053,8 @@ features:
   area: node-aggregator
   title: 'Variable Aggregator card: groups and variables, drop-target states, add-variable popup'
   dify: [web/app/components/workflow/nodes/variable-assigner/node.tsx, web/app/components/workflow/nodes/variable-assigner/components]
-  status: partial
-  reason: 'Groups and variables are drawn, but the card is static: no drop-target / hover border states while connecting and its ''+'' opens no add-variable popup (the root group title is the literal English ''Assign variables'').'
-  evidence: ['spec:web/app/components/workflow/nodes/variable-assigner/components/add-variable', visual:canvas-aggregator]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/variable-assigner/components/add-variable', app/test/workflow_editor/aggregator_canvas_test.dart, visual:canvas-aggregator]
   ours: [app/lib/src/cards/bodies/data_bodies.dart]
 - id: node-aggregator.panel
   area: node-aggregator

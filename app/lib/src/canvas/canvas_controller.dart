@@ -10,6 +10,10 @@ import 'live_card.dart';
 
 /// What the editor around the canvas (Dify's header, toolbars, minimap, menus) sees of the canvas and can do to it:
 /// the view, the selection, the control mode, and React Flow's viewport helpers with React Flow's numbers.
+class CanvasVisualChanges extends ChangeNotifier {
+  void changed() => notifyListeners();
+}
+
 class CanvasDimming {
   const CanvasDimming({required this.nodes, required this.dependencies});
   final Set<String> nodes;
@@ -20,7 +24,7 @@ class CanvasController {
   CanvasController({ControlMode mode = ControlMode.pointer}) : controlMode = ValueNotifier(mode);
 
   final view = CanvasViewState();
-  final visualChanges = ChangeNotifier();
+  final visualChanges = CanvasVisualChanges();
 
   /// Iteration warnings already shown in this editor, never part of the shared document.
   final parallelWarnings = <String>{};
@@ -68,6 +72,8 @@ class CanvasController {
   /// drag ended (connected or not).
   void Function(String nodeId, String handleId)? onConnectStart;
   VoidCallback? onConnectEnd;
+  void Function(String source, String handle, String? target, Offset point)? onConnectMove;
+  void Function(String source, String handle, String target, Offset point)? onConnectDrop;
 
   /// React Flow's zoomIn/zoomOut: d3 `scaleBy(1.2)` around the viewport's middle.
   static const zoomStep = 1.2;

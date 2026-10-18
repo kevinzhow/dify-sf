@@ -7,6 +7,8 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
 import '../node_body.dart';
+import '../../canvas/node_card.dart';
+import '../../i18n/dify_i18n.dart';
 
 List<Value> _items(Value? v) => switch (v) {
   VItems(:final items) => [for (final i in items) i.value],
@@ -240,11 +242,36 @@ class VariableAggregatorBody extends NodeBody {
           (_str(g.entries['group_name']), _str(g.entries['output_type']), _items(g.entries['variables'])),
       ];
     }
-    return [('Assign variables', _str(ctx['output_type']), _items(ctx['variables']))];
+    return [
+      (DifyI18n.tr('workflow', 'nodes.variableAssigner.title'), _str(ctx['output_type']), _items(ctx['variables'])),
+    ];
   }
 
   /// Border 1.5 + pt-1 + header h-4 + content + pb-1.5 + border 1.5; content is the 22 px pill or the labels.
   static double _groupHeight(int vars) => 1.5 + 4 + 16 + (vars == 0 ? 22 : vars * 24 + (vars - 1) * 2) + 6 + 1.5;
+
+  /// Group geometry shared by the captured body, drag hit testing and the live "+" controls.
+  static List<({String id, double top, double height, String type})> groupBoxes(BodyContext ctx) {
+    final adv = ctx['advanced_settings'];
+    final grouped = adv is VMap && adv.entries['group_enabled'] == const VBool(true);
+    final ids = grouped
+        ? _items(adv.entries['groups']).whereType<VMap>().map((g) => _str(g.entries['groupId'])).toList()
+        : ['target'];
+    var top = 0.0;
+    return [
+      for (final (i, group) in _groups(ctx).indexed)
+        () {
+          final box = (
+            id: ids.elementAtOrNull(i) ?? 'target',
+            top: top,
+            height: _groupHeight(group.$3.length),
+            type: group.$2,
+          );
+          top += box.height + 2;
+          return box;
+        }(),
+    ];
+  }
 
   @override
   double height(BodyContext ctx) {
@@ -295,11 +322,17 @@ class VariableAggregatorBody extends NodeBody {
                         const SizedBox(width: 8),
                         Container(width: 1, height: 10, color: DifyColors.dividerRegular),
                         const SizedBox(width: 4),
-                        const SizedBox.square(
+                        SizedBox.square(
                           dimension: 16,
-                          child: Center(
-                            child: DifyIcon('vender/line/general/plus-02', size: 10, color: DifyColors.textTertiary),
-                          ),
+                          child: CanvasCardControls.overlaid(context)
+                              ? null
+                              : const Center(
+                                  child: DifyIcon(
+                                    'vender/line/general/plus-02',
+                                    size: 10,
+                                    color: DifyColors.textTertiary,
+                                  ),
+                                ),
                         ),
                       ],
                     ),

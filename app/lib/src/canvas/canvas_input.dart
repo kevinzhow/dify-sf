@@ -39,6 +39,8 @@ class CanvasInput {
     this.nodeDragStop,
     this.connectStart,
     this.connectEnd,
+    this.connectMove,
+    this.connectDrop,
   });
 
   static bool _never() => false;
@@ -57,6 +59,8 @@ class CanvasInput {
   /// A connection drag began from a node's source handle / ended.
   final void Function(String nodeId, String handleId)? Function()? connectStart;
   final VoidCallback? Function()? connectEnd;
+  final void Function(String, String, String?, Offset)? Function()? connectMove;
+  final void Function(String, String, String, Offset)? Function()? connectDrop;
 
   /// Dify's `nodesReadOnly`: nodes are selected but not dragged, handles do not connect, Delete does nothing.
   final bool Function() readOnly;
@@ -232,6 +236,7 @@ class CanvasInput {
         final from = _connectFrom!.$1.outPortFor(_connectFrom!.$2);
         renderer().connectPreview(from, c);
         connectLine.value = (from, c);
+        connectMove?.call()?.call(_connectFrom!.$1.id, _connectFrom!.$2, nodeAt(c)?.id, c);
         onApplied?.call('connect');
       case 'marquee':
         marquee.value = Rect.fromPoints(_downLocal, e.localPosition);
@@ -274,6 +279,7 @@ class CanvasInput {
           // dify-sf's own documents use `out`; Dify's handles keep their ids (branches, classes, ...).
           controller.connect(from.id, target.id, sourceHandle: handle == 'source' ? null : handle);
           onApplied?.call('connected');
+          connectDrop?.call()?.call(from.id, handle, target.id, c);
         }
         _connectFrom = null;
         connectEnd?.call()?.call();

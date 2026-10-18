@@ -1,6 +1,5 @@
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/workflow_editor/organize/workflow_organize.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../dify_spec/workflow/hooks/editor_harness.dart';

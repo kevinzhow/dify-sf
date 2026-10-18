@@ -17,6 +17,7 @@ import 'card_chrome.dart';
 import 'card_kit.dart';
 import 'node_body.dart';
 import '../workflow_editor/canvas_plus/iteration_add_block.dart';
+import '../workflow_editor/canvas_plus/aggregator_controls.dart';
 import 'node_extras.dart';
 import 'node_helpers.dart';
 
@@ -29,6 +30,16 @@ class DifyCards extends CardSpec {
 
   @override
   List<({Rect rect, Widget child})> controls(BuildContext context, CanvasNode node, CanvasGraph graph) {
+    if (node.type == 'variable-aggregator' || node.type == 'variable-assigner') {
+      final ctx = DifyCards.context(node.node.value, (id) => graph[id]?.node.value, graph.startNode);
+      return [
+        for (final group in VariableAggregatorBody.groupBoxes(ctx))
+          (
+            rect: Rect.fromLTWH(node.rect.left + 5, node.rect.top + 45 + group.top, node.rect.width - 10, group.height),
+            child: AggregatorGroupControl(nodeId: node.id, groupId: group.id, type: group.type),
+          ),
+      ];
+    }
     if (node.type == 'iteration') {
       final children = graph.nodes.where((n) => n.parentId == node.id).toList();
       final start = children.where((n) => n.type == 'iteration-start').firstOrNull;

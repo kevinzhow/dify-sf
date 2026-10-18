@@ -1,7 +1,6 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/tool/copy_id.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../dify_spec/workflow/hooks/editor_harness.dart';

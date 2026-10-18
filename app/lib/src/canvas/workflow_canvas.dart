@@ -105,7 +105,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       graph.grid.put(n.slot, n.rect.topLeft);
     }
     renderer.moved(_positions.keys);
-    canvas.visualChanges.notifyListeners();
+    canvas.visualChanges.changed();
     a11y.viewMoved();
   }
 
@@ -123,7 +123,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     }
     _positions.clear();
     renderer.endMove(slots);
-    canvas.visualChanges.notifyListeners();
+    canvas.visualChanges.changed();
   }
 
   void _interacting() {
@@ -152,8 +152,10 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       nodeDragStop: () => canvas.onNodeDragStop,
       connectStart: () => canvas.onConnectStart,
       connectEnd: () => canvas.onConnectEnd,
+      connectMove: () => canvas.onConnectMove,
+      connectDrop: () => canvas.onConnectDrop,
     );
-    input.onApplied = (_) => canvas.visualChanges.notifyListeners();
+    input.onApplied = (_) => canvas.visualChanges.changed();
     a11y = CanvasA11y(
       graph: graph,
       view: view,

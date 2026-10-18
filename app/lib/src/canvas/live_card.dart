@@ -84,7 +84,13 @@ class LiveCardLayer {
 /// Passes hits on to its child only where [accepts] (local position), and claims the pointer downs and wheel events
 /// its child takes.
 class CanvasInteractionGate extends SingleChildRenderObjectWidget {
-  const CanvasInteractionGate({this.opacity = 1, required this.accepts, required this.claim, required super.child});
+  const CanvasInteractionGate({
+    super.key,
+    this.opacity = 1,
+    required this.accepts,
+    required this.claim,
+    required super.child,
+  });
   final double opacity;
   final bool Function(Offset local) accepts;
   final void Function(PointerDownEvent event) claim;
@@ -93,7 +99,7 @@ class CanvasInteractionGate extends SingleChildRenderObjectWidget {
   RenderObject createRenderObject(BuildContext context) => _RenderLiveGate(accepts, claim, opacity);
 
   @override
-  void updateRenderObject(BuildContext context, _RenderLiveGate r) => r
+  void updateRenderObject(BuildContext context, RenderObject renderObject) => (renderObject as _RenderLiveGate)
     ..accepts = accepts
     ..claim = claim
     ..opacity = opacity;

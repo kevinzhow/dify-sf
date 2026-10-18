@@ -7,6 +7,10 @@ import '../editor/editor_controller.dart';
 import 'context_menu/context_menu.dart';
 import 'hooks/use_helpline.dart';
 import 'hooks/use_workflow.dart';
+import '../cards/bodies/data_bodies.dart';
+import '../cards/dify_cards.dart';
+import '../workflow/dify_json.dart';
+import 'canvas_plus/aggregator_controls.dart';
 import 'operator/actions.dart' show OperatorReadOnly;
 import 'store/store.dart';
 import 'workflow_confirm.dart';
@@ -114,9 +118,47 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
       if (store.nodesReadOnly || n == null || isNoteNode(n)) return;
       store.setConnectingNodePayload((nodeId: id, nodeType: n.type, handleType: 'source', handleId: handle));
     };
+    canvas.onConnectMove = (source, handle, target, point) {
+      final from = canvas.graph?[source], to = target == null ? null : canvas.graph?[target];
+      if (from == null || to == null || from == to || from.parentId != to.parentId) {
+        store
+          ..setEnteringNodePayload()
+          ..setHoveringAssignVariableGroupId();
+        return;
+      }
+      store.setEnteringNodePayload((nodeId: to.id, nodeData: difyDataOf(to.node.value)));
+      if (to.type == 'variable-aggregator' || to.type == 'variable-assigner') {
+        final ctx = DifyCards.context(to.node.value, (id) => canvas.graph?[id]?.node.value, canvas.graph?.startNode);
+        final localY = point.dy - to.rect.top - 45;
+        final group = VariableAggregatorBody.groupBoxes(ctx)
+            .where((g) => localY >= g.top && localY <= g.top + g.height)
+            .firstOrNull;
+        store.setHoveringAssignVariableGroupId(group?.id ?? VariableAggregatorBody.groupBoxes(ctx).firstOrNull?.id);
+      }
+    };
+    canvas.onConnectDrop = (source, handle, target, point) {
+      final from = canvas.graph?[source], to = canvas.graph?[target];
+      if (from == null || to == null || (to.type != 'variable-aggregator' && to.type != 'variable-assigner')) return;
+      final ctx = DifyCards.context(to.node.value, (id) => canvas.graph?[id]?.node.value, canvas.graph?.startNode);
+      final group =
+          store.hoveringAssignVariableGroupId.value ??
+          VariableAggregatorBody.groupBoxes(ctx).firstOrNull?.id ??
+          'target';
+      store.setShowAssignVariablePopup((
+        nodeId: source,
+        nodeData: difyDataOf(from.node.value),
+        variableAssignerNodeId: target,
+        variableAssignerNodeData: difyDataOf(to.node.value),
+        variableAssignerNodeHandleId: group,
+        parentNode: null,
+        x: point.dx - to.x,
+        y: point.dy - to.y,
+      ));
+    };
     canvas.onConnectEnd = () => store
       ..setConnectingNodePayload()
-      ..setEnteringNodePayload();
+      ..setEnteringNodePayload()
+      ..setHoveringAssignVariableGroupId();
   }
 
   @override
@@ -169,6 +211,9 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                 ),
               ),
               Positioned.fill(child: HelpLine(canvas: canvas)),
+              Positioned.fill(
+                child: AggregatorPopupHost(controller: w.controller, canvas: canvas),
+              ),
               if (w.overlay != null) Positioned.fill(child: w.overlay!(context, canvas)),
               if (w.header != null)
                 // `absolute top-7 h-0 items-center`: centred 28 px from the top. A 56 px band (not a zero-height box,
