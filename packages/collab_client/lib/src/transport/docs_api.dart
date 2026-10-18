@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../auth/account.dart';
 import '../auth/auth_session.dart';
 import '../client/comments_api.dart';
+import '../client/replace.dart';
 import '../client/transport.dart';
 import '../model/document.dart';
 import 'http_comments_api.dart';
@@ -154,6 +155,52 @@ class DocsApi {
     if (res.statusCode != 200 && res.statusCode != 201) throw _error(res);
     final json = jsonDecode(res.body) as Map<String, Object?>;
     return DocInfo(id: json['id']! as String, head: json['head']! as int, created: json['created'] as bool? ?? false);
+  }
+
+  /// `POST /v1/docs/{id}/replace` (docs/protocol.md section 2, "Replacing a document"): overwrites document [id] with the
+  /// Dify workflow file [yaml] (Dify's "Import DSL" in the editor). The server commits the replacement as ordinary ops of
+  /// [clientId] (the caller's own client id) under the cseqs [cseq], [cseq] + 1, ...: [cseq] must be the client's next
+  /// cseq, the client must have no unresolved ops and must create none until this returns, and afterwards continues at
+  /// [ReplaceResult.nextCseq]. A live editor uses [CollabSession.replaceDocument], which does all that.
+  ///
+  /// Throws [DslVersionUnconfirmed] for a DSL version that needs confirmation ([confirm] repeats the request confirmed),
+  /// and [TransportException] otherwise: `400` (not a usable Dify file, or one the app's mode cannot run; Dify's message),
+  /// `403`, `404`, `409` (`outstanding_ops`, `cseq_used`, `conflict`; nothing changed). On a timeout or `5xx` the outcome is
+  /// unknown: repeat the identical call (a committed replacement is answered with [ReplaceResult.replayed]).
+  Future<ReplaceResult> replaceDocument(
+    String id,
+    String yaml,
+    String clientId, {
+    required int cseq,
+    bool confirm = false,
+    Duration? timeout,
+  }) async {
+    final req = http.Request('POST', _url('/v1/docs/$id/replace'))
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'yaml': yaml, 'client': clientId, 'cseq': cseq, if (confirm) 'confirm': true});
+    final res = await _guard(
+      () async => http.Response.fromStream(await _client.send(req).timeout(timeout ?? this.timeout * 6)),
+    );
+    if (res.statusCode == 200) {
+      return ReplaceResult.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>);
+    }
+    if (res.statusCode == 400) {
+      try {
+        final e = (jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>)['error']! as Map<String, Object?>;
+        if (e['code'] == 'version_unconfirmed') {
+          throw DslVersionUnconfirmed(
+            '${e['message']}',
+            importedVersion: e['imported_dsl_version'] as String? ?? '',
+            currentVersion: e['current_dsl_version'] as String? ?? '',
+          );
+        }
+      } on DslVersionUnconfirmed {
+        rethrow;
+      } on Object {
+        // not JSON: the generic error below
+      }
+    }
+    throw _error(res);
   }
 
   /// `GET /v1/docs/{id}/export`: the current state as a Dify workflow file (YAML). Secret environment variables are

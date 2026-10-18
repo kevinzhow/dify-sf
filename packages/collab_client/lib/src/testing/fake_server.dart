@@ -7,6 +7,7 @@ import '../model/templates.dart';
 import '../wire/messages.dart';
 import 'fake_accounts.dart';
 import 'fake_comments.dart';
+import 'fake_dsl.dart';
 
 /// An in-memory implementation of the server side of docs/protocol.md for one document: the sequencer
 /// rules (idempotency by `(client, cseq)`, gaps, floor/resolveFrom, stale-write validation), the committed
@@ -97,6 +98,106 @@ class FakeServer {
     final ref = 'sec-${(++_secretsIssued).toRadixString(16).padLeft(32, '0')}';
     secrets[ref] = value;
     return (ref: ref, masked: AppRegisters.maskSecret(value));
+  }
+
+  /// A fresh secret reference (`sec-` plus 32 hex digits).
+  String newSecretRef() => 'sec-${(++_secretsIssued).toRadixString(16).padLeft(32, '0')}';
+
+  /// Dify's `app` section of the last file that replaced the document (`POST /replace`; the app keeps its mode). Null:
+  /// the defaults of a document that was not imported (a `workflow`).
+  Map<String, Object?>? difyApp;
+
+  /// The app mode (`workflow`, `advanced-chat`).
+  String get appMode => difyApp?['mode'] is String ? difyApp!['mode']! as String : 'workflow';
+
+  /// `POST /v1/docs/{doc}/replace` (docs/protocol.md section 2, "Replacing a document"): replaces the document by the
+  /// Dify file [root] (parsed) with ops of [client] under its cseqs [cseq], [cseq] + 1, ..., all or nothing, like the
+  /// reference server. Returns the answer's JSON; throws [FakeReplaceError] (`400`, `409`) with nothing changed.
+  /// [client] must already belong to the caller (the HTTP layer checks it).
+  Map<String, Object?> replace({
+    required String client,
+    required int cseq,
+    required Object? root,
+    bool confirm = false,
+    String Function()? newNodeId,
+  }) {
+    final ({String version, String status}) checked;
+    try {
+      checked = FakeDifyDsl.checkReplacement(root, appMode: appMode, confirm: confirm);
+    } on FakeReplaceRefusal catch (e) {
+      throw FakeReplaceError(
+        400,
+        e.pendingVersion == null ? 'bad_request' : 'version_unconfirmed',
+        e.message,
+        importedVersion: e.pendingVersion,
+      );
+    }
+    Map<String, Object?> answer({
+      required int ops,
+      required int next,
+      required bool replayed,
+      FakeReplacementPlan? plan,
+    }) => {
+      'head': head,
+      'ops': ops,
+      'nodes': doc.nodes.length,
+      'edges': doc.edges.length,
+      'next_cseq': next,
+      'replayed': replayed,
+      'status': checked.status,
+      'imported_dsl_version': checked.version,
+      'current_dsl_version': FakeDifyDsl.currentDslVersion,
+      'renamed': {'nodes': plan?.renamedNodes ?? const {}, 'edges': plan?.renamedEdges ?? const {}},
+    };
+    final high = _high[client] ?? 0;
+    if (cseq <= high) {
+      final committed = _committed[client] ?? const {};
+      final rejected = _rejected[client] ?? const {};
+      final range = [for (var c = cseq; c <= high; c++) c];
+      if (range.any(rejected.containsKey) || !range.every(committed.containsKey)) {
+        throw FakeReplaceError(
+          409,
+          'cseq_used',
+          'cseq $cseq is already used by this client; its next cseq is ${high + 1}',
+        );
+      }
+      return answer(ops: range.length, next: high + 1, replayed: true);
+    }
+    if (cseq > high + 1) {
+      throw FakeReplaceError(
+        409,
+        'outstanding_ops',
+        'the server has handled this client\'s cseqs up to $high: wait until its ops are resolved, then send cseq ${high + 1}',
+      );
+    }
+    final FakeReplacementPlan plan;
+    try {
+      plan = FakeDifyDsl.planReplacement(
+        root,
+        current: doc,
+        storedSecrets: secrets,
+        client: client,
+        base: head,
+        newSecretRef: newSecretRef,
+        newNodeId: newNodeId,
+      );
+    } on FormatException catch (e) {
+      throw FakeReplaceError(400, 'bad_request', 'not an importable Dify workflow: ${e.message}');
+    } on StateError catch (e) {
+      throw FakeReplaceError(400, 'bad_request', 'the workflow cannot be applied to this document: ${e.message}');
+    }
+    final base = head;
+    final r = submit(
+      SubmitRequest(
+        client: client,
+        ops: [for (final (i, op) in plan.ops.indexed) OutgoingOp(cseq: cseq + i, base: base, op: op)],
+      ),
+    );
+    // The plan was validated op by op on this very state: nothing can be refused (and nothing ran in between).
+    assert(r.results.every((x) => x is AckResult), 'replacement refused: ${r.results}');
+    secrets.addAll(plan.secrets);
+    difyApp = {...plan.app, 'mode': appMode};
+    return answer(ops: plan.ops.length, next: cseq + plan.ops.length, replayed: false, plan: plan);
   }
 
   /// `POST /v1/docs/{doc}/clients`: a fresh id, `s-` plus 32 hex digits. With [account] (1.8) it is bound to it and

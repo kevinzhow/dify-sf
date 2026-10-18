@@ -794,6 +794,151 @@ workflow:
       expect((old.first as SnapshotEvent).doc, snap.doc);
     });
 
+    test('replacing a document from a Dify file: ops of the caller, retries replayed, fresh ids, refusals', () async {
+      const seed = '''
+app: {mode: workflow, name: conformance seed}
+kind: app
+version: 0.3.1
+workflow:
+  graph:
+    nodes:
+    - {id: seed, data: {type: start, title: Seed, variables: []}, position: {x: 0, y: 0}}
+    edges: []
+''';
+      const file = r'''
+app: {mode: workflow, name: conformance replaced}
+kind: app
+version: 0.3.1
+workflow:
+  environment_variables:
+  - {id: e1, name: api_key, value: sk-conformance-secret, value_type: secret}
+  features: {opening_statement: hi}
+  graph:
+    nodes:
+    - {id: start, data: {type: start, title: Start, variables: [{variable: q, type: text-input, label: q}]}, position: {x: 0, y: 0}}
+    - id: code
+      position: {x: 300, y: 0}
+      data: {type: code, title: Code, code: x, outputs: {result: {type: string}}, variables: [{variable: q, value_selector: [start, q]}]}
+    - id: llm
+      position: {x: 600.5, y: 0}
+      data: {type: llm, title: LLM, prompt_template: [{id: p1, role: user, text: 'Say {{#code.result#}}'}], context: {enabled: true, variable_selector: [code, result]}}
+    - {id: end, position: {x: 900, y: 0}, data: {type: end, title: End, outputs: [{variable: out, value_selector: [llm, text]}]}}
+    edges:
+    - {id: start-source-code-target, source: start, target: code, sourceHandle: source, targetHandle: target}
+    - {id: code-source-llm-target, source: code, target: llm, sourceHandle: source, targetHandle: target}
+    - {id: llm-source-end-target, source: llm, target: end, sourceHandle: source, targetHandle: target}
+''';
+      final id = 'rep-${_docId()}';
+      await api.importDifyDsl(seed, id: id);
+      final client = await api.issueClientId(id);
+      final r = await api.replaceDocument(id, file, client, cseq: 1);
+      expect(
+        (r.head, r.nextCseq, r.nodes, r.edges, r.replayed, r.status),
+        (
+          r.ops,
+          r.ops + 1,
+          4,
+          3,
+          false,
+          'completed-with-warnings',
+        ),
+      );
+      expect((r.importedDslVersion, r.currentDslVersion), ('0.3.1', '0.7.0'));
+      expect(r.renamedNodes, isEmpty);
+      final d = (await api.snapshot(id)).doc;
+      expect(d.nodes.keys.toSet(), {'start', 'code', 'llm', 'end'});
+      expect(d.deletedNodes.keys, ['seed']);
+      expect(
+        (d.nodes['llm']!.config['context']! as VMap).entries['variable_selector'],
+        const VRef(OutputRef('code', 'result')),
+      );
+      expect(jsonEncode(d.toJson()), isNot(contains('sk-conformance-secret')));
+      expect(await api.exportDifyDsl(id, includeSecret: true), contains('sk-conformance-secret'));
+      expect((await api.meta(id)).appName, 'conformance replaced');
+      // Retries are replayed; the same file again is no op; a cseq ahead is refused.
+      final again = await api.replaceDocument(id, file, client, cseq: 1);
+      expect((again.replayed, again.ops, again.nextCseq), (true, r.ops, r.nextCseq));
+      expect((await api.replaceDocument(id, file, client, cseq: r.nextCseq)).ops, 0);
+      await expectLater(
+        api.replaceDocument(id, file, client, cseq: r.nextCseq + 1),
+        throwsA(isA<TransportException>().having((e) => e.code, 'code', 'outstanding_ops')),
+      );
+      // A deleted node comes back under a fresh id; references and edges follow.
+      final tr = HttpTransport(baseUrl: base, docId: id, auth: owner);
+      final del = await tr.submit(
+        SubmitRequest(
+          client: 'cli-rep-del',
+          ops: [OutgoingOp(cseq: 1, base: r.head, op: const RemoveNode('llm'))],
+        ),
+        timeout: const Duration(seconds: 10),
+      );
+      tr.close();
+      expect(del.results.single, isA<AckResult>());
+      final back = await api.replaceDocument(id, file, client, cseq: r.nextCseq);
+      final fresh = back.renamedNodes['llm']!;
+      expect(back.renamedEdges['llm-source-end-target'], '$fresh-source-end-target');
+      final after = (await api.snapshot(id)).doc;
+      final out = (after.nodes['end']!.config['outputs']! as VItems).items.single.value as VMap;
+      expect(out.entries['value_selector'], VRef(OutputRef(fresh, 'text')));
+      // Refusals: a version to confirm, a mode that does not fit, a read-only member.
+      final newer = file.replaceFirst('version: 0.3.1', 'version: 0.9.0');
+      await expectLater(
+        api.replaceDocument(id, newer, client, cseq: back.nextCseq),
+        throwsA(isA<DslVersionUnconfirmed>().having((e) => e.importedVersion, 'imported', '0.9.0')),
+      );
+      final chat = file.replaceFirst('type: end', 'type: answer');
+      await expectLater(
+        api.replaceDocument(id, chat, client, cseq: back.nextCseq),
+        throwsA(isA<TransportException>().having((e) => e.message, 'message', startsWith('Import Failed'))),
+      );
+      final viewerApi = DocsApi(base, auth: viewer);
+      await expectLater(
+        viewerApi.replaceDocument(id, file, 'cli-viewer-rep', cseq: 1),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 403)),
+      );
+      viewerApi.close();
+    });
+
+    test('CollabSession.replaceDocument against the server: others see commits and conflict with it', () async {
+      const file = '''
+app: {mode: workflow, name: conformance session}
+kind: app
+version: 0.7.0
+workflow:
+  graph:
+    nodes:
+    - {id: start, data: {type: start, title: Begin, variables: []}, position: {x: 0, y: 0}}
+    - {id: l1, data: {type: llm, title: Ask, prompt: hello}, position: {x: 300, y: 0}}
+    edges:
+    - {id: start-l1, source: start, target: l1, sourceHandle: source, targetHandle: target}
+''';
+      CollabSession open(AuthSession who) => CollabSession(
+        transport: HttpTransport(baseUrl: base, docId: doc, auth: who),
+        store: MemoryStore(),
+      );
+      final a = open(owner);
+      final b = open(editor);
+      await a.start();
+      await b.start();
+      await Future.wait([a.settled(), b.settled()]);
+      final seen = b.lastSeq;
+      a.edit(setPrompt('llm', 'before the replacement'));
+      final r = await a.replaceDocument((id, cseq) => api.replaceDocument(doc, file, id, cseq: cseq));
+      expect(r.status, 'completed');
+      expect(a.lastSeq, greaterThanOrEqualTo(r.head));
+      expect(a.view.nodes.keys.toSet(), {'start', 'l1'}); // the example's start node is kept (its title rewritten)
+      expect(a.machine.nextCseq, r.nextCseq);
+      a.edit(const SetField('l1', TitleKey(), VString('Ask again')));
+      await a.settled();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(b.view, a.view);
+      // A write based on what Bob saw before the replacement, to a register it wrote: a conflict naming Olivia's client.
+      final staleStart = b.edit(const SetField('start', TitleKey(), VString('Bob')), base: seen);
+      expect(staleStart.refusal, isA<Conflict>().having((c) => c.by, 'by', a.clientId));
+      await a.stop();
+      await b.stop();
+    });
+
     test('CORS: preflight answered, headers allowed for local origins, none for foreign ones', () async {
       final pre = http.Request('OPTIONS', base.replace(path: '/v1/docs/$doc/ops'))
         ..headers['Origin'] = 'http://localhost:5555'
