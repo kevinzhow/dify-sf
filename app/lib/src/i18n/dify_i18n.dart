@@ -48,6 +48,10 @@ class DifyI18n implements Translator {
       'agent-v-2',
       'app-overview',
       'login',
+      'permission',
+      'permission-keys',
+      'app-api',
+      'billing',
     ],
   }) async {
     final b = bundle ?? rootBundle;

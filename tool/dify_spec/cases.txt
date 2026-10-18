@@ -5160,3 +5160,239 @@ web/app/components/header/account-dropdown/__tests__/index.spec.tsx :: AccountDr
 web/app/components/header/account-dropdown/__tests__/index.spec.tsx :: AccountDropdown > opens the main navigation account menu through the composed trigger
 web/app/components/header/account-dropdown/__tests__/index.spec.tsx :: AccountDropdown > opens preferences from the account menu
 web/app/components/header/account-dropdown/__tests__/index.spec.tsx :: AccountDropdown > logs out and redirects to sign in
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should render workspace and member information
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should render fixed name column and flexible role column layout
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should render plural roles column header when RBAC is enabled
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should open and close invite modal
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should open invited modal after invite results are sent
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should open transfer ownership modal when transfer action is used
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show non-interactive owner role when transfer ownership is not allowed
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should hide manager controls for non-owner non-manager users
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should open and close edit workspace modal
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should close transfer ownership modal when close is clicked
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show pending status and you indicator
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show billing information for limited plan
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show unlimited billing information
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show non-billing member format for team plan even when billing is enabled
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show invite button when user is manager but not owner
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should allow admins to operate other non-owner members only
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should use created_at as fallback when last_active_at is empty
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should not show plural s when only one account in billing layout
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should not show plural s when only one account in non-billing layout
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should render role badge names from account roles
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should expose member details as a native row button without nesting member actions
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should open member details modal when a member row is clicked
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should open member details modal via keyboard Enter
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should not allow assigning roles from member details when target is owner
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should not allow assigning roles from member details when target is current user
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should submit only one member role when RBAC is disabled
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should submit multiple member roles when RBAC is enabled
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should not open member details when clicking the member menu area
+web/app/components/header/account-setting/members-page/__tests__/index.spec.tsx :: MembersPage > should show the upgrade action without blocking the backend-authoritative invite flow
+web/app/components/header/account-setting/members-page/__tests__/invite-button.spec.tsx :: InviteButton > should show invite button when branding is disabled
+web/app/components/header/account-setting/members-page/__tests__/invite-button.spec.tsx :: InviteButton > should show loading status while permissions are loading
+web/app/components/header/account-setting/members-page/__tests__/invite-button.spec.tsx :: InviteButton > should hide invite button when permission is denied
+web/app/components/header/account-setting/members-page/__tests__/invite-button.spec.tsx :: InviteButton > should show invite button when permission is granted
+web/app/components/header/account-setting/members-page/__tests__/member-menu.spec.tsx :: MemberMenu > should show edit role copy when multiple roles are disabled
+web/app/components/header/account-setting/members-page/__tests__/member-menu.spec.tsx :: MemberMenu > should submit only one selected role from the assign modal when RBAC is disabled
+web/app/components/header/account-setting/members-page/__tests__/member-menu.spec.tsx :: MemberMenu > should require confirmation before removing a member
+web/app/components/header/account-setting/members-page/__tests__/role-badges.spec.tsx :: RoleBadges > shows the visible roles and summarizes overflow
+web/app/components/header/account-setting/members-page/assign-roles-modal/__tests__/index.spec.tsx :: AssignRolesModal > Role selection > should hide selected count when multiple roles are disabled
+web/app/components/header/account-setting/members-page/assign-roles-modal/__tests__/index.spec.tsx :: AssignRolesModal > Role selection > should show single-role description when multiple roles are disabled
+web/app/components/header/account-setting/members-page/assign-roles-modal/__tests__/index.spec.tsx :: AssignRolesModal > Role selection > should disable confirm when the last selected role is unchecked
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should show current workspace name in the input
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should render on the dify-ui overlay layer
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should let user edit workspace name
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should submit update when confirming as owner
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should expose the saving label and prevent duplicate form submission
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should show error toast when update fails
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should disable save button when there are no changes
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should disable save button and show error when the name is empty
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should not submit when the form is submitted while save is disabled
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should disable confirm button for non-owners
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should call onCancel when close icon is clicked
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should call onCancel when cancel button is clicked
+web/app/components/header/account-setting/members-page/edit-workspace-modal/__tests__/index.spec.tsx :: EditWorkspaceModal > should call onCancel when Escape key is pressed
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > describes how to add multiple email addresses
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > keeps an uncommitted draft when focus leaves the composer
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should keep a single pasted address in the draft for further editing
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > commits a valid draft with Enter and keeps focus in the composer
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > keeps a manually entered invalid address in the input for correction
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > does not commit or submit Enter while an IME composition is active
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should wait for Enter before committing manually typed separators
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should not report a valid delimited draft as invalid when focus leaves
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should not split manually typed addresses on spaces
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > parses batch paste delimiters and removes duplicates case-insensitively
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should combine a batch paste with the draft at the current caret
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should replace a selected draft when a batch is pasted
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should deduplicate a later batch against existing recipients
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > moves an invalid pasted address back into the input for editing
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > preserves the draft and restores input focus when a recipient is removed
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > supports one keyboard path through chips without adding tab stops
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should return focus to the input after moving past the last chip
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should focus the next chip after deleting a middle chip
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should return focus to the input when a valid chip is activated with %j
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > should move an invalid chip into the focused input when activated from the keyboard
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > immediately removes the last chip with Backspace from an empty input
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients-field.spec.tsx :: EmailRecipientsField > disables every editing action while the composer is frozen
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should normalize an address while preserving browser email validity semantics
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should recognize %j as a batch paste separator
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should not treat %j as batch input
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should ignore empty entries while preserving recipient order
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should deduplicate recipients against both existing and pasted addresses
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should preserve invalid pasted entries so the user can correct them
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/email-recipients.spec.ts :: email recipients > should preserve the order of a realistic twenty-recipient batch
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > renders a labeled form inside a controlled dialog
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should place initial focus in the email composer
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should focus the email field first when the untouched form is submitted with Enter
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > does not render dialog content while controlled closed
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > shows the email service warning in the form
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > submits normalized, deduplicated recipients with the selected Role id
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > submits a valid draft without requiring Enter or blur to create a chip
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should submit a manually typed email list without requiring Enter
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should create exactly one non-empty recipient when a single draft is submitted
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should commit a non-empty draft before Enter submits the form
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > accepts an address allowed by the browser without requiring a dotted domain
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > keeps invalid recipients visible and blocks the whole submission
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should preserve and refocus an invalid draft until the user corrects it
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > shows the required error and focuses the email field after an empty submission
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should preserve the email draft while the user resolves a missing role
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > freezes all editable controls while invitations are being sent
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > warns but lets the backend decide whether recipients consume remaining seats
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > counts a manually typed recipient list before it is committed
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > maps %s server validation to the owning field
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > keeps a role server error visible when the user only opens the selector
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should clear an email server error when the user edits and successfully retries
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > should clear an email server error when a recipient is removed before retrying
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > keeps unknown request failures as a persistent form error
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > routes close actions through the controlled state owner
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/index.spec.tsx :: InviteModal > resets the form after a controlled close
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/invite-error.spec.ts :: getInviteErrorCode > reads the documented %s code from the contract error body
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/invite-error.spec.ts :: getInviteErrorCode > ignores transport and undocumented error codes
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > requires an explicit selection and exposes select semantics
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > uses the selected Role object as its typed value
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > shows role descriptions in the option list
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > falls back to localized descriptions for legacy built-in roles
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > renders loading and empty states inside the select popup
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > shows an error instead of treating a failed role query as empty
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > keeps loaded roles available when a later request fails
+web/app/components/header/account-setting/members-page/invite-modal/__tests__/role-selector.spec.tsx :: RoleSelector > loads another role page when the list sentinel becomes visible
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal > should show success and failed invitation sections
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal > should hide invitation link section when there are no successes
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal > should hide failed section when there are only successes
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal > should show already-member message without invitation copy when every email is already a member
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal > should hide both sections when results are empty
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal (Cloud edition) > should render invitationSentTip without self-hosted content
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/index.spec.tsx :: InvitedModal (Cloud edition) > should show already-member details
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/invitation-link.spec.tsx :: InvitationLink > should copy relative url with origin
+web/app/components/header/account-setting/members-page/invited-modal/__tests__/invitation-link.spec.tsx :: InvitationLink > should copy absolute url as is
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Rendering > should render edit role action when multiple roles are disabled
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Rendering > should render singular assigned role label when there is one role
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Rendering > should render role loading state without assigned role chips or count
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Role actions > should keep role chips readonly when multiple roles are disabled
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Role actions > should not show role removal controls when role assignment is not allowed
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Role actions > should submit pending role changes only after save is clicked
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Role actions > should keep assigned role selections pending until save is clicked
+web/app/components/header/account-setting/members-page/member-details-modal/__tests__/index.spec.tsx :: MemberDetailsModal > Role actions > should replace the selected role when multiple roles are not allowed
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should complete ownership transfer flow through all steps
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should handle timer countdown and resend
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should show error when email verification returns invalid code
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should show error when verifying email throws an error
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should not show a modal-level toast and should stay on start step when sending verification email fails
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should show error when ownership transfer fails
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should handle sendOwnerEmail returning null data
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should swallow null rejection from sendOwnerEmail without showing a modal-level toast
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should show fallback error prefix when verifyOwnerEmail throws null
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should show fallback error prefix when ownershipTransfer throws null
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should close when close button is clicked
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/index.spec.tsx :: TransferOwnershipModal > should close when cancel button is clicked
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should render placeholder when no value is selected
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should render selected member info
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should open dropdown and show filtered list on click
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should filter list by search value
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should call onSelect and close dropdown when an item is clicked
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should filter list by email when name does not match
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should show placeholder when value does not match any account
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should handle missing data gracefully
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should filter by email when account name is empty
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should expose the expanded state while the dropdown is open
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should not match account when neither name nor email contains search value
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should fall back to empty string for account with undefined email when searching
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should open the dropdown with the %s key
+web/app/components/header/account-setting/members-page/transfer-ownership-modal/__tests__/member-selector.spec.tsx :: MemberSelector > should select a member with the %s key
+web/app/components/header/account-setting/__tests__/constants.spec.ts :: settingsQueryParser > parses %s
+web/app/components/header/account-setting/__tests__/constants.spec.ts :: settingsQueryParser > keeps account and integration destinations in their owning branches
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should render the sidebar with correct menu items
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide sidebar labels on mobile
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide billing from dataset operators
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should keep moved integrations hidden when api extension permission is missing
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should show custom tab when customization permission is missing
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide role and permission set entries when role management permission is missing
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide role and permission set entries when RBAC is disabled
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should not render direct role pages when RBAC is disabled
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide billing and custom tabs when disabled
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should show billing to regular members without billing permission keys
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide workflow log archives outside cloud edition
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should hide workflow log archives from custom RBAC roles that are not owner or admin
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should not render workflow log archives page outside cloud edition
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should render a direct billing entry for regular members without billing permission keys
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Rendering > should not render a direct billing entry for dataset operators
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Tab Navigation > should change active tab when clicking on menu item
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Tab Navigation > should navigate through various tabs and show correct details
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Tab Navigation > should switch the preferences icon when the tab is active
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Interactions > should call onCancel when clicking close button
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Interactions > should call onCancel when pressing Escape key
+web/app/components/header/account-setting/__tests__/index.spec.tsx :: AccountSetting > Interactions > should handle scroll event in panel
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Rendering > should render the list as a flexible scroll region
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Rendering > should render an empty state when there are no permission groups
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Rendering > should expand the first selected group by default
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Group Interaction > should toggle a group when clicking its header
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Group Interaction > should toggle a group when clicking its arrow control
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Permission Interaction > should add a permission when clicking an unchecked item row
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Permission Interaction > should remove a selected permission when clicking its item row
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Permission Interaction > should show selected counts on groups with selected permissions
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Permission Interaction > should select all permissions in a group without toggling expansion
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Permission Interaction > should clear all permissions in a fully selected group
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Read-only Mode > should hide group bulk actions in read-only mode
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Read-only Mode > should not change permissions when clicking a row or checkbox in read-only mode
+web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx :: PermissionGroupList > Read-only Mode > should still allow expanding groups in read-only mode
+web/app/components/header/account-setting/__tests__/settings-modal.spec.tsx :: SettingsModal > opens and closes account settings with shallow replace updates
+web/app/components/header/account-setting/__tests__/settings-modal.spec.tsx :: SettingsModal > renders an integration destination and replaces it when switching sections
+web/app/components/header/account-setting/__tests__/settings-modal.spec.tsx :: SettingsModal > ignores invalid settings destinations
+web/app/components/header/account-setting/__tests__/update-setting-dialog-form.spec.tsx :: UpdateSettingDialogForm > should open preferences after closing the update setting dialog when timezone link is clicked
+web/app/components/header/account-setting/__tests__/update-setting-dialog-form.spec.tsx :: UpdateSettingDialogForm > should replace the current destination when timezone link is clicked inside settings
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should render checkboxes when multiple roles are allowed
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should provide one named keyboard stop per role and toggle from its label
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should prevent changing disabled roles through their labels
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should render radios when only one role is allowed
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should clear the role search and return focus to the search input
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should expose disabled state on single-role options
+web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx :: WorkspaceRoleCheckboxList > should show legacy role descriptions when only one role is allowed
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > includes the visible workspace name in the menu trigger accessible name
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > keeps full workspace names on the final interactive title owner
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > includes the visible workspace plan in the menu trigger accessible name
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > hides cloud-only credits and upgrade actions outside cloud edition
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > links workspace credits to model provider settings in cloud edition
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > renders unlimited credits from the summary contract
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > hides the credits link when the summary has no effective credits
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > renders a stable skeleton while the current workspace is loading
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > renders the current workspace before loading the workspace list
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > prefetches the workspace list when the trigger is hovered
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > prefetches the workspace list when the trigger receives keyboard focus
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > keeps workspace controls visible and disabled while the workspace list is loading
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > uses the current workspace query for billing plan UI
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > uses the original paid plan badge for paid workspaces
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > shows the Enterprise license status independently of the Cloud billing state
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > opens workspace actions and switcher in a popover panel
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > filters workspace switcher options from the search action
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > announces an empty workspace search result
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > exposes only the current workspace as current
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > sorts workspaces by last opened and can sort by created time
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > closes the nested sort menu before the workspace popover on Escape
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > opens account settings from workspace menu actions
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > opens members settings from workspace menu when billing is disabled
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > switches workspace from the workspace switcher item
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > closes the popover without switching when the current workspace is selected
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > keeps workspace settings visible for dataset operators without member management permission
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > shows invite members when member management permission is available
+web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > hides invite members when member management permission is missing

@@ -20,6 +20,8 @@ import 'i18n/dify_i18n.dart';
 import 'launch_options.dart';
 import 'session_factory.dart';
 import 'settings.dart';
+import 'settings/workspace_card.dart';
+import 'settings/workspace_members.dart';
 
 /// Start screen (signed in): mode and the document to open or create, in Dify's main navigation frame (the logo at
 /// the top, the account menu at the bottom of the sidebar). The server is the one signed in to.
@@ -144,6 +146,8 @@ class _HomePageState extends State<HomePage> {
           backend: backend,
           docId: id,
           account: account,
+          // Re-read after the server refuses edits (403: the role was changed); the demo has no server rights.
+          refreshAccount: demo ? null : _auth?.session.account,
           displayName: account == null ? null : normalizeDisplayName(account.name),
           journaled: _journaled,
           create: create,
@@ -251,12 +255,35 @@ class _HomePageState extends State<HomePage> {
 }
 
 /// Dify's main navigation (main-nav/index.tsx) as far as dify-sf has it: the `w-62` sidebar on
-/// `bg-background-body` with the Dify logo at the top (`pt-3 pr-2 pb-2 pl-4`) and the account section at the bottom
-/// (`py-3 pr-1 pl-3`). Dify's search, workspace card, navigation links, web apps and help menu are not part of
-/// dify-sf.
-class MainNavFrame extends StatelessWidget {
+/// `bg-background-body` with the Dify logo at the top (`pt-3 pr-2 pb-2 pl-4`), the workspace card under it (`p-2`;
+/// its menu opens the workspace settings) and the account section at the bottom (`py-3 pr-1 pl-3`). Dify's search,
+/// navigation links, web apps and help menu are not part of dify-sf.
+class MainNavFrame extends StatefulWidget {
   const MainNavFrame({super.key, required this.account});
   final Account account;
+
+  @override
+  State<MainNavFrame> createState() => _MainNavFrameState();
+}
+
+class _MainNavFrameState extends State<MainNavFrame> {
+  WorkspaceMembers? _members;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = AuthScope.of(context);
+    if (_members?.auth != auth) {
+      _members?.dispose();
+      _members = WorkspaceMembers(auth);
+    }
+  }
+
+  @override
+  void dispose() {
+    _members?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -276,11 +303,15 @@ class MainNavFrame extends StatelessWidget {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: WorkspaceCard(members: _members!),
+        ),
         const Spacer(),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
           child: Row(
-            children: [Flexible(child: AccountSection(account: account))],
+            children: [Flexible(child: AccountSection(account: widget.account))],
           ),
         ),
       ],

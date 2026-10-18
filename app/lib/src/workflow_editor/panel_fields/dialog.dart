@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 
@@ -30,6 +31,7 @@ Future<T?> showDifyDialog<T>(BuildContext context, {required WidgetBuilder build
 /// DialogContent: centred, [width] wide (at most the viewport less 2 rem), `rounded-2xl bg-components-panel-bg
 /// shadow-xl` with [padding]; [height] fixes the height, else it hugs the content up to [maxHeight] (80 % of the
 /// viewport by default), scrolling when [scrollable]. Named [label] (the dialog's title) for assistive technology.
+/// [bordered] adds dify-ui 1.17's `border-[0.5px] border-components-panel-border`.
 class DifyDialogSurface extends StatelessWidget {
   const DifyDialogSurface({
     super.key,
@@ -40,6 +42,7 @@ class DifyDialogSurface extends StatelessWidget {
     this.maxHeight,
     this.padding = EdgeInsets.zero,
     this.scrollable = false,
+    this.bordered = false,
   });
 
   final Widget child;
@@ -48,6 +51,7 @@ class DifyDialogSurface extends StatelessWidget {
   final double? height, maxHeight;
   final EdgeInsetsGeometry padding;
   final bool scrollable;
+  final bool bordered;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +76,7 @@ class DifyDialogSurface extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: DifyColors.componentsPanelBg,
                   borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                  border: bordered ? Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline) : null,
                   boxShadow: DifyShadows.xl,
                 ),
                 child: scrollable ? SingleChildScrollView(child: child) : child,

@@ -77,6 +77,8 @@ flutter:
     # Dify's logo (web/public/logo/logo.svg) and the Heroicons Dify uses (@iconify-json/heroicons 1.2.3, MIT).
     - assets/brand/
     - assets/heroicons/
+    # The members page's copy icons (members-page/invited-modal/assets).
+    - assets/members/
     # Remix Icon as Dify uses it (tool/gen_remix_icons.py, Apache-2.0).
     - assets/remix_icons/
     # Dify's icons (tool/gen_dify_icons.py), one entry per directory.
