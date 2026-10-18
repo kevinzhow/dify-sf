@@ -157,8 +157,10 @@ Future<CanvasImageExport> captureCanvasImage(
   );
   final view = CanvasViewState(center: geometry.center, scale: geometry.scale)..viewport = geometry.size;
   graph.restingOrigin.value = view.toScreen(Offset.zero);
+  selection.edge = canvas.selection.edge;
   final original = canvas.graph;
   if (original != null) {
+    graph.edgeRun = Map.of(original.edgeRun);
     graph.dimming = original.dimming;
     final hovered = original.hoveredNode;
     graph.hoveredNode = hovered == null ? null : graph[original.slots[hovered]?.id ?? '']?.slot;

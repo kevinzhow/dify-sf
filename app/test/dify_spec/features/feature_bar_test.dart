@@ -18,7 +18,7 @@ void main() {
       t,
       FeatureBar(
         features: {
-          if (enabled != null) enabled: {'enabled': true},
+          ?enabled: {'enabled': true},
         },
         isChatMode: isChatMode,
         showFileUpload: showFileUpload,

@@ -1,6 +1,10 @@
 // dify-spec: web/app/components/workflow/operator/__tests__/more-actions.spec.tsx
 import 'dart:convert';
 
+import 'package:collab_client/collab_client.dart';
+import 'package:dify_sf_app/src/canvas/edge_curve.dart';
+import 'package:dify_sf_app/src/canvas/run_view.dart';
+
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/operator/actions.dart';
 import 'package:dify_sf_app/src/workflow_editor/operator/image_export.dart';
@@ -106,6 +110,38 @@ void main() {
         expect(img.decodePng(result.bytes)!.width, 8);
       }
     }
+  });
+
+  testWidgets('exported edges preserve their run gradient and selection color', (t) async {
+    final h = await EditorHarness.start(
+      t,
+      [node('a', x: 50, y: 100), node('b', x: 650, y: 100)],
+      edges: const [Edge(id: 'ab', source: 'a', target: 'b')],
+    );
+    h.canvas.edgeRun.value = {'ab': const EdgeRunView(sourceStatus: 'succeeded', targetStatus: 'failed')};
+    await t.pump();
+    final graph = h.canvas.graph!;
+    final middle = edgeCurve(graph['a']!.outPortFor('source'), graph['b']!.inPort)[12];
+    final context = t.element(find.byKey(const ValueKey('node-a')));
+    Future<void> check(Color expected) async {
+      final result = await t.runAsync(
+        () => captureCanvasImage(context, h.doc, h.canvas, 'Example', ExportImageFormat.png, wholeWorkflow: true),
+      );
+      final decoded = img.decodePng(result!.bytes)!;
+      final p = decoded.getPixel(
+        ((middle.dx - graph.bounds.left + 50) * 2).round(),
+        ((middle.dy - graph.bounds.top + 50) * 2).round(),
+      );
+      expect((p.r - expected.r * 255).abs(), lessThan(5));
+      expect((p.g - expected.g * 255).abs(), lessThan(5));
+      expect((p.b - expected.b * 255).abs(), lessThan(5));
+    }
+
+    await check(Color.lerp(getEdgeColor('succeeded'), getEdgeColor('failed'), 0.5)!);
+    h.canvas.selection.selectEdge('ab');
+    await t.pump();
+    await check(getEdgeColor('running'));
+    await h.dispose(t);
   });
 
   testWidgets('whole image captures offscreen nodes at full quality without moving the editor viewport', (t) async {
