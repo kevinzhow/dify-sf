@@ -94,7 +94,7 @@ class DifyButton extends StatelessWidget {
                     ?leading,
                     Flexible(child: child),
                     ?trailing,
-                    if (loading) _Spinner(color: look.foreground),
+                    if (loading) DifySpinner(color: look.foreground),
                   ],
                 ),
               ),
@@ -107,15 +107,16 @@ class DifyButton extends StatelessWidget {
 }
 
 /// `animate-spin` (1 s linear, infinite).
-class _Spinner extends StatefulWidget {
-  const _Spinner({required this.color});
+class DifySpinner extends StatefulWidget {
+  const DifySpinner({super.key, required this.color, this.size = 12});
   final Color color;
+  final double size;
 
   @override
-  State<_Spinner> createState() => _SpinnerState();
+  State<DifySpinner> createState() => _DifySpinnerState();
 }
 
-class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin {
+class _DifySpinnerState extends State<DifySpinner> with SingleTickerProviderStateMixin {
   late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
 
   @override
@@ -139,7 +140,7 @@ class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin 
   Widget build(BuildContext context) => ExcludeSemantics(
     child: RotationTransition(
       turns: _c,
-      child: RemixIcon('loader-2-line', size: 12, color: widget.color),
+      child: RemixIcon('loader-2-line', size: widget.size, color: widget.color),
     ),
   );
 }

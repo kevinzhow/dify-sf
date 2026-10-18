@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/semantics.dart';
 
 import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
@@ -17,7 +18,8 @@ import '../../i18n/dify_i18n.dart';
 
 /// Pointer, focus and keyboard activation for controls that are not buttons (switch, segmented item).
 class _Control extends StatefulWidget {
-  const _Control({required this.builder, this.onActivate, this.disabled = false});
+  const _Control({required this.builder, this.onActivate, this.disabled = false, this.focusNode});
+  final FocusNode? focusNode;
   final Widget Function(BuildContext context, bool hovered, bool focused) builder;
   final VoidCallback? onActivate;
   final bool disabled;
@@ -35,6 +37,7 @@ class _ControlState extends State<_Control> {
 
   @override
   Widget build(BuildContext context) => FocusableActionDetector(
+    focusNode: widget.focusNode,
     enabled: !widget.disabled,
     mouseCursor: widget.disabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
     actions: {ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) => _activate())},
@@ -75,34 +78,36 @@ class DifySwitch extends StatelessWidget {
     this.onCheckedChange,
     this.size = DifySwitchSize.md,
     this.disabled = false,
+    this.loading = false,
     this.semanticLabel,
   });
 
   final bool checked;
   final ValueChanged<bool>? onCheckedChange;
   final DifySwitchSize size;
-  final bool disabled;
+  final bool disabled, loading;
+  bool get _disabled => disabled || loading;
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) => Semantics(
     container: true,
     toggled: checked,
-    enabled: !disabled,
+    enabled: !_disabled,
     label: semanticLabel,
-    onTap: disabled ? null : () => onCheckedChange?.call(!checked),
+    onTap: _disabled ? null : () => onCheckedChange?.call(!checked),
     child: _Control(
-      disabled: disabled,
+      disabled: _disabled,
       onActivate: () => onCheckedChange?.call(!checked),
       builder: (context, hovered, focused) {
-        final bg = switch ((checked, disabled)) {
+        final bg = switch ((checked, _disabled)) {
           (true, true) => DifyColors.componentsToggleBgDisabled,
           (false, true) => DifyColors.componentsToggleBgUncheckedDisabled,
           (true, false) => hovered ? DifyColors.componentsToggleBgHover : DifyColors.componentsToggleBg,
           (false, false) =>
             hovered ? DifyColors.componentsToggleBgUncheckedHover : DifyColors.componentsToggleBgUnchecked,
         };
-        final knob = disabled
+        final knob = _disabled
             ? DifyColors.componentsToggleKnobDisabled
             : hovered
             ? DifyColors.componentsToggleKnobHover
@@ -118,23 +123,37 @@ class DifySwitch extends StatelessWidget {
             borderRadius: BorderRadius.circular(size.radius),
             boxShadow: _ring(focused),
           ),
-          child: AnimatedSlide(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            offset: Offset(checked ? size.travel / size.thumb.width : 0, 0),
-            child: Container(
-              width: size.thumb.width,
-              height: size.thumb.height,
-              decoration: BoxDecoration(
-                color: knob,
-                borderRadius: BorderRadius.circular(size.thumbRadius),
-                boxShadow: disabled
-                    ? null
-                    : hovered
-                    ? DifyShadows.md
-                    : DifyShadows.sm,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedSlide(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                offset: Offset(checked ? size.travel / size.thumb.width : 0, 0),
+                child: Container(
+                  width: size.thumb.width,
+                  height: size.thumb.height,
+                  decoration: BoxDecoration(
+                    color: knob,
+                    borderRadius: BorderRadius.circular(size.thumbRadius),
+                    boxShadow: _disabled
+                        ? null
+                        : hovered
+                        ? DifyShadows.md
+                        : DifyShadows.sm,
+                  ),
+                ),
               ),
-            ),
+              if (loading && (size == DifySwitchSize.md || size == DifySwitchSize.lg))
+                Positioned(
+                  left: checked ? 2 : size.track.width / 2,
+                  top: 2,
+                  child: DifySpinner(
+                    color: DifyColors.textTertiary,
+                    size: size == DifySwitchSize.md ? 8 : 10,
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -148,26 +167,64 @@ class DifySwitch extends StatelessWidget {
 class DifySlider extends StatefulWidget {
   const DifySlider({
     super.key,
-    required this.value,
-    required this.min,
-    required this.max,
+    required int this.value,
+    this.min = 0,
+    this.max = 100,
     this.step = 1,
-    this.onChanged,
+    ValueChanged<int>? onChanged,
     this.disabled = false,
     this.semanticLabel,
-    this.valueText,
+    String Function(int value)? valueText,
     this.trackColor,
     this.rangeColor,
-  });
+  }) : _integerChanged = onChanged,
+       _decimalChanged = null,
+       _integerText = valueText,
+       _decimalText = null,
+       _decimal = false;
 
-  final int value, min, max, step;
-  final ValueChanged<int>? onChanged;
+  /// Decimal values share the same rendering and interactions while preserving the integer constructor's API.
+  const DifySlider.decimal({
+    super.key,
+    required double this.value,
+    this.min = 0,
+    this.max = 100,
+    this.step = 1,
+    ValueChanged<double>? onChanged,
+    this.disabled = false,
+    this.semanticLabel,
+    String Function(double value)? valueText,
+    this.trackColor,
+    this.rangeColor,
+  }) : _integerChanged = null,
+       _decimalChanged = onChanged,
+       _integerText = null,
+       _decimalText = valueText,
+       _decimal = true;
+
+  final num value, min, max, step;
   final bool disabled;
   final String? semanticLabel;
-  final String Function(int value)? valueText;
-
-  /// Call-site track / range colours (`bg-components-slider-track`, `bg-components-slider-range` by default).
   final Color? trackColor, rangeColor;
+  final bool _decimal;
+  final ValueChanged<int>? _integerChanged;
+  final ValueChanged<double>? _decimalChanged;
+  final String Function(int)? _integerText;
+  final String Function(double)? _decimalText;
+
+  ValueChanged<num>? get onChanged {
+    if (_decimal) {
+      return _decimalChanged == null ? null : (v) => _decimalChanged(v.toDouble());
+    }
+    return _integerChanged == null ? null : (v) => _integerChanged(v.toInt());
+  }
+
+  String Function(num)? get valueText {
+    if (_decimal) {
+      return _decimalText == null ? null : (v) => _decimalText(v.toDouble());
+    }
+    return _integerText == null ? null : (v) => _integerText(v.toInt());
+  }
 
   @override
   State<DifySlider> createState() => _DifySliderState();
@@ -176,9 +233,13 @@ class DifySlider extends StatefulWidget {
 class _DifySliderState extends State<DifySlider> {
   bool _hovered = false, _focused = false;
 
-  int _clamp(int v) => v.clamp(widget.min, widget.max);
+  num _clamp(num v) {
+    final n = v.clamp(widget.min, widget.max);
+    // Decimal steps must not report binary floating point tails (0.2 + 0.1).
+    return widget._decimal ? double.parse(n.toStringAsFixed(12)) : n.round();
+  }
 
-  void _set(int v) {
+  void _set(num v) {
     final next = _clamp(v);
     if (next != widget.value && !widget.disabled) widget.onChanged?.call(next);
   }
@@ -216,7 +277,7 @@ class _DifySliderState extends State<DifySlider> {
     final w = widget;
     final span = w.max - w.min;
     final fraction = span <= 0 ? 0.0 : ((w.value - w.min) / span).clamp(0.0, 1.0);
-    String text(int v) => w.valueText?.call(v) ?? '$v';
+    String text(num v) => w.valueText?.call(_clamp(v)) ?? '$v';
     return Semantics(
       container: true,
       slider: true,
@@ -351,7 +412,7 @@ class _InputBoxState extends State<_InputBox> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    final focused = w.focusNode.hasFocus && !w.readOnly && !w.disabled;
+    final focused = w.focusNode.hasFocus && !w.disabled;
     final hovered = _hovered && !w.readOnly && !w.disabled;
     var bg = DifyColors.componentsInputBgNormal;
     var border = const Color(0x00000000);
@@ -454,6 +515,45 @@ TextField _field({
   ),
 );
 
+/// Focus only an interactive input-group add-on on pointer down. Static labels delegate their tap to the input;
+/// other pressables throughout the app keep their existing focus lifecycle (e.g. comment reply navigation).
+class _InputAddon extends StatefulWidget {
+  const _InputAddon({required this.child, required this.focusInput, required this.focusControl});
+  final bool focusControl;
+  final Widget child;
+  final VoidCallback focusInput;
+  @override
+  State<_InputAddon> createState() => _InputAddonState();
+}
+
+class _InputAddonState extends State<_InputAddon> {
+  final _scope = FocusNode(debugLabel: 'input addon', canRequestFocus: false, skipTraversal: true);
+  @override
+  void dispose() {
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    focusNode: _scope,
+    canRequestFocus: false,
+    skipTraversal: true,
+    child: Listener(
+      onPointerDown: (_) {
+        if (!widget.focusControl) return;
+        final target = _scope.descendants.where((n) => n.canRequestFocus && !n.skipTraversal).firstOrNull;
+        target?.requestFocus();
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: widget.focusInput,
+        child: TextFieldTapRegion(child: widget.child),
+      ),
+    ),
+  );
+}
+
 /// dify-ui's Input: `w-full rounded-lg px-3 py-1.75 system-sm-regular` on the input box (32 px high). Controlled:
 /// shows [value], reports edits with [onChanged]. [formatters] run on each edit (e.g. spaces to underscores).
 class DifyInput extends StatefulWidget {
@@ -473,6 +573,7 @@ class DifyInput extends StatefulWidget {
     this.height,
     this.leading,
     this.trailing,
+    this.focusInteractiveAddons = true,
     this.onKeyEvent,
     this.textStyle,
     this.fontFamily,
@@ -499,6 +600,10 @@ class DifyInput extends StatefulWidget {
 
   /// InputGroup addons before and after the text (the text loses its padding on that side).
   final Widget? leading, trailing;
+
+  /// Pointer focus for interactive add-ons. False when the control manages focus itself (e.g. a search clear
+  /// button that must not blur the search input even briefly). Static add-ons still focus the input.
+  final bool focusInteractiveAddons;
 
   /// Keys pressed while the field has focus, before the text field sees them.
   final FocusOnKeyEventCallback? onKeyEvent;
@@ -570,16 +675,38 @@ class _DifyInputState extends State<DifyInput> with _ControlledText<DifyInput> {
     }
     if (w.leading != null || w.trailing != null) {
       // Taps on the addons (the clear button) are not taps outside the field.
-      field = Row(
-        children: [
-          if (w.leading != null) TextFieldTapRegion(child: w.leading!),
-          Expanded(child: field),
-          if (w.trailing != null) TextFieldTapRegion(child: w.trailing!),
-        ],
+      field = FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: Row(
+          children: [
+            if (w.leading != null)
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(2),
+                child: _InputAddon(
+                  focusControl: w.focusInteractiveAddons,
+                  focusInput: _focus.requestFocus,
+                  child: w.leading!,
+                ),
+              ),
+            Expanded(
+              child: FocusTraversalOrder(order: const NumericFocusOrder(1), child: field),
+            ),
+            if (w.trailing != null)
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(3),
+                child: _InputAddon(
+                  focusControl: w.focusInteractiveAddons,
+                  focusInput: _focus.requestFocus,
+                  child: w.trailing!,
+                ),
+              ),
+          ],
+        ),
       );
     }
     return Semantics(
       label: w.semanticLabel,
+      validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
       child: _InputBox(
         focusNode: _focus,
         disabled: w.disabled,
@@ -605,6 +732,11 @@ class DifyNumberField extends StatefulWidget {
     this.unit,
     this.disabled = false,
     this.readOnly = false,
+    this.invalid = false,
+    this.incrementLabel = 'Increment value',
+    this.decrementLabel = 'Decrement value',
+    this.incrementIcon,
+    this.decrementIcon,
     this.semanticLabel,
     this.focusNode,
     this.inputPaddingRight = 12,
@@ -616,7 +748,9 @@ class DifyNumberField extends StatefulWidget {
   final num? min, max;
   final num step;
   final String? unit;
-  final bool disabled, readOnly;
+  final bool disabled, readOnly, invalid;
+  final String incrementLabel, decrementLabel;
+  final Widget? incrementIcon, decrementIcon;
   final String? semanticLabel;
   final FocusNode? focusNode;
 
@@ -714,17 +848,19 @@ class _DifyNumberFieldState extends State<DifyNumberField> with _ControlledText<
     return Expanded(
       child: DifyPressable(
         disabled: w.disabled || w.readOnly || atLimit,
-        semanticLabel: direction > 0 ? 'Increment' : 'Decrement',
+        semanticLabel: direction > 0 ? w.incrementLabel : w.decrementLabel,
         onPressed: () => _stepBy(direction),
         builder: (context, hovered, focused) => Container(
           width: 24,
           alignment: Alignment.center,
           color: hovered ? DifyColors.stateBaseHover : null,
-          child: RemixIcon(
-            direction > 0 ? 'arrow-up-s-line' : 'arrow-down-s-line',
-            size: 12,
-            color: DifyColors.textTertiary,
-          ),
+          child:
+              (direction > 0 ? w.incrementIcon : w.decrementIcon) ??
+              RemixIcon(
+                direction > 0 ? 'arrow-up-s-line' : 'arrow-down-s-line',
+                size: 12,
+                color: DifyColors.textTertiary,
+              ),
         ),
       ),
     );
@@ -736,10 +872,12 @@ class _DifyNumberFieldState extends State<DifyNumberField> with _ControlledText<
     final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
     return Semantics(
       label: w.semanticLabel,
+      validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
       child: _InputBox(
         focusNode: _focus,
         disabled: w.disabled,
         readOnly: w.readOnly,
+        invalid: w.invalid,
         child: Row(
           children: [
             Expanded(
@@ -797,13 +935,15 @@ typedef DifySegment<T> = ({T value, Widget child, String label});
 /// border and accent text with shadow-xs). [itemPadding], [textColor], [checkedTextColor] and [bordered] take
 /// call-site overrides (FormInputTypeSwitch: `border-0 px-2.5 py-1.5`, tertiary / secondary text). [tooltip] wraps
 /// unchecked items.
-class DifySegmentedControl<T> extends StatelessWidget {
+class DifySegmentedControl<T> extends StatefulWidget {
   const DifySegmentedControl({
     super.key,
     required this.value,
     required this.segments,
     this.onChanged,
     this.disabled = false,
+    this.disabledValues = const {},
+    this.semanticLabel,
     this.height = 32,
     this.itemPadding = const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     this.textColor = DifyColors.textSecondary,
@@ -819,6 +959,8 @@ class DifySegmentedControl<T> extends StatelessWidget {
   final List<DifySegment<T>> segments;
   final ValueChanged<T>? onChanged;
   final bool disabled;
+  final Set<T> disabledValues;
+  final String? semanticLabel;
   final double height;
   final EdgeInsets itemPadding;
   final Color textColor, checkedTextColor;
@@ -828,74 +970,129 @@ class DifySegmentedControl<T> extends StatelessWidget {
   final double padding, radius, itemRadius;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: height,
-    padding: EdgeInsets.all(padding),
-    decoration: BoxDecoration(
-      color: DifyColors.componentsSegmentedControlBgNormal,
-      borderRadius: BorderRadius.circular(radius),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 1,
-      children: [
-        for (final s in segments)
-          () {
-            final checked = s.value == value;
-            Widget item = Semantics(
-              container: true,
-              checked: checked,
-              inMutuallyExclusiveGroup: true,
-              enabled: !disabled,
-              label: s.label,
-              onTap: disabled ? null : () => onChanged?.call(s.value),
-              child: _Control(
-                disabled: disabled,
-                onActivate: () => onChanged?.call(s.value),
-                builder: (context, hovered, focused) {
-                  final color = disabled && !checked
-                      ? DifyColors.textDisabled
-                      : checked
-                      ? checkedTextColor
-                      : textColor;
-                  return Container(
-                    padding: itemPadding,
-                    decoration: BoxDecoration(
-                      color: checked
-                          ? DifyColors.componentsSegmentedControlItemActiveBg
-                          : hovered && !disabled
-                          ? DifyColors.stateBaseHover
-                          : null,
-                      borderRadius: BorderRadius.circular(itemRadius),
-                      border: bordered
-                          ? Border.all(
-                              color: checked
-                                  ? DifyColors.componentsSegmentedControlItemActiveBorder
-                                  : const Color(0x00000000),
-                              width: Css.hairline,
-                            )
-                          : null,
-                      boxShadow: _ring(focused) ?? (checked ? DifyShadows.xs : null),
+  State<DifySegmentedControl<T>> createState() => _DifySegmentedControlState<T>();
+}
+
+class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
+  final _nodes = <T, FocusNode>{};
+  @override
+  void dispose() {
+    for (final n in _nodes.values) {
+      n.dispose();
+    }
+    super.dispose();
+  }
+
+  void _choose(T value) {
+    if (!widget.disabled && !widget.disabledValues.contains(value) && value != widget.value) {
+      widget.onChanged?.call(value);
+    }
+  }
+
+  KeyEventResult _key(T value, KeyEvent event) {
+    if (event is! KeyDownEvent || widget.disabled) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final next = key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.arrowDown;
+    final prev = key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowUp;
+    if (!next && !prev) return KeyEventResult.ignored;
+    final enabled = widget.segments.where((s) => !widget.disabledValues.contains(s.value)).toList();
+    if (enabled.isEmpty) return KeyEventResult.handled;
+    final index = enabled.indexWhere((s) => s.value == value);
+    final target = enabled[(index + (next ? 1 : -1)) % enabled.length].value;
+    _nodes[target]?.requestFocus();
+    _choose(target);
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget;
+    final value = w.value, segments = w.segments, disabled = w.disabled;
+    final height = w.height, padding = w.padding, radius = w.radius, itemRadius = w.itemRadius;
+    final itemPadding = w.itemPadding, textColor = w.textColor, checkedTextColor = w.checkedTextColor;
+    final bordered = w.bordered, tooltip = w.tooltip;
+    return Semantics(
+      container: true,
+      role: SemanticsRole.radioGroup,
+      label: w.semanticLabel,
+      child: Container(
+        height: height,
+        padding: EdgeInsets.all(padding),
+        decoration: BoxDecoration(
+          color: DifyColors.componentsSegmentedControlBgNormal,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 1,
+          children: [
+            for (final s in segments)
+              () {
+                final checked = s.value == value;
+                final unavailable = disabled || w.disabledValues.contains(s.value);
+                final node = _nodes.putIfAbsent(s.value, () => FocusNode(debugLabel: 'segment ${s.label}'));
+                Widget item = Focus(
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  onKeyEvent: (_, e) => _key(s.value, e),
+                  child: Semantics(
+                    container: true,
+                    checked: checked,
+                    inMutuallyExclusiveGroup: true,
+                    enabled: !unavailable,
+                    label: s.label,
+                    onTap: unavailable ? null : () => _choose(s.value),
+                    child: _Control(
+                      disabled: unavailable,
+                      focusNode: node,
+                      onActivate: () => _choose(s.value),
+                      builder: (context, hovered, focused) {
+                        final color = unavailable && !checked
+                            ? DifyColors.textDisabled
+                            : checked
+                            ? checkedTextColor
+                            : textColor;
+                        return Container(
+                          padding: itemPadding,
+                          decoration: BoxDecoration(
+                            color: checked
+                                ? DifyColors.componentsSegmentedControlItemActiveBg
+                                : hovered && !unavailable
+                                ? DifyColors.stateBaseHover
+                                : null,
+                            borderRadius: BorderRadius.circular(itemRadius),
+                            border: bordered
+                                ? Border.all(
+                                    color: checked
+                                        ? DifyColors.componentsSegmentedControlItemActiveBorder
+                                        : const Color(0x00000000),
+                                    width: Css.hairline,
+                                  )
+                                : null,
+                            boxShadow: _ring(focused) ?? (checked ? DifyShadows.xs : null),
+                          ),
+                          child: IconTheme.merge(
+                            data: IconThemeData(color: color),
+                            child: DefaultTextStyle.merge(
+                              style: difyTextStyle(DifyType.systemSmMedium, color),
+                              child: ExcludeSemantics(
+                                child: _Tint(color: color, child: s.child),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    child: IconTheme.merge(
-                      data: IconThemeData(color: color),
-                      child: DefaultTextStyle.merge(
-                        style: difyTextStyle(DifyType.systemSmMedium, color),
-                        child: ExcludeSemantics(
-                          child: _Tint(color: color, child: s.child),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-            if (tooltip && !checked) item = DifyTooltip(content: Text(s.label), child: item);
-            return item;
-          }(),
-      ],
-    ),
-  );
+                  ),
+                );
+                if (tooltip && !checked) item = DifyTooltip(content: Text(s.label), child: item);
+                return item;
+              }(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Gives a [DifyIcon] / [RemixIcon] without a colour the surrounding text colour (CSS `currentColor`).

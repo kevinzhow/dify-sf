@@ -85,10 +85,8 @@ void main() {
     });
 
     group('variant prop behavior', () {
-      for (final variant in DifyMenuItemVariant.values) {
-        testWidgets('should remain interactive and set data-variant on item when variant is ${variant.name}', (
-          t,
-        ) async {
+      testWidgets('should remain interactive and set data-variant on item when variant is %s', (t) async {
+        for (final variant in DifyMenuItemVariant.values) {
           var clicks = 0;
           await renderWithSafeViewport(
             t,
@@ -112,10 +110,13 @@ void main() {
             DefaultTextStyle.of(t.element(find.text('Item label'))).style.color,
             destructive ? DifyColors.textDestructive : DifyColors.textSecondary,
           );
-        });
+          await t.pumpWidget(const SizedBox());
+          await t.pump();
+        }
+      });
 
-        // dart format off
-        testWidgets('should remain interactive and set data-variant on submenu trigger when variant is ${variant.name}', (t) async {
+      testWidgets('should remain interactive and set data-variant on submenu trigger when variant is %s', (t) async {
+        for (final variant in DifyMenuItemVariant.values) {
           var opened = 0;
           await renderWithSafeViewport(
             t,
@@ -139,9 +140,10 @@ void main() {
             DefaultTextStyle.of(t.element(find.text('Trigger item'))).style.color,
             variant == DifyMenuItemVariant.destructive ? DifyColors.textDestructive : DifyColors.textSecondary,
           );
-        });
-        // dart format on
-      }
+          await t.pumpWidget(const SizedBox());
+          await t.pump();
+        }
+      });
     });
 
     group('ContextMenuTrigger interaction', () {

@@ -142,40 +142,39 @@ void main() {
         semantics.dispose();
       });
 
-      for (final variant in DifyMenuItemVariant.values) {
-        testWidgets(
-          'should remain interactive and set data-variant on submenu trigger when variant is ${variant.name}',
-          (t) async {
-            var opened = 0;
-            await render(
-              t,
-              DifyDropdownMenu(
-                open: true,
-                builder: _trigger,
-                children: [
-                  DifyMenuSubmenu(
-                    variant: variant,
-                    onOpenChange: (open) => opened += open ? 1 : 0,
-                    label: const Text('Trigger item'),
-                    children: const [DifyMenuItem(child: Text('Sub action'))],
-                  ),
-                ],
-              ),
-            );
-            await t.tap(find.text('Trigger item'));
-            expect(opened, 1);
-            expect(
-              DefaultTextStyle.of(t.element(find.text('Trigger item'))).style.color,
-              variant == DifyMenuItemVariant.destructive ? DifyColors.textDestructive : DifyColors.textSecondary,
-            );
-          },
-        );
-      }
+      testWidgets('should remain interactive and set data-variant on submenu trigger when variant is %s', (t) async {
+        for (final variant in DifyMenuItemVariant.values) {
+          var opened = 0;
+          await render(
+            t,
+            DifyDropdownMenu(
+              open: true,
+              builder: _trigger,
+              children: [
+                DifyMenuSubmenu(
+                  variant: variant,
+                  onOpenChange: (open) => opened += open ? 1 : 0,
+                  label: const Text('Trigger item'),
+                  children: const [DifyMenuItem(child: Text('Sub action'))],
+                ),
+              ],
+            ),
+          );
+          await t.tap(find.text('Trigger item'));
+          expect(opened, 1);
+          expect(
+            DefaultTextStyle.of(t.element(find.text('Trigger item'))).style.color,
+            variant == DifyMenuItemVariant.destructive ? DifyColors.textDestructive : DifyColors.textSecondary,
+          );
+          await t.pumpWidget(const SizedBox());
+          await t.pump();
+        }
+      });
     });
 
     group('DropdownMenuItem', () {
-      for (final variant in DifyMenuItemVariant.values) {
-        testWidgets('should remain interactive and set data-variant when variant is ${variant.name}', (t) async {
+      testWidgets('should remain interactive and set data-variant when variant is %s', (t) async {
+        for (final variant in DifyMenuItemVariant.values) {
           final semantics = t.ensureSemantics();
           var clicks = 0;
           await render(
@@ -201,8 +200,10 @@ void main() {
             variant == DifyMenuItemVariant.destructive ? DifyColors.textDestructive : DifyColors.textSecondary,
           );
           semantics.dispose();
-        });
-      }
+          await t.pumpWidget(const SizedBox());
+          await t.pump();
+        }
+      });
     });
 
     group('DropdownMenuSeparator', () {

@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -40,9 +41,16 @@ class DifySelect<T> extends StatefulWidget {
     this.semanticLabel,
     this.large = false,
     this.optionLeading,
+    this.disabledValues = const {},
+    this.placement = DifyPlacement.bottomStart,
+    this.sideOffset = 4,
+    this.alignOffset = 0,
   });
 
   final T? value;
+  final Set<T> disabledValues;
+  final DifyPlacement placement;
+  final double sideOffset, alignOffset;
   final List<SelectOption<T>> options;
   final List<SelectGroup<T>> groups;
   final ValueChanged<T>? onChanged;
@@ -83,6 +91,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
     final item = DifyMenuRadioItem<T>(
       value: o.value,
       closeOnClick: true,
+      disabled: widget.disabledValues.contains(o.value),
       focusNode: selected ? _selectedNode : null,
       leading: widget.optionLeading?.call(o.value),
       child: Text(_label(o.label)),
@@ -99,9 +108,16 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
       width: w.width,
       child: LayoutBuilder(
         builder: (context, c) => DifyDropdownMenu(
-          placement: DifyPlacement.bottomStart,
-          sideOffset: 4,
-          width: w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : null),
+          placement: w.placement,
+          sideOffset: w.sideOffset,
+          alignOffset: w.alignOffset,
+          // MenuPopup's surface adds a one-pixel border on each side; the select's width is border-box.
+          width:
+              (w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : 240)).clamp(
+                2.0,
+                (MediaQuery.sizeOf(context).width - 10).clamp(2.0, double.infinity),
+              ) -
+              2,
           builder: (context, controller) => _SelectTrigger(
             text: selected == null ? w.placeholder ?? '' : _label(selected.label),
             placeholder: selected == null,
@@ -183,6 +199,12 @@ class _SelectTrigger extends StatefulWidget {
 
 class _SelectTriggerState extends State<_SelectTrigger> {
   bool _hovered = false;
+  final _focus = FocusNode(debugLabel: 'DifySelect trigger');
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,43 +217,64 @@ class _SelectTriggerState extends State<_SelectTrigger> {
         : DifyColors.componentsInputTextFilled;
     final style = (w.textStyle ?? difyTextStyle(DifyType.systemSmRegular, color)).copyWith(color: color);
     return Semantics(
+      excludeSemantics: true,
       button: true,
       enabled: !w.disabled,
-      label: w.semanticLabel,
-      value: w.text,
+      label: w.semanticLabel ?? w.text,
+      value: w.semanticLabel == null ? null : w.text,
       onTap: w.onTap,
-      child: MouseRegion(
-        cursor: w.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          excludeFromSemantics: true,
-          onTap: w.onTap,
-          child: Container(
-            height: w.height,
-            padding: EdgeInsets.symmetric(horizontal: w.paddingX),
-            decoration: BoxDecoration(
-              color: w.disabled
-                  ? DifyColors.componentsInputBgDisabled
-                  : active
-                  ? DifyColors.stateBaseHoverAlt
-                  : DifyColors.componentsInputBgNormal,
-              borderRadius: BorderRadius.circular(w.radius),
-            ),
-            child: Row(
-              spacing: 2,
-              children: [
-                Expanded(
-                  child: Text(w.text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                if (!w.readonly)
-                  RemixIcon(
-                    'arrow-down-s-line',
-                    size: 16,
-                    color: active ? DifyColors.textSecondary : DifyColors.textQuaternary,
+      child: Focus(
+        focusNode: _focus,
+        canRequestFocus: !w.disabled,
+        onKeyEvent: (_, e) {
+          if (e is KeyDownEvent &&
+              (e.logicalKey == LogicalKeyboardKey.enter ||
+                  e.logicalKey == LogicalKeyboardKey.space ||
+                  e.logicalKey == LogicalKeyboardKey.arrowDown) &&
+              w.onTap != null) {
+            w.onTap!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: MouseRegion(
+          cursor: w.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            excludeFromSemantics: true,
+            onTap: w.onTap == null
+                ? null
+                : () {
+                    _focus.requestFocus();
+                    w.onTap!();
+                  },
+            child: Container(
+              height: w.height,
+              padding: EdgeInsets.symmetric(horizontal: w.paddingX),
+              decoration: BoxDecoration(
+                color: w.disabled
+                    ? DifyColors.componentsInputBgDisabled
+                    : active
+                    ? DifyColors.stateBaseHoverAlt
+                    : DifyColors.componentsInputBgNormal,
+                borderRadius: BorderRadius.circular(w.radius),
+              ),
+              child: Row(
+                spacing: 2,
+                children: [
+                  Expanded(
+                    child: Text(w.text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
-              ],
+                  if (!w.readonly)
+                    RemixIcon(
+                      'arrow-down-s-line',
+                      size: 16,
+                      color: active ? DifyColors.textSecondary : DifyColors.textQuaternary,
+                    ),
+                ],
+              ),
             ),
           ),
         ),

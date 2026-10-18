@@ -98,6 +98,7 @@ class _SearchBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('workflow', 'common.searchVar');
     return DifyInput(
+      focusInteractiveAddons: false,
       value: value,
       onChanged: onChanged,
       placeholder: label,

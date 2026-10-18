@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 
 import '../../design/css_metrics.dart';
 import '../../design/dify_tokens.g.dart';
@@ -25,7 +26,20 @@ Future<T?> showDifyDialog<T>(BuildContext context, {required WidgetBuilder build
           child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
         );
       },
-      pageBuilder: (context, _, _) => builder(context),
+      pageBuilder: (context, _, _) => Shortcuts(
+        shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
+        child: Actions(
+          actions: {
+            DismissIntent: CallbackAction<DismissIntent>(
+              onInvoke: (_) {
+                Navigator.of(context).pop();
+                return null;
+              },
+            ),
+          },
+          child: FocusScope(autofocus: true, child: builder(context)),
+        ),
+      ),
     );
 
 /// DialogContent: centred, [width] wide (at most the viewport less 2 rem), `rounded-2xl bg-components-panel-bg

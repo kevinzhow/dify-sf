@@ -97,6 +97,8 @@ class DifyCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     checked: checked,
+    mixed: indeterminate,
+    enabled: !disabled,
     label: label,
     hint: description,
     validationResult: invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
@@ -127,6 +129,7 @@ class DifyTextarea extends StatefulWidget {
     this.placeholder,
     this.semanticLabel,
     this.disabled = false,
+    this.readOnly = false,
     this.minHeight = 80,
     this.verticalPadding = 8,
     this.maxLength,
@@ -137,7 +140,7 @@ class DifyTextarea extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<bool>? onFocusChange;
   final String? placeholder, semanticLabel;
-  final bool disabled;
+  final bool disabled, readOnly;
   final double minHeight, verticalPadding;
 
   /// `maxLength`: typing stops there.
@@ -215,7 +218,13 @@ class _DifyTextareaState extends State<DifyTextarea> {
               controller: _controller,
               focusNode: _focus,
               enabled: !w.disabled,
-              onChanged: w.onChanged,
+              readOnly: w.readOnly,
+              onChanged: (value) {
+                w.onChanged?.call(value);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _controller.text != widget.value) _controller.text = widget.value;
+                });
+              },
               inputFormatters: w.maxLength == null ? null : [LengthLimitingTextInputFormatter(w.maxLength)],
               minLines: w.minHeight >= 80 ? 3 : null,
               maxLines: null,
