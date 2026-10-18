@@ -80,6 +80,9 @@ class SceneTuning {
 ///   capture would have to be redone every frame), see [CanvasSpinners].
 /// * Edges are line batches, one per colour (run colours, gradients quantised, see [edgeSegmentsByColor]).
 /// * No capture or release work runs while the view moves.
+/// * At rest (view still, captures done, no loaders) the scene stops rendering: the last frame stays on screen and
+///   anything that changes the scene wakes it ([_wake]). A scene rendering every frame would keep the whole app
+///   busy (on the web each frame also reads the scene back and re-rasterizes the page).
 class SceneRenderer extends CanvasRenderer {
   SceneRenderer({
     required this.graph,
@@ -91,6 +94,7 @@ class SceneRenderer extends CanvasRenderer {
     this.live,
   }) {
     live?.source.addListener(_syncLive);
+    view.addListener(_wake);
     Scene.initializeStaticResources().then((_) => _start(), onError: (Object e) => onUnavailable(e));
   }
 
@@ -111,6 +115,39 @@ class SceneRenderer extends CanvasRenderer {
   final scene = Scene();
   final _ready = ValueNotifier(false);
   bool _disposed = false;
+
+  /// Whether the scene renders (and [_tick]s) every frame; false at rest.
+  final _awake = ValueNotifier(true);
+
+  /// Renders again from the next frame on (something in the scene or the view changed).
+  void _wake() {
+    if (_disposed || _awake.value) return;
+    // Not while the tree builds, lays out or paints (a capture can land then): from the next frame.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _wake());
+      return;
+    }
+    _awake.value = true;
+  }
+
+  /// Stops rendering after a frame with nothing to do (it draws the final state).
+  void _sleepWhenQuiet() {
+    final quiet =
+        _moving.isEmpty &&
+        _spinners.isEmpty &&
+        _nowUs() - _lastMove >= _restUs &&
+        (view.viewport.isEmpty || (_reportedSettled && _settled));
+    if (quiet) _awake.value = false;
+  }
+
+  /// The view rests this long after its last move before capture work starts.
+  static const _restUs = 150000;
+
+  /// [c], waking the scene whenever its capture lands (a new texture, or new pixels in the one it has).
+  WidgetComponent _watch(WidgetComponent c) {
+    c.controller.addListener(_wake);
+    return c;
+  }
 
   // Per slot.
   final _cardNodes = <Node?>[];
@@ -202,6 +239,7 @@ class SceneRenderer extends CanvasRenderer {
 
   @override
   void apply(CanvasChange change) {
+    _wake();
     if (!_ready.value) return; // _start applies everything
     for (final n in change.removed) {
       _removeSlot(n.slot);
@@ -457,6 +495,7 @@ class SceneRenderer extends CanvasRenderer {
         SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
       },
     );
+    _watch(c);
     host.addComponent(c);
     scene.add(host);
   }
@@ -531,16 +570,19 @@ class SceneRenderer extends CanvasRenderer {
 
   @override
   void statusChanged(int slot) {
+    _wake();
     if (_ready.value && slot < _cardNodes.length) _statusChanged(slot);
   }
 
   @override
   void edgeRunChanged() {
+    _wake();
     if (_ready.value) _rebuildEdges();
   }
 
   @override
   void selectionChanged(Set<int> slots) {
+    _wake();
     if (!_ready.value) return;
     for (final s in slots) {
       if (s < _cardNodes.length) _place(s);
@@ -552,6 +594,7 @@ class SceneRenderer extends CanvasRenderer {
 
   @override
   void beginMove(Set<int> slots) {
+    _wake();
     _moving = {...slots};
     if (!_ready.value) return;
     _rebuildEdges();
@@ -562,6 +605,7 @@ class SceneRenderer extends CanvasRenderer {
 
   @override
   void moved(Iterable<int> slots) {
+    _wake();
     if (!_ready.value) return;
     for (final s in slots) {
       _place(s);
@@ -573,6 +617,7 @@ class SceneRenderer extends CanvasRenderer {
 
   @override
   void endMove(Set<int> slots) {
+    _wake();
     _moving = {};
     if (!_ready.value) return;
     for (final s in slots) {
@@ -651,6 +696,7 @@ class SceneRenderer extends CanvasRenderer {
 
   @override
   void connectPreview(Offset? from, Offset? to) {
+    _wake();
     if (!_ready.value) return;
     if (_preview != null) {
       scene.remove(_preview!);
@@ -694,7 +740,7 @@ class SceneRenderer extends CanvasRenderer {
       input: WidgetInput.manual,
     );
     _materialOf[c] = material;
-    return c;
+    return _watch(c);
   }
 
   void _attach(int slot, double density) {
@@ -747,6 +793,7 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   void _livePainted(int slot, WidgetComponent c) {
+    _wake();
     _markDirty(slot);
     if (c.controller.texture == null || _onScreen(slot)) {
       c.controller.requestCapture();
@@ -831,6 +878,7 @@ class SceneRenderer extends CanvasRenderer {
       input: WidgetInput.manual,
     );
     _materialOf[c] = material;
+    _watch(c);
     final rect = view.toCanvas(Offset(ix, iy) / _dpr) & Size(w / density, h / density);
     final node = Node(name: '${n.id}-exact')
       ..position = toWorld(rect.center, _lift(slot))
@@ -908,6 +956,7 @@ class SceneRenderer extends CanvasRenderer {
         SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
       },
     );
+    _watch(c);
     host.addComponent(c);
     scene.add(host);
   }
@@ -999,7 +1048,7 @@ class SceneRenderer extends CanvasRenderer {
           });
         },
       );
-      _overviewInFlight[slot] = c;
+      _overviewInFlight[slot] = _watch(c);
       card.addComponent(c);
     }
   }
@@ -1017,8 +1066,13 @@ class SceneRenderer extends CanvasRenderer {
 
   // ----- per frame -----
 
-  /// Keeps live components on the cards near the view, releases far ones, sharpens at rest, refreshes overviews.
   void _tick() {
+    _step();
+    _sleepWhenQuiet();
+  }
+
+  /// Keeps live components on the cards near the view, releases far ones, sharpens at rest, refreshes overviews.
+  void _step() {
     if (view.viewport.isEmpty) return;
     _turnSpinners();
     _skeletonSwitch();
@@ -1034,7 +1088,7 @@ class SceneRenderer extends CanvasRenderer {
     _lastCenter = view.center;
     _lastScale = view.scale;
     // Every card already shows real content (live or overview), so capture work waits until the view rests.
-    if (now - _lastMove < 150000) {
+    if (now - _lastMove < _restUs) {
       _reportedSettled = false;
       return;
     }
@@ -1101,6 +1155,7 @@ class SceneRenderer extends CanvasRenderer {
   /// The live card's node and the underlays below it that it overlaps (Dify draws notes under everything, the
   /// selected one in its place among them) are drawn as widgets under the scene, and hidden in it.
   void _syncLive() {
+    _wake();
     final n = live?.node;
     final stack = n == null ? const <CanvasNode>[] : live!.underlayStack(n);
     final hidden = {for (final u in stack) u.slot};
@@ -1143,24 +1198,36 @@ class SceneRenderer extends CanvasRenderer {
   @override
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
-    children: [
-      if (live != null) _liveLayer(),
-      // The canvas hit-tests cards itself; the live layer under the scene takes the events that are its own.
-      IgnorePointer(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: _ready,
-          builder: (context, ready, _) => ready
-              ? SceneView(scene, cameraBuilder: (_) => _camera(), onTick: (_, _) => _tick())
-              : const SizedBox.expand(),
-        ),
+    children: [if (live != null) _liveLayer(), _sceneLayer],
+  );
+
+  /// The scene, built once: the editor rebuilding the canvas must not rebuild the [SceneView] (each update renders
+  /// the scene again). It changes only when it starts or stops rendering every frame: at rest its ticker is muted
+  /// (SceneView's `autoTick` cannot be turned back on), and so are the tickers of the cards it captures; a card that
+  /// changes wakes it ([_livePainted]).
+  ///
+  /// The canvas hit-tests cards itself; the live layer under the scene takes the events that are its own. The scene
+  /// repaints alone (not with the editor around it, nor the editor with it).
+  late final Widget _sceneLayer = IgnorePointer(
+    child: RepaintBoundary(
+      child: ListenableBuilder(
+        listenable: Listenable.merge([_ready, _awake]),
+        builder: (context, _) => _ready.value
+            ? TickerMode(
+                enabled: _awake.value,
+                child: SceneView(scene, cameraBuilder: (_) => _camera(), onTick: (_, _) => _tick()),
+              )
+            : const SizedBox.expand(),
       ),
-    ],
+    ),
   );
 
   @override
   void dispose() {
     _disposed = true;
     live?.source.removeListener(_syncLive);
+    view.removeListener(_wake);
+    _awake.dispose();
     _ready.dispose();
     _liveChanged.dispose();
   }
