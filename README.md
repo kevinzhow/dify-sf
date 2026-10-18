@@ -14,13 +14,13 @@ This repository currently contains step 1: the server-side collaboration kernel 
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-247 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
+248 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
 
 | Status | Features |
 |---|---|
-| ported | 141 |
-| partial | 44 |
-| not ported | 41 |
+| ported | 148 |
+| partial | 41 |
+| not ported | 38 |
 | n/a | 11 |
 | dify-sf only | 10 |
 
