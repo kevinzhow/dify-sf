@@ -46,6 +46,9 @@ abstract interface class Backend {
 
   /// The document's Dify app metadata (mode, name, environment and conversation variables).
   Future<DocMeta> docMeta(String docId);
+
+  /// Replaces this open document under the session's ordered client sequence, after its pending edits settle.
+  Future<ReplaceResult> replaceDifyDsl(String docId, String yaml, CollabSession session, {bool confirm = false});
 }
 
 class HttpBackend implements Backend {
@@ -103,6 +106,18 @@ class HttpBackend implements Backend {
     final api = DocsApi(baseUrl, auth: auth?.session);
     try {
       return await api.exportDifyDsl(docId, includeSecret: includeSecret);
+    } finally {
+      api.close();
+    }
+  }
+
+  @override
+  Future<ReplaceResult> replaceDifyDsl(String docId, String yaml, CollabSession session, {bool confirm = false}) async {
+    final api = DocsApi(baseUrl, auth: auth?.session);
+    try {
+      return await session.replaceDocument(
+        (id, cseq) => api.replaceDocument(docId, yaml, id, cseq: cseq, confirm: confirm),
+      );
     } finally {
       api.close();
     }

@@ -13,6 +13,7 @@ dependencies:
     path: ../packages/collab_client
   elk_layered:
     path: ../packages/elk_layered
+  yaml: ^3.1.4
   path_provider: ^2.1.0
   shared_preferences: ^2.3.0
   web: ^1.1.1
@@ -22,9 +23,9 @@ dependencies:
   # Dify's Markdown (chat answers, run results): maintained successor of flutter_markdown, styled to markdown.css.
   flutter_markdown_plus: ^1.0.12
   markdown: ^7.3.1
+  file_selector: ^1.1.0
 
 dev_dependencies:
-  yaml: ^3.1.4
   flutter_test:
     sdk: flutter
   integration_test:

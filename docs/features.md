@@ -22,7 +22,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node cards (shared chrome)](#node-chrome) | 11 |  | 3 |  |  | 14 |
 | [Edges & connections](#edges) | 6 |  |  |  | 1 | 7 |
 | [Block selector & node insertion](#block-selector) | 6 | 4 | 1 | 1 |  | 12 |
-| [Context menus & node actions](#context-menus) | 4 | 1 | 2 |  |  | 7 |
+| [Context menus & node actions](#context-menus) | 5 | 1 | 1 |  |  | 7 |
 | [Keyboard shortcuts & clipboard](#shortcuts) | 6 |  |  | 1 |  | 7 |
 | [Control bar & operator bar](#operator) | 4 | 2 |  |  |  | 6 |
 | [Header, checklist & publish](#header) | 5 | 3 | 2 |  |  | 10 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **148** | **39** | **39** | **11** | **10** | **247** |
+| **Total** | **149** | **39** | **38** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -160,7 +160,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Pane menu: Add Node, Add Note, Add Comment, Test Run / Preview, Paste Here | ported |  | spec `workflow/panel-contextmenu.spec.tsx`, spec `workflow/hooks/use-panel-interactions.spec.ts`, `app/test/workflow_context_menus_test.dart` |
-| Pane menu: Import App (replace the open workflow from a DSL file) | not ported | dify-sf has no endpoint that replaces an open document's content (a DSL is imported as a new document from the home page). NOTE the menu item is still shown and does nothing (it only sets showImportDSLModal, which nothing reads). | spec `workflow/update-dsl-modal.spec.tsx`, spec `workflow/update-dsl-modal.helpers.spec.ts` |
+| Pane menu: Import App (replace the open workflow from a DSL file) | ported |  | spec `workflow/update-dsl-modal.spec.tsx`, spec `workflow/update-dsl-modal.helpers.spec.ts`, `app/test/workflow_editor/import_backend_test.dart`, `app/test/workflow_editor/update_dsl_modal_test.dart` |
 | Node menu / "..." dropdown: run step, Change Block, Copy, Duplicate, Delete, View Docs, About | ported |  | spec `workflow/node-actions-menu`, spec `workflow/node-contextmenu.spec.tsx` |
 | Node menu: Open Workflow (workflow-as-tool node) | partial | The item is ported but needs the workspace's workflow tools to know the target app; dify-sf has no workflow-tool service, so it never shows. | spec `workflow/node-actions-menu` |
 | Edge menu: Delete | ported |  | spec `workflow/edge-contextmenu.spec.tsx` |
@@ -632,7 +632,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Import a Dify DSL (YAML) as a new workflow | partial | Pasting YAML on the start screen creates a new document (the server converts it, 24 Dify samples round-trip losslessly); no file picker or URL import, no version-mismatch dialog, and the editor's Import App (replace the open workflow) is not ported. | `app/test/dsl_test.dart` |
+| Import a Dify DSL (YAML) as a new workflow | partial | The editor imports a YAML file into its current collaborative document, including version confirmation and metadata refresh. Home-page import remains paste-only; URL import and plugin dependency installation are unavailable. | `app/test/dsl_test.dart` |
 | Export DSL (with the secret environment variables confirm) | ported | Deviation: The YAML is shown in a dialog with Copy (no file download). Including secret values is allowed to owners / admins only (Dify lets anyone who can export). | spec `workflow/dsl-export-confirm-modal.spec.tsx`, `app/test/dsl_test.dart` |
 | Dify reads dify-sf's export like the original (acceptance on 24 samples) | dify-sf only | dify-sf's own acceptance test against a real Dify 1.17.1. | `docs/protocol.md` |
 

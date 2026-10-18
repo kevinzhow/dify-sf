@@ -58,6 +58,10 @@ class DemoBackend implements Backend {
   Future<String> exportDifyDsl(String docId, {bool includeSecret = false}) =>
       throw UnsupportedError('the demo cannot export Dify workflow files');
 
+  @override
+  Future<ReplaceResult> replaceDifyDsl(String docId, String yaml, CollabSession session, {bool confirm = false}) =>
+      throw UnsupportedError('the demo cannot replace Dify workflow files');
+
   /// The demo document is a workflow without variables.
   @override
   Future<DocMeta> docMeta(String docId) async => const DocMeta();

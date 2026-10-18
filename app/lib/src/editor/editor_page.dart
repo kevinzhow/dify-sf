@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:collab_client/collab_client.dart' show DocMeta;
+import 'package:collab_client/collab_client.dart' show DocMeta, ReplaceResult;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -304,6 +304,32 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     ];
   }
 
+  Future<ReplaceResult> _importDifyDsl(String yaml, {bool confirm = false}) async {
+    final c = _controller!;
+    final selectedNode = c.selectedNodeId, selectedEdge = c.selectedEdgeId;
+    final result = await widget.backend.replaceDifyDsl(widget.docId, yaml, c.session, confirm: confirm);
+    DocMeta? meta;
+    try {
+      meta = await widget.backend.docMeta(widget.docId);
+    } on Object {
+      toast.warning('Workflow imported. Could not refresh application details.');
+    }
+    if (!mounted || c != _controller) return result;
+    c.undo.clear();
+    final node = result.renamedNodes[selectedNode] ?? selectedNode;
+    final edge = result.renamedEdges[selectedEdge] ?? selectedEdge;
+    if (node != null && c.doc.nodes.containsKey(node)) {
+      c.selectNode(node);
+    } else if (edge != null && c.doc.edges.containsKey(edge)) {
+      c.selectEdge(edge);
+    } else {
+      c.selectNode(null);
+      c.selectEdge(null);
+    }
+    if (meta != null) setState(() => _meta = meta!);
+    return result;
+  }
+
   Widget _body(BuildContext context, EditorController? c) {
     if (_error != null) {
       return Center(
@@ -356,6 +382,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       access: _access,
       locateNodeId: widget.locateNodeId,
       onExportDsl: (includeSecret) => _exportDifyDsl(context, includeSecret: includeSecret),
+      onImportDsl: widget.backend.supportsDifyDsl ? _importDifyDsl : null,
       user: switch (_account) {
         final a? => EditorUser(id: a.id, name: a.name, avatarUrl: a.avatarUrl),
         null => null,

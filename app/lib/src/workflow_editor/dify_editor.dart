@@ -20,6 +20,7 @@ import 'header/publisher/app_publisher.dart' show PublisherAppInfo;
 import 'header/titles.dart';
 import 'header/workflow_header.dart';
 import 'dsl/dsl_export_confirm_modal.dart';
+import 'dsl/update_dsl_modal.dart';
 import 'hooks/use_locate_node.dart';
 import 'hooks/use_tool_icon.dart';
 import 'node_panel/node_panel.dart';
@@ -98,6 +99,8 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.user,
     this.locateNodeId,
     this.onExportDsl,
+    this.onImportDsl,
+    this.pickDslFile,
   });
 
   /// What the signed-in user may do (read-only for members without the edit role).
@@ -112,6 +115,8 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// Exports the document as a Dify workflow file (`include` secret values or not); null: no export. The pane
   /// menu's Export asks about secrets first (use-DSL.ts exportCheck).
   final Future<void> Function(bool includeSecret)? onExportDsl;
+  final WorkflowImport? onImportDsl;
+  final PickDslFile? pickDslFile;
 
   final EditorController controller;
   final String serverLabel;
@@ -441,7 +446,17 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     ],
                   ),
                   // The Features drawer (chatflows open it from the header), over everything with its backdrop.
-                  modal: (context, canvas) => WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
+                  modal: (context, canvas) => Stack(
+                    children: [
+                      WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
+                      ImportDslHost(
+                        appMode: meta.appMode,
+                        onImport: widget.onImportDsl,
+                        pickFile: widget.pickDslFile,
+                        onBackup: widget.onExportDsl == null ? null : _exportDsl,
+                      ),
+                    ],
+                  ),
                 ),
                 NoticeOverlay(controller: controller),
               ],

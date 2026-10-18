@@ -513,9 +513,8 @@ features:
   area: context-menus
   title: 'Pane menu: Import App (replace the open workflow from a DSL file)'
   dify: [web/app/components/workflow/panel-contextmenu.tsx, web/app/components/workflow/update-dsl-modal.tsx, web/app/components/workflow/update-dsl-modal.helpers.ts]
-  status: not_ported
-  reason: dify-sf has no endpoint that replaces an open document's content (a DSL is imported as a new document from the home page). NOTE the menu item is still shown and does nothing (it only sets showImportDSLModal, which nothing reads).
-  evidence: ['spec:web/app/components/workflow/__tests__/update-dsl-modal.spec.tsx', 'spec:web/app/components/workflow/__tests__/update-dsl-modal.helpers.spec.ts']
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/update-dsl-modal.spec.tsx', 'spec:web/app/components/workflow/__tests__/update-dsl-modal.helpers.spec.ts', app/test/workflow_editor/import_backend_test.dart, app/test/workflow_editor/update_dsl_modal_test.dart]
   ours: [app/lib/src/workflow_editor/context_menu/menus.dart]
 - id: context-menus.node
   area: context-menus
@@ -1930,7 +1929,7 @@ features:
   title: 'Import a Dify DSL (YAML) as a new workflow'
   dify: [web/app/components/app/create-from-dsl-modal, web/app/components/workflow/update-dsl-modal.tsx]
   status: partial
-  reason: Pasting YAML on the start screen creates a new document (the server converts it, 24 Dify samples round-trip losslessly); no file picker or URL import, no version-mismatch dialog, and the editor's Import App (replace the open workflow) is not ported.
+  reason: 'The editor imports a YAML file into its current collaborative document, including version confirmation and metadata refresh. Home-page import remains paste-only; URL import and plugin dependency installation are unavailable.'
   evidence: [app/test/dsl_test.dart]
   ours: [app/lib/src/home_page.dart]
 - id: dsl.export
