@@ -15,7 +15,7 @@ import 'canvas_view_state.dart';
 import 'edge_curve.dart';
 
 /// How a left-button drag on empty canvas and the wheel behave (Dify's control modes; Dify's stored values are the
-/// names). In comment mode a drag on empty canvas does nothing (placing comments is the comment layer's).
+/// names). In comment mode a press on the canvas does nothing (placing comments is the comment layer's).
 enum ControlMode { pointer, hand, comment }
 
 /// Pointer and keyboard input on the canvas, hit-tested in canvas coordinates, behaving like Dify's editor:
@@ -139,6 +139,8 @@ class CanvasInput {
       return;
     }
     if (e.buttons & kPrimaryButton == 0) return;
+    // Comment mode: nodes neither select nor drag, nothing connects; clicks are the comment layer's.
+    if (mode == ControlMode.comment) return;
     final port = outPortAt(c), hit = _clickTarget(c);
     if (port != null) {
       _gesture = 'connect';
@@ -260,7 +262,8 @@ class CanvasInput {
     }
     if (e is! PointerScrollEvent) return;
     final keys = HardwareKeyboard.instance;
-    if (mode == ControlMode.hand || keys.isControlPressed || keys.isMetaPressed) {
+    // React Flow's panOnScroll is on in pointer mode only: elsewhere the wheel zooms.
+    if (mode != ControlMode.pointer || keys.isControlPressed || keys.isMetaPressed) {
       view.zoomAt(e.localPosition, exp(-e.scrollDelta.dy / 400));
       onApplied?.call('zoom');
     } else {

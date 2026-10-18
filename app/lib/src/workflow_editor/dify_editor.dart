@@ -26,6 +26,9 @@ import 'variable_inspect/panel.dart';
 import 'variable_inspect/trigger.dart';
 import 'variable_panels/variable_panels.dart';
 import 'block_selector/block_selector.dart';
+import 'comments/comment_layer.dart';
+import 'comments/comments_panel.dart';
+import 'comments/comments_store.dart';
 import 'canvas_plus/canvas_plus_buttons.dart';
 import 'node_insertion/insert_block.dart';
 import 'workflow_editor.dart';
@@ -41,6 +44,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.actions = const [],
     this.meta = const DocMeta(),
     this.variableInspectServices = VariableInspectServices.none,
+    this.commentsStore,
   });
 
   final EditorController controller;
@@ -55,6 +59,10 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// The variable inspect panel's draft variables (no runs without a runtime: none by default).
   final VariableInspectServices variableInspectServices;
 
+  /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
+  /// disposed with it). Either way the comments UI finds it with [CommentsScope.of].
+  final CommentsStore? commentsStore;
+
   @override
   State<DifyWorkflowEditor> createState() => _DifyWorkflowEditorState();
 }
@@ -64,6 +72,26 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   DocMeta get meta => widget.meta;
   String get serverLabel => widget.serverLabel;
   List<Widget> get actions => widget.actions;
+
+  /// The comments store this editor created (when none was passed in), tied to the controller's session.
+  CommentsStore? _ownComments;
+  CommentsStore get _comments =>
+      widget.commentsStore ?? (_ownComments ??= CommentsStore.forSession(controller.session));
+
+  @override
+  void didUpdateWidget(DifyWorkflowEditor old) {
+    super.didUpdateWidget(old);
+    if (old.controller.session != controller.session || widget.commentsStore != null) {
+      _ownComments?.dispose();
+      _ownComments = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ownComments?.dispose();
+    super.dispose();
+  }
 
   /// A context inside the editor's scopes (store, block selector) and its canvas, for popups opened from callbacks.
   BuildContext? _inner;
@@ -160,98 +188,105 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     );
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
     // spacing would widen every label).
-    return DefaultTextStyle(
-      style: TextStyle(
-        fontFamily: cardFontFamily,
-        fontSize: 14,
-        height: 20 / 14,
-        letterSpacing: 0,
-        wordSpacing: 0,
-        color: DifyColors.textPrimary,
-        leadingDistribution: TextLeadingDistribution.even,
-      ),
-      // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
-      child: ListenableBuilder(
-        listenable: controller,
-        builder: (context, child) => BlockSelectorScope(
-          data: BlockSelectorData(
-            chatMode: meta.isChatflow,
-            nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
-          ),
-          child: child!,
+    return CommentsScope(
+      store: _comments,
+      child: DefaultTextStyle(
+        style: TextStyle(
+          fontFamily: cardFontFamily,
+          fontSize: 14,
+          height: 20 / 14,
+          letterSpacing: 0,
+          wordSpacing: 0,
+          color: DifyColors.textPrimary,
+          leadingDistribution: TextLeadingDistribution.even,
         ),
-        child: OperatorShortcuts(
-          history: controller.undo,
-          options: options,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              WorkflowEditor(
-                controller: controller,
-                menuOptions: menuOptions,
-                header: (context, canvas) => _BoundHeader(
+        // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
+        child: ListenableBuilder(
+          listenable: controller,
+          builder: (context, child) => BlockSelectorScope(
+            data: BlockSelectorData(
+              chatMode: meta.isChatflow,
+              nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
+            ),
+            child: child!,
+          ),
+          child: OperatorShortcuts(
+            history: controller.undo,
+            options: options,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                WorkflowEditor(
                   controller: controller,
-                  canvas: canvas,
-                  meta: meta,
-                  session: (anchor) => SessionBadge(
+                  menuOptions: menuOptions,
+                  header: (context, canvas) => _BoundHeader(
                     controller: controller,
-                    serverLabel: serverLabel,
-                    actions: actions,
-                    anchor: anchor,
-                    pill: false,
-                  ),
-                  left: _OfflinePill(controller: controller),
-                ),
-                // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
-                overlay: (context, canvas) {
-                  _inner = context;
-                  _canvas = canvas;
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
-                      // The selected note, edited in place (drawn by the canvas in the notes' layer).
-                      LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
-                      CandidateNode(canvas: canvas, onPlace: _place),
-                    ],
-                  );
-                },
-                control: workflowControlBuilder(options),
-                // The variable inspect trigger and panel share the editor's inspect data; "View log" opens a node's
-                // panel on its Last Run tab.
-                operator: (context, canvas) => VariableInspectHost(
-                  services: widget.variableInspectServices,
-                  nodes: () => controller.doc.nodes.values,
-                  onViewNode: (nodeId) {
-                    WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
-                    controller.selectNode(nodeId);
-                  },
-                  child: workflowOperatorBuilder(
-                    controller,
-                    options,
-                    const VariableInspectTrigger(),
-                    const VariableInspectPanel(),
-                  )(context, canvas),
-                ),
-                // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
-                // variable panels.
-                panels: (context, canvas) => WorkflowPanels(
-                  controller: controller,
-                  canvas: canvas,
-                  options: menuOptions,
-                  others: [
-                    VariablePanels(
+                    canvas: canvas,
+                    meta: meta,
+                    session: (anchor) => SessionBadge(
                       controller: controller,
-                      isChatMode: meta.isChatflow,
-                      storeSecret: controller.storeSecret,
+                      serverLabel: serverLabel,
+                      actions: actions,
+                      anchor: anchor,
+                      pill: false,
                     ),
-                  ],
+                    left: _OfflinePill(controller: controller),
+                  ),
+                  // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
+                  overlay: (context, canvas) {
+                    _inner = context;
+                    _canvas = canvas;
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
+                        // The selected note, edited in place (drawn by the canvas in the notes' layer).
+                        LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
+                        // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
+                        CommentLayer(canvas: canvas),
+                        CandidateNode(canvas: canvas, onPlace: _place),
+                      ],
+                    );
+                  },
+                  control: workflowControlBuilder(options),
+                  // The variable inspect trigger and panel share the editor's inspect data; "View log" opens a node's
+                  // panel on its Last Run tab.
+                  operator: (context, canvas) => VariableInspectHost(
+                    services: widget.variableInspectServices,
+                    nodes: () => controller.doc.nodes.values,
+                    onViewNode: (nodeId) {
+                      WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                      controller.selectNode(nodeId);
+                    },
+                    child: workflowOperatorBuilder(
+                      controller,
+                      options,
+                      const VariableInspectTrigger(),
+                      const VariableInspectPanel(),
+                    )(context, canvas),
+                  ),
+                  // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
+                  // variable panels.
+                  panels: (context, canvas) => WorkflowPanels(
+                    controller: controller,
+                    canvas: canvas,
+                    options: menuOptions,
+                    others: [
+                      VariablePanels(
+                        controller: controller,
+                        isChatMode: meta.isChatflow,
+                        storeSecret: controller.storeSecret,
+                      ),
+                      // The comment list, in comment mode.
+                      CommentsPanel(canvas: canvas),
+                    ],
+                  ),
+                  // The Features drawer (chatflows open it from the header), over everything with its backdrop.
+                  modal: (context, canvas) => WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
                 ),
-                // The Features drawer (chatflows open it from the header), over everything with its backdrop.
-                modal: (context, canvas) => WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
-              ),
-              NoticeOverlay(controller: controller),
-            ],
+                NoticeOverlay(controller: controller),
+              ],
+            ),
           ),
         ),
       ),

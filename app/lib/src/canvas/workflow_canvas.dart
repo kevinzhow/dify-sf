@@ -104,6 +104,8 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       view: view,
       selection: selection,
       onTap: (n) {
+        // Comment mode: a node's button does not select it (Dify's node.tsx guard).
+        if (canvas.controlMode.value == ControlMode.comment) return;
         selection.selectNodes([n.slot]);
         c.selectNode(n.id);
       },
