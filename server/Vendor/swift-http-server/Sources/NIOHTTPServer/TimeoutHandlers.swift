@@ -1,0 +1,197 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift HTTP Server open source project
+//
+// Copyright (c) 2026 Apple Inc. and the Swift HTTP Server project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of Swift HTTP Server project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import NIOCore
+import NIOHTTPTypes
+
+/// A channel handler that closes a connection after a period in which no request is in flight.
+///
+/// The timer runs only between requests: it is scheduled when the channel becomes active and after each response `.end`
+/// is written. It is cancelled when an inbound request `.head` is observed. While a request is being processed,
+/// request-level timeouts (see ``RequestTimeoutHandler``) are responsible for protecting the server.
+final class ConnectionIdleTimeoutHandler: ChannelDuplexHandler, RemovableChannelHandler {
+    typealias InboundIn = HTTPRequestPart
+    typealias InboundOut = HTTPRequestPart
+    typealias OutboundIn = HTTPResponsePart
+    typealias OutboundOut = HTTPResponsePart
+
+    private let timeout: TimeAmount
+    private var scheduledTimeout: Scheduled<Void>?
+
+    init(timeout: TimeAmount) {
+        self.timeout = timeout
+    }
+
+    func handlerAdded(context: ChannelHandlerContext) {
+        // If the handler is added to a channel that is already active, `channelActive` won't be
+        // called for it (e.g. on the secure HTTP/1.1 path, where the timeout handlers are installed
+        // after ALPN negotiation completes), so start the idle timer here instead.
+        if context.channel.isActive {
+            self.scheduleTimeout(context: context)
+        }
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
+        // Connection just opened, no request yet — start the idle timer.
+        self.scheduleTimeout(context: context)
+        context.fireChannelActive()
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let part = self.unwrapInboundIn(data)
+        if case .head = part {
+            // A request just started; pause idle until the response is fully written.
+            self.scheduledTimeout?.cancel()
+            self.scheduledTimeout = nil
+        }
+        context.fireChannelRead(data)
+    }
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let part = self.unwrapOutboundIn(data)
+        context.write(data, promise: promise)
+        if case .end = part {
+            // The response is complete; the connection is now between requests, so re-arm idle.
+            self.scheduleTimeout(context: context)
+        }
+    }
+
+    func handlerRemoved(context: ChannelHandlerContext) {
+        self.scheduledTimeout?.cancel()
+        self.scheduledTimeout = nil
+    }
+
+    private func scheduleTimeout(context: ChannelHandlerContext) {
+        self.scheduledTimeout?.cancel()
+        self.scheduledTimeout = context.eventLoop.assumeIsolated().scheduleTask(in: self.timeout) {
+            context.close(promise: nil)
+        }
+    }
+}
+
+/// A channel handler that enforces timeouts on receiving request headers and body.
+///
+/// State machine:
+/// - On channel active, a header timeout is scheduled (if configured).
+/// - When `.head` is received, the header timeout is cancelled and a body timeout is scheduled (if configured).
+/// - When `.end` is received, the body timeout is cancelled.
+/// - For HTTP/1.1, once both the request `.end` has been received and the response `.end` has been written, the header
+///   timeout is rescheduled so that the next request on a keep-alive connection is also protected. While the response
+///   is still being written (for example a long-lived streaming response) no header timeout runs.
+///
+/// If either timeout fires, the connection is closed.
+///
+/// dify-sf patch (see PATCHES.md): upstream re-arms the header timeout on the inbound request `.end`, which closes a
+/// connection whose response is still streaming once the header timeout elapses.
+final class RequestTimeoutHandler: ChannelDuplexHandler, RemovableChannelHandler {
+    typealias InboundIn = HTTPRequestPart
+    typealias InboundOut = HTTPRequestPart
+    typealias OutboundIn = HTTPResponsePart
+    typealias OutboundOut = HTTPResponsePart
+
+    private let readHeaderTimeout: TimeAmount?
+    private let readBodyTimeout: TimeAmount?
+    private var scheduledTimeout: Scheduled<Void>?
+
+    private let expectMultipleRequests: Bool
+    /// HTTP/1.1 only: whether the current request's `.end` has been received.
+    private var requestEnded = false
+    /// HTTP/1.1 only: whether the current request's response `.end` has been written.
+    private var responseEnded = false
+
+    /// - Parameters:
+    ///   - readHeaderTimeout: How long to wait for a request head to arrive before closing the channel. Pass `nil` to
+    ///     not enforce a request header timeout.
+    ///   - readBodyTimeout: How long to wait for a request body to complete (once the head has arrived) before closing
+    ///     the channel. Pass `nil` to not enforce a request body timeout.
+    ///   - expectMultipleRequests: Whether the channel can receive more than one request. Pass `true` for an HTTP/1.1
+    ///     connection channel (for keep-alive), or `false` for an HTTP/2 or HTTP/3 stream channel.
+    init(readHeaderTimeout: TimeAmount?, readBodyTimeout: TimeAmount?, expectMultipleRequests: Bool) {
+        self.readHeaderTimeout = readHeaderTimeout
+        self.readBodyTimeout = readBodyTimeout
+        self.expectMultipleRequests = expectMultipleRequests
+    }
+
+    func handlerAdded(context: ChannelHandlerContext) {
+        // If the handler is added to a channel that is already active, `channelActive` won't be
+        // called for it (e.g. on the secure HTTP/1.1 path, where the timeout handlers are installed
+        // after ALPN negotiation completes), so start the header timeout here instead.
+        if context.channel.isActive {
+            self.scheduleHeaderTimeoutIfNeeded(context: context)
+        }
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
+        self.scheduleHeaderTimeoutIfNeeded(context: context)
+        context.fireChannelActive()
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let part = self.unwrapInboundIn(data)
+        switch part {
+        case .head:
+            self.scheduledTimeout?.cancel()
+            self.scheduledTimeout = nil
+            self.requestEnded = false
+            self.responseEnded = false
+            if let readBodyTimeout {
+                self.scheduleTimeout(readBodyTimeout, context: context)
+            }
+        case .body:
+            break
+        case .end:
+            self.scheduledTimeout?.cancel()
+            self.scheduledTimeout = nil
+            self.requestEnded = true
+            // The response may already be complete (a server that answers before reading the whole body).
+            self.rearmHeaderTimeoutIfIdle(context: context)
+        }
+        context.fireChannelRead(data)
+    }
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        if self.expectMultipleRequests, case .end = self.unwrapOutboundIn(data) {
+            // Update the state before forwarding: writing the response `.end` can synchronously deliver a pipelined
+            // next request (`HTTPServerPipelineHandler`), whose `.head` must then cancel this header timeout.
+            self.responseEnded = true
+            self.rearmHeaderTimeoutIfIdle(context: context)
+        }
+        context.write(data, promise: promise)
+    }
+
+    func handlerRemoved(context: ChannelHandlerContext) {
+        self.scheduledTimeout?.cancel()
+        self.scheduledTimeout = nil
+    }
+
+    /// Re-arms the header timer so the next request on this connection is also protected, once the current request
+    /// and its response are both complete.
+    private func rearmHeaderTimeoutIfIdle(context: ChannelHandlerContext) {
+        guard self.expectMultipleRequests, self.requestEnded, self.responseEnded, let readHeaderTimeout else { return }
+        self.scheduledTimeout?.cancel()
+        self.scheduleTimeout(readHeaderTimeout, context: context)
+    }
+
+    private func scheduleHeaderTimeoutIfNeeded(context: ChannelHandlerContext) {
+        if let readHeaderTimeout {
+            self.scheduleTimeout(readHeaderTimeout, context: context)
+        }
+    }
+
+    private func scheduleTimeout(_ timeout: TimeAmount, context: ChannelHandlerContext) {
+        self.scheduledTimeout = context.eventLoop.assumeIsolated().scheduleTask(in: timeout) {
+            context.close(promise: nil)
+        }
+    }
+}

@@ -1,0 +1,55 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift HTTP Server open source project
+//
+// Copyright (c) 2026 Apple Inc. and the Swift HTTP Server project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of Swift HTTP Server project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import NIOCore
+import NIOEmbedded
+import NIOHTTPTypes
+
+@testable import NIOHTTPServer
+
+@available(anyAppleOS 26.0, *)
+extension NIOHTTPServer {
+    /// Starts serving plaintext HTTP/1.1 using the provided testing channel instead of using `ServerBootstrap` as
+    /// `NIOHTTPServer` normally does.
+    func serveInsecureHTTP1_1WithTestChannel<Handler: HTTPServerRequestHandler>(
+        testChannel: NIOAsyncTestingChannel,
+        handler: Handler
+    ) async throws
+    where
+        Handler.RequestContext == RequestContext,
+        Handler.Reader == Reader,
+        Handler.ResponseSender == ResponseSender
+    {
+        // The server requires a NIOAsyncChannel, so we create one from the test channel
+        let serverTestAsyncChannel = try await testChannel.eventLoop.submit {
+            try NIOAsyncChannel<HTTPRequestChannelAndCancellationSignal, Never>(
+                wrappingChannelSynchronously: testChannel,
+                configuration: .init()
+            )
+        }.get()
+
+        // Trick the server into thinking it's been bound to an address so that we don't leak the listening address
+        // promise. In reality, the server hasn't been bound to any address: we will manually feed in requests and
+        // observe responses.
+        try self.addressesBound([.init(ipAddress: "127.0.0.1", port: 8000)])
+        _ = try await self.listeningAddresses
+
+        try await serverTestAsyncChannel.executeThenClose { inbound in
+            try await self.serveInsecureHTTP1_1(
+                connectionStream: inbound,
+                connectionHandler: NIOHTTPServerDefaultConnectionHandler(handler: handler)
+            )
+        }
+    }
+}

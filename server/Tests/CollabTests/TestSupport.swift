@@ -121,6 +121,23 @@ func withServer(config: ServerConfig = .defaults,
     }
 }
 
+/// Like `withServer`, but over a real listening socket (Vapor's live test mode): for what only a TCP connection shows, such
+/// as the HTTP server's connection timeouts. `body` also gets the bound port.
+func withRunningServer(config: ServerConfig = .defaults,
+                       _ body: @Sendable @escaping (API, Int, DocumentRegistry) async throws -> Void) async throws {
+    try await withStore { store, logger in
+        let registry = DocumentRegistry(store: store, config: config, logger: logger)
+        try await withApp(configure: { app in
+            Routes(registry: registry, store: store, config: config, logger: logger).register(on: app)
+        }) { app in
+            try await app.testing(.running) { client in
+                guard let port = client.port else { Issue.record("the live test server has no port"); return }
+                try await body(API(client: client), port, registry)
+            }
+        }
+    }
+}
+
 /// Sets up the owner on the fresh database behind `client`: headers with its bearer token.
 func ownerHeaders(_ client: any TestClient) async throws -> HTTPFields {
     let token = try await API(client: client).setupOwner()

@@ -1,0 +1,679 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift HTTP Server open source project
+//
+// Copyright (c) 2026 Apple Inc. and the Swift HTTP Server project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of Swift HTTP Server project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import NIOCore
+import NIOSSL
+public import X509
+
+#if HTTP3
+import NIOQUIC
+#endif
+
+/// Configuration settings for ``NIOHTTPServer``.
+///
+/// This structure contains all the necessary configuration options for setting up
+/// and running ``NIOHTTPServer``, including network binding and TLS settings.
+@available(anyAppleOS 26.0, *)
+public struct NIOHTTPServerConfiguration: Sendable {
+    /// Specifies where the server should bind and listen for incoming connections.
+    ///
+    /// Currently supports binding to a specific host and port combination.
+    /// Additional binding targets may be added in the future.
+    public struct BindTarget: Sendable {
+        enum Backing {
+            case hostAndPort(host: String, port: Int)
+        }
+
+        let backing: Backing
+
+        /// Creates a bind target for a specific host and port.
+        ///
+        /// - Parameters:
+        ///   - host: The hostname or IP address to bind to (e.g., "localhost", "0.0.0.0")
+        ///   - port: The port number to listen on (e.g., 8080, 443)
+        /// - Returns: A configured `BindTarget` instance
+        ///
+        /// ## Example
+        /// ```swift
+        /// let target = BindTarget.hostAndPort(host: "localhost", port: 8080)
+        /// ```
+        public static func hostAndPort(host: String, port: Int) -> Self {
+            Self(backing: .hostAndPort(host: host, port: port))
+        }
+    }
+
+    /// Configuration for transport security settings.
+    ///
+    /// Provides options for running the server with or without TLS encryption.
+    /// When using TLS, you must either provide a certificate chain and private key, or a `CertificateReloader`.
+    public struct TransportSecurity: Sendable {
+        enum Backing {
+            case plaintext
+            case tls(credentials: TLSCredentials)
+            case mTLS(
+                credentials: TLSCredentials,
+                trustConfiguration: MTLSTrustConfiguration
+            )
+        }
+
+        let backing: Backing
+
+        /// Configures the server for plaintext HTTP without TLS encryption.
+        public static let plaintext: Self = Self(backing: .plaintext)
+
+        /// Configures the server for TLS with the provided credentials.
+        ///
+        /// - Parameter credentials: The TLS credentials containing the certificate chain and private key
+        ///   to present during the TLS handshake.
+        public static func tls(credentials: TLSCredentials) -> Self {
+            Self(backing: .tls(credentials: credentials))
+        }
+
+        /// Configures the server for mTLS with the provided credentials and trust configuration.
+        ///
+        /// - Parameters:
+        ///   - credentials: The TLS credentials containing the certificate chain and private key
+        ///     to present during the TLS handshake.
+        ///   - trustConfiguration: The trust roots and certificate verification mode to use when
+        ///     validating client certificates.
+        public static func mTLS(
+            credentials: TLSCredentials,
+            trustConfiguration: MTLSTrustConfiguration
+        ) -> Self {
+            Self(
+                backing: .mTLS(
+                    credentials: credentials,
+                    trustConfiguration: trustConfiguration
+                )
+            )
+        }
+
+        /// The custom mTLS certificate verification callback, if one was configured.
+        ///
+        /// Returns the callback when the transport security is configured for mTLS with a
+        /// ``MTLSTrustConfiguration/TrustSource/customCertificateVerificationCallback(_:)``,
+        /// or `nil` otherwise.
+        var customVerificationCallback: (@Sendable ([X509.Certificate]) async throws -> CertificateVerificationResult)?
+        {
+            switch self.backing {
+            case .tls, .plaintext:
+                // A custom certificate verification callback is an mTLS concept (the callback verifies the certificates
+                // presented by the client); it doesn't apply for plaintext and TLS.
+                return nil
+
+            case .mTLS(_, let trustRoots):
+                switch trustRoots.source.backing {
+                case .customCertificateVerificationCallback(let callback):
+                    return callback
+
+                case .systemDefaults, .certificates, .serialized:
+                    return nil
+                }
+            }
+        }
+    }
+
+    /// HTTP/2 specific configuration.
+    public struct HTTP2: Sendable, Hashable {
+        /// The maximum frame size to be used in an HTTP/2 connection.
+        public var maxFrameSize: Int
+
+        /// The target window size for this connection.
+        ///
+        /// - Note: This will also be set as the initial window size for the connection.
+        public var targetWindowSize: Int
+
+        /// The number of concurrent streams on the HTTP/2 connection.
+        public var maxConcurrentStreams: Int
+
+        /// The graceful shutdown configuration.
+        public var gracefulShutdown: GracefulShutdownConfiguration
+
+        /// Configuration options for HTTP/2 graceful shutdown behavior.
+        public struct GracefulShutdownConfiguration: Sendable, Hashable {
+            /// The maximum amount of time that the connection has to close gracefully.
+            /// If set to `nil`, no time limit is enforced on the graceful shutdown process.
+            public var maximumGracefulShutdownDuration: Duration?
+
+            /// Creates a graceful shutdown configuration with the specified timeout value.
+            ///
+            /// - Parameters:
+            ///   - maximumGracefulShutdownDuration: The maximum amount of time that the connection has to close
+            ///     gracefully. When `nil`, no time limit is enforced for active streams to finish during graceful
+            ///     shutdown.
+            public init(maximumGracefulShutdownDuration: Duration? = nil) {
+                self.maximumGracefulShutdownDuration = maximumGracefulShutdownDuration
+            }
+        }
+
+        /// - Parameters:
+        ///   - maxFrameSize: The maximum frame size to be used in connections.
+        ///   - targetWindowSize: The target window size for connections. This will also be set as the initial window
+        ///     size.
+        ///   - maxConcurrentStreams: The maximum number of concurrent streams permitted on connections.
+        ///   - gracefulShutdown: The graceful shutdown configuration.
+        public init(
+            maxFrameSize: Int = Self.defaultMaxFrameSize,
+            targetWindowSize: Int = Self.defaultTargetWindowSize,
+            maxConcurrentStreams: Int = Self.defaultMaxConcurrentStreams,
+            gracefulShutdown: GracefulShutdownConfiguration = .init()
+        ) {
+            self.maxFrameSize = maxFrameSize
+            self.targetWindowSize = targetWindowSize
+            self.maxConcurrentStreams = maxConcurrentStreams
+            self.gracefulShutdown = gracefulShutdown
+        }
+
+        @inlinable
+        static var defaultMaxFrameSize: Int { 1 << 14 }
+
+        @inlinable
+        static var defaultTargetWindowSize: Int { (1 << 16) - 1 }
+
+        @inlinable
+        static var defaultMaxConcurrentStreams: Int { 100 }
+
+        /// Default values. The max frame size defaults to 2^14, the target window size defaults to 2^16-1, and the max
+        /// concurrent streams default to 100.
+        public static var defaults: Self {
+            Self(
+                maxFrameSize: Self.defaultMaxFrameSize,
+                targetWindowSize: Self.defaultTargetWindowSize,
+                maxConcurrentStreams: Self.defaultMaxConcurrentStreams,
+                gracefulShutdown: GracefulShutdownConfiguration()
+            )
+        }
+    }
+
+    /// Configuration for the backpressure strategy to use when reading requests and writing back responses.
+    public struct BackPressureStrategy: Sendable {
+        enum Backing {
+            case watermark(low: Int, high: Int)
+        }
+
+        internal let backing: Backing
+
+        init(backing: Backing) {
+            self.backing = backing
+        }
+
+        /// A low/high watermark will be applied when reading requests and writing responses.
+        /// - Parameters:
+        ///   - low: The threshold below which the consumer will ask the producer to produce more elements.
+        ///   - high: The threshold above which the producer will stop producing elements.
+        /// - Returns: A low/high watermark strategy with the configured thresholds.
+        public static func watermark(low: Int, high: Int) -> Self {
+            .init(backing: .watermark(low: low, high: high))
+        }
+
+        @inlinable
+        static var defaultWatermarkLow: Int { 2 }
+
+        @inlinable
+        static var defaultWatermarkHigh: Int { 10 }
+
+        /// Default values. The watermark low value defaults to 2, and the watermark high value default to 10.
+        public static var defaults: Self {
+            Self.init(
+                backing: .watermark(
+                    low: Self.defaultWatermarkLow,
+                    high: Self.defaultWatermarkHigh
+                )
+            )
+        }
+    }
+
+    /// Configuration for connection timeouts.
+    ///
+    /// Timeouts are enabled by default with reasonable values to protect against
+    /// slow or idle connections. Individual timeouts can be disabled by setting
+    /// them to `nil`.
+    public struct ConnectionTimeouts: Sendable {
+        /// Maximum time the connection may sit with no request in flight before being closed.
+        ///
+        /// On HTTP/1.1, the timer runs between requests on a keep-alive connection: it starts
+        /// when the connection becomes active and is rescheduled after each response `.end` is
+        /// written. The timer is cancelled when an inbound request `.head` is observed.
+        ///
+        /// On HTTP/2, this is delegated to `NIOHTTP2ServerConnectionManagementHandler`'s
+        /// `maxIdleTime`, which fires when no streams have been open for the configured duration
+        /// and triggers a graceful shutdown.
+        ///
+        /// `nil` means no idle timeout.
+        public var idle: Duration?
+
+        /// Maximum time allowed to receive the complete request headers
+        /// after a connection is established. `nil` means no timeout.
+        public var readHeader: Duration?
+
+        /// Maximum time allowed to receive the complete request body
+        /// after headers have been received. `nil` means no timeout.
+        public var readBody: Duration?
+
+        /// - Parameters:
+        ///   - idle: Maximum idle time before the connection is closed.
+        ///   - readHeader: Maximum time to receive request headers after a connection is established.
+        ///   - readBody: Maximum time to receive the complete request body after headers have been received.
+        public init(
+            idle: Duration? = Self.defaultIdle,
+            readHeader: Duration? = Self.defaultReadHeader,
+            readBody: Duration? = Self.defaultReadBody
+        ) {
+            self.idle = idle
+            self.readHeader = readHeader
+            self.readBody = readBody
+        }
+
+        @inlinable
+        static var defaultIdle: Duration? { .seconds(60) }
+
+        @inlinable
+        static var defaultReadHeader: Duration? { .seconds(30) }
+
+        @inlinable
+        static var defaultReadBody: Duration? { .seconds(60) }
+
+        /// Default timeout values: 60s idle, 30s read header, 60s read body.
+        public static var defaults: Self { .init() }
+    }
+
+    /// Network binding configuration specifying all addresses where the server should listen.
+    ///
+    /// - Precondition: Must not be empty.
+    public var bindTargets: [BindTarget] {
+        didSet {
+            if self.bindTargets.isEmpty {
+                preconditionFailure(NIOHTTPServerConfigurationError.noBindTargetsSpecified.description)
+            }
+        }
+    }
+
+    /// TLS configuration for the server.
+    ///
+    /// - Precondition: Must be compatible with ``supportedHTTPVersions``:
+    ///   - `transportSecurity == .mTLS` is not supported when `supportedHTTPVersions` contains `.http3`.
+    ///   - Raw Public Key credentials are only supported when `supportedHTTPVersions == [.http3]`.
+    ///   - When `supportedHTTPVersions` contains `.http2` and `.http3`, TLS credentials must be provided as PEM files
+    ///     on disk. Other credential sources are not supported.
+    ///   - `transportSecurity` can only be set to `.plaintext` when `supportedHTTPVersions == [.http1_1]`.
+    public var transportSecurity: TransportSecurity {
+        didSet {
+            do {
+                try self.validateTransportConfiguration()
+            } catch {
+                preconditionFailure("\(error)")
+            }
+        }
+    }
+
+    /// The HTTP protocol versions the server advertises and accepts connections for.
+    ///
+    /// - Precondition: Must not be empty, and must be compatible with ``transportSecurity``:
+    ///   - `transportSecurity == .mTLS` is not supported when `supportedHTTPVersions` contains `.http3`.
+    ///   - Raw Public Key credentials are only supported when `supportedHTTPVersions == [.http3]`.
+    ///   - When `supportedHTTPVersions` contains `.http2` and `.http3`, TLS credentials must be provided as PEM files
+    ///     on disk. Other credential sources are not supported.
+    ///   - `transportSecurity` can only be set to `.plaintext` when `supportedHTTPVersions == [.http1_1]`.
+    public var supportedHTTPVersions: Set<HTTPVersion> {
+        didSet {
+            if self.supportedHTTPVersions.isEmpty {
+                preconditionFailure(NIOHTTPServerConfigurationError.noSupportedHTTPVersionsSpecified.description)
+            }
+
+            do {
+                try self.validateTransportConfiguration()
+            } catch {
+                preconditionFailure("\(error)")
+            }
+        }
+    }
+
+    /// Backpressure strategy to use in the server.
+    public var backpressureStrategy: BackPressureStrategy
+
+    /// The maximum number of concurrent connections the server will accept.
+    ///
+    /// When this limit is reached, the server stops accepting new connections until existing ones close. `nil` means
+    /// unlimited (the default).
+    ///
+    /// - Note: Connection limits are not currently supported over HTTP/3.
+    ///
+    /// - Precondition: Must be greater than 0 if non-`nil`.
+    public var maxConnections: Int? {
+        didSet {
+            if let maxConnections, maxConnections <= 0 {
+                preconditionFailure("`maxConnections` must be greater than 0.")
+            }
+        }
+    }
+
+    /// Configuration for connection timeouts.
+    public var connectionTimeouts: ConnectionTimeouts
+
+    /// The `NIOSSLContext` used by the secure upgrade channel(s), derived when the configuration is validated.
+    ///
+    /// `nil` when the configuration doesn't call for a secure upgrade channel, i.e. plaintext HTTP/1.1 or HTTP/3 only.
+    var sslContext: NIOSSLContext?
+
+    #if HTTP3
+    /// The QUIC authentication configuration used by the HTTP/3 channel(s).
+    ///
+    /// `nil` when HTTP/3 is not among ``supportedHTTPVersions``.
+    var quicAuthenticationConfiguration: NIOQUIC.AuthenticationConfiguration?
+
+    /// The QUIC authenticator used by the HTTP/3 channel(s), derived when the configuration is validated.
+    ///
+    /// `nil` when HTTP/3 is not among ``supportedHTTPVersions``, and also when the TLS credentials are raw public keys;
+    /// NIOQUIC reads those directly from ``quicAuthenticationConfiguration``.
+    var quicAuthenticator: NIOQUIC.Authenticator?
+    #endif
+
+    /// Create a new configuration with multiple bind targets.
+    ///
+    /// Other configuration properties (``backpressureStrategy``, ``maxConnections``,
+    /// ``connectionTimeouts``) are initialized to their defaults and can be set on the resulting
+    /// value before passing it to ``NIOHTTPServer``.
+    ///
+    /// - Parameters:
+    ///   - bindTargets: An array of ``BindTarget`` values specifying where the server should listen.
+    ///   - supportedHTTPVersions: The HTTP protocol versions the server should support.
+    ///   - transportSecurity: The transport security mode (plaintext, TLS, or mTLS).
+    public init(
+        bindTargets: [BindTarget],
+        supportedHTTPVersions: Set<HTTPVersion>,
+        transportSecurity: TransportSecurity
+    ) throws {
+        if bindTargets.isEmpty {
+            throw NIOHTTPServerConfigurationError.noBindTargetsSpecified
+        }
+
+        if supportedHTTPVersions.isEmpty {
+            throw NIOHTTPServerConfigurationError.noSupportedHTTPVersionsSpecified
+        }
+
+        self.bindTargets = bindTargets
+        self.supportedHTTPVersions = supportedHTTPVersions
+        self.transportSecurity = transportSecurity
+        self.backpressureStrategy = .defaults
+        self.maxConnections = nil
+        self.connectionTimeouts = .defaults
+
+        // Validate the compatibility of `supportedHTTPVersions` and `transportSecurity`.
+        try self.validateTransportConfiguration()
+    }
+
+    /// Create a new configuration with a single bind target.
+    ///
+    /// Other configuration properties (``backpressureStrategy``, ``maxConnections``,
+    /// ``connectionTimeouts``) are initialized to their defaults and can be set on the resulting
+    /// value before passing it to ``NIOHTTPServer``.
+    ///
+    /// - Parameters:
+    ///   - bindTarget: A ``BindTarget``.
+    ///   - supportedHTTPVersions: The HTTP protocol versions the server should support.
+    ///   - transportSecurity: The transport security mode (plaintext, TLS, or mTLS).
+    public init(
+        bindTarget: BindTarget,
+        supportedHTTPVersions: Set<HTTPVersion>,
+        transportSecurity: TransportSecurity
+    ) throws {
+        try self.init(
+            bindTargets: [bindTarget],
+            supportedHTTPVersions: supportedHTTPVersions,
+            transportSecurity: transportSecurity
+        )
+    }
+}
+
+/// Represents the outcome of certificate verification.
+///
+/// Indicates whether certificate verification succeeded or failed, and provides associated metadata when verification
+/// is successful.
+@available(anyAppleOS 26.0, *)
+public enum CertificateVerificationResult: Sendable, Hashable {
+    /// Metadata resulting from successful certificate verification.
+    public struct VerificationMetadata: Sendable, Hashable {
+        /// A container for the validated certificate chain: an array of certificates forming a verified and ordered
+        /// chain of trust, starting from the peer's leaf certificate to a trusted root certificate.
+        public var validatedCertificateChain: X509.ValidatedCertificateChain?
+
+        /// Creates an instance with the peer's *validated* certificate chain.
+        ///
+        /// - Parameter validatedCertificateChain: An optional *validated* certificate chain. If provided, it must
+        ///   **only** contain the **validated** chain of trust that was built and verified from the certificates
+        ///   presented by the peer.
+        public init(_ validatedCertificateChain: X509.ValidatedCertificateChain?) {
+            self.validatedCertificateChain = validatedCertificateChain
+        }
+    }
+
+    /// An error representing certificate verification failure.
+    public struct VerificationError: Swift.Error, Hashable, CustomStringConvertible {
+        public let reason: String
+
+        /// Creates a verification error with the reason why verification failed.
+        /// - Parameter reason: The reason of why certificate verification failed.
+        public init(reason: String) {
+            self.reason = reason
+        }
+
+        public var description: String {
+            "Verification error: \(self.reason)"
+        }
+    }
+
+    /// Certificate verification succeeded.
+    ///
+    /// The associated metadata contains information captured during verification.
+    case certificateVerified(VerificationMetadata)
+
+    /// Certificate verification failed.
+    case failed(VerificationError)
+}
+
+/// Represents the certificate verification behavior.
+public struct CertificateVerificationMode: Sendable {
+    enum VerificationMode {
+        case optionalVerification
+        case noHostnameVerification
+    }
+
+    let mode: VerificationMode
+
+    /// Allows peers to connect without presenting any certificates. However, if the peer *does* present
+    /// certificates, they are validated like normal (exactly like with ``noHostnameVerification``), and the TLS
+    /// handshake will fail if verification fails.
+    ///
+    /// - Warning: With this mode, a peer can successfully connect even without presenting any certificates. As such,
+    ///   this mode must be used with great caution.
+    public static var optionalVerification: Self {
+        Self(mode: .optionalVerification)
+    }
+
+    /// Validates the certificates presented by the peer but skips hostname verification as it cannot succeed in
+    /// a server context.
+    public static var noHostnameVerification: Self {
+        Self(mode: .noHostnameVerification)
+    }
+}
+
+@available(anyAppleOS 26.0, *)
+extension NIOSSL.CertificateVerification {
+    /// Maps ``CertificateVerificationMode`` to the NIOSSL representation.
+    init(_ verificationMode: CertificateVerificationMode) {
+        switch verificationMode.mode {
+        case .noHostnameVerification:
+            self = .noHostnameVerification
+        case .optionalVerification:
+            self = .optionalVerification
+        }
+    }
+}
+
+@available(anyAppleOS 26.0, *)
+extension NIOHTTPServerConfiguration {
+    /// Represents an HTTP version.
+    public struct HTTPVersion: Sendable, Hashable {
+        enum Version {
+            case http1_1
+            case http2(config: HTTP2)
+            #if HTTP3
+            case http3(config: HTTP3)
+            #endif
+
+            /// The HTTP/2 configuration if this version is HTTP/2, or `nil` if it is HTTP/1.1 or HTTP/3.
+            var http2Config: HTTP2? {
+                switch self {
+                case .http1_1:
+                    return nil
+
+                case .http2(let config):
+                    return config
+
+                #if HTTP3
+                case .http3:
+                    return nil
+                #endif
+                }
+            }
+
+            #if HTTP3
+            /// The HTTP/3 configuration if this version is HTTP/3, or `nil` if it is HTTP/1.1 or HTTP/2.
+            var http3Config: HTTP3? {
+                switch self {
+                case .http1_1, .http2:
+                    return nil
+
+                case .http3(let config):
+                    return config
+                }
+            }
+            #endif
+        }
+
+        let version: Version
+
+        /// The HTTP/1.1 protocol version.
+        public static var http1_1: Self {
+            Self(version: .http1_1)
+        }
+
+        /// The HTTP/2 protocol version.
+        ///
+        /// - Parameter config: The configuration to use for HTTP/2.
+        public static func http2(config: HTTP2 = .defaults) -> Self {
+            Self(version: .http2(config: config))
+        }
+
+        /// The HTTP/2 protocol version with default configuration values.
+        ///
+        /// - Note: Use ``http2(config:)`` to specify custom configuration values.
+        public static var http2: Self {
+            .http2(config: .defaults)
+        }
+
+        #if HTTP3
+        /// The HTTP/3 protocol version.
+        ///
+        /// - Parameter config: The configuration to use for HTTP/3.
+        public static func http3(config: HTTP3 = .defaults) -> Self {
+            Self(version: .http3(config: config))
+        }
+
+        /// The HTTP/3 protocol version with default configuration values.
+        ///
+        /// - Note: Use ``http3(config:)`` to specify custom configuration values.
+        public static var http3: Self {
+            .http3(config: .defaults)
+        }
+        #endif
+
+        /// Two values are equal if they represent the same protocol version, regardless of any differences in HTTP/2
+        /// configuration.
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            switch (lhs.version, rhs.version) {
+            case (.http1_1, .http1_1), (.http2, .http2):
+                return true
+
+            #if HTTP3
+            case (.http3, .http3):
+                return true
+            #endif
+
+            default:
+                return false
+            }
+        }
+
+        /// Hashes by protocol version only. Consistent with the `Equatable` conformance.
+        public func hash(into hasher: inout Hasher) {
+            switch self.version {
+            case .http1_1:
+                hasher.combine(1)
+
+            case .http2:
+                hasher.combine(2)
+
+            #if HTTP3
+            case .http3:
+                hasher.combine(3)
+            #endif
+            }
+        }
+    }
+}
+
+@available(anyAppleOS 26.0, *)
+extension NIOAsyncSequenceProducerBackPressureStrategies.HighLowWatermark {
+    init(_ backpressureStrategy: NIOHTTPServerConfiguration.BackPressureStrategy) {
+        switch backpressureStrategy.backing {
+        case .watermark(let low, let high):
+            self.init(lowWatermark: low, highWatermark: high)
+        }
+    }
+}
+
+@available(anyAppleOS 26.0, *)
+extension Set where Element == NIOHTTPServerConfiguration.HTTPVersion {
+    /// The ALPN protocol identifiers to advertise during the TLS handshake, derived from the supported HTTP versions.
+    ///
+    /// Returns `"h2"` if HTTP/2 is supported, and `"http/1.1"` if HTTP/1.1 is supported, in that order of preference.
+    var alpnIdentifiers: [String] {
+        var identifiers = [String]()
+
+        if self.http2ConfigIfSupported != nil {
+            identifiers.append("h2")
+        }
+
+        if self.contains(.http1_1) {
+            identifiers.append("http/1.1")
+        }
+
+        return identifiers
+    }
+
+    /// The HTTP/2 configuration if HTTP/2 is among the supported versions, or `nil` if only HTTP/1.1 and/or HTTP/3 is
+    /// supported.
+    var http2ConfigIfSupported: NIOHTTPServerConfiguration.HTTP2? {
+        self.compactMap({ $0.version.http2Config }).first
+    }
+
+    #if HTTP3
+    /// The HTTP/3 configuration if HTTP/3 is among the supported versions, or `nil` if only HTTP/1.1 and/or HTTP/2 is
+    /// supported.
+    var http3ConfigIfSupported: NIOHTTPServerConfiguration.HTTP3? {
+        self.compactMap({ $0.version.http3Config }).first
+    }
+    #endif
+}

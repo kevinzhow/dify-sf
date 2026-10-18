@@ -68,7 +68,9 @@ truncated, so any client can be caught up from any point and the full history is
 `GET /events` registers a subscriber atomically with the document's head (inside the sequencer's critical section), so catch-up
 (read from the log, outside the lock) and the live feed join without gaps or duplicates. Live frames are pre-encoded once per commit.
 A subscriber that cannot keep up (buffer of 2000 frames) is cut loose: its client reconnects with `Last-Event-ID` and is caught up
-from the log. Keep-alive pings every 10 s let both sides detect dead connections.
+from the log. Keep-alive pings every 10 s let both sides detect dead connections. A stream is a response that never ends: the HTTP
+server (swift-http-server under Vapor) is a vendored copy whose read-header timeout no longer closes a connection while its response is
+still being written (`server/Vendor/swift-http-server/PATCHES.md`); upstream closed every stream after 30 s.
 
 ## Conflict rules (summary; precise version in protocol.md)
 

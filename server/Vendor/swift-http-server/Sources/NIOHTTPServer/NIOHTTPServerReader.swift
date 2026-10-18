@@ -1,0 +1,165 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift HTTP Server open source project
+//
+// Copyright (c) 2025 Apple Inc. and the Swift HTTP Server project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of Swift HTTP Server project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+public import BasicContainers
+import NIOCore
+import NIOHTTPTypes
+import Synchronization
+
+@available(anyAppleOS 26.0, *)
+extension NIOHTTPServer {
+    public struct Reader: AsyncReader, ~Copyable {
+        final class ReaderState: Sendable {
+            struct Wrapped: ~Copyable {
+                var finishedReading: Bool = false
+
+                /// The iterator. Initially populated from the channel; taken by the
+                /// body reader at construction time and returned by it once request
+                /// `.end` has been observed (for HTTP/1.1 keep-alive recovery).
+                var iterator:
+                    Disconnected<
+                        NIOAsyncChannelInboundStream<HTTPRequestPart>.AsyncIterator?
+                    >
+            }
+
+            let wrapped: Mutex<Wrapped>
+
+            init(iterator: consuming sending NIOAsyncChannelInboundStream<HTTPRequestPart>.AsyncIterator) {
+                self.wrapped = .init(.init(iterator: Disconnected(value: iterator)))
+            }
+
+            /// Takes the iterator out of the state. Returns the iterator if present,
+            /// or `nil` if it's already been taken (e.g. by the body reader).
+            func takeIterator() -> sending NIOAsyncChannelInboundStream<HTTPRequestPart>.AsyncIterator? {
+                self.wrapped.withLock { state in
+                    state.iterator.swap(newValue: nil)
+                }
+            }
+        }
+
+        public typealias ReadElement = UInt8
+
+        public typealias Buffer = UniqueArray<UInt8>
+
+        public typealias FinalElement = HTTPFields?
+
+        public typealias ReadFailure = any Error
+
+        var state: ReaderState
+
+        /// The iterator that provides HTTP request parts from the underlying channel.
+        /// Taken from `state` at construction; returned to `state` when this reader
+        /// observes request `.end` so the outer request loop can recover it for
+        /// HTTP/1.1 keep-alive.
+        private var iterator: NIOAsyncChannelInboundStream<HTTPRequestPart>.AsyncIterator?
+
+        /// A reusable buffer handed to the body closure on each call to ``read(body:)``.
+        /// Reusing it across calls preserves the allocation; the buffer is cleared
+        /// (while keeping its capacity) at the start of every read.
+        private var buffer: UniqueArray<UInt8>
+
+        /// Initializes a new request body reader, taking the iterator from the shared `ReaderState`.
+        init(readerState: ReaderState) {
+            self.state = readerState
+            self.iterator = readerState.takeIterator()
+            self.buffer = UniqueArray<UInt8>()
+        }
+
+        #if HTTP3 && UnstableHTTPDatagrams
+        /// The unreliable datagram reader, present when the underlying transport is capable of reading/writing
+        /// unreliable datagrams.
+        private var datagramStreamFuture: EventLoopFuture<HTTP3UnreliableDatagramStream>?
+
+        /// Initializes a new request body reader that can also vend an unreliable datagram reader if the underlying
+        /// transport supports unreliable datagrams.
+        init(readerState: ReaderState, datagramStreamFuture: EventLoopFuture<HTTP3UnreliableDatagramStream>? = nil) {
+            self.state = readerState
+            self.iterator = readerState.takeIterator()
+            self.buffer = UniqueArray<UInt8>()
+            self.datagramStreamFuture = datagramStreamFuture
+        }
+        #endif
+
+        public mutating func read<Return: ~Copyable, Failure: Error>(
+            body: (inout Buffer, consuming HTTPFields??) async throws(Failure) -> Return
+        ) async throws(EitherError<ReadFailure, Failure>) -> Return {
+            let requestPart: HTTPRequestPart?
+            do {
+                requestPart = try await self.iterator?.next(isolation: #isolation)
+            } catch {
+                throw .first(error)
+            }
+
+            let trailerFields: HTTPFields??
+            self.buffer.removeAll(keepingCapacity: true)
+            switch requestPart {
+            case .head:
+                fatalError()
+            case .body(let element):
+                self.buffer.reserveCapacity(element.readableBytes)
+                self.buffer.append(copying: element.readableBytesUInt8Span)
+                trailerFields = nil
+            case .end(let trailer):
+                // Move the iterator back into ReaderState so the outer request
+                // loop can recover it for the next request on the same connection
+                // (HTTP/1.1 keep-alive).
+                nonisolated(unsafe) let iter = self.iterator.take()
+                self.state.wrapped.withLock { state in
+                    state.finishedReading = true
+                    _ = unsafe state.iterator.swap(newValue: iter)
+                }
+                trailerFields = trailer
+            case .none:
+                throw .first(RequestBodyReadError.streamEndedBeforeReceivingRequestEnd)
+            }
+
+            do {
+                return try await body(&self.buffer, trailerFields)
+            } catch {
+                throw .second(error)
+            }
+        }
+    }
+}
+
+@available(*, unavailable)
+extension NIOHTTPServer.Reader: Sendable {}
+
+#if HTTP3 && UnstableHTTPDatagrams
+@available(anyAppleOS 26.0, *)
+extension NIOHTTPServer.Reader {
+    /// Returns the unreliable datagram reader for this stream, if both the server and the client have advertised
+    /// support for receiving datagrams.
+    ///
+    /// - Note: This function will suspend until the server has received the SETTINGS frame from the client. This is
+    ///   because the server must send _and_ receive the `SETTINGS_H3_DATAGRAMS` setting with value 1 before sending or
+    ///   receiving unreliable datagrams. See https://datatracker.ietf.org/doc/html/rfc9297#section-2.1.1-3.
+    ///
+    /// - Important: This function can only be called once. Any successive calls will result in a runtime crash.
+    public mutating func takeDatagramReader() async -> sending NIOHTTPServer.DatagramReader? {
+        guard let streamFuture = self.datagramStreamFuture else {
+            // The server did not advertise support for receiving datagrams.
+            return nil
+        }
+
+        do {
+            let stream = try await streamFuture.get()
+            return NIOHTTPServer.DatagramReader(iterator: stream.inbound.makeAsyncIterator())
+        } catch {
+            // The peer did not agree to receiving datagrams.
+            return nil
+        }
+    }
+}
+#endif  // HTTP3 && UnstableHTTPDatagrams

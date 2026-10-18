@@ -13,6 +13,10 @@ let package = Package(
         .package(url: "https://github.com/vapor/vapor.git", exact: "5.0.0-beta.4"),
         // Vendored copy of postgres-nio 1.33.1 with a one-line Swift 6.4 build fix (see Vendor/postgres-nio/PATCHES.md).
         .package(path: "Vendor/postgres-nio"),
+        // Vendored copy of swift-http-server 0.3.0 (Vapor's HTTP server) with a fix that keeps the read-header timeout from
+        // closing streaming responses (SSE) after 30 s (see Vendor/swift-http-server/PATCHES.md). Same package identity as
+        // Vapor's remote dependency, so this local copy replaces it in the whole graph (SwiftPM 6.4 warns "Conflicting identity").
+        .package(path: "Vendor/swift-http-server"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", exact: "2.13.0"),
         .package(url: "https://github.com/apple/swift-configuration.git", exact: "1.2.2"),
         .package(url: "https://github.com/swift-server/async-http-client.git", exact: "1.35.0"),
