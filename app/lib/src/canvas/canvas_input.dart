@@ -95,6 +95,14 @@ class CanvasInput {
   void claim(PointerDownEvent e) => _claimed.add(e.pointer);
   bool claimed(PointerEvent e) => _claimed.contains(e.pointer);
 
+  // React Flow's d3 double-click: double the zoom (Shift halves it), anchored at the pointer.
+  // Feed the recognizer without delaying our raw pointer selection/drag handling. Interactive card controls
+  // either claim the pointer or win the gesture arena, so editing text never zooms the canvas.
+  Offset _doubleClickAt = Offset.zero;
+  late final _doubleClick = DoubleTapGestureRecognizer()
+    ..onDoubleTapDown = ((details) => _doubleClickAt = details.localPosition)
+    ..onDoubleTap = () => view.zoomAt(_doubleClickAt, HardwareKeyboard.instance.isShiftPressed ? 0.5 : 2);
+
   static const _slop = 3.0;
   static const _portSlackPx = 4.0;
   static const _edgeRadiusPx = 6.0;
@@ -172,6 +180,7 @@ class CanvasInput {
     if (mode == ControlMode.comment) return;
     final locked = readOnly();
     final port = locked ? null : outPortAt(c), hit = _clickTarget(c);
+    if (port == null) _doubleClick.addPointer(e);
     if (port != null) {
       _gesture = 'connect';
       _connectFrom = port;
@@ -534,5 +543,6 @@ class CanvasInput {
     _sendTimer?.cancel();
     marquee.dispose();
     connectLine.dispose();
+    _doubleClick.dispose();
   }
 }

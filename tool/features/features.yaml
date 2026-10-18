@@ -110,9 +110,8 @@ features:
   area: canvas
   title: 'Canvas: double-click zooms in'
   dify: [web/app/components/workflow/index.tsx]
-  status: not_ported
-  reason: Not implemented yet; CanvasInput has no double-click handling (React Flow's zoomOnDoubleClick default).
-  evidence: []
+  status: ported
+  evidence: [app/test/workflow_editor/double_click_zoom_test.dart]
   ours: [app/lib/src/canvas/canvas_input.dart]
 - id: canvas.select-node
   area: canvas

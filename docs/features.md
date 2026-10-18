@@ -18,7 +18,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Area | ported | partial | not ported | n/a | dify-sf only | total |
 |---|---|---|---|---|---|---|
-| [Canvas & interactions](#canvas) | 13 | 3 | 4 | 3 | 1 | 24 |
+| [Canvas & interactions](#canvas) | 14 | 3 | 3 | 3 | 1 | 24 |
 | [Node cards (shared chrome)](#node-chrome) | 11 |  | 3 |  |  | 14 |
 | [Edges & connections](#edges) | 5 | 1 |  |  | 1 | 7 |
 | [Block selector & node insertion](#block-selector) | 6 | 4 | 1 | 1 |  | 12 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **141** | **44** | **41** | **11** | **10** | **247** |
+| **Total** | **142** | **44** | **40** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -79,7 +79,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Canvas: open at the saved viewport, else fit view | partial | The canvas always fits the graph when a document opens; the viewport is per-user view state and is not stored in the shared document (Dify saves it with the draft). A start viewport can be passed with ?view= / --view. | spec `workflow/utils`, visual `editor-basic-llm` |
 | Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans) | ported |  | `app/test/workflow_editor_test.dart` |
 | Canvas: hand mode (drag pans, wheel zooms) | ported |  | spec `workflow/operator` |
-| Canvas: double-click zooms in | not ported | Not implemented yet; CanvasInput has no double-click handling (React Flow's zoomOnDoubleClick default). |  |
+| Canvas: double-click zooms in | ported |  | `app/test/workflow_editor/double_click_zoom_test.dart` |
 | Canvas: click selects one node (no modifier multi-select) and highlights its edges | ported |  | spec `workflow/hooks/use-nodes-interactions.spec.ts` |
 | Canvas: box selection (partial overlap) and dragging the selection | ported | Deviation: The selection lives in CanvasSelection; React Flow's _isBundled flags are not stored on nodes. | spec `workflow/hooks/use-selection-interactions.spec.ts` |
 | Canvas: drag nodes (container children clamped inside the container) | ported | Deviation: A drag is a moveNode op; concurrent moves of the same node are last-writer-wins (dify-sf's conflict policy for layout). | spec `workflow/hooks/use-nodes-interactions-without-sync.spec.ts` |
