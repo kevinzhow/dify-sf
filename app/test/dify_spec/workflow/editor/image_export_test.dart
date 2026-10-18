@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 
-import '../dify_spec/workflow/hooks/editor_harness.dart';
-import '../support/app_fonts.dart';
+import '../hooks/editor_harness.dart';
+import '../../../support/app_fonts.dart';
 
 CanvasImageExport fixture() => encodeCanvasImage(
   img.encodePng(img.Image(width: 8, height: 6)),

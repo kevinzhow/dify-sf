@@ -26,10 +26,10 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Keyboard shortcuts & clipboard](#shortcuts) | 6 |  |  | 1 |  | 7 |
 | [Control bar & operator bar](#operator) | 4 | 2 |  |  |  | 6 |
 | [Header, checklist & publish](#header) | 5 | 3 | 2 |  |  | 10 |
-| [Node panel shell & shared fields](#node-panel) | 9 |  | 1 |  | 1 | 11 |
+| [Node panel shell & shared fields](#node-panel) | 7 | 2 | 1 |  | 1 | 11 |
 | [Prompt editor & code editor](#editors) | 4 |  | 2 |  |  | 6 |
 | [Node: User Input (start)](#node-start) | 4 |  |  |  |  | 4 |
-| [Node: Output (end)](#node-end) | 1 | 1 |  |  |  | 2 |
+| [Node: Output (end)](#node-end) | 2 |  |  |  |  | 2 |
 | [Node: Answer](#node-answer) | 1 |  |  |  |  | 1 |
 | [Node: LLM](#node-llm) | 3 | 2 |  |  |  | 5 |
 | [Node: Knowledge Retrieval](#node-knowledge-retrieval) |  | 2 |  |  |  | 2 |
@@ -51,7 +51,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Nodes: triggers & workflow start](#node-triggers) | 3 | 2 | 1 |  |  | 6 |
 | [Nodes: knowledge pipeline (data source, knowledge base)](#node-pipeline) |  | 2 | 1 |  |  | 3 |
 | [Variables (environment, conversation, system) & variable picker](#variables) | 4 | 1 |  |  |  | 5 |
-| [Features panel](#features) | 4 | 2 |  | 1 |  | 7 |
+| [Features panel](#features) | 4 | 3 |  | 1 |  | 8 |
 | [Variable inspect](#variable-inspect) | 2 |  |  |  |  | 2 |
 | [Run & debug](#run) | 9 | 1 | 2 |  |  | 12 |
 | [Chatflow Debug & Preview](#chat-preview) | 2 |  |  |  |  | 2 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **149** | **39** | **38** | **11** | **10** | **247** |
+| **Total** | **148** | **41** | **38** | **11** | **10** | **248** |
 
 <a id="canvas"></a>
 
@@ -85,7 +85,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Canvas: drag nodes (container children clamped inside the container) | ported | Deviation: A drag is a moveNode op; concurrent moves of the same node are last-writer-wins (dify-sf's conflict policy for layout). | spec `workflow/hooks/use-nodes-interactions-without-sync.spec.ts` |
 | Canvas: alignment help lines with magnetic snap while dragging | ported |  | spec `workflow/help-line`, spec `workflow/hooks/use-helpline.spec.ts` |
 | Canvas: arrow keys move the focused node / selection (5 px, 20 px with Shift); Enter/Space select, Escape deselects | ported |  | spec `workflow/hooks/use-node-keyboard-interactions.spec.tsx`, spec `workflow/keyboard-node-movement.browser.spec.tsx` |
-| Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges | ported |  | spec `workflow/hooks/use-shortcuts.spec.ts`, `app/test/workflow_editor/shift_dim_test.dart` |
+| Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges | ported |  | spec `workflow/hooks/use-shortcuts.spec.ts`, `app/test/dify_spec/workflow/editor/shift_dim_test.dart` |
 | Canvas: accessibility (focusable nodes, semantics) | ported | Deviation: Semantics per on-screen card while the view rests, a summary otherwise (a GPU canvas has no DOM). |  |
 | Canvas: open the editor at a node (?node_id=) | ported |  | spec `workflow/hooks/use-locate-node.spec.tsx` |
 | Canvas: confirm dialogs (delete container with children, remove used variable) | ported |  | spec `workflow/index.spec.tsx` |
@@ -130,8 +130,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Edges: run gradients and status colours, waiting opacity | ported |  | spec `workflow/custom-edge-linear-gradient-render.spec.tsx`, visual `run-result` |
 | Edges: drag from a source handle to connect (connection line, validity rules, no cycles) | ported |  | spec `workflow/custom-connection-line.spec.tsx`, spec `workflow/hooks/use-workflow.spec.ts` |
 | Edges: click selects, Delete / Backspace and edge menu delete | ported |  | spec `workflow/hooks/use-edges-interactions.spec.ts`, spec `workflow/hooks/use-edges-interactions.helpers.spec.ts`, spec `workflow/hooks/use-edges-interactions-without-sync.spec.ts`, spec `workflow/workflow-edge-events.spec.tsx` |
-| Edges: midpoint "+" inserts a node between the two ends | ported |  | `app/test/canvas_plus_test.dart` |
-| Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup | ported |  | spec `workflow/hooks/use-nodes-interactions.spec.ts`, `app/test/workflow_editor/aggregator_canvas_test.dart` |
+| Edges: midpoint "+" inserts a node between the two ends | ported |  | `app/test/dify_spec/workflow/base/custom_edge_test.dart` |
+| Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup | ported |  | spec `workflow/hooks/use-nodes-interactions.spec.ts`, `app/test/dify_spec/workflow/editor/aggregator_canvas_test.dart` |
 | Reference integrity: no dangling references to deleted nodes or removed outputs | dify-sf only | Enforced by dify-sf's protocol (1.4 declared outputs, brokenRef rejections); Dify can leave dangling references after concurrent edits. | `docs/protocol.md`, `app/test/notices_test.dart` |
 
 <a id="block-selector"></a>
@@ -149,7 +149,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Block selector: RAG pipeline tool recommendations | n/a | dify-sf edits workflows and chatflows, not knowledge pipelines. | spec `workflow/block-selector/rag-tool-recommendations` |
 | Block selector: Snippets tab (list, tag filter, insert a snippet) | partial | The tab's UI is ported, but dify-sf has no snippet service (no snippets to list, no tag API); inserting is the host's callback. | spec `workflow/block-selector/snippets` |
 | Add Node from the toolbar / pane menu: candidate node follows the pointer, click places, right-click cancels | ported |  | spec `workflow/candidate-node-main.spec.tsx`, spec `workflow/candidate-node.spec.tsx` |
-| Handle "+" buttons: insert after (source) or before (target), auto-open on a new start node | ported |  | `app/test/canvas_plus_test.dart` |
+| Handle "+" buttons: insert after (source) or before (target), auto-open on a new start node | ported |  | `app/test/dify_spec/workflow/base/custom_edge_test.dart` |
 | Node insertion and replacement (handleNodeAdd / handleNodeChange), one undo step | ported |  | `app/test/node_insertion_test.dart`, `app/test/dify_spec/workflow/node_insertion` |
 | Block selector: Agent v2 row with nested agent picker | partial | The picker is ported; the agent roster comes from Dify's agent console service, which dify-sf does not have (empty list). | spec `workflow/block-selector/agent-selector.spec.tsx` |
 
@@ -160,7 +160,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Pane menu: Add Node, Add Note, Add Comment, Test Run / Preview, Paste Here | ported |  | spec `workflow/panel-contextmenu.spec.tsx`, spec `workflow/hooks/use-panel-interactions.spec.ts`, `app/test/workflow_context_menus_test.dart` |
-| Pane menu: Import App (replace the open workflow from a DSL file) | ported |  | spec `workflow/update-dsl-modal.spec.tsx`, spec `workflow/update-dsl-modal.helpers.spec.ts`, `app/test/workflow_editor/import_backend_test.dart`, `app/test/workflow_editor/update_dsl_modal_test.dart` |
+| Pane menu: Import App (replace the open workflow from a DSL file) | ported |  | spec `workflow/update-dsl-modal.spec.tsx`, spec `workflow/update-dsl-modal.helpers.spec.ts`, `app/test/workflow_editor/import_backend_test.dart`, `app/test/dify_spec/workflow/editor/update_dsl_modal_test.dart` |
 | Node menu / "..." dropdown: run step, Change Block, Copy, Duplicate, Delete, View Docs, About | ported |  | spec `workflow/node-actions-menu`, spec `workflow/node-contextmenu.spec.tsx` |
 | Node menu: Open Workflow (workflow-as-tool node) | partial | The item is ported but needs the workspace's workflow tools to know the target app; dify-sf has no workflow-tool service, so it never shows. | spec `workflow/node-actions-menu` |
 | Edge menu: Delete | ported |  | spec `workflow/edge-contextmenu.spec.tsx` |
@@ -188,7 +188,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Control bar: Add Node, Add Note, pointer / hand / comment modes, Organize | ported |  | spec `workflow/operator`, visual `editor-basic-llm` |
-| More Actions: export image (current view / whole workflow; PNG, JPEG, SVG) | partial | Current-view and whole-workflow PNG/JPEG export, native save or browser download, and whole-workflow preview are implemented. SVG embeds the raster image rather than Dify’s DOM foreignObject content; it is not editable vector output. | spec `workflow/operator/more-actions.spec.tsx`, `app/test/workflow_editor/image_export_test.dart` |
+| More Actions: export image (current view / whole workflow; PNG, JPEG, SVG) | partial | Current-view and whole-workflow PNG/JPEG export, native save or browser download, and whole-workflow preview are implemented. SVG embeds the raster image rather than Dify’s DOM foreignObject content; it is not editable vector output. | spec `workflow/operator/more-actions.spec.tsx`, `app/test/dify_spec/workflow/editor/image_export_test.dart` |
 | Zoom pill: zoom in / out, percentage, presets menu, Fit | ported |  | spec `workflow/operator/zoom-in-out.spec.tsx` |
 | Minimap (pannable, zoomable, toggle) | ported |  | visual `editor-basic-llm` |
 | Undo / redo buttons | ported | Deviation: Undo and redo only this user's own edits (owner decision 2026-10-17); see History. | spec `workflow/header/undo-redo.spec.tsx` |
@@ -219,8 +219,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Node panel: Dify BasePanel (resize, title and description, close, docs link) | ported |  | spec `workflow/nodes/_base/components/workflow-panel`, spec `workflow/panel/panel-width.spec.ts`, spec `workflow/panel/panel-width-integration.spec.tsx`, visual `panel-llm` |
 | Right panel host: node panel, variable panels, run panels, panel exclusivity | ported |  | spec `workflow/panel`, spec `workflow/hooks/use-workflow-panel-interactions.spec.tsx` |
-| Node panel: SETTINGS / LAST RUN tabs, Last Run result | ported | Deviation: Last runs come from the mock runtime (no run storage on the server). | spec `workflow/nodes/_base/components/workflow-panel/last-run`, visual `run-last-run` |
-| Node panel: single-run input form (Run this step) | ported | Deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired. | spec `workflow/nodes/_base/components/before-run-form`, spec `workflow/nodes/_base/hooks`, visual `run-single` |
+| Node panel: SETTINGS / LAST RUN tabs, Last Run result | partial | Last Run fetching, status and result views are implemented. Losing a running status while opening a form does not yet mark it paused; log details currently cover the Last Run tab rather than the full settings panel. Remaining integration cases are recorded in tool/dify_spec/todo.tsv. Deviation: Last runs come from the mock runtime (no run storage on the server). | spec `workflow/nodes/_base/components/workflow-panel/last-run`, visual `run-last-run` |
+| Node panel: single-run input form (Run this step) | partial | Generic input forms run against the mock runtime. Node-specific query and vision forms for Parameter Extractor and Question Classifier are still missing; DataSource pipeline custom forms and Human Input generated-form preview are not wired. Deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired. | spec `workflow/nodes/_base/components/before-run-form`, spec `workflow/nodes/_base/hooks`, visual `run-single` |
 | Node panel: retry on failure settings | ported |  | spec `workflow/nodes/_base/components/retry` |
 | Node panel: error handling (none, default value, fail branch) | ported |  | spec `workflow/nodes/_base/components/error-handle` |
 | Node panel: Next step section (branches, add / change / delete next node) | ported |  | spec `workflow/nodes/_base/components/next-step` |
@@ -260,7 +260,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Output card and panel: output variables (name + variable reference) | ported |  | spec `workflow/nodes/end`, visual `panel-end` |
-| Output card: a reference to a missing node falls back to the Start node | partial | The card shows no node for such a selector (Dify falls back to the Start node); a card detail not ported yet. | spec `workflow/nodes/end` |
+| Output card: a reference to a missing node falls back to the Start node | ported |  | spec `workflow/nodes/end` |
 
 <a id="node-answer"></a>
 
@@ -348,7 +348,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Variable Aggregator card: groups and variables, drop-target states, add-variable popup | ported |  | spec `workflow/nodes/variable-assigner/components/add-variable`, `app/test/workflow_editor/aggregator_canvas_test.dart`, visual `canvas-aggregator` |
+| Variable Aggregator card: groups and variables, drop-target states, add-variable popup | ported |  | spec `workflow/nodes/variable-assigner/components/add-variable`, `app/test/dify_spec/workflow/editor/aggregator_canvas_test.dart`, visual `canvas-aggregator` |
 | Variable Aggregator panel: output type, variables, group mode | ported |  | spec `workflow/nodes/variable-assigner`, spec `workflow/nodes/variable-assigner/components`, spec `workflow/nodes/variable-assigner/components/var-list`, visual `panel-variable-aggregator` |
 
 <a id="node-assigner"></a>
@@ -375,7 +375,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Iteration container card: children, start node, progress, parallel badge | ported |  | spec `workflow/nodes/iteration`, spec `workflow/nodes/iteration-start`, `app/test/workflow_editor/iteration_card_controls_test.dart`, visual `canvas-iteration` |
+| Iteration container card: children, start node, progress, parallel badge | ported |  | spec `workflow/nodes/iteration`, spec `workflow/nodes/iteration-start`, `app/test/dify_spec/workflow/editor/iteration_card_controls_test.dart`, visual `canvas-iteration` |
 | Iteration panel: input / output variables, parallel mode, error handling, flatten output | ported |  | spec `workflow/nodes/iteration`, visual `panel-iteration` |
 
 <a id="node-loop"></a>
@@ -411,7 +411,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Agent card: strategy, model and tools | partial | Model and tool parameters are recognised by their values and tools get placeholder icons (no tool lists); the Agent v2 card has no roster detail (no agent console service). | spec `workflow/nodes/agent` |
 | Agent (v1) panel: agent strategy selector and its parameters, memory, output | partial | The panel is ported, but agent strategies are plugins: with no plugin service there are no strategies to pick. | spec `workflow/nodes/agent`, spec `workflow/nodes/agent/components`, spec `workflow/block-selector/tool-picker.spec.tsx` |
-| Agent v2 panel: roster binding, inline agent, output variables | partial | The node panel is ported; the inline agent configure workspace (orchestrate, build / preview chat, drafts) is Dify's agent console and comes from a host service dify-sf does not have. | spec `workflow/nodes/agent-v2`, spec `workflow/nodes/agent-v2/components`, spec `workflow/nodes/agent-v2/components/agent-output-variables` |
+| Agent v2 panel: roster binding, inline agent, output variables | partial | The node panel and save-inline-agent dialog are implemented, but the save dialog has no icon picker. The inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service. | spec `workflow/nodes/agent-v2`, spec `workflow/nodes/agent-v2/components`, spec `workflow/nodes/agent-v2/components/agent-output-variables` |
 
 <a id="node-human-input"></a>
 
@@ -465,6 +465,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Features drawer: feature cards per app type (chatflow / workflow) | ported | Deviation: Features live in the document under $app with minimal nested writes, not undoable (as Dify). | spec `base/features`, spec `base/features/new-feature-panel`, spec `workflow/features.spec.tsx`, visual `features`, `app/test/workflow_features_test.dart` |
+| Debug chat feature summary: enabled icons, empty state and Manage | partial | Visibility flags, feature badges and Manage/empty callbacks are implemented; the text-to-speech badge does not yet open voice settings. | spec `base/features/new-feature-panel/feature-bar.spec.tsx` |
 | Conversation opener: opening statement and suggested questions | ported | Deviation: The opener modal writes to the document once on Save (as Dify), not on every keystroke. | spec `base/features/new-feature-panel/conversation-opener` |
 | Follow-up (suggested questions after answer), citations, speech to text | ported |  | spec `base/features/new-feature-panel` |
 | File upload / image upload settings | ported | Deviation: The system's upload limits (fileUploadConfig) are Dify's fallbacks; dify-sf has no upload service and does not store the system limits in the document. | spec `base/features/new-feature-panel/file-upload`, spec `base/features/new-feature-panel/image-upload` |
@@ -498,7 +499,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Run history: view a past run (record panels) | ported | Deviation: A past run's graph is not swapped into the shared canvas (that would be document ops); the record shows the run detail. Runs only exist in the session (mock runtime). | spec `workflow/panel/chat-record`, spec `workflow/panel/record.spec.tsx`, visual `run-history` |
 | Single node run (Run this step) and its result | ported | Deviation: Served by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint. | visual `run-single`, visual `run-last-run` |
 | Run: listen for a trigger (webhook / schedule / plugin debug polling) | partial | The Listening state is ported; there is no trigger runtime, so a listened trigger fires once from the mock runtime. | spec `workflow-app/hooks` |
-| Run logs special result panel (logs page) | not ported | dify-sf has no run logs yet (no runtime, no log storage). | spec `workflow/run/special-result-panel.spec.tsx` |
+| Run logs special result panel (logs page) | not ported | SpecialResultPanel and RunLogs components exist in the editor. There is no separate persistent run-logs page or server log storage; mock run records live only in the current session. | spec `workflow/run/special-result-panel.spec.tsx` |
 
 <a id="chat-preview"></a>
 

@@ -5,8 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../dify_spec/workflow/hooks/editor_harness.dart';
-import '../support/app_fonts.dart';
+import '../hooks/editor_harness.dart';
+import '../../../support/app_fonts.dart';
 
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 

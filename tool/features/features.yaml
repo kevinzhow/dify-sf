@@ -155,7 +155,7 @@ features:
   title: 'Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges'
   dify: [web/app/components/workflow/shortcuts/use-workflow-hotkeys.ts, web/app/components/workflow/hooks/use-nodes-interactions.ts]
   status: ported
-  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-shortcuts.spec.ts', app/test/workflow_editor/shift_dim_test.dart]
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-shortcuts.spec.ts', app/test/dify_spec/workflow/editor/shift_dim_test.dart]
   ours: [app/lib/src/canvas/run_view.dart, app/lib/src/workflow_editor/context_menu/workflow_actions.dart, app/lib/src/workflow_editor/context_menu/workflow_shortcuts.dart]
 - id: canvas.a11y
   area: canvas
@@ -390,14 +390,14 @@ features:
   title: 'Edges: midpoint "+" inserts a node between the two ends'
   dify: [web/app/components/workflow/custom-edge.tsx]
   status: ported
-  evidence: [app/test/canvas_plus_test.dart]
+  evidence: [app/test/dify_spec/workflow/base/custom_edge_test.dart]
   ours: [app/lib/src/workflow_editor/canvas_plus/canvas_plus_buttons.dart]
 - id: edges.assigner-entering
   area: edges
   title: 'Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup'
   dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts, web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx]
   status: ported
-  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts', app/test/workflow_editor/aggregator_canvas_test.dart]
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts', app/test/dify_spec/workflow/editor/aggregator_canvas_test.dart]
   ours: [app/lib/src/workflow_editor/workflow_editor.dart, app/lib/src/workflow_editor/store/workflow_store.dart]
 - id: edges.dangling-refs
   area: edges
@@ -483,7 +483,7 @@ features:
   title: 'Handle "+" buttons: insert after (source) or before (target), auto-open on a new start node'
   dify: [web/app/components/workflow/nodes/_base/components/node-handle.tsx]
   status: ported
-  evidence: [app/test/canvas_plus_test.dart]
+  evidence: [app/test/dify_spec/workflow/base/custom_edge_test.dart]
   ours: [app/lib/src/workflow_editor/canvas_plus/canvas_plus_buttons.dart]
 - id: block-selector.insertion
   area: block-selector
@@ -514,7 +514,7 @@ features:
   title: 'Pane menu: Import App (replace the open workflow from a DSL file)'
   dify: [web/app/components/workflow/panel-contextmenu.tsx, web/app/components/workflow/update-dsl-modal.tsx, web/app/components/workflow/update-dsl-modal.helpers.ts]
   status: ported
-  evidence: ['spec:web/app/components/workflow/__tests__/update-dsl-modal.spec.tsx', 'spec:web/app/components/workflow/__tests__/update-dsl-modal.helpers.spec.ts', app/test/workflow_editor/import_backend_test.dart, app/test/workflow_editor/update_dsl_modal_test.dart]
+  evidence: ['spec:web/app/components/workflow/__tests__/update-dsl-modal.spec.tsx', 'spec:web/app/components/workflow/__tests__/update-dsl-modal.helpers.spec.ts', app/test/workflow_editor/import_backend_test.dart, app/test/dify_spec/workflow/editor/update_dsl_modal_test.dart]
   ours: [app/lib/src/workflow_editor/context_menu/menus.dart]
 - id: context-menus.node
   area: context-menus
@@ -620,7 +620,7 @@ features:
   dify: [web/app/components/workflow/operator/more-actions.tsx]
   status: partial
   reason: 'Current-view and whole-workflow PNG/JPEG export, native save or browser download, and whole-workflow preview are implemented. SVG embeds the raster image rather than Dify’s DOM foreignObject content; it is not editable vector output.'
-  evidence: ['spec:web/app/components/workflow/operator/__tests__/more-actions.spec.tsx', app/test/workflow_editor/image_export_test.dart]
+  evidence: ['spec:web/app/components/workflow/operator/__tests__/more-actions.spec.tsx', app/test/dify_spec/workflow/editor/image_export_test.dart]
   ours: [app/lib/src/workflow_editor/operator/control.dart, app/lib/src/workflow_editor/operator/actions.dart]
 - id: operator.zoom
   area: operator
@@ -753,7 +753,8 @@ features:
   area: node-panel
   title: 'Node panel: SETTINGS / LAST RUN tabs, Last Run result'
   dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/last-run]
-  status: ported
+  status: partial
+  reason: 'Last Run fetching, status and result views are implemented. Losing a running status while opening a form does not yet mark it paused; log details currently cover the Last Run tab rather than the full settings panel. Remaining integration cases are recorded in tool/dify_spec/todo.tsv.'
   deviation: Last runs come from the mock runtime (no run storage on the server).
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel/last-run', visual:run-last-run]
   ours: [app/lib/src/workflow_editor/node_panel/last_run.dart]
@@ -761,7 +762,8 @@ features:
   area: node-panel
   title: 'Node panel: single-run input form (Run this step)'
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
-  status: ported
+  status: partial
+  reason: 'Generic input forms run against the mock runtime. Node-specific query and vision forms for Parameter Extractor and Question Classifier are still missing; DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
   deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
@@ -907,8 +909,7 @@ features:
   area: node-end
   title: 'Output card: a reference to a missing node falls back to the Start node'
   dify: [web/app/components/workflow/nodes/end/node.tsx]
-  status: partial
-  reason: The card shows no node for such a selector (Dify falls back to the Start node); a card detail not ported yet.
+  status: ported
   evidence: ['spec:web/app/components/workflow/nodes/end']
   ours: [app/lib/src/cards/bodies/basic_bodies.dart]
 
@@ -1053,7 +1054,7 @@ features:
   title: 'Variable Aggregator card: groups and variables, drop-target states, add-variable popup'
   dify: [web/app/components/workflow/nodes/variable-assigner/node.tsx, web/app/components/workflow/nodes/variable-assigner/components]
   status: ported
-  evidence: ['spec:web/app/components/workflow/nodes/variable-assigner/components/add-variable', app/test/workflow_editor/aggregator_canvas_test.dart, visual:canvas-aggregator]
+  evidence: ['spec:web/app/components/workflow/nodes/variable-assigner/components/add-variable', app/test/dify_spec/workflow/editor/aggregator_canvas_test.dart, visual:canvas-aggregator]
   ours: [app/lib/src/cards/bodies/data_bodies.dart]
 - id: node-aggregator.panel
   area: node-aggregator
@@ -1100,7 +1101,7 @@ features:
   title: 'Iteration container card: children, start node, progress, parallel badge'
   dify: [web/app/components/workflow/nodes/iteration/node.tsx, web/app/components/workflow/nodes/iteration-start]
   status: ported
-  evidence: ['spec:web/app/components/workflow/nodes/iteration', 'spec:web/app/components/workflow/nodes/iteration-start', app/test/workflow_editor/iteration_card_controls_test.dart, visual:canvas-iteration]
+  evidence: ['spec:web/app/components/workflow/nodes/iteration', 'spec:web/app/components/workflow/nodes/iteration-start', app/test/dify_spec/workflow/editor/iteration_card_controls_test.dart, visual:canvas-iteration]
   ours: [app/lib/src/cards/bodies/container_bodies.dart]
 - id: node-iteration.panel
   area: node-iteration
@@ -1162,7 +1163,7 @@ features:
   title: 'Agent v2 panel: roster binding, inline agent, output variables'
   dify: [web/app/components/workflow/nodes/agent-v2]
   status: partial
-  reason: The node panel is ported; the inline agent configure workspace (orchestrate, build / preview chat, drafts) is Dify's agent console and comes from a host service dify-sf does not have.
+  reason: 'The node panel and save-inline-agent dialog are implemented, but the save dialog has no icon picker. The inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
   evidence: ['spec:web/app/components/workflow/nodes/agent-v2', 'spec:web/app/components/workflow/nodes/agent-v2/components', 'spec:web/app/components/workflow/nodes/agent-v2/components/agent-output-variables']
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart]
 
@@ -1309,6 +1310,14 @@ features:
   deviation: Features live in the document under $app with minimal nested writes, not undoable (as Dify).
   evidence: ['spec:web/app/components/base/features', 'spec:web/app/components/base/features/new-feature-panel', 'spec:web/app/components/workflow/__tests__/features.spec.tsx', visual:features, app/test/workflow_features_test.dart]
   ours: [app/lib/src/workflow_editor/features/new_feature_panel.dart, app/lib/src/workflow_editor/features/workflow_features.dart, app/lib/src/workflow_editor/features/features_store.dart]
+- id: features.summary-bar
+  area: features
+  title: 'Debug chat feature summary: enabled icons, empty state and Manage'
+  dify: [web/app/components/base/features/new-feature-panel/feature-bar.tsx]
+  status: partial
+  reason: Visibility flags, feature badges and Manage/empty callbacks are implemented; the text-to-speech badge does not yet open voice settings.
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/__tests__/feature-bar.spec.tsx']
+  ours: [app/lib/src/workflow_editor/run/ui/chat.dart]
 - id: features.opener
   area: features
   title: 'Conversation opener: opening statement and suggested questions'
@@ -1462,7 +1471,7 @@ features:
   title: 'Run logs special result panel (logs page)'
   dify: [web/app/components/workflow/run/special-result-panel.tsx]
   status: not_ported
-  reason: dify-sf has no run logs yet (no runtime, no log storage).
+  reason: 'SpecialResultPanel and RunLogs components exist in the editor. There is no separate persistent run-logs page or server log storage; mock run records live only in the current session.'
   evidence: ['spec:web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx']
   ours: []
 

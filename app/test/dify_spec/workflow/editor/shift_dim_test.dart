@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../dify_spec/workflow/hooks/editor_harness.dart';
+import '../hooks/editor_harness.dart';
 
 Future<EditorHarness> start(WidgetTester t, {Widget Function(Widget)? wrap}) async {
   final h = await EditorHarness.start(
@@ -57,6 +57,19 @@ Future<EditorHarness> start(WidgetTester t, {Widget Function(Widget)? wrap}) asy
 }
 
 void main() {
+  testWidgets('releasing focus clears Shift inspection even without a key-up event', (t) async {
+    final h = await start(t);
+    await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await t.pump();
+    expect(h.canvas.dimming.value, isNotNull);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await t.pump();
+    expect(h.canvas.dimming.value, isNull);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await h.dispose(t);
+  });
+
   group('useShortcuts', () {
     testWidgets('dims while shift is held and undims when released', (t) async {
       final h = await start(t);

@@ -5,9 +5,10 @@ import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/dsl/update_dsl_modal.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/app_fonts.dart';
+import '../../../support/app_fonts.dart';
 
 const success = ReplaceResult(head: 12, ops: 5, nodes: 2, edges: 1, nextCseq: 6);
 const file = (
@@ -130,6 +131,49 @@ void main() {
       expect(calls, [false, true]);
       expect(find.byType(UpdateDslModal), findsNothing);
       expect(find.text(DifyI18n.tr('workflow', 'common.importWarning')), findsOneWidget);
+    });
+    testWidgets('should open the pending modal after the timeout and allow dismissing it', (t) async {
+      await open(
+        t,
+        import: (yaml, {confirm = false}) async =>
+            throw const DslVersionUnconfirmed('confirm version', importedVersion: '9.0', currentVersion: '0.3.1'),
+      );
+      await choose(t);
+      await submit(t);
+      await t.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('confirm-dsl-version')), findsOneWidget);
+      await t.tap(find.byKey(const Key('cancel-dsl-version')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('confirm-dsl-version')), findsNothing);
+    });
+    testWidgets('should close the pending modal when dialog requests close', (t) async {
+      await open(
+        t,
+        import: (yaml, {confirm = false}) async =>
+            throw const DslVersionUnconfirmed('confirm version', importedVersion: '9.0', currentVersion: '0.3.1'),
+      );
+      await choose(t);
+      await submit(t);
+      await t.sendKeyEvent(LogicalKeyboardKey.escape);
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('confirm-dsl-version')), findsNothing);
+    });
+    testWidgets('should show an error when confirming a pending import fails', (t) async {
+      await open(
+        t,
+        import: (yaml, {confirm = false}) async {
+          if (!confirm) {
+            throw const DslVersionUnconfirmed('confirm version', importedVersion: '9.0', currentVersion: '0.3.1');
+          }
+          throw const TransportException('import rejected', statusCode: 409);
+        },
+      );
+      await choose(t);
+      await submit(t);
+      await t.tap(find.byKey(const Key('confirm-dsl-version')));
+      await t.pumpAndSettle();
+      expect(find.text('import rejected'), findsOneWidget);
+      expect(find.byType(UpdateDslModal), findsOneWidget);
     });
     testWidgets('should show an error when the selected file content is invalid for the current app mode', (t) async {
       var calls = 0;

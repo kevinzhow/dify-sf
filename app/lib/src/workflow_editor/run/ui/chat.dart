@@ -766,12 +766,21 @@ class TryToAsk extends StatelessWidget {
 /// FeatureBar (new-feature-panel/feature-bar.tsx): under the input, "Enable feature to enhance…" when no feature is
 /// on, else the enabled features' icons, "Features Enabled" and Manage.
 class FeatureBar extends StatelessWidget {
-  const FeatureBar({super.key, required this.features, this.disabled = false, this.onFeatureBarClick});
+  const FeatureBar({
+    super.key,
+    required this.features,
+    this.disabled = false,
+    this.onFeatureBarClick,
+    this.isChatMode = true,
+    this.showFileUpload = true,
+    this.hideEditEntrance = false,
+  });
 
   /// The features store shape (`opening`, `suggested`, `file`, ...).
   final DifyJson features;
   final bool disabled;
   final VoidCallback? onFeatureBarClick;
+  final bool isChatMode, showFileUpload, hideEditEntrance;
 
   @override
   Widget build(BuildContext context) {
@@ -825,7 +834,10 @@ class FeatureBar extends StatelessWidget {
     ];
     final enabled = [
       for (final f in order)
-        if (featureEnabled(features, f.$1)) f,
+        if (featureEnabled(features, f.$1) &&
+            (f.$1 != 'file' || showFileUpload) &&
+            (!const {'citation', 'annotationReply'}.contains(f.$1) || isChatMode))
+          f,
     ];
     return Container(
       transform: Matrix4.translationValues(0, -8, 0),
@@ -886,13 +898,14 @@ class FeatureBar extends StatelessWidget {
                 Expanded(
                   child: DifyText(ta('feature.bar.enableText'), DifyType.bodyXsRegular, color: DifyColors.textTertiary),
                 ),
-                DifyButton(
-                  size: DifyButtonSize.small,
-                  variant: DifyButtonVariant.ghostAccent,
-                  onPressed: onFeatureBarClick,
-                  trailing: const RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
-                  child: Text(ta('feature.bar.manage')),
-                ),
+                if (!hideEditEntrance)
+                  DifyButton(
+                    size: DifyButtonSize.small,
+                    variant: DifyButtonVariant.ghostAccent,
+                    onPressed: onFeatureBarClick,
+                    trailing: const RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
+                    child: Text(ta('feature.bar.manage')),
+                  ),
               ],
             ),
     );

@@ -180,7 +180,11 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  DifyButton(onPressed: () => Navigator.pop(context, false), child: Text(_a('newApp.Cancel'))),
+                  DifyButton(
+                    key: const Key('cancel-dsl-version'),
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(_a('newApp.Cancel')),
+                  ),
                   const SizedBox(width: 8),
                   DifyButton(
                     key: const Key('confirm-dsl-version'),

@@ -88,6 +88,22 @@ void main() {
         expect(find.text('String'), findsOneWidget);
       });
 
+      testWidgets('should fall back to the start node when the selector node cannot be found', (t) async {
+        await renderNode(
+          t,
+          const EndBody(),
+          endNode([
+            {
+              'variable': 'answer',
+              'value_selector': ['missing', 'answer'],
+            },
+          ]),
+          before: _nodes,
+        );
+        expect(find.text('Start'), findsOneWidget);
+        expect(find.text('answer'), findsOneWidget);
+      });
+
       testWidgets('should render nothing when every output selector is empty', (t) async {
         final node = endNode([
           {'variable': 'answer', 'value_selector': <Object?>[]},

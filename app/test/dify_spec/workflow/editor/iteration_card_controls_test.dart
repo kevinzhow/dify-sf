@@ -9,8 +9,8 @@ import 'package:dify_sf_app/src/workflow_editor/node_insertion/insert_block.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../dify_spec/workflow/hooks/editor_harness.dart';
-import '../support/app_fonts.dart';
+import '../hooks/editor_harness.dart';
+import '../../../support/app_fonts.dart';
 
 List<Node> nodes({bool candidate = false}) => [
   node(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ViewFocusEvent, ViewFocusState;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -50,13 +51,14 @@ class WorkflowShortcuts extends StatefulWidget {
   State<WorkflowShortcuts> createState() => _WorkflowShortcutsState();
 }
 
-class _WorkflowShortcutsState extends State<WorkflowShortcuts> {
+class _WorkflowShortcutsState extends State<WorkflowShortcuts> with WidgetsBindingObserver {
   late WorkflowActions _actions;
 
   @override
   void initState() {
     super.initState();
     FocusManager.instance.addEarlyKeyEventHandler(_onKey);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -81,7 +83,19 @@ class _WorkflowShortcutsState extends State<WorkflowShortcuts> {
   @override
   void dispose() {
     FocusManager.instance.removeEarlyKeyEventHandler(_onKey);
+    WidgetsBinding.instance.removeObserver(this);
+    widget.canvas.dimming.value = null;
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _actions.undimAllNodes();
+  }
+
+  @override
+  void didChangeViewFocus(ViewFocusEvent event) {
+    if (event.state == ViewFocusState.unfocused) _actions.undimAllNodes();
   }
 
   KeyEventResult _onKey(KeyEvent e) {

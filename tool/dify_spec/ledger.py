@@ -7,7 +7,7 @@ Lists every test case in Dify's specs for the parts we port (workflow editor, mo
 app/test/dify_spec/ whose full name (group names joined with ' > ' and the test name) equals the Dify case name, in a
 file that names the spec in a `// dify-spec: <spec path>` line. Cases that cannot apply are listed with a reason in
 tool/dify_spec/not_applicable.tsv (`<spec path> :: <case>\\t<reason>`). --write saves the full case list to
-tool/dify_spec/cases.txt.
+tool/dify_spec/cases.txt. The optional todo.tsv records remaining work for applicable cases whose old exclusions were retired.
 """
 import re, sys
 from pathlib import Path
@@ -81,6 +81,18 @@ def main():
             if '\t' in line and not line.startswith('#'):
                 key, reason = line.split('\t', 1)
                 na[key] = reason
+    # A new port must retire its old exclusion. Silently preferring the port hid stale reasons in the past.
+    overlap = sorted(f'{spec} :: {case}' for spec, case in done if f'{spec} :: {case}' in na)
+    if overlap:
+        raise SystemExit('Ported cases still listed as not applicable:\n' + '\n'.join(overlap))
+    todos = repo / 'tool/dify_spec/todo.tsv'
+    if todos.exists():
+        for line in todos.read_text().splitlines():
+            if '\t' not in line or line.startswith('#'):
+                continue
+            key = line.split('\t', 1)[0]
+            if key in na:
+                raise SystemExit('Case cannot be both TODO and not applicable: ' + key)
     if '--write' in sys.argv:
         (repo / 'tool/dify_spec/cases.txt').write_text(''.join(f'{s} :: {c}\n' for s, c in all_cases))
     by_area = {}

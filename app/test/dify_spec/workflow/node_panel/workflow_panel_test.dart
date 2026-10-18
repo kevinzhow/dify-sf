@@ -1,7 +1,7 @@
 // dify-spec: web/app/components/workflow/nodes/_base/components/workflow-panel/__tests__/index.spec.tsx
 //
 // BasePanel with dify-sf's node panel: a document in an in-memory session instead of mocked hooks. The plugin auth,
-// trigger subscription, data source, special result panel and single-run form parts of the cases are not ported (see
+// trigger subscription, data source and unfinished last-run integration cases are listed in the ledger (see
 // not_applicable.tsv); a single run is handed to the panel's hooks.
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/editor/undo_manager.dart';
@@ -14,6 +14,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/before_run_form.dart';
 
 Node toolNode({String id = 'node-1', String type = 'tool'}) =>
     node(id, type: type, title: 'Tool Node', config: {'desc': const VString('Node description')});
@@ -30,18 +33,20 @@ void main() {
     WorkflowPreferences? preferences,
     Widget? before,
     String id = 'node-1',
+    bool runtime = false,
   }) async {
+    final panel = WorkflowNodePanel(
+      key: ValueKey(id),
+      node: h[id]!,
+      actions: panelActions(h, options: options),
+      bodies: bodies,
+      onSingleRun: runs.add,
+      onStopSingleRun: stops.add,
+    );
     await t.pumpWidget(
       panelApp(
         h,
-        WorkflowNodePanel(
-          key: ValueKey(id),
-          node: h[id]!,
-          actions: panelActions(h, options: options),
-          bodies: bodies,
-          onSingleRun: runs.add,
-          onStopSingleRun: stops.add,
-        ),
+        runtime ? WorkflowRunHost(controller: h.controller, canvas: h.canvas, child: panel) : panel,
         preferences: preferences,
         before: before,
       ),
@@ -120,6 +125,15 @@ void main() {
       await t.tap(find.text('WORKFLOW.DEBUG.LASTRUNTAB'));
       await settle(t);
       expect(find.byType(LastRun), findsOneWidget);
+      await h.dispose(t);
+    });
+
+    testWidgets('should keep the settings panel visible when single-run params have no forms', (t) async {
+      await start(t);
+      h.store.setNodeRunData('node-1', {'_isSingleRun': true});
+      await render(t, runtime: true);
+      expect(find.text('panel-child'), findsOneWidget);
+      expect(find.byType(BeforeRunForm), findsNothing);
       await h.dispose(t);
     });
 
