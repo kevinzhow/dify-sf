@@ -209,8 +209,8 @@ workflow:
           value_selector: []
           value_type: object
           variable: order
-        webhook_debug_url: ''
-        webhook_url: ''
+        webhook_debug_url: http://localhost/triggers/webhook-debug/k3VtWc7nLq9xPz2bR8sYd4Fh
+        webhook_url: http://localhost/triggers/webhook/k3VtWc7nLq9xPz2bR8sYd4Fh
       height: 88
       id: '1760800000002'
       position:

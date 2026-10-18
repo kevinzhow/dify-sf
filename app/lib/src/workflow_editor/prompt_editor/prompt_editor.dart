@@ -15,6 +15,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import '../../cards/card_kit.dart' show cardFontFamily;
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
 import '../panel_fields/var_picker_model.dart';
@@ -31,7 +32,8 @@ export 'prompt_editor_types.dart';
 
 /// PromptEditor. [value] is controlled like Dify's (a different value replaces the content); [onChange] gets the
 /// prompt string after each edit. The `*Block` configs say which placeholders become blocks and what the picker
-/// offers. [compact] is `text-[13px] leading-5` (else `text-sm/6`). [minHeight] / [height] stand for the class names
+/// offers. [compact] is `text-[13px] leading-5` (else `text-sm/6`); [lineHeight] a `leading-*` class over it.
+/// [minHeight] / [height] stand for the class names
 /// and style Dify passes; with [height] the text scrolls inside.
 class DifyPromptEditor extends StatefulWidget {
   const DifyPromptEditor({
@@ -42,6 +44,7 @@ class DifyPromptEditor extends StatefulWidget {
     this.focusNode,
     this.placeholder,
     this.compact = false,
+    this.lineHeight,
     this.editable = true,
     this.onBlur,
     this.onFocus,
@@ -71,6 +74,7 @@ class DifyPromptEditor extends StatefulWidget {
   /// A string or a widget; `promptEditor.placeholder` when null.
   final Object? placeholder;
   final bool compact;
+  final double? lineHeight;
   final bool editable;
   final VoidCallback? onBlur;
   final VoidCallback? onFocus;
@@ -601,8 +605,11 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   Widget build(BuildContext context) {
     final w = widget;
     final fontSize = w.compact ? 13.0 : 14.0;
-    final lineHeight = w.compact ? 20.0 : 24.0;
+    final lineHeight = w.lineHeight ?? (w.compact ? 20.0 : 24.0);
+    // The strut in the text's own font: another font's ascent and descent would make lines taller than CSS's.
+    final family = DefaultTextStyle.of(context).style.fontFamily ?? cardFontFamily;
     final style = TextStyle(
+      fontFamily: family,
       fontSize: fontSize,
       height: lineHeight / fontSize,
       leadingDistribution: TextLeadingDistribution.even,
@@ -627,11 +634,18 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
           expands: w.height != null,
           keyboardType: TextInputType.multiline,
           style: style,
-          strutStyle: StrutStyle(
-            fontSize: fontSize,
-            height: lineHeight / fontSize,
-            leadingDistribution: TextLeadingDistribution.even,
-          ),
+          // An inline chip (18 px, `vertical-align: middle`) fits in a 20 or 24 px CSS line: those lines keep the
+          // line height (a strut; without it Flutter would make a chip's line taller). In an 18 px line the chip
+          // reaches out of it and makes it taller, which Flutter's own line metrics (no strut) come closest to.
+          strutStyle: lineHeight >= chipFitsLineHeight
+              ? StrutStyle(
+                  fontFamily: family,
+                  fontSize: fontSize,
+                  height: lineHeight / fontSize,
+                  leadingDistribution: TextLeadingDistribution.even,
+                  forceStrutHeight: true,
+                )
+              : StrutStyle.disabled,
           cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
           decoration: const InputDecoration.collapsed(hintText: null),

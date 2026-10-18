@@ -26,12 +26,15 @@ class ArrayBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: 18,
     padding: const EdgeInsets.symmetric(horizontal: 4),
-    alignment: Alignment.center,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(5),
       border: Border.all(color: DifyColors.dividerDeep),
     ),
-    child: const DifyText('Array', DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
+    // `system-2xs-medium-uppercase … capitalize`: the later `capitalize` wins.
+    child: const Center(
+      widthFactor: 1,
+      child: DifyText('Array', DifyType.system2xsMedium, color: DifyColors.textTertiary),
+    ),
   );
 }
 

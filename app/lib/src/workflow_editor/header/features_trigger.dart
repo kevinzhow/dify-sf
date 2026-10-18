@@ -170,12 +170,7 @@ class FeaturesTrigger extends StatelessWidget {
                   : () => onConfigureWorkflowTool!(workflowToolInputsOf(nodes), workflowToolOutputsOf(nodes)),
               onPublishToMarketplace: onPublishToMarketplace,
               onUpdateVersionInfo: onUpdateVersionInfo,
-              onToast: data.toast == null
-                  ? null
-                  : (type, m) => data.toast!(
-                      type == PublisherToastType.success ? HeaderToastType.success : HeaderToastType.error,
-                      m,
-                    ),
+              onToast: data.toast,
               formatTimeFromNow: data.formatters.formatTimeFromNow,
             ),
           ],

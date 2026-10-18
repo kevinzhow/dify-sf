@@ -41,6 +41,7 @@ class DifyButton extends StatelessWidget {
     this.focusableWhenDisabled,
     this.focusNode,
     this.semanticLabel,
+    this.paddingX,
   }) : assert(variant != DifyButtonVariant.plain, 'Button has no plain variant');
 
   final Widget child;
@@ -55,6 +56,9 @@ class DifyButton extends StatelessWidget {
   final bool? focusableWhenDisabled;
   final FocusNode? focusNode;
   final String? semanticLabel;
+
+  /// A call site's `px-*` over the size's padding.
+  final double? paddingX;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +80,7 @@ class DifyButton extends StatelessWidget {
           child: SizedBox(
             height: size.height,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: primarySmall ? 8 : size.paddingX),
+              padding: EdgeInsets.symmetric(horizontal: paddingX ?? (primarySmall ? 8 : size.paddingX)),
               child: DefaultTextStyle.merge(
                 style: size.text,
                 maxLines: 1,

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../../../../design/dify_tokens.g.dart';
+import '../../../../../design/widgets/toast.dart';
 import '../../../../../i18n/dify_i18n.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart';
@@ -100,7 +101,7 @@ class _DataSourcePanelState extends State<DataSourcePanel> {
                   placeholder: _wf('nodes.dataSource.supportedFileFormatsPlaceholder'),
                   disableAdd: readOnly,
                   disableRemove: readOnly,
-                  onError: host?.onToastError,
+                  onError: host?.onToastError ?? difyToastError,
                 ),
               ),
             ),

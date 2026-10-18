@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/widgets.dart';
 
+import '../../../../../design/widgets/toast.dart';
 import '../../../../panel_fields/panel_fields.dart';
 
 class DataSourceHost extends InheritedWidget {
@@ -16,7 +17,7 @@ class DataSourceHost extends InheritedWidget {
     this.onJumpToDataSourcePage,
     this.schemaTypeDefinitions,
     this.availableVars = const [],
-    this.onToastError,
+    this.onToastError = difyToastError,
   });
 
   /// `ToolWithProvider` JSON of the workspace's data sources (`plugin_id`, `is_authorized`, `allow_delete`,

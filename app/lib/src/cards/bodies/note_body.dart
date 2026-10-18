@@ -178,19 +178,18 @@ Rect noteEditorRect(NoteData data) {
 /// note-node/index.tsx: `group relative flex flex-col rounded-md border shadow-xs hover:shadow-md` in the theme's
 /// background (the theme's border while selected, else black/5), the `h-2 opacity-50` title strip, the editor area
 /// (`grow px-3 py-2.5`) and the author line. [editor] replaces the read-only text (the live editor of a selected
-/// note); [shadow] false leaves the shadow to the card underneath.
+/// note).
 class NoteCardView extends StatelessWidget {
   const NoteCardView({
     super.key,
     required this.data,
     this.hovered = false,
     this.selected = false,
-    this.shadow = true,
     this.editor,
   });
 
   final NoteData data;
-  final bool hovered, selected, shadow;
+  final bool hovered, selected;
   final Widget? editor;
 
   static const _unselectedBorder = Color(0x0D000000);
@@ -207,7 +206,7 @@ class NoteCardView extends StatelessWidget {
             color: t.bg,
             borderRadius: BorderRadius.circular(DifyRadius.md),
             border: Border.all(color: selected ? t.border : _unselectedBorder),
-            boxShadow: shadow ? (hovered ? DifyShadows.md : DifyShadows.xs) : null,
+            boxShadow: hovered ? DifyShadows.md : DifyShadows.xs,
           ),
           child: Padding(
             padding: const EdgeInsets.all(1),
@@ -290,7 +289,7 @@ class _GlyphPainter extends CustomPainter {
 /// centred on the corner, so it ends 1 px outside the card. Relative to the card's top-left.
 Rect noteResizeButton(Size card) => Rect.fromLTWH(card.width - 23, card.height - 23, 24, 24);
 
-/// The note on the canvas, read-only (a selected note is edited in an overlay over it, see NoteNodeOverlay). The
+/// The note on the canvas, read-only (the canvas draws a selected note live in its place, see LiveNoteBinding). The
 /// resize glyph shows on hover (`group-hover:opacity-100`).
 class NoteCard extends StatelessWidget {
   const NoteCard({super.key, required this.node, this.onPainted});

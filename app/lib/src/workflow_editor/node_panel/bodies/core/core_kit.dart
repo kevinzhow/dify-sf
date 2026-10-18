@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../../design/css_metrics.dart';
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
@@ -38,14 +39,14 @@ typedef CodeGeneratorBuilder = Widget Function(
 @immutable
 class CorePanelHostData {
   const CorePanelHostData({
-    this.toastError,
+    this.toastError = difyToastError,
     this.nodesDefaultConfigs = builtinNodesDefaultConfigs,
     this.codeLanguageDefaults = builtinCodeLanguageDefaults,
     this.workflowFileUploadLimit = 10,
     this.codeGenerator,
   });
 
-  /// `toast.error(message)`; absent, errors are not shown.
+  /// `toast.error(message)`; the app's toast host by default (null: errors are not shown).
   final ValueChanged<String>? toastError;
 
   /// `GET /apps/{id}/workflows/default-workflow-block-configs`, by node type.
@@ -210,23 +211,30 @@ void _rewrite(EditorController c, Node n, List<String> oldSelector, List<String>
 
 /// The `+` of a Field's operations (`cursor-pointer rounded-md p-1 hover:bg-state-base-hover`, `i-ri-add-line size-4
 /// text-text-tertiary`), named "Add `field`".
+///
+/// [alone]: the button is all of the operations (Field's `<div>{operations}</div>`), so, an inline-block, it stands
+/// on that block's text line, which ends [Css.inlineButtonLineGap] below it. In a flex row (not [alone]) it does not.
 class FieldAddButton extends StatelessWidget {
-  const FieldAddButton({super.key, required this.label, required this.onPressed});
+  const FieldAddButton({super.key, required this.label, required this.onPressed, this.alone = true});
   final String label;
   final VoidCallback onPressed;
+  final bool alone;
 
   @override
-  Widget build(BuildContext context) => DifyPressable(
-    semanticLabel: label,
-    onPressed: onPressed,
-    builder: (context, hovered, focused) => Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: hovered ? DifyColors.stateBaseHover : null,
-        borderRadius: BorderRadius.circular(DifyRadius.md),
-        border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(bottom: alone ? Css.inlineButtonLineGap : 0),
+    child: DifyPressable(
+      semanticLabel: label,
+      onPressed: onPressed,
+      builder: (context, hovered, focused) => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: hovered ? DifyColors.stateBaseHover : null,
+          borderRadius: BorderRadius.circular(DifyRadius.md),
+          border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
+        ),
+        child: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
       ),
-      child: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
     ),
   );
 }

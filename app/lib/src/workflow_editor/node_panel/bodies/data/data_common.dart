@@ -37,7 +37,7 @@ VarFilter typeIn(Set<String> types) =>
 // ---- what the host provides ---------------------------------------------------------------------------------------
 
 /// dify-ui's toast types.
-enum DataToastType { success, error, warning, info }
+typedef DataToastType = DifyToastType;
 
 /// Shows a toast.
 typedef DataToast = void Function(DataToastType type, String message);
@@ -45,9 +45,9 @@ typedef DataToast = void Function(DataToastType type, String message);
 /// What the data-node panels get from the app around them (services dify-sf does not have yet come in here; every
 /// field has an empty default). Node types with more needs add their own host widget next to this one.
 class DataPanelHost extends InheritedWidget {
-  const DataPanelHost({super.key, this.toast, this.openUrl, this.isCloud = false, required super.child});
+  const DataPanelHost({super.key, this.toast = difyToast, this.openUrl, this.isCloud = false, required super.child});
 
-  /// dify-ui's `toast.*`; none: toasts are dropped.
+  /// dify-ui's `toast.*`; the app's toast host by default (null: toasts are dropped).
   final DataToast? toast;
 
   /// Opens a link (docs, "Learn more"); none: [NodePanelProps.actions]' `openUrl`.
@@ -195,6 +195,7 @@ class _VarInputState extends State<VarInput> {
       semanticLabel: w.semanticLabel,
       isSupportFileVar: w.isSupportFileVar,
       minHeight: 20,
+      lineHeight: 18, // leading-4.5
       onChange: (v) {
         if (v == _text) return;
         _draft.touch();
@@ -205,8 +206,7 @@ class _VarInputState extends State<VarInput> {
     );
     if (w.boxed) {
       editor = Container(
-        // py-1.5 around Dify's 18 px line; the editor's line is 24 px (see the report), so 3 px.
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: _focused ? DifyColors.componentsInputBgActive : DifyColors.componentsInputBgNormal,
           borderRadius: BorderRadius.circular(DifyRadius.lg),

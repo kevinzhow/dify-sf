@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
+import '../../design/widgets/toast.dart';
 import '../store/plugin_dependency_store.dart';
 import '../store/workflow_store.dart';
 import 'checklist/checklist_item.dart';
@@ -9,7 +10,7 @@ import 'format.dart';
 import 'test_run_menu.dart';
 
 /// dify-ui's toast types.
-enum HeaderToastType { success, error, warning, info }
+typedef HeaderToastType = DifyToastType;
 
 typedef HeaderToast = void Function(HeaderToastType type, String message);
 
@@ -74,7 +75,7 @@ class WorkflowHeaderData {
     this.onlineUsers,
     this.cursorOf,
     this.formatters = const HeaderFormatters(),
-    this.toast,
+    this.toast = difyToast,
     this.title,
     this.left,
     this.middle,
@@ -122,7 +123,7 @@ class WorkflowHeaderData {
 
   final HeaderFormatters formatters;
 
-  /// Shows a toast (Dify's `toast.success` / `toast.error`).
+  /// Shows a toast (Dify's `toast.success` / `toast.error`); the app's toast host by default.
   final HeaderToast? toast;
 
   /// HeaderInNormal `components.title` (default: the auto-saved / published line), `components.left` (before the

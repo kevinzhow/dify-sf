@@ -1,6 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../design/css_metrics.dart';
 import 'prompt_blocks.dart';
 
 /// Builds the widget of the block at [offset] of the editor text.
@@ -269,7 +270,11 @@ class PromptEditorController extends TextEditingController {
           WidgetSpan(
             alignment: PlaceholderAlignment.baseline,
             baseline: TextBaseline.alphabetic,
-            child: CssMiddle(fontSize: style?.fontSize ?? 14, child: chipBuilder!(context, block, i)),
+            child: CssMiddle(
+              fontSize: style?.fontSize ?? 14,
+              lineHeight: (style?.height ?? 0) * (style?.fontSize ?? 14),
+              child: chipBuilder!(context, block, i),
+            ),
           ),
         );
       }
@@ -279,31 +284,51 @@ class PromptEditorController extends TextEditingController {
   }
 }
 
+/// The lines whose height the editor keeps fixed (a forced strut): an inline chip fits in them.
+const chipFitsLineHeight = 20.0;
+
 /// CSS `vertical-align: middle` for an inline box: its middle on the baseline raised by half the x-height (Noto
-/// Sans: 536 / 1000 em). Reports that baseline for [PlaceholderAlignment.baseline].
+/// Sans: 536 / 1000 em). Reports that baseline for [PlaceholderAlignment.baseline]. In a fixed line of [lineHeight]
+/// (at least [chipFitsLineHeight]) the box sits where it does on Chrome's baseline, which lies on rounded font
+/// metrics ([Css.textLine]) where Flutter's does not.
 class CssMiddle extends SingleChildRenderObjectWidget {
-  const CssMiddle({super.key, required this.fontSize, required Widget super.child});
-  final double fontSize;
+  const CssMiddle({super.key, required this.fontSize, this.lineHeight = 0, required Widget super.child});
+  final double fontSize, lineHeight;
 
   static const xHeight = 0.536;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => RenderCssMiddle(fontSize);
+  RenderObject createRenderObject(BuildContext context) => RenderCssMiddle(fontSize, lineHeight);
 
   @override
-  void updateRenderObject(BuildContext context, RenderCssMiddle renderObject) => renderObject.fontSize = fontSize;
+  void updateRenderObject(BuildContext context, RenderCssMiddle renderObject) => renderObject
+    ..fontSize = fontSize
+    ..lineHeight = lineHeight;
 }
 
 class RenderCssMiddle extends RenderProxyBox {
-  RenderCssMiddle(this._fontSize);
-  double _fontSize;
+  RenderCssMiddle(this._fontSize, this._lineHeight);
+  double _fontSize, _lineHeight;
   set fontSize(double v) {
     if (v == _fontSize) return;
     _fontSize = v;
     markNeedsLayout();
   }
 
-  double _baselineFor(double height) => height / 2 + _fontSize * CssMiddle.xHeight / 2;
+  set lineHeight(double v) {
+    if (v == _lineHeight) return;
+    _lineHeight = v;
+    markNeedsLayout();
+  }
+
+  /// How far below Chrome's baseline Flutter puts the strut's (Noto Sans: ascent 1069, descent 293 per 1000).
+  double get _baselineGap {
+    if (_lineHeight < chipFitsLineHeight) return 0;
+    final flutter = _fontSize * 1.069 + (_lineHeight - _fontSize * (1.069 + 0.293)) / 2;
+    return flutter - Css.textLine(_fontSize, _lineHeight).above;
+  }
+
+  double _baselineFor(double height) => height / 2 + _fontSize * CssMiddle.xHeight / 2 + _baselineGap;
 
   @override
   double? computeDistanceToActualBaseline(TextBaseline baseline) => _baselineFor(size.height);

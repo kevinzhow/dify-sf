@@ -60,6 +60,12 @@ class CanvasInput {
   Set<int> _moving = {};
   Timer? _sendTimer;
 
+  /// Pointers the live card took (its editor, toolbar, resize handle): no canvas gesture for them.
+  final _claimed = <int>{};
+
+  void claim(PointerDownEvent e) => _claimed.add(e.pointer);
+  bool claimed(PointerEvent e) => _claimed.contains(e.pointer);
+
   static const _slop = 3.0;
   static const _portSlackPx = 4.0;
   static const _edgeRadiusPx = 6.0;
@@ -75,6 +81,12 @@ class CanvasInput {
       if (hit == null || stackKey(n) > stackKey(hit)) hit = n;
     }
     return hit;
+  }
+
+  /// What a click at [c] lands on: the top-most node, unless it is an underlay (a note) with an edge over it.
+  CanvasNode? _clickTarget(Offset c) {
+    final n = nodeAt(c);
+    return n != null && n.layout.underlay && edgeAt(c) != null ? null : n;
   }
 
   /// Nested nodes lie above their container even when it is selected (React Flow: nested z-index 1001 > the 1000 a
@@ -116,6 +128,7 @@ class CanvasInput {
   // ----- pointer -----
 
   void down(PointerDownEvent e) {
+    if (claimed(e)) return;
     _downLocal = e.localPosition;
     final c = view.toCanvas(e.localPosition);
     _lastCanvas = c;
@@ -126,7 +139,7 @@ class CanvasInput {
       return;
     }
     if (e.buttons & kPrimaryButton == 0) return;
-    final port = outPortAt(c), hit = nodeAt(c);
+    final port = outPortAt(c), hit = _clickTarget(c);
     if (port != null) {
       _gesture = 'connect';
       _connectFrom = port;
@@ -175,6 +188,7 @@ class CanvasInput {
   }
 
   void up(PointerEvent e) {
+    if (_claimed.remove(e.pointer)) return;
     final c = view.toCanvas(e.localPosition);
     switch (_gesture) {
       case 'move':
@@ -221,7 +235,7 @@ class CanvasInput {
 
   void hover(PointerHoverEvent e) {
     final c = view.toCanvas(e.localPosition);
-    final n = nodeAt(c);
+    final n = _clickTarget(c);
     if (n?.slot != selection.hovered) {
       selection.hover(n?.slot);
       onApplied?.call('hover');
@@ -234,8 +248,11 @@ class CanvasInput {
     selection.hoveredEdge.value = null;
   }
 
-  /// The wheel pans in pointer mode and zooms with Ctrl/Cmd (or in hand mode), around the pointer.
-  void signal(PointerSignalEvent e) {
+  /// The wheel pans in pointer mode and zooms with Ctrl/Cmd (or in hand mode), around the pointer; unless something
+  /// on the canvas takes it first (the pointer signal resolver: the live note's editor).
+  void signal(PointerSignalEvent e) => GestureBinding.instance.pointerSignalResolver.register(e, _signal);
+
+  void _signal(PointerSignalEvent e) {
     if (e is PointerScaleEvent) {
       view.zoomAt(e.localPosition, e.scale);
       onApplied?.call('zoom');

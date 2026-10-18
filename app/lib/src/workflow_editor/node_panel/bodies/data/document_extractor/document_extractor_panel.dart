@@ -17,7 +17,7 @@ import '../../../panel_edit.dart';
 class DocExtractorHost extends InheritedWidget {
   const DocExtractorHost({
     super.key,
-    this.allowedExtensions = const [],
+    this.allowedExtensions = difyDocumentExtensions,
     this.helpLink = '',
     this.chineseSeparator = false,
     required super.child,
@@ -38,6 +38,39 @@ class DocExtractorHost extends InheritedWidget {
       helpLink != old.helpLink ||
       chineseSeparator != old.chineseSeparator;
 }
+
+/// What a default Dify deployment answers for `allowed_extensions` (api/constants: the document extensions without
+/// the Unstructured ETL, in lower and upper case); dify-sf has no such endpoint, so the panel shows these.
+const difyDocumentExtensions = [
+  'txt',
+  'TXT',
+  'markdown',
+  'MARKDOWN',
+  'md',
+  'MD',
+  'mdx',
+  'MDX',
+  'pdf',
+  'PDF',
+  'html',
+  'HTML',
+  'htm',
+  'HTM',
+  'xlsx',
+  'XLSX',
+  'xls',
+  'XLS',
+  'docx',
+  'DOCX',
+  'csv',
+  'CSV',
+  'vtt',
+  'VTT',
+  'properties',
+  'PROPERTIES',
+  'odt',
+  'ODT',
+];
 
 /// `supportTypesShowNames`: the extensions as shown (md as markdown, htm as html), lower-cased, without duplicates.
 String supportTypesShowNames(List<String> extensions, {bool chinese = false}) {

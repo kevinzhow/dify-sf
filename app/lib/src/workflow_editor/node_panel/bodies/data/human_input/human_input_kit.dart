@@ -137,26 +137,29 @@ class HiSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 4),
-    child: Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 24,
+    child: JustifyBetween(
+      // Cut (CSS `overflow: hidden`) rather than overflowing when long actions leave it little room.
+      lead: SizedBox(
+        height: 24,
+        child: ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.centerLeft,
+            maxWidth: double.infinity,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               spacing: 2,
               children: [
-                Flexible(child: DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary)),
+                DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary),
                 if (tooltip != null) Infotip(label: tooltip!, content: Text(tooltip!)),
               ],
             ),
           ),
         ),
-        // Long translations shrink the actions rather than overflow.
-        if (actions != null)
-          Flexible(
-            child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: actions),
-          ),
-      ],
+      ),
+      // Long translations shrink the actions rather than overflow.
+      trail: actions == null
+          ? const SizedBox.shrink()
+          : FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: actions),
     ),
   );
 }

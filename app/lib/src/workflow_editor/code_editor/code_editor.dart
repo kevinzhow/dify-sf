@@ -314,7 +314,8 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
       onHeightChange: (h) => setState(() => _editorContentHeight = h),
       child: body,
     );
-    return DecoratedBox(
+    // A Container: its 1 px border (transparent at rest) takes room, as in CSS.
+    return Container(
       decoration: BoxDecoration(
         color: focus ? DifyColors.componentsInputBgHover : DifyColors.componentsInputBgNormal,
         border: expanded

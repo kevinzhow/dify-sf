@@ -272,25 +272,27 @@ class AssignerVarList extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     spacing: 4,
                     children: [
-                      Row(
-                        spacing: 4,
-                        children: [
-                          Expanded(
-                            child: VarReferencePicker(
-                              readonly: readonly,
-                              value: selector,
-                              scope: scope,
-                              onChange: (sel, _) => _assignedVarChange(index, sel),
-                              onOpen: (open) {
-                                if (open) onOpen?.call(index);
-                              },
-                              filterVar: filterVar,
-                              placeholder: tw('nodes.assigner.selectAssignedVariable'),
-                              minWidth: 352,
-                              popupFor: 'assigned',
-                            ),
-                          ),
-                          Flexible(
+                      // The operation keeps its width (it shrinks only if it is wider than the row); the picker
+                      // (`w-full`) takes the rest.
+                      JustifyBetween(
+                        leadShare: 0.5,
+                        lead: VarReferencePicker(
+                          readonly: readonly,
+                          value: selector,
+                          scope: scope,
+                          onChange: (sel, _) => _assignedVarChange(index, sel),
+                          onOpen: (open) {
+                            if (open) onOpen?.call(index);
+                          },
+                          filterVar: filterVar,
+                          placeholder: tw('nodes.assigner.selectAssignedVariable'),
+                          minWidth: 352,
+                          popupFor: 'assigned',
+                        ),
+                        trail: Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
                             child: OperationSelector(
                               value: operation,
                               disabled: selector.isEmpty,
@@ -301,7 +303,7 @@ class AssignerVarList extends StatelessWidget {
                               writeModeTypesNum: writeModeTypesNum,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                       if (operationTakesVariable(operation) && !num.contains(operation))
                         VarReferencePicker(

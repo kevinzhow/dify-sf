@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../i18n/dify_i18n.dart';
+import '../../../../code_editor/editor_view.dart' show codeEditorFontFamily;
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
 import '../../../panel_edit.dart';
@@ -170,6 +171,7 @@ class _TriggerSchedulePanelState extends State<TriggerSchedulePanel> {
         DifyInput(
           value: inputs['cron_expression'] is String ? inputs['cron_expression']! as String : '',
           placeholder: '0 0 * * *',
+          fontFamily: codeEditorFontFamily, // font-mono
           semanticLabel: _t('cronExpression'),
           focusNode: _cronFocus,
           onChanged: (v) => _cron(inputs, v),

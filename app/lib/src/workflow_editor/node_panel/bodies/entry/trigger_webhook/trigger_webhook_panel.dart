@@ -201,7 +201,8 @@ class _TriggerWebhookPanelState extends State<TriggerWebhookPanel> {
                             _DebugUrl(url: debugUrl, onCopy: _copy),
                             if (isPrivateOrLocalAddress(debugUrl))
                               Padding(
-                                padding: const EdgeInsets.only(top: 12),
+                                // `space-y-2` wins over the warning's own `mt-1`.
+                                padding: const EdgeInsets.only(top: 8),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 2),
                                   child: Text(

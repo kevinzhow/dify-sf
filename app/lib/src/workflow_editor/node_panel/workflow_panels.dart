@@ -183,17 +183,19 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
   Widget build(BuildContext context) {
     final node = _node;
     final store = _store!;
+    // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
+    final panelNode = node != null && reactFlowTypeOf(node) == 'custom' ? node : null;
     return _SizeReporter(
-      onSize: (size) => store.setRightPanelWidth(size.width),
+      // The node panel's resize strip (`absolute -left-1 w-1`) lies outside Dify's row: not part of its width.
+      onSize: (size) => store.setRightPanelWidth(size.width - (panelNode != null ? 4 : 0)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
-          if (node != null && reactFlowTypeOf(node) == 'custom')
+          if (panelNode != null)
             WorkflowNodePanel(
-              key: ValueKey('${node.id}-${node.type}'),
-              node: node,
+              key: ValueKey('${panelNode.id}-${panelNode.type}'),
+              node: panelNode,
               actions: _actions,
               bodies: widget.bodies,
               onSingleRun: widget.onSingleRun,

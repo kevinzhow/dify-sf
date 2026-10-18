@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../../cards/card_kit.dart';
 import '../../../../cards/model_chip.dart' show FeatureIcon;
+import '../../../../design/css_metrics.dart';
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
@@ -229,14 +230,18 @@ class AddDataset extends StatelessWidget {
   final List<String> selectedIds;
   final ValueChanged<List<Json>> onChange;
 
+  // The button alone in its `<div>`, on that block's text line (see Css.inlineButtonLineGap).
   @override
-  Widget build(BuildContext context) => DifyIconButton(
-    label: '${_c('operation.add')} ${_w('nodes.knowledgeRetrieval.knowledge')}',
-    icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
-    onPressed: () async {
-      final picked = await showSelectDataset(context, selectedIds: selectedIds);
-      if (picked != null) onChange(picked);
-    },
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(bottom: Css.inlineButtonLineGap),
+    child: DifyIconButton(
+      label: '${_c('operation.add')} ${_w('nodes.knowledgeRetrieval.knowledge')}',
+      icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+      onPressed: () async {
+        final picked = await showSelectDataset(context, selectedIds: selectedIds);
+        if (picked != null) onChange(picked);
+      },
+    ),
   );
 }
 

@@ -1,10 +1,12 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
+import 'package:dify_sf_app/src/canvas/live_card.dart';
 import 'package:dify_sf_app/src/cards/bodies/note_text.dart';
 import 'package:dify_sf_app/src/canvas/renderer_choice.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
+import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/undo_manager.dart';
 import 'package:dify_sf_app/src/session_factory.dart';
@@ -81,7 +83,7 @@ class NoteHarness {
   Document get doc => controller.doc;
   Node? operator [](String id) => doc.nodes[id];
 
-  static Future<NoteHarness> start(WidgetTester t, List<Node> nodes) async {
+  static Future<NoteHarness> start(WidgetTester t, List<Node> nodes, {List<Edge> edges = const []}) async {
     t.view.physicalSize = const Size(800, 600);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
@@ -89,7 +91,9 @@ class NoteHarness {
     CanvasDefaults.viewport = (0, 0, 1);
     addTearDown(() => CanvasDefaults.viewport = null);
     final demo = DemoBackend(
-      server: FakeServer(initial: Document(nodes: nodes)),
+      server: FakeServer(
+        initial: Document(nodes: nodes, edges: edges),
+      ),
       withBo: false,
     );
     final opened = await demo.openSession('demo', clientId: 'me-abc123', journaled: false);
@@ -124,7 +128,7 @@ class NoteHarness {
           fit: StackFit.expand,
           children: [
             WorkflowCanvas(controller: controller, canvas: canvas, renderer: CanvasRendererKind.widgets),
-            NoteNodeOverlay(controller: controller, canvas: canvas),
+            LiveNoteBinding(controller: controller, canvas: canvas),
             // dify_editor.dart's wiring of Add Note: the control bar's button, the candidate placed on click.
             CandidateNode(canvas: canvas, onPlace: _place),
             Positioned(
@@ -137,6 +141,8 @@ class NoteHarness {
                 ),
               ),
             ),
+            // The app's toast host (home_page.dart).
+            const DifyToastHost(),
           ],
         ),
       ),
@@ -226,5 +232,11 @@ Future<NoteEditorController> pumpInEditor(
   return c;
 }
 
-/// The editor surface in a note's editor area (214 x 60).
-const editorBox = SizedBox(width: 214, height: 60, child: NoteEditor());
+/// The editor surface in a note's editor area (214 x 60); like in a note, its link popup (above it, outside the box)
+/// takes pointer events.
+const editorBox = OverflowHitStack(
+  children: [
+    SizedBox(width: 214, height: 60),
+    Positioned.fill(child: NoteEditor()),
+  ],
+);

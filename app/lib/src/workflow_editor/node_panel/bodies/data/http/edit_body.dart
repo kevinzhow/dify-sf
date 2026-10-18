@@ -142,7 +142,6 @@ class BodyTypeRadio extends StatelessWidget {
                 Container(
                   width: 13,
                   height: 13,
-                  margin: const EdgeInsets.fromLTRB(3, 3, 1, 0),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,

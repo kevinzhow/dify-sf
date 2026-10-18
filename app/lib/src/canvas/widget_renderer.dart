@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
@@ -7,17 +6,20 @@ import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
 import 'edge_curve.dart';
+import 'live_card.dart';
 import 'node_card.dart';
 
 /// Draws the canvas with plain widgets: only cards in (or near) the viewport are built, pan/zoom is one layer
-/// transform, each card is its own repaint boundary. Used in widget tests and where Flutter GPU is not available.
+/// transform, each card is its own repaint boundary; the [live] card is drawn in its node's place. Used in widget
+/// tests and where Flutter GPU is not available.
 class WidgetRenderer extends CanvasRenderer {
-  WidgetRenderer({required this.graph, required this.view, required this.selection, required this.cards});
+  WidgetRenderer({required this.graph, required this.view, required this.selection, required this.cards, this.live});
 
   final CanvasGraph graph;
   final CanvasViewState view;
   final CanvasSelection selection;
   final CardSpec cards;
+  final LiveCardLayer? live;
 
   final _version = ValueNotifier(0);
   final _edgesVersion = ValueNotifier(0);
@@ -64,20 +66,18 @@ class WidgetRenderer extends CanvasRenderer {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([_version, view]),
+      listenable: Listenable.merge([_version, view, ?live?.source]),
       builder: (context, _) {
         final visible = view.visible.inflate(80);
-        final transform = Matrix4.identity()
-          ..translateByDouble(view.viewport.width / 2, view.viewport.height / 2, 0, 1)
-          ..scaleByDouble(view.scale, view.scale, 1, 1)
-          ..translateByDouble(-view.center.dx, -view.center.dy, 0, 1);
         // Per nesting depth: that depth's edges, then its cards (edges inside a container lie above the container
         // and below its children).
-        final cards = _stacked(visible);
+        final liveNode = live?.node;
+        final cards = _stacked(visible, liveNode);
         final depths = {0, for (final n in cards) n.depth}.toList()..sort();
+        Widget card(CanvasNode n) => n == liveNode ? live!.build(context, n) : _card(context, n);
         final children = <Widget>[
           for (final n in cards)
-            if (n.layout.underlay) _card(context, n),
+            if (n.layout.underlay) card(n),
           for (final d in depths) ...[
             RepaintBoundary(
               child: CustomPaint(
@@ -103,28 +103,30 @@ class WidgetRenderer extends CanvasRenderer {
                 ),
               ),
             for (final n in cards)
-              if (n.depth == d && !n.layout.underlay) _card(context, n),
+              if (n.depth == d && !n.layout.underlay) card(n),
           ],
           if (_preview != null) CustomPaint(painter: _PreviewPainter(_preview!)),
         ];
         return ClipRect(
           child: Transform(
-            transform: transform,
-            child: _UnboundedStack(children: children),
+            transform: view.matrix,
+            child: OverflowHitStack(children: children),
           ),
         );
       },
     );
   }
 
-  /// Cards in [visible], bottom to top: selected nodes above the others, later nodes above earlier ones.
-  List<CanvasNode> _stacked(Rect visible) {
+  /// Cards in [visible] (and the live one, which keeps its state off screen), bottom to top: selected nodes above
+  /// the others, later nodes above earlier ones.
+  List<CanvasNode> _stacked(Rect visible, CanvasNode? live) {
     int key(CanvasNode n) => n.layout.underlay
         ? n.order - (1 << 50)
         : (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
     return [
       for (final slot in graph.grid.near(visible))
-        if (graph.slots[slot] case final n? when visible.overlaps(n.rect)) n,
+        if (graph.slots[slot] case final n? when visible.overlaps(n.rect) && n != live) n,
+      ?live,
     ]..sort((a, b) => key(a).compareTo(key(b)));
   }
 
@@ -172,16 +174,6 @@ class WidgetRenderer extends CanvasRenderer {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          if (selected && !n.layout.underlay)
-            Positioned.fromRect(
-              rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                  border: Border.all(color: DifyColors.componentsOptionCardOptionSelectedBorder),
-                ),
-              ),
-            ),
           Positioned(
             left: visual.dx,
             top: visual.dy,
@@ -192,6 +184,20 @@ class WidgetRenderer extends CanvasRenderer {
               child: RepaintBoundary(child: cards.build(context, n, graph, live: true)),
             ),
           ),
+          // Over the card (it covers only the 1 px around it): an entry node's tab, drawn with the card, would hide
+          // it.
+          if (selected && !n.layout.underlay)
+            Positioned.fromRect(
+              rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                    border: Border.all(color: DifyColors.componentsOptionCardOptionSelectedBorder),
+                  ),
+                ),
+              ),
+            ),
           if (status != null)
             Positioned.fromRect(
               rect: Rect.fromLTWH(card.dx, card.dy, n.size.width, n.size.height),
@@ -298,21 +304,4 @@ class _PreviewPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PreviewPainter old) => old.line != line;
-}
-
-/// A stack whose children are hit-testable outside its own box (the cards sit at canvas coordinates, far outside
-/// the viewport-sized box the transform is applied to).
-class _UnboundedStack extends Stack {
-  const _UnboundedStack({required super.children}) : super(clipBehavior: Clip.none);
-
-  @override
-  RenderStack createRenderObject(BuildContext context) =>
-      _RenderUnboundedStack(textDirection: Directionality.maybeOf(context));
-}
-
-class _RenderUnboundedStack extends RenderStack {
-  _RenderUnboundedStack({super.textDirection}) : super(clipBehavior: Clip.none);
-
-  @override
-  bool hitTest(BoxHitTestResult result, {required Offset position}) => hitTestChildren(result, position: position);
 }

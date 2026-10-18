@@ -243,7 +243,7 @@ class TagInput extends StatefulWidget {
     this.required = false,
     this.isInWorkflow = false,
     this.customizedConfirmKey = LogicalKeyboardKey.enter,
-    this.onError,
+    this.onError = difyToastError,
   });
 
   final List<String> items;
@@ -255,7 +255,7 @@ class TagInput extends StatefulWidget {
   final bool disableAdd, disableRemove, required, isInWorkflow;
   final LogicalKeyboardKey customizedConfirmKey;
 
-  /// `toast.error` with the message; none: refused tags are dropped silently.
+  /// `toast.error` with the message (the app's toast host by default); null: refused tags are dropped silently.
   final ValueChanged<String>? onError;
 
   @override
@@ -400,7 +400,9 @@ class _TagInputState extends State<TagInput> {
                       border: Border.all(color: _focused ? DifyColors.dividerDeep : const Color(0x00000000)),
                     )
                   : null,
-              foregroundDecoration: _special ? null : const _DashedBorder(),
+              foregroundDecoration: _special
+                  ? null
+                  : const CssDashedBorder(color: DifyColors.dividerDeep, radius: DifyRadius.md),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: 2,
@@ -413,32 +415,6 @@ class _TagInputState extends State<TagInput> {
         ],
       ),
     );
-  }
-}
-
-/// `rounded-md border border-dashed border-divider-deep`.
-class _DashedBorder extends Decoration {
-  const _DashedBorder();
-
-  @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _DashedPainter();
-}
-
-class _DashedPainter extends BoxPainter {
-  @override
-  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
-    final size = configuration.size!;
-    final rect = (offset & size).deflate(0.5);
-    final path = Path()..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(DifyRadius.md)));
-    final paint = Paint()
-      ..color = DifyColors.dividerDeep
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = Css.hairline * 2;
-    for (final m in path.computeMetrics()) {
-      for (var d = 0.0; d < m.length; d += 6) {
-        canvas.drawPath(m.extractPath(d, d + 3), paint);
-      }
-    }
   }
 }
 

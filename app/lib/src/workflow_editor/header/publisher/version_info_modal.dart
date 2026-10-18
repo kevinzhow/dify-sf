@@ -7,8 +7,8 @@ import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import 'summary_section.dart';
 
-/// dify-ui's toast types the publisher uses.
-enum PublisherToastType { success, error }
+/// dify-ui's toast types.
+typedef PublisherToastType = DifyToastType;
 
 /// Shows a toast (dify-ui's `toast.success` / `toast.error`).
 typedef PublisherToast = void Function(PublisherToastType type, String message);

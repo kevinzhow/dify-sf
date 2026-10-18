@@ -7,10 +7,11 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../../../../workflow/model_catalog.dart';
+import '../../../../design/widgets/toast.dart';
 import '../../../panel_fields/node_config.dart' show Json;
 
 /// dify-ui's toast types.
-enum LlmToastType { success, error, warning, info }
+typedef LlmToastType = DifyToastType;
 
 /// One page of a paged list (`{data, has_more}`).
 typedef LlmPage = ({List<Json> data, bool hasMore});
@@ -24,7 +25,7 @@ class LlmGroupServices {
     this.defaultModels = const {},
     this.parameterRules,
     this.nodesDefaultConfigs = const {},
-    this.toast,
+    this.toast = difyToast,
     this.openModelProviderSettings,
     this.flowType,
     this.fetchDatasets,
@@ -69,7 +70,7 @@ class LlmGroupServices {
   /// mode and the completion role prefixes.
   final Map<String, Json> nodesDefaultConfigs;
 
-  /// Shows a toast (dify-ui `toast.*`); none when absent.
+  /// Shows a toast (dify-ui `toast.*`); the app's toast host by default.
   final void Function(LlmToastType type, String message)? toast;
 
   /// The model selector footer's "Model Provider Settings" (and the empty state's "Configure").

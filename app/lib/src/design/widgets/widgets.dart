@@ -13,4 +13,5 @@ export 'popover.dart';
 export 'shortcut_kbd.dart';
 export 'surface.dart';
 export 'text.dart';
+export 'toast.dart';
 export 'tooltip.dart';

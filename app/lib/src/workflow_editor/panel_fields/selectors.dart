@@ -263,6 +263,7 @@ class TypeSelector<T> extends StatefulWidget {
     this.noLeft = false,
     this.placeholder = '',
     this.uppercase = false,
+    this.triggerUppercase = false,
     this.readonly = false,
     this.showChecked = false,
     this.sideOffset = 4,
@@ -275,6 +276,9 @@ class TypeSelector<T> extends StatefulWidget {
   final ValueChanged<T> onChanged;
   final Widget? trigger;
   final bool noLeft, uppercase, readonly, showChecked;
+
+  /// The trigger's label upper-cased, the list's not (an `uppercase` the trigger inherits, as a code editor's title).
+  final bool triggerUppercase;
   final String placeholder;
 
   /// The gap below the trigger (the list sits at `top-6` of the selector: 4 px under the `h-5` trigger).
@@ -315,7 +319,7 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
               _DefaultTrigger(
                 label: noValue ? placeholder : item?.label ?? '',
                 noValue: noValue,
-                uppercase: uppercase,
+                uppercase: uppercase || widget.triggerUppercase,
                 readonly: readonly,
                 open: c.isOpen,
               ),
@@ -475,6 +479,7 @@ class FormInputTypeSwitch extends StatelessWidget {
     onChanged: onChanged,
     disabled: readonly,
     tooltip: true,
+    bordered: false,
     itemPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     textColor: DifyColors.textTertiary,
     checkedTextColor: DifyColors.textSecondary,

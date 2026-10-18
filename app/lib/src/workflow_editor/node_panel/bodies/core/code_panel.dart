@@ -376,7 +376,11 @@ class _CodePanelState extends State<_CodePanel> {
                               onPressed: c.handleSyncFunctionSignature,
                             ),
                           ),
-                          FieldAddButton(label: '${tc('operation.add')} $inputsTitle', onPressed: c.handleAddVariable),
+                          FieldAddButton(
+                            label: '${tc('operation.add')} $inputsTitle',
+                            onPressed: c.handleAddVariable,
+                            alone: false,
+                          ),
                         ],
                       ),
                 child: VarList(
@@ -394,6 +398,7 @@ class _CodePanelState extends State<_CodePanel> {
                 isInNode: true,
                 readOnly: readOnly,
                 titleWidget: TypeSelector<String>(
+                  triggerUppercase: true,
                   options: codeLanguageOptions,
                   value: language,
                   onChanged: c.handleCodeLanguageChange,

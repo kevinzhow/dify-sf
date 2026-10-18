@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../canvas/canvas_controller.dart';
 import '../cards/card_kit.dart';
 import '../design/dify_tokens.g.dart';
+import '../design/widgets/toast.dart';
 import '../editor/editor_controller.dart';
 import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
@@ -194,8 +195,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     fit: StackFit.expand,
                     children: [
                       CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
-                      // The selected note, edited in place over its card.
-                      NoteNodeOverlay(controller: controller, canvas: canvas, options: menuOptions),
+                      // The selected note, edited in place (drawn by the canvas in the notes' layer).
+                      LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
                       CandidateNode(canvas: canvas, onPlace: _place),
                     ],
                   );
@@ -320,7 +321,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
         left: widget.left,
         middle: FeaturesTrigger(
           hooks: WorkflowPublishHooks(
-            checkBeforePublish: () => b.checkBeforePublish(null),
+            checkBeforePublish: () => b.checkBeforePublish(difyToast),
             syncWorkflowDraft: b.syncWorkflowDraft,
           ),
         ),

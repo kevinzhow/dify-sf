@@ -223,7 +223,7 @@ void main() {
       await settle(t);
       expect(_model(h)['provider'], 'openai');
       expect(_model(h)['completion_params'], {'temperature': 0.7});
-      expect(toasts, ['LlmToastType.error common.error']);
+      expect(toasts, ['${LlmToastType.error} common.error']);
       await h.dispose(t);
     });
   });

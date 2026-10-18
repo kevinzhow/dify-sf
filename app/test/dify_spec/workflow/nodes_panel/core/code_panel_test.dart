@@ -79,7 +79,8 @@ void main() {
       expect(findTitle('workflow.nodes.code.inputVars'), findsOneWidget);
       expect(findTitle('workflow.nodes.code.outputVars'), findsOneWidget);
       expect(t.widget<DifyCodeEditor>(find.byType(DifyCodeEditor)).readOnly, isFalse);
-      expect(find.text('JavaScript'), findsOneWidget);
+      // The editor title's `uppercase` (CSS) is applied to the trigger's text.
+      expect(find.text('JAVASCRIPT'), findsOneWidget);
       // The dialog's buttons fit with short labels (the test font's glyphs are square).
       DifyI18n.current = _ShortButtons();
 
@@ -134,7 +135,7 @@ void main() {
       expect(outputNames(p), ['answer']);
 
       // The language: Python3 takes its default code, inputs and outputs.
-      await t.tap(find.text('JavaScript'));
+      await t.tap(find.text('JAVASCRIPT'));
       await settle(t);
       await t.tap(find.text('Python3'));
       await settle(t);

@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../canvas/canvas_graph.dart';
 import '../canvas/node_card.dart';
+import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import 'card_kit.dart';
@@ -269,7 +270,7 @@ class BlockIcon extends StatelessWidget {
           color: DifyColors.stateBaseHover,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
         ),
-        foregroundDecoration: _DashedBorder(DifyColors.componentsPanelBorder, DifyRadius.lg),
+        foregroundDecoration: const CssDashedBorder(color: DifyColors.componentsPanelBorder, radius: DifyRadius.lg),
         child: Center(
           child: Opacity(
             opacity: 0.3,
@@ -289,36 +290,6 @@ class BlockIcon extends StatelessWidget {
       ),
       child: Center(child: DifyIcon(blockGlyph(type), size: 16, color: Colors.white)),
     );
-  }
-}
-
-/// A 1 px dashed rounded border (CSS `border border-dashed`: dashes about three times the width, gaps the same).
-class _DashedBorder extends Decoration {
-  const _DashedBorder(this.color, this.radius);
-  final Color color;
-  final double radius;
-
-  @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _DashedPainter(this);
-}
-
-class _DashedPainter extends BoxPainter {
-  _DashedPainter(this.d);
-  final _DashedBorder d;
-
-  @override
-  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
-    final rect = (offset & configuration.size!).deflate(0.5);
-    final path = Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(d.radius - 0.5)));
-    final paint = Paint()
-      ..color = d.color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    for (final m in path.computeMetrics()) {
-      for (var t = 0.0; t < m.length; t += 6) {
-        canvas.drawPath(m.extractPath(t, t + 3), paint);
-      }
-    }
   }
 }
 

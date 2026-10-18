@@ -9,9 +9,12 @@ TextStyle difyTextStyle(DifyTextStyle s, Color color) => s.style.copyWith(color:
 /// [text] as Dify's utility renders it (`uppercase` utilities upper-case it; Flutter has no text-transform).
 String difyTransform(DifyTextStyle s, String text) => s.uppercase ? text.toUpperCase() : text;
 
-/// CSS `text-transform: capitalize`: the first letter of each word upper-cased.
-String cssCapitalize(String text) =>
-    text.replaceAllMapped(RegExp(r'(^|\s)(\S)'), (m) => '${m[1]}${m[2]!.toUpperCase()}');
+/// CSS `text-transform: capitalize`: the first letter of each word upper-cased (words as Chrome splits them:
+/// punctuation other than apostrophes ends one, so `array[number]` becomes `Array[Number]`).
+String cssCapitalize(String text) => text.replaceAllMapped(
+  RegExp(r"(^|[^\p{L}\p{N}'’])(\p{L})", unicode: true),
+  (m) => '${m[1]}${m[2]!.toUpperCase()}',
+);
 
 /// Tailwind's default transition: 150 ms, `cubic-bezier(0.4, 0, 0.2, 1)`.
 const difyTransitionDuration = Duration(milliseconds: 150);

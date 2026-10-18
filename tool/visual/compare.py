@@ -12,6 +12,8 @@ For each case: the workflow file (with the case's viewport written into it) is i
 both editors are opened in the same Chromium at the same window size; the same region of each canvas (relative to
 the canvas's top-left corner) is captured. Results go to DIR/visual-testing-results/{react,android}/<case>.png (the
 layout alignment_audit.py reads; react = Dify, android = ours) plus a pixel-difference summary in DIR/report.md.
+--reuse-dify keeps the Dify captures of an earlier run in DIR (with the viewport Dify showed) and re-shoots ours
+only: Dify need not run.
 """
 import argparse, base64, functools, http.server, json, os, pathlib, re, threading, time
 import numpy as np
@@ -26,6 +28,26 @@ SF = os.environ.get('DIFYSF_URL', 'http://127.0.0.1:18080')
 EXTRA = os.environ.get('OURS_QUERY', '')
 # Device pixel ratio of both browsers: 2, the acceptance screen's (mibook).
 DSF = float(os.environ.get('VISUAL_DSF', '2'))
+
+
+class Browsers:
+    """Chromium at a real device pixel ratio (--force-device-scale-factor), one per window size: Playwright's
+    emulated ratio (`device_scale_factor`) lays CSS out at ratio 1, so 0.5 px borders become 1 CSS px (2 device
+    pixels), where a 2x screen draws 1 device pixel."""
+
+    def __init__(self, playwright):
+        self.playwright, self.browsers = playwright, {}
+
+    def context(self, width, height):
+        size = (int(width), int(height))
+        if size not in self.browsers:
+            self.browsers[size] = self.playwright.chromium.launch(
+                args=[f'--force-device-scale-factor={DSF:g}', f'--window-size={size[0]},{size[1]}'])
+        return self.browsers[size].new_context(no_viewport=True)
+
+    def close(self):
+        for b in self.browsers.values():
+            b.close()
 
 
 def dify_session():
@@ -71,8 +93,8 @@ def serve(directory):
     return server, f'http://127.0.0.1:{server.server_address[1]}'
 
 
-def capture_dify(browser, s, app_id, case, out):
-    ctx = browser.new_context(viewport={'width': case['window'][0], 'height': case['window'][1]}, device_scale_factor=DSF)
+def capture_dify(browsers, s, app_id, case, out):
+    ctx = browsers.context(*case['window'])
     ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies])
     page = ctx.new_page()
     page.goto(f'{DIFY}/app/{app_id}/workflow')
@@ -84,16 +106,22 @@ def capture_dify(browser, s, app_id, case, out):
     m = [float(v) for v in re.findall(r'-?[\d.]+(?:e-?\d+)?', t)]
     viewport = (m[4], m[5], m[0]) if len(m) == 6 else tuple(case['viewport'])
     if case.get('select'):
-        # Open the node's panel as a user would (the viewport is read before: the panel does not move it).
+        # Open the node's panel as a user would (the viewport is read before: the panel does not move it), clicking
+        # near its top-left corner (the middle may be a control of its own, as an LLM node's model badge).
         node = page.locator(f'.react-flow__node[data-id="{case["select"]}"]')
         try:
-            node.click(timeout=5000)
+            node.click(position={'x': 16, 'y': 16}, timeout=5000)
         except Exception:
             # Off screen (Dify fitted the view elsewhere): React Flow selects on the element's click all the same.
             node.dispatch_event('click')
-        page.wait_for_timeout(1200)
+        # Then off the canvas: the pointer resting on the node would show its hover state (the node control, the
+        # highlighted edges), which ours, selected without a pointer, does not.
+        page.mouse.move(0, 0)
+        # Long enough for transient toasts to go (Dify reports the models it cannot load here).
+        page.wait_for_timeout(5000)
     shot(page, box, case, out)
-    # Where Dify draws text (every non-empty text node in the canvas), relative to the captured region.
+    # Where Dify draws text (every non-empty text node on the page: canvas, header, node panel), relative to the
+    # captured region.
     rects = page.evaluate(TEXT_RECTS)
     ox, oy = box['x'] + case['region'][0], box['y'] + case['region'][1]
     out.with_suffix('.text.json').write_text(
@@ -104,23 +132,41 @@ def capture_dify(browser, s, app_id, case, out):
 
 TEXT_RECTS = """() => {
   const out = [];
-  const root = document.querySelector('.react-flow');
-  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     if (!n.textContent.trim()) continue;
     const range = document.createRange();
     range.selectNodeContents(n);
     for (const r of range.getClientRects()) if (r.width > 0 && r.height > 0) out.push([r.left, r.top, r.right, r.bottom]);
   }
+  // Values and placeholders of text fields are not text nodes: their lines, measured with the field's font, from
+  // the content box's left edge.
+  const ctx = document.createElement('canvas').getContext('2d');
+  for (const el of document.querySelectorAll('input, textarea')) {
+    const text = el.value || el.placeholder;
+    const r = el.getBoundingClientRect();
+    if (!text || !r.width || !r.height || el.type === 'hidden' || el.type === 'checkbox' || el.type === 'radio') continue;
+    const cs = getComputedStyle(el);
+    ctx.font = cs.font;
+    const left = r.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
+    const top = r.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+    const lines = el.tagName === 'TEXTAREA' ? text.split('\\n') : [text];
+    lines.forEach((line, i) => {
+      const w = ctx.measureText(line).width;
+      const y = el.tagName === 'TEXTAREA' ? top + i * lh : r.top + (r.height - lh) / 2;
+      if (w > 0 && y < r.bottom) out.push([left, y, Math.min(left + w, r.right), Math.min(y + lh, r.bottom)]);
+    });
+  }
   return out;
 }"""
 
 
-def capture_ours(browser, base, doc, case, out, viewport):
+def capture_ours(browsers, base, doc, case, out, viewport):
     # Our page is only the editor; Dify's has its app sidebar too, so a whole-canvas case gives ours the size of
     # Dify's canvas (`oursWindow`).
     w, h = case.get('oursWindow', case['window'])
-    ctx = browser.new_context(viewport={'width': w, 'height': h}, device_scale_factor=DSF)
+    ctx = browsers.context(w, h)
     page = ctx.new_page()
     rect = []
     views = []
@@ -162,7 +208,11 @@ def similarity(a, b, text_rects=()):
     keep = np.ones(diff.shape, bool)
     h, w = diff.shape
     for l, t, r, btm in text_rects:
-        keep[max(0, int(t) - 1):min(h, int(np.ceil(btm)) + 1), max(0, int(l) - 1):min(w, int(np.ceil(r)) + 1)] = False
+        # Clamped to the image (text left of or above the region, as Dify's app sidebar, would index from the end).
+        y0, y1 = max(0, int(t) - 1), min(h, int(np.ceil(btm)) + 1)
+        x0, x1 = max(0, int(l) - 1), min(w, int(np.ceil(r)) + 1)
+        if y0 < y1 and x0 < x1:
+            keep[y0:y1, x0:x1] = False
     same = (diff <= 16).mean()
     non_text = (diff[keep] <= 16).mean()
     heat = Image.fromarray(np.where(diff > 16, 255, np.where(keep, 0, 60)).astype(np.uint8))
@@ -174,6 +224,8 @@ def main():
     ap.add_argument('--cases', default=str(ROOT / 'tool/visual/cases.json'))
     ap.add_argument('--only')
     ap.add_argument('--out', default=str(ROOT / 'build/visual'))
+    ap.add_argument('--reuse-dify', action='store_true',
+                    help="reuse the Dify captures already in --out (no Dify needed): re-shoot ours only")
     a = ap.parse_args()
     cases = json.loads(pathlib.Path(a.cases).read_text())
     if a.only:
@@ -183,31 +235,38 @@ def main():
     (out / 'visual-testing-results/android').mkdir(parents=True, exist_ok=True)
     (out / 'diff').mkdir(exist_ok=True)
     (out / 'visual-testing-results/react/metadata.json').write_text(json.dumps({'density': DSF}))
-    s = dify_session()
+    s = None if a.reuse_dify else dify_session()
     server, base = serve(str(ROOT / 'app/build/web'))
     rows = []
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browsers = Browsers(p)
         for c in cases:
             text = with_viewport((ROOT / c['fixture']).read_text(), *c['viewport'])
             if not c.get('keepSelection'):
                 # A node saved as selected opens its panel in Dify; canvas cases compare the canvas alone.
                 text = re.sub(r'^(\s+)selected: true$', r'\1selected: false', text, flags=re.M)
-            app_id, doc = dify_import(s, text), sf_import(text)
             web = out / 'visual-testing-results/react' / f'{c["id"]}.png'
             ours = out / 'visual-testing-results/android' / f'{c["id"]}.png'
-            try:
-                dbox, viewport = capture_dify(browser, s, app_id, c, web)
-                obox = capture_ours(browser, base, doc, c, ours, viewport)
-                print(f'{c["id"]}: Dify viewport x={viewport[0]:.3f} y={viewport[1]:.3f} zoom={viewport[2]:.4f}; '
-                      f'canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} ours {obox["x"]:.2f},{obox["y"]:.2f}')
-            finally:
-                s.delete(f'{DIFY}/console/api/apps/{app_id}')
+            view = web.with_suffix('.view.json')
+            doc = sf_import(text)
+            if a.reuse_dify:
+                viewport = tuple(json.loads(view.read_text()))
+                obox = capture_ours(browsers, base, doc, c, ours, viewport)
+            else:
+                app_id = dify_import(s, text)
+                try:
+                    dbox, viewport = capture_dify(browsers, s, app_id, c, web)
+                    view.write_text(json.dumps(viewport))
+                    obox = capture_ours(browsers, base, doc, c, ours, viewport)
+                    print(f'{c["id"]}: Dify viewport x={viewport[0]:.3f} y={viewport[1]:.3f} zoom={viewport[2]:.4f}; '
+                          f'canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} ours {obox["x"]:.2f},{obox["y"]:.2f}')
+                finally:
+                    s.delete(f'{DIFY}/console/api/apps/{app_id}')
             same, non_text, heat = similarity(web, ours, json.loads(web.with_suffix('.text.json').read_text()))
             heat.save(out / 'diff' / f'{c["id"]}.png')
             rows.append((c['id'], non_text, same))
             print(f'{c["id"]}: non-text {non_text * 100:.2f}%, all {same * 100:.2f}% of pixels within 16/255')
-        browser.close()
+        browsers.close()
     server.shutdown()
     (out / 'report.md').write_text(
         '| case | non-text pixels within 16/255 (pass: 99.5%) | all pixels |\n|---|---|---|\n'

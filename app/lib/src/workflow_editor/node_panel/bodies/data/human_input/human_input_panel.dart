@@ -284,28 +284,18 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
           const HiDivider(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DifyText(
-                    hi('timeout.title'),
-                    DifyType.systemSmSemiboldUppercase,
-                    color: DifyColors.textSecondary,
-                  ),
+            child: JustifyBetween(
+              lead: DifyText(hi('timeout.title'), DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary),
+              trail: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: TimeoutInput(
+                  timeout: data['timeout'] is num ? data['timeout']! as num : 3,
+                  unit: jsStr(data['timeout_unit']) ?? 'day',
+                  readonly: readOnly,
+                  onChange: _config.timeoutChange,
                 ),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: TimeoutInput(
-                      timeout: data['timeout'] is num ? data['timeout']! as num : 3,
-                      unit: jsStr(data['timeout_unit']) ?? 'day',
-                      readonly: readOnly,
-                      onChange: _config.timeoutChange,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           const PanelSplit(),

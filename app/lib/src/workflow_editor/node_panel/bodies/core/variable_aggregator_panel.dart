@@ -656,17 +656,20 @@ class _VarGroupItemState extends State<VarGroupItem> {
           _name.text = name;
           setState(() => _editName = true);
         },
+        // `flex h-6 items-center px-1`: as wide as the name.
         builder: (context, hovered, focused) => Container(
           height: 24,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: hovered ? DifyColors.utilColorsGrayGray100 : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
           ),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.text,
-            child: DifyText(name, DifyType.systemSmSemibold, color: DifyColors.textSecondary),
+          child: Center(
+            widthFactor: 1,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.text,
+              child: DifyText(name, DifyType.systemSmSemibold, color: DifyColors.textSecondary),
+            ),
           ),
         ),
       );
@@ -846,22 +849,20 @@ class _VariableAggregatorPanelState extends State<VariableAggregatorPanel> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (final (i, g) in groups.indexed) ...[
+                        // `my-4` after each group but the last; the groups' `space-y-2` collapses into it.
                         if (i > 0) const PanelSplit(margin: EdgeInsets.symmetric(vertical: 16)),
-                        Padding(
-                          padding: EdgeInsets.only(top: i == 0 ? 0 : 8),
-                          child: VarGroupItem(
-                            key: ValueKey(g['groupId']),
-                            readOnly: readOnly,
-                            payload: g,
-                            onChange: c.handleListOrTypeChangeInGroup(jsKey(g['groupId'])),
-                            groupEnabled: true,
-                            canRemove: !readOnly && groups.length > 1,
-                            onRemove: c.handleGroupRemoved(jsKey(g['groupId'])),
-                            onGroupNameChange: c.handleVarGroupNameChange(jsKey(g['groupId'])),
-                            scope: scope,
-                            addScope: addScope(g['output_type']),
-                            onError: onError,
-                          ),
+                        VarGroupItem(
+                          key: ValueKey(g['groupId']),
+                          readOnly: readOnly,
+                          payload: g,
+                          onChange: c.handleListOrTypeChangeInGroup(jsKey(g['groupId'])),
+                          groupEnabled: true,
+                          canRemove: !readOnly && groups.length > 1,
+                          onRemove: c.handleGroupRemoved(jsKey(g['groupId'])),
+                          onGroupNameChange: c.handleVarGroupNameChange(jsKey(g['groupId'])),
+                          scope: scope,
+                          addScope: addScope(g['output_type']),
+                          onError: onError,
                         ),
                       ],
                       Padding(

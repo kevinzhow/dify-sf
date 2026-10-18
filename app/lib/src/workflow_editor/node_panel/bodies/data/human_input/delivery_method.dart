@@ -492,57 +492,52 @@ class _MethodItemState extends State<MethodItem> {
           ),
           boxShadow: _hovered ? DifyShadows.sm : DifyShadows.xs,
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Row(
-                spacing: 6,
-                children: [
-                  ?methodTile(type),
-                  Flexible(
-                    child: DifyText(cssCapitalize(type), DifyType.systemXsMedium, color: DifyColors.textSecondary),
-                  ),
-                  if (debug) const HiBadge('DEBUG', height: 18),
-                ],
+        child: JustifyBetween(
+          lead: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              ?methodTile(type),
+              Flexible(
+                child: DifyText(cssCapitalize(type), DifyType.systemXsMedium, color: DifyColors.textSecondary),
               ),
-            ),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 4,
-                  children: [
-                    if (!w.readonly && _hovered) ...[
-                      if (isEmail && config != null) ...[
-                        action(testTip, 'send-plane-2-line', _test),
-                        action(wf('common.configure'), 'equalizer-2-line', _configure),
-                      ],
-                      action(cm('operation.remove'), 'delete-bin-line', () => w.onDelete(type), destructive: true),
-                    ],
-                    if (config != null || type == DeliveryMethodType.webapp)
-                      DifySwitch(
-                        checked: jsTruthy(w.method['enabled']),
-                        disabled: w.readonly,
-                        onCheckedChange: (v) => w.onChange({...w.method, 'enabled': v}),
-                      ),
-                    if (isEmail && config == null)
-                      Transform.translate(
-                        offset: const Offset(4, 0),
-                        child: DifyButton(
-                          size: DifyButtonSize.small,
-                          disabled: w.readonly,
-                          onPressed: _configure,
-                          trailing: const HiStatusDot(),
-                          child: Text(hi('deliveryMethod.notConfigured')),
-                        ),
-                      ),
+              if (debug) const HiBadge('DEBUG', height: 18),
+            ],
+          ),
+          trail: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 4,
+              children: [
+                if (!w.readonly && _hovered) ...[
+                  if (isEmail && config != null) ...[
+                    action(testTip, 'send-plane-2-line', _test),
+                    action(wf('common.configure'), 'equalizer-2-line', _configure),
                   ],
-                ),
-              ),
+                  action(cm('operation.remove'), 'delete-bin-line', () => w.onDelete(type), destructive: true),
+                ],
+                if (config != null || type == DeliveryMethodType.webapp)
+                  DifySwitch(
+                    checked: jsTruthy(w.method['enabled']),
+                    disabled: w.readonly,
+                    onCheckedChange: (v) => w.onChange({...w.method, 'enabled': v}),
+                  ),
+                if (isEmail && config == null)
+                  Transform.translate(
+                    offset: const Offset(4, 0),
+                    child: DifyButton(
+                      size: DifyButtonSize.small,
+                      disabled: w.readonly,
+                      onPressed: _configure,
+                      trailing: const HiStatusDot(),
+                      child: Text(hi('deliveryMethod.notConfigured')),
+                    ),
+                  ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

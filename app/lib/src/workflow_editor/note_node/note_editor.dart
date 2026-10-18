@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import '../../canvas/live_card.dart' show OverflowHitStack;
 import '../../cards/bodies/note_body.dart';
 import '../../cards/bodies/note_text.dart';
 import '../../cards/card_kit.dart';
@@ -96,7 +97,8 @@ class _NoteEditorProviderState extends State<NoteEditorProvider> {
 
 /// note-editor/editor.tsx: the rich text surface (`text-text-secondary caret-primary-600`, 12 px paragraphs) with
 /// its placeholder, reporting content changes ([onChange]), turning the workflow's history shortcuts off while it
-/// has focus ([setHistoryShortcutsEnabled]), with Cmd/Ctrl + B and I, and the link popup (LinkEditorPlugin).
+/// has focus ([setHistoryShortcutsEnabled]), with Cmd/Ctrl + B, I and U, and the link popup (LinkEditorPlugin),
+/// drawn above the link and taking pointer events outside the editor's box ([OverflowHitStack]).
 class NoteEditor extends StatefulWidget {
   const NoteEditor({super.key, this.placeholder, this.onChange, this.setHistoryShortcutsEnabled, this.initialTap});
 
@@ -115,7 +117,6 @@ class NoteEditor extends StatefulWidget {
 class _NoteEditorState extends State<NoteEditor> {
   late NoteEditorScope _scope;
   late int _revision;
-  final _link = LayerLink();
   final _field = GlobalKey();
   bool _focused = false;
 
@@ -199,6 +200,9 @@ class _NoteEditorState extends State<NoteEditor> {
         for (final meta in [false, true]) ...{
           SingleActivator(LogicalKeyboardKey.keyB, control: !meta, meta: meta): () => c.formatText(NoteFormat.bold),
           SingleActivator(LogicalKeyboardKey.keyI, control: !meta, meta: meta): () => c.formatText(NoteFormat.italic),
+          // Lexical's underline: the format bit is kept (Dify's note theme draws no underline).
+          SingleActivator(LogicalKeyboardKey.keyU, control: !meta, meta: meta): () =>
+              c.formatText(NoteFormat.underline),
         },
       },
       child: Listener(
@@ -225,59 +229,44 @@ class _NoteEditorState extends State<NoteEditor> {
         ),
       ),
     );
-    return CompositedTransformTarget(
-      link: _link,
-      child: ListenableBuilder(
-        listenable: Listenable.merge([c, c.store]),
-        builder: (context, child) {
-          final empty = c.text.isEmpty && !c.value.composing.isValid;
-          final anchor = c.store.linkAnchor;
-          return OverlayPortal(
-            controller: _portal,
-            overlayChildBuilder: (context) {
-              final at = anchor == null ? null : _anchorRect(anchor);
-              if (at == null) return const SizedBox.shrink();
-              return Align(
-                alignment: Alignment.topLeft,
-                child: CompositedTransformFollower(
-                  link: _link,
-                  // floating-ui `top`, offset 4: centred above the link.
-                  offset: Offset(at.center.dx, at.top - 4),
-                  followerAnchor: Alignment.bottomCenter,
-                  child: NoteEditorScope(
-                    controller: c,
-                    focusNode: _scope.focusNode,
-                    child: const NoteTextScope(child: LinkEditor()),
+    return ListenableBuilder(
+      listenable: Listenable.merge([c, c.store]),
+      builder: (context, child) {
+        final empty = c.text.isEmpty && !c.value.composing.isValid;
+        final anchor = c.store.linkAnchor;
+        final at = anchor == null ? null : _anchorRect(anchor);
+        return OverflowHitStack(
+          children: [
+            child!,
+            if (empty)
+              Positioned(
+                left: 0,
+                top: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Text(
+                    widget.placeholder ?? DifyI18n.tr('workflow', 'nodes.note.editor.placeholder'),
+                    style: notePlaceholderStyle,
                   ),
                 ),
-              );
-            },
-            child: Stack(
-              children: [
-                child!,
-                if (empty)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: Text(
-                        widget.placeholder ?? DifyI18n.tr('workflow', 'nodes.note.editor.placeholder'),
-                        style: notePlaceholderStyle,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        },
-        child: field,
-      ),
+              ),
+            // The link popup, portalled into the note as Dify's (FloatingPortal root: the note's element): floating-ui
+            // `top`, offset 4, centred above the link.
+            if (at != null)
+              Positioned(
+                left: at.center.dx,
+                top: at.top - 4,
+                child: const FractionalTranslation(
+                  translation: Offset(-0.5, -1),
+                  child: NoteTextScope(child: LinkEditor()),
+                ),
+              ),
+          ],
+        );
+      },
+      child: field,
     );
   }
-
-  /// Shown for as long as the editor is: the popup is there while the store has an anchor.
-  final _portal = OverlayPortalController()..show();
 }
 
 /// link-editor-plugin/component.tsx: above the link, the URL input with OK (a link without a URL, or after Edit),

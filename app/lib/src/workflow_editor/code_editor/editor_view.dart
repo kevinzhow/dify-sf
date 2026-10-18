@@ -5,7 +5,7 @@
 /// margin, line numbers, folding space), the current-line border, indent guides, bracket-match boxes, the selection
 /// and the cursor.
 ///
-/// Layout follows Monaco's `EditorLayoutInfoComputer`: glyph margin of one line height, line numbers
+/// Layout follows Monaco's `EditorLayoutInfoComputer`: no glyph margin (as Dify shows it), line numbers
 /// `round(digits * maxDigitWidth)` wide (`lineNumbersMinChars: 1`), 10 + 16 px of line decorations and folding,
 /// then the text, wrapped (`wordWrap: 'on'`) at `floor((contentWidth - 14 - 2) / charWidth)` columns, a 14 px
 /// vertical scrollbar and room to scroll the last line to the top (`scrollBeyondLastLine`). The font is Monaco's
@@ -95,7 +95,9 @@ class CodeEditorMetrics {
   /// lineDecorationsWidth (10) + the folding area (16).
   static const decorationsWidth = 26.0;
 
-  double get glyphMarginWidth => lineHeight;
+  /// None: Dify's editor shows its line numbers at the margin's left edge (measured in Chrome: the margin is the
+  /// numbers and the 26 px of decorations).
+  double get glyphMarginWidth => 0;
   double lineNumbersWidth(int lineCount) => (math.max(lineCount.toString().length, 1) * maxDigitWidth).roundToDouble();
   double contentLeft(int lineCount) => glyphMarginWidth + lineNumbersWidth(lineCount) + decorationsWidth;
 }

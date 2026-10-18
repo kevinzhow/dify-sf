@@ -13,6 +13,7 @@ import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
 import 'edge_curve.dart';
+import 'live_card.dart';
 import 'node_card.dart';
 
 /// Canvas (x right, y down) to world: the camera sits on -Z looking along +Z (world +X is screen-right, +Y up);
@@ -90,9 +91,15 @@ class SceneRenderer extends CanvasRenderer {
     required this.cards,
     required this.onUnavailable,
     this.onSettled,
+    this.live,
   }) {
+    live?.source.addListener(_syncLive);
     Scene.initializeStaticResources().then((_) => _start(), onError: (Object e) => onUnavailable(e));
   }
+
+  /// The live card: a widget, so it is drawn under the scene with the underlays it overlaps, which the scene then
+  /// leaves out (see [_syncLive]).
+  final LiveCardLayer? live;
 
   final CanvasGraph graph;
   final CanvasViewState view;
@@ -171,8 +178,10 @@ class SceneRenderer extends CanvasRenderer {
     _previewMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFFD0D5DD));
     // Opaque scene geometry behind the cards. (Display-referred surfaces are composited without depth order among
     // themselves, which would draw the frames over the cards.)
-    _statusFrames = _RoundedFrames(scene);
-    _selectedFrames = _RoundedFrames(scene);
+    // Rings, not filled shapes: a container card's background is translucent and would show a fill through it.
+    // The status border is the card's own 1 px border; the selected frame the 1 px around it.
+    _statusFrames = _RoundedFrames(scene, thickness: 1);
+    _selectedFrames = _RoundedFrames(scene, thickness: 1);
     _markers = InstancedMesh(geometry: _unitQuad, material: UnlitMaterial(), sortTransparentInstances: false);
     scene
       ..add(Node()..addComponent(InstancedMeshComponent(_markers)))
@@ -207,6 +216,7 @@ class SceneRenderer extends CanvasRenderer {
     if (change.edgesChanged) _rebuildEdges();
     _settled = false;
     _exactSettled = false;
+    _syncLive();
   }
 
   void _grow(int slot) {
@@ -285,6 +295,7 @@ class SceneRenderer extends CanvasRenderer {
   double _lift(int slot) {
     final n = graph.slots[slot];
     if (n == null) return 0;
+    if (_hidden.contains(slot)) return -1000; // behind the camera's far plane
     // Underlays (notes) lie behind the edges, which are 1 behind the canvas plane's cards.
     if (n.layout.underlay) return -1.5 + (n.order % 100000) * 1e-6;
     if (_moving.contains(slot)) return 0.5 + n.depth * 0.3;
@@ -381,7 +392,7 @@ class SceneRenderer extends CanvasRenderer {
       _statusFrames.clear(slot);
       return;
     }
-    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _lift(slot) - 0.1);
+    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _frameLift(slot, n, -0.1));
   }
 
   /// The selected frame: 1 px outside the card (radius 16), option-card selected border.
@@ -396,9 +407,14 @@ class SceneRenderer extends CanvasRenderer {
       n.rect.inflate(1),
       DifyRadius.xxl,
       srgb(DifyColors.componentsOptionCardOptionSelectedBorder),
-      _lift(slot) - 0.15,
+      _frameLift(slot, n, -0.15),
     );
   }
+
+  /// Frames lie behind their card, seen through its transparent border; but a card captured with more around it
+  /// (an entry node's tab) would hide them, so those frames lie just in front of it (they cover only the border).
+  double _frameLift(int slot, CanvasNode n, double behind) =>
+      _lift(slot) + (n.layout.visual == n.layout.card ? behind : 1e-4);
 
   @override
   void statusChanged(int slot) {
@@ -440,6 +456,7 @@ class SceneRenderer extends CanvasRenderer {
       _edgeMaterial,
       lift: 0.75,
     );
+    _syncLive();
   }
 
   @override
@@ -450,6 +467,7 @@ class SceneRenderer extends CanvasRenderer {
       _place(s);
     }
     _rebuildEdges();
+    _syncLive();
   }
 
   // ----- edges -----
@@ -965,26 +983,88 @@ class SceneRenderer extends CanvasRenderer {
     ),
   );
 
+  // ----- the live card -----
+
+  final _hidden = <int>{};
+  List<CanvasNode> _liveStack = const [];
+  final _liveChanged = ValueNotifier(0);
+
+  /// The live card's node and the underlays below it that it overlaps (Dify draws notes under everything, the
+  /// selected one in its place among them) are drawn as widgets under the scene, and hidden in it.
+  void _syncLive() {
+    final n = live?.node;
+    final stack = n == null ? const <CanvasNode>[] : live!.underlayStack(n);
+    final hidden = {for (final u in stack) u.slot};
+    final changed = {...hidden.difference(_hidden), ..._hidden.difference(hidden)};
+    if (n == null && changed.isEmpty) return;
+    _hidden
+      ..clear()
+      ..addAll(hidden);
+    _liveStack = stack;
+    if (_ready.value) {
+      for (final slot in changed) {
+        if (slot < _cardNodes.length) _place(slot);
+      }
+    }
+    _liveChanged.value++;
+  }
+
+  Widget _liveLayer() => ListenableBuilder(
+    listenable: Listenable.merge([_liveChanged, view]),
+    builder: (context, _) {
+      final n = live!.node;
+      if (n == null || _liveStack.isEmpty) return const SizedBox.shrink();
+      return Transform(
+        transform: view.matrix,
+        child: OverflowHitStack(
+          children: [
+            for (final u in _liveStack)
+              u == n
+                  ? live!.build(context, u)
+                  : Positioned.fromRect(
+                      rect: u.visual,
+                      child: IgnorePointer(child: RepaintBoundary(child: cards.build(context, u, graph, live: true))),
+                    ),
+          ],
+        ),
+      );
+    },
+  );
+
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
-    valueListenable: _ready,
-    builder: (context, ready, _) =>
-        ready ? SceneView(scene, cameraBuilder: (_) => _camera(), onTick: (_, _) => _tick()) : const SizedBox.expand(),
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      if (live != null) _liveLayer(),
+      // The canvas hit-tests cards itself; the live layer under the scene takes the events that are its own.
+      IgnorePointer(
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _ready,
+          builder: (context, ready, _) => ready
+              ? SceneView(scene, cameraBuilder: (_) => _camera(), onTick: (_, _) => _tick())
+              : const SizedBox.expand(),
+        ),
+      ),
+    ],
   );
 
   @override
   void dispose() {
     _disposed = true;
+    live?.source.removeListener(_syncLive);
     _ready.dispose();
+    _liveChanged.dispose();
   }
 }
 
-/// Rounded rectangles behind the cards (status border, selected frame), one instance per slot. Instances share a
-/// geometry only when they have the same size, so corners keep their radius; one instanced mesh per size.
+/// Rounded rings [thickness] wide behind the cards (status border, selected frame), one instance per slot.
+/// Instances share a geometry only when they have the same size, so corners keep their radius; one instanced mesh
+/// per size.
 class _RoundedFrames {
-  _RoundedFrames(this.scene);
+  _RoundedFrames(this.scene, {required this.thickness});
 
   final Scene scene;
+  final double thickness;
   final _meshes = <(int, int, int), InstancedMesh>{};
   final _free = <(int, int, int), List<int>>{};
   final _of = <int, ((int, int, int), int)>{};
@@ -1012,7 +1092,7 @@ class _RoundedFrames {
     if (free != null && free.isNotEmpty) return free.removeLast();
     final mesh = _meshes.putIfAbsent(key, () {
       final m = InstancedMesh(
-        geometry: _roundedRect(size, radius),
+        geometry: _roundedRing(size, radius, thickness),
         material: UnlitMaterial(),
         sortTransparentInstances: false,
       );
@@ -1023,30 +1103,31 @@ class _RoundedFrames {
   }
 }
 
-/// A filled rounded rectangle centred on the origin, as a triangle fan, facing the -Z camera.
-Geometry _roundedRect(Size size, double radius, {int segments = 8}) {
+/// A rounded ring centred on the origin: the outline of a [size] rounded rectangle, [thickness] wide inwards, as
+/// a triangle strip facing the -Z camera.
+Geometry _roundedRing(Size size, double radius, double thickness, {int segments = 8}) {
+  List<Offset> outline(double w, double h, double r) => [
+    for (final (cx, cy, a0) in [
+      (w - r, h - r, 0.0),
+      (-w + r, h - r, pi / 2),
+      (-w + r, -h + r, pi),
+      (w - r, -h + r, 1.5 * pi),
+    ])
+      for (var i = 0; i <= segments; i++)
+        Offset(cx + r * cos(a0 + i / segments * pi / 2), cy + r * sin(a0 + i / segments * pi / 2)),
+  ];
   final w = size.width / 2, h = size.height / 2, r = min(radius, min(w, h));
-  final pts = <Offset>[];
-  for (final (cx, cy, a0) in [
-    (w - r, h - r, 0.0),
-    (-w + r, h - r, pi / 2),
-    (-w + r, -h + r, pi),
-    (w - r, -h + r, 1.5 * pi),
-  ]) {
-    for (var i = 0; i <= segments; i++) {
-      final a = a0 + i / segments * pi / 2;
-      pts.add(Offset(cx + r * cos(a), cy + r * sin(a)));
-    }
+  final outer = outline(w, h, r), inner = outline(w - thickness, h - thickness, max(0, r - thickness));
+  final positions = <double>[];
+  // Canvas y grows downwards and world y upwards; the shape is symmetric, so only the winding matters.
+  for (var i = 0; i < outer.length; i++) {
+    positions.addAll([outer[i].dx, -outer[i].dy, 0, inner[i].dx, -inner[i].dy, 0]);
   }
-  final positions = <double>[0, 0, 0];
-  for (final p in pts) {
-    // Canvas y grows downwards and world y upwards; the shape is symmetric, so only the winding matters.
-    positions.addAll([p.dx, -p.dy, 0]);
-  }
-  final indices = <int>[];
-  for (var i = 1; i <= pts.length; i++) {
-    final j = i == pts.length ? 1 : i + 1;
-    indices.addAll([0, i, j]); // same winding as the card quad (front-facing for the -Z camera)
+  final n = outer.length, indices = <int>[];
+  for (var i = 0; i < n; i++) {
+    final j = (i + 1) % n;
+    // Same winding as the card quad (front-facing for the -Z camera): inner, outer, next outer; inner, next outer, next inner.
+    indices.addAll([2 * i + 1, 2 * i, 2 * j, 2 * i + 1, 2 * j, 2 * j + 1]);
   }
   return MeshGeometry.fromArrays(
     positions: Float32List.fromList(positions),

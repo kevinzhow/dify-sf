@@ -11,6 +11,7 @@ import 'canvas_input.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
+import 'live_card.dart';
 import '../cards/dify_cards.dart';
 import 'node_card.dart';
 import 'renderer_choice.dart';
@@ -67,6 +68,16 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   CanvasSelection get selection => canvas.selection;
   late final CanvasInput input;
   late final CanvasA11y a11y;
+  late final live = LiveCardLayer(
+    source: canvas.liveCard,
+    graph: graph,
+    // Edges lie over underlays (notes).
+    isTopAt: (n, p) {
+      final top = input.nodeAt(p);
+      return (top == null || top.slot == n.slot) && !(n.layout.underlay && input.edgeAt(p) != null);
+    },
+    claim: (e) => input.claim(e),
+  );
   late CanvasRendererKind kind;
   late CanvasRenderer renderer;
   final _focus = FocusNode(debugLabel: 'canvas');
@@ -124,10 +135,17 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       view: view,
       selection: selection,
       cards: widget.cards,
+      live: live,
       onUnavailable: _fallBackToWidgets,
       onSettled: CanvasDefaults.reportRect ? () => debugPrint('CANVAS_SETTLED') : null,
     ),
-    CanvasRendererKind.widgets => WidgetRenderer(graph: graph, view: view, selection: selection, cards: widget.cards),
+    CanvasRendererKind.widgets => WidgetRenderer(
+      graph: graph,
+      view: view,
+      selection: selection,
+      cards: widget.cards,
+      live: live,
+    ),
   };
 
   /// Flutter Scene could not start (no Flutter GPU): draw with widgets instead.
@@ -251,11 +269,13 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
         }
         return Focus(
           focusNode: _focus,
-          onKeyEvent: input.key,
+          // Keys typed into a live card (the note editor) are not the canvas's.
+          onKeyEvent: (node, e) => node.hasPrimaryFocus ? input.key(node, e) : KeyEventResult.ignored,
           child: MouseRegion(
             onExit: input.exit,
             child: Listener(
               onPointerDown: (e) {
+                if (input.claimed(e)) return;
                 _focus.requestFocus();
                 input.down(e);
               },

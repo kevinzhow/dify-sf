@@ -433,6 +433,8 @@ TextField _field({
     isCollapsed: true,
     border: InputBorder.none,
     contentPadding: padding,
+    // Not the desktop platforms' compact density, which takes 8 px off the box (CSS has no such thing).
+    visualDensity: VisualDensity.standard,
     hintText: placeholder,
     hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
   ),
@@ -764,8 +766,9 @@ typedef DifySegment<T> = ({T value, Widget child, String label});
 
 /// dify-ui's SegmentedControl: `inline-flex gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5`
 /// around radio items (`h-7 rounded-lg border-[0.5px] px-2 py-1 system-sm-medium`; checked: the active background,
-/// border and accent text with shadow-xs). [itemPadding], [textColor] and [checkedTextColor] take call-site
-/// overrides (FormInputTypeSwitch: `px-2.5 py-1.5`, tertiary / secondary text). [tooltip] wraps unchecked items.
+/// border and accent text with shadow-xs). [itemPadding], [textColor], [checkedTextColor] and [bordered] take
+/// call-site overrides (FormInputTypeSwitch: `border-0 px-2.5 py-1.5`, tertiary / secondary text). [tooltip] wraps
+/// unchecked items.
 class DifySegmentedControl<T> extends StatelessWidget {
   const DifySegmentedControl({
     super.key,
@@ -777,6 +780,7 @@ class DifySegmentedControl<T> extends StatelessWidget {
     this.itemPadding = const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     this.textColor = DifyColors.textSecondary,
     this.checkedTextColor = DifyColors.textAccentLightModeOnly,
+    this.bordered = true,
     this.tooltip = false,
   });
 
@@ -787,7 +791,7 @@ class DifySegmentedControl<T> extends StatelessWidget {
   final double height;
   final EdgeInsets itemPadding;
   final Color textColor, checkedTextColor;
-  final bool tooltip;
+  final bool bordered, tooltip;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -829,12 +833,14 @@ class DifySegmentedControl<T> extends StatelessWidget {
                           ? DifyColors.stateBaseHover
                           : null,
                       borderRadius: BorderRadius.circular(DifyRadius.lg),
-                      border: Border.all(
-                        color: checked
-                            ? DifyColors.componentsSegmentedControlItemActiveBorder
-                            : const Color(0x00000000),
-                        width: Css.hairline,
-                      ),
+                      border: bordered
+                          ? Border.all(
+                              color: checked
+                                  ? DifyColors.componentsSegmentedControlItemActiveBorder
+                                  : const Color(0x00000000),
+                              width: Css.hairline,
+                            )
+                          : null,
                       boxShadow: _ring(focused) ?? (checked ? DifyShadows.xs : null),
                     ),
                     child: IconTheme.merge(
@@ -886,15 +892,17 @@ class DifyBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: 20,
     padding: const EdgeInsets.symmetric(horizontal: 5),
-    alignment: Alignment.center,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(DifyRadius.badge),
       border: Border.all(color: DifyColors.dividerDeep),
     ),
-    child: DifyText(
-      capitalize ? cssCapitalize(text) : text,
-      uppercase ? DifyType.system2xsMediumUppercase : DifyType.systemXsMedium,
-      color: DifyColors.textTertiary,
+    child: Center(
+      widthFactor: 1,
+      child: DifyText(
+        capitalize ? cssCapitalize(text) : text,
+        uppercase ? DifyType.system2xsMediumUppercase : DifyType.systemXsMedium,
+        color: DifyColors.textTertiary,
+      ),
     ),
   );
 }

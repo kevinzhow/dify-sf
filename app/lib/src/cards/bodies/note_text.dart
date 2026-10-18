@@ -6,7 +6,7 @@ import '../../design/dify_tokens.g.dart';
 
 /// Lexical's text format bits (TextNode `format`).
 abstract final class NoteFormat {
-  static const bold = 1, italic = 2, strikethrough = 4;
+  static const bold = 1, italic = 2, strikethrough = 4, underline = 8;
 }
 
 /// The character that starts a bullet list item in [NoteText.text] (drawn as the item's disc).

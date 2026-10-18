@@ -94,7 +94,7 @@ class _StartPanelState extends State<_StartPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             StartVarList(readonly: readOnly, list: list, onChange: _config.handleVarListChange),
-            const SizedBox(height: 4),
+            // `mt-1` around the split's `my-2`: the margins collapse to 8 px.
             const PanelSplit(margin: EdgeInsets.symmetric(vertical: 8)),
             if (chat) ...[
               StartVarItem(

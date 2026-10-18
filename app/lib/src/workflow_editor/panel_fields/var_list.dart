@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
+import '../../design/widgets/toast.dart';
 import '../../i18n/dify_i18n.dart';
 import 'controls.dart';
 import 'field.dart';
@@ -99,7 +100,7 @@ class VarList extends StatefulWidget {
     this.isSupportConstantValue = false,
     this.filterVar,
     this.isSupportFileVar = true,
-    this.onError,
+    this.onError = difyToastError,
   });
 
   final List<VarListItem> list;
@@ -426,7 +427,7 @@ class OutputVarList extends StatefulWidget {
     required this.onChange,
     required this.onRemove,
     this.readonly = false,
-    this.onError,
+    this.onError = difyToastError,
   });
 
   /// Output name to VarType.

@@ -416,11 +416,17 @@ class ModelSelectorButton extends StatelessWidget {
         icon,
         SizedBox(width: medium ? 2 : 1),
         Expanded(
-          child: Padding(
-            padding: medium
-                ? const EdgeInsets.symmetric(horizontal: 4, vertical: 3)
-                : const EdgeInsets.symmetric(horizontal: 2),
-            child: TruncatedRow(gap: 4, fillLead: true, lead: name, trail: badge),
+          // As tall as its content (the 22 px badge and `py-0.75` make 28 px in the 24 px row), centred: it may
+          // stand out of the row, as the flex item does.
+          child: OverflowBox(
+            minHeight: 0,
+            maxHeight: double.infinity,
+            child: Padding(
+              padding: medium
+                  ? const EdgeInsets.symmetric(horizontal: 4, vertical: 3)
+                  : const EdgeInsets.symmetric(horizontal: 2),
+              child: TruncatedRow(gap: 4, fillLead: true, lead: name, trail: badge),
+            ),
           ),
         ),
       ],

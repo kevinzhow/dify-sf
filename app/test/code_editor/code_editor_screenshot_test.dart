@@ -30,8 +30,7 @@ void main() {
 
   testWidgets('code editor screenshots', (t) async {
     await useAppFonts();
-    final mono = FontLoader('DejaVu Sans Mono')
-      ..addFont(rootBundle.load('assets/fonts/DejaVuSansMono.ttf'));
+    final mono = FontLoader('DejaVu Sans Mono')..addFont(rootBundle.load('assets/fonts/DejaVuSansMono.ttf'));
     await mono.load();
     t.view.physicalSize = const Size(900, 1000);
     t.view.devicePixelRatio = 2;

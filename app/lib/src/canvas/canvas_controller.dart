@@ -6,6 +6,7 @@ import 'canvas_graph.dart';
 import 'canvas_input.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
+import 'live_card.dart';
 
 /// What the editor around the canvas (Dify's header, toolbars, minimap, menus) sees of the canvas and can do to it:
 /// the view, the selection, the control mode, and React Flow's viewport helpers with React Flow's numbers.
@@ -18,6 +19,9 @@ class CanvasController {
 
   /// The nodes on the canvas (set while a WorkflowCanvas shows this controller).
   CanvasGraph? graph;
+
+  /// The node drawn by a live widget instead of its card (the selected note's editor), if any.
+  final liveCard = ValueNotifier<LiveCard?>(null);
 
   /// React Flow's zoomIn/zoomOut: d3 `scaleBy(1.2)` around the viewport's middle.
   static const zoomStep = 1.2;
@@ -47,5 +51,6 @@ class CanvasController {
     view.dispose();
     selection.dispose();
     controlMode.dispose();
+    liveCard.dispose();
   }
 }

@@ -375,6 +375,9 @@ class _KeyValueInputState extends State<KeyValueInput> {
       focusNode: _focus,
       placeholder: wf('nodes.http.insertVarPlaceholder'),
       isSupportFileVar: w.isSupportFileVar,
+      // InputSupportSelectVar: `min-h-[20px]`, `leading-4.5`.
+      minHeight: 20,
+      lineHeight: 18,
       onChange: (v) {
         if (v == _text) return;
         _draft.touch();
@@ -393,9 +396,11 @@ class _KeyValueInputState extends State<KeyValueInput> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
+              // `px-3 py-1 min-h-8`.
               child: Container(
+                constraints: const BoxConstraints(minHeight: 32),
                 color: _focused ? DifyColors.componentsInputBgActive : null,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: editor,
               ),
             ),

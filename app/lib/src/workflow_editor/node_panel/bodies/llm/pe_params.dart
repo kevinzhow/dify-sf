@@ -6,6 +6,7 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../../../../cards/card_kit.dart' show DifyText;
+import '../../../../design/css_metrics.dart';
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
@@ -48,8 +49,8 @@ List<Json> toolParamsToExtractParams(List<Object?> toolParams, String language) 
       },
 ];
 
-/// `cssCapitalize` for the type labels (CSS `capitalize`).
-String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+/// The type labels (CSS `capitalize`).
+String _cap(String s) => cssCapitalize(s);
 
 // ---- item.tsx ----------------------------------------------------------------------------------------------------
 
@@ -90,43 +91,50 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      const DifyIcon(
-                        'vender/solid/development/variable-02',
-                        size: 14,
-                        color: DifyColors.textAccentSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          '${p['name'] ?? ''}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 20 / 13,
-                            fontWeight: FontWeight.w500,
-                            color: DifyColors.textPrimary,
+                  // `flex justify-between`: the name and type, REQUIRED at the end.
+                  JustifyBetween(
+                    // The name's 19.5 px line (Flutter rounds the paragraph's to 19).
+                    lead: SizedBox(
+                      height: 19.5,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const DifyIcon(
+                            'vender/solid/development/variable-02',
+                            size: 14,
+                            color: DifyColors.textAccentSecondary,
                           ),
-                        ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${p['name'] ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              // `text-[13px]` on the inherited 1.5 line height.
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.5,
+                                fontWeight: FontWeight.w500,
+                                color: DifyColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _cap('${p['type'] ?? ''}'),
+                            style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _cap('${p['type'] ?? ''}'),
-                        style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
-                      ),
-                      const Spacer(),
-                      if (required)
-                        Flexible(
-                          child: Text(
+                    ),
+                    trail: required
+                        ? Text(
                             _w('$_p.addExtractParameterContent.required').toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
-                          ),
-                        ),
-                    ],
+                          )
+                        : const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -223,9 +231,10 @@ class AddExtractParameterButton extends StatelessWidget {
   final void Function(Json param, ParamRename? rename) onSave;
   final VoidCallback? onCancel;
 
+  // Alone in its `<div>`, on that block's text line (see Css.inlineButtonLineGap).
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 4),
+    padding: EdgeInsets.fromLTRB(4, 0, 4, Css.inlineButtonLineGap),
     child: AddIconButton(
       label: _w('$_p.addExtractParameter'),
       onPressed: () => showExtractParameterDialog(context, isAdd: true, onSave: onSave, onCancel: onCancel),

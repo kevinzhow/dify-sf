@@ -551,8 +551,7 @@ class _Pill extends StatelessWidget {
         ),
       );
     }
-    Widget nodeLabel = Row(
-      mainAxisSize: MainAxisSize.min,
+    Widget nodeLabel = ShrinkRow(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 1),
@@ -560,13 +559,11 @@ class _Pill extends StatelessWidget {
               ? const SizedBox(width: 12, height: 12)
               : DifyIcon(varBlockGlyph(nodeType!), size: 12, color: DifyColors.textPrimary),
         ),
-        Flexible(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: _capped(
-              widths.maxNodeNameWidth.toDouble(),
-              DifyText(nodeTitle ?? '', DifyType.systemXsMedium, color: DifyColors.textSecondary),
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: _capped(
+            widths.maxNodeNameWidth.toDouble(),
+            DifyText(nodeTitle ?? '', DifyType.systemXsMedium, color: DifyColors.textSecondary),
           ),
         ),
         const Padding(padding: EdgeInsets.only(right: 2), child: _line3),
@@ -582,42 +579,38 @@ class _Pill extends StatelessWidget {
       );
     }
     return Container(
+      height: double.infinity, // h-full
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
         color: DifyColors.componentsBadgeWhiteToDark,
         borderRadius: BorderRadius.circular(5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: ShrinkRow(
         children: [
-          if (showNodeName) Flexible(child: nodeLabel),
+          if (showNodeName) nodeLabel,
           if (isShowAPart) ...[
             const RemixIcon('more-line', size: 12, color: DifyColors.textSecondary),
             const Padding(padding: EdgeInsets.only(right: 2), child: _line3),
           ],
           if (isLoading) spinner,
           CategoryVarIcon(variables: value, category: category, isException: isException),
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 2),
-              child: _capped(
-                widths.maxVarNameWidth.toDouble(),
-                DifyText(
-                  varName,
-                  DifyType.systemXsMedium,
-                  color: isException ? DifyColors.textWarning : DifyColors.textAccent,
-                ),
+          Padding(
+            padding: const EdgeInsets.only(left: 2),
+            child: _capped(
+              widths.maxVarNameWidth.toDouble(),
+              DifyText(
+                varName,
+                DifyType.systemXsMedium,
+                color: isException ? DifyColors.textWarning : DifyColors.textAccent,
               ),
             ),
           ),
           if (type != null && type!.isNotEmpty)
-            Flexible(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 2),
-                child: _capped(
-                  widths.maxTypeWidth.toDouble(),
-                  DifyText(cssCapitalize(type!), DifyType.systemXsRegular, color: DifyColors.textTertiary),
-                ),
+            Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: _capped(
+                widths.maxTypeWidth.toDouble(),
+                DifyText(cssCapitalize(type!), DifyType.systemXsRegular, color: DifyColors.textTertiary),
               ),
             ),
           if (showErrorIcon)

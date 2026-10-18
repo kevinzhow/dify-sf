@@ -104,41 +104,39 @@ class _FieldState extends State<Field> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    Widget header = _FieldHeaderLayout(
-      children: [
-        SizedBox(
-          height: 24,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: _FieldTitleText(
-                  w.title,
-                  isSubTitle: w.isSubTitle,
-                  required: w.required,
-                  warningDot: w.warningDot,
-                ),
-              ),
-              if (w.tooltip != null && w.tooltip!.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                Infotip(label: w.tooltip!, content: Text(w.tooltip!)),
-              ],
-            ],
-          ),
-        ),
-        Row(
+    Widget header = JustifyBetween(
+      lead: SizedBox(
+        height: 24,
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (w.operations != null) Flexible(child: w.operations!),
-            if (w.supportFold)
-              AnimatedRotation(
-                turns: _fold ? -0.25 : 0,
-                duration: difyTransitionDuration,
-                child: const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+            Flexible(
+              child: _FieldTitleText(
+                w.title,
+                isSubTitle: w.isSubTitle,
+                required: w.required,
+                warningDot: w.warningDot,
               ),
+            ),
+            if (w.tooltip != null && w.tooltip!.isNotEmpty) ...[
+              const SizedBox(width: 4),
+              Infotip(label: w.tooltip!, content: Text(w.tooltip!)),
+            ],
           ],
         ),
-      ],
+      ),
+      trail: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (w.operations != null) Flexible(child: w.operations!),
+          if (w.supportFold)
+            AnimatedRotation(
+              turns: _fold ? -0.25 : 0,
+              duration: difyTransitionDuration,
+              child: const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+            ),
+        ],
+      ),
     );
     if (w.supportFold) {
       header = MouseRegion(
@@ -171,14 +169,24 @@ class _FieldState extends State<Field> {
   }
 }
 
-/// A [Field]'s title row: the title on the left and the operations on the right (`justify-between`), both centred
-/// vertically. The operations keep their natural width and the title takes the rest (it truncates); operations wider
-/// than the whole row shrink to it (they are Flexible) instead of overflowing.
-class _FieldHeaderLayout extends MultiChildRenderObjectWidget {
-  const _FieldHeaderLayout({required super.children});
+/// CSS `flex justify-between items-center` of a [lead] (a [Field]'s title) and a [trail] (its operations): the trail
+/// keeps its natural width at the end and the lead gets the rest (it truncates); a trail wider than the whole row
+/// is given the row's width (a FittedBox in it scales down) instead of overflowing. (A Row of an Expanded and a
+/// Flexible would split the space in halves.)
+///
+/// [leadShare]: the part of the row the lead keeps at least when the trail is too wide (a flex item's min-content,
+/// for a lead that has no natural width of its own).
+class JustifyBetween extends MultiChildRenderObjectWidget {
+  JustifyBetween({super.key, required Widget lead, required Widget trail, this.leadShare = 0})
+    : super(children: [lead, trail]);
+  final double leadShare;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _RenderFieldHeader();
+  RenderObject createRenderObject(BuildContext context) => _RenderFieldHeader(leadShare);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) =>
+      (renderObject as _RenderFieldHeader).leadShare = leadShare;
 }
 
 class _HeaderParentData extends ContainerBoxParentData<RenderBox> {}
@@ -187,6 +195,15 @@ class _RenderFieldHeader extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, _HeaderParentData>,
         RenderBoxContainerDefaultsMixin<RenderBox, _HeaderParentData> {
+  _RenderFieldHeader(this._leadShare);
+
+  double _leadShare;
+  set leadShare(double v) {
+    if (v == _leadShare) return;
+    _leadShare = v;
+    markNeedsLayout();
+  }
+
   @override
   void setupParentData(RenderBox child) {
     if (child.parentData is! _HeaderParentData) child.parentData = _HeaderParentData();
@@ -221,7 +238,7 @@ class _RenderFieldHeader extends RenderBox
     final titleNatural = _title.size.width, opsNatural = _ops.size.width;
     var opsWidth = opsNatural;
     if (width.isFinite && titleNatural + opsNatural > width) {
-      opsWidth = math.min(opsNatural, width);
+      opsWidth = math.min(opsNatural, width * (1 - _leadShare));
       _ops.layout(loose.copyWith(maxWidth: opsWidth), parentUsesSize: true);
       opsWidth = _ops.size.width;
     }
@@ -356,21 +373,16 @@ class _PanelCollapseState extends State<PanelCollapse> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(child: trigger),
-                  ?w.afterTrigger,
-                ],
-              ),
-            ),
-            if (w.actions != null)
-              Flexible(
-                child: Align(alignment: Alignment.centerRight, child: w.actions),
-              ),
-          ],
+        JustifyBetween(
+          leadShare: 0.5,
+          lead: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: trigger),
+              ?w.afterTrigger,
+            ],
+          ),
+          trail: w.actions ?? const SizedBox.shrink(),
         ),
         if (_isOpen) w.child,
       ],
@@ -917,4 +929,79 @@ class ToggleExpandBtn extends StatelessWidget {
     onPressed: () => onExpandChange(!isExpand),
     icon: RemixIcon(isExpand ? 'collapse-diagonal-line' : 'expand-diagonal-line', size: 16),
   );
+}
+
+/// CSS `flex items-center` of items that keep their natural widths (`shrink-0` caps such as `max-w-*` are the
+/// children's own), shrinking in proportion to those widths only when together they are wider than the row
+/// (`flex-shrink: 1`). Flutter's Flexible would share the row's free space out by flex factor instead, cutting
+/// items that would fit.
+class ShrinkRow extends MultiChildRenderObjectWidget {
+  const ShrinkRow({super.key, required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderShrinkRow();
+}
+
+class _ShrinkRowParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderShrinkRow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ShrinkRowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ShrinkRowParentData> {
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ShrinkRowParentData) child.parentData = _ShrinkRowParentData();
+  }
+
+  Iterable<RenderBox> get _children sync* {
+    for (var c = firstChild; c != null; c = childAfter(c)) {
+      yield c;
+    }
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _children.fold(0.0, (w, c) => w + c.getMaxIntrinsicWidth(height));
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      _children.fold(0.0, (h, c) => math.max(h, c.getMaxIntrinsicHeight(width)));
+
+  @override
+  double computeMinIntrinsicHeight(double width) => computeMaxIntrinsicHeight(width);
+
+  @override
+  void performLayout() {
+    final loose = BoxConstraints(maxHeight: constraints.maxHeight);
+    final natural = [
+      for (final c in _children) (c..layout(loose, parentUsesSize: true)).size.width,
+    ];
+    final total = natural.fold(0.0, (a, b) => a + b), max = constraints.maxWidth;
+    if (total > max && total > 0) {
+      final scale = max / total;
+      var i = 0;
+      for (final c in _children) {
+        c.layout(loose.copyWith(maxWidth: natural[i++] * scale), parentUsesSize: true);
+      }
+    }
+    var x = 0.0, height = 0.0;
+    for (final c in _children) {
+      height = math.max(height, c.size.height);
+    }
+    height = constraints.constrainHeight(height);
+    for (final c in _children) {
+      (c.parentData! as _ShrinkRowParentData).offset = Offset(x, (height - c.size.height) / 2);
+      x += c.size.width;
+    }
+    size = constraints.constrain(Size(x, height));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }

@@ -1,6 +1,6 @@
 /// Dify's note node (note-node/**): the sticky note on the canvas. The canvas draws notes read-only (NoteCard, for
-/// both renderers); the selected note is edited in place by [NoteNodeOverlay], a live [NoteNode] over its card at
-/// the card's position and scale, with the toolbar above it and the resize handle at its corner.
+/// both renderers); the selected note is edited in place: [LiveNoteBinding] has the canvas draw a live [NoteNode]
+/// in its place (in the notes' layer), with the toolbar above it and the resize handle at its corner.
 library;
 
 import 'dart:async';
@@ -8,9 +8,12 @@ import 'dart:math';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
+import '../../canvas/canvas_graph.dart' show CanvasNode;
+import '../../canvas/live_card.dart';
 import '../../cards/bodies/note_body.dart';
 import '../../cards/bodies/note_text.dart';
 import '../../design/dify_tokens.g.dart';
@@ -117,12 +120,15 @@ class NoteActions {
 
 /// note-node/index.tsx NoteNode: the note card with its editor (editable unless temporary), and while [selected]
 /// (not temporary) the toolbar 41 px above it and the resize handle at its bottom-right corner. Laid out at the
-/// note's size; the toolbar and link popup are drawn in the overlay, following the card's transform.
+/// note's size; the toolbar and the editor's link popup are drawn outside it and take pointer events there (an
+/// [OverflowHitStack]), so on the canvas they belong to the note's layer like Dify's (under later nodes and edges,
+/// clipped to the canvas).
 class NoteNode extends StatefulWidget {
   const NoteNode({
     super.key,
     required this.data,
     this.selected = false,
+    this.hovered = false,
     this.onThemeChange,
     this.onEditorChange,
     this.onShowAuthorChange,
@@ -138,7 +144,7 @@ class NoteNode extends StatefulWidget {
   });
 
   final NoteData data;
-  final bool selected;
+  final bool selected, hovered;
   final ValueChanged<NoteTheme>? onThemeChange;
   final ValueChanged<NoteText>? onEditorChange;
   final ValueChanged<bool>? onShowAuthorChange;
@@ -157,7 +163,6 @@ class NoteNode extends StatefulWidget {
 }
 
 class _NoteNodeState extends State<NoteNode> {
-  final _toolbar = OverlayPortalController()..show();
   Size? _resizeFrom;
   Offset _drag = Offset.zero;
 
@@ -174,110 +179,89 @@ class _NoteNodeState extends State<NoteNode> {
   Widget build(BuildContext context) {
     final data = widget.data;
     final editable = !data.temp;
-    final editorRect = noteEditorRect(data);
-    final showToolbar = widget.selected && editable;
     return NoteEditorProvider(
       value: data.text,
       editable: editable,
       openUrl: widget.openUrl,
       onInvalidUrl: widget.onInvalidUrl,
-      child: Builder(
-        builder: (context) => OverlayPortal.overlayChildLayoutBuilder(
-          controller: _toolbar,
-          overlayChildBuilder: (_, info) {
-            if (!showToolbar) return const SizedBox.shrink();
-            // `absolute -top-10.25 left-1/2 -translate-x-1/2`, scaled with the card.
-            final card = MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
-            final scale = info.childSize.width == 0 ? 1.0 : card.width / info.childSize.width;
-            return Stack(
-              children: [
-                Positioned(
-                  left: card.center.dx,
-                  top: card.top - 41 * scale,
-                  child: Transform.scale(
-                    scale: scale,
-                    alignment: Alignment.topLeft,
-                    child: FractionalTranslation(
-                      translation: const Offset(-0.5, 0),
-                      child: NoteEditorScope(
-                        controller: NoteEditorScope.of(context).controller,
-                        focusNode: NoteEditorScope.of(context).focusNode,
-                        child: NoteEditorToolbar(
-                          theme: data.theme,
-                          onThemeChange: (t) => widget.onThemeChange?.call(t),
-                          onCopy: () => widget.onCopy?.call(),
-                          onDuplicate: () => widget.onDuplicate?.call(),
-                          onDelete: () => widget.onDelete?.call(),
-                          showAuthor: data.showAuthor,
-                          onShowAuthorChange: (v) => widget.onShowAuthorChange?.call(v),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-          child: SizedBox.fromSize(
-            size: data.size,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IgnorePointer(
-                  child: NoteCardView(data: data, selected: widget.selected, shadow: false, editor: const SizedBox()),
-                ),
-                Positioned.fromRect(
-                  rect: editorRect,
-                  child: NoteEditor(
-                    placeholder: DifyI18n.tr('workflow', 'nodes.note.editor.placeholder'),
-                    onChange: widget.onEditorChange,
-                    setHistoryShortcutsEnabled: widget.setHistoryShortcutsEnabled,
-                    initialTap: widget.initialTap,
-                  ),
-                ),
-                if (editable)
-                  Positioned.fromRect(
-                    rect: noteResizeButton(data.size),
-                    child: GestureDetector(
-                      onPanStart: (_) {
-                        _resizeFrom = data.size;
-                        _drag = Offset.zero;
-                      },
-                      onPanUpdate: _resize,
-                      onPanEnd: (_) {
-                        _resizeFrom = null;
-                        widget.onResizeEnd?.call();
-                      },
-                      child: DifyPressable(
-                        semanticLabel: DifyI18n.tr('common', 'resize.node'),
-                        builder: (context, hovered, focused) => Container(
-                          decoration: BoxDecoration(
-                            color: hovered ? DifyColors.stateBaseHover : null,
-                            borderRadius: BorderRadius.circular(DifyRadius.md),
-                          ),
-                          alignment: Alignment.center,
-                          child: const NoteResizeGlyph(),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+      child: OverflowHitStack(
+        children: [
+          IgnorePointer(
+            child: NoteCardView(
+              data: data,
+              selected: widget.selected,
+              hovered: widget.hovered,
+              editor: const SizedBox(),
             ),
           ),
-        ),
+          Positioned.fromRect(
+            rect: noteEditorRect(data),
+            child: NoteEditor(
+              placeholder: DifyI18n.tr('workflow', 'nodes.note.editor.placeholder'),
+              onChange: widget.onEditorChange,
+              setHistoryShortcutsEnabled: widget.setHistoryShortcutsEnabled,
+              initialTap: widget.initialTap,
+            ),
+          ),
+          if (editable)
+            Positioned.fromRect(
+              rect: noteResizeButton(data.size),
+              child: GestureDetector(
+                onPanStart: (_) {
+                  _resizeFrom = data.size;
+                  _drag = Offset.zero;
+                },
+                onPanUpdate: _resize,
+                onPanEnd: (_) {
+                  _resizeFrom = null;
+                  widget.onResizeEnd?.call();
+                },
+                child: DifyPressable(
+                  semanticLabel: DifyI18n.tr('common', 'resize.node'),
+                  builder: (context, hovered, focused) => Container(
+                    decoration: BoxDecoration(
+                      color: hovered ? DifyColors.stateBaseHover : null,
+                      borderRadius: BorderRadius.circular(DifyRadius.md),
+                    ),
+                    alignment: Alignment.center,
+                    child: const NoteResizeGlyph(),
+                  ),
+                ),
+              ),
+            ),
+          // `absolute -top-10.25 left-1/2 z-40 -translate-x-1/2`.
+          if (widget.selected && editable)
+            Positioned(
+              left: data.width / 2,
+              top: -41,
+              child: FractionalTranslation(
+                translation: const Offset(-0.5, 0),
+                child: NoteEditorToolbar(
+                  theme: data.theme,
+                  onThemeChange: (t) => widget.onThemeChange?.call(t),
+                  onCopy: () => widget.onCopy?.call(),
+                  onDuplicate: () => widget.onDuplicate?.call(),
+                  onDelete: () => widget.onDelete?.call(),
+                  showAuthor: data.showAuthor,
+                  onShowAuthorChange: (v) => widget.onShowAuthorChange?.call(v),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-/// The selected note, live over its card on the canvas: shown while exactly one note is selected and the workflow
-/// is editable, at the card's position and the view's scale, following drags of it. Its text is written to the
-/// document one op per typing pause (700 ms, on blur and when it closes), against the version the typing began on;
-/// what others write while nothing is pending comes in.
+/// The selected note, edited in place: while exactly one note is selected and the workflow is editable, the canvas
+/// draws it as a live [NoteNode] ([CanvasController.liveCard]) in the note's own layer, under the edges and the
+/// other nodes and clipped to the canvas, as Dify draws its notes (`.react-flow__node-custom-note { z-index: -1 }`).
+/// Its text is written to the document one op per typing pause (700 ms, on blur and when it closes), against the
+/// version the typing began on; what others write while nothing is pending comes in.
 ///
-/// Put it over the canvas, the same size (the editor's overlay slot), inside the editor's store scope.
-class NoteNodeOverlay extends StatefulWidget {
-  const NoteNodeOverlay({
+/// Put it inside the editor's store scope, next to the canvas; it draws nothing itself.
+class LiveNoteBinding extends StatefulWidget {
+  const LiveNoteBinding({
     super.key,
     required this.controller,
     required this.canvas,
@@ -291,14 +275,16 @@ class NoteNodeOverlay extends StatefulWidget {
   final Duration debounce;
 
   @override
-  State<NoteNodeOverlay> createState() => _NoteNodeOverlayState();
+  State<LiveNoteBinding> createState() => _LiveNoteBindingState();
 }
 
-class _NoteNodeOverlayState extends State<NoteNodeOverlay> {
+class _LiveNoteBindingState extends State<LiveNoteBinding> {
   late final WorkflowStore _store = WorkflowStoreScope.of(context);
-
-  /// Repaints the live note while its card is dragged (the canvas moves cards without telling anyone).
-  final _moved = ValueNotifier(0);
+  late final Listenable _changes = Listenable.merge([
+    widget.canvas.selection,
+    widget.controller,
+    _actions.readOnlyChanges,
+  ]);
   ({Offset at, DateTime time})? _lastDown;
 
   @override
@@ -308,15 +294,24 @@ class _NoteNodeOverlayState extends State<NoteNodeOverlay> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _changes
+      ..removeListener(_sync)
+      ..addListener(_sync);
+    // Not while building: the canvas listens.
+    SchedulerBinding.instance.addPostFrameCallback((_) => mounted ? _sync() : null);
+  }
+
+  @override
   void dispose() {
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_pointer);
-    _moved.dispose();
+    _changes.removeListener(_sync);
     super.dispose();
   }
 
   void _pointer(PointerEvent e) {
     if (e is PointerDownEvent) _lastDown = (at: e.position, time: DateTime.now());
-    if (e is PointerMoveEvent && (widget.canvas.graph?.dragging.isNotEmpty ?? false)) _moved.value++;
   }
 
   WorkflowActions get _actions => WorkflowActions(
@@ -335,38 +330,31 @@ class _NoteNodeOverlayState extends State<NoteNodeOverlay> {
     return n != null && isNoteCard(n.node.value) ? n.id : null;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final a = _actions;
-    return ListenableBuilder(
-      listenable: Listenable.merge([widget.canvas.selection, widget.controller, a.readOnlyChanges]),
-      builder: (context, _) {
-        final id = _selectedNote();
-        if (id == null) return const SizedBox.shrink();
-        final down = _lastDown;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            _LiveNote(
-              key: ValueKey(id),
-              nodeId: id,
-              overlay: this,
-              // The click that selected the note (a moment ago) also places the caret.
-              initialTap: down != null && DateTime.now().difference(down.time) < const Duration(milliseconds: 500)
-                  ? down.at
-                  : null,
-            ),
-          ],
-        );
-      },
-    );
+  void _sync() {
+    final id = _selectedNote(), live = widget.canvas.liveCard;
+    if (live.value?.nodeId == id) return;
+    live.value = id == null
+        ? null
+        : LiveCard(
+            nodeId: id,
+            builder: (context, node) => _LiveNote(key: ValueKey(id), node: node, binding: this, initialTap: _recentTap),
+          );
   }
+
+  /// The click that selected the note (a moment ago) also places the caret (read when the live note first builds).
+  Offset? get _recentTap {
+    final down = _lastDown;
+    return down != null && DateTime.now().difference(down.time) < const Duration(milliseconds: 500) ? down.at : null;
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _LiveNote extends StatefulWidget {
-  const _LiveNote({super.key, required this.nodeId, required this.overlay, this.initialTap});
-  final String nodeId;
-  final _NoteNodeOverlayState overlay;
+  const _LiveNote({super.key, required this.node, required this.binding, this.initialTap});
+  final CanvasNode node;
+  final _LiveNoteBindingState binding;
   final Offset? initialTap;
 
   @override
@@ -374,9 +362,10 @@ class _LiveNote extends StatefulWidget {
 }
 
 class _LiveNoteState extends State<_LiveNote> {
-  _NoteNodeOverlayState get o => widget.overlay;
+  _LiveNoteBindingState get o => widget.binding;
   EditorController get c => o.widget.controller;
-  late final actions = NoteActions(c, widget.nodeId, preferences: WorkflowStoreScope.preferencesOf(context));
+  String get id => widget.node.id;
+  late final actions = NoteActions(c, id, preferences: WorkflowStoreScope.preferencesOf(context));
 
   Timer? _timer, _resizeTimer;
   int? _draftBase;
@@ -405,13 +394,13 @@ class _LiveNoteState extends State<_LiveNote> {
     final base = _draftBase, t = _latest;
     _draftBase = null;
     if (base == null || t == null) return;
-    final n = c.doc.nodes[widget.nodeId];
+    final n = c.doc.nodes[id];
     if (n != null && NoteData.of(n).text != t.toLexical()) actions.editorChange(t, base: base);
   }
 
   void _resize(Size s) {
     if (_resizing == null) {
-      c.undo.begin(HistoryEvent.nodeResize, nodeId: widget.nodeId);
+      c.undo.begin(HistoryEvent.nodeResize, nodeId: id);
       // Others see the size change as it is dragged, a few times a second.
       _resizeTimer = Timer.periodic(const Duration(milliseconds: 125), (_) {
         if (_resizing != null) actions.writeSize(_resizing!);
@@ -432,8 +421,7 @@ class _LiveNoteState extends State<_LiveNote> {
 
   @override
   Widget build(BuildContext context) {
-    final n = c.doc.nodes[widget.nodeId];
-    final canvas = o.widget.canvas;
+    final n = c.doc.nodes[id];
     if (n == null) return const SizedBox.shrink();
     var data = NoteData.of(n);
     if (_draftBase == null) _value = data.text;
@@ -448,37 +436,29 @@ class _LiveNoteState extends State<_LiveNote> {
     );
     final wa = o._actions;
     final store = o._store;
-    final note = NoteNode(
-      data: data,
-      selected: true,
-      initialTap: widget.initialTap,
-      onThemeChange: actions.themeChange,
-      onShowAuthorChange: actions.showAuthorChange,
-      onEditorChange: _changed,
-      setHistoryShortcutsEnabled: (enabled) {
-        store.setHistoryShortcutsEnabled(enabled);
-        if (enabled) _flush();
-      },
-      onCopy: () => wa.copyNodes(widget.nodeId),
-      onDuplicate: () => unawaited(wa.duplicateNodes(widget.nodeId)),
-      onDelete: () => wa.deleteNode(widget.nodeId),
-      onResize: _resize,
-      onResizeEnd: _endResize,
-      openUrl: o.widget.options.openUrl,
-    );
-    return ListenableBuilder(
-      listenable: Listenable.merge([canvas.view, o._moved]),
-      builder: (context, child) {
-        final card = canvas.graph?[widget.nodeId];
-        if (card == null) return const SizedBox.shrink();
-        final at = canvas.view.toScreen(card.rect.topLeft);
-        return Positioned(
-          left: at.dx,
-          top: at.dy,
-          child: Transform.scale(scale: canvas.view.scale, alignment: Alignment.topLeft, child: child),
-        );
-      },
-      child: note,
+    return ValueListenableBuilder(
+      valueListenable: widget.node.hovered,
+      builder: (context, hovered, _) => NoteNode(
+        data: data,
+        selected: true,
+        hovered: hovered,
+        initialTap: widget.initialTap,
+        onThemeChange: actions.themeChange,
+        onShowAuthorChange: actions.showAuthorChange,
+        onEditorChange: _changed,
+        setHistoryShortcutsEnabled: (enabled) {
+          store.setHistoryShortcutsEnabled(enabled);
+          if (enabled) _flush();
+        },
+        onCopy: () => wa.copyNodes(id),
+        onDuplicate: () => unawaited(wa.duplicateNodes(id)),
+        onDelete: () => wa.deleteNode(id),
+        onResize: _resize,
+        onResizeEnd: _endResize,
+        openUrl: o.widget.options.openUrl,
+        // link-editor-plugin/hooks.ts useLink: toast.error(invalidUrl).
+        onInvalidUrl: () => toast.error(DifyI18n.tr('workflow', 'nodes.note.editor.invalidUrl')),
+      ),
     );
   }
 }

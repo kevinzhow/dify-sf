@@ -105,7 +105,8 @@ void main() {
         expect((dataOf(h, 'list-node')['order_by']! as Map)['value'], 'asc');
 
         await panel.openOutputs(t);
-        expect(find.text('Array[String]'), findsOneWidget);
+        // The output variable, and the input picker's type (`capitalize`: Chrome capitalises after `[` too).
+        expect(find.text('Array[String]'), findsNWidgets(2));
         expect(find.text('String'), findsNWidgets(2));
         await h.dispose(t);
       });

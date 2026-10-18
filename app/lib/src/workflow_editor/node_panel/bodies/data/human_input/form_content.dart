@@ -180,11 +180,22 @@ class _FormContentState extends State<FormContent> {
     return KeyEventResult.ignored;
   }
 
+  /// What run [i] shows of its text: Dify's editor puts each input field in a paragraph of its own, so the line
+  /// break that ends the paragraph before a field ([trail]) and the one that ends the field's paragraph ([lead], at
+  /// the start of the run after it) are no lines of their own.
+  ({String lead, String shown, String trail}) _shown(int i) {
+    final text = _split.texts[i];
+    final lead = i > 0 && text.startsWith('\n') ? '\n' : '';
+    final rest = text.substring(lead.length);
+    final trail = i < _split.names.length && rest.endsWith('\n') ? '\n' : '';
+    return (lead: lead, shown: rest.substring(0, rest.length - trail.length), trail: trail);
+  }
+
   /// The shortcut popup: a new input field inserted at the caret of run [i].
   Future<void> _insertAt(int i) async {
-    final c = _controllers[i];
+    final c = _controllers[i], s = _shown(i);
     final sel = c.selection.isValid ? c.selection : TextSelection.collapsed(offset: c.text.length);
-    final before = c.serialize(0, sel.start), after = c.serialize(sel.end, c.text.length);
+    final before = s.lead + c.serialize(0, sel.start), after = c.serialize(sel.end, c.text.length) + s.trail;
     final texts = [..._split.texts], names = [..._split.names];
     final unavailable = [for (final x in widget.formInputs) inputNameOf(x)];
     final payload = await showInputFieldDialog(context, scope: widget.scope, unavailable: unavailable);
@@ -232,24 +243,34 @@ class _FormContentState extends State<FormContent> {
     final empty = w.value.isEmpty && _split.texts.length == 1 && _split.texts.first.isEmpty;
     final runs = <Widget>[];
     for (var i = 0; i < _split.texts.length; i++) {
-      runs.add(
-        DifyPromptEditor(
-          key: ValueKey('form-content-$_gen-$i'),
-          value: _split.texts[i],
-          controller: _controllers[i],
-          focusNode: _focuses[i],
-          editable: !w.readonly,
-          minHeight: i == 0 ? 80 : 24,
-          semanticLabel: i == 0 ? hi('formContent.title') : null,
-          placeholder: i == 0 && empty ? hi('formContent.placeholder') : '',
-          onChange: (v) => _edited(i, v),
-          workflowVariableBlock: WorkflowVariableBlockConfig(
-            show: true,
-            variables: w.scope.vars,
-            workflowNodesMap: w.nodesMap,
-          ),
+      final s = _shown(i);
+      Widget run = DifyPromptEditor(
+        key: ValueKey('form-content-$_gen-$i'),
+        value: s.shown,
+        controller: _controllers[i],
+        focusNode: _focuses[i],
+        editable: !w.readonly,
+        minHeight: i == 0 ? 80 : 24,
+        semanticLabel: i == 0 ? hi('formContent.title') : null,
+        placeholder: i == 0 && empty ? hi('formContent.placeholder') : '',
+        onChange: (v) => _edited(i, '${s.lead}$v${s.trail}'),
+        workflowVariableBlock: WorkflowVariableBlockConfig(
+          show: true,
+          variables: w.scope.vars,
+          workflowNodesMap: w.nodesMap,
         ),
       );
+      // Nothing after the last field: it ends the content, no empty line under it until the run is edited (a tap
+      // below the content goes there).
+      if (i > 0 && i == _split.names.length && _split.texts[i].isEmpty && !_focuses[i].hasFocus) {
+        run = SizedBox(
+          height: 0,
+          child: ClipRect(
+            child: OverflowBox(alignment: Alignment.topCenter, child: run),
+          ),
+        );
+      }
+      runs.add(run);
       if (i < _split.names.length) {
         final name = _split.names[i];
         runs.add(
@@ -302,7 +323,11 @@ class _FormContentState extends State<FormContent> {
         setState(() => _focused = f);
         if (!f) _commit();
       },
-      child: IgnorePointer(ignoring: w.readonly, child: box),
+      child: IgnorePointer(
+        ignoring: w.readonly,
+        // A tap below the content (not on a run) edits its end.
+        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _focuses.last.requestFocus, child: box),
+      ),
     );
   }
 }
@@ -464,20 +489,36 @@ class _InputFieldChipState extends State<InputFieldChip> {
               ],
             ),
           ),
+          // `absolute -top-3 left-2.5` from inside the 1.5 px border; only a `bottom-1 h-[1.5px]` strip behind the
+          // name hides the border line.
           Positioned(
-            top: -12,
-            left: 10,
-            child: Container(
-              color: DifyColors.backgroundDefaultSubtle,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 2,
-                children: [
-                  const DifyIcon('vender/workflow/variable-x', size: 12, color: DifyColors.textAccentLightModeOnly),
-                  DifyText(w.varName, DifyType.systemXsMedium, color: DifyColors.textAccentLightModeOnly),
-                ],
-              ),
+            top: -12 + 1.5,
+            left: 10 + 1.5,
+            child: Stack(
+              children: [
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 4,
+                  height: 1.5,
+                  child: ColoredBox(color: DifyColors.backgroundDefaultSubtle),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 2,
+                    children: [
+                      const DifyIcon(
+                        'vender/workflow/variable-x',
+                        size: 12,
+                        color: DifyColors.textAccentLightModeOnly,
+                      ),
+                      DifyText(w.varName, DifyType.systemXsMedium, color: DifyColors.textAccentLightModeOnly),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],

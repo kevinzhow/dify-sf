@@ -908,8 +908,9 @@ class _ErrorHandleOnPanelState extends State<ErrorHandleOnPanel> {
         collapsed: _collapsed,
         onCollapse: (v) => setState(() => _collapsed = v),
         afterTrigger: Infotip(label: tip, content: Text(tip)),
+        // `pr-4` block around the inline trigger: its text line puts the button 1.5 px down (Chrome at 2x).
         actions: Padding(
-          padding: const EdgeInsets.only(right: 16),
+          padding: const EdgeInsets.only(right: 16, top: 1.5),
           child: ErrorHandleTypeSelector(
             value: ErrorHandleType.of(strategy) ?? ErrorHandleType.none,
             onSelected: _select,

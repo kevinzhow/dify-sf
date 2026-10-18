@@ -32,6 +32,12 @@ class CanvasViewState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Canvas to screen, as one transform (the renderers' layer transform).
+  Matrix4 get matrix => Matrix4.identity()
+    ..translateByDouble(viewport.width / 2, viewport.height / 2, 0, 1)
+    ..scaleByDouble(_scale, _scale, 1, 1)
+    ..translateByDouble(-_center.dx, -_center.dy, 0, 1);
+
   /// The canvas rectangle on screen.
   Rect get visible =>
       Rect.fromCenter(center: _center, width: viewport.width / _scale, height: viewport.height / _scale);

@@ -463,7 +463,8 @@ class _ClassListState extends State<ClassList> {
           ),
         if (!w.readonly && !_collapsed)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            // The list's margin from the panel's `space-y-4` (16 px) and Add's own `mt-2` collapse to 16 px.
+            padding: const EdgeInsets.only(top: 16),
             child: AddButton(text: _w('$_p.addClass'), onPressed: _add),
           ),
       ],

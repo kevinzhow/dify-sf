@@ -203,9 +203,10 @@ class _BranchContainer extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: b.isFailBranch ? Border.all(color: DifyColors.stateWarningHoverAlt, width: Css.hairline) : null,
       ),
+      // `space-y-0.5`: 2 px above each child but the first; not above Add, whose wrapper (the block selector's,
+      // `display: contents`) has no box to take the margin.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 2,
         children: [
           if (b.name.isNotEmpty)
             Padding(
@@ -216,7 +217,11 @@ class _BranchContainer extends StatelessWidget {
                 color: b.isFailBranch ? DifyColors.textWarning : DifyColors.textTertiary,
               ),
             ),
-          for (final n in b.nextNodes) NextStepItem(node: n, actions: actions, readonly: readonly),
+          for (final (i, n) in b.nextNodes.indexed)
+            Padding(
+              padding: EdgeInsets.only(top: i > 0 || b.name.isNotEmpty ? 2 : 0),
+              child: NextStepItem(node: n, actions: actions, readonly: readonly),
+            ),
           _AddButton(
             label: _wf(
               b.isFailBranch
@@ -366,70 +371,44 @@ class _AddButtonState extends State<_AddButton> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onPressed == null ? null : () => widget.onPressed!(context),
-        child: CustomPaint(
-          foregroundPainter: const _DashedRRect(DifyColors.dividerRegular, DifyRadius.lg),
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: _hovered && widget.onPressed != null ? DifyColors.stateBaseHover : null,
-              borderRadius: BorderRadius.circular(DifyRadius.lg),
-            ),
-            child: Row(
-              spacing: 6,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: DifyColors.backgroundDefaultDimmed,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: const Center(child: RemixIcon('add-line', size: 12, color: DifyColors.textPlaceholder)),
+        child: Container(
+          height: 36,
+          // px-2 inside the 1 px dashed border.
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: _hovered && widget.onPressed != null ? DifyColors.stateBaseHover : null,
+            borderRadius: BorderRadius.circular(DifyRadius.lg),
+          ),
+          foregroundDecoration: const CssDashedBorder(color: DifyColors.dividerRegular, radius: DifyRadius.lg),
+          child: Row(
+            spacing: 6,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: DifyColors.backgroundDefaultDimmed,
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                Flexible(
-                  child: Text(
-                    widget.label.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      height: 16 / 12,
-                      fontWeight: FontWeight.w600,
-                      color: DifyColors.textPlaceholder,
-                    ),
+                child: const Center(child: RemixIcon('add-line', size: 12, color: DifyColors.textPlaceholder)),
+              ),
+              Flexible(
+                child: Text(
+                  widget.label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontWeight: FontWeight.w600,
+                    color: DifyColors.textPlaceholder,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     ),
   );
-}
-
-/// A 1 px dashed rounded border.
-class _DashedRRect extends CustomPainter {
-  const _DashedRRect(this.color, this.radius);
-  final Color color;
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = (Offset.zero & size).deflate(0.5);
-    final path = Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius - 0.5)));
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    for (final m in path.computeMetrics()) {
-      for (var t = 0.0; t < m.length; t += 6) {
-        canvas.drawPath(m.extractPath(t, t + 3), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedRRect old) => old.color != color || old.radius != radius;
 }

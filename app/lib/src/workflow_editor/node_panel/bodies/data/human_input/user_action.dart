@@ -202,6 +202,7 @@ class _ButtonStyleDropdownState extends State<ButtonStyleDropdown> {
           child: IgnorePointer(
             child: DifyButton(
               size: DifyButtonSize.small,
+              paddingX: 4,
               variant: buttonVariantOf(w.value),
               onPressed: () {},
               child: const RemixIcon('font-size', size: 16),

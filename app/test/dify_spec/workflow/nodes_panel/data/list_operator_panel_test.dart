@@ -103,7 +103,8 @@ void main() {
       expect(t.widget<InputNumberWithSlider>(find.byType(InputNumberWithSlider)).value, 10);
       expect(t.widgetList<SubVariablePicker>(find.byType(SubVariablePicker)).last.value, 'size');
       await openOutputs(t);
-      expect(find.text('Array[File]'), findsOneWidget);
+      // The output variable, and the input picker's type (`capitalize`: Chrome capitalises after `[` too).
+      expect(find.text('Array[File]'), findsNWidgets(2));
       expect(find.text('workflow.nodes.listFilter.outputVars.result'), findsOneWidget);
       expect(find.text('File'), findsNWidgets(2));
       expect(find.text('workflow.nodes.listFilter.outputVars.first_record'), findsOneWidget);

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'cards/card_kit.dart' show cardFontFamily;
 
 import 'demo/demo_backend.dart';
+import 'design/widgets/toast.dart';
 import 'editor/editor_controller.dart';
 import 'editor/editor_page.dart';
 import 'launch_options.dart';
@@ -242,6 +243,17 @@ Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, Launch
     fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
   ),
   home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
+  // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog.
+  builder: (context, child) => Stack(
+    fit: StackFit.expand,
+    children: [
+      child!,
+      DefaultTextStyle(
+        style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
+        child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
+      ),
+    ],
+  ),
 );
 
 class _ImportDslDialog extends StatefulWidget {

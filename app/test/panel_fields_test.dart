@@ -263,7 +263,7 @@ void main() {
       await render(t, VarTypePicker(value: 'string', onChanged: chosen.add));
       await t.tap(find.text('String'));
       await t.pumpAndSettle();
-      await t.tap(find.text('Array[number]'));
+      await t.tap(find.text('Array[Number]'));
       await t.pumpAndSettle();
       expect(chosen.last, 'array[number]');
     });

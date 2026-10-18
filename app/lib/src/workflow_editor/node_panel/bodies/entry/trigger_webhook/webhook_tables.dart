@@ -177,6 +177,7 @@ class GenericTable extends StatelessWidget {
       );
     } else {
       final primary = _primaryKey;
+      final rows = displayRows(data, emptyRowData, readonly);
       body = Container(
         decoration: BoxDecoration(
           border: Border.all(color: DifyColors.dividerRegular),
@@ -205,9 +206,10 @@ class GenericTable extends StatelessWidget {
                     ],
                   ),
                 ),
-              for (final (i, r) in displayRows(data, emptyRowData, readonly).indexed)
+              for (final (i, r) in rows.indexed)
                 _TableRow(
                   key: ValueKey('row-$i'),
+                  last: i == rows.length - 1,
                   hasContent: _present(r.row[primary]),
                   onDelete: !readonly && r.index != null && _present(r.row[primary]) ? () => _remove(r.index!) : null,
                   children: [
@@ -233,11 +235,12 @@ class GenericTable extends StatelessWidget {
   }
 }
 
-/// A row: `border-t border-divider-regular`, at least 28 px; hovered `bg-state-destructive-hover` when it has a
-/// primary key (else `bg-state-base-hover`) and showing the "Delete row" bin on the right.
+/// A row: `border-t border-divider-regular`, at least 28 px, and but for the [last] the rows' `divide-y
+/// divide-divider-subtle` line below; hovered `bg-state-destructive-hover` when it has a primary key (else
+/// `bg-state-base-hover`) and showing the "Delete row" bin on the right.
 class _TableRow extends StatefulWidget {
-  const _TableRow({super.key, required this.hasContent, required this.children, this.onDelete});
-  final bool hasContent;
+  const _TableRow({super.key, required this.last, required this.hasContent, required this.children, this.onDelete});
+  final bool last, hasContent;
   final List<Widget> children;
   final VoidCallback? onDelete;
 
@@ -256,7 +259,10 @@ class _TableRowState extends State<_TableRow> {
       constraints: const BoxConstraints(minHeight: 28),
       decoration: BoxDecoration(
         color: _hovered ? (widget.hasContent ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
-        border: const Border(top: BorderSide(color: DifyColors.dividerRegular)),
+        border: Border(
+          top: const BorderSide(color: DifyColors.dividerRegular),
+          bottom: widget.last ? BorderSide.none : const BorderSide(color: DifyColors.dividerSubtle),
+        ),
       ),
       child: Stack(
         children: [
@@ -338,22 +344,26 @@ class _InputCellState extends State<_InputCell> {
     return Semantics(
       label: widget.label,
       textField: true,
-      child: SizedBox(
-        height: 28,
-        child: Center(
-          child: TextField(
-            controller: _controller,
-            focusNode: _focus,
-            enabled: !widget.disabled,
-            style: style,
-            cursorColor: const Color(0xFF155EEF), // caret-primary-600
-            cursorWidth: 1,
-            inputFormatters: widget.varName ? [varNameFormatter] : null,
-            onChanged: widget.onChanged,
-            onSubmitted: (_) => _focus.unfocus(),
-            decoration: InputDecoration.collapsed(
-              hintText: widget.placeholder,
-              hintStyle: style.copyWith(color: DifyColors.textQuaternary),
+      // The `h-6` input stands on the cell's text line, half a pixel down.
+      child: Padding(
+        padding: const EdgeInsets.only(top: 0.5, bottom: 3.5),
+        child: SizedBox(
+          height: 24,
+          child: Center(
+            child: TextField(
+              controller: _controller,
+              focusNode: _focus,
+              enabled: !widget.disabled,
+              style: style,
+              cursorColor: const Color(0xFF155EEF), // caret-primary-600
+              cursorWidth: 1,
+              inputFormatters: widget.varName ? [varNameFormatter] : null,
+              onChanged: widget.onChanged,
+              onSubmitted: (_) => _focus.unfocus(),
+              decoration: InputDecoration.collapsed(
+                hintText: widget.placeholder,
+                hintStyle: style.copyWith(color: DifyColors.textQuaternary),
+              ),
             ),
           ),
         ),
@@ -374,10 +384,11 @@ class _SelectCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = column.options.where((o) => o.value == value).firstOrNull;
+    // The `h-6` trigger at the cell's top.
     return SizedBox(
       height: 28,
       child: Align(
-        alignment: Alignment.centerLeft,
+        alignment: Alignment.topLeft,
         child: DifyDropdownMenu(
           placement: DifyPlacement.bottomStart,
           sideOffset: 4,
