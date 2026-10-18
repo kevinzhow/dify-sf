@@ -334,6 +334,8 @@ public struct World: Sendable {
             case .localInvalid(_, let reason):
                 rec.stats.bump("edit.localInvalid")
                 rec.localRefusals.append((id, reason.name))
+            case .editingForbidden:
+                rec.violations.append("\(id): a POST was refused with 403, but the simulator has no accounts")
             }
         }
         if !slots[i].client!.violations.isEmpty {

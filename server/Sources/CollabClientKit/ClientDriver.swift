@@ -166,6 +166,15 @@ public actor ClientDriver {
     public var violations: [String] { client.violations }
     public var debug: [String] { client.debugOutbox }
 
+    /// A POST was refused with `403 forbidden` (protocol 1.8) and `allowEdits` was not called since.
+    public var editsForbidden: Bool { client.editsForbidden }
+
+    /// The account may edit again: accept edits and resume sending (see `Client.allowEdits`).
+    public func allowEdits() {
+        let reqs = client.allowEdits(now: now())
+        afterMutation(reqs)
+    }
+
     /// Tell the client the network is (probably) back.
     public func networkAvailable() {
         let reqs = client.networkAvailable(now: now())
@@ -235,8 +244,22 @@ public actor ClientDriver {
         stats.postFailures += 1
         if case TransportError.status(let code, let body) = error, code == 400 || code == 403 {
             FileHandle.standardError.write(Data("client \(id): server rejected the request (\(code)): \(body)\n".utf8))
+            if code == 403, Self.errorCode(body) == "forbidden" {
+                // Protocol 1.8: final for these ops (read-only role, or another account's client id); not retried.
+                afterMutation(client.submitForbidden(now: now()))
+                return
+            }
         }
         client.submitFailed(now: now())
+    }
+
+    /// The `code` of an error body `{"error":{"code","message"}}`.
+    static func errorCode(_ body: String) -> String? {
+        struct Body: Decodable {
+            struct Inner: Decodable { var code: String }
+            var error: Inner
+        }
+        return try? JSONDecoder().decode(Body.self, from: Data(body.utf8)).error.code
     }
 
     private func didReceive(_ ev: StreamEvent, generation: Int) {

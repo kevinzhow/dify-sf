@@ -19,6 +19,10 @@ public enum ClientEvent: Hashable, Sendable {
     case conflictDetected(cseq: Int, op: Op, reason: RejectReason)
     /// The edit was refused locally (e.g. the node is already gone); it never became an op.
     case localInvalid(op: Op, reason: RejectReason)
+    /// Protocol 1.8: a `POST /ops` was refused with `403 forbidden` (the account may no longer edit). Once per streak.
+    /// Nothing is sent and new edits are refused locally (`.forbidden`) until `allowEdits`; the ops still waiting are
+    /// finished as `.rejected(.forbidden)` once a stream opened after the refusal is ready (`submitForbidden`).
+    case editingForbidden
 }
 
 public struct JournalEntry: Hashable, Codable, Sendable {
@@ -114,6 +118,13 @@ public struct Client: Sendable {
     private var inFlightSince: Int?
     private var submitBlockedUntil = 0
     private var submitFailures = 0
+    // Refused submissions (protocol 1.8, `403 forbidden` on `POST /ops`)
+    /// A POST was refused with `403 forbidden` and `allowEdits` was not called since: nothing is sent, edits are refused.
+    public private(set) var editsForbidden = false
+    private var forbiddenCatchUp = false
+    /// The next POST carries `floor` (the oldest cseq still to be sent) so the server stops waiting for cseqs finished
+    /// locally without it ever handling them. Cleared once a response shows `high` at or past it.
+    private var pendingFloor: Int?
 
     private var outbox: [PendingOp] = []
     private var events: [ClientEvent] = []
@@ -165,7 +176,7 @@ public struct Client: Sendable {
     /// Human-readable state of the outbox, for diagnostics.
     public var debugOutbox: [String] {
         outbox.map { "cseq \($0.cseq) op=\($0.op == nil ? "abandoned" : "set") acked=\(String(describing: $0.ackedSeq)) outcome=\(String(describing: $0.outcome))" }
-            + ["lastSeq=\(lastSeq) hasState=\(hasState) streamActive=\(streamActive) ready=\(streamReady) inFlight=\(String(describing: inFlightSince)) blockedUntil=\(submitBlockedUntil)"]
+            + ["lastSeq=\(lastSeq) hasState=\(hasState) streamActive=\(streamActive) ready=\(streamReady) inFlight=\(String(describing: inFlightSince)) blockedUntil=\(submitBlockedUntil) forbidden=\(editsForbidden) floor=\(String(describing: pendingFloor))"]
     }
     public var isQuiescent: Bool { outbox.isEmpty && hasState && streamActive && streamReady }
 
@@ -177,6 +188,10 @@ public struct Client: Sendable {
     /// should pass the version the draft STARTED from, so that anything written in the meantime is detected as a
     /// conflict. Bases need not be monotone across successive ops of one client.
     public mutating func edit(_ op: Op, base requested: Int? = nil, now: Int) -> EditResult {
+        guard !editsForbidden else {
+            events.append(.localInvalid(op: op, reason: .forbidden))
+            return EditResult(cseq: nil, requests: [])
+        }
         guard hasState else {
             events.append(.localInvalid(op: op, reason: .invalid("not synced yet")))
             return EditResult(cseq: nil, requests: [])
@@ -239,6 +254,46 @@ public struct Client: Sendable {
         submitBlockedUntil = now + backoffDelay(attempts: submitFailures)
     }
 
+    /// The POST was refused with `403 forbidden` (protocol 1.8: a read-only role, e.g. after a role change, or another
+    /// account's client id). Final, not a transport failure: nothing is resent or sent until `allowEdits`, and new edits
+    /// are refused locally. Emits `.editingForbidden` (once per streak). The ops still waiting for a verdict are finished
+    /// as `.rejected(.forbidden)` (abandoned ones as `.lost`) once a stream opened after the refusal is `ready`: an
+    /// earlier copy of the POST (one that timed out) may have been committed before the refusal, and only a stream opened
+    /// afterwards is sure to show that. Returns the request that reopens the stream.
+    public mutating func submitForbidden(now: Int) -> [ClientRequest] {
+        inFlightSince = nil
+        submitFailures = 0
+        submitBlockedUntil = 0
+        if !editsForbidden {
+            editsForbidden = true
+            events.append(.editingForbidden)
+        }
+        guard outbox.contains(where: { $0.outcome == nil && $0.ackedSeq == nil }) else { return [] }
+        forbiddenCatchUp = true
+        if streamActive { closeStream(now: now, backoff: false) }
+        return [openStream(now: now)]
+    }
+
+    /// The account may edit again (the app re-read its role): edits are accepted and sending resumes. Ops not finished
+    /// yet are sent again; if some were finished as `.forbidden`, the next POST (at once, possibly without ops) carries
+    /// `floor`, so the server never waits for, nor later accepts, those cseqs.
+    public mutating func allowEdits(now: Int) -> [ClientRequest] {
+        guard editsForbidden else { return [] }
+        editsForbidden = false
+        forbiddenCatchUp = false
+        return flushIfIdle(now: now)
+    }
+
+    /// The stream opened after a `403` is caught up: whatever of ours the server committed before the refusal has been
+    /// seen; everything else still waiting for a verdict is not saved.
+    private mutating func finishForbidden() {
+        forbiddenCatchUp = false
+        for i in outbox.indices where outbox[i].outcome == nil && outbox[i].ackedSeq == nil {
+            outbox[i].outcome = outbox[i].op == nil ? .lost : .rejected(.forbidden)
+        }
+        pendingFloor = nextCseq  // the server never handled these cseqs: tell it not to wait for them
+    }
+
     private mutating func closeStream(now: Int, backoff: Bool) {
         streamActive = false
         streamReady = false
@@ -268,7 +323,7 @@ public struct Client: Sendable {
     // MARK: - Submitting
 
     private mutating func flushIfIdle(now: Int) -> [ClientRequest] {
-        guard inFlightSince == nil, now >= submitBlockedUntil else { return [] }
+        guard !editsForbidden, inFlightSince == nil, now >= submitBlockedUntil else { return [] }
         let abandoned = outbox.contains { $0.op == nil && $0.outcome == nil }
         var batch: [IncomingOp] = []
         for p in outbox where p.sendable {
@@ -277,18 +332,21 @@ public struct Client: Sendable {
             sentOnce.insert(p.cseq)
             if batch.count >= config.maxBatch { break }
         }
-        guard abandoned || !batch.isEmpty else { return [] }
+        guard abandoned || !batch.isEmpty || pendingFloor != nil else { return [] }
         var req = SubmitRequest(client: id, ops: batch)
-        if abandoned {
-            // We lost the content of some in-flight ops: tell the server to stop waiting for them and
-            // report what it did with them.
-            req.floor = outbox.first(where: \.sendable)?.cseq ?? nextCseq
-            req.resolveFrom = outbox.first?.cseq
+        if abandoned || pendingFloor != nil {
+            // We lost the content of some in-flight ops, or finished some without the server handling them (refused
+            // with `403`): tell the server to stop waiting for them ...
+            req.floor = firstUnsent
         }
+        if abandoned { req.resolveFrom = outbox.first?.cseq }  // ... and to report what it did with the lost ones
         inFlightSince = now
         return [.submit(req)]
     }
     private var sentOnce: Set<Int> = []
+
+    /// The oldest cseq this client will still send.
+    private var firstUnsent: Int { outbox.first(where: \.sendable)?.cseq ?? nextCseq }
 
     // MARK: - Server -> client
 
@@ -302,6 +360,7 @@ public struct Client: Sendable {
         case .ready:
             streamReady = true
             reconnectAttempts = 0
+            if forbiddenCatchUp { finishForbidden() }
         case .snapshot(let s):
             adopt(s)
         case .commit(let e):
@@ -334,10 +393,14 @@ public struct Client: Sendable {
                 if seq <= lastSeq && hasState { settle(cseq, .committed(seq: seq)) } else { outbox[i].ackedSeq = seq }
             case .reject(let cseq, let reason):
                 settle(cseq, .rejected(reason))
-            case .gap:
-                break  // resend from the front on the next flush (nothing was recorded)
+            case .gap(_, let expected):
+                // Resend from the front on the next flush (nothing was recorded). If the server waits for cseqs we
+                // finished without it ever handling them (refused with `403`, then a restart before a `floor` got
+                // through), say so.
+                if expected < firstUnsent { pendingFloor = firstUnsent }
             }
         }
+        if let f = pendingFloor, response.high >= f - 1 { pendingFloor = nil }
         if let known = response.known {
             for (cseq, seq) in known.committed.sorted(by: { $0.key < $1.key }) {
                 guard let i = outbox.firstIndex(where: { $0.cseq == cseq }), outbox[i].outcome == nil else { continue }

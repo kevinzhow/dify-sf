@@ -99,7 +99,7 @@ public enum Worker {
                     case .rejected(let cseq, _, let r): ledger.append(LedgerLine(k: .rejected, c: id, cseq: cseq, t: wall(), reason: r))
                     case .lost(let cseq): ledger.append(LedgerLine(k: .lost, c: id, cseq: cseq, t: wall()))
                     case .conflictDetected(let cseq, _, _): ledger.append(LedgerLine(k: .early, c: id, cseq: cseq, t: wall()))
-                    case .localInvalid: break
+                    case .localInvalid, .editingForbidden: break  // the harness edits as the workspace owner
                     }
                 },
                 applied: { first, last, wallMs in recorder.record(first: first, last: last, wall: wallMs) })

@@ -9,6 +9,9 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* Clarification, no version change: **a `403 forbidden` on `POST /ops` is final** (section 9, "Refused submissions"): the
+  client finishes the waiting ops as rejected with the local reason `forbidden` (not saved, dropped from the journal),
+  stops sending until its account may edit again, and then sends `floor` first. The server is unchanged.
 * 1.8 (**breaking: every client must sign in; old clients get `401`**): **accounts** (email + password, Dify 1.17.1's
   community edition: one workspace per server). Server and clients of this repository are updated together; there is no
   compatibility mode for clients older than 1.8.
@@ -398,7 +401,7 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 400 | `invalid_password`, `invalid_token`, `invalid_role`, `cannot_operate_self` | Accounts (1.8): a password that breaks the rule or a wrong current password; an unknown, used or expired activation token; a role that cannot be given; a member action on oneself. | Tell the user. |
 | 401 | `unauthorized` | 1.8: no, unknown, expired or revoked access token (or refresh token at `/auth/refresh`). | Refresh once and repeat; if that fails, sign out. |
 | 401 | `invalid_credentials` | 1.8, login: unknown email or wrong password (one answer for both). | Tell the user. |
-| 403 | `forbidden` | 1.8: the role does not allow it (writes by `normal`/`dataset_operator`, member management or `include_secret` by non-privileged), a client id of another account, the owner as target, a removed member signing in. | Tell the user; do not retry. |
+| 403 | `forbidden` | 1.8: the role does not allow it (writes by `normal`/`dataset_operator`, member management or `include_secret` by non-privileged), a client id of another account, the owner as target, a removed member signing in. | Tell the user; do not retry. On `POST /ops`: section 9, "Refused submissions". |
 | 403 | `account_banned` | 1.8, login: the account is banned. | Tell the user. |
 | 403 | `not_author` | A comment or reply edited, moved or deleted by someone other than its author (comments). | Tell the user; do not retry. |
 | 404 | `not_found` | Unknown document (or comment, reply). | `PUT` it (if creation is intended) or give up. |
@@ -794,6 +797,9 @@ anywhere before). Differences:
 | `notCommitted` | none | The cseq was handled (abandoned below a `floor`) but never committed. |
 | `clientIdInUse` | none | This `(client, cseq)` was already used for a *different* op: another process shares your client id. Nothing was applied. Stop using this id (section 9). |
 
+`forbidden` (1.8) is not a server reason: clients finish ops whose `POST /ops` was refused with `403 forbidden` as rejected
+with this local reason (section 9, "Refused submissions").
+
 `restoreNode` (1.6) uses `invalid`, `nodeExists` (the node is not deleted, e.g. restored already), `nodeNotFound` (no such node
 ever), `notDeleter` (someone else deleted it) and `conflict` (a field the restore would rewrite in another node).
 A `conflict` whose `field` is `{"k":"config","path":[]}` names a restore: the stale op's node was restored after its `base`.
@@ -833,8 +839,27 @@ finished as rejected: remove it from the view, tell the user (with the op, so th
 sends it with every request. On a `401 unauthorized` from any request (a POST, the stream, the comments, ...) it refreshes once
 (`POST /v1/auth/refresh`, one refresh at a time even when several requests fail together) and repeats the request with the new
 token; if the refresh is refused, the session is over: sign the user out (keep the journal: the same account may resume it
-after signing in again). A `401` is not a transport failure to back off from, and a `403 forbidden` on `POST /ops` (read-only
-role, or a client id of another account) is final for that batch: do not resend it, tell the user.
+after signing in again). A `401` is not a transport failure to back off from, and a `403 forbidden` on `POST /ops` is not
+either: see "Refused submissions".
+
+**Refused submissions (1.8).** `403 forbidden` on `POST /ops` (the account's role cannot edit, typically because it was changed
+while the editor is open; or the client id belongs to another account) refuses the whole batch and applies nothing. It is
+final, not a transport failure:
+* Do not resend the batch and send no other ops; refuse new edits locally (reason `forbidden`, like any `localInvalid`) until
+  the client learns that it may edit again. Tell the user once ("You don't have permission to edit this workflow - your changes
+  were not saved") and show the editor read-only.
+* Finish every op that still waits for a verdict (not acked) as **`rejected` with the local reason `forbidden`**
+  (`{"type":"forbidden"}`; the server never sends it as a per-op reason): not saved, removed from the view and from the journal,
+  so a restart does not resend it. First open a new stream and wait for its `ready`: an earlier copy of the same ops (a POST
+  that timed out) may have been committed before the refusal, and only a stream opened after the refusal is sure to deliver
+  that commit. Ops it shows committed are `committed`; an op a snapshot listed in `committed` is committed (it cannot be
+  re-sent to verify it); an op whose content was lost is `lost`. Outcomes stay in cseq order, as always.
+* Re-read the account (`GET /v1/account`) to learn its role; while the role cannot edit, re-read it now and then (the reference
+  app: every 30 s and when its window comes back). When it can edit again, resume. The server never handled the cseqs finished
+  as `forbidden` (its `high` is below them), so the next POST, sent at once (with `"ops": []` if there is nothing else to send),
+  carries `floor` = the oldest cseq the client will still send; a late copy of a refused op is then answered `notCommitted`.
+* A client that restarted before such a `floor` got through cannot know it from its journal: when the server answers `gap`
+  with an `expected` below the oldest cseq the client will still send, the client sends `floor` = that cseq with the batch.
 
 **Stream handling.** Open the stream with `Last-Event-ID = lastSeq` (omit if no state) and `client`, `from = oldest unresolved cseq`,
 `proto` = the protocol version you implement (1.8).

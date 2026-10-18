@@ -227,7 +227,7 @@ extension RejectReason: Codable {
             try c.encode(n, forKey: .node)
             try c.encode(by, forKey: .by)
         case .invalid(let m): try c.encode(m, forKey: .message)
-        case .notCommitted, .clientIdInUse: break
+        case .notCommitted, .clientIdInUse, .forbidden: break
         }
     }
 
@@ -253,6 +253,7 @@ extension RejectReason: Codable {
         case "invalid": self = .invalid(try c.decode(String.self, forKey: .message))
         case "notCommitted": self = .notCommitted
         case "clientIdInUse": self = .clientIdInUse
+        case "forbidden": self = .forbidden
         case let other: throw bad(.init(codingPath: c.codingPath, debugDescription: "unknown reject type \(other)"))
         }
     }

@@ -150,6 +150,10 @@ public enum RejectReason: Error, Hashable, Sendable {
     case clientIdInUse
     /// Duplicate of a cseq the server handled but never committed (abandoned below a client's `floor`).
     case notCommitted
+    /// Protocol 1.8, a local reason (never a per-op reject from the server): the `POST /ops` carrying the op was refused as
+    /// a whole with `403 forbidden` (a read-only role, e.g. after a role change, or another account's client id). Nothing
+    /// was applied; the client finishes the op as rejected (not saved). docs/protocol.md section 9, "Refused submissions".
+    case forbidden
 
     /// Reasons that are certain to repeat on the server, so a client may warn the user early.
     public var isStaleBased: Bool {
@@ -177,6 +181,7 @@ public enum RejectReason: Error, Hashable, Sendable {
         case .invalid: return "invalid"
         case .clientIdInUse: return "clientIdInUse"
         case .notCommitted: return "notCommitted"
+        case .forbidden: return "forbidden"
         }
     }
 }

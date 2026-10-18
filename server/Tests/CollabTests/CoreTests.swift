@@ -545,7 +545,7 @@ struct WireTests {
             .conflict(Conflict(node: "n", field: .title, seq: 3, by: "c", byName: "Bo")),
             .nodeDeleted("n"), .nodeNotFound("n"), .nodeExists("n"), .edgeNotFound("e"), .edgeExists("e"), .duplicateEdge("e"),
             .danglingReference("n"), .itemNotFound("i"), .itemDeleted("i"), .itemExists("i"), .invalid("why"), .notCommitted, .clientIdInUse,
-            .notDeleter("n", by: "c"),
+            .notDeleter("n", by: "c"), .forbidden,
         ]
         for r in reasons { try roundTrip(r) }
     }
@@ -778,5 +778,64 @@ struct ClientTests {
         _ = c.receive(.snapshot(SnapshotEvent(seq: 9, doc: Document(), committed: [2: 5])), generation: o.generation, now: 1)
         _ = c.receive(SubmitResponse(head: 9, high: 3, results: [], known: KnownOutcomes(committed: [2: 5])), now: 2)
         #expect(c.drainEvents() == [.committed(cseq: 2, seq: 5), .lost(cseq: 3)])
+    }
+
+    private func submits(_ reqs: [ClientRequest]) -> [SubmitRequest] {
+        reqs.compactMap { if case .submit(let s) = $0 { return s }; return nil }
+    }
+
+    /// Protocol 1.8: a `403 forbidden` on `POST /ops` is final: no retry, the ops come back `.rejected(.forbidden)` once a
+    /// stream opened after the refusal is ready, the journal drops them, edits are refused; `allowEdits` resumes with a
+    /// `floor`.
+    @Test func forbiddenSubmitRejectsTheOutstandingOpsOnceAndStopsSending() {
+        var c = joined()
+        #expect(submits(c.edit(set("a", ["p"], "1"), now: 2).requests).count == 1)
+        #expect(c.edit(set("a", ["q"], "2"), now: 3).requests.isEmpty)
+        let reopen = c.submitForbidden(now: 4)
+        guard case .openStream(let o)? = reopen.first else { Issue.record("expected a reopened stream"); return }
+        #expect(c.drainEvents() == [.editingForbidden] && c.editsForbidden)
+        for t in stride(from: 5, to: 2000, by: 3) { #expect(submits(c.tick(now: t)).isEmpty) }
+        #expect(submits(c.networkAvailable(now: 2000)).isEmpty)  // reopens the stream, sends nothing
+        #expect(c.edit(set("a", ["p"], "3"), now: 2000).cseq == nil)
+        #expect(c.drainEvents() == [.localInvalid(op: set("a", ["p"], "3"), reason: .forbidden)])
+        let g = c.generation
+        #expect(g >= o.generation)
+        _ = c.receive(.ready(head: 0), generation: g, now: 2001)
+        let events = c.drainEvents()
+        #expect(events == [.rejected(cseq: 1, op: set("a", ["p"], "1"), reason: .forbidden),
+                           .rejected(cseq: 2, op: set("a", ["q"], "2"), reason: .forbidden)])
+        #expect(c.unresolvedCount == 0 && c.durable.journal.isEmpty && c.durable.unresolvedFrom == 3)
+        #expect(c.view.nodes["a"]?.config["p"] == nil)
+        _ = c.receive(.ready(head: 0), generation: g, now: 2002)
+        #expect(c.drainEvents().isEmpty)
+        let floor = submits(c.allowEdits(now: 2003))
+        #expect(floor.count == 1 && floor.first?.floor == 3 && floor.first?.ops.isEmpty == true && floor.first?.resolveFrom == nil)
+        _ = c.receive(SubmitResponse(head: 0, high: 2, results: []), now: 2004)
+        let next = submits(c.edit(set("a", ["p"], "4"), now: 2005).requests)
+        #expect(next.first?.floor == nil && next.first?.ops.map(\.cseq) == [3])
+    }
+
+    @Test func forbiddenSubmitKeepsWhatAnEarlierCopyCommitted() {
+        var c = joined()
+        _ = c.edit(set("a", ["p"], "1"), now: 2)
+        c.submitFailed(now: 3)
+        #expect(submits(c.tick(now: 3 + ClientConfig().retransmitAfter + ClientConfig().reconnectMax)).first?.ops.map(\.cseq) == [1])
+        guard case .openStream(let o)? = c.submitForbidden(now: 100).first else { Issue.record("expected reopen"); return }
+        _ = c.receive(.commit(LogEntry(seq: 1, client: "me", cseq: 1, base: 0, op: set("a", ["p"], "1"))), generation: o.generation, now: 101)
+        _ = c.receive(.ready(head: 1), generation: o.generation, now: 102)
+        #expect(c.drainEvents() == [.editingForbidden, .committed(cseq: 1, seq: 1)])
+    }
+
+    @Test func gapForCseqsFinishedLocallyIsHealedWithAFloor() {
+        var c = Client(restoring: ClientDurable(id: "me", nextCseq: 3, unresolvedFrom: 3, journal: []), journaled: true)
+        guard case .openStream(let o)? = c.tick(now: 0).first else { Issue.record("no open"); return }
+        _ = c.receive(.snapshot(SnapshotEvent(seq: 0, doc: Document(nodes: [node("a")]))), generation: o.generation, now: 1)
+        _ = c.receive(.ready(head: 0), generation: o.generation, now: 1)
+        #expect(submits(c.edit(set("a", ["p"], "x"), now: 2).requests).first?.floor == nil)
+        let healed = submits(c.receive(SubmitResponse(head: 0, high: 0, results: [.gap(cseq: 3, expected: 1)]), now: 3))
+        #expect(healed.first?.floor == 3 && healed.first?.ops.map(\.cseq) == [3])
+        var s = Sequencer(initial: Document(nodes: [node("a")]))
+        let r = s.process(healed[0], clientHigh: 0, known: KnownOutcomes()).response
+        #expect(r.results == [.ack(cseq: 3, seq: 1)] && r.high == 3)
     }
 }
