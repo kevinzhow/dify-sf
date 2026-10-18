@@ -1103,9 +1103,8 @@ features:
   area: node-iteration
   title: 'Iteration container card: children, start node, progress, parallel badge'
   dify: [web/app/components/workflow/nodes/iteration/node.tsx, web/app/components/workflow/nodes/iteration-start]
-  status: partial
-  reason: The candidate start preview, the in-container Add Node button (shown while only the start node is inside) and the parallel-mode warning toast are not ported yet.
-  evidence: ['spec:web/app/components/workflow/nodes/iteration', 'spec:web/app/components/workflow/nodes/iteration-start', visual:canvas-iteration]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/iteration', 'spec:web/app/components/workflow/nodes/iteration-start', app/test/workflow_editor/iteration_card_controls_test.dart, visual:canvas-iteration]
   ours: [app/lib/src/cards/bodies/container_bodies.dart]
 - id: node-iteration.panel
   area: node-iteration

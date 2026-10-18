@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
 import '../node_body.dart';
+import 'entry_bodies.dart' show ContainerStartNodeDumb;
 
 /// Iteration and Loop (nodes/iteration/node.tsx, nodes/loop/node.tsx): the card is the area that holds the child
 /// nodes, sized by the node's `width`/`height` (kept in `_dify_node`). The body (`grow px-1 pb-1`) is a rounded
@@ -49,7 +50,14 @@ class ContainerBody extends NodeBody {
       height: height(ctx) - 4,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(DifyRadius.xxl),
-        child: CustomPaint(painter: _NestedDots(ctx.viewOrigin)),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(painter: _NestedDots(ctx.viewOrigin)),
+            if (ctx['_isCandidate'] == const VBool(true))
+              const Align(alignment: Alignment.topLeft, child: ContainerStartNodeDumb()),
+          ],
+        ),
       ),
     ),
   );

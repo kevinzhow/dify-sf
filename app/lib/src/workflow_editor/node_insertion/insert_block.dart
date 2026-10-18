@@ -7,6 +7,9 @@ library;
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../canvas/canvas_graph.dart';
+import '../../design/widgets/toast.dart' show toast;
+import '../../i18n/dify_i18n.dart';
 import '../../design/widgets/widgets.dart' show DifyPlacement;
 import '../../editor/editor_controller.dart';
 import '../../ids.dart';
@@ -143,6 +146,16 @@ extension NodeInsertion on WorkflowActions {
   void _apply(GraphChange? change) {
     if (change == null) return;
     applyGraphChangeTo(controller, change);
+    final added = doc.nodes[change.nodeId];
+    final parentId = added == null ? null : CanvasGraph.parentOf(added);
+    final parent = parentId == null ? null : doc.nodes[parentId];
+    if (added != null &&
+        const {'answer', 'tool', 'assigner'}.contains(added.type) &&
+        parent?.type == 'iteration' &&
+        parent!.config['is_parallel'] == const VBool(true) &&
+        canvas.parallelWarnings.add(parent.id)) {
+      toast.warning(DifyI18n.tr('workflow', 'nodes.iteration.answerNodeWarningDesc'));
+    }
     final selected = change.selectNodeId;
     if (selected != null) {
       selectNode(selected);

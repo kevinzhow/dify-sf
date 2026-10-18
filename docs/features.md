@@ -42,7 +42,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: Variable Aggregator](#node-aggregator) | 1 | 1 |  |  |  | 2 |
 | [Node: Variable Assigner](#node-assigner) | 1 |  |  |  |  | 1 |
 | [Node: Tool](#node-tool) | 1 | 2 |  |  |  | 3 |
-| [Node: Iteration](#node-iteration) | 1 | 1 |  |  |  | 2 |
+| [Node: Iteration](#node-iteration) | 2 |  |  |  |  | 2 |
 | [Node: Loop & Exit Loop](#node-loop) | 2 |  |  |  |  | 2 |
 | [Node: Doc Extractor](#node-doc-extractor) | 1 |  |  |  |  | 1 |
 | [Node: List Operator](#node-list-operator) | 1 |  |  |  |  | 1 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **143** | **43** | **40** | **11** | **10** | **247** |
+| **Total** | **144** | **42** | **40** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -375,7 +375,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Iteration container card: children, start node, progress, parallel badge | partial | The candidate start preview, the in-container Add Node button (shown while only the start node is inside) and the parallel-mode warning toast are not ported yet. | spec `workflow/nodes/iteration`, spec `workflow/nodes/iteration-start`, visual `canvas-iteration` |
+| Iteration container card: children, start node, progress, parallel badge | ported |  | spec `workflow/nodes/iteration`, spec `workflow/nodes/iteration-start`, `app/test/workflow_editor/iteration_card_controls_test.dart`, visual `canvas-iteration` |
 | Iteration panel: input / output variables, parallel mode, error handling, flatten output | ported |  | spec `workflow/nodes/iteration`, visual `panel-iteration` |
 
 <a id="node-loop"></a>

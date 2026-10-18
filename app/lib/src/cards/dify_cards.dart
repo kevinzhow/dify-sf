@@ -16,6 +16,7 @@ import 'bodies/note_body.dart';
 import 'card_chrome.dart';
 import 'card_kit.dart';
 import 'node_body.dart';
+import '../workflow_editor/canvas_plus/iteration_add_block.dart';
 import 'node_extras.dart';
 import 'node_helpers.dart';
 
@@ -28,6 +29,18 @@ class DifyCards extends CardSpec {
 
   @override
   List<({Rect rect, Widget child})> controls(BuildContext context, CanvasNode node, CanvasGraph graph) {
+    if (node.type == 'iteration') {
+      final children = graph.nodes.where((n) => n.parentId == node.id).toList();
+      final start = children.where((n) => n.type == 'iteration-start').firstOrNull;
+      if (children.length == 1 && start != null) {
+        return [
+          (
+            rect: Rect.fromLTWH(node.rect.left + 1 + 4 + 56, node.rect.top + 1 + header + 28, 210, 32),
+            child: IterationAddBlock(startNodeId: start.id),
+          ),
+        ];
+      }
+    }
     if (!hasCopyId(node.node.value)) return const [];
     final content = node.node.value.config['provider_id'];
     return [

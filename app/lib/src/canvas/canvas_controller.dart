@@ -15,6 +15,9 @@ class CanvasController {
 
   final view = CanvasViewState();
   final visualChanges = ChangeNotifier();
+
+  /// Iteration warnings already shown in this editor, never part of the shared document.
+  final parallelWarnings = <String>{};
   final selection = CanvasSelection();
   final ValueNotifier<ControlMode> controlMode;
 
