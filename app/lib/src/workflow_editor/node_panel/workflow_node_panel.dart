@@ -22,8 +22,9 @@ import '../code_editor/code_editor.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
 import '../panel_fields/panel_fields.dart';
+import '../run/run_scope.dart';
+import '../run/ui/node_run_ui.dart';
 import '../store/store.dart';
-import 'last_run.dart';
 import 'node_panel_bodies.dart';
 import 'resize_handle.dart';
 import 'title_description_input.dart';
@@ -135,7 +136,14 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     final p = store.pendingSingleRun.value;
     if (p == null || p.nodeId != widget.node.id) return;
     store.setPendingSingleRun();
-    (p.action == SingleRunAction.run ? widget.onSingleRun : widget.onStopSingleRun)?.call(p.nodeId);
+    final handler = p.action == SingleRunAction.run ? widget.onSingleRun : widget.onStopSingleRun;
+    if (handler != null) return handler(p.nodeId);
+    // The editor's run host (use-last-run.ts handleSingleRun / handleStop).
+    if (p.action == SingleRunAction.run) {
+      handleNodeSingleRun(context, widget.node, widget.actions.doc);
+    } else {
+      WorkflowRunScope.maybeOf(context)?.singleRunOf(p.nodeId).handleStop();
+    }
   }
 
   // ----- width (helpers.tsx; updateNodePanelWidth) -----
@@ -192,11 +200,13 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _header(),
+          // Run this step / Stop follows the node's single run (local run state).
+          ValueListenableBuilder(valueListenable: store.nodeRunData, builder: (context, _, _) => _header()),
           Expanded(
             child: switch (_tab) {
               NodePanelTab.settings => SingleChildScrollView(child: _settings(context)),
-              NodePanelTab.lastRun => LastRun(
+              NodePanelTab.lastRun => NodeLastRun(
+                nodeId: widget.node.id,
                 canSingleRun: canRunBySingle(widget.node.type, isChildNode: parentIdOf(widget.node) != null),
                 onSingleRun: () => widget.actions.runStep(widget.node.id),
               ),
@@ -213,7 +223,14 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
         border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
         boxShadow: DifyShadows.lg,
       ),
-      child: panel,
+      // The single-run form covers the panel while it is open (before-run-form/panel-wrap.tsx).
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          panel,
+          NodeSingleRunOverlay(node: widget.node, doc: widget.actions.doc),
+        ],
+      ),
     );
     return ListenableBuilder(
       listenable: _widthInputs,

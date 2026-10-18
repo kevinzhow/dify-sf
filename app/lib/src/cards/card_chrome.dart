@@ -254,11 +254,23 @@ class _DataSourceTab extends StatelessWidget {
   );
 }
 
-/// BlockIcon md (block-icon.tsx): 24 px tile, 8 px radius, shadow-md, the type's colour, a 16 px glyph. The start
-/// placeholder is a dashed tile with the glyph at 30 %.
+/// block-icon.tsx sizes: xs 16 px tile (5 px radius, shadow-xs, 12 px glyph), sm 20 px (6 px, shadow-xs, 14 px),
+/// md 24 px (8 px, shadow-md, 16 px).
+enum BlockIconSize {
+  xs(16, 5, 12),
+  sm(20, DifyRadius.md, 14),
+  md(24, DifyRadius.lg, 16);
+
+  const BlockIconSize(this.box, this.radius, this.glyph);
+  final double box, radius, glyph;
+}
+
+/// BlockIcon md (block-icon.tsx): 24 px tile, 8 px radius, shadow-md, the type's colour, a 16 px glyph ([size] picks
+/// Dify's smaller ones). The start placeholder is a dashed tile with the glyph at 30 %.
 class BlockIcon extends StatelessWidget {
-  const BlockIcon({super.key, required this.type});
+  const BlockIcon({super.key, required this.type, this.size = BlockIconSize.md});
   final String type;
+  final BlockIconSize size;
 
   @override
   Widget build(BuildContext context) {
@@ -280,15 +292,17 @@ class BlockIcon extends StatelessWidget {
       );
     }
     return Container(
-      width: 24,
-      height: 24,
+      width: size.box,
+      height: size.box,
       decoration: BoxDecoration(
         color: blockColor(type),
-        borderRadius: BorderRadius.circular(DifyRadius.lg),
+        borderRadius: BorderRadius.circular(size.radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.02), width: 0.5),
-        boxShadow: DifyShadows.md,
+        boxShadow: size == BlockIconSize.md ? DifyShadows.md : DifyShadows.xs,
       ),
-      child: Center(child: DifyIcon(blockGlyph(type), size: 16, color: Colors.white)),
+      child: Center(
+        child: DifyIcon(blockGlyph(type), size: size.glyph, color: Colors.white),
+      ),
     );
   }
 }

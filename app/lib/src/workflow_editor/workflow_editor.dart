@@ -26,6 +26,7 @@ class WorkflowEditor extends StatefulWidget {
     this.menuOptions = const WorkflowMenuOptions(),
     this.overlay,
     this.modal,
+    this.scope,
     this.canEdit = true,
   });
 
@@ -53,6 +54,10 @@ class WorkflowEditor extends StatefulWidget {
 
   /// Drawn over everything, chrome included (the features drawer and its backdrop).
   final Widget Function(BuildContext context, CanvasController canvas)? modal;
+
+  /// Wraps everything inside the store's scope (editor-wide services every slot shares: the run host, the variable
+  /// inspect data).
+  final Widget Function(BuildContext context, CanvasController canvas, Widget child)? scope;
 
   /// What the context menus, the node "…" bar and the edit shortcuts call for actions that leave the canvas.
   final WorkflowMenuOptions menuOptions;
@@ -110,7 +115,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           _measured(constraints.biggest);
-          return Stack(
+          final stack = Stack(
             fit: StackFit.expand,
             children: [
               WorkflowShortcuts(
@@ -175,6 +180,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
               if (w.modal != null) Positioned.fill(child: w.modal!(context, canvas)),
             ],
           );
+          return w.scope?.call(context, canvas, stack) ?? stack;
         },
       ),
     );

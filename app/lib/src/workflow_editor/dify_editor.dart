@@ -19,6 +19,11 @@ import 'node_panel/node_panel.dart';
 import 'note_node/note_node.dart';
 import 'operator/operator.dart';
 import 'organize/workflow_organize.dart';
+import 'run/mock_run_service.dart';
+import 'run/run_graph.dart';
+import 'run/run_scope.dart';
+import 'run/run_service.dart';
+import 'run/ui/run_panels.dart';
 import 'store/app_registers_sync.dart';
 import 'store/store.dart';
 import 'variable_inspect/inspect_vars.dart';
@@ -77,6 +82,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.actions = const [],
     this.meta = const DocMeta(),
     this.variableInspectServices = VariableInspectServices.none,
+    this.runService,
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
     this.user,
@@ -100,6 +106,9 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// The variable inspect panel's draft variables (no runs without a runtime: none by default).
   final VariableInspectServices variableInspectServices;
 
+  /// The run/debug backend; null: the mock runtime over the document (dify-sf has no runtime yet).
+  final WorkflowRunService? runService;
+
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
   /// disposed with it). Either way the comments UI finds it with [CommentsScope.of].
   final CommentsStore? commentsStore;
@@ -113,6 +122,27 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   DocMeta get meta => widget.meta;
   String get serverLabel => widget.serverLabel;
   List<Widget> get actions => widget.actions;
+
+  final _runHost = GlobalKey<WorkflowRunHostState>();
+
+  /// The mock runtime when no run service was given (one per editor): it also serves the variable inspect panel the
+  /// values of its runs, unless inspect services were given.
+  MockWorkflowRunService? _mockRuns;
+
+  WorkflowRunService _runService(BuildContext context, CanvasController canvas) {
+    if (widget.runService case final s?) return s;
+    final store = WorkflowStoreScope.of(context);
+    return _mockRuns ??= MockWorkflowRunService(
+      graph: () => EditorRunGraph(controller, canvas),
+      conversationVariables: () => store.conversationVariables.value,
+    );
+  }
+
+  VariableInspectServices _inspectServices(BuildContext context, CanvasController canvas) {
+    final given = widget.variableInspectServices;
+    if (!identical(given, VariableInspectServices.none) || widget.runService != null) return given;
+    return (_runService(context, canvas) as MockWorkflowRunService).inspectServices;
+  }
 
   /// The comments store this editor created (when none was passed in), tied to the controller's session.
   CommentsStore? _ownComments;
@@ -230,6 +260,13 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     onAddBlock: onAddBlock,
     onAddNote: onAddNote,
     onChangeBlock: onChangeBlock,
+    // Run this step / Stop: the node's single run (local run state in the store).
+    isSingleRunning: (nodeId) {
+      final context = _inner;
+      if (context == null || !context.mounted) return false;
+      final status = WorkflowStoreScope.of(context).nodeRunDataOf(nodeId)['_singleRunningStatus'];
+      return status == 'running' || status == 'listening';
+    },
   );
 
   @override
@@ -307,21 +344,34 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     );
                   },
                   control: workflowControlBuilder(options),
-                  // The variable inspect trigger and panel share the editor's inspect data; "View log" opens a node's
-                  // panel on its Last Run tab.
-                  operator: (context, canvas) => VariableInspectHost(
-                    services: widget.variableInspectServices,
+                  // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
+                  // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
+                  // preview; run state is local view state).
+                  scope: (context, canvas, child) => VariableInspectHost(
+                    services: _inspectServices(context, canvas),
                     nodes: () => controller.doc.nodes.values,
                     onViewNode: (nodeId) {
                       WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
                       controller.selectNode(nodeId);
                     },
-                    child: workflowOperatorBuilder(
-                      controller,
-                      options,
-                      const VariableInspectTrigger(),
-                      const VariableInspectPanel(),
-                    )(context, canvas),
+                    onStop: () => _runHost.currentState?.emitWorkflowStop(),
+                    child: Builder(
+                      builder: (context) => WorkflowRunHost(
+                        key: _runHost,
+                        controller: controller,
+                        canvas: canvas,
+                        service: _runService(context, canvas),
+                        isChatMode: () => widget.meta.isChatflow,
+                        fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
+                        child: child,
+                      ),
+                    ),
+                  ),
+                  operator: workflowOperatorBuilder(
+                    controller,
+                    options,
+                    const VariableInspectTrigger(),
+                    const VariableInspectPanel(),
                   ),
                   // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
                   // variable panels.
@@ -330,6 +380,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     canvas: canvas,
                     options: menuOptions,
                     others: [
+                      // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
+                      RunPanels(controller: controller, isChatMode: meta.isChatflow, canRun: widget.access.canRun),
                       VariablePanels(
                         controller: controller,
                         isChatMode: meta.isChatflow,
@@ -443,10 +495,16 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   Widget build(BuildContext context) {
     final b = _binding!;
+    final run = WorkflowRunScope.maybeOf(context)?.run;
     return WorkflowHeader(
       canvas: widget.canvas,
       data: WorkflowHeaderData(
         graph: b.graph,
+        onRun: run?.handleStartRunFromOption,
+        onRunInChatflow: run?.handleWorkflowStartRunInChatflow,
+        onStopRun: run?.handleStopRun,
+        fetchRunHistory: run?.fetchRunHistory,
+        invalidAllLastRun: run?.invalidAllLastRun,
         isChatMode: widget.meta.isChatflow,
         onlineUsers: _users,
         currentUserId: widget.user?.id ?? widget.controller.session.clientId,

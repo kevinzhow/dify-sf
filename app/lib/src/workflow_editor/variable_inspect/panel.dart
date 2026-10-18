@@ -812,7 +812,7 @@ class InspectRight extends StatelessWidget {
                     icon: 'arrow-go-back-line',
                     onPressed: () => crud.resetConversationVar('${v['id']}'),
                   ),
-                if (v['value_type'] != 'secret') _CopyFeedback(content: _copyContent(v['value'])),
+                if (v['value_type'] != 'secret') CopyFeedback(content: _copyContent(v['value'])),
               ],
               DifyIconButton(
                 label: _close(),
@@ -895,15 +895,15 @@ class _EditedBadge extends StatelessWidget {
 }
 
 /// CopyFeedback: an IconButton copying [content], "Copy" / "Copied" (2 s) as its name and tooltip.
-class _CopyFeedback extends StatefulWidget {
-  const _CopyFeedback({required this.content});
+class CopyFeedback extends StatefulWidget {
+  const CopyFeedback({super.key, required this.content});
   final String content;
 
   @override
-  State<_CopyFeedback> createState() => _CopyFeedbackState();
+  State<CopyFeedback> createState() => _CopyFeedbackState();
 }
 
-class _CopyFeedbackState extends State<_CopyFeedback> {
+class _CopyFeedbackState extends State<CopyFeedback> {
   bool _copied = false;
   Timer? _timer;
 

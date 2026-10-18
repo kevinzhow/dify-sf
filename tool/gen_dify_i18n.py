@@ -8,7 +8,7 @@ as app/lib/src/i18n/dify_locales.g.dart. Re-run when the Dify baseline moves.
 import json, re, shutil, sys
 from pathlib import Path
 
-NAMESPACES = ['workflow', 'common', 'plugin', 'plugin-trigger', 'tools', 'app', 'app-debug', 'run-log', 'time',
+NAMESPACES = ['workflow', 'common', 'plugin', 'plugin-trigger', 'tools', 'app', 'app-debug', 'run-log', 'app-log', 'time',
               'agent-v-2', 'dataset', 'dataset-settings', 'dataset-creation', 'dataset-documents', 'plugin-trigger', 'pipeline',
               'share', 'app-overview', 'login', 'permission', 'permission-keys', 'app-api', 'billing']
 src, out = Path(sys.argv[1]) / 'web/i18n', Path(sys.argv[2])

@@ -38,6 +38,8 @@ class DifyI18n implements Translator {
       'app',
       'time',
       'app-debug',
+      'run-log',
+      'app-log',
       'share',
       'pipeline',
       'plugin-trigger',

@@ -955,7 +955,7 @@ class _CredentialStatus extends StatelessWidget {
 }
 
 /// dify-ui StatusDot kinds.
-enum StatusDotKind { success, error, warning, disabled }
+enum StatusDotKind { success, error, warning, normal, disabled }
 
 /// dify-ui's StatusDot, small (`size-1.5` with a 0.5 px inner border).
 class StatusDot extends StatelessWidget {
@@ -976,6 +976,10 @@ class StatusDot extends StatelessWidget {
       StatusDotKind.warning => (
         DifyColors.componentsBadgeStatusLightWarningBg,
         DifyColors.componentsBadgeStatusLightWarningBorderInner,
+      ),
+      StatusDotKind.normal => (
+        DifyColors.componentsBadgeStatusLightNormalBg,
+        DifyColors.componentsBadgeStatusLightNormalBorderInner,
       ),
       StatusDotKind.disabled => (DifyColors.textQuaternary, DifyColors.textQuaternary),
     };

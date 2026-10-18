@@ -4,7 +4,7 @@ library;
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
-/// `formatTime(seconds, 'HH:mm:ss')` in local time (dayjs tokens `HH`, `mm`, `ss`, `YYYY`, `MM`, `DD`).
+/// `formatTime(seconds, 'HH:mm:ss')` in local time (dayjs tokens `HH`, `hh`, `mm`, `ss`, `YYYY`, `MM`, `DD`, `A`).
 String formatTime(int seconds, String format) {
   final d = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
   return format
@@ -12,8 +12,10 @@ String formatTime(int seconds, String format) {
       .replaceAll('MM', _two(d.month))
       .replaceAll('DD', _two(d.day))
       .replaceAll('HH', _two(d.hour))
+      .replaceAll('hh', _two(d.hour % 12 == 0 ? 12 : d.hour % 12))
       .replaceAll('mm', _two(d.minute))
-      .replaceAll('ss', _two(d.second));
+      .replaceAll('ss', _two(d.second))
+      .replaceAll('A', d.hour < 12 ? 'AM' : 'PM');
 }
 
 /// dayjs `fromNow()` (relativeTime plugin, default thresholds, en): "a few seconds ago", "5 minutes ago", "in 2 hours".

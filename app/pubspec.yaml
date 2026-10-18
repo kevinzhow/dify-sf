@@ -19,6 +19,9 @@ dependencies:
   flutter_scene: ^0.24.3
   vector_math: ^2.4.3
   flutter_svg: ^2.3.0
+  # Dify's Markdown (chat answers, run results): maintained successor of flutter_markdown, styled to markdown.css.
+  flutter_markdown_plus: ^1.0.12
+  markdown: ^7.3.1
 
 dev_dependencies:
   yaml: ^3.1.4
