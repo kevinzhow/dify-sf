@@ -188,7 +188,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Control bar: Add Node, Add Note, pointer / hand / comment modes, Organize | ported |  | spec `workflow/operator`, visual `editor-basic-llm` |
-| More Actions: export image (current view / whole workflow; PNG, JPEG, SVG) | partial | The menu is ported, but the export itself is the host's onExportImage and the app passes none, so choosing a format does nothing. | spec `workflow/operator/more-actions.spec.tsx` |
+| More Actions: export image (current view / whole workflow; PNG, JPEG, SVG) | partial | Current-view and whole-workflow PNG/JPEG export, native save or browser download, and whole-workflow preview are implemented. SVG embeds the raster image rather than Dify’s DOM foreignObject content; it is not editable vector output. | spec `workflow/operator/more-actions.spec.tsx`, `app/test/workflow_editor/image_export_test.dart` |
 | Zoom pill: zoom in / out, percentage, presets menu, Fit | ported |  | spec `workflow/operator/zoom-in-out.spec.tsx` |
 | Minimap (pannable, zoomable, toggle) | ported |  | visual `editor-basic-llm` |
 | Undo / redo buttons | ported | Deviation: Undo and redo only this user's own edits (owner decision 2026-10-17); see History. | spec `workflow/header/undo-redo.spec.tsx` |

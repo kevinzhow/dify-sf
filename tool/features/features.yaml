@@ -619,8 +619,8 @@ features:
   title: 'More Actions: export image (current view / whole workflow; PNG, JPEG, SVG)'
   dify: [web/app/components/workflow/operator/more-actions.tsx]
   status: partial
-  reason: The menu is ported, but the export itself is the host's onExportImage and the app passes none, so choosing a format does nothing.
-  evidence: ['spec:web/app/components/workflow/operator/__tests__/more-actions.spec.tsx']
+  reason: 'Current-view and whole-workflow PNG/JPEG export, native save or browser download, and whole-workflow preview are implemented. SVG embeds the raster image rather than Dify’s DOM foreignObject content; it is not editable vector output.'
+  evidence: ['spec:web/app/components/workflow/operator/__tests__/more-actions.spec.tsx', app/test/workflow_editor/image_export_test.dart]
   ours: [app/lib/src/workflow_editor/operator/control.dart, app/lib/src/workflow_editor/operator/actions.dart]
 - id: operator.zoom
   area: operator

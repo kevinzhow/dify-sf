@@ -17,6 +17,27 @@ class IterationAddBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = CanvasControlScope.of(context);
+    return IterationAddBlockVisual(
+      buttonKey: ValueKey('iteration-add-$startNodeId'),
+      disabled: scope.canvas.isReadOnly(),
+      onPressed: () => WorkflowActions(
+        controller: scope.editor,
+        canvas: scope.canvas,
+        store: WorkflowStoreScope.of(context),
+        options: const WorkflowMenuOptions(),
+      ).showInsertBlockSelector(context, InsertAfter(startNodeId), popupWidth: 256, showStartTab: false),
+    );
+  }
+}
+
+/// The same line and button painted in a detached export, without attaching editing callbacks or a session.
+class IterationAddBlockVisual extends StatelessWidget {
+  const IterationAddBlockVisual({super.key, this.buttonKey, this.disabled = false, this.onPressed});
+  final Key? buttonKey;
+  final bool disabled;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         SizedBox(
@@ -31,15 +52,10 @@ class IterationAddBlock extends StatelessWidget {
         ),
         Flexible(
           child: DifyButton(
-            key: ValueKey('iteration-add-$startNodeId'),
-            disabled: scope.canvas.isReadOnly(),
+            key: buttonKey,
+            disabled: disabled,
             leading: const RemixIcon('add-line', size: 16),
-            onPressed: () => WorkflowActions(
-              controller: scope.editor,
-              canvas: scope.canvas,
-              store: WorkflowStoreScope.of(context),
-              options: const WorkflowMenuOptions(),
-            ).showInsertBlockSelector(context, InsertAfter(startNodeId), popupWidth: 256, showStartTab: false),
+            onPressed: onPressed,
             child: Text(DifyI18n.tr('workflow', 'common.addBlock')),
           ),
         ),

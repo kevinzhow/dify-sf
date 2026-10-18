@@ -20,13 +20,21 @@ import 'run_view.dart';
 /// cards: a card listens to its own node (content, run state); the run's dimming and status border are drawn around
 /// it by a builder listening to that node's run view alone.
 class WidgetRenderer extends CanvasRenderer {
-  WidgetRenderer({required this.graph, required this.view, required this.selection, required this.cards, this.live});
+  WidgetRenderer({
+    required this.graph,
+    required this.view,
+    required this.selection,
+    required this.cards,
+    this.live,
+    this.overlaidControls = true,
+  });
 
   final CanvasGraph graph;
   final CanvasViewState view;
   final CanvasSelection selection;
   final CardSpec cards;
   final LiveCardLayer? live;
+  final bool overlaidControls;
 
   final _version = ValueNotifier(0);
   final _edgesVersion = ValueNotifier(0);
@@ -181,7 +189,9 @@ class WidgetRenderer extends CanvasRenderer {
     final card = local(n.rect.topLeft), visual = local(n.visual.topLeft);
     final cardWidget = _cardWidgets[n] ??= KeyedSubtree(
       key: ValueKey('node-${n.id}'),
-      child: CanvasCardControls(child: RepaintBoundary(child: cards.build(context, n, graph, live: true))),
+      child: overlaidControls
+          ? CanvasCardControls(child: RepaintBoundary(child: cards.build(context, n, graph, live: true)))
+          : RepaintBoundary(child: cards.build(context, n, graph, live: true)),
     );
     return Positioned.fromRect(
       key: ValueKey('canvas-node-${n.id}'),

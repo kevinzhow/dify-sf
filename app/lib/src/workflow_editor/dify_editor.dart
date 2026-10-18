@@ -21,6 +21,7 @@ import 'header/titles.dart';
 import 'header/workflow_header.dart';
 import 'dsl/dsl_export_confirm_modal.dart';
 import 'dsl/update_dsl_modal.dart';
+import 'operator/image_export.dart';
 import 'hooks/use_locate_node.dart';
 import 'hooks/use_tool_icon.dart';
 import 'node_panel/node_panel.dart';
@@ -101,6 +102,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.onExportDsl,
     this.onImportDsl,
     this.pickDslFile,
+    this.saveImage,
   });
 
   /// What the signed-in user may do (read-only for members without the edit role).
@@ -117,6 +119,7 @@ class DifyWorkflowEditor extends StatefulWidget {
   final Future<void> Function(bool includeSecret)? onExportDsl;
   final WorkflowImport? onImportDsl;
   final PickDslFile? pickDslFile;
+  final SaveCanvasImage? saveImage;
 
   final EditorController controller;
   final String serverLabel;
@@ -310,10 +313,38 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     );
   }
 
+  bool _exportingImage = false;
+  Future<void> _exportImage(ExportImageFormat format, {required bool wholeWorkflow}) async {
+    final context = _inner, canvas = _canvas;
+    if (_exportingImage || context == null || !context.mounted || canvas == null) return;
+    _exportingImage = true;
+    try {
+      await performCanvasImageExport(
+        appName: meta.appName,
+        readOnly: WorkflowStoreScope.of(context).nodesReadOnly,
+        wholeWorkflow: wholeWorkflow,
+        capture: () =>
+            captureCanvasImage(context, controller.doc, canvas, meta.appName, format, wholeWorkflow: wholeWorkflow),
+        save: widget.saveImage ?? saveCanvasImage,
+        preview: (image) async {
+          if (context.mounted) await showCanvasImagePreview(context, image);
+        },
+        onError: (error) => toast.error('Export image failed: $error'),
+      );
+    } finally {
+      _exportingImage = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
-    final options = OperatorOptions(collaborationEnabled: true, onAddNote: _addNote, onOrganize: _organize);
+    final options = OperatorOptions(
+      collaborationEnabled: true,
+      onAddNote: _addNote,
+      onOrganize: _organize,
+      onExportImage: (format, {required wholeWorkflow}) => _exportImage(format, wholeWorkflow: wholeWorkflow),
+    );
     final menuOptions = _menuOptions(
       onAddBlock: _addBlockAt,
       onAddNote: _addNote,
