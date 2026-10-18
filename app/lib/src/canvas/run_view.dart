@@ -54,6 +54,11 @@ class NodeRunView {
   /// `data._waitingRun`: the node is drawn at 70 % opacity (`opacity-70`).
   final bool waiting;
 
+  /// The whole node, including live layers, frames and handle markers.
+  double get opacity => waiting ? 0.7 : 1.0;
+
+  Color tint(Color color) => color.withValues(alpha: color.a * opacity);
+
   /// `data._singleRunningStatus` (the node's single-step run).
   final String? singleRunningStatus;
 

@@ -47,10 +47,15 @@ class LiveCardLayer {
       key: ValueKey('live-${n.id}'),
       left: origin.dx,
       top: origin.dy,
-      child: _LiveGate(
-        accepts: (local) => isTopAt(n, origin + local),
-        claim: claim,
+      child: ValueListenableBuilder<NodeRunView>(
+        valueListenable: n.run,
         child: source.value!.builder(context, n),
+        builder: (context, run, child) => _LiveGate(
+          opacity: run.opacity,
+          accepts: (local) => isTopAt(n, origin + local),
+          claim: claim,
+          child: child!,
+        ),
       ),
     );
   }
@@ -79,21 +84,25 @@ class LiveCardLayer {
 /// Passes hits on to its child only where [accepts] (local position), and claims the pointer downs and wheel events
 /// its child takes.
 class _LiveGate extends SingleChildRenderObjectWidget {
-  const _LiveGate({required this.accepts, required this.claim, required super.child});
+  const _LiveGate({required this.opacity, required this.accepts, required this.claim, required super.child});
+  final double opacity;
   final bool Function(Offset local) accepts;
   final void Function(PointerDownEvent event) claim;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _RenderLiveGate(accepts, claim);
+  RenderObject createRenderObject(BuildContext context) => _RenderLiveGate(accepts, claim, opacity);
 
   @override
   void updateRenderObject(BuildContext context, _RenderLiveGate r) => r
     ..accepts = accepts
-    ..claim = claim;
+    ..claim = claim
+    ..opacity = opacity;
 }
 
-class _RenderLiveGate extends RenderProxyBox {
-  _RenderLiveGate(this.accepts, this.claim);
+// RenderOpacity supplies compositing without a wrapper whose default hit testing would clip the toolbar
+// outside the card. Keep the original overflow-aware gate as the outer render object.
+class _RenderLiveGate extends RenderOpacity {
+  _RenderLiveGate(this.accepts, this.claim, double opacity) : super(opacity: opacity);
   bool Function(Offset local) accepts;
   void Function(PointerDownEvent event) claim;
 

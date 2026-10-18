@@ -26,7 +26,7 @@ vm.Vector3 toWorld(Offset p, [double lift = 0]) => vm.Vector3(p.dx, -p.dy, -lift
 /// A screen colour (sRGB) as the scene's linear colour, so it reaches the screen unchanged (linear tone mapping).
 vm.Vector4 srgb(Color c) {
   double lin(double v) => v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4).toDouble();
-  return vm.Vector4(lin(c.r), lin(c.g), lin(c.b), 1);
+  return vm.Vector4(lin(c.r), lin(c.g), lin(c.b), c.a);
 }
 
 /// A 1 x 1 quad facing the camera, scaled per card. WidgetComponent's own quad maps the texture as seen from +Z,
@@ -224,7 +224,11 @@ class SceneRenderer extends CanvasRenderer {
     // The status border is the card's own 1 px border; the selected frame the 1 px around it.
     _statusFrames = _RoundedFrames(scene, thickness: 1);
     _selectedFrames = _RoundedFrames(scene, thickness: 1);
-    _markers = InstancedMesh(geometry: _unitQuad, material: UnlitMaterial(), sortTransparentInstances: false);
+    _markers = InstancedMesh(
+      geometry: _unitQuad,
+      material: UnlitMaterial()..alphaMode = AlphaMode.blend,
+      sortTransparentInstances: false,
+    );
     scene
       ..add(Node()..addComponent(InstancedMeshComponent(_markers)))
       ..add(_overviewLayer)
@@ -386,7 +390,9 @@ class SceneRenderer extends CanvasRenderer {
         final port = n.outPortFor(k.$2);
         bar = Rect.fromLTWH(port.dx - 8, port.dy - 4, 2, 8);
       }
-      _markers.setInstanceTransform(at, _box(bar.center, bar.size, lift));
+      _markers
+        ..setInstanceTransform(at, _box(bar.center, bar.size, lift))
+        ..setInstanceColor(at, srgb(n.run.value.tint(DifyColors.workflowLinkLineHandle)));
     }
   }
 
@@ -432,6 +438,8 @@ class SceneRenderer extends CanvasRenderer {
   void _statusChanged(int slot) {
     final n = graph.slots[slot];
     _dim(slot);
+    _highlight(slot);
+    _placeMarkers(slot);
     _syncSpinners(slot);
     // getNodeStatusBorders: no status border while the selected border shows.
     final color = n == null || selection.nodes.contains(slot) ? null : statusBorderColor(n.status);
@@ -441,7 +449,7 @@ class SceneRenderer extends CanvasRenderer {
     }
     // In front of the card: the ring is the card's own border (1 px inside its edge), and behind it the card's
     // opaque placeholder (drawn while the card's capture is replaced) would hide it.
-    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _lift(slot) + 1e-4);
+    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(n.run.value.tint(color)), _lift(slot) + 1e-4);
   }
 
   // ----- run state: dimming and loaders -----
@@ -450,7 +458,7 @@ class SceneRenderer extends CanvasRenderer {
   /// overview) are drawn at 70 %.
   void _dim(int slot) {
     final n = graph.slots[slot];
-    final alpha = n != null && n.run.value.waiting ? 0.7 : 1.0;
+    final alpha = n?.run.value.opacity ?? 1.0;
     void set(UnlitMaterial? m) {
       if (m != null && m.baseColorFactor.a != alpha) m.baseColorFactor = m.baseColorFactor.clone()..a = alpha;
     }
@@ -465,8 +473,7 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   /// A capture's tint: white, at 70 % while the node waits.
-  vm.Vector4 _textureFactor(int slot) =>
-      vm.Vector4(1, 1, 1, (graph.slots.elementAtOrNull(slot)?.run.value.waiting ?? false) ? 0.7 : 1);
+  vm.Vector4 _textureFactor(int slot) => vm.Vector4(1, 1, 1, graph.slots.elementAtOrNull(slot)?.run.value.opacity ?? 1);
 
   /// A card capture's material, dimmed like its node.
   UnlitMaterial _cardMaterial(int slot) => UnlitMaterial()
@@ -558,7 +565,7 @@ class SceneRenderer extends CanvasRenderer {
       slot,
       n.rect.inflate(1),
       DifyRadius.xxl,
-      srgb(DifyColors.componentsOptionCardOptionSelectedBorder),
+      srgb(n.run.value.tint(DifyColors.componentsOptionCardOptionSelectedBorder)),
       _frameLift(slot, n, -0.15),
     );
   }
@@ -1187,7 +1194,11 @@ class SceneRenderer extends CanvasRenderer {
                   ? live!.build(context, u)
                   : Positioned.fromRect(
                       rect: u.visual,
-                      child: IgnorePointer(child: RepaintBoundary(child: cards.build(context, u, graph, live: true))),
+                      child: ValueListenableBuilder<NodeRunView>(
+                        valueListenable: u.run,
+                        child: IgnorePointer(child: RepaintBoundary(child: cards.build(context, u, graph, live: true))),
+                        builder: (context, run, child) => Opacity(opacity: run.opacity, child: child),
+                      ),
                     ),
           ],
         ),
@@ -1269,7 +1280,7 @@ class _RoundedFrames {
     final mesh = _meshes.putIfAbsent(key, () {
       final m = InstancedMesh(
         geometry: _roundedRing(size, radius, thickness),
-        material: UnlitMaterial(),
+        material: UnlitMaterial()..alphaMode = AlphaMode.blend,
         sortTransparentInstances: false,
       );
       scene.add(Node()..addComponent(InstancedMeshComponent(m)));
