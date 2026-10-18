@@ -468,6 +468,36 @@ class WorkflowStore {
         return {...node, 'vars': vars..[i] = update(vars[i])};
       });
 
+  // ----- run view state (dify-sf): the run fields Dify keeps in React Flow's node and edge `data` -----
+
+  /// Node id → Dify's run fields of that node (`_runningStatus`, `_waitingRun`, `_runningBranchId`, `_retryIndex`,
+  /// `_iterationIndex`, `_iterationLength`, `_loopIndex`, `_loopLength`, `_singleRunningStatus`, `_isSingleRun`).
+  /// Local view state: never written to the document (runs are not collaboration ops). Replaced on write.
+  late final nodeRunData = _v(const <String, DifyJson>{});
+
+  /// Edge id → `_sourceRunningStatus`, `_targetRunningStatus`, `_waitingRun`.
+  late final edgeRunData = _v(const <String, DifyJson>{});
+
+  DifyJson nodeRunDataOf(String nodeId) => nodeRunData.value[nodeId] ?? const {};
+  DifyJson edgeRunDataOf(String edgeId) => edgeRunData.value[edgeId] ?? const {};
+
+  /// Merges [patch] into the node's run fields (a null value removes the field).
+  void setNodeRunData(String nodeId, DifyJson patch) => nodeRunData.value = {
+    ...nodeRunData.value,
+    nodeId: _merged(nodeRunDataOf(nodeId), patch),
+  };
+
+  void setEdgeRunData(String edgeId, DifyJson patch) => edgeRunData.value = {
+    ...edgeRunData.value,
+    edgeId: _merged(edgeRunDataOf(edgeId), patch),
+  };
+
+  static DifyJson _merged(DifyJson a, DifyJson patch) {
+    final m = {...a, ...patch};
+    m.removeWhere((_, v) => v == null);
+    return m;
+  }
+
   // ----- trigger-status.ts -----
 
   /// Entry (trigger) nodes' enabled state; a global store in Dify, one per editor here.

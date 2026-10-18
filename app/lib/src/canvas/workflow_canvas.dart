@@ -115,7 +115,16 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     view.addListener(_viewMoved);
     selection.addListener(_selectionChanged);
     c.addListener(_documentChanged);
+    canvas.nodeRunStatus.addListener(_runStatusChanged);
     _documentChanged();
+  }
+
+  /// Shows [CanvasController.nodeRunStatus] on the cards.
+  void _runStatusChanged() {
+    final statuses = canvas.nodeRunStatus.value;
+    for (final n in graph.nodes) {
+      setStatus(n.id, statuses[n.id] ?? 'idle');
+    }
   }
 
   Timer? _rest;
@@ -177,6 +186,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     if (!change.isEmpty) {
       renderer.apply(change);
       a11y.changed();
+      if (change.added.isNotEmpty && canvas.nodeRunStatus.value.isNotEmpty) _runStatusChanged();
     }
     // The panel (or a test) selected a node or an edge: show it.
     final id = c.selectedNodeId;
@@ -231,6 +241,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   @override
   void dispose() {
     c.removeListener(_documentChanged);
+    canvas.nodeRunStatus.removeListener(_runStatusChanged);
     selection.removeListener(_selectionChanged);
     view.removeListener(a11y.viewMoved);
     view.removeListener(_viewMoved);
