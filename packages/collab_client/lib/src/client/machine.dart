@@ -203,6 +203,19 @@ class ClientMachine {
   /// The id is shared with another process: nothing is sent until a new id is adopted.
   bool get idCompromised => _idCompromised;
 
+  // Refused submissions (protocol 1.8, `403 forbidden` on `POST /ops`)
+  bool _forbidden = false;
+  bool _forbiddenCatchUp = false;
+
+  /// The next POST must carry `floor` = the oldest cseq still to be sent, so that the server stops waiting for cseqs this
+  /// client finished locally without the server ever handling them (see [submitForbidden]). Cleared once a response
+  /// shows the server's `high` at or past it.
+  int? _floor;
+
+  /// A `POST /ops` was refused with `403 forbidden` and [allowEdits] has not been called since: nothing is sent and new
+  /// edits are refused locally (as [LocalInvalid] with [Forbidden]).
+  bool get editsForbidden => _forbidden;
+
   final List<_Pending> _outbox = [];
   final List<ClientEvent> _events = [];
   final Random _random;
@@ -240,7 +253,7 @@ class ClientMachine {
     for (final p in _outbox)
       'cseq ${p.cseq} op=${p.op == null ? 'abandoned' : 'set'} acked=${p.ackedSeq} outcome=${p.outcome}',
     'lastSeq=$lastSeq hasState=$hasState streamActive=$streamActive ready=$streamReady '
-        'inFlight=$_inFlightSince blockedUntil=$_submitBlockedUntil',
+        'inFlight=$_inFlightSince blockedUntil=$_submitBlockedUntil forbidden=$_forbidden floor=$_floor',
   ];
 
   // ---- persistence -------------------------------------------------------------------------------
@@ -272,6 +285,11 @@ class ClientMachine {
   /// keeps a slow edit from silently overwriting a write that landed meanwhile: the stale-write rule then
   /// refuses it (locally at once, as [LocalInvalid] with a [Conflict]).
   EditResult edit(Op op, int now, {int? base}) {
+    if (_forbidden) {
+      const reason = Forbidden();
+      _events.add(LocalInvalid(op: op, reason: reason));
+      return const EditResult(null, [], reason);
+    }
     if (!hasState) {
       const reason = Invalid('not synced yet');
       _events.add(LocalInvalid(op: op, reason: reason));
@@ -334,6 +352,60 @@ class ClientMachine {
     _submitBlockedUntil = now + _backoffDelay(submitFailures);
   }
 
+  /// The POST was refused with `403 forbidden` (protocol 1.8: the account's role cannot edit, e.g. after a role change,
+  /// or the client id belongs to another account). Final, not a transport failure: nothing is resent and nothing new
+  /// is sent until [allowEdits]; new edits are refused locally. Emits [EditingForbidden] (once per streak).
+  ///
+  /// The ops still waiting for a verdict are finished as rejected with the local reason [Forbidden] (not saved), but
+  /// only once a stream opened after the refusal is `ready`: an earlier copy of the same POST (one that timed out) may
+  /// have been committed before the refusal, and only a stream opened afterwards is sure to show that. Ops it shows
+  /// committed are committed; content-less (abandoned) ops are lost. Returns the request that reopens the stream.
+  List<ClientRequest> submitForbidden(int now) {
+    _inFlightSince = null;
+    submitFailures = 0;
+    _submitBlockedUntil = 0;
+    if (!_forbidden) {
+      _forbidden = true;
+      _events.add(const EditingForbidden());
+    }
+    if (!_outbox.any((p) => p.outcome == null && p.ackedSeq == null)) return const [];
+    _forbiddenCatchUp = true;
+    if (streamActive) _closeStream(now, backoff: false);
+    return [_openStream(now)];
+  }
+
+  /// The account may edit again (the app re-read its role after [EditingForbidden]): new edits are accepted and
+  /// sending resumes. Ops not finished yet (the stream had not caught up) are simply sent again. If some ops were
+  /// finished as [Forbidden], the next POST (sent at once, possibly without ops) carries `floor`, so the server never
+  /// waits for, nor later accepts, those cseqs.
+  List<ClientRequest> allowEdits(int now) {
+    if (!_forbidden) return const [];
+    _forbidden = false;
+    _forbiddenCatchUp = false;
+    return _flushIfIdle(now);
+  }
+
+  /// The stream opened after a `403` is caught up, so whatever of ours the server committed before the refusal has
+  /// been seen: finish everything else that still waits for a verdict.
+  void _finishForbidden() {
+    _forbiddenCatchUp = false;
+    for (final p in _outbox) {
+      if (p.outcome != null || p.ackedSeq != null) continue;
+      final claimed = p.claimedSeq;
+      if (p.op == null) {
+        p.outcome = const _Lost();
+      } else if (claimed != null) {
+        // A snapshot said the server committed this (client, cseq); a resend can no longer confirm that it is our op,
+        // so the server's word is all we have (as for abandoned ops, and as the Swift reference client always does).
+        p.outcome = _Committed(claimed);
+      } else {
+        p.outcome = const _Rejected(Forbidden());
+      }
+    }
+    // These cseqs were never handled by the server: tell it not to wait for them (its `high` is behind them).
+    _floor = nextCseq;
+  }
+
   /// The server said the body was too large: send smaller batches from now on.
   void shrinkBatch() {
     config = config.copyWith(maxBatch: max(1, config.maxBatch ~/ 2));
@@ -375,6 +447,7 @@ class ClientMachine {
   // ---- submitting --------------------------------------------------------------------------------
 
   List<ClientRequest> _flushIfIdle(int now) {
+    if (_forbidden) return const [];
     if (_idCompromised) return _maybeRequestNewId();
     if (_inFlightSince != null || now < _submitBlockedUntil) return const [];
     final abandoned = _outbox.any((p) => p.op == null && p.outcome == null);
@@ -384,20 +457,23 @@ class ClientMachine {
       batch.add(OutgoingOp(cseq: p.cseq, base: p.base, op: p.op!));
       if (batch.length >= config.maxBatch) break;
     }
-    if (!abandoned && batch.isEmpty) return const [];
+    if (!abandoned && batch.isEmpty && _floor == null) return const [];
     int? floor;
     int? resolveFrom;
-    if (abandoned) {
-      // We lost the content of some in-flight ops: tell the server to stop waiting for them and report
-      // what it did with them.
-      floor = _outbox.where((p) => p.sendable).map((p) => p.cseq).firstOrNull ?? nextCseq;
-      resolveFrom = _outbox.first.cseq;
+    if (abandoned || _floor != null) {
+      // We lost the content of some in-flight ops, or finished some without the server handling them (refused with
+      // `403`): tell the server to stop waiting for them.
+      floor = _firstUnsent;
     }
+    if (abandoned) resolveFrom = _outbox.first.cseq; // ... and to report what it did with the lost ones
     _inFlightSince = now;
     return [
       SubmitRequestAction(SubmitRequest(client: id, floor: floor, resolveFrom: resolveFrom, ops: batch)),
     ];
   }
+
+  /// The oldest cseq this client will still send.
+  int get _firstUnsent => _outbox.where((p) => p.sendable).map((p) => p.cseq).firstOrNull ?? nextCseq;
 
   // ---- server -> client --------------------------------------------------------------------------
 
@@ -412,6 +488,7 @@ class ClientMachine {
       case ReadyEvent():
         streamReady = true;
         reconnectAttempts = 0;
+        if (_forbiddenCatchUp) _finishForbidden();
       case SnapshotEvent():
         _adopt(event);
       case CommitEvent(:final entry):
@@ -445,10 +522,14 @@ class ClientMachine {
           _compromise(response.head);
         case RejectResult(:final cseq, :final reason):
           _settle(cseq, _Rejected(reason));
-        case GapResult():
-          break; // resend from the front on the next flush (nothing was recorded)
+        case GapResult(:final expected):
+          // Resend from the front on the next flush (nothing was recorded). If the server waits for cseqs we finished
+          // without it ever handling them (refused with `403`, then a restart before a `floor` got through), say so.
+          if (expected < _firstUnsent) _floor = _firstUnsent;
       }
     }
+    final f = _floor;
+    if (f != null && response.high >= f - 1) _floor = null;
     final known = response.known;
     if (known != null) {
       for (final cseq in known.committed.keys.toList()..sort()) {
@@ -595,6 +676,7 @@ class ClientMachine {
     _idCompromised = false;
     _idRequested = false;
     _catchUpTo = 0;
+    _floor = null; // the new id has no history on the server
     _inFlightSince = null;
     submitFailures = 0;
     _submitBlockedUntil = 0;

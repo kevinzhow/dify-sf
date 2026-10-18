@@ -189,6 +189,38 @@ void main() {
       addTearDown(q.close);
       expect(await q.openStream(const StreamOpen()).firstWhere((e) => e is ReadyEvent), isA<ReadyEvent>());
     });
+
+    test('a role changed mid-session: the batch is refused (403), its ops come back rejected(forbidden) and nothing '
+        'more is sent; promoted back, the session resumes with a floor', () async {
+      final m = await member(AccountRole.editor);
+      final s = CollabSession(
+        transport: HttpTransport(baseUrl: base, docId: doc, auth: m),
+        store: MemoryStore(),
+      );
+      await s.start();
+      await s.settled();
+      s.edit(setPrompt('llm', 'saved'));
+      await s.settled();
+      expect((await api.info(doc))!.head, 1);
+
+      await owner.updateRole(m.currentAccount!.id, AccountRole.normal);
+      final verdict = s.events.firstWhere((e) => e is OpRejected);
+      s.edit(setPrompt('llm', 'refused'));
+      expect((await verdict.timeout(const Duration(seconds: 20)) as OpRejected).reason, const Forbidden());
+      expect(s.editsForbidden, isTrue);
+      expect(s.pending, isEmpty);
+      expect(s.edit(setPrompt('llm', 'again')).refusal, const Forbidden());
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect((await api.info(doc))!.head, 1);
+
+      await owner.updateRole(m.currentAccount!.id, AccountRole.editor);
+      s.allowEdits(); // the floor skips cseq 2, which the server never handled
+      s.edit(setPrompt('llm', 'back'));
+      await s.settled().timeout(const Duration(seconds: 20));
+      final snap = await api.snapshot(doc);
+      expect((snap.seq, cfg(snap.doc, 'llm', 'prompt')), (2, 'back'));
+      await s.stop();
+    });
   });
 
   group('document endpoints', () {

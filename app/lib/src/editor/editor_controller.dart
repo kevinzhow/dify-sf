@@ -11,7 +11,13 @@ import 'undo_manager.dart';
 /// small ops (never a whole-object write). The controller owns the notices that tell the user what happened
 /// to their edits.
 class EditorController extends ChangeNotifier {
-  EditorController({required this.session, required this.docId, required this.journaled, this.onRestart}) {
+  EditorController({
+    required this.session,
+    required this.docId,
+    required this.journaled,
+    this.onRestart,
+    this.onEditingForbidden,
+  }) {
     _events = session.events.listen(_onEvent);
     _changes = session.changes.listen((_) => _onChanged());
     _rememberTitles();
@@ -35,6 +41,11 @@ class EditorController extends ChangeNotifier {
 
   /// Demo mode only: simulate a crash + restart.
   final VoidCallback? onRestart;
+
+  /// The server refused this session's edits with `403 forbidden` (protocol 1.8: the account's role was changed to a
+  /// read-only one, e.g. by an admin mid-session). The editor is read-only from now on ([editingForbidden]); the owner
+  /// should re-read the account and call [allowEdits] if it may edit again.
+  final VoidCallback? onEditingForbidden;
 
   late final StreamSubscription<ClientEvent> _events;
   late final StreamSubscription<void> _changes;
@@ -65,6 +76,17 @@ class EditorController extends ChangeNotifier {
 
   /// "The network is back" (user pressed the button, window regained focus): skip the backoff and reconnect.
   void reconnectNow() => session.networkAvailable();
+
+  /// The server refused this session's edits (`403 forbidden`): nothing is sent and new edits are refused until
+  /// [allowEdits]. The editor shows the workflow read-only meanwhile.
+  bool get editingForbidden => session.editsForbidden;
+
+  /// The account may edit again (its role was re-read): accept edits and resume sending.
+  void allowEdits() {
+    if (!session.editsForbidden) return;
+    session.allowEdits();
+    notifyListeners();
+  }
 
   // ---- selection ---------------------------------------------------------------------------------
 
@@ -297,6 +319,13 @@ class EditorController extends ChangeNotifier {
             awaitingVerdict: true,
           ),
         );
+      case EditingForbidden():
+        notifyListeners();
+        onEditingForbidden?.call();
+      case OpRejected(:final cseq, reason: Forbidden()):
+        _noteForbidden(cseq);
+      case LocalInvalid(reason: Forbidden()):
+        _noteForbidden(null);
       case OpRejected(:final cseq, :final op, :final reason):
         final d = describeRefusal(op, reason, titleOf);
         final existing = _byCseq[cseq];
@@ -352,6 +381,26 @@ class EditorController extends ChangeNotifier {
           ),
         );
     }
+  }
+
+  /// Edits refused with `403 forbidden` share one notice (a whole batch is refused at once, and edits made before the
+  /// editor turned read-only are refused locally): a second refusal while it is shown adds nothing. An early conflict
+  /// warning about one of them is replaced by it.
+  void _noteForbidden(int? cseq) {
+    final warned = cseq == null ? null : _byCseq.remove(cseq);
+    if (warned != null) notices.remove(warned);
+    if (notices.any((n) => n.reason is Forbidden)) {
+      notifyListeners();
+      return;
+    }
+    _addNotice(
+      Notice(
+        id: _nextNoticeId++,
+        kind: NoticeKind.refused,
+        message: forbiddenNoticeMessage,
+        reason: const Forbidden(),
+      ),
+    );
   }
 
   void _noteLost() {

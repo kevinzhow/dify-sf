@@ -229,6 +229,14 @@ class CollabSession {
     return EditTicket(cseq: r.cseq, persisted: persisted, refusal: r.refusal);
   }
 
+  /// A `POST /ops` was refused with `403 forbidden` (protocol 1.8): nothing is sent and new edits are refused until
+  /// [allowEdits]. [EditingForbidden] announced it; show the editor read-only.
+  bool get editsForbidden => _machine.editsForbidden;
+
+  /// The account may edit again (after [EditingForbidden] the app re-read it, `GET /v1/account`, and its role is an
+  /// edit role): accept edits and resume sending.
+  void allowEdits() => _feed(() => _machine.allowEdits(_clock()));
+
   /// The OS says connectivity is back: reconnect immediately and resend.
   void networkAvailable() => _feed(() => _machine.networkAvailable(_clock()));
 
@@ -375,6 +383,11 @@ class CollabSession {
     } on Object catch (e) {
       if (!_running || id != _postSeq) return;
       _lastError = '$e';
+      if (e is TransportException && e.forbidden) {
+        // Final for these ops (read-only role, or another account's client id): not retried, see submitForbidden.
+        _feed(() => _machine.submitForbidden(_clock()));
+        return;
+      }
       _feed(() {
         if (e is TransportException && e.payloadTooLarge) _machine.shrinkBatch();
         _machine.submitFailed(_clock());

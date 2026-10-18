@@ -557,6 +557,8 @@ sealed class RejectReason {
         return const NotCommitted();
       case 'clientIdInUse':
         return const ClientIdInUse();
+      case 'forbidden':
+        return const Forbidden();
       default:
         // Forward compatible: an unknown reason is still a rejection.
         return Invalid('unknown reject reason: ${m['type']}');
@@ -745,6 +747,18 @@ final class ClientIdInUse extends RejectReason {
   const ClientIdInUse();
   @override
   String get name => 'clientIdInUse';
+  @override
+  Map<String, Object?> toJson() => {'type': name};
+}
+
+/// Protocol 1.8, a local reason (the server never sends it as a per-op reject): the `POST /ops` carrying the op was
+/// refused as a whole with `403 forbidden` (the account's role cannot edit, e.g. after a role change, or the client id
+/// belongs to another account). Nothing was applied; the client finishes the op as rejected (not saved) and stops
+/// sending (docs/protocol.md section 9, "Refused submissions").
+final class Forbidden extends RejectReason {
+  const Forbidden();
+  @override
+  String get name => 'forbidden';
   @override
   Map<String, Object?> toJson() => {'type': name};
 }

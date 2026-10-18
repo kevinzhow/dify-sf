@@ -225,6 +225,8 @@ void _check(World w, List<Participant> ps, SimStats stats) {
           stats.lost++;
         case ClientIdReplaced():
           fail('${p.id}: the simulation never shares a client id, yet one was replaced');
+        case EditingForbidden():
+          fail('${p.id}: the simulation has no accounts, yet a POST was refused with 403');
         case ConflictDetected():
           stats.warnings++;
         case LocalInvalid():

@@ -46,6 +46,9 @@ class Notice extends ChangeNotifier {
   }
 }
 
+/// The one notice for edits refused with `403 forbidden` (protocol 1.8: the account's role no longer allows editing).
+const forbiddenNoticeMessage = "You don't have permission to edit this workflow — your changes were not saved";
+
 /// The wording of a refused edit. [titleOf] resolves node ids (also of deleted nodes).
 ({String message, String? detail}) describeRefusal(
   Op op,
@@ -98,6 +101,8 @@ class Notice extends ChangeNotifier {
       return (message: 'That connection was already removed.', detail: null);
     case DuplicateEdge():
       return (message: 'Those nodes are already connected.', detail: null);
+    case Forbidden():
+      return (message: forbiddenNoticeMessage, detail: null);
     case Invalid(:final message):
       return (message: 'Your change was refused: $message', detail: null);
     default:

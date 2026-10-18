@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../auth/auth_api.dart';
+import '../auth/auth_controller.dart';
 import '../online_events.dart';
 import '../session_factory.dart';
 import '../workflow_editor/dify_editor.dart';
@@ -23,6 +24,7 @@ class EditorPage extends StatefulWidget {
     this.create = true,
     this.extraActions,
     this.account,
+    this.refreshAccount,
   });
 
   final Backend backend;
@@ -31,6 +33,11 @@ class EditorPage extends StatefulWidget {
   /// The signed-in account (protocol 1.8): its role decides whether the editor is read-only (Dify's `canEdit`), its
   /// name and avatar are the user's in the editor. Null: no accounts (the demo, tests), full access.
   final Account? account;
+
+  /// `GET /v1/account` (protocol 1.8), for when the server refuses this session's edits with `403 forbidden` (the
+  /// account's role was changed to a read-only one mid-session): the editor turns read-only, re-reads the account, and
+  /// becomes editable again once the role allows it. Null: the [AuthScope]'s session, if any.
+  final Future<Account> Function()? refreshAccount;
 
   /// Explicit client id (tests, demo); null = issued by the server and kept in the journal.
   final String? clientId;
@@ -58,9 +65,18 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   var _generation = 0;
   void Function()? _stopOnlineListener;
 
+  /// The account as last read: [EditorPage.account], then whatever re-reading it after a refusal answered.
+  Account? _account;
+  bool _checkingRole = false;
+
+  /// Re-reads the account while the server refuses this session's edits, until its role allows editing again.
+  Timer? _rolePoll;
+  static const _roleRecheckEvery = Duration(seconds: 30);
+
   @override
   void initState() {
     super.initState();
+    _account = widget.account;
     WidgetsBinding.instance.addObserver(this);
     _stopOnlineListener = listenForOnline(() => _controller?.reconnectNow());
     unawaited(_open());
@@ -69,7 +85,52 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   /// Coming back to the window is the best "the network may be back" hint a pure-Flutter app gets.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _controller?.reconnectNow();
+    if (state != AppLifecycleState.resumed) return;
+    _controller?.reconnectNow();
+    if (_controller?.editingForbidden ?? false) unawaited(_recheckRole());
+  }
+
+  @override
+  void didUpdateWidget(EditorPage old) {
+    super.didUpdateWidget(old);
+    if (widget.account != old.account) _account = widget.account;
+  }
+
+  /// After a `403 forbidden` on this session's edits: re-reads the account (`GET /v1/account`). An edit role (promoted
+  /// back, or the refusal was not about the role) resumes editing; otherwise the editor stays read-only and the account
+  /// is read again every [_roleRecheckEvery] and when the window comes back.
+  Future<void> _recheckRole() async {
+    final c = _controller;
+    final refresh = widget.refreshAccount ?? AuthScope.read(context)?.session.account;
+    if (c == null || refresh == null || _checkingRole || !c.editingForbidden) return;
+    _checkingRole = true;
+    try {
+      final a = await refresh();
+      if (!mounted || c != _controller) return;
+      setState(() => _account = a);
+      if (a.canEdit) {
+        _rolePoll?.cancel();
+        _rolePoll = null;
+        c.allowEdits();
+      } else {
+        _pollRole();
+      }
+    } on Object {
+      if (mounted && c == _controller) _pollRole(); // unreachable: try again later
+    } finally {
+      _checkingRole = false;
+    }
+  }
+
+  void _pollRole() {
+    _rolePoll ??= Timer.periodic(_roleRecheckEvery, (_) {
+      if (_controller?.editingForbidden ?? false) {
+        unawaited(_recheckRole());
+      } else {
+        _rolePoll?.cancel();
+        _rolePoll = null;
+      }
+    });
   }
 
   Future<void> _open() async {
@@ -98,6 +159,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         session: session,
         docId: widget.docId,
         journaled: widget.journaled,
+        onEditingForbidden: () => unawaited(_recheckRole()),
       )..addListener(_rebuild);
       setState(() {
         _opened = opened;
@@ -130,6 +192,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     final old = _controller;
     final oldOpened = _opened;
     _generation++;
+    _rolePoll?.cancel();
+    _rolePoll = null;
     setState(() {
       _controller = null;
       _opened = null;
@@ -144,6 +208,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopOnlineListener?.call();
+    _rolePoll?.cancel();
     _generation++;
     _controller?.removeListener(_rebuild);
     _controller?.dispose();
@@ -200,8 +265,10 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     );
   }
 
+  /// The role's access (Dify's `canEdit`), read-only while the server refuses this session's edits.
   WorkflowAccessControl get _access {
-    final a = widget.account;
+    final a = _account;
+    if (_controller?.editingForbidden ?? false) return WorkflowAccessControl.viewOnly;
     return a == null || a.canEdit ? WorkflowAccessControl.full : WorkflowAccessControl.viewOnly;
   }
 
@@ -282,7 +349,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       actions: _actions(context, c),
       meta: _meta,
       access: _access,
-      user: switch (widget.account) {
+      user: switch (_account) {
         final a? => EditorUser(id: a.id, name: a.name, avatarUrl: a.avatarUrl),
         null => null,
       },

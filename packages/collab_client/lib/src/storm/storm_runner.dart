@@ -543,8 +543,8 @@ class _StormClient {
         _byCseq
           ..clear()
           ..addAll(moved);
-      case LocalInvalid():
-        break;
+      case LocalInvalid() || EditingForbidden():
+        break; // storm clients edit with the owner's account
     }
   }
 }

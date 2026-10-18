@@ -408,11 +408,13 @@ void main() {
       await o.settled();
       expect(server.head, 1);
       await until(() => n.lastSeq == 1, what: 'nora sees it');
-      // Nora's write is refused (403) and retried in the background; nothing reaches the log.
+      // Nora's write is refused (403): final, not retried; nothing reaches the log and the edit comes back rejected.
+      final refusal = n.events.firstWhere((e) => e is OpRejected);
       n.edit(setPrompt('b', 'by nora'));
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect((await refusal as OpRejected).reason, const Forbidden());
       expect(server.head, 1);
       expect(n.status.lastError, contains('403'));
+      expect(n.editsForbidden, isTrue);
       // The directory names accounts; a stale write's conflict notice carries the account name.
       expect(server.directory()[o.clientId], {'account': olivia.currentAccount!.id, 'name': 'Olivia'});
       expect(server.nameOf(o.clientId), 'Olivia');

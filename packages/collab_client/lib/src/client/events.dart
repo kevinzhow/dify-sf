@@ -58,3 +58,12 @@ final class ClientIdReplaced extends ClientEvent {
   final String newId;
   final Map<int, int> renumbered;
 }
+
+/// Protocol 1.8: a `POST /ops` was refused with `403 forbidden` (the account may no longer edit, e.g. its role was
+/// changed to a read-only one, or the client id belongs to another account). Emitted once per refusal streak. The client
+/// stops sending, refuses new edits locally ([LocalInvalid] with [Forbidden]) and finishes the ops it still had as
+/// [OpRejected] with [Forbidden] (not saved). The app should switch the editor to read-only and re-read the account
+/// (`GET /v1/account`); if it may edit again, call `CollabSession.allowEdits` to resume.
+final class EditingForbidden extends ClientEvent {
+  const EditingForbidden();
+}
