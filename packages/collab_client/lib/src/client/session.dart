@@ -290,8 +290,23 @@ class CollabSession {
       }
       _idleWaiters.clear();
     }
+    // The periodic tick runs the machine every [tickInterval]; only announce a change when something a listener can
+    // observe moved (a steady editor must not rebuild five times a second).
+    final fingerprint = Object.hash(
+      _machine.viewRevision,
+      _machine.durableRevision,
+      link,
+      _machine.unresolvedCount,
+      _machine.lastSeq,
+      _machine.hasState,
+      _lastError,
+    );
+    if (fingerprint == _lastFingerprint) return;
+    _lastFingerprint = fingerprint;
     _scheduleChange();
   }
+
+  int? _lastFingerprint;
 
   void _scheduleChange() {
     if (_changeScheduled || _changes.isClosed) return;
