@@ -1,0 +1,26 @@
+{
+  "dify_version": "1.17.1",
+  "dart_package": {
+    "name": "elk",
+    "version": "0.2.0",
+    "archive_url": "https://pub.dev/api/archives/elk-0.2.0.tar.gz",
+    "archive_sha256": "4a3ad94128a1b9128fed5881ff7dcfe72054b5b92f5f9dcc070be16f8b8eaa32"
+  },
+  "javascript_package": {
+    "name": "elkjs",
+    "version": "0.11.1",
+    "tarball": "https://registry.npmjs.org/elkjs/-/elkjs-0.11.1.tgz",
+    "integrity": "sha512-zxxR9k+rx5ktMwT/FwyLdPCrq7xN6e4VGGHH8hA01vVYKjTFik7nHOxBnAYtrgYUB1RpAiLvA1/U2YraWxyKKg==",
+    "local_tarball_sha256": "83973e243b44842353717427ee8ea1880d688ebe79634d4017e3cc30f3214a4a"
+  },
+  "random_seeds": [
+    0,
+    99
+  ],
+  "builder_audit": {
+    "graphs": 126,
+    "against": "Dify 1.17.1 original TypeScript buildPortAwareGraph",
+    "status": "identical serialized children and edges"
+  },
+  "input_sha256": "70028e70387413ffcc28f3129c7b4c005c9515820ec45a6de4d97f0acd14c1cd"
+}
