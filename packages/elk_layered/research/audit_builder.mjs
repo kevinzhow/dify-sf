@@ -11,10 +11,15 @@ return (nodes, edges) => { edgeCounter=0; return buildPortAwareGraph(nodes, edge
 const transpiled = new Bun.Transpiler({loader: 'ts'}).transformSync(extracted);
 const originalBuilder = new Function(transpiled)();
 const inputs = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+const graphs = process.argv[4]
+  ? new Map(JSON.parse(fs.readFileSync(process.argv[4], 'utf8')).map(r => [r.id, r.graph]))
+  : null;
 for (const record of inputs) {
   // JSON transport to the elkjs worker drops undefined optional fields.
   const expected = JSON.parse(JSON.stringify(originalBuilder(record.nodes, record.edges)));
-  assert.deepEqual(record.graph.children, expected.elkNodes);
-  assert.deepEqual(record.graph.edges, expected.elkEdges);
+  const graph = record.graph ?? graphs?.get(record.id);
+  if (!graph) throw new Error(`Missing expected graph for ${record.id}`);
+  assert.deepEqual(graph.children, expected.elkNodes);
+  assert.deepEqual(graph.edges, expected.elkEdges);
 }
 console.log(`Verified graph builder against Dify source for all ${inputs.length} inputs`);

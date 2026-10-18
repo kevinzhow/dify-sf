@@ -12,6 +12,9 @@ parser.add_argument('--dify-source', type=Path, required=True)
 parser.add_argument('--fixtures', type=Path, required=True)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--audit', type=Path)
+parser.add_argument('--random-count', type=int, default=100)
+parser.add_argument('--random-offset', type=int, default=0)
+parser.add_argument('--max-nodes', type=int, default=16)
 args = parser.parse_args()
 source = (args.dify_source / 'web/app/components/workflow/utils/elk-layout.ts').read_text()
 options = {}
@@ -21,7 +24,7 @@ for name in ('ROOT', 'CHILD'):
     options[name] = dict(re.findall(r"'([^']+)': '([^']*)'", body))
 
 
-def build(nodes, edges, mode='ROOT'):
+def build(nodes, edges, mode='ROOT', graph_id='workflow-root'):
     by_node = {}
     for edge in edges:
         by_node.setdefault(edge['source'], []).append(edge)
@@ -31,7 +34,7 @@ def build(nodes, edges, mode='ROOT'):
         data = n.get('data', {})
         kind = data.get('type')
         if kind in ('if-else', 'question-classifier', 'human-input'):
-            entries = data.get({'if-else':'cases', 'question-classifier':'classes', 'human-input':'user_actions'}[kind], [])
+            entries = data.get({'if-else':'cases', 'question-classifier':'classes', 'human-input':'user_actions'}[kind]) or []
             key = 'case_id' if kind == 'if-else' else 'id'
             order = [entry.get(key) for entry in entries]
             last = {'if-else':'false', 'human-input':'__timeout'}.get(kind)
@@ -75,7 +78,7 @@ def build(nodes, edges, mode='ROOT'):
         for e in outgoing.get(n, []):
             ordered_edges.append({'id': f'elk-edge-{len(ordered_edges)}', 'sources': [e['source']],
                                   'targets': [e['target']], 'sourcePort': source_ports[e['id']]})
-    graph = {'id': 'workflow-root', 'layoutOptions': options[mode], 'children': children, 'edges': ordered_edges}
+    graph = {'id': graph_id, 'layoutOptions': options[mode], 'children': children, 'edges': ordered_edges}
     audit.append({'nodes': nodes, 'edges': edges, 'graph': graph})
     return graph
 
@@ -92,7 +95,7 @@ for path in sorted(args.fixtures.glob('*.yml')):
         cn = [n for n in ns if n.get('parentId') == parent]
         ce = [e for e in es if (e.get('data', {}).get('isInIteration') and e['data'].get('iteration_id') == parent)
               or (e.get('data', {}).get('isInLoop') and e['data'].get('loop_id') == parent)]
-        corpus.append({'id': f'sample/{path.stem}/child/{parent}', 'graph': build(cn, ce, 'CHILD')})
+        corpus.append({'id': f'sample/{path.stem}/child/{parent}', 'graph': build(cn, ce, 'CHILD', parent)})
 
 # Separate simple named examples make changed relative coordinates easy to inspect.
 for mode in ('ROOT', 'CHILD'):
@@ -104,9 +107,9 @@ for mode in ('ROOT', 'CHILD'):
         es = [{'id': f'e{i}', 'source': f'n{a}', 'target': f'n{b}', 'sourceHandle': f'branch{i}'} for i,(a,b) in enumerate(pairs)]
         corpus.append({'id': f'basic/{mode.lower()}/{kind}', 'graph': build(ns, es, mode)})
 
-for seed in range(100):
+for seed in range(args.random_offset, args.random_offset + args.random_count):
     rng = random.Random(seed)
-    count = rng.randrange(4, 17)
+    count = rng.randrange(4, args.max_nodes + 1)
     ns = [{'id': f'n{i}', 'type': 'custom', 'data': {'type': 'code'},
            'width': rng.choice((100, 244, 300)), 'height': rng.choice((48, 80, 100, 160))} for i in range(count)]
     pairs = [(a,b) for a in range(count) for b in range(a+1,count) if rng.random() < .19]
@@ -117,5 +120,19 @@ for seed in range(100):
     corpus.append({'id': f'random/{seed}', 'graph': build(ns, es, mode)})
 args.output.write_text(json.dumps(corpus, indent=2) + '\n')
 if args.audit:
-    args.audit.write_text(json.dumps(audit) + '\n')
+    paired = []
+    for original, record in zip(corpus, audit):
+        nodes = []
+        for node in record['nodes']:
+            slim = {k: node[k] for k in ('id', 'type', 'width', 'height', 'parentId') if k in node}
+            data = node.get('data', {})
+            slim['data'] = {'type': data.get('type')}
+            for key, item_key in (('cases', 'case_id'), ('classes', 'id'), ('user_actions', 'id')):
+                if key in data:
+                    slim['data'][key] = [{item_key: item[item_key]} for item in data[key] if item_key in item]
+            nodes.append(slim)
+        edges = [{k: edge[k] for k in ('id', 'source', 'target', 'sourceHandle', 'targetHandle') if k in edge}
+                 for edge in record['edges']]
+        paired.append({'id': original['id'], 'nodes': nodes, 'edges': edges})
+    args.audit.write_text(json.dumps(paired, separators=(',', ':')) + '\n')
 print(f'Wrote {len(corpus)} graphs')

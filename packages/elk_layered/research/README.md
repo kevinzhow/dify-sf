@@ -88,12 +88,18 @@ then compares its serialized children/edges with the Python builder's output. Al
 
 ```sh
 python3 make_corpus.py --dify-source "$DIFY_SOURCE" --fixtures "$DIFY_SAMPLES" --output graphs.json --audit inputs.json
-bun audit_builder.mjs "$DIFY_SOURCE/web/app/components/workflow/utils/elk-layout.ts" inputs.json
+bun audit_builder.mjs "$DIFY_SOURCE/web/app/components/workflow/utils/elk-layout.ts" inputs.json graphs.json
 ```
 
 The builder preserves Dify's sourcePort field rather than changing endpoints to port IDs: elkjs ignores that
 legacy field when `sources` is supplied. Dify's unused explicit ports still affect layout. Branch sorting, DFS
 child/edge order, source handle naming, and internal-edge filters follow the Dify helper.
+
+`builder_cases.json` retains the paired pre-builder inputs for all 126 graphs, with only fields read by the
+builder (IDs, types, sizes, branch/class/action IDs, and edge handles). Match its `id` to `graphs.json` to obtain
+the expected `graph.children` and `graph.edges`. These pairs test `buildPortAwareGraph`; node/edge filtering
+around that helper remains a separate editor integration responsibility. The three real child graphs use
+their actual parent IDs as the graph ID.
 
 ## Sources
 

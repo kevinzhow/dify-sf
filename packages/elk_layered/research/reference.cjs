@@ -1,4 +1,8 @@
 const fs = require('node:fs');
+const path = require('node:path');
+const modulePath = require.resolve(process.env.ELK_MODULE);
+const version = JSON.parse(fs.readFileSync(path.join(path.dirname(modulePath), '..', 'package.json'), 'utf8')).version;
+if (version !== '0.11.1') throw new Error(`Expected elkjs 0.11.1, got ${version}`);
 const ELK = require(process.env.ELK_MODULE);
 (async () => {
   const records = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));

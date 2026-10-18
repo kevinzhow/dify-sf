@@ -22,5 +22,5 @@
     "against": "Dify 1.17.1 original TypeScript buildPortAwareGraph",
     "status": "identical serialized children and edges"
   },
-  "input_sha256": "70028e70387413ffcc28f3129c7b4c005c9515820ec45a6de4d97f0acd14c1cd"
+  "input_sha256": "766e0dd5a1bdccabd5413d0e5f961650b75623676512eec23e65ea6819b8a009"
 }
