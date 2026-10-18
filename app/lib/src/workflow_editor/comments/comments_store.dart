@@ -3,15 +3,21 @@
 /// API (stable; the comments UI is built on it):
 ///
 /// ```dart
-/// CommentsStore({required CommentsApi api, required Stream<CommentsEvent> events, required String Function() clientId})
-/// CommentsStore.forSession(CollabSession session)   // api: session.transport.comments, events: session.comments
+/// CommentsStore({required CommentsApi api, required Stream<CommentsEvent> events, required String Function() clientId,
+///               String Function()? userId})
+/// CommentsStore.forSession(CollabSession session, {String? accountId})   // api: session.transport.comments, events:
+///                                                                        // session.comments
 ///
 /// // state (a ChangeNotifier: listeners run on every change below)
 /// List<Comment> comments          // newest first (Dify's order), resolved ones included, replies inside (oldest first)
 /// Comment? byId(String id)
-/// String get clientId             // this client: the author of what it writes
+/// String get clientId             // this client (the `author` argument of fakes without accounts)
+/// String get currentUserId        // the signed-in account (protocol 1.8: authors are accounts); the client id without
+///                                 // accounts
 /// bool isAuthor(Comment c)        // Dify: only the author edits, moves or deletes (replies: CommentReply.createdBy)
-/// Map<String, String> names       // the /clients directory (client id -> display name): mention candidates
+/// Map<String, String> names       // the workspace members (account id -> name, /comments/mention-users): mention
+///                                 // candidates and authors' names
+/// Map<String, MentionUser> users  // the same members with their avatars
 /// bool loaded, loading            // the first list arrived / a refetch is running
 /// CommentsFailure? lastError      // the last refused or failed call (also on [failures]); clearError()
 /// Stream<CommentsFailure> failures
@@ -63,24 +69,36 @@ class CommentsFailure {
 }
 
 class CommentsStore extends ChangeNotifier {
-  CommentsStore({required this._api, required Stream<CommentsEvent> events, required this._clientId}) {
+  CommentsStore({
+    required this._api,
+    required Stream<CommentsEvent> events,
+    required this._clientId,
+    String Function()? userId,
+  }) : _userId = userId ?? _clientId {
     _events = events.listen(_onEvent);
     unawaited(refresh());
     unawaited(refreshNames());
   }
 
-  /// The store of a session's document: its transport's comments, its stream's notifications, its client id.
-  factory CommentsStore.forSession(CollabSession session) =>
-      CommentsStore(api: session.transport.comments, events: session.comments, clientId: () => session.clientId);
+  /// The store of a session's document: its transport's comments, its stream's notifications, its client id, and the
+  /// signed-in [accountId] as the current user (protocol 1.8; null: no accounts, the client id is the user).
+  factory CommentsStore.forSession(CollabSession session, {String? accountId}) => CommentsStore(
+    api: session.transport.comments,
+    events: session.comments,
+    clientId: () => session.clientId,
+    userId: accountId == null ? null : () => accountId,
+  );
 
   final CommentsApi _api;
   final String Function() _clientId;
+  final String Function() _userId;
   late final StreamSubscription<CommentsEvent> _events;
   final _failures = StreamController<CommentsFailure>.broadcast();
   bool _disposed = false;
 
   List<Comment> _comments = const [];
   Map<String, String> _names = const {};
+  Map<String, MentionUser> _users = const {};
   bool _loaded = false;
   CommentsFailure? _lastError;
 
@@ -99,10 +117,16 @@ class CommentsStore extends ChangeNotifier {
 
   String get clientId => _clientId();
 
-  bool isAuthor(Comment c) => c.createdBy == clientId;
+  /// The signed-in account (authors are accounts, protocol 1.8); the client id when there are no accounts.
+  String get currentUserId => _userId();
 
-  /// Client id -> display name (the `/clients` directory): the mention candidates.
+  bool isAuthor(Comment c) => c.createdBy == currentUserId;
+
+  /// The workspace members, id -> name (`/comments/mention-users`): the mention candidates and authors' names.
   Map<String, String> get names => _names;
+
+  /// The members with their avatars.
+  Map<String, MentionUser> get users => _users;
 
   bool get loaded => _loaded;
   bool get loading => _refreshing != null;
@@ -155,9 +179,10 @@ class CommentsStore extends ChangeNotifier {
 
   Future<void> refreshNames() async {
     try {
-      final names = await _api.clientNames();
+      final users = await _api.mentionUsers();
       if (_disposed) return;
-      _names = Map.unmodifiable(names);
+      _users = Map.unmodifiable({for (final u in users) u.id: u});
+      _names = Map.unmodifiable({for (final u in users) u.id: u.name});
       _notify();
     } on Object catch (e) {
       if (!_disposed) _fail(CommentsFailure('names', e));

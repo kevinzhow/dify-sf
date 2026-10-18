@@ -33,7 +33,13 @@ class CanvasInput {
     required this.selection,
     required this.renderer,
     this.modeSource,
+    this.readOnly = _never,
   });
+
+  static bool _never() => false;
+
+  /// Dify's `nodesReadOnly`: nodes are selected but not dragged, handles do not connect, Delete does nothing.
+  final bool Function() readOnly;
 
   final EditorController controller;
   final CanvasGraph graph;
@@ -141,12 +147,13 @@ class CanvasInput {
     if (e.buttons & kPrimaryButton == 0) return;
     // Comment mode: nodes neither select nor drag, nothing connects; clicks are the comment layer's.
     if (mode == ControlMode.comment) return;
-    final port = outPortAt(c), hit = _clickTarget(c);
+    final locked = readOnly();
+    final port = locked ? null : outPortAt(c), hit = _clickTarget(c);
     if (port != null) {
       _gesture = 'connect';
       _connectFrom = port;
     } else if (hit != null) {
-      _gesture = 'move';
+      _gesture = locked ? 'none' : 'move';
       if (!selection.nodes.contains(hit.slot)) selection.selectNodes([hit.slot]);
       controller.selectNode(hit.id);
       onApplied?.call('select');
@@ -292,6 +299,7 @@ class CanvasInput {
     if (e.logicalKey != LogicalKeyboardKey.delete && e.logicalKey != LogicalKeyboardKey.backspace) {
       return KeyEventResult.ignored;
     }
+    if (readOnly()) return KeyEventResult.ignored;
     final edge = selection.edge;
     if (edge != null) {
       controller.deleteEdge(edge);

@@ -83,6 +83,48 @@ class RemixIcon extends StatelessWidget {
   Widget build(BuildContext context) => _icon(context, 'assets/remix_icons/$name.svg', size, color);
 }
 
+/// A Heroicon as Dify uses it (`i-heroicons-<name>`, outline set), e.g. `HeroIcon('globe-alt')`.
+class HeroIcon extends StatelessWidget {
+  const HeroIcon(this.name, {super.key, this.size = 16, this.color});
+
+  final String name;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => _icon(context, 'assets/heroicons/$name.svg', size, color);
+}
+
+/// base/logo/dify-logo.tsx `DifyLogo` (`/logo/logo.svg`, 48 x 22, `object-contain`): `small` 36 x 16, `medium`
+/// 48 x 22, `large` 64 x 28. [alt] is the image's accessible name.
+class DifyLogo extends StatelessWidget {
+  const DifyLogo({super.key, this.alt = 'Dify', this.size = DifyLogoSize.medium});
+
+  final String alt;
+  final DifyLogoSize size;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    image: true,
+    label: alt.isEmpty ? null : alt,
+    excludeSemantics: true,
+    child: SizedBox(
+      width: size.width,
+      height: size.height,
+      child: SvgPicture.asset('assets/brand/logo.svg'),
+    ),
+  );
+}
+
+enum DifyLogoSize {
+  small(36, 16),
+  medium(48, 22),
+  large(64, 28);
+
+  const DifyLogoSize(this.width, this.height);
+  final double width, height;
+}
+
 /// The block icon glyph per node type (workflow/block-icon.tsx: Start draws `user-input`, the others
 /// DEFAULT_ICON_MAP).
 /// The glyph of the small node icon in variable labels (VarBlockIcon: DEFAULT_ICON_MAP, where Start is `home`).

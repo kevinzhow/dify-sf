@@ -4,6 +4,7 @@ import 'package:collab_client/collab_client.dart' show DocMeta;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../auth/auth_api.dart';
 import '../online_events.dart';
 import '../session_factory.dart';
 import '../workflow_editor/dify_editor.dart';
@@ -21,10 +22,15 @@ class EditorPage extends StatefulWidget {
     required this.journaled,
     this.create = true,
     this.extraActions,
+    this.account,
   });
 
   final Backend backend;
   final String docId;
+
+  /// The signed-in account (protocol 1.8): its role decides whether the editor is read-only (Dify's `canEdit`), its
+  /// name and avatar are the user's in the editor. Null: no accounts (the demo, tests), full access.
+  final Account? account;
 
   /// Explicit client id (tests, demo); null = issued by the server and kept in the journal.
   final String? clientId;
@@ -194,19 +200,27 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     );
   }
 
+  WorkflowAccessControl get _access {
+    final a = widget.account;
+    return a == null || a.canEdit ? WorkflowAccessControl.full : WorkflowAccessControl.viewOnly;
+  }
+
   List<Widget> _actions(BuildContext context, EditorController c) {
+    final access = _access;
     return [
-      PopupMenuButton<String>(
-        key: const Key('add-node-menu'),
-        tooltip: 'Add node',
-        icon: const Icon(Icons.add_box_outlined),
-        onSelected: (type) =>
-            c.addNode(type, x: 120 + (c.doc.nodes.length % 5) * 40, y: 280 + (c.doc.nodes.length % 4) * 40),
-        itemBuilder: (_) => [
-          for (final t in const ['start', 'llm', 'code', 'answer']) PopupMenuItem(value: t, child: Text('Add $t node')),
-        ],
-      ),
-      if (widget.backend.supportsDifyDsl)
+      if (access.canEdit)
+        PopupMenuButton<String>(
+          key: const Key('add-node-menu'),
+          tooltip: 'Add node',
+          icon: const Icon(Icons.add_box_outlined),
+          onSelected: (type) =>
+              c.addNode(type, x: 120 + (c.doc.nodes.length % 5) * 40, y: 280 + (c.doc.nodes.length % 4) * 40),
+          itemBuilder: (_) => [
+            for (final t in const ['start', 'llm', 'code', 'answer'])
+              PopupMenuItem(value: t, child: Text('Add $t node')),
+          ],
+        ),
+      if (widget.backend.supportsDifyDsl && access.canImportExportDsl)
         IconButton(
           key: const Key('export-dsl'),
           tooltip: 'Export as a Dify workflow file',
@@ -267,6 +281,11 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       serverLabel: widget.backend.label,
       actions: _actions(context, c),
       meta: _meta,
+      access: _access,
+      user: switch (widget.account) {
+        final a? => EditorUser(id: a.id, name: a.name, avatarUrl: a.avatarUrl),
+        null => null,
+      },
     );
   }
 }

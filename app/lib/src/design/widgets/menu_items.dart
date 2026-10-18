@@ -18,10 +18,15 @@ class _MenuRow extends StatefulWidget {
     this.onHover,
     this.onKey,
     this.margin = true,
+    this.marginX = 4,
+    this.paddingX = 8,
   });
 
   /// `mx-1` (a submenu trigger puts it outside its anchor instead).
   final bool margin;
+
+  /// A call site's `mx-*` / `px-*` over the row's `mx-1 px-2`.
+  final double marginX, paddingX;
   final Widget child;
   final Widget? leading;
   final Widget? trailing;
@@ -69,8 +74,8 @@ class _MenuRowState extends State<_MenuRow> {
     final highlighted = _node.hasFocus && !widget.disabled;
     Widget row = Container(
       height: 32,
-      margin: widget.margin ? const EdgeInsets.symmetric(horizontal: 4) : null,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      margin: widget.margin ? EdgeInsets.symmetric(horizontal: widget.marginX) : null,
+      padding: EdgeInsets.symmetric(horizontal: widget.paddingX),
       decoration: BoxDecoration(
         color: highlighted ? (widget.destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
@@ -162,6 +167,8 @@ class DifyMenuItem extends StatelessWidget {
     this.disabled = false,
     this.closeOnClick = true,
     this.semanticLabel,
+    this.marginX = 4,
+    this.paddingX = 8,
   });
 
   final Widget child;
@@ -173,8 +180,13 @@ class DifyMenuItem extends StatelessWidget {
   final bool closeOnClick;
   final String? semanticLabel;
 
+  /// A call site's `mx-*` / `px-*` (`mx-0 px-3` in the account menu).
+  final double marginX, paddingX;
+
   @override
   Widget build(BuildContext context) => _MenuRow(
+    marginX: marginX,
+    paddingX: paddingX,
     leading: leading,
     trailing: trailing,
     disabled: disabled,

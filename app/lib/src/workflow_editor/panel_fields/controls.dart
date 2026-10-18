@@ -417,11 +417,22 @@ TextField _field({
   ValueChanged<String>? onSubmitted,
   List<TextInputFormatter>? formatters,
   TextInputType? keyboardType,
+  bool obscureText = false,
+  Iterable<String>? autofillHints,
+  int? maxLength,
+  TextInputAction? textInputAction,
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
   readOnly: readOnly,
   enabled: !disabled,
+  obscureText: obscureText,
+  autofillHints: autofillHints,
+  autocorrect: !obscureText && keyboardType != TextInputType.emailAddress,
+  enableSuggestions: !obscureText,
+  textInputAction: textInputAction,
+  maxLength: maxLength,
+  maxLengthEnforcement: maxLength == null ? null : MaxLengthEnforcement.enforced,
   onChanged: onChanged,
   onSubmitted: onSubmitted,
   inputFormatters: formatters,
@@ -438,6 +449,8 @@ TextField _field({
     visualDensity: VisualDensity.standard,
     hintText: placeholder,
     hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+    // `maxlength` shows no counter in a browser.
+    counterText: '',
   ),
 );
 
@@ -463,6 +476,10 @@ class DifyInput extends StatefulWidget {
     this.onKeyEvent,
     this.textStyle,
     this.fontFamily,
+    this.obscureText = false,
+    this.autofillHints,
+    this.maxLength,
+    this.textInputAction,
   });
 
   final String value;
@@ -490,6 +507,12 @@ class DifyInput extends StatefulWidget {
   /// just the family (`font-mono` call sites).
   final TextStyle? textStyle;
   final String? fontFamily;
+
+  /// `type="password"`, `autocomplete`, `maxlength` and the keyboard's action (Enter submits a form).
+  final bool obscureText;
+  final Iterable<String>? autofillHints;
+  final int? maxLength;
+  final TextInputAction? textInputAction;
 
   @override
   State<DifyInput> createState() => _DifyInputState();
@@ -531,6 +554,10 @@ class _DifyInputState extends State<DifyInput> with _ControlledText<DifyInput> {
       onSubmitted: w.onSubmitted,
       formatters: w.formatters,
       keyboardType: w.keyboardType,
+      obscureText: w.obscureText,
+      autofillHints: w.autofillHints,
+      maxLength: w.maxLength,
+      textInputAction: w.textInputAction,
     );
     if (w.height != null) {
       field = SizedBox(

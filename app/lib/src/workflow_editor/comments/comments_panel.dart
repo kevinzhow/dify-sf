@@ -90,7 +90,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
       listenable: Listenable.merge([source, store.activeCommentId, store.showResolvedComments]),
       builder: (context, _) {
         final showResolved = store.showResolvedComments.value;
-        final me = source.clientId;
+        final me = source.currentUserId;
         final list = [
           for (final c in source.comments)
             if ((showResolved || !c.resolved) && (!_onlyMine || c.createdBy == me)) c,
@@ -341,7 +341,7 @@ class _CommentCardState extends State<_CommentCard> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
-                    UserAvatarList(users: participantsOf(source, c), currentUserId: source.clientId),
+                    UserAvatarList(users: participantsOf(source, c), currentUserId: source.currentUserId),
                     const Spacer(),
                     Padding(
                       padding: const EdgeInsets.only(left: 8),

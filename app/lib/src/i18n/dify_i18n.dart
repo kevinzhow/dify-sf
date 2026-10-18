@@ -47,6 +47,7 @@ class DifyI18n implements Translator {
       'dataset-documents',
       'agent-v-2',
       'app-overview',
+      'login',
     ],
   }) async {
     final b = bundle ?? rootBundle;
@@ -136,6 +137,12 @@ class DifyI18n implements Translator {
         return whole && i == 1 ? 'one' : 'other';
     }
   }
+}
+
+/// The language of the loaded translations (`en-US` while none are, e.g. in tests).
+String currentDifyLanguage() {
+  final t = DifyI18n.current;
+  return t is DifyI18n ? t.language : DifyI18n.fallbackLanguage;
 }
 
 /// Returns keys untranslated (Dify's tests' `withSelectorKey((key) => key)`).

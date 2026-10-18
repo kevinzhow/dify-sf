@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/app_fonts.dart';
+import 'support/auth_fakes.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,7 +48,7 @@ void main() {
       return null;
     });
     final backend = _DslDemoBackend();
-    await t.pumpWidget(buildApp(await AppSettings.load(), backendFor: (_) => backend));
+    await t.pumpWidget(buildApp(await AppSettings.load(), backendFor: (_) => backend, auth: await signedInAuth()));
 
     await t.tap(find.byKey(const Key('import-dsl-button')));
     await t.pumpAndSettle();

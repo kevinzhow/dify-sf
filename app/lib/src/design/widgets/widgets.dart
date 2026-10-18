@@ -1,6 +1,7 @@
 /// Ports of Dify's shared UI primitives (packages/dify-ui and the workflow chrome's helpers).
 library;
 
+export 'avatar.dart';
 export 'button.dart';
 export 'button_style.dart';
 export 'divider.dart';

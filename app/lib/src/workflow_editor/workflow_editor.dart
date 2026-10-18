@@ -5,6 +5,7 @@ import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart';
 import '../editor/editor_controller.dart';
 import 'context_menu/context_menu.dart';
+import 'operator/actions.dart' show OperatorReadOnly;
 import 'store/store.dart';
 
 /// Dify's workflow editor page (components/workflow/index.tsx and workflow-app): the canvas filling the area, with
@@ -25,9 +26,14 @@ class WorkflowEditor extends StatefulWidget {
     this.menuOptions = const WorkflowMenuOptions(),
     this.overlay,
     this.modal,
+    this.canEdit = true,
   });
 
   final EditorController controller;
+
+  /// Dify's `accessControl.canEdit`: false (normal members, dataset operators) makes the canvas read-only
+  /// (`nodesReadOnly`, through the store's `canvasReadOnly`).
+  final bool canEdit;
 
   /// header/index.tsx: `absolute top-7 left-0 z-10 flex h-0 w-full items-center justify-between px-3`.
   final Widget Function(BuildContext context, CanvasController canvas)? header;
@@ -65,6 +71,14 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
   void initState() {
     super.initState();
     bridge; // hydrate the store from the stored preferences as soon as they load
+    store.setCanvasReadOnly(!widget.canEdit);
+    canvas.isReadOnly = () => store.nodesReadOnly;
+  }
+
+  @override
+  void didUpdateWidget(WorkflowEditor old) {
+    super.didUpdateWidget(old);
+    if (old.canEdit != widget.canEdit) store.setCanvasReadOnly(!widget.canEdit);
   }
 
   @override

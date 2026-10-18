@@ -4,7 +4,9 @@
 
 Needs, while it runs (start them only for the run):
   * a local Dify 1.17.1 at $DIFY_URL (default http://localhost) and an account: $DIFY_EMAIL, $DIFY_PASSWORD
-  * the dify-sf server at $DIFYSF_URL (default http://127.0.0.1:18080)
+  * the dify-sf server at $DIFYSF_URL (default http://127.0.0.1:18080); protocol 1.8 accounts: the script signs in as
+    $DIFYSF_EMAIL / $DIFYSF_PASSWORD (default visual@example.com / Visual12345), setting that owner up on a fresh
+    server, and hands our app the session the way it keeps one (localStorage `dify-sf/tokens/<server>`)
   * our web build: app/build/web (flutter build web --profile), served by this script; $OURS_QUERY adds query
     parameters to its URL (canvas=widgets: the widget renderer)
 
@@ -79,8 +81,24 @@ def dify_import(s, text):
     return body['app_id']
 
 
+@functools.cache
+def sf_tokens():
+    """An access / refresh token pair of the dify-sf server (protocol 1.8): the first owner on a fresh server."""
+    email = os.environ.get('DIFYSF_EMAIL', 'visual@example.com')
+    password = os.environ.get('DIFYSF_PASSWORD', 'Visual12345')
+    if requests.get(f'{SF}/v1/setup').json().get('step') != 'finished':
+        r = requests.post(f'{SF}/v1/setup', json={'email': email, 'name': 'Visual', 'password': password})
+    else:
+        r = requests.post(f'{SF}/v1/auth/login', json={'email': email, 'password': password})
+    r.raise_for_status()
+    j = r.json()
+    return {'access_token': j['access_token'], 'refresh_token': j['refresh_token']}
+
+
 def sf_import(text):
-    r = requests.post(f'{SF}/v1/docs/import', data=text.encode(), headers={'Content-Type': 'application/x-yaml'})
+    r = requests.post(f'{SF}/v1/docs/import', data=text.encode(),
+                      headers={'Content-Type': 'application/x-yaml',
+                               'Authorization': f'Bearer {sf_tokens()["access_token"]}'})
     r.raise_for_status()
     return r.json()['id']
 
@@ -175,6 +193,8 @@ def capture_ours(browsers, base, doc, case, out, viewport):
     # Dify's canvas (`oursWindow`).
     w, h = case.get('oursWindow', case['window'])
     ctx = browsers.context(w, h)
+    # Signed in before the app starts: its token store (web) is localStorage['dify-sf/tokens/<server>'].
+    ctx.add_init_script(f'localStorage.setItem({json.dumps("dify-sf/tokens/" + SF)}, {json.dumps(json.dumps(sf_tokens()))})')
     page = ctx.new_page()
     rect = []
     views = []
@@ -186,7 +206,7 @@ def capture_ours(browsers, base, doc, case, out, viewport):
     page.on('console', lambda m: bars.append(m.text) if m.text.startswith('NODE_CONTROL ') else None)
     x, y, z = viewport
     select = f'&select={case["select"]}' if case.get('select') else ''
-    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1&name=alice{select}' + (f'&{EXTRA}' if EXTRA else ''))
+    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else ''))
     t0 = time.time()
     while not rect and time.time() - t0 < 60:
         page.wait_for_timeout(200)

@@ -23,6 +23,12 @@ class CanvasController {
   /// The node drawn by a live widget instead of its card (the selected note's editor), if any.
   final liveCard = ValueNotifier<LiveCard?>(null);
 
+  /// Dify's `nodesReadOnly` for the canvas's own gestures (React Flow's `nodesDraggable` / `nodesConnectable` and the
+  /// delete key are off while it is true). The workflow editor points it at its store.
+  bool Function() isReadOnly = _never;
+
+  static bool _never() => false;
+
   /// React Flow's zoomIn/zoomOut: d3 `scaleBy(1.2)` around the viewport's middle.
   static const zoomStep = 1.2;
 

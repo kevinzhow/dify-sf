@@ -98,6 +98,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       selection: selection,
       renderer: () => renderer,
       modeSource: canvas.controlMode,
+      readOnly: () => canvas.isReadOnly(),
     );
     a11y = CanvasA11y(
       graph: graph,

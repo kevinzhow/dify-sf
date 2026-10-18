@@ -38,6 +38,7 @@ class DifySelect<T> extends StatefulWidget {
     this.textStyle,
     this.paddingX = 12,
     this.semanticLabel,
+    this.large = false,
   });
 
   final T? value;
@@ -54,6 +55,9 @@ class DifySelect<T> extends StatefulWidget {
 
   /// The trigger's `aria-label`.
   final String? semanticLabel;
+
+  /// `SelectTrigger size="large"`: `h-9 rounded-[10px] px-4 system-md-regular`.
+  final bool large;
 
   @override
   State<DifySelect<T>> createState() => _DifySelectState<T>();
@@ -98,8 +102,11 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
             placeholder: selected == null,
             readonly: w.readonly,
             disabled: w.disabled,
-            textStyle: w.textStyle,
-            paddingX: w.paddingX,
+            textStyle:
+                w.textStyle ?? (w.large ? difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary) : null),
+            paddingX: w.large ? 16 : w.paddingX,
+            height: w.large ? 36 : 32,
+            radius: w.large ? 10 : DifyRadius.lg,
             semanticLabel: w.semanticLabel,
             open: controller.isOpen,
             onTap: w.readonly || w.disabled ? null : controller.toggle,
@@ -154,8 +161,11 @@ class _SelectTrigger extends StatefulWidget {
     this.textStyle,
     this.onTap,
     this.semanticLabel,
+    this.height = 32,
+    this.radius = DifyRadius.lg,
   });
   final String? semanticLabel;
+  final double height, radius;
   final String text;
   final bool placeholder, readonly, disabled, open;
   final double paddingX;
@@ -194,7 +204,7 @@ class _SelectTriggerState extends State<_SelectTrigger> {
           excludeFromSemantics: true,
           onTap: w.onTap,
           child: Container(
-            height: 32,
+            height: w.height,
             padding: EdgeInsets.symmetric(horizontal: w.paddingX),
             decoration: BoxDecoration(
               color: w.disabled
@@ -202,7 +212,7 @@ class _SelectTriggerState extends State<_SelectTrigger> {
                   : active
                   ? DifyColors.stateBaseHoverAlt
                   : DifyColors.componentsInputBgNormal,
-              borderRadius: BorderRadius.circular(DifyRadius.lg),
+              borderRadius: BorderRadius.circular(w.radius),
             ),
             child: Row(
               spacing: 2,

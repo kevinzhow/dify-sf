@@ -242,7 +242,7 @@ class _CommentLayerState extends State<CommentLayer> {
   /// The boxes and the thread, over the editor's chrome (in the overlay), at the canvas's place and clipped to it.
   Widget _popupsLayer(CommentsStore source, WorkflowComments actions, Rect canvasRect) {
     final store = _store, view = widget.canvas.view;
-    final me = (id: source.clientId, name: nameOf(source, source.clientId));
+    final me = (id: source.currentUserId, name: nameOf(source, source.currentUserId));
     return Stack(
       children: [
         Positioned.fromRect(

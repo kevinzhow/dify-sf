@@ -10,8 +10,12 @@ import '../session_factory.dart';
 
 /// An in-memory server with a collaborator named Bo, for trying the editor without a server and for widget
 /// tests. "Go offline" cuts the user's network; Bo's edits then conflict with the user's.
+///
+/// With [auth] (and a server with accounts, protocol 1.8) the user's requests carry that session's token and Bo signs
+/// in as [boAuth]: names, comment authors and roles are the accounts'. Without, the server checks nothing (as before
+/// 1.8).
 class DemoBackend implements Backend {
-  DemoBackend({FakeServer? server, bool withBo = true})
+  DemoBackend({FakeServer? server, bool withBo = true, this.auth, this.boAuth})
     : server = server ?? FakeServer(),
       net = FakeNetwork(random: Random(3)) {
     net
@@ -21,6 +25,9 @@ class DemoBackend implements Backend {
   }
 
   final FakeServer server;
+
+  /// The user's and Bo's sessions on a server with accounts (protocol 1.8); null without accounts.
+  final TokenProvider? auth, boAuth;
 
   /// The user's network. Toggled by "Go offline".
   final FakeNetwork net;
@@ -64,7 +71,7 @@ class DemoBackend implements Backend {
     return OpenedSession(
       CollabSession(
         clientId: clientId,
-        transport: FakeTransport(server, network: net),
+        transport: FakeTransport(server, network: net, auth: auth),
         store: store,
         journaled: journaled,
         displayName: displayName,
@@ -77,7 +84,11 @@ class DemoBackend implements Backend {
   Future<void> _startBo() async {
     final b = CollabSession(
       clientId: 'bo-${Random().nextInt(1 << 24).toRadixString(16).padLeft(6, '0')}',
-      transport: FakeTransport(server, network: FakeNetwork(random: Random(9))),
+      transport: FakeTransport(
+        server,
+        network: FakeNetwork(random: Random(9)),
+        auth: boAuth,
+      ),
       store: MemoryStore(),
     );
     bo = b;

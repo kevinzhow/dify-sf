@@ -171,7 +171,7 @@ class _CommentPreviewState extends State<CommentPreview> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: UserAvatarList(
                     users: participantsOf(widget.source, c),
-                    currentUserId: widget.source.clientId,
+                    currentUserId: widget.source.currentUserId,
                   ),
                 ),
                 Padding(
@@ -255,7 +255,7 @@ class _CommentIconState extends State<CommentIcon> {
   ({Offset offset, Offset start, bool moved})? _drag;
   Offset? _keyboardPosition;
 
-  bool get _isAuthor => widget.comment.createdBy == widget.source.clientId;
+  bool get _isAuthor => widget.comment.createdBy == widget.source.currentUserId;
 
   @override
   void initState() {
@@ -435,7 +435,7 @@ class _CommentIconState extends State<CommentIcon> {
                   ExcludeSemantics(
                     child: SizedBox.fromSize(
                       size: size,
-                      child: _PinBody(users: users, active: widget.isActive, me: source.clientId),
+                      child: _PinBody(users: users, active: widget.isActive, me: source.currentUserId),
                     ),
                   ),
                 ),

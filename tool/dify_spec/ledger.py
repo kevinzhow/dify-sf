@@ -2,7 +2,7 @@
 
   python3 tool/dify_spec/ledger.py <dify source root> [--write]
 
-Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page, dify-ui) as
+Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page, dify-ui, sign-in / install / activate pages, account dropdown) as
 `<spec path> :: <describe> > ... > <it>`, and checks which are ported: a ported case is a Dart test under
 app/test/dify_spec/ whose full name (group names joined with ' > ' and the test name) equals the Dify case name, in a
 file that names the spec in a `// dify-spec: <spec path>` line. Cases that cannot apply are listed with a reason in
@@ -15,7 +15,8 @@ from pathlib import Path
 ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setting/model-provider-page',
          'packages/dify-ui/src', 'web/app/components/app/app-publisher',
          'web/app/components/workflow-app/components/workflow-header', 'web/app/components/base/prompt-editor',
-         'web/app/components/base/features']
+         'web/app/components/base/features', 'web/app/signin', 'web/app/install', 'web/app/activate',
+         'web/app/components/header/account-dropdown']
 CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|concurrent|todo))*\(\s*(['"`])(.*?)\3''')
 
 

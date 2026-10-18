@@ -43,7 +43,7 @@ class RecordingCommentsApi implements CommentsApi {
 
   @override
   Future<Comment> create({
-    required String author,
+    String? author,
     required double x,
     required double y,
     required String content,
@@ -57,7 +57,7 @@ class RecordingCommentsApi implements CommentsApi {
   @override
   Future<Comment> update(
     String id, {
-    required String author,
+    String? author,
     String? content,
     double? x,
     double? y,
@@ -69,17 +69,17 @@ class RecordingCommentsApi implements CommentsApi {
   );
 
   @override
-  Future<void> delete(String id, {required String author}) =>
+  Future<void> delete(String id, {String? author}) =>
       _call('delete', {'id': id, 'author': author}, () => inner.delete(id, author: author));
 
   @override
-  Future<Comment> resolve(String id, {required String author}) =>
+  Future<Comment> resolve(String id, {String? author}) =>
       _call('resolve', {'id': id, 'author': author}, () => inner.resolve(id, author: author));
 
   @override
   Future<CommentReply> reply(
     String id, {
-    required String author,
+    String? author,
     required String content,
     List<String> mentions = const [],
   }) => _call(
@@ -92,7 +92,7 @@ class RecordingCommentsApi implements CommentsApi {
   Future<CommentReply> editReply(
     String id,
     String replyId, {
-    required String author,
+    String? author,
     required String content,
     List<String> mentions = const [],
   }) => _call(
@@ -102,7 +102,7 @@ class RecordingCommentsApi implements CommentsApi {
   );
 
   @override
-  Future<void> deleteReply(String id, String replyId, {required String author}) => _call(
+  Future<void> deleteReply(String id, String replyId, {String? author}) => _call(
     'deleteReply',
     {'id': id, 'replyId': replyId, 'author': author},
     () => inner.deleteReply(id, replyId, author: author),
@@ -110,6 +110,12 @@ class RecordingCommentsApi implements CommentsApi {
 
   @override
   Future<Map<String, String>> clientNames() => _call('clientNames', const {}, inner.clientNames);
+
+  @override
+  Future<List<MentionUser>> mentionUsers() => _call('mentionUsers', const {}, inner.mentionUsers);
+
+  @override
+  Future<Map<String, ClientIdentity>> clientDirectory() => _call('clientDirectory', const {}, inner.clientDirectory);
 }
 
 /// An in-memory comments server shared by the clients of a test, with Dify's test users (`user-1` Alice, `user-2`

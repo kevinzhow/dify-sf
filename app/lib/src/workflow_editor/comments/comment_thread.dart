@@ -263,7 +263,7 @@ class _CommentThreadState extends State<CommentThread> {
 
   @override
   Widget build(BuildContext context) {
-    final c = widget.comment, source = widget.source, me = source.clientId;
+    final c = widget.comment, source = widget.source, me = source.currentUserId;
     final users = mentionUsersOf(source);
     final names = _mentionableNames;
     Widget editor({

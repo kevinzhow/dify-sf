@@ -2,18 +2,27 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'app_root.dart';
+import 'auth/account_dropdown.dart';
+import 'auth/auth_api.dart';
+import 'auth/auth_controller.dart';
 import 'cards/card_kit.dart' show cardFontFamily;
 
 import 'demo/demo_backend.dart';
+import 'design/dify_icon.dart';
 import 'design/dify_theme.dart';
+import 'design/dify_tokens.g.dart';
 import 'design/widgets/toast.dart';
 import 'editor/editor_controller.dart';
 import 'editor/editor_page.dart';
+import 'i18n/app_locale.dart';
+import 'i18n/dify_i18n.dart';
 import 'launch_options.dart';
 import 'session_factory.dart';
 import 'settings.dart';
 
-/// Start screen: server, name, mode, and the document to open or create.
+/// Start screen (signed in): mode and the document to open or create, in Dify's main navigation frame (the logo at
+/// the top, the account menu at the bottom of the sidebar). The server is the one signed in to.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.settings, this.backendFor, this.launch});
 
@@ -30,9 +39,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late final _url = TextEditingController(text: widget.settings.serverUrl);
   late final _doc = TextEditingController(text: widget.settings.lastDoc);
-  late final _name = TextEditingController(text: widget.settings.userName);
   late bool _journaled = widget.settings.journaled;
   String? _error;
   bool _busy = false;
@@ -48,23 +55,22 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _url.dispose();
     _doc.dispose();
-    _name.dispose();
     super.dispose();
   }
 
+  AuthController? get _auth => AuthScope.read(context);
+
   Backend _backend() {
-    final uri = Uri.parse(_url.text.trim());
-    return widget.backendFor?.call(uri) ?? HttpBackend(uri);
+    final auth = _auth;
+    final uri = Uri.parse(auth?.server ?? widget.settings.serverUrl);
+    return widget.backendFor?.call(uri) ?? HttpBackend(uri, auth: auth);
   }
 
   Future<void> _remember() async {
     widget.settings
-      ..serverUrl = _url.text.trim()
       ..journaled = _journaled
-      ..lastDoc = _doc.text.trim()
-      ..userName = _name.text.trim();
+      ..lastDoc = _doc.text.trim();
     await widget.settings.save();
   }
 
@@ -115,7 +121,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _demo() async {
     final demo = DemoBackend();
-    await _launch(demo, 'demo', create: true, extra: demo.actions);
+    // The in-memory demo has no server rights: the account's name, full access.
+    await _launch(demo, 'demo', create: true, extra: demo.actions, demo: true);
     await demo.dispose();
   }
 
@@ -124,16 +131,20 @@ class _HomePageState extends State<HomePage> {
     String id, {
     required bool create,
     List<Widget> Function(BuildContext, EditorController, VoidCallback)? extra,
+    bool demo = false,
   }) async {
     setState(() => _error = null);
     await _remember();
     if (!mounted) return;
+    final signedIn = _auth?.account;
+    final account = demo && signedIn != null ? signedIn.copyWith(role: AccountRole.owner) : signedIn;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => EditorPage(
           backend: backend,
           docId: id,
-          displayName: normalizeDisplayName(_name.text),
+          account: account,
+          displayName: account == null ? null : normalizeDisplayName(account.name),
           journaled: _journaled,
           create: create,
           extraActions: extra,
@@ -144,8 +155,24 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final account = AuthScope.of(context).account;
     return Scaffold(
-      body: Center(
+      backgroundColor: DifyColors.backgroundBody,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (account != null) MainNavFrame(account: account),
+          Expanded(child: _form(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _form(BuildContext context) {
+    final server = AuthScope.of(context).server;
+    return Material(
+      color: DifyColors.backgroundBody,
+      child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: ListView(
@@ -155,28 +182,18 @@ class _HomePageState extends State<HomePage> {
               Text('dify-sf', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 4),
               const Text('Collaborative workflow editor', style: TextStyle(color: Colors.black54)),
-              const SizedBox(height: 24),
-              TextField(
-                key: const Key('server-field'),
-                controller: _url,
-                decoration: const InputDecoration(labelText: 'Server', border: OutlineInputBorder()),
+              const SizedBox(height: 4),
+              Text(
+                server,
+                key: const Key('server-label'),
+                style: const TextStyle(color: Colors.black45),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
               TextField(
                 key: const Key('doc-field'),
                 controller: _doc,
                 decoration: const InputDecoration(labelText: 'Document id', border: OutlineInputBorder()),
                 onSubmitted: (_) => _open(create: true),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('name-field'),
-                controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Your name (optional)',
-                  helperText: 'Shown to others when your change and theirs collide.',
-                  border: OutlineInputBorder(),
-                ),
               ),
               SwitchListTile(
                 key: const Key('journal-switch'),
@@ -233,27 +250,98 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// Used by tests to build the same widget tree as `main`.
-Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, LaunchOptions? launch}) => MaterialApp(
-  title: 'dify-sf',
-  debugShowCheckedModeBanner: false,
-  // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
-  theme: difyTheme(
-    fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
-  ),
-  home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
-  // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog.
-  builder: (context, child) => Stack(
-    fit: StackFit.expand,
-    children: [
-      child!,
-      DefaultTextStyle(
-        style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
-        child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
+/// Dify's main navigation (main-nav/index.tsx) as far as dify-sf has it: the `w-62` sidebar on
+/// `bg-background-body` with the Dify logo at the top (`pt-3 pr-2 pb-2 pl-4`) and the account section at the bottom
+/// (`py-3 pr-1 pl-3`). Dify's search, workspace card, navigation links, web apps and help menu are not part of
+/// dify-sf.
+class MainNavFrame extends StatelessWidget {
+  const MainNavFrame({super.key, required this.account});
+  final Account account;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 248,
+    color: DifyColors.backgroundBody,
+    padding: const EdgeInsets.all(4),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 12, 8, 8),
+          child: SizedBox(
+            height: 32,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: DifyLogo(alt: ''),
+            ),
+          ),
+        ),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+          child: Row(
+            children: [Flexible(child: AccountSection(account: account))],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Used by tests to build the same widget tree as `main`. [auth] is a ready session (tests sign in through fakes);
+/// without it the app connects to the settings' server ([authApiFor], [tokenStore]) and starts at its sign-in state.
+Widget buildApp(
+  AppSettings settings, {
+  Backend Function(Uri)? backendFor,
+  LaunchOptions? launch,
+  AuthController? auth,
+  AuthApi Function(Uri server)? authApiFor,
+  TokenStore? tokenStore,
+  AppLocale? locale,
+}) {
+  final appLocale = locale ?? AppLocale(currentDifyLanguage());
+  // The in-memory demo needs no server and no account.
+  final session =
+      auth ??
+      (launch?.demo ?? false
+          ? (AuthController.on(server: 'demo', api: const OfflineAuthApi(), store: MemoryTokenStore())
+              ..useLocalAccount(const Account(id: 'demo-user', email: '', name: 'You', role: AccountRole.owner)))
+          : null);
+  final navigatorKey = GlobalKey<NavigatorState>();
+  return MaterialApp(
+    title: 'dify-sf',
+    debugShowCheckedModeBanner: false,
+    navigatorKey: navigatorKey,
+    // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
+    theme: difyTheme(
+      fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
+    ),
+    home: AppRoot(
+      settings: settings,
+      launch: launch,
+      navigatorKey: navigatorKey,
+      auth: session,
+      authApiFor: authApiFor,
+      tokenStore: tokenStore,
+      home: (_) => HomePage(settings: settings, backendFor: backendFor, launch: launch),
+    ),
+    // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog. The UI language is above
+    // the navigator, so every page follows a change.
+    builder: (context, child) => AppLocaleScope(
+      locale: appLocale,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          child!,
+          DefaultTextStyle(
+            style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
+            child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
+          ),
+        ],
       ),
-    ],
-  ),
-);
+    ),
+  );
+}
 
 class _ImportDslDialog extends StatefulWidget {
   const _ImportDslDialog();

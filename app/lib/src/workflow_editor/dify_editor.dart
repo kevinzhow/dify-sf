@@ -33,6 +33,39 @@ import 'canvas_plus/canvas_plus_buttons.dart';
 import 'node_insertion/insert_block.dart';
 import 'workflow_editor.dart';
 
+/// hooks-store `WorkflowAccessControl`: what the user may do in the editor (Dify derives it from the app's permission
+/// keys; dify-sf from the account's role).
+class WorkflowAccessControl {
+  const WorkflowAccessControl({
+    this.canEdit = true,
+    this.canRun = true,
+    this.canImportExportDsl = true,
+    this.canReleaseAndVersion = true,
+  });
+
+  /// `fullWorkflowAccessControl`.
+  static const full = WorkflowAccessControl();
+
+  /// A member who may only look (Dify's normal members and dataset operators): `nodesReadOnly`, no run, no DSL import
+  /// or export, no publishing or version history.
+  static const viewOnly = WorkflowAccessControl(
+    canEdit: false,
+    canRun: false,
+    canImportExportDsl: false,
+    canReleaseAndVersion: false,
+  );
+
+  final bool canEdit, canRun, canImportExportDsl, canReleaseAndVersion;
+}
+
+/// The signed-in user as the editor shows them (online users, comment authorship): the account (protocol 1.8).
+class EditorUser {
+  const EditorUser({required this.id, required this.name, this.avatarUrl});
+  final String id;
+  final String name;
+  final String? avatarUrl;
+}
+
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
 /// shortcuts. dify-sf's own collaboration controls (link state, reconnect, unsaved edits, the host's actions) sit in
 /// the header's left slot, where Dify puts its own extra controls.
@@ -45,7 +78,15 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.meta = const DocMeta(),
     this.variableInspectServices = VariableInspectServices.none,
     this.commentsStore,
+    this.access = WorkflowAccessControl.full,
+    this.user,
   });
+
+  /// What the signed-in user may do (read-only for members without the edit role).
+  final WorkflowAccessControl access;
+
+  /// The signed-in account; null (the demo, tests): the session's client id and display name stand in.
+  final EditorUser? user;
 
   final EditorController controller;
   final String serverLabel;
@@ -76,7 +117,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   /// The comments store this editor created (when none was passed in), tied to the controller's session.
   CommentsStore? _ownComments;
   CommentsStore get _comments =>
-      widget.commentsStore ?? (_ownComments ??= CommentsStore.forSession(controller.session));
+      widget.commentsStore ??
+      (_ownComments ??= CommentsStore.forSession(controller.session, accountId: widget.user?.id));
 
   @override
   void didUpdateWidget(DifyWorkflowEditor old) {
@@ -148,7 +190,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       controller: controller,
       canvas: canvas,
       store: WorkflowStoreScope.of(context),
-      options: WorkflowMenuOptions(isChatMode: meta.isChatflow),
+      options: _menuOptions(),
     ).showChangeBlockSelector(context, nodeId, sourceHandle, anchor: box.localToGlobal(r.topLeft) & r.size);
   }
 
@@ -176,12 +218,25 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     );
   }
 
+  WorkflowMenuOptions _menuOptions({
+    void Function(Offset at)? onAddBlock,
+    VoidCallback? onAddNote,
+    void Function(String nodeId, String sourceHandle)? onChangeBlock,
+  }) => WorkflowMenuOptions(
+    isChatMode: meta.isChatflow,
+    canEdit: widget.access.canEdit,
+    canRun: widget.access.canRun,
+    canImportExportDsl: widget.access.canImportExportDsl,
+    onAddBlock: onAddBlock,
+    onAddNote: onAddNote,
+    onChangeBlock: onChangeBlock,
+  );
+
   @override
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
     final options = OperatorOptions(collaborationEnabled: true, onAddNote: _addNote, onOrganize: _organize);
-    final menuOptions = WorkflowMenuOptions(
-      isChatMode: meta.isChatflow,
+    final menuOptions = _menuOptions(
       onAddBlock: _addBlockAt,
       onAddNote: _addNote,
       onChangeBlock: _changeBlock,
@@ -219,10 +274,13 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                 WorkflowEditor(
                   controller: controller,
                   menuOptions: menuOptions,
+                  canEdit: widget.access.canEdit,
                   header: (context, canvas) => _BoundHeader(
                     controller: controller,
                     canvas: canvas,
                     meta: meta,
+                    access: widget.access,
+                    user: widget.user,
                     session: (anchor) => SessionBadge(
                       controller: controller,
                       serverLabel: serverLabel,
@@ -302,10 +360,14 @@ class _BoundHeader extends StatefulWidget {
     required this.meta,
     required this.session,
     this.left,
+    this.access = WorkflowAccessControl.full,
+    this.user,
   });
   final EditorController controller;
   final CanvasController canvas;
   final DocMeta meta;
+  final WorkflowAccessControl access;
+  final EditorUser? user;
 
   /// Dify's auto-saved line, opening dify-sf's session menu.
   final Widget Function(Widget anchor) session;
@@ -321,7 +383,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
   /// The store's environment and conversation variables follow the document (protocol 1.7).
   AppRegistersSync? _variables;
 
-  /// The people on this document; dify-sf has no presence yet, so it is this user.
+  /// The people on this document: this user (by account, like Dify's online users; several windows of one account are
+  /// one user). dify-sf has no presence of others yet.
   final _users = ValueNotifier<List<OnlineUser>>(const []);
 
   @override
@@ -340,9 +403,14 @@ class _BoundHeaderState extends State<_BoundHeader> {
         modelProviders: const [],
       ),
     );
-    final session = widget.controller.session;
+    final session = widget.controller.session, user = widget.user;
     _users.value = [
-      OnlineUser(sid: session.clientId, userId: session.clientId, username: session.displayName ?? ''),
+      OnlineUser(
+        sid: session.clientId,
+        userId: user?.id ?? session.clientId,
+        username: user?.name ?? session.displayName ?? '',
+        avatar: user?.avatarUrl,
+      ),
     ];
   }
 
@@ -381,7 +449,10 @@ class _BoundHeaderState extends State<_BoundHeader> {
         graph: b.graph,
         isChatMode: widget.meta.isChatflow,
         onlineUsers: _users,
-        currentUserId: widget.controller.session.clientId,
+        currentUserId: widget.user?.id ?? widget.controller.session.clientId,
+        canEdit: widget.access.canEdit,
+        canRun: widget.access.canRun,
+        canReleaseAndVersion: widget.access.canReleaseAndVersion,
         handleNodeSelect: b.selectNode,
         handleNodesCancelSelected: b.cancelSelection,
         title: widget.session(const EditingTitle()),
