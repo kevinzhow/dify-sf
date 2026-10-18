@@ -1107,11 +1107,11 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
     const style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.componentsInputTextFilled);
     final Widget field;
     if (w.numberVarType == VarKindType.variable) {
-      final selector = w.value.replaceAll(RegExp(r'^\{\{#|#\}\}$'), '').split('.');
+      final selector = templateToSelector(w.value);
       field = _VarPopover(
         vars: w.variables,
         width: w.isShort ? 200 : 296,
-        onChange: (s, _) => w.onValueChange('{{#${s.join('.')}#}}'),
+        onChange: (s, _) => w.onValueChange(selectorToTemplate(s)),
         trigger: (context, toggle) => GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: toggle,

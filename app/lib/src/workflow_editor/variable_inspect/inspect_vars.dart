@@ -8,6 +8,7 @@ library;
 import 'package:collab_client/collab_client.dart' show Node;
 import 'package:flutter/widgets.dart';
 
+import '../../workflow/var_types.dart' show VarTypes;
 import '../context_menu/clipboard.dart' show difyNodeOf;
 import '../store/store.dart';
 
@@ -150,22 +151,51 @@ class InspectVarsCrud {
     }
   }
 
-  /// useSetWorkflowVarsWithValue `fetchInspectVars`: the draft's cached variables grouped by node (nodes no longer
-  /// in the document are left out), values to be fetched per node.
-  Future<void> fetchInspectVars() async {
+  /// useSetWorkflowVarsWithValue `fetchInspectVars`: the draft's cached variables (or [vars], when given) grouped by
+  /// node in the order they first appear (nodes no longer in the document are left out), each with the `schemaType`
+  /// of the node's output variable of that name; values to be fetched per node. The nodes' succeeded run status is
+  /// cleared (handleCancelAllNodeSuccessStatus), so a cleared output shows as unset.
+  Future<void> fetchInspectVars({List<DifyJson>? vars}) async {
     invalidateSysVarValues();
-    final vars = await services.fetchAllInspectVars();
+    final data = vars ?? await services.fetchAllInspectVars();
     if (_disposed) return;
+    final byId = {for (final n in nodes()) n.id: n};
     final byNode = <String, List<DifyJson>>{};
-    for (final v in vars) {
+    for (final v in data) {
       final selector = v['selector'];
-      if (selector is List && selector.isNotEmpty) (byNode[selector.first as String] ??= []).add(v);
+      if (selector is List && selector.isNotEmpty && byId.containsKey(selector.first)) {
+        (byNode[selector.first as String] ??= []).add(v);
+      }
     }
-    _remember(vars);
+    _remember(data);
     store.setNodesWithInspectVars([
-      for (final n in nodes())
-        if (byNode[n.id] case final vars?) {..._nodeWithVar(n), 'vars': vars, 'isValueFetched': false},
+      for (final MapEntry(key: id, value: vars) in byNode.entries)
+        {
+          ..._nodeWithVar(byId[id]!),
+          'vars': [for (final v in vars) _withSchemaType(byId[id]!, v)],
+          'isValueFetched': false,
+        },
     ]);
+    _cancelAllNodeSuccessStatus();
+  }
+
+  /// [v] with the `schemaType` of [node]'s output variable named like it (`toNodeOutputVars`), else [fallback].
+  DifyJson _withSchemaType(Node node, DifyJson v, [Object? fallback]) {
+    String? schemaType;
+    try {
+      final outputs = VarTypes(lookup: (id) => id == node.id ? node : null).outputVarsOf(node);
+      schemaType = outputs?.where((o) => o.variable == v['name']).firstOrNull?.schemaType;
+    } on StateError {
+      schemaType = null;
+    }
+    return {...v, 'schemaType': schemaType ?? fallback ?? ''};
+  }
+
+  /// handleCancelAllNodeSuccessStatus.
+  void _cancelAllNodeSuccessStatus() {
+    for (final MapEntry(key: id, value: data) in store.nodeRunData.value.entries) {
+      if (data['_runningStatus'] == 'succeeded') store.setNodeRunData(id, const {'_runningStatus': null});
+    }
   }
 
   DifyJson _nodeWithVar(Node n) {
@@ -191,6 +221,10 @@ class InspectVarsCrud {
       for (final n in list)
         if (n['nodeId'] != nodeId) n,
     ]);
+    // handleCancelNodeSuccessStatus.
+    if (store.nodeRunDataOf(nodeId)['_runningStatus'] == 'succeeded') {
+      store.setNodeRunData(nodeId, const {'_runningStatus': null, '_waitingRun': false});
+    }
   }
 
   /// `fetchInspectVarValue([nodeId])`.
@@ -203,8 +237,12 @@ class InspectVarsCrud {
     if (vars == null) return store.setNodeInspectVars(nodeId, listed);
     final old = {for (final v in listed) v['id']: v};
     _remember(vars);
+    final node = nodes().where((n) => n.id == nodeId).firstOrNull;
     store.setNodeInspectVars(nodeId, [
-      for (final v in vars) {...v, 'schemaType': v['schemaType'] ?? old[v['id']]?['schemaType'] ?? ''},
+      for (final v in vars)
+        node == null
+            ? {...v, 'schemaType': v['schemaType'] ?? old[v['id']]?['schemaType'] ?? ''}
+            : _withSchemaType(node, v, v['schemaType'] ?? old[v['id']]?['schemaType']),
     ]);
   }
 
@@ -252,13 +290,21 @@ class InspectVarsCrud {
     store.deleteNodeInspectVars(nodeId);
   }
 
-  /// `deleteAllInspectorVars`: every cached value goes, the conversation variables' drafts included.
+  /// `deleteAllInspectorVars`: every cached value goes, the conversation variables' drafts included, and the edges'
+  /// run state is cleared (handleEdgeCancelRunningStatus).
   Future<void> deleteAllInspectorVars() async {
     await services.deleteAllInspectVars();
     if (_disposed) return;
     conversationEdits.value = const {};
     await invalidateSysVarValues();
     store.deleteAllInspectVars();
+    for (final id in store.edgeRunData.value.keys.toList()) {
+      store.setEdgeRunData(id, const {
+        '_sourceRunningStatus': null,
+        '_targetRunningStatus': null,
+        '_waitingRun': false,
+      });
+    }
   }
 
   /// Answers arriving after [dispose] (the editor closed) are dropped.

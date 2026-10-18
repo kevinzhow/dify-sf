@@ -26,4 +26,12 @@ bool isTriggerNode(String type) => type.startsWith('trigger-');
 
 bool isEntryWorkflowNode(String type) => isTriggerNode(type) || type == 'start' || type == 'start-placeholder';
 
+/// utils/workflow-entry.ts `isWorkflowEntryNode`: the Start node or a trigger.
+bool isWorkflowEntryNode(String type) => type == 'start' || isTriggerNode(type);
+
+/// utils/workflow-entry.ts `getWorkflowEntryNode`: the first trigger node, else the Start node ([typeOf] reads a
+/// node's type).
+T? getWorkflowEntryNode<T>(Iterable<T> nodes, String Function(T node) typeOf) =>
+    nodes.where((n) => isTriggerNode(typeOf(n))).firstOrNull ?? nodes.where((n) => typeOf(n) == 'start').firstOrNull;
+
 bool isContainerNode(String type) => type == 'iteration' || type == 'loop';

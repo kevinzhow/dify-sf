@@ -20,10 +20,14 @@ class _MenuRow extends StatefulWidget {
     this.margin = true,
     this.marginX = 4,
     this.paddingX = 8,
+    this.autoHeight = false,
   });
 
   /// `mx-1` (a submenu trigger puts it outside its anchor instead).
   final bool margin;
+
+  /// `h-auto py-1`: grows with a second line instead of the fixed `h-8`.
+  final bool autoHeight;
 
   /// A call site's `mx-*` / `px-*` over the row's `mx-1 px-2`.
   final double marginX, paddingX;
@@ -73,9 +77,10 @@ class _MenuRowState extends State<_MenuRow> {
   Widget build(BuildContext context) {
     final highlighted = _node.hasFocus && !widget.disabled;
     Widget row = Container(
-      height: 32,
+      height: widget.autoHeight ? null : 32,
+      constraints: widget.autoHeight ? const BoxConstraints(minHeight: 32) : null,
       margin: widget.margin ? EdgeInsets.symmetric(horizontal: widget.marginX) : null,
-      padding: EdgeInsets.symmetric(horizontal: widget.paddingX),
+      padding: EdgeInsets.symmetric(horizontal: widget.paddingX, vertical: widget.autoHeight ? 4 : 0),
       decoration: BoxDecoration(
         color: highlighted ? (widget.destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
@@ -169,6 +174,7 @@ class DifyMenuItem extends StatelessWidget {
     this.semanticLabel,
     this.marginX = 4,
     this.paddingX = 8,
+    this.autoHeight = false,
   });
 
   final Widget child;
@@ -183,10 +189,14 @@ class DifyMenuItem extends StatelessWidget {
   /// A call site's `mx-*` / `px-*` (`mx-0 px-3` in the account menu).
   final double marginX, paddingX;
 
+  /// A call site's `h-auto py-1` (an item with a description line).
+  final bool autoHeight;
+
   @override
   Widget build(BuildContext context) => _MenuRow(
     marginX: marginX,
     paddingX: paddingX,
+    autoHeight: autoHeight,
     leading: leading,
     trailing: trailing,
     disabled: disabled,

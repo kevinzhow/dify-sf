@@ -245,6 +245,13 @@ class WorkflowStore {
   void setShowVariableInspectPanel(bool v) => showVariableInspectPanel.value = v;
   late final initShowLastRunTab = _v(false);
   void setInitShowLastRunTab(bool v) => initShowLastRunTab.value = v;
+
+  /// workflow-app's onboarding slice: a Start or trigger node just picked opens its next-block selector once
+  /// (`shouldAutoOpenStartNodeSelector`), and whether a start node was picked (`hasSelectedStartNode`).
+  late final shouldAutoOpenStartNodeSelector = _v(false);
+  void setShouldAutoOpenStartNodeSelector(bool v) => shouldAutoOpenStartNodeSelector.value = v;
+  late final hasSelectedStartNode = _v(false);
+  void setHasSelectedStartNode(bool v) => hasSelectedStartNode.value = v;
   late final activeCommentId = _v<String?>(null);
   void setActiveCommentId(String? commentId) => activeCommentId.value = commentId;
 

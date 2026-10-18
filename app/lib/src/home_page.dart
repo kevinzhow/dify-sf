@@ -152,6 +152,8 @@ class _HomePageState extends State<HomePage> {
           journaled: _journaled,
           create: create,
           extraActions: extra,
+          // The launch's `node_id` belongs to the launch's document.
+          locateNodeId: id == widget.launch?.doc ? widget.launch?.nodeId : null,
         ),
       ),
     );

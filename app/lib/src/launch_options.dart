@@ -10,6 +10,7 @@ class LaunchOptions {
     this.demo = false,
     this.view,
     this.lang,
+    this.nodeId,
   });
 
   /// The web build's URL query as options; [path] `/activate` (Dify's invitation link `/activate?token=…`) or `#/activate`
@@ -24,6 +25,7 @@ class LaunchOptions {
     demo: q['demo'] == '1',
     view: q['view'],
     lang: q['lang'],
+    nodeId: q['node_id'],
   );
 
   factory LaunchOptions.parse(List<String> args) {
@@ -34,6 +36,7 @@ class LaunchOptions {
     var demo = false;
     String? view;
     String? lang;
+    String? nodeId;
     for (var i = 0; i < args.length; i++) {
       String? value() => i + 1 < args.length ? args[++i] : null;
       switch (args[i]) {
@@ -51,6 +54,8 @@ class LaunchOptions {
           view = value();
         case '--lang':
           lang = value();
+        case '--node-id':
+          nodeId = value();
       }
     }
     return LaunchOptions(
@@ -61,6 +66,7 @@ class LaunchOptions {
       demo: demo,
       view: view,
       lang: lang,
+      nodeId: nodeId,
     );
   }
 
@@ -85,6 +91,9 @@ class LaunchOptions {
 
   /// Dify's language code for the UI (`zh-Hans`, `ja-JP`, …); null follows the system locale.
   final String? lang;
+
+  /// A node of [doc] to select and bring into view when it opens (Dify's `?node_id=`, use-locate-node.ts).
+  final String? nodeId;
 
   bool get autoOpen => demo || doc != null;
 

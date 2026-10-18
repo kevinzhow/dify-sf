@@ -2,9 +2,8 @@
 /// base/prompt-editor/plugins/hitl-input-block (the chip of component-ui.tsx, input-field.tsx, pre-populate.tsx,
 /// type-switch.tsx, tag-label.tsx).
 ///
-/// dify-sf's prompt editor has no HITL block, so the content is edited as the text between its `{{#$output.x#}}`
-/// tokens: one prompt editor per run of text, the input field chips between them (Dify's chip is a full-width block
-/// too). Mod + / in a run inserts a field at the caret.
+/// One prompt editor with the HITL input block: each `{{#$output.x#}}` token is a full-width field chip in its line;
+/// Mod + / opens the Insert Input Field popup beside the workflow panel, which inserts a field at the caret.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -20,33 +19,11 @@ import '../../../../../i18n/dify_i18n.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/var_types.dart';
 import '../../../../panel_fields/panel_fields.dart';
+import '../../../../prompt_editor/hitl_input_block.dart' show HitlInputVariableBlock;
 import '../../../../prompt_editor/prompt_editor.dart';
 import '../data_common.dart';
 import 'human_input_kit.dart';
 import 'human_input_model.dart';
-
-/// The content split at its form inputs: `texts.length == names.length + 1`.
-({List<String> texts, List<String> names}) splitFormContent(String content) {
-  final texts = <String>[], names = <String>[];
-  var last = 0;
-  for (final m in hitlInputRegex.allMatches(content)) {
-    texts.add(content.substring(last, m.start));
-    names.add(m[1]!.substring('#\$output.'.length, m[1]!.length - 1));
-    last = m.end;
-  }
-  texts.add(content.substring(last));
-  return (texts: texts, names: names);
-}
-
-/// The content of [texts] and the inputs [names] between them.
-String joinFormContent(List<String> texts, List<String> names) {
-  final b = StringBuffer();
-  for (var i = 0; i < texts.length; i++) {
-    b.write(texts[i]);
-    if (i < names.length) b.write(outputToken(names[i]));
-  }
-  return b.toString();
-}
 
 /// The label of a form input type (`appDebug.variableConfig.*`).
 String formInputTypeLabel(Object? input) => DifyI18n.tr('app-debug', switch (inputTypeOf(input)) {
@@ -115,192 +92,110 @@ class FormContent extends StatefulWidget {
 
 class _FormContentState extends State<FormContent> {
   late final _draft = TextDraft(widget.version);
-  late var _split = splitFormContent(widget.value);
-  final _controllers = <PromptEditorController>[];
-  final _focuses = <FocusNode>[];
-  int _gen = 0;
+  final _controller = PromptEditorController();
+  final _focus = FocusNode(debugLabel: 'form content');
+  late String _content = widget.value;
   bool _focused = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _ensure();
-  }
+  /// The input of a field being inserted: it goes out with the content that has its token (Dify defers
+  /// `onFormInputsChange` until the value changed, so neither overwrites the other).
+  Map<String, Object?>? _pendingInsert;
 
   @override
   void didUpdateWidget(FormContent old) {
     super.didUpdateWidget(old);
-    if (!_draft.isOpen && widget.value != joinFormContent(_split.texts, _split.names)) {
-      final next = splitFormContent(widget.value);
-      if (!listEquals(next.names, _split.names)) _gen++;
-      _split = next;
-      _ensure();
-    }
-  }
-
-  /// One controller and focus node per text run.
-  void _ensure() {
-    while (_controllers.length < _split.texts.length) {
-      final i = _controllers.length;
-      _controllers.add(PromptEditorController());
-      _focuses.add(FocusNode(debugLabel: 'form content $i', onKeyEvent: (_, e) => _onKey(i, e)));
-    }
-    while (_controllers.length > _split.texts.length) {
-      _controllers.removeLast().dispose();
-      _focuses.removeLast().dispose();
-    }
+    if (!_draft.isOpen && widget.value != _content) _content = widget.value;
   }
 
   @override
   void dispose() {
     _commit();
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focuses) {
-      f.dispose();
-    }
+    _controller.dispose();
+    _focus.dispose();
     super.dispose();
   }
-
-  String get _content => joinFormContent(_split.texts, _split.names);
 
   void _commit() {
     final d = _draft.take();
     if (d != null && _content != widget.value) widget.actions.onChange(_content, d.base);
   }
 
-  KeyEventResult _onKey(int i, KeyEvent e) {
-    if (e is! KeyDownEvent || widget.readonly) return KeyEventResult.ignored;
-    final kb = HardwareKeyboard.instance;
-    if ((kb.isControlPressed || kb.isMetaPressed) && e.logicalKey == LogicalKeyboardKey.slash) {
-      _insertAt(i);
-      return KeyEventResult.handled;
+  void _onChange(String v) {
+    if (v == _content) return;
+    _content = v;
+    final pending = _pendingInsert;
+    if (pending != null) {
+      _pendingInsert = null;
+      _draft.take();
+      widget.actions.onInsert(pending, v);
+      return;
     }
-    return KeyEventResult.ignored;
+    _draft.touch();
   }
 
-  /// What run [i] shows of its text: Dify's editor puts each input field in a paragraph of its own, so the line
-  /// break that ends the paragraph before a field ([trail]) and the one that ends the field's paragraph ([lead], at
-  /// the start of the run after it) are no lines of their own.
-  ({String lead, String shown, String trail}) _shown(int i) {
-    final text = _split.texts[i];
-    final lead = i > 0 && text.startsWith('\n') ? '\n' : '';
-    final rest = text.substring(lead.length);
-    final trail = i < _split.names.length && rest.endsWith('\n') ? '\n' : '';
-    return (lead: lead, shown: rest.substring(0, rest.length - trail.length), trail: trail);
-  }
-
-  /// The shortcut popup: a new input field inserted at the caret of run [i].
-  Future<void> _insertAt(int i) async {
-    final c = _controllers[i], s = _shown(i);
-    final sel = c.selection.isValid ? c.selection : TextSelection.collapsed(offset: c.text.length);
-    final before = s.lead + c.serialize(0, sel.start), after = c.serialize(sel.end, c.text.length) + s.trail;
-    final texts = [..._split.texts], names = [..._split.names];
-    final unavailable = [for (final x in widget.formInputs) inputNameOf(x)];
-    final payload = await showInputFieldDialog(context, scope: widget.scope, unavailable: unavailable);
-    if (payload == null || !mounted) return;
+  /// handleInsertHITLNode: a field whose name is free is inserted at the caret.
+  void _insert(Map<String, Object?> payload, ShortcutPopupInsertHandler onInsert) {
     final name = inputNameOf(payload);
     if (widget.formInputs.any((x) => inputNameOf(x) == name)) return;
-    texts
-      ..[i] = before
-      ..insert(i + 1, after);
-    names.insert(i, name);
-    widget.actions.onInsert(payload, joinFormContent(texts, names));
-  }
-
-  void _edited(int i, String text) {
-    if (text == _split.texts[i]) return;
-    _draft.touch();
-    _split.texts[i] = text;
-  }
-
-  Map<String, Object?>? _inputNamed(String name) =>
-      switch (widget.formInputs.where((x) => inputNameOf(x) == name).firstOrNull) {
-        final Map<String, Object?> m => m,
-        _ => null,
-      };
-
-  void _chipChange(String name, Map<String, Object?> payload) {
-    final others = [
-      for (final x in widget.formInputs)
-        if (inputNameOf(x) != name) inputNameOf(x),
-    ];
-    final newName = inputNameOf(payload);
-    if (newName != name && others.contains(newName)) return;
-    if (newName != name) {
-      widget.actions.onRename(payload, name);
-    } else if (_inputNamed(name) == null) {
-      widget.actions.onInputChange([...widget.formInputs, payload]);
-    } else {
-      widget.actions.onInputChange([for (final x in widget.formInputs) inputNameOf(x) == name ? payload : x]);
-    }
+    _pendingInsert = payload;
+    onInsert(InsertHitlInputBlockCommand(name));
   }
 
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    final empty = w.value.isEmpty && _split.texts.length == 1 && _split.texts.first.isEmpty;
-    final runs = <Widget>[];
-    for (var i = 0; i < _split.texts.length; i++) {
-      final s = _shown(i);
-      Widget run = DifyPromptEditor(
-        key: ValueKey('form-content-$_gen-$i'),
-        value: s.shown,
-        controller: _controllers[i],
-        focusNode: _focuses[i],
-        editable: !w.readonly,
-        minHeight: i == 0 ? 80 : 24,
-        semanticLabel: i == 0 ? hi('formContent.title') : null,
-        placeholder: i == 0 && empty ? hi('formContent.placeholder') : '',
-        onChange: (v) => _edited(i, '${s.lead}$v${s.trail}'),
-        workflowVariableBlock: WorkflowVariableBlockConfig(
-          show: true,
-          variables: w.scope.vars,
-          workflowNodesMap: w.nodesMap,
-        ),
-      );
-      // Nothing after the last field: it ends the content, no empty line under it until the run is edited (a tap
-      // below the content goes there).
-      if (i > 0 && i == _split.names.length && _split.texts[i].isEmpty && !_focuses[i].hasFocus) {
-        run = SizedBox(
-          height: 0,
-          child: ClipRect(
-            child: OverflowBox(alignment: Alignment.topCenter, child: run),
-          ),
-        );
-      }
-      runs.add(run);
-      if (i < _split.names.length) {
-        final name = _split.names[i];
-        runs.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: InputFieldChip(
-              key: ValueKey('chip-$name'),
-              varName: name,
-              formInput: _inputNamed(name),
-              unavailable: [
-                for (final x in w.formInputs)
-                  if (inputNameOf(x) != name) inputNameOf(x),
-              ],
-              scope: w.scope,
-              nodesMap: w.nodesMap,
-              readonly: w.readonly,
-              onChange: (p) => _chipChange(name, p),
-              onRemove: () => w.actions.onRemove(name),
-            ),
-          ),
-        );
-      }
-    }
-    Widget scroll = SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: runs),
+    final unavailable = [for (final x in w.formInputs) inputNameOf(x)];
+    Widget editor = DifyPromptEditor(
+      value: _content,
+      controller: _controller,
+      focusNode: _focus,
+      editable: !w.readonly,
+      minHeight: 80,
+      height: w.isExpand ? double.infinity : null,
+      semanticLabel: hi('formContent.title'),
+      placeholder: hi('formContent.placeholder'),
+      onChange: _onChange,
+      hitlInputBlock: HitlInputBlockConfig(
+        show: true,
+        nodeId: w.nodeId,
+        formInputs: w.formInputs,
+        variables: w.scope.vars,
+        workflowNodesMap: w.nodesMap,
+        getVarType: w.scope.typeOf == null ? null : (_, sel) => w.scope.typeOf!(sel),
+        scope: w.scope,
+        readonly: w.readonly,
+        onFormInputsChange: w.actions.onInputChange,
+        onFormInputItemRename: w.actions.onRename,
+        onFormInputItemRemove: w.actions.onRemove,
+      ),
+      workflowVariableBlock: WorkflowVariableBlockConfig(
+        show: true,
+        variables: w.scope.vars,
+        workflowNodesMap: w.nodesMap,
+        getVarType: w.scope.typeOf == null ? null : (_, sel) => w.scope.typeOf!(sel),
+      ),
+      shortcutPopups: w.readonly
+          ? const []
+          : [
+              ShortcutPopup(
+                hotkey: const ['mod', '/'],
+                displayMode: ShortcutPopupDisplayMode.workflowPanelAdjacentCenter,
+                builder: (context, close, onInsert) => InputFieldEditor(
+                  scope: w.scope,
+                  unavailable: unavailable,
+                  onChange: (p) => _insert(p, onInsert),
+                  onCancel: close,
+                ),
+              ),
+            ],
     );
+    Widget scroll = Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: editor);
     scroll = w.isExpand
         ? Expanded(child: scroll)
-        : ConstrainedBox(constraints: const BoxConstraints(maxHeight: 300), child: scroll);
+        : ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: SingleChildScrollView(child: scroll),
+          );
     final box = Container(
       padding: EdgeInsets.only(top: 4, bottom: _focused ? 0 : 32),
       decoration: BoxDecoration(
@@ -325,8 +220,8 @@ class _FormContentState extends State<FormContent> {
       },
       child: IgnorePointer(
         ignoring: w.readonly,
-        // A tap below the content (not on a run) edits its end.
-        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _focuses.last.requestFocus, child: box),
+        // A tap below the content edits its end.
+        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _focus.requestFocus, child: box),
       ),
     );
   }
@@ -372,7 +267,8 @@ class _HotkeyTip extends StatelessWidget {
 /// HITLInputComponentUI: a 32 px chip (`rounded-lg border-[1.5px] border-components-input-border-active
 /// bg-background-default-hover`) with the name tag on its top edge (`VariableX` + name), the variable it pre-fills
 /// from or a summary (the default text, the options, the type), the type label, and on hover Edit (the input field
-/// dialog) and Remove.
+/// dialog) and Remove. A save keeping the name is [onChange]; a rename is [onRename] (refused for another field's
+/// name). The dialog closes when the chip becomes [readonly].
 class InputFieldChip extends StatefulWidget {
   const InputFieldChip({
     super.key,
@@ -381,18 +277,26 @@ class InputFieldChip extends StatefulWidget {
     required this.onChange,
     required this.onRemove,
     required this.scope,
+    this.onRename,
     this.unavailable = const [],
     this.nodesMap = const {},
+    this.getVarType,
+    this.environmentVariables,
+    this.conversationVariables,
+    this.ragVariables,
     this.readonly = false,
   });
 
   final String varName;
   final Map<String, Object?>? formInput;
   final ValueChanged<Map<String, Object?>> onChange;
+  final void Function(Map<String, Object?> payload, String oldName)? onRename;
   final VoidCallback onRemove;
   final VarScope scope;
   final List<String> unavailable;
   final Map<String, WorkflowNodeInfo> nodesMap;
+  final PromptGetVarType? getVarType;
+  final List<PickerVar>? environmentVariables, conversationVariables, ragVariables;
   final bool readonly;
 
   @override
@@ -401,17 +305,51 @@ class InputFieldChip extends StatefulWidget {
 
 class _InputFieldChipState extends State<InputFieldChip> {
   bool _hovered = false;
+  BuildContext? _dialog;
+
+  @override
+  void didUpdateWidget(InputFieldChip old) {
+    super.didUpdateWidget(old);
+    // `useEffect(() => { if (readonly) hideEditModal() })`.
+    final dialog = _dialog;
+    if (widget.readonly && dialog != null && dialog.mounted) Navigator.of(dialog).pop();
+  }
+
+  /// component-ui `handleChange`.
+  void _handleChange(Map<String, Object?> payload) {
+    final w = widget;
+    final name = inputNameOf(payload);
+    if (name != w.varName && w.unavailable.contains(name)) return;
+    if (name == w.varName || w.onRename == null) {
+      w.onChange(payload);
+    } else {
+      w.onRename!(payload, w.varName);
+    }
+  }
 
   Future<void> _edit() async {
     final w = widget;
-    final r = await showInputFieldDialog(
+    final r = await showDifyDialog<Map<String, Object?>>(
       context,
-      scope: w.scope,
-      payload: w.formInput,
-      unavailable: w.unavailable,
-      isEdit: true,
+      builder: (context) {
+        _dialog = context;
+        return Center(
+          child: Material(
+            type: MaterialType.transparency,
+            child: InputFieldEditor(
+              scope: w.scope,
+              payload: w.formInput,
+              unavailable: w.unavailable,
+              isEdit: true,
+              onChange: (p) => Navigator.of(context).pop(p),
+              onCancel: () => Navigator.of(context).pop(),
+            ),
+          ),
+        );
+      },
     );
-    if (r != null) w.onChange(r);
+    _dialog = null;
+    if (r != null && mounted) _handleChange(r);
   }
 
   @override
@@ -435,20 +373,16 @@ class _InputFieldChipState extends State<InputFieldChip> {
                     ? typeLabel
                     : strings(jsGet(source, 'value')).join(', ')))
         : typeLabel;
-    Widget? label;
-    if (selector != null) {
-      final node = w.nodesMap[isSystemVar(selector) ? 'sys' : selector.firstOrNull ?? ''];
-      label = VariableLabel(
-        variables: selector,
-        nodeType: node?.type,
-        nodeTitle: node?.title,
-        variant: VarLabelStyle.inEditor,
-        notShowFullPath: selector.length > 2,
-        errorMsg: node == null && !isEnvVar(selector) && !isConversationVar(selector) && !isGlobalVar(selector)
-            ? wf('errorMsg.invalidVariable')
-            : null,
-      );
-    }
+    final Widget? label = selector == null
+        ? null
+        : HitlInputVariableBlock(
+            variables: selector,
+            workflowNodesMap: w.nodesMap,
+            getVarType: w.getVarType,
+            environmentVariables: w.environmentVariables,
+            conversationVariables: w.conversationVariables,
+            ragVariables: w.ragVariables,
+          );
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -579,6 +513,24 @@ class InputFieldEditor extends StatefulWidget {
 
 class _InputFieldEditorState extends State<InputFieldEditor> {
   late Map<String, Object?> _p = widget.payload ?? createDefaultParagraphFormInput();
+  final _typeFocus = FocusNode(debugLabel: 'input field type');
+  final _nameFocus = FocusNode(debugLabel: 'input field name');
+
+  @override
+  void initState() {
+    super.initState();
+    // `autoFocus` on the name.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _nameFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _typeFocus.dispose();
+    _nameFocus.dispose();
+    super.dispose();
+  }
 
   String get _name => inputNameOf(_p);
   String? get _error => formInputNameError(_name, widget.unavailable);
@@ -655,8 +607,11 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 12),
-                    _label(_t('fieldType')),
+                    // The label focuses the select (`<label>` of the TypeSelector).
+                    GestureDetector(onTap: _typeFocus.requestFocus, child: _label(_t('fieldType'))),
                     InputTypeSelect(
+                      focusNode: _typeFocus,
+                      semanticLabel: _t('fieldType'),
                       value: inputTypeOf(_p),
                       items: [
                         for (final t in const [
@@ -672,6 +627,7 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                     const SizedBox(height: 12),
                     _label(_t('saveResponseAs'), required: true),
                     DifyInput(
+                      focusNode: _nameFocus,
                       value: _name,
                       placeholder: _t('saveResponseAsPlaceholder'),
                       semanticLabel: _t('saveResponseAs'),
@@ -695,7 +651,7 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                         isVariable: _paragraphDefault['type'] == 'variable',
                         selector: [for (final e in jsList(_paragraphDefault['selector'])) jsKey(e)],
                         value: jsStr(_paragraphDefault['value']) ?? '',
-                        scope: w.scope.filtered(typeIn(const {VarType.string, VarType.number, VarType.secret})),
+                        scope: w.scope,
                         onIsVariableChange: (v) => setState(
                           () => _p = {
                             ..._p,
@@ -720,31 +676,33 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                       const SizedBox(height: 16),
                       _label(_t('options')),
                       if (jsGet(source, 'type') == 'variable')
+                        // `relative min-h-20 px-3 pt-2 pb-8`, the switch `absolute bottom-1 left-1.5`.
                         Container(
                           constraints: const BoxConstraints(minHeight: 80),
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
                           decoration: BoxDecoration(
                             color: DifyColors.componentsInputBgNormal,
                             borderRadius: BorderRadius.circular(DifyRadius.lg),
                           ),
                           child: Stack(
-                            clipBehavior: Clip.none,
                             children: [
-                              VarReferencePicker(
-                                value: [for (final e in jsList(jsGet(source, 'selector'))) jsKey(e)],
-                                scope: w.scope,
-                                isJustShowValue: true,
-                                filterVar: (v, _) => v.type == VarType.arrayString,
-                                onChange: (s, _) => setState(
-                                  () => _p = {
-                                    ..._p,
-                                    'option_source': {...(source as Map), 'type': 'variable', 'selector': s},
-                                  },
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
+                                child: VarReferencePicker(
+                                  value: [for (final e in jsList(jsGet(source, 'selector'))) jsKey(e)],
+                                  scope: w.scope,
+                                  isJustShowValue: true,
+                                  filterVar: (v, _) => v.type == VarType.arrayString,
+                                  onChange: (s, _) => setState(
+                                    () => _p = {
+                                      ..._p,
+                                      'option_source': {...(source as Map), 'type': 'variable', 'selector': s},
+                                    },
+                                  ),
                                 ),
                               ),
                               Positioned(
-                                left: -6,
-                                bottom: -28,
+                                left: 6,
+                                bottom: 4,
                                 child: TypeSwitch(
                                   isVariable: true,
                                   onIsVariableChange: (v) => setState(
@@ -882,7 +840,7 @@ class TypeSwitch extends StatelessWidget {
           spacing: 4,
           children: [
             const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textTertiary),
-            DifyText(text, DifyType.systemXsMedium, color: DifyColors.textTertiary),
+            Flexible(child: DifyText(text, DifyType.systemXsMedium, color: DifyColors.textTertiary, maxLines: 1)),
           ],
         ),
       ),
@@ -916,7 +874,7 @@ class TagLabel extends StatelessWidget {
           isVariable
               ? const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent)
               : const RemixIcon('edit-line', size: 14, color: DifyColors.textAccent),
-          DifyText(text, DifyType.systemXsMedium, color: DifyColors.textAccent),
+          Flexible(child: DifyText(text, DifyType.systemXsMedium, color: DifyColors.textAccent, maxLines: 1)),
         ],
       ),
     ),
@@ -952,6 +910,29 @@ class PrePopulate extends StatefulWidget {
 class _PrePopulateState extends State<PrePopulate> {
   bool _clicked = false;
 
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    super.dispose();
+  }
+
+  /// The window's keydown listener: Tab leaves the placeholder (and moves no focus) until a choice is made.
+  bool _onKey(KeyEvent e) {
+    if (_clicked || e is! KeyDownEvent || e.logicalKey != LogicalKeyboardKey.tab) return false;
+    setState(() => _clicked = true);
+    return true;
+  }
+
+  /// The variables a pre-filled value may come from: string, number and secret.
+  static bool filterVar(PickerVar v, List<String> _) =>
+      const {VarType.string, VarType.number, VarType.secret}.contains(v.type);
+
   void _type(bool isVariable) {
     setState(() => _clicked = true);
     widget.onIsVariableChange(isVariable);
@@ -962,49 +943,41 @@ class _PrePopulateState extends State<PrePopulate> {
     final w = widget;
     final placeholder = !_clicked && (w.isVariable ? w.selector.isEmpty : w.value.isEmpty);
     if (placeholder) {
-      return Focus(
-        onKeyEvent: (_, e) {
-          if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.tab) {
-            setState(() => _clicked = true);
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: Container(
-          height: 80,
-          margin: const EdgeInsets.only(top: 4),
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          decoration: BoxDecoration(
-            color: DifyColors.componentsInputBgNormal,
-            borderRadius: BorderRadius.circular(DifyRadius.lg),
-          ),
-          child: Text.rich(
-            TextSpan(
-              children: transSpans(hi('insertInputField.prePopulateFieldPlaceholder'), {
-                'staticContent': (_) => WidgetSpan(
-                  alignment: PlaceholderAlignment.middle,
-                  child: TagLabel(
-                    text: hi('insertInputField.staticContent'),
-                    isVariable: false,
-                    onTap: () => _type(false),
-                  ),
+      return Container(
+        height: 80,
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        decoration: BoxDecoration(
+          color: DifyColors.componentsInputBgNormal,
+          borderRadius: BorderRadius.circular(DifyRadius.lg),
+        ),
+        child: Text.rich(
+          TextSpan(
+            children: transSpans(hi('insertInputField.prePopulateFieldPlaceholder'), {
+              'staticContent': (_) => WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: TagLabel(
+                  text: hi('insertInputField.staticContent'),
+                  isVariable: false,
+                  onTap: () => _type(false),
                 ),
-                'variable': (_) => WidgetSpan(
-                  alignment: PlaceholderAlignment.middle,
-                  child: VarReferencePicker(
-                    value: w.selector,
-                    scope: w.scope,
-                    onChange: (s, _) {
-                      setState(() => _clicked = true);
-                      w.onSelectorChange(s);
-                    },
-                    trigger: TagLabel(text: hi('insertInputField.variable'), isVariable: true),
-                  ),
+              ),
+              'variable': (_) => WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: VarReferencePicker(
+                  value: w.selector,
+                  scope: w.scope,
+                  filterVar: filterVar,
+                  onChange: (s, _) {
+                    setState(() => _clicked = true);
+                    w.onSelectorChange(s);
+                  },
+                  trigger: TagLabel(text: hi('insertInputField.variable'), isVariable: true),
                 ),
-              }),
-            ),
-            style: difyStyle(DifyType.systemSmRegular, DifyColors.textTertiary).copyWith(height: 20 / 14),
+              ),
+            }),
           ),
+          style: difyStyle(DifyType.systemSmRegular, DifyColors.textTertiary).copyWith(height: 20 / 14),
         ),
       );
     }
@@ -1014,6 +987,7 @@ class _PrePopulateState extends State<PrePopulate> {
             child: VarReferencePicker(
               value: w.selector,
               scope: w.scope,
+              filterVar: filterVar,
               isJustShowValue: true,
               onChange: (s, _) => w.onSelectorChange(s),
             ),

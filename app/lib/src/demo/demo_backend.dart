@@ -55,7 +55,8 @@ class DemoBackend implements Backend {
   Future<String> importDifyDsl(String yaml) => throw UnsupportedError('the demo cannot import Dify workflow files');
 
   @override
-  Future<String> exportDifyDsl(String docId) => throw UnsupportedError('the demo cannot export Dify workflow files');
+  Future<String> exportDifyDsl(String docId, {bool includeSecret = false}) =>
+      throw UnsupportedError('the demo cannot export Dify workflow files');
 
   /// The demo document is a workflow without variables.
   @override

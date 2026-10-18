@@ -25,6 +25,7 @@ class EditorPage extends StatefulWidget {
     this.extraActions,
     this.account,
     this.refreshAccount,
+    this.locateNodeId,
   });
 
   final Backend backend;
@@ -38,6 +39,9 @@ class EditorPage extends StatefulWidget {
   /// account's role was changed to a read-only one mid-session): the editor turns read-only, re-reads the account, and
   /// becomes editable again once the role allows it. Null: the [AuthScope]'s session, if any.
   final Future<Account> Function()? refreshAccount;
+
+  /// A node to select and bring into view once the document is loaded (the launch's `node_id`).
+  final String? locateNodeId;
 
   /// Explicit client id (tests, demo); null = issued by the server and kept in the journal.
   final String? clientId;
@@ -223,10 +227,10 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   }
 
   /// Shows the current state as a Dify workflow file, ready to copy into Dify's "Import DSL".
-  Future<void> _exportDifyDsl(BuildContext context) async {
+  Future<void> _exportDifyDsl(BuildContext context, {bool includeSecret = false}) async {
     String yaml;
     try {
-      yaml = await widget.backend.exportDifyDsl(widget.docId);
+      yaml = await widget.backend.exportDifyDsl(widget.docId, includeSecret: includeSecret);
     } on Object catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       return;
@@ -349,6 +353,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       actions: _actions(context, c),
       meta: _meta,
       access: _access,
+      locateNodeId: widget.locateNodeId,
+      onExportDsl: (includeSecret) => _exportDifyDsl(context, includeSecret: includeSecret),
       user: switch (_account) {
         final a? => EditorUser(id: a.id, name: a.name, avatarUrl: a.avatarUrl),
         null => null,

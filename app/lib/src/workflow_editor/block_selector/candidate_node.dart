@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
+import '../../cards/bodies/entry_bodies.dart' show ContainerStartNodeDumb;
 import '../../cards/bodies/note_body.dart' show NoteCardView, NoteData, customNoteNode;
 import '../../cards/card_kit.dart' show DifyText;
 import '../../design/dify_tokens.g.dart';
@@ -234,6 +235,7 @@ class _CandidateCard extends StatelessWidget {
     if (candidate['type'] == customNoteNode) return NoteCardView(data: NoteData.fromJson(data));
     final type = '${data['type'] ?? ''}';
     final title = '${data['title'] ?? type}';
+    final container = type == 'iteration' || type == 'loop';
     return Container(
       width: 240,
       decoration: BoxDecoration(
@@ -242,12 +244,36 @@ class _CandidateCard extends StatelessWidget {
         border: Border.all(color: const Color(0x00000000)),
         boxShadow: DifyShadows.xs,
       ),
-      padding: const EdgeInsets.fromLTRB(13, 13, 13, 13),
-      child: Row(
+      padding: container ? const EdgeInsets.only(top: 13) : const EdgeInsets.all(13),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SelectorBlockIcon(type: type, size: SelectorIconSize.md, toolIcon: data['provider_icon']),
-          const SizedBox(width: 8),
-          Expanded(child: DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textPrimary)),
+          Padding(
+            padding: container ? const EdgeInsets.fromLTRB(13, 0, 13, 9) : EdgeInsets.zero,
+            child: Row(
+              children: [
+                SelectorBlockIcon(type: type, size: SelectorIconSize.md, toolIcon: data['provider_icon']),
+                const SizedBox(width: 8),
+                Expanded(child: DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textPrimary)),
+              ],
+            ),
+          ),
+          // An iteration's or loop's body (`min-h-22.5 rounded-2xl bg-workflow-canvas-workflow-bg`) with the
+          // candidate's start node, `_isCandidate && <IterationStartNodeDumb />` / LoopStartNodeDumb.
+          if (container)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+              child: Container(
+                key: const Key('candidate-container-body'),
+                height: 90,
+                alignment: Alignment.topLeft,
+                decoration: BoxDecoration(
+                  color: DifyColors.workflowCanvasWorkflowBg,
+                  borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                ),
+                child: const ContainerStartNodeDumb(),
+              ),
+            ),
         ],
       ),
     );

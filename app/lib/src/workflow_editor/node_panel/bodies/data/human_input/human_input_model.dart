@@ -6,6 +6,8 @@ library;
 
 import '../../../../../workflow/dify_json.dart';
 
+export '../../../../prompt_editor/prompt_blocks.dart' show hitlInputRegex;
+
 typedef Json = Map<String, Object?>;
 
 // ---- types.ts ----------------------------------------------------------------------------------------------------
@@ -145,9 +147,6 @@ const actionValueMaxLength = 100;
 
 /// The token a form input stands as in `form_content`.
 String outputToken(String name) => '{{#\$output.$name#}}';
-
-/// `HITL_INPUT_REG` (config): the form inputs referenced in a text.
-final hitlInputRegex = RegExp(r'\{\{(#\$output\.(?:[a-z_]\w{0,29}){1,10}#)\}\}', caseSensitive: false);
 
 /// `handleFormInputItemRename`: [data] with the input [oldName] replaced by [payload] (its token renamed in the
 /// content; appended when no input had the name), or null when the new name is taken by another input.

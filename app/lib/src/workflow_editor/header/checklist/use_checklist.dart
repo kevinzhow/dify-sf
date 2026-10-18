@@ -145,6 +145,43 @@ List<DifyFlowNode> _uniqById(Iterable<DifyFlowNode> list) {
   return (validNodes: _uniqById(list), maxDepth: maxDepth);
 }
 
+/// `useNodesAvailableVarList(forNodes)` over the graph ([nodes], [edges]): for each node, the nodes before it in its
+/// branch (its container included; a loop also offers its own variables) and the variables they offer
+/// (`getNodeAvailableVars` with the node's container as `parentNode`). [hideEnv] / [hideChatVar] leave out the
+/// environment / conversation variables (conversation variables only count in [chatMode]).
+Map<String, ({List<NodeOutputVars> availableVars, List<DifyFlowNode> availableNodes})> nodesAvailableVarList(
+  List<DifyFlowNode> forNodes,
+  List<DifyFlowNode> nodes,
+  List<DifyFlowEdge> edges, {
+  bool chatMode = false,
+  List<DifyJson> environmentVariables = const [],
+  List<DifyJson> conversationVariables = const [],
+  bool hideEnv = false,
+  bool hideChatVar = false,
+}) {
+  final byId = {for (final n in nodes) n.id: n};
+  return {
+    for (final n in forNodes)
+      n.id: () {
+        final before = getBeforeNodesInSameBranchIncludeParent(n.id, nodes, edges);
+        if (n.blockType == 'loop') before.add(n);
+        List<NodeOutputVars> vars;
+        try {
+          vars = toNodeAvailableVars(
+            beforeNodes: [for (final b in before) ?b.node],
+            parent: byId[n.parentId]?.node,
+            chatMode: chatMode,
+            environmentVariables: hideEnv ? const [] : DeclaredVar.listOf(environmentVariables),
+            conversationVariables: chatMode && !hideChatVar ? DeclaredVar.listOf(conversationVariables) : const [],
+          );
+        } on StateError {
+          vars = const [];
+        }
+        return (availableVars: vars, availableNodes: before);
+      }(),
+  };
+}
+
 /// `getBeforeNodesInSameBranch` (hooks/use-workflow.ts): the upstream nodes of [nodeId] (and of its container) that
 /// have output variables, nearest last.
 List<DifyFlowNode> getBeforeNodesInSameBranch(String nodeId, List<DifyFlowNode> nodes, List<DifyFlowEdge> edges) {
@@ -312,6 +349,37 @@ bool _canFindTool(Object? providerId, Object? oldToolId) =>
     providerId == 'langgenius/$oldToolId/$oldToolId' ||
     providerId == 'langgenius/${oldToolId}_tool/$oldToolId';
 
+/// `matchToolInCollection` (utils/plugin-install-check.ts): the provider of a tool node's data.
+DifyJson? matchToolInCollection(List<DifyJson> collection, Map<String, Object?> data) => collection
+    .where(
+      (tool) =>
+          (jsTruthy(data['plugin_id']) && tool['plugin_id'] == data['plugin_id']) ||
+          _canFindTool(tool['id'], data['provider_id']) ||
+          tool['name'] == data['provider_name'],
+    )
+    .firstOrNull;
+
+/// `matchTriggerProvider` (utils/plugin-install-check.ts): the provider of a trigger plugin node's data.
+DifyJson? matchTriggerProvider(List<DifyJson> providers, Map<String, Object?> data) => providers
+    .where(
+      (p) =>
+          p['name'] == data['provider_name'] ||
+          p['id'] == data['provider_id'] ||
+          (jsTruthy(data['plugin_id']) && p['plugin_id'] == data['plugin_id']),
+    )
+    .firstOrNull;
+
+/// `matchDataSource` (utils/plugin-install-check.ts): the data source of a data source node's data.
+DifyJson? matchDataSource(List<DifyJson> list, Map<String, Object?> data) => list
+    .where(
+      (d) =>
+          (jsTruthy(data['plugin_unique_identifier']) &&
+              d['plugin_unique_identifier'] == data['plugin_unique_identifier']) ||
+          (jsTruthy(data['plugin_id']) && d['plugin_id'] == data['plugin_id']) ||
+          (jsTruthy(data['provider_name']) && d['provider'] == data['provider_name']),
+    )
+    .firstOrNull;
+
 /// `isNodePluginMissing` (utils/plugin-install-check.ts).
 bool isNodePluginMissing(Map<String, Object?> data, ChecklistEnv env) {
   final uid = jsTruthy(data['plugin_unique_identifier']);
@@ -325,33 +393,15 @@ bool isNodePluginMissing(Map<String, Object?> data, ChecklistEnv env) {
         _ => null,
       };
       if (collection == null) return false;
-      final found = collection.any(
-        (tool) =>
-            (jsTruthy(data['plugin_id']) && tool['plugin_id'] == data['plugin_id']) ||
-            _canFindTool(tool['id'], data['provider_id']) ||
-            tool['name'] == data['provider_name'],
-      );
-      return !found && uid;
+      return matchToolInCollection(collection, data) == null && uid;
     case 'trigger-plugin':
       final providers = env.triggerPlugins;
       if (providers == null) return false;
-      final found = providers.any(
-        (p) =>
-            p['name'] == data['provider_name'] ||
-            p['id'] == data['provider_id'] ||
-            (jsTruthy(data['plugin_id']) && p['plugin_id'] == data['plugin_id']),
-      );
-      return !found && uid;
+      return matchTriggerProvider(providers, data) == null && uid;
     case 'datasource':
       final list = env.dataSourceList;
       if (list == null) return false;
-      final found = list.any(
-        (d) =>
-            (uid && d['plugin_unique_identifier'] == data['plugin_unique_identifier']) ||
-            (jsTruthy(data['plugin_id']) && d['plugin_id'] == data['plugin_id']) ||
-            (jsTruthy(data['provider_name']) && d['provider'] == data['provider_name']),
-      );
-      return !found && uid;
+      return matchDataSource(list, data) == null && uid;
     default:
       return false;
   }
@@ -466,19 +516,14 @@ class _Check {
   /// `useNodesAvailableVarList` for one node.
   List<NodeOutputVars> availableVars(DifyFlowNode n) {
     if (env.availableVars != null) return env.availableVars!(n);
-    final before = getBeforeNodesInSameBranchIncludeParent(n.id, nodes, edges);
-    if (n.blockType == 'loop') before.add(n);
-    try {
-      return toNodeAvailableVars(
-        beforeNodes: [for (final b in before) ?b.node],
-        parent: byId[n.parentId]?.node,
-        chatMode: env.chatMode,
-        environmentVariables: DeclaredVar.listOf(env.environmentVariables),
-        conversationVariables: env.chatMode ? DeclaredVar.listOf(env.conversationVariables) : const [],
-      );
-    } on StateError {
-      return const [];
-    }
+    return nodesAvailableVarList(
+      [n],
+      nodes,
+      edges,
+      chatMode: env.chatMode,
+      environmentVariables: env.environmentVariables,
+      conversationVariables: env.conversationVariables,
+    )[n.id]!.availableVars;
   }
 
   /// Whether one of [usedVars] is neither special nor an output of an available node.

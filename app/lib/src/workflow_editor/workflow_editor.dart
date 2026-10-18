@@ -5,8 +5,11 @@ import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart';
 import '../editor/editor_controller.dart';
 import 'context_menu/context_menu.dart';
+import 'hooks/use_helpline.dart';
+import 'hooks/use_workflow.dart';
 import 'operator/actions.dart' show OperatorReadOnly;
 import 'store/store.dart';
+import 'workflow_confirm.dart';
 
 /// Dify's workflow editor page (components/workflow/index.tsx and workflow-app): the canvas filling the area, with
 /// the header, the left control bar, the bottom operator bar and the right panels floating over it. The chrome only
@@ -78,6 +81,40 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
     bridge; // hydrate the store from the stored preferences as soon as they load
     store.setCanvasReadOnly(!widget.canEdit);
     canvas.isReadOnly = () => store.nodesReadOnly;
+    // useWorkflow().isValidConnection, with handleNodeConnect's checks.
+    canvas.isValidConnection = (source, handle, target) {
+      final doc = widget.controller.doc;
+      return canConnect(doc, source: source, target: target, sourceHandle: handle) &&
+          isValidConnection(doc, source: source, target: target, chatMode: widget.menuOptions.isChatMode);
+    };
+    // handleNodeDrag's helplines (and the snap onto them), cleared by handleNodeDragStop.
+    canvas.onNodeDrag = (id, position) {
+      final nodes = helplineNodesOf(canvas);
+      final node = nodes.where((n) => n.id == id).firstOrNull;
+      if (node == null) return null;
+      final dragged = (
+        id: node.id,
+        type: node.type,
+        x: position.dx,
+        y: position.dy,
+        width: node.width,
+        height: node.height,
+        inContainer: node.inContainer,
+      );
+      return snapToHelplines(dragged, handleSetHelpline(store, nodes, dragged));
+    };
+    canvas.onNodeDragStop = () => store
+      ..setHelpLineHorizontal()
+      ..setHelpLineVertical();
+    // handleNodeConnectStart / handleNodeConnectEnd: who is being connected, for the nodes that react to it.
+    canvas.onConnectStart = (id, handle) {
+      final n = widget.controller.doc.nodes[id];
+      if (store.nodesReadOnly || n == null || isNoteNode(n)) return;
+      store.setConnectingNodePayload((nodeId: id, nodeType: n.type, handleType: 'source', handleId: handle));
+    };
+    canvas.onConnectEnd = () => store
+      ..setConnectingNodePayload()
+      ..setEnteringNodePayload();
   }
 
   @override
@@ -129,6 +166,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   child: WorkflowCanvas(controller: w.controller, canvas: canvas),
                 ),
               ),
+              Positioned.fill(child: HelpLine(canvas: canvas)),
               if (w.overlay != null) Positioned.fill(child: w.overlay!(context, canvas)),
               if (w.header != null)
                 // `absolute top-7 h-0 items-center`: centred 28 px from the top. A 56 px band (not a zero-height box,
@@ -178,6 +216,8 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                 ),
               if (w.panels != null) Positioned(top: 56, right: 0, bottom: 4, child: w.panels!(context, canvas)),
               if (w.modal != null) Positioned.fill(child: w.modal!(context, canvas)),
+              // The store's showConfirm, over everything.
+              const Positioned.fill(child: WorkflowConfirm()),
             ],
           );
           return w.scope?.call(context, canvas, stack) ?? stack;

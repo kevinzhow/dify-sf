@@ -80,6 +80,24 @@ class PromptEditorController extends TextEditingController {
   /// Replaces the selection with [block] and puts the caret after it (`$insertNodes`).
   void insertBlock(PromptBlock block, {TextRange? replacing}) => _replace(replacing, String.fromCharCode(_code(block)));
 
+  /// Replaces the selection with [block] in a line of its own (a line break before and after it), the caret after
+  /// the second break (INSERT_HITL_INPUT_BLOCK_COMMAND's `\n`, node, `\n`).
+  void insertBlockLine(PromptBlock block, {TextRange? replacing}) =>
+      _replace(replacing, '\n${String.fromCharCode(_code(block))}\n');
+
+  /// Swaps the block at [offset] for [block] (a block's node changed in place), keeping the selection.
+  void replaceBlock(int offset, PromptBlock block) {
+    if (blockAt(offset) == null) return;
+    value = TextEditingValue(
+      text: text.replaceRange(offset, offset + 1, String.fromCharCode(_code(block))),
+      selection: selection,
+      composing: TextRange.empty,
+    );
+  }
+
+  /// Rebuilds the block widgets (a block's state changed, not its text).
+  void refreshBlocks() => notifyListeners();
+
   /// Replaces the selection (or [replacing]) with [s], which is transformed like typed text.
   void insertText(String s, {TextRange? replacing}) => _replace(replacing, _encode([s]));
 
@@ -255,6 +273,9 @@ class PromptEditorController extends TextEditingController {
     }
 
     var runStart = 0;
+    // Each block widget is keyed by its token and how many of the same came before, so it keeps its state when
+    // text before it changes.
+    final seen = <int, int>{};
     for (var i = 0; i < t.length; i++) {
       final c = t.codeUnitAt(i);
       final block = _blockOf[c];
@@ -271,6 +292,7 @@ class PromptEditorController extends TextEditingController {
             alignment: PlaceholderAlignment.baseline,
             baseline: TextBaseline.alphabetic,
             child: CssMiddle(
+              key: ValueKey((c, seen[c] = (seen[c] ?? 0) + 1)),
               fontSize: style?.fontSize ?? 14,
               lineHeight: (style?.height ?? 0) * (style?.fontSize ?? 14),
               child: chipBuilder!(context, block, i),

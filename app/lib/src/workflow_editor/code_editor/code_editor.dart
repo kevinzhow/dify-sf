@@ -233,8 +233,10 @@ class CodeEditorBase extends StatefulWidget {
   State<CodeEditorBase> createState() => _CodeEditorBaseState();
 }
 
-/// use-toggle-expend.ts: the title bar (and border) subtracted from the expanded height.
-const _chromeHeightWithoutFooter = 29.0;
+/// use-toggle-expend.ts `editorExpandHeight`: the expanded editor body, the wrapper's height less its chrome (the
+/// title bar: 29 px; with a footer: 56 px), never negative.
+double toggleExpendEditorHeight(double wrapHeight, {bool hasFooter = true}) =>
+    math.max(0, wrapHeight - (hasFooter ? 56 : 29));
 
 class _CodeEditorBaseState extends State<CodeEditorBase> {
   final _portal = OverlayPortalController();
@@ -365,7 +367,8 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
       overlayChildBuilder: (context) {
         Widget expanded(double? width) => LayoutBuilder(
           builder: (context, c) => _box(
-            bodyHeight: math.max(0, c.maxHeight - _chromeHeightWithoutFooter),
+            // editor/base.tsx: `useToggleExpend({ hasFooter: false })`.
+            bodyHeight: toggleExpendEditorHeight(c.maxHeight, hasFooter: false),
             expanded: true,
           ),
         );

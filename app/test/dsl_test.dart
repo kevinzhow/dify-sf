@@ -25,7 +25,8 @@ class _DslDemoBackend extends DemoBackend {
   }
 
   @override
-  Future<String> exportDifyDsl(String docId) async => 'app:\n  name: exported $docId\nkind: app\n';
+  Future<String> exportDifyDsl(String docId, {bool includeSecret = false}) async =>
+      'app:\n  name: exported $docId\nkind: app\n';
 }
 
 Future<void> settle(WidgetTester t, [int ms = 2000]) async {

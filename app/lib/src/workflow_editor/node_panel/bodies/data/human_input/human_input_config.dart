@@ -2,8 +2,6 @@
 /// ops (Dify's `setInputs`), with the edge moves of renamed actions and the downstream renames of renamed inputs.
 library;
 
-import 'package:collab_client/collab_client.dart';
-
 import '../../../../../workflow/dify_json.dart';
 import '../../../../../workflow/node_used_vars.dart';
 import '../../../node_panel_bodies.dart';
@@ -28,18 +26,10 @@ void renameVarInOtherNodes(NodePanelProps props, List<String> oldSelector, List<
   }
 }
 
-/// `handleEdgeSourceHandleChange`: the edges leaving the node from handle [from] now leave from [to].
-void moveSourceHandle(NodePanelProps props, String from, String to) {
-  final c = props.controller;
-  final edges = <Edge>[
-    for (final e in c.doc.edges.values)
-      if (e.source == props.id && e.sourceHandle == from) e,
-  ];
-  for (final e in edges) {
-    c.deleteEdge(e.id);
-    c.connect(props.id, e.target, sourceHandle: to);
-  }
-}
+/// `handleEdgeSourceHandleChange`: the edges leaving the node from handle [from] now leave from [to] (one
+/// EdgeSourceHandleChange step; nothing while read-only).
+void moveSourceHandle(NodePanelProps props, String from, String to) =>
+    props.actions.changeEdgeSourceHandle(props.id, from, to);
 
 /// `useConfig(id, data)` over [props].
 class HumanInputConfig {

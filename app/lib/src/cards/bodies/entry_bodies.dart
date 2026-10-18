@@ -835,19 +835,46 @@ abstract class _ContainerStartBody extends NodeBody {
   double height(BodyContext ctx) => 42;
 
   @override
-  Widget build(BuildContext context, BodyContext ctx) => SizedBox(
-    height: 42,
-    child: Center(
-      child: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          color: DifyColors.utilColorsBlueBrandBlueBrand500,
-          shape: BoxShape.circle,
-          border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
-        ),
-        child: const Center(child: RemixIcon('home-5-fill', size: 12, color: DifyColors.textPrimaryOnSurface)),
+  Widget build(BuildContext context, BodyContext ctx) =>
+      const SizedBox(height: 42, child: Center(child: ContainerStartIcon()));
+}
+
+/// The start node's 24 px blue-brand circle with RiHome5Fill (iteration-start / loop-start's TooltipTrigger).
+class ContainerStartIcon extends StatelessWidget {
+  const ContainerStartIcon({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 24,
+    height: 24,
+    decoration: BoxDecoration(
+      color: DifyColors.utilColorsBlueBrandBlueBrand500,
+      shape: BoxShape.circle,
+      border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
+    ),
+    child: const Center(child: RemixIcon('home-5-fill', size: 12, color: DifyColors.textPrimaryOnSurface)),
+  );
+}
+
+/// IterationStartNodeDumb / LoopStartNodeDumb: the start node drawn inside a container that is not on the canvas
+/// yet (the candidate being placed): `relative top-5.25 left-4.25 size-11 rounded-2xl border
+/// border-workflow-block-border bg-workflow-block-bg`, no shadow and no source handle.
+class ContainerStartNodeDumb extends StatelessWidget {
+  const ContainerStartNodeDumb({super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 17, top: 21),
+    child: Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: DifyColors.workflowBlockBg,
+        borderRadius: BorderRadius.circular(DifyRadius.xxl),
+        border: Border.all(color: DifyColors.workflowBlockBorder),
       ),
+      alignment: Alignment.center,
+      child: const ContainerStartIcon(),
     ),
   );
 }

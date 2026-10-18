@@ -143,3 +143,50 @@ String extractPluginId(String provider) {
   final parts = provider.split('/');
   return parts.length >= 2 ? '${parts[0]}/${parts[1]}' : provider;
 }
+
+/// AgentOutputBlockType: `[§output:name:name§]` tokens become output blocks; the `/` picker offers "New output".
+/// [outputs] are Dify's DeclaredOutputConfig JSON; [onChange] gets the next outputs and the prompt with the change;
+/// [onEdit] asks to edit a committed output (its name and type option value).
+class AgentOutputBlockConfig {
+  const AgentOutputBlockConfig({this.show = false, this.outputs = const [], this.onChange, this.onEdit});
+  final bool show;
+  final List<Map<String, Object?>> outputs;
+  final void Function(List<Map<String, Object?>> outputs, String? prompt)? onChange;
+  final void Function(String name, String outputType)? onEdit;
+}
+
+/// HITLInputBlockType: `{{#$output.name#}}` tokens become the human input node's form fields. [formInputs] are the
+/// node's FormInputItem JSON; [variables] the workflow variables (env, conversation and RAG lists are taken from
+/// them); [onFormInputsChange] gets the inputs with one edited in place.
+class HitlInputBlockConfig {
+  const HitlInputBlockConfig({
+    this.show = false,
+    required this.nodeId,
+    this.formInputs,
+    this.variables,
+    this.workflowNodesMap = const {},
+    this.getVarType,
+    this.onFormInputsChange,
+    required this.onFormInputItemRemove,
+    required this.onFormInputItemRename,
+    this.onInsert,
+    this.onDelete,
+    this.readonly = false,
+    this.scope,
+  });
+  final bool show;
+  final String nodeId;
+  final List<Object?>? formInputs;
+  final List<VarGroup>? variables;
+  final Map<String, WorkflowNodeInfo> workflowNodesMap;
+  final PromptGetVarType? getVarType;
+  final void Function(List<Object?> inputs)? onFormInputsChange;
+  final void Function(String varName) onFormInputItemRemove;
+  final void Function(Map<String, Object?> payload, String oldName) onFormInputItemRename;
+  final void Function()? onInsert;
+  final void Function()? onDelete;
+  final bool readonly;
+
+  /// What the field editor's variable pickers offer (Dify's pickers read the workflow store); null: [variables].
+  final VarScope? scope;
+}

@@ -168,6 +168,13 @@ String genNewNodeTitleFromOld(String old) {
 /// The container a node is in (Dify's `parentId`).
 String? parentIdOf(Node n) => CanvasGraph.parentOf(n);
 
+/// useNodesInteractions' handleNodesCancelSelected: no node is selected, neither on the canvas (a box selection
+/// included) nor for the panel.
+void cancelNodesSelectedOn(CanvasController canvas, EditorController controller) {
+  canvas.selection.selectNodes(const []);
+  controller.selectNode(null);
+}
+
 /// Nodes the menus never offer (handleNodeContextMenu stops on them): notes, iteration and loop starts.
 bool hasNoNodeMenu(Node n) => isNoteNode(n) || n.type == 'iteration-start' || n.type == 'loop-start';
 
@@ -235,6 +242,9 @@ class WorkflowActions {
     if (slot != null) canvas.selection.selectNodes([slot]);
     controller.selectNode(id);
   }
+
+  /// handleNodesCancelSelected.
+  void cancelNodesSelected() => cancelNodesSelectedOn(canvas, controller);
 
   /// React Flow's size of a node (its card and frame), or null when unknown.
   Size? sizeOf(Node n) {
@@ -648,6 +658,38 @@ class WorkflowActions {
     if (ids.isEmpty) return;
     _step(HistoryEvent.edgeDeleteByDeleteBranch, nodeId, () => ids.forEach(controller.deleteEdge));
     _clearEdgeMenu(ids);
+  }
+
+  /// handleEdgeSourceHandleChange: the edges leaving [nodeId] from [oldHandle] leave from [newHandle] instead (as
+  /// one undo step; an edge's id becomes Dify's `<source>-<handle>-<target>-<targetHandle>` when free), and an open
+  /// menu of one of them closes.
+  void changeEdgeSourceHandle(String nodeId, String oldHandle, String newHandle) {
+    if (nodesReadOnly) return;
+    final affected = [
+      for (final e in doc.edges.values)
+        if (e.source == nodeId && e.sourceHandle == oldHandle) e,
+    ];
+    if (affected.isEmpty) return;
+    _step(HistoryEvent.edgeSourceHandleChange, nodeId, () {
+      for (final e in affected) {
+        _submit(RemoveEdge(e.id));
+      }
+      for (final e in affected) {
+        final id = '${e.source}-$newHandle-${e.target}-${e.targetHandle}';
+        _submit(
+          AddEdge(
+            Edge(
+              id: doc.edges.containsKey(id) ? newId('e') : id,
+              source: e.source,
+              sourceHandle: newHandle,
+              target: e.target,
+              targetHandle: e.targetHandle,
+            ),
+          ),
+        );
+      }
+    });
+    _clearEdgeMenu([for (final e in affected) e.id]);
   }
 
   // ----- alignment (selection-contextmenu.tsx handleAlignNodes) -----

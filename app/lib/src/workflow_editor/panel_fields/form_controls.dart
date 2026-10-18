@@ -3,6 +3,8 @@
 /// VariableTag, and the config-var modal's parts (config-modal/field.tsx, type-select.tsx, config-select).
 library;
 
+import 'dart:ui' show SemanticsValidationResult;
+
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -80,16 +82,24 @@ class DifyCheckbox extends StatelessWidget {
     this.disabled = false,
     this.indeterminate = false,
     this.label,
+    this.invalid = false,
+    this.description,
   });
 
   final bool checked, disabled, indeterminate;
   final ValueChanged<bool>? onChanged;
   final String? label;
 
+  /// `aria-invalid`, and the text it is described by (`aria-describedby`).
+  final bool invalid;
+  final String? description;
+
   @override
   Widget build(BuildContext context) => Semantics(
     checked: checked,
     label: label,
+    hint: description,
+    validationResult: invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
     child: DifyPressable(
       disabled: disabled,
       onPressed: onChanged == null ? null : () => onChanged!(!checked),
@@ -249,11 +259,17 @@ class TagInput extends StatefulWidget {
     this.isInWorkflow = false,
     this.customizedConfirmKey = LogicalKeyboardKey.enter,
     this.onError = difyToastError,
+    this.invalid = false,
+    this.description,
   });
 
   final List<String> items;
   final ValueChanged<List<String>> onChange;
   final String? placeholder;
+
+  /// The input's `aria-invalid` and `aria-describedby` text.
+  final bool invalid;
+  final String? description;
 
   /// The input's accessible name.
   final String? label;
@@ -360,7 +376,14 @@ class _TagInputState extends State<TagInput> {
         );
       },
     );
-    if (w.label != null) input = Semantics(label: w.label, child: input);
+    if (w.label != null || w.invalid || w.description != null) {
+      input = Semantics(
+        label: w.label,
+        hint: w.description,
+        validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
+        child: input,
+      );
+    }
     return Container(
       constraints: BoxConstraints(minWidth: w.isInWorkflow ? 0 : 200),
       padding: _special ? const EdgeInsets.only(left: 4, bottom: 4) : EdgeInsets.zero,
@@ -545,7 +568,9 @@ class _CheckboxListState extends State<CheckboxList> {
                             ),
                           ),
                         if (w.showCount && w.value.isNotEmpty)
-                          DifyBadge(DifyI18n.tr('common', 'operation.selectCount', {'count': w.value.length})),
+                          Flexible(
+                            child: DifyBadge(DifyI18n.tr('common', 'operation.selectCount', {'count': w.value.length})),
+                          ),
                       ],
                     ),
                   ),
@@ -890,14 +915,23 @@ class ModalField extends StatelessWidget {
 
 /// The select trigger box: input colours (hover `bg-state-base-hover-alt`), [content], a chevron.
 class _SelectBox extends StatelessWidget {
-  const _SelectBox({required this.content, required this.open, required this.onTap, this.large = true, this.label});
+  const _SelectBox({
+    required this.content,
+    required this.open,
+    required this.onTap,
+    this.large = true,
+    this.label,
+    this.focusNode,
+  });
   final Widget content;
   final bool open, large;
   final VoidCallback onTap;
   final String? label;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) => DifyPressable(
+    focusNode: focusNode,
     semanticLabel: label,
     onPressed: onTap,
     builder: (context, hovered, focused) => Container(
@@ -967,12 +1001,22 @@ class ModalSelect<T> extends StatelessWidget {
 }
 
 /// type-select.tsx: the field type with its icon and VarType badge, in the trigger (`h-9 rounded-lg px-2 text-sm`)
-/// and in each option.
+/// and in each option. [semanticLabel] names the trigger (its label's text; the selected type by default);
+/// [focusNode] lets the label focus it.
 class InputTypeSelect extends StatelessWidget {
-  const InputTypeSelect({super.key, required this.value, required this.items, required this.onSelect});
+  const InputTypeSelect({
+    super.key,
+    required this.value,
+    required this.items,
+    required this.onSelect,
+    this.semanticLabel,
+    this.focusNode,
+  });
   final String value;
   final List<({String value, String name})> items;
   final ValueChanged<String> onSelect;
+  final String? semanticLabel;
+  final FocusNode? focusNode;
 
   Widget _row(({String value, String name}) item, {bool trigger = false}) => Row(
     children: [
@@ -1002,9 +1046,10 @@ class InputTypeSelect extends StatelessWidget {
         width: c.maxWidth,
         builder: (context, controller) => _SelectBox(
           large: false,
+          focusNode: focusNode,
           open: controller.isOpen,
           onTap: controller.toggle,
-          label: selected?.name,
+          label: semanticLabel ?? selected?.name,
           content: selected == null ? const SizedBox.shrink() : _row(selected, trigger: true),
         ),
         children: [

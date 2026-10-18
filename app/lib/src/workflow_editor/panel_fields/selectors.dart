@@ -39,6 +39,7 @@ class DifySelect<T> extends StatefulWidget {
     this.paddingX = 12,
     this.semanticLabel,
     this.large = false,
+    this.optionLeading,
   });
 
   final T? value;
@@ -58,6 +59,9 @@ class DifySelect<T> extends StatefulWidget {
 
   /// `SelectTrigger size="large"`: `h-9 rounded-[10px] px-4 system-md-regular`.
   final bool large;
+
+  /// What an option shows before its label (a call site's icon), if anything.
+  final Widget? Function(T value)? optionLeading;
 
   @override
   State<DifySelect<T>> createState() => _DifySelectState<T>();
@@ -80,6 +84,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
       value: o.value,
       closeOnClick: true,
       focusNode: selected ? _selectedNode : null,
+      leading: widget.optionLeading?.call(o.value),
       child: Text(_label(o.label)),
     );
     return selected ? _FocusOnOpen(node: _selectedNode, child: item) : item;

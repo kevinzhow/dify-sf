@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart' show Tooltip;
 import 'package:flutter/widgets.dart';
 
+import '../../cards/card_kit.dart' show DifyText;
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -212,9 +213,13 @@ class ComponentPickerMenu extends StatelessWidget {
     required this.onHighlight,
     this.variables,
     this.queryString,
+    this.footer,
   });
 
   final Widget? variables;
+
+  /// Below the options (`mt-1 border-t border-divider-subtle p-1`): the agent output block's "New output".
+  final Widget? footer;
   final List<PickerOption> options;
 
   /// The highlighted option, or null when highlights are hidden (the workflow variable list is shown).
@@ -248,9 +253,50 @@ class ComponentPickerMenu extends StatelessWidget {
           if (i > 0 && options[i - 1].group != o.group) _divider(),
           o.build(selectedIndex == i, queryString, () => onSelect(o), () => onHighlight(i)),
         ],
+        if (footer != null)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
+            ),
+            child: footer,
+          ),
       ],
     ),
   );
+}
+
+/// The picker's "New output" action (`h-6 rounded-md py-1 pr-1 pl-3 system-sm-regular`, hover
+/// `bg-state-base-hover`): `add-line`, the label, `question-line`.
+class NewAgentOutputAction extends StatelessWidget {
+  const NewAgentOutputAction({super.key, required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = DifyI18n.tr('workflow', 'nodes.agent.outputVars.newOutput');
+    return DifyPressable(
+      semanticLabel: label,
+      onPressed: onPressed,
+      builder: (context, hovered, focused) => Container(
+        height: 24,
+        padding: const EdgeInsets.only(left: 12, right: 4),
+        decoration: BoxDecoration(
+          color: hovered || focused ? DifyColors.stateBaseHover : null,
+          borderRadius: BorderRadius.circular(DifyRadius.md),
+        ),
+        child: Row(
+          spacing: 4,
+          children: [
+            const RemixIcon('add-line', size: 16, color: DifyColors.textSecondary),
+            Expanded(child: DifyText(label, DifyType.systemSmRegular, color: DifyColors.textSecondary)),
+            const RemixIcon('question-line', size: 14, color: DifyColors.textQuaternary),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// The icons of the special-block options.

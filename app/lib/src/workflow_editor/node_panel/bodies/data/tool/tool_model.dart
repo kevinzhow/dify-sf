@@ -220,6 +220,12 @@ List<String> getCheckboxListValue(Object? current, Object? defaultValue, List<Js
   ];
 }
 
+/// `normalizeVariableSelectorValue`: the picked selector, or '' when the picker cleared it.
+Object normalizeVariableSelectorValue(Object? value) => switch (value) {
+  null || '' => '',
+  final Object v => v,
+};
+
 /// `getNumberInputValue`: the number as text ('' for NaN and non-numbers).
 String getNumberInputValue(Object? current) => switch (current) {
   final num n => n.isNaN ? '' : _num(n),

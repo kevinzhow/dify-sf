@@ -34,9 +34,29 @@ class CanvasInput {
     required this.renderer,
     this.modeSource,
     this.readOnly = _never,
+    this.validConnection = _any,
+    this.nodeDrag,
+    this.nodeDragStop,
+    this.connectStart,
+    this.connectEnd,
   });
 
   static bool _never() => false;
+  static bool _any(String source, String sourceHandle, String target) => true;
+
+  /// Whether a connection dropped from [sourceHandle] of [source] on [target] becomes an edge (React Flow's
+  /// `isValidConnection`).
+  final bool Function(String source, String sourceHandle, String target) validConnection;
+
+  /// Where the grabbed (top-level) node goes when the drag puts its top-left at the given position; null: there.
+  final Offset? Function(String nodeId, Offset position)? Function()? nodeDrag;
+
+  /// The drag ended.
+  final VoidCallback? Function()? nodeDragStop;
+
+  /// A connection drag began from a node's source handle / ended.
+  final void Function(String nodeId, String handleId)? Function()? connectStart;
+  final VoidCallback? Function()? connectEnd;
 
   /// Dify's `nodesReadOnly`: nodes are selected but not dragged, handles do not connect, Delete does nothing.
   final bool Function() readOnly;
@@ -49,6 +69,9 @@ class CanvasInput {
 
   /// The box being dragged out (screen coordinates), for the overlay.
   final marquee = ValueNotifier<Rect?>(null);
+
+  /// The connection being dragged out (canvas coordinates: the source handle, the pointer), for the overlay.
+  final connectLine = ValueNotifier<(Offset, Offset)?>(null);
 
   /// Dify's control mode (pointer by default).
   final ValueListenable<ControlMode>? modeSource;
@@ -152,8 +175,10 @@ class CanvasInput {
     if (port != null) {
       _gesture = 'connect';
       _connectFrom = port;
+      connectStart?.call()?.call(port.$1.id, port.$2);
     } else if (hit != null) {
       _gesture = locked ? 'none' : 'move';
+      _grabbed = hit.slot;
       if (!selection.nodes.contains(hit.slot)) selection.selectNodes([hit.slot]);
       controller.selectNode(hit.id);
       onApplied?.call('select');
@@ -176,17 +201,28 @@ class CanvasInput {
       case 'move':
         if (!_moved) _beginMove();
         final d = _clamped(c - _lastCanvas);
+        // The grabbed node follows the pointer from where the drag (not the snapping) put it.
+        var grabShift = d;
+        final grab = _grabRaw == null ? null : graph.slots[_grabbed!];
+        if (grab != null) {
+          _grabRaw = _grabRaw! + d;
+          final to = nodeDrag?.call()?.call(grab.id, _grabRaw!) ?? _grabRaw!;
+          grabShift = to - Offset(grab.x, grab.y);
+        }
         for (final slot in _moving) {
           final n = graph.slots[slot]!;
+          final shift = _grabGroup.contains(slot) ? grabShift : d;
           n
-            ..x += d.dx
-            ..y += d.dy;
+            ..x += shift.dx
+            ..y += shift.dy;
           graph.grid.put(slot, n.rect.topLeft);
         }
         renderer().moved(_moving);
         onApplied?.call('move');
       case 'connect':
-        renderer().connectPreview(_connectFrom!.$1.outPortFor(_connectFrom!.$2), c);
+        final from = _connectFrom!.$1.outPortFor(_connectFrom!.$2);
+        renderer().connectPreview(from, c);
+        connectLine.value = (from, c);
         onApplied?.call('connect');
       case 'marquee':
         marquee.value = Rect.fromPoints(_downLocal, e.localPosition);
@@ -219,14 +255,19 @@ class CanvasInput {
         break;
       case 'connect':
         renderer().connectPreview(null, null);
+        connectLine.value = null;
         final target = nodeAt(c);
         final (from, handle) = _connectFrom!;
-        if (target != null && target.slot != from.slot && target.layout.target) {
+        if (target != null &&
+            target.slot != from.slot &&
+            target.layout.target &&
+            validConnection(from.id, handle, target.id)) {
           // dify-sf's own documents use `out`; Dify's handles keep their ids (branches, classes, ...).
           controller.connect(from.id, target.id, sourceHandle: handle == 'source' ? null : handle);
           onApplied?.call('connected');
         }
         _connectFrom = null;
+        connectEnd?.call()?.call();
       case 'marquee':
         final r = marquee.value;
         marquee.value = null;
@@ -249,7 +290,8 @@ class CanvasInput {
       selection.hover(n?.slot);
       onApplied?.call('hover');
     }
-    selection.hoveredEdge.value = n == null ? edgeAt(c)?.id : null;
+    // handleEdgeEnter / handleEdgeLeave do nothing while the nodes are read-only.
+    selection.hoveredEdge.value = n == null && !readOnly() ? edgeAt(c)?.id : null;
   }
 
   void exit(PointerExitEvent e) {
@@ -293,8 +335,11 @@ class CanvasInput {
     onApplied?.call('pan');
   }
 
-  /// Delete/Backspace removes the selected edge or nodes.
+  /// Delete/Backspace removes the selected edge or nodes; the arrow keys move the selected nodes ([nodeKey] without
+  /// a focused node: Dify's focused selection).
   KeyEventResult key(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (_arrows.containsKey(e.logicalKey)) return selection.nodes.isEmpty ? KeyEventResult.ignored : nodeKey(null, e);
     if (e is! KeyDownEvent) return KeyEventResult.ignored;
     if (e.logicalKey != LogicalKeyboardKey.delete && e.logicalKey != LogicalKeyboardKey.backspace) {
       return KeyEventResult.ignored;
@@ -315,10 +360,98 @@ class CanvasInput {
     return KeyEventResult.handled;
   }
 
+  // ----- the keyboard (use-node-keyboard-interactions.ts, utils/keyboard-movement.ts) -----
+
+  static final _arrows = {
+    LogicalKeyboardKey.arrowLeft: const Offset(-1, 0),
+    LogicalKeyboardKey.arrowRight: const Offset(1, 0),
+    LogicalKeyboardKey.arrowUp: const Offset(0, -1),
+    LogicalKeyboardKey.arrowDown: const Offset(0, 1),
+  };
+
+  static bool _fixed(CanvasNode n) => n.type == 'iteration-start' || n.type == 'loop-start';
+
+  /// A key on the [focused] node (null: on the selection). Enter / Space selects the node and Escape deselects it;
+  /// an arrow moves it, or the selection when it is selected, by 5 px (20 with Shift) as one undo step
+  /// (NodeDragStop); a child stays inside its container. Nothing happens while the nodes are read-only, in comment
+  /// mode, with Alt / Ctrl / Meta, or on an iteration / loop start.
+  KeyEventResult nodeKey(CanvasNode? focused, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    final dir = _arrows[k];
+    final isSelectionKey =
+        k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.space || k == LogicalKeyboardKey.escape;
+    if (dir == null && !isSelectionKey) return KeyEventResult.ignored;
+    final keys = HardwareKeyboard.instance;
+    if (keys.isAltPressed || keys.isControlPressed || keys.isMetaPressed) return KeyEventResult.handled;
+    if (readOnly() || mode == ControlMode.comment) return KeyEventResult.handled;
+    if (focused != null && _fixed(focused)) return KeyEventResult.handled;
+    if (isSelectionKey) {
+      if (focused == null || e is! KeyDownEvent) return KeyEventResult.handled;
+      if (k == LogicalKeyboardKey.escape) {
+        selection.selectNodes(const []);
+        controller.selectNode(null);
+      } else {
+        selection.selectNodes([focused.slot]);
+        controller.selectNode(focused.id);
+      }
+      onApplied?.call('select');
+      return KeyEventResult.handled;
+    }
+    final step = keys.isShiftPressed ? 20.0 : 5.0;
+    final movement = dir! * step;
+    final moving = {
+      if (focused != null && !selection.nodes.contains(focused.slot))
+        focused.slot
+      else
+        for (final s in selection.nodes)
+          if (graph.slots[s] case final n? when !_fixed(n)) s,
+    };
+    // A moving container already carries its children.
+    final leaders = [
+      for (final s in moving)
+        if (!_hasAncestorIn(graph.slots[s]!, moving)) graph.slots[s]!,
+    ];
+    final moves = <(String, int, int)>[];
+    for (final n in leaders) {
+      final parent = n.parentId == null ? null : graph[n.parentId!];
+      final own = parent == null ? Offset(n.x, n.y) : Offset(n.x - parent.x, n.y - parent.y);
+      var next = own + movement;
+      if (parent != null) {
+        final box = parent.rect, w = n.layout.visual.width + 2, h = n.layout.visual.height + 2;
+        next = Offset(
+          next.dx.clamp(16, max(16.0, box.width + 2 - 16 - w)),
+          next.dy.clamp(65, max(65.0, box.height + 2 - 20 - h)),
+        );
+      }
+      final x = next.dx.round(), y = next.dy.round();
+      // Against the container's side: Dify keeps the position (getRestricted{Iteration,Loop}Position).
+      if (x == own.dx.round() && y == own.dy.round()) continue;
+      moves.add((n.id, x, y));
+    }
+    if (moves.isEmpty) return KeyEventResult.handled;
+    controller.undo.begin(HistoryEvent.nodeDragStop, nodeId: focused?.id);
+    try {
+      for (final (id, x, y) in moves) {
+        controller.moveNode(id, x, y);
+      }
+    } finally {
+      controller.undo.end();
+    }
+    onApplied?.call('move');
+    return KeyEventResult.handled;
+  }
+
   // ----- moving nodes: drawn every frame, sent as at most ~8 small ops per second, and once at the end -----
 
   /// The nodes the user drags (their containers' children come along).
   Set<int> _leaders = {};
+
+  /// The node under the pointer when the drag began; [_grabRaw] is where the drag alone has put it (null: it is not
+  /// snapped: inside a container, or an iteration / loop start), [_grabGroup] it and its children.
+  int? _grabbed;
+  Offset? _grabRaw;
+  Set<int> _grabGroup = {};
 
   void _beginMove() {
     _leaders = {
@@ -330,6 +463,15 @@ class CanvasInput {
       for (final s in _leaders) ...[s, for (final d in graph.descendantsOf(graph.slots[s]!.id)) d.slot],
     };
     graph.dragging.addAll([for (final s in _moving) graph.slots[s]!.id]);
+    final grab = _grabbed == null ? null : graph.slots[_grabbed!];
+    final snaps =
+        grab != null &&
+        _leaders.contains(grab.slot) &&
+        grab.parentId == null &&
+        grab.type != 'iteration-start' &&
+        grab.type != 'loop-start';
+    _grabRaw = snaps ? Offset(grab.x, grab.y) : null;
+    _grabGroup = snaps ? {grab.slot, for (final d in graph.descendantsOf(grab.id)) d.slot} : {};
     renderer().beginMove(_moving);
     // One drag is one undo step (Dify's NodeDragStop).
     controller.undo.begin(HistoryEvent.nodeDragStop, nodeId: graph.slots[_leaders.first]?.id);
@@ -383,10 +525,14 @@ class CanvasInput {
     _moving = {};
     renderer().endMove(done);
     graph.dragging.removeAll([for (final s in done) graph.slots[s]?.id].whereType<String>());
+    _grabRaw = null;
+    _grabGroup = {};
+    nodeDragStop?.call()?.call();
   }
 
   void dispose() {
     _sendTimer?.cancel();
     marquee.dispose();
+    connectLine.dispose();
   }
 }

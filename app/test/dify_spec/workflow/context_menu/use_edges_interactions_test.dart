@@ -73,6 +73,65 @@ void main() {
       await h.dispose(t);
     });
 
+    testWidgets('handleEdgeSourceHandleChange should update sourceHandle and edge ID', (t) async {
+      final h = await Harness.start(
+        t,
+        [node('n1'), node('n2', x: 300)],
+        edges: const [
+          Edge(
+            id: 'n1-old-handle-n2-target',
+            source: 'n1',
+            sourceHandle: 'old-handle',
+            target: 'n2',
+            targetHandle: 'target',
+          ),
+        ],
+      );
+      h.actions().changeEdgeSourceHandle('n1', 'old-handle', 'new-handle');
+      final e = h.doc.edges.values.single;
+      expect(e.sourceHandle, 'new-handle');
+      expect(e.id, 'n1-new-handle-n2-target');
+      await h.dispose(t);
+    });
+
+    testWidgets(
+      'handleEdgeSourceHandleChange should clear the context menu target and save history for affected edges',
+      (
+        t,
+      ) async {
+        final h = await Harness.start(
+          t,
+          [node('n1'), node('n2', x: 300)],
+          edges: const [
+            Edge(
+              id: 'n1-old-handle-n2-target',
+              source: 'n1',
+              sourceHandle: 'old-handle',
+              target: 'n2',
+              targetHandle: 'target',
+            ),
+          ],
+        );
+        h.store.setContextMenuTarget(const EdgeContextMenuTarget('n1-old-handle-n2-target'));
+        h.actions().changeEdgeSourceHandle('n1', 'old-handle', 'new-handle');
+        expect(h.doc.edges.values.single.sourceHandle, 'new-handle');
+        expect(h.store.contextMenuTarget.value, isNull);
+        expect(h.controller.undo.past.single.event, HistoryEvent.edgeSourceHandleChange);
+        // One step: undo puts the edge back on the old handle.
+        h.controller.undo.undo();
+        expect(h.doc.edges.values.single.sourceHandle, 'old-handle');
+        await h.dispose(t);
+      },
+    );
+
+    testWidgets('handleEdgeSourceHandleChange should do nothing when no edges use the old handle', (t) async {
+      final h = await _start(t);
+      h.actions().changeEdgeSourceHandle('n1', 'missing-handle', 'new-handle');
+      expect(h.doc.edges.keys, ['e1', 'e2']);
+      expect(h.controller.undo.past, isEmpty);
+      await h.dispose(t);
+    });
+
     group('read-only mode', () {
       testWidgets('handleEdgeDelete should do nothing', (t) async {
         final h = await _start(t, readOnly: true);
@@ -94,6 +153,13 @@ void main() {
         expect(h.actions().handleEdgeContextMenu('e1'), isFalse);
         expect(h.canvas.selection.edge, isNull);
         expect(h.store.contextMenuTarget.value, isNull);
+        await h.dispose(t);
+      });
+
+      testWidgets('handleEdgeSourceHandleChange should do nothing', (t) async {
+        final h = await _start(t, readOnly: true);
+        h.actions().changeEdgeSourceHandle('n1', 'branch-a', 'new-handle');
+        expect([for (final e in h.doc.edges.values) e.sourceHandle], ['branch-a', 'branch-b']);
         await h.dispose(t);
       });
 

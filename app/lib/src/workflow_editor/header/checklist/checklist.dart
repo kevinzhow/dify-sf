@@ -5,6 +5,7 @@ import '../../../design/dify_icon.dart';
 import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
+import '../../block_selector/selector_widgets.dart' show SelectorBlockIcon, SelectorIconSize;
 import '../../store/plugin_dependency_store.dart';
 import '../../store/workflow_store.dart';
 import '../../store/workflow_store_scope.dart';
@@ -257,6 +258,15 @@ class _CountBadge extends StatelessWidget {
   );
 }
 
+/// `<BlockIcon type toolIcon>`: a tool, data source or trigger plugin with a provider icon shows it.
+Widget _itemIcon(ChecklistItem item, {bool small = false}) => item.toolIcon != null && item.toolIcon != ''
+    ? SelectorBlockIcon(
+        type: item.type,
+        size: small ? SelectorIconSize.xs : SelectorIconSize.sm,
+        toolIcon: item.toolIcon,
+      )
+    : _SmallBlockIcon(item.type, small: small);
+
 /// A node's BlockIcon at `xs` (16 px, radius 5, 12 px glyph) or `sm` (20 px, radius 6, 14 px glyph).
 class _SmallBlockIcon extends StatelessWidget {
   const _SmallBlockIcon(this.type, {this.small = false});
@@ -336,7 +346,7 @@ class ChecklistNodeGroup extends StatelessWidget {
             child: Row(
               spacing: 8,
               children: [
-                _SmallBlockIcon(item.type),
+                _itemIcon(item),
                 Expanded(
                   child: Text(
                     item.title,
@@ -523,7 +533,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                       spacing: 8,
                       children: [
                         const ItemIndicator(),
-                        _SmallBlockIcon(item.type, small: true),
+                        _itemIcon(item, small: true),
                         Expanded(
                           child: Text(
                             item.title,

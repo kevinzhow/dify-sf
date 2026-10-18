@@ -49,6 +49,39 @@ const fileExts = <String, List<String>>{
 /// `VAR_REGEX` (web/config): a workflow variable reference.
 final varRegex = RegExp(r'\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}', caseSensitive: false);
 
+/// `HITL_INPUT_REG` (web/config): a human input form field (`{{#\$output.name#}}`).
+final hitlInputRegex = RegExp(r'\{\{(#\$output\.(?:[a-z_]\w{0,29}){1,10}#)\}\}', caseSensitive: false);
+
+/// agent-output-block/utils.ts `AGENT_OUTPUT_TOKEN_REGEX` and the legacy bare token.
+final agentOutputTokenRegex = RegExp(r'\[§output:([^:§\]]+):([^:§\]]+)§\]');
+final legacyAgentOutputTokenRegex = RegExp(r'§output:([^:§\]]+):([^:§\]]+)§');
+
+/// `AGENT_OUTPUT_NAME_PATTERN`.
+final agentOutputNamePattern = RegExp(r'^[a-z_]\w*$', caseSensitive: false);
+
+/// `getAgentOutputToken`.
+String getAgentOutputToken(String name) => '[§output:$name:$name§]';
+
+/// `parseAgentOutputToken`: the first bracketed token, else the first legacy one.
+({String name, int start, int end})? parseAgentOutputToken(String text) {
+  final m = agentOutputTokenRegex.firstMatch(text) ?? legacyAgentOutputTokenRegex.firstMatch(text);
+  return m == null ? null : (name: m[1]!, start: m.start, end: m.end);
+}
+
+/// `extractAgentOutputNames`: the names of the bracketed tokens, then of the legacy ones.
+Set<String> extractAgentOutputNames(String text) => {
+  for (final m in agentOutputTokenRegex.allMatches(text)) m[1]!,
+  for (final m in legacyAgentOutputTokenRegex.allMatches(text)) m[1]!,
+};
+
+/// `replaceAgentOutputName`: the tokens named [oldName] renamed, each keeping its form.
+String replaceAgentOutputName(String text, String oldName, String nextName) => text
+    .replaceAllMapped(agentOutputTokenRegex, (m) => m[1] == oldName ? getAgentOutputToken(nextName) : m[0]!)
+    .replaceAllMapped(
+      legacyAgentOutputTokenRegex,
+      (m) => m[1] == oldName ? '§output:$nextName:$nextName§' : m[0]!,
+    );
+
 /// variable-value-block/utils.ts `getHashtagRegexString`.
 final variableValueRegex = RegExp(r'\{\{[a-zA-Z_][a-zA-Z0-9_]{0,29}\}\}', caseSensitive: false);
 
@@ -61,6 +94,12 @@ enum PromptBlockKind {
   query(queryPlaceholderText),
   history(historyPlaceholderText),
   workflowVariable(null),
+
+  /// An Agent v2 task's output (`[§output:name:name§]`).
+  agentOutput(null),
+
+  /// A human input form field (`{{#\$output.name#}}`), a full-width line of its own.
+  hitlInput(null),
   current(currentPlaceholderText),
   requestUrl(requestUrlPlaceholderText),
   errorMessage(errorMessagePlaceholderText),
@@ -77,15 +116,22 @@ enum PromptBlockKind {
 final class PromptBlock {
   const PromptBlock(this.kind, [this.variables = const []]) : _char = null;
   const PromptBlock.variable(this.variables) : kind = PromptBlockKind.workflowVariable, _char = null;
+  PromptBlock.agentOutput(String name) : kind = PromptBlockKind.agentOutput, variables = [name], _char = null;
+  PromptBlock.hitlInput(String name) : kind = PromptBlockKind.hitlInput, variables = [name], _char = null;
   const PromptBlock.literal(String char) : kind = PromptBlockKind.literal, variables = const [], _char = char;
 
   final PromptBlockKind kind;
   final List<String> variables;
   final String? _char;
 
+  /// The output or form field name of an agent output / HITL input block.
+  String get name => variables.firstOrNull ?? '';
+
   /// The block's text in the prompt (Lexical's `getTextContent`).
   String get text => switch (kind) {
     PromptBlockKind.workflowVariable => '{{#${variables.join('.')}#}}',
+    PromptBlockKind.agentOutput => getAgentOutputToken(name),
+    PromptBlockKind.hitlInput => '{{#\$output.$name#}}',
     PromptBlockKind.literal => _char!,
     _ => kind.placeholder!,
   };
@@ -134,22 +180,45 @@ final _placeholderPatterns = {
     if (k.placeholder != null) k: RegExp(RegExp.escape(k.placeholder!)),
 };
 
+/// The match of [kind]'s replacement block in [text].
+TextMatch? _matchOf(PromptBlockKind kind, String text) => switch (kind) {
+  PromptBlockKind.workflowVariable => _first(varRegex, text),
+  PromptBlockKind.hitlInput => _first(hitlInputRegex, text),
+  PromptBlockKind.agentOutput => switch (parseAgentOutputToken(text)) {
+    final m? => (start: m.start, end: m.end),
+    null => null,
+  },
+  _ => _first(_placeholderPatterns[kind]!, text),
+};
+
+/// The block a matched [token] of [kind] becomes.
+PromptBlock _blockOf(PromptBlockKind kind, String token) => switch (kind) {
+  PromptBlockKind.workflowVariable => PromptBlock.variable(token.substring(3, token.length - 3).split('.')),
+  // hitl-input-block-replacement-block: `split('.')[1]` without the closing `#}}`.
+  PromptBlockKind.hitlInput => PromptBlock.hitlInput(token.split('.')[1].replaceFirst(RegExp(r'#\}\}$'), '')),
+  PromptBlockKind.agentOutput => PromptBlock.agentOutput(parseAgentOutputToken(token)?.name ?? ''),
+  _ => PromptBlock(kind),
+};
+
 /// One run of `decoratorTransform` (utils.ts) for [kind] over a text node: the pieces it splits [text] into, or null
 /// when it leaves the node alone. The special placeholders use a plain RegExp, so a match followed directly by
-/// another stops the run; VAR_REGEX is global, and its `lastIndex` makes that check never fire.
+/// another stops the run; VAR_REGEX and HITL_INPUT_REG are global, and their `lastIndex` makes that check never fire;
+/// the agent output block allows adjacent matches.
 List<Object>? _decorate(PromptBlockKind kind, String text) {
-  final global = kind == PromptBlockKind.workflowVariable;
-  final re = global ? varRegex : _placeholderPatterns[kind]!;
+  final adjacent = const {
+    PromptBlockKind.workflowVariable,
+    PromptBlockKind.hitlInput,
+    PromptBlockKind.agentOutput,
+  }.contains(kind);
   final out = <Object>[];
   var rest = text;
   while (true) {
-    final m = _first(re, rest);
+    final m = _matchOf(kind, rest);
     final next = m == null ? '' : rest.substring(m.end);
-    if (next.isNotEmpty && !global && _first(re, next)?.start == 0) break;
+    if (next.isNotEmpty && !adjacent && _matchOf(kind, next)?.start == 0) break;
     if (m == null) break;
     if (m.start > 0) out.add(rest.substring(0, m.start));
-    final token = rest.substring(m.start, m.end);
-    out.add(global ? PromptBlock.variable(token.substring(3, token.length - 3).split('.')) : PromptBlock(kind));
+    out.add(_blockOf(kind, rest.substring(m.start, m.end)));
     rest = next;
   }
   if (out.isEmpty) return null;

@@ -10,6 +10,7 @@ import 'dart:ui' show Tristate;
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/context_menu/context_menu.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_v2_logic.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_v2_outputs.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_bodies.dart';
@@ -587,7 +588,11 @@ void main() {
         {'name': 'final_report', 'type': 'string', 'required': false, 'description': 'Old report'},
       ]);
       await expandOutputs(t);
-      expect(find.text('final_report'), findsOneWidget);
+      // The task's output block shows the name too.
+      expect(
+        find.descendant(of: find.byType(AgentOutputVariables), matching: find.text('final_report')),
+        findsOneWidget,
+      );
       await h.dispose(t);
     });
 
@@ -670,7 +675,12 @@ void main() {
           },
         );
         await expandOutputs(t);
-        await t.tap(_byLabel('workflow.nodes.agent.outputVars.edit:{"name":"summary"}'));
+        await t.tap(
+          find.descendant(
+            of: find.byType(AgentOutputVariables),
+            matching: _byLabel('workflow.nodes.agent.outputVars.edit:{"name":"summary"}'),
+          ),
+        );
         await settle(t);
         await t.enterText(
           find.descendant(of: find.byKey(const ValueKey('output-name')), matching: find.byType(TextField)),
@@ -680,7 +690,10 @@ void main() {
         await t.tap(_byLabel('workflow.nodes.agent.outputVars.confirm'));
         await settle(t);
         final d = dataOf(h, 'agent-node');
-        expect(d['agent_task'], 'Use [§output:final_summary:final_summary§] and §output:other:other§');
+        // The panel renames only `summary`; the task editor then shows the new task, and its output blocks write
+        // the legacy `other` token in the bracketed form (Dify's editor does the same on value sync; its spec mocks
+        // the editor).
+        expect(d['agent_task'], 'Use [§output:final_summary:final_summary§] and [§output:other:other§]');
         expect([for (final o in d['agent_declared_outputs']! as List) (o as Map)['name']], ['final_summary', 'other']);
         await h.dispose(t);
       },
@@ -817,6 +830,89 @@ void main() {
       expect(r.inputs['agent_declared_outputs'], [
         {'name': 'final_report', 'type': 'string', 'required': false},
       ]);
+    });
+
+    AgentOutputBlockConfig outputBlock(WidgetTester t) =>
+        t.widget<DifyPromptEditor>(find.byType(DifyPromptEditor)).agentOutputBlock!;
+    Finder floatingName() => find.descendant(
+      of: find.bySemanticsLabel('workflow.nodes.agent.outputVars.editorLabel'),
+      matching: find.descendant(of: find.byKey(const ValueKey('output-name')), matching: find.byType(TextField)),
+    );
+
+    testWidgets('opens the output variable editor from an agent task output token hover', (t) async {
+      final h = await render(
+        t,
+        data: {
+          'agent_task': 'Generate [§output:summary:summary§]',
+          'agent_declared_outputs': [
+            {'name': 'summary', 'type': 'string', 'required': false, 'description': 'Short summary'},
+          ],
+        },
+      );
+      expect(find.text('workflow.nodes.agent.outputVars.text'), findsNothing);
+      // The task's output block (a click on it is the block's onEdit).
+      await t.tap(
+        find.descendant(
+          of: find.byType(DifyPromptEditor),
+          matching: _byLabel('workflow.nodes.agent.outputVars.edit:{"name":"summary"}'),
+        ),
+      );
+      await settle(t);
+      expect(find.text('workflow.nodes.agent.outputVars.text'), findsOneWidget);
+      expect(find.bySemanticsLabel('workflow.nodes.agent.outputVars.editorLabel'), findsOneWidget);
+      expect(t.widget<TextField>(floatingName()).controller!.text, 'summary');
+      await h.dispose(t);
+    });
+
+    testWidgets('expands output variables when an agent task output token changes declared outputs', (t) async {
+      final h = await render(t);
+      expect(find.text('workflow.nodes.agent.outputVars.text'), findsNothing);
+      outputBlock(t).onChange!([
+        {'name': 'summary', 'type': 'string', 'required': false},
+      ], 'Generate [§output:summary:summary§]');
+      await settle(t);
+      expect(find.text('workflow.nodes.agent.outputVars.text'), findsOneWidget);
+      await h.dispose(t);
+    });
+
+    testWidgets('opens the output variable editor for a prompt token missing from declared outputs', (t) async {
+      final h = await render(t);
+      outputBlock(t).onEdit!('qna_report', 'string');
+      await settle(t);
+      expect(find.bySemanticsLabel('workflow.nodes.agent.outputVars.editorLabel'), findsOneWidget);
+      expect(t.widget<TextField>(floatingName()).controller!.text, 'qna_report');
+      await t.tap(
+        find.descendant(
+          of: find.bySemanticsLabel('workflow.nodes.agent.outputVars.editorLabel'),
+          matching: _byLabel('workflow.nodes.agent.outputVars.confirm'),
+        ),
+      );
+      await settle(t);
+      final outputs = dataOf(h, 'agent-node')['agent_declared_outputs']! as List;
+      expect(outputs.any((o) => (o as Map)['name'] == 'qna_report' && o['type'] == 'string'), isTrue);
+      await h.dispose(t);
+    });
+
+    testWidgets('renames the current prompt output token instead of creating a separate output', (t) async {
+      final h = await render(t, data: {'agent_task': 'Generate [§output:qna_report:qna_report§]'});
+      outputBlock(t).onEdit!('qna_report', 'string');
+      await settle(t);
+      await t.enterText(floatingName(), 'final_report');
+      await t.pump();
+      await t.tap(
+        find.descendant(
+          of: find.bySemanticsLabel('workflow.nodes.agent.outputVars.editorLabel'),
+          matching: _byLabel('workflow.nodes.agent.outputVars.confirm'),
+        ),
+      );
+      await settle(t);
+      final d = dataOf(h, 'agent-node');
+      expect(d['agent_task'], 'Generate [§output:final_report:final_report§]');
+      final names = [for (final o in d['agent_declared_outputs']! as List) (o as Map)['name']];
+      expect(names, contains('final_report'));
+      expect(names, isNot(contains('qna_report')));
+      expect(find.text('final_report'), findsWidgets);
+      await h.dispose(t);
     });
 
     test('syncs declared outputs created from the agent task editor', () {

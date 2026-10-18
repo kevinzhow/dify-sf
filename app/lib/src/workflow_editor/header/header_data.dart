@@ -235,6 +235,14 @@ bool nodesReadOnlyOf(WorkflowStore s, {required bool canEdit}) {
       s.isRestoring.value;
 }
 
+/// hooks/use-workflow-mode.ts `useWorkflowMode`: which header shows (a viewed history version, a restore in
+/// progress, else the normal one).
+({bool normal, bool restoring, bool viewHistory}) workflowModeOf(WorkflowStore s) => (
+  normal: s.historyWorkflowData.value == null && !s.isRestoring.value,
+  restoring: s.isRestoring.value,
+  viewHistory: s.historyWorkflowData.value != null,
+);
+
 /// The store fields [nodesReadOnlyOf] reads.
 Listenable nodesReadOnlyListenable(WorkflowStore s) =>
     Listenable.merge([s.canvasReadOnly, s.workflowRunningData, s.historyWorkflowData, s.isRestoring]);

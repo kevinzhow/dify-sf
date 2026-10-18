@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../cards/card_chrome.dart';
+import '../../cards/node_helpers.dart' show getWorkflowEntryNode;
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
@@ -79,6 +80,18 @@ TestRunOptions testRunOptionsOf(List<HeaderNode> nodes) {
           nodeType: n.type,
           nodeId: n.id,
         ),
+      );
+    }
+  }
+  if (userInput == null) {
+    final entry = getWorkflowEntryNode(nodes, (n) => n.type);
+    if (entry != null && entry.type == 'start') {
+      userInput = TriggerOption(
+        id: entry.id,
+        type: TriggerType.userInput,
+        name: name(entry, 'blocks.start'),
+        nodeType: entry.type,
+        nodeId: entry.id,
       );
     }
   }

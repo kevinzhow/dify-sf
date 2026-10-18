@@ -22,7 +22,7 @@ class BlockMeta {
     required this.type,
     this.classification = BlockClassification.defaultGroup,
     this.sort = 0,
-    required this.title,
+    this.title = '',
     this.description = '',
   });
 

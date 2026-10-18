@@ -7,6 +7,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
@@ -319,7 +320,7 @@ class _FormInputItemState extends State<FormInputItem> {
   }
 
   void _selectorChange(List<String> selector) =>
-      _write({..._varInput, 'type': ToolVarKind.variable, 'value': selector});
+      _write({..._varInput, 'type': ToolVarKind.variable, 'value': normalizeVariableSelectorValue(selector)});
 
   @override
   Widget build(BuildContext context) {
@@ -568,6 +569,26 @@ class _SingleSelect extends StatelessWidget {
     placeholder: placeholder,
     disabled: disabled,
     onChanged: onChanged,
+    optionLeading: (v) => switch (items.where((i) => i.value == v).firstOrNull?.icon) {
+      final icon? when icon.isNotEmpty => ToolOptionIcon(icon),
+      _ => null,
+    },
+  );
+}
+
+/// An option's icon (`<img src={icon} className="mr-2 size-4 shrink-0">`): the image at the URL, nothing when it
+/// cannot be loaded.
+class ToolOptionIcon extends StatelessWidget {
+  const ToolOptionIcon(this.url, {super.key});
+  final String url;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 16,
+    height: 16,
+    child: url.toLowerCase().endsWith('.svg')
+        ? SvgPicture.network(url, width: 16, height: 16, errorBuilder: (_, _, _) => const SizedBox.shrink())
+        : Image.network(url, width: 16, height: 16, errorBuilder: (_, _, _) => const SizedBox.shrink()),
   );
 }
 
@@ -670,6 +691,7 @@ class MultiSelectField extends StatelessWidget {
                 children: [
                   for (final i in items)
                     DifyMenuCheckboxItem(
+                      leading: i.icon == null || i.icon!.isEmpty ? null : ToolOptionIcon(i.icon!),
                       checked: value.contains(i.value),
                       onCheckedChange: (on) => onChange(
                         on

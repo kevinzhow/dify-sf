@@ -9,6 +9,22 @@ import '../../editor/editor_controller.dart';
 import '../store/store.dart';
 import 'workflow_actions.dart';
 
+/// hotkeys.ts `shouldPreventWorkflowBrowserDefault`: exactly Mod+D, Mod+Z, Mod+Y, Mod+Shift+Z or Mod+S (Mod is Cmd on
+/// a Mac, Ctrl elsewhere), whose browser default the editor suppresses.
+bool shouldPreventWorkflowBrowserDefault({
+  required LogicalKeyboardKey key,
+  bool control = false,
+  bool meta = false,
+  bool shift = false,
+  bool alt = false,
+  required bool mac,
+}) {
+  final mod = mac ? meta && !control : control && !meta;
+  if (!mod || alt) return false;
+  if (key == LogicalKeyboardKey.keyZ) return true; // Mod+Z, Mod+Shift+Z
+  return !shift && {LogicalKeyboardKey.keyD, LogicalKeyboardKey.keyY, LogicalKeyboardKey.keyS}.contains(key);
+}
+
 /// The menu actions' shortcuts of shortcuts/use-workflow-hotkeys.ts, page-wide while mounted and not typing
 /// (TanStack's `ignoreInputs`): Delete/Backspace delete the box-selected nodes, else the selected edge, else the
 /// selected node; Mod+C copies, Mod+V pastes at the pointer (both off while Debug and Preview is open), Mod+D
@@ -69,11 +85,21 @@ class _WorkflowShortcutsState extends State<WorkflowShortcuts> {
   }
 
   KeyEventResult _onKey(KeyEvent e) {
-    if (e is! KeyDownEvent || !mounted || !(ModalRoute.isCurrentOf(context) ?? true) || _typing()) {
-      return KeyEventResult.ignored;
-    }
+    if (e is! KeyDownEvent || !mounted || !(ModalRoute.isCurrentOf(context) ?? true)) return KeyEventResult.ignored;
     final keys = HardwareKeyboard.instance;
     final mac = DifyPlatform.current == DifyPlatform.mac;
+    // index.tsx's keydown guard: the browser's own Mod+S (save page) and Mod+D (bookmark) never run in the editor,
+    // not even while typing (a handled key is not passed on to the browser).
+    final guarded = shouldPreventWorkflowBrowserDefault(
+      key: e.logicalKey,
+      control: keys.isControlPressed,
+      meta: keys.isMetaPressed,
+      shift: keys.isShiftPressed,
+      alt: keys.isAltPressed,
+      mac: mac,
+    );
+    final browserOnly = guarded && (e.logicalKey == LogicalKeyboardKey.keyS || e.logicalKey == LogicalKeyboardKey.keyD);
+    if (_typing()) return browserOnly ? KeyEventResult.handled : KeyEventResult.ignored;
     bool mod(LogicalKeyboardKey k) => SingleActivator(k, control: !mac, meta: mac).accepts(e, keys);
     final a = _actions;
     final debugOpen = a.store.showDebugAndPreviewPanel.value;
@@ -87,7 +113,7 @@ class _WorkflowShortcutsState extends State<WorkflowShortcuts> {
     } else if (mod(LogicalKeyboardKey.keyD)) {
       unawaited(a.duplicateNodes());
     } else {
-      return KeyEventResult.ignored;
+      return browserOnly ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     return KeyEventResult.handled;
   }

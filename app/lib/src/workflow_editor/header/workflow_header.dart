@@ -40,12 +40,11 @@ class WorkflowHeader extends StatelessWidget {
       child: ListenableBuilder(
         listenable: Listenable.merge([store.historyWorkflowData, store.isRestoring]),
         builder: (context, _) {
-          final restoring = store.isRestoring.value;
-          final viewHistory = store.historyWorkflowData.value != null;
+          final (:normal, :restoring, :viewHistory) = workflowModeOf(store);
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (!viewHistory && !restoring) const Expanded(child: HeaderInNormal()),
+              if (normal) const Expanded(child: HeaderInNormal()),
               if (viewHistory) ...const [RunningTitle(), HeaderInHistory()],
               if (restoring) ...const [RestoringTitle(), HeaderInRestoring()],
             ],

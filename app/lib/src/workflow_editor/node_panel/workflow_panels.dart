@@ -15,6 +15,7 @@ import '../../editor/editor_controller.dart';
 import '../../editor/graph_info.dart';
 import '../../i18n/dify_i18n.dart';
 import '../context_menu/context_menu.dart';
+import '../prompt_editor/shortcuts_popup.dart' show WorkflowRightPanelScope;
 import '../store/store.dart';
 import 'node_panel_bodies.dart';
 import 'workflow_node_panel.dart';
@@ -101,8 +102,13 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     final s = WorkflowStoreScope.of(context);
     if (s == _store) return;
     _store?.workflowCanvasWidth.removeListener(_limitPreviewWidth);
-    _store = s..workflowCanvasWidth.addListener(_limitPreviewWidth);
+    _store?.previewPanelWidth.removeListener(_limitPreviewWidth);
+    _store = s
+      ..workflowCanvasWidth.addListener(_limitPreviewWidth)
+      ..previewPanelWidth.addListener(_limitPreviewWidth);
     _makeActions();
+    // Dify's effect also runs on mount: a stored width past the limit is clamped at once.
+    SchedulerBinding.instance.addPostFrameCallback((_) => mounted ? _limitPreviewWidth() : null);
   }
 
   @override
@@ -120,6 +126,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
   void dispose() {
     widget.controller.removeListener(_documentChanged);
     _store?.workflowCanvasWidth.removeListener(_limitPreviewWidth);
+    _store?.previewPanelWidth.removeListener(_limitPreviewWidth);
     super.dispose();
   }
 
@@ -185,39 +192,46 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     final store = _store!;
     // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
     final panelNode = node != null && reactFlowTypeOf(node) == 'custom' ? node : null;
-    return _SizeReporter(
-      // The node panel's resize strip (`absolute -left-1 w-1`) lies outside Dify's row: not part of its width.
-      onSize: (size) => store.setRightPanelWidth(size.width - (panelNode != null ? 4 : 0)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (panelNode != null)
-            WorkflowNodePanel(
-              key: ValueKey('${panelNode.id}-${panelNode.type}'),
-              node: panelNode,
-              actions: _actions,
-              bodies: widget.bodies,
-              onSingleRun: widget.onSingleRun,
-              onStopSingleRun: widget.onStopSingleRun,
+    return WorkflowRightPanelScope(
+      panelKey: _panelKey,
+      child: _SizeReporter(
+        key: _panelKey,
+        // The node panel's resize strip (`absolute -left-1 w-1`) lies outside Dify's row: not part of its width.
+        onSize: (size) => store.setRightPanelWidth(size.width - (panelNode != null ? 4 : 0)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (panelNode != null)
+              WorkflowNodePanel(
+                key: ValueKey('${panelNode.id}-${panelNode.type}'),
+                node: panelNode,
+                actions: _actions,
+                bodies: widget.bodies,
+                onSingleRun: widget.onSingleRun,
+                onStopSingleRun: widget.onStopSingleRun,
+              ),
+            _SizeReporter(
+              onSize: (size) => store.setOtherPanelWidth(size.width),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: widget.others,
+              ),
             ),
-          _SizeReporter(
-            onSize: (size) => store.setOtherPanelWidth(size.width),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: widget.others,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  /// `data-workflow-right-panel`: what popups placed beside the panel measure.
+  final _panelKey = GlobalKey(debugLabel: 'workflow right panel');
 }
 
 /// Reports its size after each layout that changed it (Dify's ResizeObserver, a frame later).
 class _SizeReporter extends SingleChildRenderObjectWidget {
-  const _SizeReporter({required this.onSize, required super.child});
+  const _SizeReporter({super.key, required this.onSize, required super.child});
   final ValueChanged<Size> onSize;
 
   @override

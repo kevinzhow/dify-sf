@@ -10,6 +10,7 @@ import '../../canvas/canvas_controller.dart';
 import '../../canvas/run_view.dart';
 import '../../canvas/workflow_canvas.dart' show CanvasDefaults;
 import '../../editor/editor_controller.dart';
+import '../context_menu/workflow_actions.dart' show cancelNodesSelectedOn;
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
 import 'debug_chat.dart';
@@ -152,7 +153,7 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
     viewport: CanvasRunViewport(widget.canvas),
     isChatMode: () => widget.isChatMode?.call() ?? false,
     fetchInspectVars: () => widget.fetchInspectVars?.call(),
-    onCancelSelection: () => widget.controller.selectNode(null),
+    onCancelSelection: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
   );
   late final binding = RunCanvasBinding(store, widget.canvas);
   final _singleRuns = <String, SingleRunController>{};

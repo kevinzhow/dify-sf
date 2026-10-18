@@ -5,6 +5,8 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
+import '../../workflow/dify_json.dart' show difyDataOf;
+import '../hooks/use_nodes_meta_data.dart';
 import 'node_meta.dart';
 import 'workflow_actions.dart';
 
@@ -138,6 +140,7 @@ List<Widget> nodeActionsMenuItems(WorkflowActions a, Node node, {bool showHelpLi
   final sourceHandle = a.doc.edges.values.where((e) => e.target == node.id).firstOrNull?.sourceHandle ?? 'source';
   final appHref = o.workflowAppHref?.call(node);
   final helpLink = showHelpLink ? nodeHelpLink(node.type, chatMode: a.chatMode, product: o.docsProduct) : null;
+  final about = nodeMetaDataIn(a.store, difyDataOf(node));
   final id = node.id;
   Widget link(String label, String url) => _item(label, gap4: false, onSelect: () => o.openUrl?.call(url));
   return [
@@ -170,10 +173,11 @@ List<Widget> nodeActionsMenuItems(WorkflowActions a, Node node, {bool showHelpLi
       [if (helpLink != null) link(_tw('panel.helpLink'), helpLink)],
     ]),
     const DifyMenuSeparator(),
+    // useNodeMetaData: a tool's provider, else Dify.
     NodeActionsMenuAbout(
       title: _tw('panel.about'),
-      description: NodeMeta.descriptionOf(node.type),
-      author: '${_tw('panel.createdBy')} ${NodeMeta.author}',
+      description: about.description,
+      author: '${_tw('panel.createdBy')} ${about.author ?? ''}',
     ),
   ];
 }

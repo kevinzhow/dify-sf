@@ -867,7 +867,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
   }
 
   /// `variableTransformer`: `{{#a.b#}}` and back.
-  static List<String> _selectorOf(String v) => v.replaceAll(RegExp(r'^\{\{#|#\}\}$'), '').split('.');
+  static List<String> _selectorOf(String v) => templateToSelector(v);
 
   @override
   Widget build(BuildContext context) {
@@ -964,7 +964,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
                         searchFocusNode: _search,
                         onClose: _popup.close,
                         onChange: (sel, _) {
-                          w.onValueChange('{{#${sel.join('.')}#}}');
+                          w.onValueChange(selectorToTemplate(sel));
                           _popup.close();
                         },
                       ),

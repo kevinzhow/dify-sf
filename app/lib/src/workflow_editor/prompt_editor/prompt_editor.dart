@@ -9,6 +9,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -20,15 +21,22 @@ import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
 import '../panel_fields/var_picker_model.dart';
 import '../panel_fields/var_reference_vars.dart' show VarReferenceVars;
+import '../../design/dify_icon.dart';
+import '../../design/widgets/widgets.dart' show DifyFloating, DifyPlacement, DifyCollision, DifyFloatingController;
+import '../node_panel/bodies/llm/agent_v2_logic.dart' show createAgentOutputConfig;
+import 'agent_output_block.dart';
 import 'component_picker.dart';
+import 'hitl_input_block.dart';
 import 'prompt_blocks.dart';
 import 'prompt_chips.dart';
 import 'prompt_editor_controller.dart';
 import 'prompt_editor_types.dart';
+import 'shortcuts_popup.dart';
 
 export 'prompt_blocks.dart';
 export 'prompt_editor_controller.dart';
 export 'prompt_editor_types.dart';
+export 'shortcuts_popup.dart';
 
 /// PromptEditor. [value] is controlled like Dify's (a different value replaces the content); [onChange] gets the
 /// prompt string after each edit. The `*Block` configs say which placeholders become blocks and what the picker
@@ -58,6 +66,9 @@ class DifyPromptEditor extends StatefulWidget {
     this.currentBlock,
     this.errorMessageBlock,
     this.lastRunBlock,
+    this.agentOutputBlock,
+    this.hitlInputBlock,
+    this.shortcutPopups = const [],
     this.isSupportFileVar = false,
     this.disableSlashPicker = false,
     this.disableBracePicker = false,
@@ -88,6 +99,11 @@ class DifyPromptEditor extends StatefulWidget {
   final CurrentBlockConfig? currentBlock;
   final PromptBlockConfig? errorMessageBlock;
   final PromptBlockConfig? lastRunBlock;
+  final AgentOutputBlockConfig? agentOutputBlock;
+  final HitlInputBlockConfig? hitlInputBlock;
+
+  /// `shortcutPopups`: popups a hotkey opens while the editor has focus.
+  final List<ShortcutPopup> shortcutPopups;
   final bool isSupportFileVar;
   final bool disableSlashPicker;
   final bool disableBracePicker;
@@ -103,6 +119,8 @@ class DifyPromptEditor extends StatefulWidget {
     if (queryBlock?.show ?? false) PromptBlockKind.query,
     if (historyBlock?.show ?? false) PromptBlockKind.history,
     if (workflowVariableBlock?.show ?? false) PromptBlockKind.workflowVariable,
+    if (agentOutputBlock?.show ?? false) PromptBlockKind.agentOutput,
+    if (hitlInputBlock?.show ?? false) PromptBlockKind.hitlInput,
     if (currentBlock?.show ?? false) PromptBlockKind.current,
     if (requestUrlBlock?.show ?? false) PromptBlockKind.requestUrl,
     if (errorMessageBlock?.show ?? false) PromptBlockKind.errorMessage,
@@ -201,7 +219,8 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
         onDelete: w.errorMessageBlock?.onDelete,
       ),
       PromptBlockKind.lastRun => (onInsert: w.lastRunBlock?.onInsert, onDelete: w.lastRunBlock?.onDelete),
-      PromptBlockKind.literal => null,
+      PromptBlockKind.hitlInput => (onInsert: w.hitlInputBlock?.onInsert, onDelete: w.hitlInputBlock?.onDelete),
+      PromptBlockKind.agentOutput || PromptBlockKind.literal => null,
     };
   }
 
@@ -219,6 +238,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       _attachFocus(focusNode);
     }
     controller.blocks = widget.blockSet;
+    if (!identical(old.agentOutputBlock?.outputs, widget.agentOutputBlock?.outputs)) _outputTypes.clear();
     // ValueSyncPlugin: a new value replaces the content (an unchanged one leaves the edits alone).
     final v = widget.value;
     if (v != null && v != old.value && v != controller.prompt) {
@@ -301,8 +321,11 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   bool get _menuVisible {
     final m = _match;
     if (m == null || _blurHidden || controller.value == _dismissedAt) return false;
-    return (widget.workflowVariableBlock?.show ?? false) || _options(m).isNotEmpty;
+    return (widget.workflowVariableBlock?.show ?? false) || _options(m).isNotEmpty || _showAgentOutputAction;
   }
+
+  /// `showAgentOutputAction`: "New output" under the `/` list.
+  bool get _showAgentOutputAction => _match?.trigger == '/' && (widget.agentOutputBlock?.show ?? false);
 
   void _updateMenu() {
     final m = _resolve();
@@ -418,6 +441,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   KeyEventResult _onKey(FocusNode node, KeyEvent e) {
     if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
     if (_keyUsed) return KeyEventResult.handled;
+    if (e is KeyDownEvent && _onShortcutKey(e)) return KeyEventResult.handled;
     final m = _match;
     if (m == null || !_menuVisible) return KeyEventResult.ignored;
     final k = e.logicalKey;
@@ -450,6 +474,318 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       return KeyEventResult.ignored;
     }
     return KeyEventResult.handled;
+  }
+
+  // -- shortcut popups (ShortcutsPopupPlugin)
+
+  final _shortcutControllers = <DifyFloatingController>[];
+  final _shortcutOpen = <int>{};
+
+  DifyFloatingController _shortcutController(int i) {
+    while (_shortcutControllers.length <= i) {
+      _shortcutControllers.add(DifyFloatingController());
+    }
+    return _shortcutControllers[i];
+  }
+
+  /// The document keydown listener of each popup: Escape closes an open one, its hotkey opens it.
+  bool _onShortcutKey(KeyEvent e) {
+    var handled = false;
+    final ev = hotkeyEventOf(e);
+    for (final (i, p) in widget.shortcutPopups.indexed) {
+      if (_shortcutOpen.contains(i) && e.logicalKey == LogicalKeyboardKey.escape) {
+        closeShortcutPopup(i);
+        handled = true;
+      } else if (matchHotkey(ev, p.hotkey)) {
+        openShortcutPopup(i);
+        handled = true;
+      }
+    }
+    return handled;
+  }
+
+  /// `openPortal`: at the caret (the end of the last line box of the selection; the editor's corner without one),
+  /// or beside the workflow's right panel.
+  void openShortcutPopup(int i) {
+    final p = widget.shortcutPopups[i];
+    final Offset at;
+    if (p.displayMode == ShortcutPopupDisplayMode.workflowPanelAdjacentCenter) {
+      final window = MediaQuery.sizeOf(context);
+      final place = workflowPanelAdjacentPlacement(window, WorkflowRightPanelScope.rectOf(context));
+      at = Offset(window.width - place.right, place.top);
+    } else {
+      at = _caretGlobalRect()?.bottomRight ?? _fieldGlobalRect()?.topLeft ?? Offset.zero;
+    }
+    _shortcutController(i).open(at: at, instant: true);
+  }
+
+  /// `closePortal`.
+  void closeShortcutPopup(int i) => _shortcutController(i).close(instant: true);
+
+  void _shortcutOpenChange(int i, bool open) {
+    final p = widget.shortcutPopups[i];
+    setState(() => open ? _shortcutOpen.add(i) : _shortcutOpen.remove(i));
+    open ? p.onOpen?.call() : p.onClose?.call();
+  }
+
+  /// Runs what a popup inserts (`editor.dispatchCommand`).
+  void runCommand(PromptEditorCommand command) {
+    switch (command) {
+      case InsertHitlInputBlockCommand(:final variableName):
+        insertHitlInputBlock(variableName);
+      case CallbackPromptEditorCommand():
+        command.run();
+    }
+  }
+
+  Rect? _fieldGlobalRect() {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Rect? _caretGlobalRect() {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final editable = _editable(box);
+    final sel = controller.selection;
+    if (editable == null || !editable.hasSize) return null;
+    final caret = editable.getLocalRectForCaret(
+      TextPosition(offset: sel.isValid ? sel.extentOffset : controller.text.length),
+    );
+    return MatrixUtils.transformRect(editable.getTransformTo(null), caret);
+  }
+
+  Widget _withShortcutPopups(Widget child) {
+    for (final (i, p) in widget.shortcutPopups.indexed) {
+      final panel = p.displayMode == ShortcutPopupDisplayMode.workflowPanelAdjacentCenter;
+      final inner = child;
+      child = DifyFloating(
+        controller: _shortcutController(i),
+        onOpenChange: (open) => _shortcutOpenChange(i, open),
+        pointAnchor: true,
+        triggerInsideTapRegion: false,
+        placement: panel ? DifyPlacement.left : DifyPlacement.bottomStart,
+        collision: panel ? DifyCollision.contextMenu : DifyCollision.popup,
+        constrainHeight: !panel,
+        instantTransition: (_) => true,
+        builder: (context, _) => inner,
+        popupBuilder: (context) {
+          final window = MediaQuery.sizeOf(context);
+          final place = workflowPanelAdjacentPlacement(window, WorkflowRightPanelScope.rectOf(this.context));
+          void close() => closeShortcutPopup(i);
+          return Container(
+            decoration: BoxDecoration(
+              color: DifyColors.componentsPanelBgBlur,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: DifyShadows.lg,
+            ),
+            child: ShortcutPopupBox(
+              maxWidth: panel ? math.min(400, place.availableWidth) : math.min(400, window.width - 16),
+              maxHeight: panel ? place.availableHeight : double.infinity,
+              child:
+                  p.builder?.call(context, close, (command) {
+                    runCommand(command);
+                    close();
+                  }) ??
+                  const Text(shortcutsEmptyContent),
+            ),
+          );
+        },
+      );
+    }
+    return child;
+  }
+
+  // -- the HITL input block (INSERT_HITL_INPUT_BLOCK_COMMAND) and the agent output block
+
+  /// Inserts the form field [variableName] at the caret, between line breaks.
+  void insertHitlInputBlock(String variableName) {
+    final c = controller;
+    if (!c.selection.isValid) c.selection = TextSelection.collapsed(offset: c.text.length);
+    c.insertBlockLine(PromptBlock.hitlInput(variableName));
+  }
+
+  /// The agent outputs being edited in place: whether to select the name on edit, to open the type select.
+  final _outputEditing = <String, ({bool selectName, bool openTypeSelect})>{};
+
+  /// Types set by a commit, until the next outputs arrive (Dify keeps them on the node).
+  final _outputTypes = <String, String>{};
+
+  /// INSERT_AGENT_OUTPUT_BLOCK_COMMAND: a new `string` output with a free name, inserted at the caret and edited in
+  /// place (its name selected); the outputs and the prompt go to the block's `onChange`.
+  void insertAgentOutputBlock() {
+    final cfg = widget.agentOutputBlock;
+    if (cfg == null) return;
+    final name = getUniqueAgentOutputName(cfg.outputs);
+    final next = [...cfg.outputs, createAgentOutputConfig(name, 'string')];
+    _outputEditing[name] = (selectName: true, openTypeSelect: false);
+    _outputTypes[name] = 'string';
+    final c = controller;
+    if (!c.selection.isValid) c.selection = TextSelection.collapsed(offset: c.text.length);
+    c.insertBlock(PromptBlock.agentOutput(name));
+    cfg.onChange?.call(next, c.prompt);
+  }
+
+  /// The picker's "New output": the trigger and query removed, the output inserted, the menu closed.
+  void _newAgentOutput() {
+    _removeTrigger();
+    insertAgentOutputBlock();
+    _dismiss();
+  }
+
+  int? _blockOffset(int offset, PromptBlock block) {
+    if (controller.blockAt(offset) == block) return offset;
+    for (var i = 0; i < controller.text.length; i++) {
+      if (controller.blockAt(i) == block) return i;
+    }
+    return null;
+  }
+
+  bool _setOutput(
+    int offset,
+    PromptBlock block,
+    String name,
+    String type,
+    bool isEditing,
+    bool selectName,
+    bool openTypeSelect,
+  ) {
+    final at = _blockOffset(offset, block);
+    if (at == null) return false;
+    _outputEditing.remove(block.name);
+    if (isEditing) _outputEditing[name] = (selectName: selectName, openTypeSelect: openTypeSelect);
+    _outputTypes[name] = type;
+    // The block's own change first, the editor's text change after (Lexical commits the update afterwards).
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      final c = controller;
+      final i = _blockOffset(at, block);
+      if (i != null && block.name != name) {
+        c.replaceBlock(i, PromptBlock.agentOutput(name));
+      } else {
+        c.refreshBlocks();
+      }
+    });
+    return true;
+  }
+
+  void _selectAfter(int offset, PromptBlock block) {
+    final at = _blockOffset(offset, block);
+    if (at != null) controller.selection = TextSelection.collapsed(offset: at + 1);
+  }
+
+  void _setOpenTypeSelect(String name, bool value) {
+    final e = _outputEditing[name];
+    if (e != null) _outputEditing[name] = (selectName: e.selectName, openTypeSelect: value);
+  }
+
+  // -- the draggable block menu (DraggableBlockPlugin): lines with a form field can be dragged to another place
+
+  /// The hovered line that can be dragged (its display text range) and where its menu goes.
+  ({int start, int end, double top})? _dragLine;
+
+  /// While dragging: the line's range and where the target line is drawn (y in the field) with the index of the line
+  /// it goes before.
+  ({int start, int end})? _dragging;
+  ({double y, int before})? _dropTarget;
+
+  /// `checkSupportDrag`: whether the line [start, end) holds a form field block.
+  bool _supportsDrag(int start, int end) {
+    for (var i = start; i < end; i++) {
+      if (controller.blockAt(i)?.kind == PromptBlockKind.hitlInput) return true;
+    }
+    return false;
+  }
+
+  ({int start, int end}) _lineAt(int offset) {
+    final t = controller.text;
+    final o = offset.clamp(0, t.length);
+    final start = o == 0 ? 0 : t.lastIndexOf('\n', o - 1) + 1;
+    final nl = t.indexOf('\n', o);
+    return (start: start, end: nl < 0 ? t.length : nl);
+  }
+
+  /// The line under [global] and its top and bottom in the field.
+  ({int start, int end, double top, double bottom})? _lineUnder(Offset global) {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final editable = _editable(box);
+    if (box == null || editable == null || !editable.hasSize) return null;
+    final line = _lineAt(editable.getPositionForPoint(global).offset);
+    final toField = editable.getTransformTo(box);
+    Rect rect;
+    if (line.end > line.start) {
+      final boxes = editable.getBoxesForSelection(TextSelection(baseOffset: line.start, extentOffset: line.end));
+      if (boxes.isEmpty) return null;
+      rect = boxes.map((b) => b.toRect()).reduce((a, b) => a.expandToInclude(b));
+    } else {
+      rect = editable.getLocalRectForCaret(TextPosition(offset: line.start));
+    }
+    rect = MatrixUtils.transformRect(toField, rect);
+    return (start: line.start, end: line.end, top: rect.top, bottom: rect.bottom);
+  }
+
+  void _onFieldHover(PointerEvent e) {
+    if (_dragging != null) return;
+    final line = _lineUnder(e.position);
+    final lineHeight = widget.lineHeight ?? (widget.compact ? 20.0 : 24.0);
+    final next = line != null && _supportsDrag(line.start, line.end)
+        ? (start: line.start, end: line.end, top: line.top + (lineHeight - 14) / 2 + 16)
+        : null;
+    if (next != _dragLine) setState(() => _dragLine = next);
+  }
+
+  void _onDragUpdate(Offset global) {
+    final line = _lineUnder(global);
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (line == null || box == null) return;
+    final y = box.globalToLocal(global).dy;
+    final below = y >= (line.top + line.bottom) / 2;
+    final index = '\n'.allMatches(controller.text.substring(0, line.start)).length;
+    setState(() => _dropTarget = (y: below ? line.bottom : line.top, before: below ? index + 1 : index));
+  }
+
+  /// The drop: the dragged line moved before line [_dropTarget.before].
+  void _onDragEnd() {
+    final from = _dragging, target = _dropTarget;
+    setState(() {
+      _dragging = null;
+      _dropTarget = null;
+      _dragLine = null;
+    });
+    if (from == null || target == null) return;
+    final t = controller.text;
+    final lines = t.split('\n');
+    final index = '\n'.allMatches(t.substring(0, from.start)).length;
+    if (target.before == index || target.before == index + 1) return;
+    final moved = lines.removeAt(index);
+    final to = target.before > index ? target.before - 1 : target.before;
+    lines.insert(to, moved);
+    final text = lines.join('\n');
+    final end = lines.take(to + 1).join('\n').length;
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: end),
+    );
+  }
+
+  Widget _dragMenu() {
+    final line = _dragLine!;
+    return Positioned(
+      top: line.top,
+      right: 6,
+      child: MouseRegion(
+        cursor: _dragging != null ? SystemMouseCursors.move : SystemMouseCursors.grab,
+        child: GestureDetector(
+          key: const Key('draggable-menu'),
+          behavior: HitTestBehavior.opaque,
+          onPanStart: (_) => setState(() => _dragging = (start: line.start, end: line.end)),
+          onPanUpdate: (d) => _onDragUpdate(d.globalPosition),
+          onPanEnd: (_) => _onDragEnd(),
+          onPanCancel: _onDragEnd,
+          child: const RemixIcon('draggable', size: 14, color: DifyColors.textTertiary),
+        ),
+      ),
+    );
   }
 
   // -- blocks
@@ -492,6 +828,30 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       PromptBlockKind.errorMessage => ErrorMessageChip(selected: selected, onTap: select),
       PromptBlockKind.lastRun => LastRunChip(selected: selected, onTap: select),
       PromptBlockKind.requestUrl => RequestUrlChip(selected: selected, onTap: select),
+      PromptBlockKind.hitlInput => _FullWidth(
+        child: HitlInputComponent(
+          varName: b.name,
+          config:
+              w.hitlInputBlock ??
+              HitlInputBlockConfig(nodeId: '', onFormInputItemRemove: (_) {}, onFormInputItemRename: (_, _) {}),
+          selected: selected,
+        ),
+      ),
+      PromptBlockKind.agentOutput => () {
+        final cfg = w.agentOutputBlock ?? const AgentOutputBlockConfig();
+        final edit = _outputEditing[b.name];
+        return AgentOutputBlockComponent(
+          host: _OutputHost(this, offset, b),
+          name: b.name,
+          outputType: _outputTypes[b.name] ?? agentOutputBlockType(b.name, cfg.outputs),
+          isEditing: edit != null,
+          selectNameOnEdit: edit?.selectName,
+          openTypeSelectOnEdit: edit?.openTypeSelect ?? false,
+          outputs: cfg.outputs,
+          onChange: cfg.onChange,
+          onEdit: cfg.onEdit,
+        );
+      }(),
       PromptBlockKind.literal => Text(b.text),
     };
   }
@@ -569,6 +929,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       delegate: _MenuLayout(anchor),
       child: TextFieldTapRegion(
         child: ComponentPickerMenu(
+          footer: _showAgentOutputAction ? NewAgentOutputAction(onPressed: _newAgentOutput) : null,
           queryString: m.query,
           options: options,
           selectedIndex: showVars ? null : _highlight,
@@ -643,7 +1004,8 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
             fontSize: fontSize,
             height: lineHeight / fontSize,
             leadingDistribution: TextLeadingDistribution.even,
-            forceStrutHeight: lineHeight >= chipFitsLineHeight,
+            // A form field (a 48 px line) makes its line taller, as in Chrome.
+            forceStrutHeight: lineHeight >= chipFitsLineHeight && !(w.hitlInputBlock?.show ?? false),
           ),
           cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
@@ -670,22 +1032,108 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
                     ),
             ),
           ),
+        if (_dragLine != null && w.editable) _dragMenu(),
+        if (_dropTarget case final target?)
+          Positioned(
+            key: const Key('draggable-target-line'),
+            left: 24,
+            right: 24,
+            top: target.y - 2,
+            height: 2,
+            child: const IgnorePointer(
+              child: Opacity(opacity: 0.4, child: ColoredBox(color: DifyColors.textAccentSecondary)),
+            ),
+          ),
       ],
     );
+    if (w.hitlInputBlock?.show ?? false) {
+      field = MouseRegion(
+        onEnter: _onFieldHover,
+        onHover: _onFieldHover,
+        onExit: (_) {
+          if (_dragging == null && _dragLine != null) setState(() => _dragLine = null);
+        },
+        child: field,
+      );
+    }
     field = ConstrainedBox(
       constraints: BoxConstraints(minHeight: w.minHeight),
       child: w.height == null ? field : SizedBox(height: w.height, child: field),
     );
     return Material(
       type: MaterialType.transparency,
-      child: OverlayPortal.overlayChildLayoutBuilder(
-        controller: _portal,
-        overlayLocation: OverlayChildLocation.rootOverlay,
-        overlayChildBuilder: _menu,
-        child: KeyedSubtree(key: _fieldKey, child: field),
+      child: _withShortcutPopups(
+        OverlayPortal.overlayChildLayoutBuilder(
+          controller: _portal,
+          overlayLocation: OverlayChildLocation.rootOverlay,
+          overlayChildBuilder: _menu,
+          child: KeyedSubtree(key: _fieldKey, child: field),
+        ),
       ),
     );
   }
+}
+
+/// What an agent output block does to the editor: its node is the block at [offset] (found again by its token when
+/// the text moved).
+class _OutputHost implements AgentOutputBlockHost {
+  _OutputHost(this.editor, this.offset, this.block);
+  final DifyPromptEditorState editor;
+  final int offset;
+  final PromptBlock block;
+
+  @override
+  String get prompt => editor.controller.prompt;
+
+  @override
+  bool setOutput(
+    String name,
+    String outputType,
+    bool isEditing,
+    List<Map<String, Object?>> outputs,
+    bool selectNameOnEdit,
+    bool openTypeSelectOnEdit,
+  ) => editor._setOutput(offset, block, name, outputType, isEditing, selectNameOnEdit, openTypeSelectOnEdit);
+
+  @override
+  void selectNext() => editor._selectAfter(offset, block);
+
+  @override
+  void focusEditor() => editor.focusNode.requestFocus();
+
+  @override
+  void setOpenTypeSelectOnEdit(bool value) => editor._setOpenTypeSelect(block.name, value);
+}
+
+/// `w-[calc(100%-1px)]` in the editor's line: the line's width (the text field keeps a caret's room at its end).
+class _FullWidth extends SingleChildRenderObjectWidget {
+  const _FullWidth({required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderFullWidth();
+}
+
+class _RenderFullWidth extends RenderProxyBox {
+  BoxConstraints _inner(BoxConstraints c) {
+    if (!c.hasBoundedWidth) return c;
+    final w = math.max(0.0, c.maxWidth - 2);
+    return c.copyWith(minWidth: w, maxWidth: w);
+  }
+
+  @override
+  void performLayout() {
+    final c = child;
+    if (c == null) {
+      size = constraints.smallest;
+      return;
+    }
+    c.layout(_inner(constraints), parentUsesSize: true);
+    size = constraints.constrain(c.size);
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) =>
+      constraints.constrain(child?.getDryLayout(_inner(constraints)) ?? Size.zero);
 }
 
 /// floating-ui `bottom-start` with `shift({padding: 8})` and `flip()`: below the trigger, above it when it doesn't

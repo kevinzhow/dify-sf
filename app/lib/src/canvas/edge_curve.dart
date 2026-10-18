@@ -17,6 +17,16 @@ List<Offset> edgeCurve(Offset source, Offset target, {double inset = 8, int segm
   ];
 }
 
+/// custom-connection-line.tsx's target marker: a 2 x 8 bar at the dragged end [to] (`x={toX} y={toY - 4}`), in
+/// [connectionLineMarkerColor].
+Rect connectionLineMarker(Offset to) => Rect.fromLTWH(to.dx, to.dy - 4, 2, 8);
+
+/// `fill="#2970FF"`.
+const connectionLineMarkerColor = Color(0xFF2970FF);
+
+/// The connection line's stroke: `stroke="#D0D5DD" strokeWidth={2}`.
+const connectionLineColor = Color(0xFFD0D5DD);
+
 /// React Flow's calculateControlOffset: half the horizontal distance when the target is to the right, otherwise
 /// curvature * 25 * sqrt(-distance).
 double _controlOffset(double distance, {double curvature = 0.16}) =>

@@ -10,7 +10,11 @@ import 'dart:convert';
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/node_config.dart' show Json;
 import 'llm_config.dart' show jsonClone;
+import '../../../prompt_editor/prompt_blocks.dart' show extractAgentOutputNames, replaceAgentOutputName;
 import 'llm_vars.dart' show jsMap;
+
+export '../../../prompt_editor/prompt_blocks.dart'
+    show getAgentOutputToken, extractAgentOutputNames, replaceAgentOutputName, parseAgentOutputToken;
 
 // ---- types.ts ----------------------------------------------------------------------------------------------------
 
@@ -93,27 +97,7 @@ List<Json> getAgentV2DeclaredOutputs(Json data) =>
 
 // ---- agent-output-block/utils.ts ---------------------------------------------------------------------------------
 
-final _tokenRegex = RegExp(r'\[§output:([^:§\]]+):([^:§\]]+)§\]');
-final _legacyTokenRegex = RegExp(r'§output:([^:§\]]+):([^:§\]]+)§');
-
-/// `getAgentOutputToken`.
-String getAgentOutputToken(String name) => '[§output:$name:$name§]';
-
-/// `extractAgentOutputNames`: the names of the output tokens in [text] (bracketed and legacy).
-Set<String> extractAgentOutputNames(String text) => {
-  for (final m in _tokenRegex.allMatches(text)) m[1]!,
-  for (final m in _legacyTokenRegex.allMatches(text)) m[1]!,
-};
-
-/// `replaceAgentOutputName`: [oldName]'s tokens renamed to [nextName], each keeping its form.
-String replaceAgentOutputName(String text, String oldName, String nextName) {
-  String replace(Match m) {
-    if (m[1] != oldName) return m[0]!;
-    return m[0]!.startsWith('[') ? getAgentOutputToken(nextName) : '§output:$nextName:$nextName§';
-  }
-
-  return text.replaceAllMapped(_tokenRegex, replace).replaceAllMapped(_legacyTokenRegex, replace);
-}
+// The token helpers live with the prompt editor's agent output block (prompt_blocks.dart).
 
 // ---- agent-output-variables/utils.ts -----------------------------------------------------------------------------
 

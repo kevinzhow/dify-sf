@@ -40,8 +40,9 @@ abstract interface class Backend {
   /// Creates a document from a Dify workflow file (YAML); returns its id.
   Future<String> importDifyDsl(String yaml);
 
-  /// The document's current state as a Dify workflow file (YAML).
-  Future<String> exportDifyDsl(String docId);
+  /// The document's current state as a Dify workflow file (YAML); secret environment values only with
+  /// [includeSecret] (Dify's `include`).
+  Future<String> exportDifyDsl(String docId, {bool includeSecret = false});
 
   /// The document's Dify app metadata (mode, name, environment and conversation variables).
   Future<DocMeta> docMeta(String docId);
@@ -98,10 +99,10 @@ class HttpBackend implements Backend {
   }
 
   @override
-  Future<String> exportDifyDsl(String docId) async {
+  Future<String> exportDifyDsl(String docId, {bool includeSecret = false}) async {
     final api = DocsApi(baseUrl, auth: auth?.session);
     try {
-      return await api.exportDifyDsl(docId);
+      return await api.exportDifyDsl(docId, includeSecret: includeSecret);
     } finally {
       api.close();
     }

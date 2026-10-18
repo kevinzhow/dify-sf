@@ -290,7 +290,9 @@ void main() {
     expect(find.byType(HumanInputFormList), findsNothing);
     expect(find.byType(HumanInputFilledFormList), findsOneWidget);
     expect(seen['human'], ['running', 'paused', 'succeeded']);
-    expect(seen['end'], ['running', 'succeeded']);
+    // After the debug run, fetchInspectVars clears the succeeded statuses (handleCancelAllNodeSuccessStatus): nodes
+    // with inspect variables keep the success look through them; the End node has no outputs, so it goes idle.
+    expect(seen['end'], ['running', 'succeeded', 'idle']);
     expect(graph['end']!.run.value.waiting, isFalse);
     // Both ends finished: success to success.
     final done = graph.strokeOf(graph.edges.firstWhere((e) => e.id == 'e-human-end'));
@@ -301,7 +303,8 @@ void main() {
     expect(edgeSegmentsByColor(graph, graph.edges.where((e) => e.id == 'e-human-end')).keys, [
       DifyColors.workflowLinkLineSuccessHandle,
     ]);
-    expect(find.byKey(const Key('status-border-end')), findsOneWidget);
+    expect(find.byKey(const Key('status-border-end')), findsNothing);
+    expect(find.byKey(const Key('status-border-human')), findsOneWidget);
     // Run state is local view state: nothing was sent.
     expect(demo.server.head, opsBefore);
 

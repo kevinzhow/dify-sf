@@ -14,7 +14,8 @@ import '../store/store.dart';
 /// The canvas "+" buttons (node-handle.tsx and custom-edge.tsx): on the handles of the hovered or selected node (a
 /// target handle only while unconnected) and at the middle of the hovered edge. Each is BlockSelector's default
 /// trigger, a 16 px blue circle that scales with the canvas; picking a block inserts it after the node, before it, or
-/// between the edge's nodes.
+/// between the edge's nodes. While the store asks for it (`shouldAutoOpenStartNodeSelector`, onboarding), a Start
+/// or trigger node opens its next-block selector by itself, once (not in chatflows).
 class CanvasPlusButtons extends StatefulWidget {
   const CanvasPlusButtons({super.key, required this.controller, required this.canvas, this.options});
 
@@ -38,15 +39,71 @@ class _CanvasPlusButtonsState extends State<CanvasPlusButtons> {
     options: widget.options ?? const WorkflowMenuOptions(),
   );
 
+  /// The button whose selector is open (or closing).
+  String? _openKey;
+
   Future<void> _open(BuildContext context, String key, InsertPoint at, Rect anchor) async {
     setState(() => _held = key);
+    _openKey = key;
     await _actions(context).showInsertBlockSelector(context, at, anchor: anchor);
+    _openKey = null;
     if (mounted) setState(() => _held = null);
   }
 
   /// What the buttons were drawn for when one was held (the pointer on a button is off the node or edge).
   Set<int> _slots = const {};
   String? _edge;
+
+  WorkflowStore? _store;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final s = WorkflowStoreScope.of(context);
+    if (s == _store) return;
+    _store?.shouldAutoOpenStartNodeSelector.removeListener(_autoOpenLater);
+    _store = s..shouldAutoOpenStartNodeSelector.addListener(_autoOpenLater);
+    widget.controller.addListener(_autoOpenLater);
+    _autoOpenLater();
+  }
+
+  @override
+  void dispose() {
+    _store?.shouldAutoOpenStartNodeSelector.removeListener(_autoOpenLater);
+    widget.controller.removeListener(_autoOpenLater);
+    super.dispose();
+  }
+
+  void _autoOpenLater() {
+    if (_store?.shouldAutoOpenStartNodeSelector.value ?? false) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _autoOpen() : null);
+    }
+  }
+
+  /// node-handle.tsx's auto-open: `canAutoOpenStartNodeSelector` (a Start, schedule, webhook or plugin trigger node,
+  /// never in chat mode) opens the source handle's selector and clears the flags; chat mode only clears the flag.
+  void _autoOpen() {
+    final store = _store, graph = widget.canvas.graph;
+    if (store == null || graph == null || !store.shouldAutoOpenStartNodeSelector.value) return;
+    if (BlockSelectorScope.of(context).chatMode) {
+      store.setShouldAutoOpenStartNodeSelector(false);
+      return;
+    }
+    const entries = {'start', 'trigger-schedule', 'trigger-webhook', 'trigger-plugin'};
+    final n = graph.nodes.where((n) => entries.contains(n.type)).firstOrNull;
+    final handle = n?.layout.sources.keys.firstOrNull;
+    if (n == null || handle == null) return;
+    store
+      ..setShouldAutoOpenStartNodeSelector(false)
+      ..setHasSelectedStartNode(false);
+    final view = widget.canvas.view, size = 16 * view.scale;
+    final center = view.toScreen(n.outPortFor(handle) - const Offset(CanvasNode.handleBox / 2, 0));
+    final rect = Rect.fromCenter(center: center, width: size, height: size);
+    final box = context.findRenderObject() as RenderBox?;
+    final global = box == null || !box.hasSize ? rect : box.localToGlobal(rect.topLeft) & rect.size;
+    _slots = {..._slots, n.slot};
+    _open(context, 'out-${n.id}-$handle', InsertAfter(n.id, handle), global);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +137,9 @@ class _CanvasPlusButtonsState extends State<CanvasPlusButtons> {
                 zoom: z,
                 onHover: (on) => setState(() => _held = on ? key : (_held == key ? null : _held)),
                 onTap: () {
+                  // A click on the open selector's handle closes it (the press outside the popup did), as the
+                  // handle's click toggles it in Dify.
+                  if (_openKey == key) return;
                   final box = context.findRenderObject() as RenderBox?;
                   final global = box == null ? rect : box.localToGlobal(rect.topLeft) & rect.size;
                   _open(context, key, at, global);

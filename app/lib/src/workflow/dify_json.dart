@@ -35,6 +35,12 @@ List<String>? selectorOf(Value? v) => switch (v) {
   _ => null,
 };
 
+/// `variableTransformer` (workflow/utils/variable.ts), template to selector: `{{#node.out#}}` -> `[node, out]`.
+List<String> templateToSelector(String template) => template.replaceAll(RegExp(r'^\{\{#|#\}\}$'), '').split('.');
+
+/// `variableTransformer`, selector to template: `[node, out]` -> `{{#node.out#}}`.
+String selectorToTemplate(List<String> selector) => '{{#${selector.join('.')}#}}';
+
 /// What Dify's code would throw (a property read on `undefined`).
 final class JsTypeError implements Exception {
   const JsTypeError(this.what);

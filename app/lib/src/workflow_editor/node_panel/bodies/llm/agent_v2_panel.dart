@@ -3,6 +3,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
@@ -262,21 +263,63 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
     _write(r.inputs);
   }
 
-  /// handleEditTaskOutput (the task's output token asks to edit it): the output editor on that output, or on a new
-  /// one of [type] when the task names an output not declared yet.
+  /// handleEditTaskOutput (a task output block asks to edit it): the floating output editor on that output, or on a
+  /// new one of [type] when the task names an output not declared yet; the output variables expand.
   void editTaskOutput(String name, String type) {
-    final outputs = getAgentV2DeclaredOutputs(_inputs);
-    final index = outputs.indexWhere((o) => o['name'] == name);
-    if (index >= 0 && isDefaultOutput(outputs[index])) return;
-    setState(() => _outputsCollapsed = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _outputsKey.currentState?.editOutput((
-        draft: createDraft(index >= 0 ? outputs[index] : createAgentOutputConfig(name, type)),
-        outputIndex: index >= 0 ? index : null,
-        childPath: null,
-        parentPath: null,
-      ));
+    setState(() {
+      _outputsCollapsed = false;
+      _editingOutputFromTask = (name: name, type: type, requestKey: (_editingOutputFromTask?.requestKey ?? 0) + 1);
     });
+    _floatingEditor.show();
+  }
+
+  /// The output the floating editor edits (`editingOutputFromTask`).
+  ({String name, String type, int requestKey})? _editingOutputFromTask;
+  final _floatingEditor = OverlayPortalController();
+  final _panelKey = GlobalKey();
+
+  void _closeFloatingEditor() {
+    setState(() => _editingOutputFromTask = null);
+    _floatingEditor.hide();
+  }
+
+  /// FloatingOutputEditor: `fixed w-100`, 24 px left of the panel and 144 px below its top (at least 16 px from the
+  /// window's edges): the output's edit card. Confirming a renamed output renames its task tokens too.
+  Widget _floatingOutputEditor(BuildContext context) {
+    final editing = _editingOutputFromTask;
+    if (editing == null) return const SizedBox.shrink();
+    final outputs = getAgentV2DeclaredOutputs(_inputs);
+    final index = outputs.indexWhere((o) => o['name'] == editing.name);
+    if (index >= 0 && isDefaultOutput(outputs[index])) return const SizedBox.shrink();
+    final output = index >= 0 ? outputs[index] : createAgentOutputConfig(editing.name, editing.type);
+    final box = _panelKey.currentContext?.findRenderObject() as RenderBox?;
+    final panel = box != null && box.hasSize ? box.localToGlobal(Offset.zero) : Offset.zero;
+    return Positioned(
+      left: math.max(16, panel.dx - 400 - 24),
+      top: math.max(16, panel.dy + 144),
+      width: 400,
+      child: OutputEditCard(
+        key: ValueKey('${editing.requestKey}-${output['name']}'),
+        editingIndex: index >= 0 ? index : null,
+        existingOutputs: outputs,
+        reservedNames: agentV2ReservedOutputNames,
+        state: (draft: createDraft(output), outputIndex: index >= 0 ? index : null, childPath: null, parentPath: null),
+        onCancel: _closeFloatingEditor,
+        onConfirm: (next, _) {
+          final task = jsStr(_inputs['agent_task']) ?? '';
+          final nextTask = next['name'] != editing.name && extractAgentOutputNames(task).contains(editing.name)
+              ? replaceAgentOutputName(task, editing.name, jsKey(next['name']))
+              : null;
+          _handleDeclaredOutputsChange(
+            index >= 0
+                ? [for (final (i, o) in outputs.indexed) i == index ? next : o]
+                : [...outputs.where((o) => o['name'] != editing.name), next],
+            nextTask,
+          );
+          _closeFloatingEditor();
+        },
+      ),
+    );
   }
 
   @override
@@ -360,6 +403,9 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
             value: task,
             readOnly: readOnly,
             vars: vars,
+            outputs: outputs,
+            onOutputsChange: _handleDeclaredOutputsChange,
+            onEditOutput: editTaskOutput,
             onChange: _handleTaskChange,
             onOpenUrl: props.actions.options.openUrl,
             docLink: _docLink(),
@@ -377,10 +423,16 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
     );
 
     return Padding(
+      key: _panelKey,
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          OverlayPortal(
+            controller: _floatingEditor,
+            overlayLocation: OverlayChildLocation.rootOverlay,
+            overlayChildBuilder: _floatingOutputEditor,
+          ),
           Container(
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
@@ -437,7 +489,8 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
 
 /// AgentTaskField: "Agent task" with its infotip (and the "Learn more" link), then the `h-80` prompt editor with the
 /// node's variables; while focused, the gradient border and the toolbar ("Insert" types `/`, the character count).
-/// Output tokens (`[§output:name:name§]`) show as their text: the prompt editor has no agent output block.
+/// Output tokens (`[§output:name:name§]`) are agent output blocks over [outputs]: "New output" in the `/` list adds
+/// one ([onOutputsChange] with the prompt), a committed one asks to be edited ([onEditOutput]).
 class AgentTaskField extends StatefulWidget {
   const AgentTaskField({
     super.key,
@@ -447,10 +500,16 @@ class AgentTaskField extends StatefulWidget {
     required this.docLink,
     this.readOnly = false,
     this.onOpenUrl,
+    this.outputs = const [],
+    this.onOutputsChange,
+    this.onEditOutput,
   });
 
   final String value;
   final ValueChanged<String> onChange;
+  final List<Json> outputs;
+  final void Function(List<Json> outputs, String? prompt)? onOutputsChange;
+  final void Function(String name, String outputType)? onEditOutput;
   final NodeVars vars;
   final String docLink;
   final bool readOnly;
@@ -587,6 +646,12 @@ class _AgentTaskFieldState extends State<AgentTaskField> {
                             placeholder: _w('nodes.agent.task.placeholder'),
                             onFocus: () => setState(() => _isFocus = true),
                             isSupportFileVar: true,
+                            agentOutputBlock: AgentOutputBlockConfig(
+                              show: true,
+                              outputs: w.outputs,
+                              onChange: w.onOutputsChange,
+                              onEdit: w.onEditOutput,
+                            ),
                             workflowVariableBlock: WorkflowVariableBlockConfig(
                               show: true,
                               variables: w.vars.scope.vars,

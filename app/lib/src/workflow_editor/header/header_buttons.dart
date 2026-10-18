@@ -1,3 +1,5 @@
+import '../hooks/use_locate_node.dart' show scrollCanvasToNode;
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -184,22 +186,9 @@ class _ScrollToSelectedNodeButtonState extends State<ScrollToSelectedNodeButton>
   }
 
   void _scrollTo(CanvasController canvas, String id) {
-    final n = canvas.graph?[id];
-    if (n == null) return;
-    final window = MediaQuery.sizeOf(context);
-    final view = canvas.view;
-    final fromCenter = view.center, fromScale = view.scale;
-    final toCenter = Offset(n.x + window.width * 0.25, n.y + window.height * 0.25);
+    if (canvas.graph?[id] == null) return;
     _ticker?.dispose();
-    const duration = Duration(milliseconds: 800);
-    _ticker = createTicker((elapsed) {
-      // d3-zoom's default ease (cubic in-out); the zoom and the centre move together.
-      final t = Curves.easeInOutCubic.transform((elapsed.inMicroseconds / duration.inMicroseconds).clamp(0.0, 1.0));
-      view
-        ..scale = fromScale + (1 - fromScale) * t
-        ..center = Offset.lerp(fromCenter, toCenter, t)!;
-      if (elapsed >= duration) _ticker?.stop();
-    })..start();
+    _ticker = scrollCanvasToNode(canvas, id, MediaQuery.sizeOf(context), this);
   }
 
   @override

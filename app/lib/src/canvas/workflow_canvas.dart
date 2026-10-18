@@ -8,6 +8,7 @@ import 'canvas_background.dart';
 import 'canvas_controller.dart';
 import 'canvas_graph.dart';
 import 'canvas_input.dart';
+import 'edge_curve.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
@@ -99,6 +100,11 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       renderer: () => renderer,
       modeSource: canvas.controlMode,
       readOnly: () => canvas.isReadOnly(),
+      validConnection: (source, handle, target) => canvas.isValidConnection(source, handle, target),
+      nodeDrag: () => canvas.onNodeDrag,
+      nodeDragStop: () => canvas.onNodeDragStop,
+      connectStart: () => canvas.onConnectStart,
+      connectEnd: () => canvas.onConnectEnd,
     );
     a11y = CanvasA11y(
       graph: graph,
@@ -110,6 +116,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
         selection.selectNodes([n.slot]);
         c.selectNode(n.id);
       },
+      onKey: (n, e) => input.nodeKey(n, e),
     );
     view.addListener(a11y.viewMoved);
     view.addListener(_viewMoved);
@@ -345,6 +352,17 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
                         builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
                       ),
                     ),
+                    // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
+                    IgnorePointer(
+                      child: ValueListenableBuilder<(Offset, Offset)?>(
+                        valueListenable: input.connectLine,
+                        builder: (context, line, _) => CustomPaint(
+                          painter: ConnectionLineMarkerPainter(
+                            line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                          ),
+                        ),
+                      ),
+                    ),
                     a11y.build(),
                   ],
                 ),
@@ -355,6 +373,20 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       },
     );
   }
+}
+
+/// The connection line's target marker, [rect] on screen (none while nothing is being connected).
+class ConnectionLineMarkerPainter extends CustomPainter {
+  ConnectionLineMarkerPainter(this.rect);
+  final Rect? rect;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (rect case final r?) canvas.drawRect(r, Paint()..color = connectionLineMarkerColor);
+  }
+
+  @override
+  bool shouldRepaint(ConnectionLineMarkerPainter old) => old.rect != rect;
 }
 
 class _MarqueePainter extends CustomPainter {

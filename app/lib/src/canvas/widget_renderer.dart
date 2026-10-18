@@ -325,7 +325,7 @@ class _PreviewPainter extends CustomPainter {
     canvas.drawPath(
       _path(edgeCurve(line.$1, line.$2, inset: 0)),
       Paint()
-        ..color = const Color(0xFFD0D5DD)
+        ..color = connectionLineColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );

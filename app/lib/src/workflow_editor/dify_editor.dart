@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
@@ -17,6 +19,9 @@ import 'header/features_trigger.dart';
 import 'header/publisher/app_publisher.dart' show PublisherAppInfo;
 import 'header/titles.dart';
 import 'header/workflow_header.dart';
+import 'dsl/dsl_export_confirm_modal.dart';
+import 'hooks/use_locate_node.dart';
+import 'hooks/use_tool_icon.dart';
 import 'node_panel/node_panel.dart';
 import 'note_node/note_node.dart';
 import 'operator/operator.dart';
@@ -38,6 +43,9 @@ import 'comments/comments_panel.dart';
 import 'comments/comments_store.dart';
 import 'canvas_plus/canvas_plus_buttons.dart';
 import 'node_insertion/insert_block.dart';
+import 'canvas_plus/container_child_size.dart';
+import 'canvas_plus/node_resizers.dart';
+import 'version_history/version_history_panel.dart';
 import 'workflow_editor.dart';
 
 /// hooks-store `WorkflowAccessControl`: what the user may do in the editor (Dify derives it from the app's permission
@@ -88,6 +96,8 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
     this.user,
+    this.locateNodeId,
+    this.onExportDsl,
   });
 
   /// What the signed-in user may do (read-only for members without the edit role).
@@ -95,6 +105,13 @@ class DifyWorkflowEditor extends StatefulWidget {
 
   /// The signed-in account; null (the demo, tests): the session's client id and display name stand in.
   final EditorUser? user;
+
+  /// A node to select and bring into view once it is in the document (use-locate-node.ts, the URL's `node_id`).
+  final String? locateNodeId;
+
+  /// Exports the document as a Dify workflow file (`include` secret values or not); null: no export. The pane
+  /// menu's Export asks about secrets first (use-DSL.ts exportCheck).
+  final Future<void> Function(bool includeSecret)? onExportDsl;
 
   final EditorController controller;
   final String serverLabel;
@@ -269,6 +286,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     onAddBlock: onAddBlock,
     onAddNote: onAddNote,
     onChangeBlock: onChangeBlock,
+    onExportDsl: widget.onExportDsl == null ? null : _exportDsl,
     // Run this step / Stop: the node's single run (local run state in the store).
     isSingleRunning: (nodeId) {
       final context = _inner;
@@ -277,6 +295,15 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       return status == 'running' || status == 'listening';
     },
   );
+
+  /// The pane menu's Export: use-DSL.ts exportCheck over the document's environment variables.
+  void _exportDsl() {
+    final context = _inner, export = widget.onExportDsl;
+    if (context == null || !context.mounted || export == null) return;
+    unawaited(
+      exportDslWithCheck(context, environmentVariables: controller.appLists.environmentVariables, export: export),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -344,11 +371,17 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                       fit: StackFit.expand,
                       children: [
                         CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
+                        // Iteration, loop and note resize controls (node-resizer.tsx).
+                        NodeResizers(controller: controller, canvas: canvas, options: menuOptions),
+                        // Selected container children grow their container (useNodeResizeObserver).
+                        ContainerChildSizeObserver(controller: controller, canvas: canvas, options: menuOptions),
                         // The selected note, edited in place (drawn by the canvas in the notes' layer).
                         LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
                         // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
                         CommentLayer(canvas: canvas),
                         CandidateNode(canvas: canvas, onPlace: _place),
+                        if (widget.locateNodeId != null)
+                          LocateNodeOnOpen(controller: controller, canvas: canvas, nodeId: widget.locateNodeId),
                       ],
                     );
                   },
@@ -398,6 +431,13 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                       ),
                       // The comment list, in comment mode.
                       CommentsPanel(canvas: canvas),
+                      // While browsing versions (no version service yet: the current draft alone).
+                      VersionHistoryPanelHost(
+                        data: VersionHistoryPanelData(
+                          currentUserId: widget.user?.id ?? controller.session.clientId,
+                          canImportExportDsl: widget.access.canImportExportDsl,
+                        ),
+                      ),
                     ],
                   ),
                   // The Features drawer (chatflows open it from the header), over everything with its backdrop.
@@ -452,9 +492,10 @@ class _BoundHeaderState extends State<_BoundHeader> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_binding == null) _storeVariables();
+    final store = WorkflowStoreScope.of(context);
     _binding ??= EditorHeaderBinding(
       controller: widget.controller,
-      store: WorkflowStoreScope.of(context),
+      store: store,
       // The app's model catalog is an empty workspace (see ModelCatalog), so LLM nodes need a model configured. The
       // variables are the document's (it is recomputed on every change of the document).
       checklistEnv: () => checklist.ChecklistEnv(
@@ -462,6 +503,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
         environmentVariables: widget.controller.appLists.environmentVariables,
         conversationVariables: widget.controller.appLists.conversationVariables,
         modelProviders: const [],
+        // useGetToolIcon: the store's tool collections, else the icon the node was created with.
+        toolIcon: (n) => getToolIcon(store)(n.data),
       ),
     );
     final session = widget.controller.session, user = widget.user;
@@ -520,8 +563,9 @@ class _BoundHeaderState extends State<_BoundHeader> {
         canEdit: widget.access.canEdit,
         canRun: widget.access.canRun,
         canReleaseAndVersion: widget.access.canReleaseAndVersion,
-        handleNodeSelect: b.selectNode,
-        handleNodesCancelSelected: b.cancelSelection,
+        handleNodeSelect: (id, {cancelSelection = false}) =>
+            cancelSelection ? cancelNodesSelectedOn(widget.canvas, widget.controller) : b.selectNode(id),
+        handleNodesCancelSelected: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
         title: widget.session(const EditingTitle()),
         left: widget.left,
         middle: FeaturesTrigger(
