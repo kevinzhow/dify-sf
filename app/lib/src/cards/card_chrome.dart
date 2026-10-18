@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../canvas/canvas_graph.dart';
 import '../canvas/node_card.dart';
+import '../workflow_editor/node_panel/bodies/data/tool/copy_id.dart';
 import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
@@ -115,6 +116,15 @@ class DifyNodeCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                 child: Text(desc, style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
               ),
+            if (DifyCards.hasCopyId(n))
+              CanvasCardControls.overlaid(context)
+                  ? const SizedBox(height: DifyCards.copyIdHeight)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: CopyId(
+                        content: n.config['provider_id'] is VString ? (n.config['provider_id']! as VString).value : '',
+                      ),
+                    ),
           ],
         ),
       ),

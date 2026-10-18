@@ -50,7 +50,7 @@ class LiveCardLayer {
       child: ValueListenableBuilder<NodeRunView>(
         valueListenable: n.run,
         child: source.value!.builder(context, n),
-        builder: (context, run, child) => _LiveGate(
+        builder: (context, run, child) => CanvasInteractionGate(
           opacity: run.opacity,
           accepts: (local) => isTopAt(n, origin + local),
           claim: claim,
@@ -83,8 +83,8 @@ class LiveCardLayer {
 
 /// Passes hits on to its child only where [accepts] (local position), and claims the pointer downs and wheel events
 /// its child takes.
-class _LiveGate extends SingleChildRenderObjectWidget {
-  const _LiveGate({required this.opacity, required this.accepts, required this.claim, required super.child});
+class CanvasInteractionGate extends SingleChildRenderObjectWidget {
+  const CanvasInteractionGate({this.opacity = 1, required this.accepts, required this.claim, required super.child});
   final double opacity;
   final bool Function(Offset local) accepts;
   final void Function(PointerDownEvent event) claim;

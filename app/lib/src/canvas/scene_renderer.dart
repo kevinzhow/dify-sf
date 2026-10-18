@@ -1139,9 +1139,11 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   /// The card with room around it for its shadow (the capture covers [SceneTuning.capturePad] on every side).
-  Widget _padded(Widget card) => CanvasSpinners(
-    drawnByCanvas: true,
-    child: Padding(padding: const EdgeInsets.all(SceneTuning.capturePad), child: card),
+  Widget _padded(Widget card) => CanvasCardControls(
+    child: CanvasSpinners(
+      drawnByCanvas: true,
+      child: Padding(padding: const EdgeInsets.all(SceneTuning.capturePad), child: card),
+    ),
   );
 
   Camera _camera() => OrthographicCamera(

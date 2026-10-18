@@ -41,7 +41,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: HTTP Request](#node-http) | 2 |  |  |  |  | 2 |
 | [Node: Variable Aggregator](#node-aggregator) | 1 | 1 |  |  |  | 2 |
 | [Node: Variable Assigner](#node-assigner) | 1 |  |  |  |  | 1 |
-| [Node: Tool](#node-tool) |  | 3 |  |  |  | 3 |
+| [Node: Tool](#node-tool) | 1 | 2 |  |  |  | 3 |
 | [Node: Iteration](#node-iteration) | 1 | 1 |  |  |  | 2 |
 | [Node: Loop & Exit Loop](#node-loop) | 2 |  |  |  |  | 2 |
 | [Node: Doc Extractor](#node-doc-extractor) | 1 |  |  |  |  | 1 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **142** | **44** | **40** | **11** | **10** | **247** |
+| **Total** | **143** | **43** | **40** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -367,7 +367,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Tool card: provider icon and configured parameters | partial | The card has no tool collections, so it cannot tell that a provider needs authorization (no tool service). | spec `workflow/nodes/tool`, visual `canvas-tool-template` |
 | Tool panel: input form from the tool schema (mixed variable text, constants), settings, output schema | partial | The form is ported and works from the node's own data, but tool definitions, dynamic options and authorization come from Dify's tool / plugin services, which dify-sf does not have. | spec `workflow/nodes/tool/components`, spec `workflow/nodes/tool/components/mixed-variable-text-input`, spec `workflow/nodes/tool/components/tool-form`, spec `workflow/nodes/tool/hooks`, spec `workflow/hooks/use-tool-icon.spec.ts`, spec `workflow/utils/tool.spec.ts`, visual `panel-tool` |
-| Tool: MCP tool Copy ID row under the card description | partial | The CopyId widget is ported (copy_id.dart) but nothing mounts it, so MCP tool cards show no Copy ID row. |  |
+| Tool: MCP tool Copy ID row under the card description | ported |  | `app/test/workflow_editor/mcp_card_copy_test.dart` |
 
 <a id="node-iteration"></a>
 

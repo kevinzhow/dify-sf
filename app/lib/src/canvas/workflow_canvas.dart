@@ -6,6 +6,7 @@ import '../editor/editor_controller.dart';
 import 'canvas_a11y.dart';
 import 'canvas_background.dart';
 import 'canvas_controller.dart';
+import 'card_controls.dart';
 import 'canvas_graph.dart';
 import 'canvas_input.dart';
 import 'edge_curve.dart';
@@ -106,6 +107,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       connectStart: () => canvas.onConnectStart,
       connectEnd: () => canvas.onConnectEnd,
     );
+    input.onApplied = (_) => canvas.visualChanges.notifyListeners();
     a11y = CanvasA11y(
       graph: graph,
       view: view,
@@ -364,6 +366,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
                       ),
                     ),
                     a11y.build(),
+                    CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
                   ],
                 ),
               ),

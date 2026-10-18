@@ -181,7 +181,7 @@ class WidgetRenderer extends CanvasRenderer {
     final card = local(n.rect.topLeft), visual = local(n.visual.topLeft);
     final cardWidget = _cardWidgets[n] ??= KeyedSubtree(
       key: ValueKey('node-${n.id}'),
-      child: RepaintBoundary(child: cards.build(context, n, graph, live: true)),
+      child: CanvasCardControls(child: RepaintBoundary(child: cards.build(context, n, graph, live: true))),
     );
     return Positioned.fromRect(
       key: ValueKey('canvas-node-${n.id}'),

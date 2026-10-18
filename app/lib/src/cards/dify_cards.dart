@@ -5,6 +5,7 @@ import '../canvas/canvas_graph.dart';
 import '../canvas/node_card.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
+import '../workflow_editor/node_panel/bodies/data/tool/copy_id.dart';
 import 'bodies/answer_body.dart';
 import 'bodies/basic_bodies.dart';
 import 'bodies/container_bodies.dart';
@@ -21,6 +22,21 @@ import 'node_helpers.dart';
 /// Dify's node cards: the shared chrome (nodes/_base/node.tsx) around a body per node type.
 class DifyCards extends CardSpec {
   const DifyCards();
+
+  static bool hasCopyId(Node n) => n.type == 'tool' && n.config['provider_type'] == const VString('mcp');
+  static const copyIdHeight = 26.0;
+
+  @override
+  List<({Rect rect, Widget child})> controls(BuildContext context, CanvasNode node, CanvasGraph graph) {
+    if (!hasCopyId(node.node.value)) return const [];
+    final content = node.node.value.config['provider_id'];
+    return [
+      (
+        rect: Rect.fromLTWH(node.rect.left + 13, node.rect.bottom - 5 - copyIdHeight, node.rect.width - 26, 18),
+        child: CopyId(content: content is VString ? content.value : ''),
+      ),
+    ];
+  }
 
   static const width = 240.0;
   static const header = 44.0; // pt-3 + 24 px icon + pb-2
@@ -176,6 +192,7 @@ class DifyCards extends CardSpec {
             body.height(ctx) +
             NodeExtras.height(node, run, selected) +
             (chrome == CardChrome.base ? _descHeight(node) : 0) +
+            (hasCopyId(node) ? copyIdHeight : 0) +
             _bottom +
             border,
       ),

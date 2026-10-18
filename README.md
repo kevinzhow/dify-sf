@@ -12,8 +12,8 @@ branch.
 
 | Status | Features |
 |---|---|
-| ported | 142 |
-| partial | 44 |
+| ported | 143 |
+| partial | 43 |
 | not ported | 40 |
 | n/a | 11 |
 | dify-sf only | 10 |

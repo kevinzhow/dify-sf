@@ -14,6 +14,7 @@ class CanvasController {
   CanvasController({ControlMode mode = ControlMode.pointer}) : controlMode = ValueNotifier(mode);
 
   final view = CanvasViewState();
+  final visualChanges = ChangeNotifier();
   final selection = CanvasSelection();
   final ValueNotifier<ControlMode> controlMode;
 
@@ -87,6 +88,7 @@ class CanvasController {
 
   void dispose() {
     view.dispose();
+    visualChanges.dispose();
     selection.dispose();
     controlMode.dispose();
     liveCard.dispose();

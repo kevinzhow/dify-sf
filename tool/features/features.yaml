@@ -1095,9 +1095,8 @@ features:
   area: node-tool
   title: 'Tool: MCP tool Copy ID row under the card description'
   dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/nodes/tool/components/copy-id.tsx]
-  status: partial
-  reason: The CopyId widget is ported (copy_id.dart) but nothing mounts it, so MCP tool cards show no Copy ID row.
-  evidence: []
+  status: ported
+  evidence: [app/test/workflow_editor/mcp_card_copy_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/data/tool/copy_id.dart]
 
 - id: node-iteration.card

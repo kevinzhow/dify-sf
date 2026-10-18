@@ -22,6 +22,10 @@ abstract class CardSpec {
   /// The card for [node]. [live] cards show run status in their content (captures for zoomed-out views leave it
   /// out: the canvas draws status itself). [onPainted] is called after a frame in which the card repainted.
   Widget build(BuildContext context, CanvasNode node, CanvasGraph graph, {required bool live, VoidCallback? onPainted});
+
+  /// Live controls, in canvas coordinates. Captured cards reserve their space instead of baking buttons into
+  /// textures. The shared canvas layer handles hit testing, dimming and pointer ownership for either renderer.
+  List<({Rect rect, Widget child})> controls(BuildContext context, CanvasNode node, CanvasGraph graph) => const [];
 }
 
 /// Whether cards below draw their loaders: false where the renderer draws them over the card instead (a captured
@@ -58,3 +62,11 @@ Color blockColor(String type) => switch (type) {
   'datasource' => const Color(0xFF828DAD),
   _ => const Color(0xFF828DAD),
 };
+
+/// Captured cards leave room for controls painted by the shared live control layer.
+class CanvasCardControls extends InheritedWidget {
+  const CanvasCardControls({super.key, required super.child});
+  static bool overlaid(BuildContext context) => context.getInheritedWidgetOfExactType<CanvasCardControls>() != null;
+  @override
+  bool updateShouldNotify(CanvasCardControls oldWidget) => false;
+}
