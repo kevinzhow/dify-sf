@@ -4,33 +4,69 @@ import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
-import '../store/store.dart';
+import '../../design/dify_icon.dart';
+import '../../design/widgets/tooltip.dart';
+import '../header/header_widgets.dart' show Spinning;
+import '../operator/actions.dart' show OperatorReadOnly;
+import 'inspect_vars.dart';
 
 /// variable-inspect/trigger.tsx: "VARIABLE INSPECT" while there is nothing to inspect, "View cached variables" and
-/// "Clear" once there are variables (environment and conversation variables count, as in Dify's useCurrentVars);
-/// both open the variable inspect panel. (The running state comes with runs.)
+/// "Clear" once there are variables (environment, conversation and system variables count, as in Dify's
+/// useCurrentVars); both open the variable inspect panel unless the nodes are read-only. While a run is going on:
+/// "Caching running status" (opens the panel) and, for a preview run, Stop. Nothing while the panel is open.
 class VariableInspectTrigger extends StatelessWidget {
-  const VariableInspectTrigger({super.key, this.readOnly = false, this.onClearAll});
-
-  final bool readOnly;
-
-  /// deleteAllInspectorVars: the cached values of this editor's inspected nodes.
-  final VoidCallback? onClearAll;
+  const VariableInspectTrigger({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final store = WorkflowStoreScope.of(context);
+    final scope = VariableInspectScope.of(context), crud = scope.crud, store = crud.store;
     return ListenableBuilder(
-      listenable: Listenable.merge([
-        store.showVariableInspectPanel,
-        store.environmentVariables,
-        store.conversationVariables,
-      ]),
+      listenable: Listenable.merge([store.showVariableInspectPanel, crud.changes, store.readOnlyChanges]),
       builder: (context, _) {
         if (store.showVariableInspectPanel.value) return const SizedBox.shrink();
+        final readOnly = store.nodesReadOnly;
         void open() => readOnly ? null : store.setShowVariableInspectPanel(true);
-        final cached = store.environmentVariables.value.isNotEmpty || store.conversationVariables.value.isNotEmpty;
-        if (!cached) {
+        final result = store.workflowRunningData.value?['result'];
+        // useNodes' `_singleRunningStatus` (a node run step by step) has no counterpart without a runtime.
+        if (result is Map && result['status'] == 'running') {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 4,
+            children: [
+              _Chip(
+                height: 24,
+                padding: 8,
+                readOnly: false,
+                accentHover: true,
+                onTap: () => store.setShowVariableInspectPanel(true),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 4,
+                  children: [
+                    const Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+                    DifyText(
+                      DifyI18n.tr('workflow', 'debug.variableInspect.trigger.running'),
+                      DifyType.systemXsMedium,
+                      color: DifyColors.textAccent,
+                    ),
+                  ],
+                ),
+              ),
+              DifyTooltip(
+                content: Text(DifyI18n.tr('workflow', 'debug.variableInspect.trigger.stop')),
+                child: _Chip(
+                  height: 24,
+                  padding: 4,
+                  readOnly: false,
+                  accentHover: true,
+                  onTap: scope.onStop,
+                  child: const RemixIcon('stop-circle-fill', size: 16, color: DifyColors.textAccent),
+                ),
+              ),
+            ],
+          );
+        }
+        if (!crud.hasVars) {
           return _Chip(
             height: 20,
             padding: 8,
@@ -64,7 +100,12 @@ class VariableInspectTrigger extends StatelessWidget {
               padding: 4,
               readOnly: readOnly,
               accentHover: true,
-              onTap: readOnly ? null : onClearAll,
+              onTap: readOnly
+                  ? null
+                  : () {
+                      crud.deleteAllInspectorVars();
+                      store.setCurrentFocusNodeId('');
+                    },
               child: DifyText(
                 DifyI18n.tr('workflow', 'debug.variableInspect.trigger.clear'),
                 DifyType.systemXsMedium,

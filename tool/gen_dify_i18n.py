@@ -8,7 +8,7 @@ from pathlib import Path
 
 NAMESPACES = ['workflow', 'common', 'plugin', 'plugin-trigger', 'tools', 'app', 'app-debug', 'run-log', 'time',
               'agent-v-2', 'dataset', 'dataset-settings', 'dataset-creation', 'dataset-documents', 'plugin-trigger', 'pipeline',
-              'share']
+              'share', 'app-overview']
 src, out = Path(sys.argv[1]) / 'web/i18n', Path(sys.argv[2])
 if out.exists():
     shutil.rmtree(out)

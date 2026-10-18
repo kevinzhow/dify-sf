@@ -46,6 +46,7 @@ class DifyI18n implements Translator {
       'dataset-creation',
       'dataset-documents',
       'agent-v-2',
+      'app-overview',
     ],
   }) async {
     final b = bundle ?? rootBundle;
@@ -71,7 +72,8 @@ class DifyI18n implements Translator {
   String t(String ns, String key, [Map<String, Object?> params = const {}]) {
     final count = params['count'];
     String? lookup(Map<String, Map<String, String>> bundles, String lang) {
-      final b = bundles[ns];
+      // Dify code names namespaces in camelCase (`appOverview`) for kebab-case files (`app-overview.json`).
+      final b = bundles[ns] ?? bundles[ns.replaceAllMapped(RegExp('[A-Z]'), (m) => '-${m[0]!.toLowerCase()}')];
       if (b == null) return null;
       if (count is num) {
         final hit = b['${key}_${pluralCategory(lang, count)}'] ?? b['${key}_other'];
