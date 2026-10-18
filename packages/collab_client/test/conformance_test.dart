@@ -621,12 +621,84 @@ workflow:
         res.headers['access-control-allow-headers']!.toLowerCase(),
         allOf(contains('last-event-id'), contains('content-type')),
       );
-      expect(res.headers['access-control-allow-methods'], allOf(contains('POST'), contains('PUT')));
+      expect(res.headers['access-control-allow-methods'], allOf(contains('POST'), contains('PUT'), contains('DELETE')));
       final get = http.Request('GET', base.replace(path: '/v1/docs/$doc'))..headers['Origin'] = 'http://localhost:5555';
       expect((await get.send()).headers['access-control-allow-origin'], 'http://localhost:5555');
       final foreign = http.Request('GET', base.replace(path: '/v1/docs/$doc'))
         ..headers['Origin'] = 'http://evil.example';
       expect((await foreign.send()).headers.containsKey('access-control-allow-origin'), isFalse);
+    });
+
+    test('canvas comments: author rules, replies, idempotent resolve, the comments event (no id)', () async {
+      final comments = api.comments(doc);
+      await api.setClientName(doc, 'cli-a', 'Alice');
+      final events = <StreamEvent>[];
+      final sub = t.openStream(const StreamOpen(lastEventId: 0)).listen((e) => e is PingEvent ? null : events.add(e));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      final c = await comments.create(
+        author: 'cli-a',
+        x: 120.5,
+        y: -40,
+        content: 'check',
+        mentions: ['cli-b', 'cli-b'],
+      );
+      expect((c.positionX, c.positionY, c.createdBy, c.createdByName), (120.5, -40.0, 'cli-a', 'Alice'));
+      expect(c.mentions.map((m) => m.client), ['cli-b']);
+      expect(c.id, hasLength(36));
+      await post('cli-a', [(1, 0, setPrompt('llm', 'x'))]);
+      final c2 = await comments.create(author: 'cli-b', x: 0, y: 0, content: 'second');
+      expect((await comments.list()).map((x) => x.id), [c2.id, c.id]);
+
+      await expectLater(
+        comments.update(c.id, author: 'cli-b', x: 1, y: 1),
+        throwsA(isA<TransportException>().having((e) => e.notAuthor, 'not_author', isTrue)),
+      );
+      await expectLater(comments.delete(c.id, author: 'cli-b'), throwsA(isA<TransportException>()));
+      final moved = await comments.update(c.id, author: 'cli-a', x: 300, y: 400);
+      expect((moved.positionX, moved.content), (300.0, 'check'));
+      await expectLater(
+        comments.create(author: 'cli-a', x: 0, y: 0, content: 'x' * 1001),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 400)),
+      );
+
+      final r = await comments.reply(c.id, author: 'cli-b', content: 'on it', mentions: ['cli-a']);
+      expect(r.mentions.single.name, 'Alice');
+      await expectLater(
+        comments.editReply(c.id, r.id, author: 'cli-a', content: 'mine now'),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 403)),
+      );
+      expect((await comments.editReply(c.id, r.id, author: 'cli-b', content: 'done')).content, 'done');
+      expect((await comments.get(c.id)).replyCount, 1);
+      await comments.deleteReply(c.id, r.id, author: 'cli-b');
+
+      final first = await comments.resolve(c.id, author: 'cli-b');
+      final again = await comments.resolve(c.id, author: 'cli-a');
+      expect((first.resolved, again.resolvedBy, again.resolvedAt), (true, 'cli-b', first.resolvedAt));
+      await comments.delete(c.id, author: 'cli-a');
+      await expectLater(
+        comments.get(c.id),
+        throwsA(isA<TransportException>().having((e) => e.statusCode, 'status', 404)),
+      );
+      expect(await comments.clientNames(), containsPair('cli-a', 'Alice'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await sub.cancel();
+      final notes = events.whereType<CommentsEvent>().map((e) => '${e.action.name}:${e.comment == c.id ? 1 : 2}');
+      expect(notes, [
+        'created:1',
+        'created:2',
+        'updated:1',
+        'reply:1',
+        'reply:1',
+        'reply:1',
+        'resolved:1',
+        'deleted:1',
+      ]);
+      // The commit kept seq 1 (comments take no seq) and the stream stayed gapless around the notifications.
+      expect(events.whereType<CommitEvent>().map((e) => e.entry.seq), [1]);
+      final snap = await api.snapshot(doc);
+      expect(snap.seq, 1);
     });
 
     test('bases may decrease from one op to the next', () async {

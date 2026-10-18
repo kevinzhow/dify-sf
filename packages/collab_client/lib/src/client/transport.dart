@@ -1,4 +1,5 @@
 import '../wire/messages.dart';
+import 'comments_api.dart';
 
 /// How a [CollabSession](session.dart) talks to the server for one document. Implementations: the real
 /// HTTP/SSE transport and the in-memory fake transport used by tests.
@@ -24,6 +25,10 @@ abstract interface class CollabTransport {
   /// (`value` = the mask, `secret_ref` = the reference); the plaintext never enters ops, the log or snapshots.
   Future<({String ref, String masked})> storeSecret(String value);
 
+  /// The canvas comments of this document (docs/protocol.md, "Comments"). Their change notifications arrive on the
+  /// event stream as [CommentsEvent]s (`CollabSession.comments`).
+  CommentsApi get comments;
+
   /// Releases resources (open connections).
   void close();
 }
@@ -43,6 +48,9 @@ class TransportException implements Exception {
   final bool timeout;
 
   bool get payloadTooLarge => statusCode == 413;
+
+  /// A comment or reply was edited, moved or deleted by someone other than its author (`403 not_author`).
+  bool get notAuthor => statusCode == 403 && code == 'not_author';
 
   @override
   String toString() =>

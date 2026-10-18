@@ -3,8 +3,10 @@ import 'dart:math';
 
 import 'package:clock/clock.dart';
 
+import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../wire/messages.dart';
+import 'fake_comments.dart';
 import 'fake_server.dart';
 
 /// Network conditions between one client and a [FakeServer]. All randomness comes from [random], so a
@@ -140,6 +142,9 @@ class FakeTransport implements CollabTransport {
   }
 
   @override
+  late final CommentsApi comments = FakeCommentsApi(server, network: network);
+
+  @override
   Future<String> issueClientId({String? name}) async {
     if (network.refused || network.partitioned) throw const TransportException('connection refused');
     return server.issueClientId(name: name);
@@ -195,6 +200,7 @@ class _FakeStream {
   bool get _blackholed => net.partitioned || net.blockStreams;
   DateTime? _lastDelivery;
   late final void Function(LogEntry) _listener = _onCommit;
+  late final void Function(CommentsEvent) _commentsListener = _onComments;
 
   FakeNetwork get net => transport.network;
   FakeServer get server => transport.server;
@@ -222,6 +228,7 @@ class _FakeStream {
       proto: open.proto,
     );
     server.addListener(_listener);
+    server.comments.addListener(_commentsListener);
     for (final e in events) {
       _deliver(e);
     }
@@ -243,6 +250,12 @@ class _FakeStream {
     }
     if (net.chance(net.holeRate)) return; // lost on the way, connection stays up
     _deliver(CommitEvent(e));
+  }
+
+  /// Comment notifications: best-effort (no seq), so a blackholed stream just loses them.
+  void _onComments(CommentsEvent e) {
+    if (!_connected || _closed || _blackholed || _dead) return;
+    _deliver(e);
   }
 
   /// In-order delivery with latency (TCP never reorders).
@@ -286,6 +299,7 @@ class _FakeStream {
     _pingTimer?.cancel();
     _openTimer?.cancel();
     server.removeListener(_listener);
+    server.comments.removeListener(_commentsListener);
     net._streams.remove(this);
   }
 }

@@ -210,6 +210,8 @@ sealed class StreamEvent {
         );
       case 'ready':
         return ReadyEvent(_int(_obj(jsonDecode(data), 'ready'), 'head'));
+      case 'comments':
+        return CommentsEvent.fromJson(jsonDecode(data));
       default:
         return null;
     }
@@ -242,6 +244,56 @@ final class ReadyEvent extends StreamEvent {
 /// is to prove the connection is alive (the silence watchdog).
 final class PingEvent extends StreamEvent {
   const PingEvent();
+}
+
+/// What changed in a [CommentsEvent].
+enum CommentsAction {
+  created,
+  updated,
+  deleted,
+  resolved,
+
+  /// A reply of the comment was created, edited or deleted.
+  reply,
+
+  /// Never sent by the server: `CollabSession.comments` emits it whenever the event stream (re)connected (on `ready`).
+  /// Notifications are not replayed, so anything may have changed meanwhile: refetch everything.
+  resync,
+
+  /// An action this client does not know (sent by a newer server): treat as "this comment changed".
+  unknown;
+
+  static CommentsAction parse(Object? s) =>
+      values.firstWhere((a) => a.name == s && a != resync && a != unknown, orElse: () => unknown);
+}
+
+/// `event: comments` (canvas comments, additive): comment [comment] changed. A best-effort notification without an SSE
+/// `id`: it does not move the resume point, and the machine treats it as liveness only. Refetch the comments
+/// (`GET /comments`) on it; the REST list is the truth.
+final class CommentsEvent extends StreamEvent {
+  const CommentsEvent({required this.comment, required this.action});
+
+  /// The local "stream (re)connected" signal ([CommentsAction.resync]); [comment] is empty.
+  const CommentsEvent.resync() : comment = '', action = CommentsAction.resync;
+
+  factory CommentsEvent.fromJson(Object? json) {
+    final m = _obj(json, 'comments');
+    final id = m['comment'];
+    if (id is! String) throw FormatException('comments event without a comment id: $json');
+    return CommentsEvent(comment: id, action: CommentsAction.parse(m['action']));
+  }
+
+  final String comment;
+  final CommentsAction action;
+
+  @override
+  bool operator ==(Object other) => other is CommentsEvent && other.comment == comment && other.action == action;
+
+  @override
+  int get hashCode => Object.hash(comment, action);
+
+  @override
+  String toString() => 'CommentsEvent(${action.name}, $comment)';
 }
 
 /// The protocol version this package implements (docs/protocol.md). Sent as `proto` when opening the event stream, so

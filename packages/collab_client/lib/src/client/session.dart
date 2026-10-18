@@ -122,6 +122,7 @@ class CollabSession {
   String? _lastError;
 
   final _events = StreamController<ClientEvent>.broadcast();
+  final _comments = StreamController<CommentsEvent>.broadcast();
   final _changes = StreamController<void>.broadcast();
   bool _changeScheduled = false;
   final List<Completer<void>> _idleWaiters = [];
@@ -137,6 +138,11 @@ class CollabSession {
 
   /// Terminal outcomes and warnings for the user's edits (see [ClientEvent]). Broadcast.
   Stream<ClientEvent> get events => _events.stream;
+
+  /// Canvas comment notifications (docs/protocol.md, "Comments"): every `event: comments` of the stream, plus a
+  /// [CommentsAction.resync] each time the stream reaches `ready` (first connect and every reconnect), since
+  /// notifications missed while disconnected are not replayed. Refetch on each (`transport.comments`). Broadcast.
+  Stream<CommentsEvent> get comments => _comments.stream;
 
   /// Fires (coalesced) whenever the view, status or pending ops changed. Broadcast.
   Stream<void> get changes => _changes.stream;
@@ -245,6 +251,7 @@ class CollabSession {
     _streamSub = null;
     transport.close();
     await _events.close();
+    await _comments.close();
     await _changes.close();
   }
 
@@ -322,7 +329,15 @@ class CollabSession {
     _streamSub = transport
         .openStream(open)
         .listen(
-          (e) => _feed(() => _machine.receiveStream(e, gen, _clock())),
+          (e) {
+            _feed(() => _machine.receiveStream(e, gen, _clock()));
+            if (_comments.isClosed || !_running || gen != _machine.generation) return;
+            if (e is CommentsEvent) {
+              _comments.add(e);
+            } else if (e is ReadyEvent) {
+              _comments.add(const CommentsEvent.resync());
+            }
+          },
           onError: closed,
           onDone: () => closed(null),
           cancelOnError: true,

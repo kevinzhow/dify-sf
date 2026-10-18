@@ -5,6 +5,7 @@ import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
 import '../wire/messages.dart';
+import 'fake_comments.dart';
 
 /// An in-memory implementation of the server side of docs/protocol.md for one document: the sequencer
 /// rules (idempotency by `(client, cseq)`, gaps, floor/resolveFrom, stale-write validation), the committed
@@ -29,6 +30,9 @@ class FakeServer {
 
   /// Display names by client id (protocol 1.3).
   final Map<String, String> names = {};
+
+  /// The document's canvas comments (`/comments`), beside the document (not in it, not in the log).
+  late final FakeComments comments = FakeComments(() => names);
 
   /// Plaintext of secret environment variables by reference (protocol 1.7, `POST /v1/docs/{doc}/secrets`).
   final Map<String, String> secrets = {};

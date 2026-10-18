@@ -3,8 +3,10 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../wire/messages.dart';
+import 'http_comments_api.dart';
 import 'sse_parser.dart';
 
 /// Real transport: `POST` for ops, a hand-rolled SSE reader for the event stream. Works on the Dart VM and
@@ -45,6 +47,14 @@ class HttpTransport implements CollabTransport {
     path:
         '${_base.path.endsWith('/') ? _base.path.substring(0, _base.path.length - 1) : _base.path}/v1/docs/$docId$suffix',
     queryParameters: query,
+  );
+
+  @override
+  late final CommentsApi comments = HttpCommentsApi(
+    baseUrl: _base,
+    docId: docId,
+    client: _client,
+    timeout: connectTimeout,
   );
 
   @override

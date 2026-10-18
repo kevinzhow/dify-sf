@@ -8,6 +8,7 @@ import '../model/document.dart';
 import '../model/ops.dart';
 import '../model/templates.dart';
 import '../wire/messages.dart';
+import 'fake_comments.dart';
 import 'fake_server.dart';
 
 /// The protocol served over real HTTP and SSE sockets, backed by in-memory [FakeServer]s (one per
@@ -105,7 +106,7 @@ class HttpFakeServer {
         preflights++;
         req.response
           ..statusCode = 204
-          ..headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
+          ..headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
           ..headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Last-Event-ID, Cache-Control')
           ..headers.set('Access-Control-Max-Age', '600');
         return await req.response.close();
@@ -151,6 +152,7 @@ class HttpFakeServer {
         }
         if (seg.length == 4 && seg[3] == 'events' && req.method == 'GET') return await _events(req, seg[2]);
         if (seg.length == 4 && seg[3] == 'secrets' && req.method == 'POST') return await _storeSecret(req, seg[2]);
+        if (seg.length >= 4 && seg.length <= 7 && seg[3] == 'comments') return await _comments(req, seg);
         if (seg.length == 4 && seg[3] == 'meta' && req.method == 'GET') {
           final d = docs[seg[2]];
           if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
@@ -182,6 +184,85 @@ class HttpFakeServer {
     if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
     final (:ref, :masked) = d.storeSecret(value);
     await _json(req, 201, {'ref': ref, 'masked': masked});
+  }
+
+  /// The canvas comments routes (`/v1/docs/{doc}/comments...`), on the document's [FakeServer.comments].
+  Future<void> _comments(HttpRequest req, List<String> seg) async {
+    final d = docs[seg[2]];
+    final text = await utf8.decoder.bind(req).join();
+    if (d == null) return await _error(req, 404, 'not_found', 'unknown document');
+    Map<String, Object?> body = const {};
+    if (text.trim().isNotEmpty) {
+      try {
+        final json = jsonDecode(text);
+        if (json is! Map<String, Object?>) return await _error(req, 400, 'bad_request', 'body must be an object');
+        body = json;
+      } on FormatException {
+        return await _error(req, 400, 'bad_request', 'malformed JSON');
+      }
+    }
+    final c = d.comments, m = req.method, client = body['client'] as String?, query = req.uri.queryParameters['client'];
+    final id = seg.length > 4 ? seg[4] : null;
+    try {
+      switch ((seg.length, m)) {
+        case (4, 'GET'):
+          return await _json(req, 200, {'comments': c.list()});
+        case (4, 'POST'):
+          return await _json(
+            req,
+            201,
+            c.create(
+              client: client,
+              x: body['position_x'],
+              y: body['position_y'],
+              content: body['content'],
+              mentions: body['mentioned_client_ids'],
+            ),
+          );
+        case (5, 'GET'):
+          return await _json(req, 200, c.get(id!));
+        case (5, 'PUT'):
+          return await _json(
+            req,
+            200,
+            c.update(
+              id!,
+              client: client,
+              content: body['content'],
+              x: body['position_x'],
+              y: body['position_y'],
+              mentions: body['mentioned_client_ids'],
+            ),
+          );
+        case (5, 'DELETE'):
+          c.delete(id!, client: query);
+          req.response.statusCode = 204;
+          return await req.response.close();
+        case (6, 'POST') when seg[5] == 'resolve':
+          return await _json(req, 200, c.resolve(id!, client: client));
+        case (6, 'POST') when seg[5] == 'replies':
+          return await _json(
+            req,
+            201,
+            c.reply(id!, client: client, content: body['content'], mentions: body['mentioned_client_ids']),
+          );
+        case (7, 'PUT') when seg[5] == 'replies':
+          return await _json(
+            req,
+            200,
+            c.editReply(id!, seg[6], client: client, content: body['content'], mentions: body['mentioned_client_ids']),
+          );
+        case (7, 'DELETE') when seg[5] == 'replies':
+          c.deleteReply(id!, seg[6], client: query);
+          req.response.statusCode = 204;
+          return await req.response.close();
+      }
+    } on FakeCommentsError catch (e) {
+      return await _error(req, e.status, e.code, e.message);
+    } on TypeError {
+      return await _error(req, 400, 'bad_request', 'malformed body');
+    }
+    await _error(req, 404, 'not_found', 'no such route');
   }
 
   /// `GET /v1/docs/{doc}/meta` for a document that was not imported: the defaults of the reference server, with the
@@ -322,11 +403,15 @@ class HttpFakeServer {
           onCommit(entry);
         case ReadyEvent(:final head):
           write(_frame('ready', null, {'head': head}));
-        case PingEvent():
+        case PingEvent() || CommentsEvent():
           break;
       }
     }
     d.addListener(onCommit);
+    // Comment notifications: no `id:` (they never move the resume point).
+    void onComments(CommentsEvent e) =>
+        write(_frame('comments', null, {'comment': e.comment, 'action': e.action.name}));
+    d.comments.addListener(onComments);
     final ping = Timer.periodic(pingInterval, (_) => write(': ping\n\n'));
     try {
       await gone.future;
@@ -336,6 +421,7 @@ class HttpFakeServer {
       closed = true;
       ping.cancel();
       d.removeListener(onCommit);
+      d.comments.removeListener(onComments);
       _streams.remove(socket);
       socket.destroy();
     }

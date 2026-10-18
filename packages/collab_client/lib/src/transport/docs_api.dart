@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../client/comments_api.dart';
 import '../client/transport.dart';
 import '../model/document.dart';
+import 'http_comments_api.dart';
 
 /// Result of creating or looking up a document.
 final class DocInfo {
@@ -187,6 +189,9 @@ class DocsApi {
     if (res.statusCode != 200) throw _error(res);
     return DocMeta.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, Object?>);
   }
+
+  /// The canvas comments of document [id] (`/v1/docs/{id}/comments`), over this API's HTTP client.
+  CommentsApi comments(String id) => HttpCommentsApi(baseUrl: baseUrl, docId: id, client: _client, timeout: timeout);
 
   /// `GET /v1/docs/{id}/snapshot`: the full document at the current head.
   Future<({int seq, Document doc})> snapshot(String id) async {
