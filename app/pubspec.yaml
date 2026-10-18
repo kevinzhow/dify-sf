@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   collab_client:
     path: ../packages/collab_client
+  elk_layered:
+    path: ../packages/elk_layered
   path_provider: ^2.1.0
   shared_preferences: ^2.3.0
   web: ^1.1.1

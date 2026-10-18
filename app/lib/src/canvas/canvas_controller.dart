@@ -33,6 +33,13 @@ class CanvasController {
   void zoomTo(double scale) =>
       view.zoomAt(Offset(view.viewport.width / 2, view.viewport.height / 2), scale / view.scale);
 
+  /// React Flow's setViewport: screen = canvas * [zoom] + ([x], [y]).
+  void setViewport(double x, double y, double zoom) {
+    view
+      ..scale = zoom
+      ..center = (Offset(view.viewport.width / 2, view.viewport.height / 2) - Offset(x, y)) / view.scale;
+  }
+
   /// React Flow's fitView (padding 0.1, Dify's zoom range): the nodes' bounds, centred, as large as fits.
   void fitView({double padding = 0.1}) {
     final g = graph;

@@ -18,6 +18,7 @@ import 'header/workflow_header.dart';
 import 'node_panel/node_panel.dart';
 import 'note_node/note_node.dart';
 import 'operator/operator.dart';
+import 'organize/workflow_organize.dart';
 import 'store/app_registers_sync.dart';
 import 'store/store.dart';
 import 'variable_inspect/inspect_vars.dart';
@@ -129,6 +130,13 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     if (context != null) addNoteCandidate(context, controller);
   }
 
+  /// The control bar's Organize and Mod+O (useWorkflowOrganize handleLayout).
+  void _organize() {
+    final context = _inner, canvas = _canvas;
+    if (context == null || canvas == null) return;
+    WorkflowOrganize(controller: controller, canvas: canvas, store: WorkflowStoreScope.of(context)).handleLayout();
+  }
+
   /// Puts a placed candidate (and an iteration's or loop's start node) into the document as one undo step.
   void _place(CandidatePlacement p) {
     final doc = controller.doc;
@@ -143,7 +151,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   @override
   Widget build(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
-    final options = OperatorOptions(collaborationEnabled: true, onAddNote: _addNote);
+    final options = OperatorOptions(collaborationEnabled: true, onAddNote: _addNote, onOrganize: _organize);
     final menuOptions = WorkflowMenuOptions(
       isChatMode: meta.isChatflow,
       onAddBlock: _addBlockAt,
