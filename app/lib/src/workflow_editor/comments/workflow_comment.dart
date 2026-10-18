@@ -6,13 +6,14 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:collab_client/collab_client.dart' show Comment;
+import 'package:collab_client/collab_client.dart' show Comment, TransportException;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
 import '../../canvas/canvas_input.dart' show ControlMode;
+import '../../design/widgets/toast.dart' show toast;
 import '../../i18n/dify_i18n.dart';
 import '../store/workflow_store.dart';
 import 'comments_store.dart';
@@ -275,7 +276,14 @@ class WorkflowComments {
   /// handleCommentDelete: then the next comment's thread opens (else the previous, else the first left, else none).
   Future<void> delete(String id) => _loading(store.activeCommentDetailLoading, 'Failed to delete comment', () async {
     final before = comments;
-    await source.delete(id);
+    try {
+      await source.delete(id);
+    } on TransportException catch (e) {
+      // Dify shows the delete button to everyone and says nothing when the server refuses; dify-sf tells the user why
+      // (owner's decision, 2026-10-18).
+      if (e.notAuthor) toast.error('Only the author can delete this thread');
+      rethrow;
+    }
     final i = before.indexWhere((c) => c.id == id);
     final fallback = i >= 0 ? (i + 1 < before.length ? before[i + 1] : (i > 0 ? before[i - 1] : null)) : null;
     final rest = [

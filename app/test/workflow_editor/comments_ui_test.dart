@@ -15,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../dify_spec/dify_test_i18n.dart';
 import '../support/app_fonts.dart';
 
+import 'package:dify_sf_app/src/design/widgets/toast.dart' show DifyToastHost;
+
 const _me = 'me-abc123';
 
 /// The whole editor over the in-memory demo server: comment mode, placing, replying, resolving, author-only edits
@@ -41,6 +43,7 @@ void main() {
     await t.pumpWidget(
       MaterialApp(
         home: EditorPage(backend: demo, docId: 'demo', clientId: _me, displayName: 'Me', journaled: false),
+        builder: (context, child) => Stack(children: [child!, const DifyToastHost()]),
       ),
     );
     await frames(t, 20);
@@ -176,6 +179,14 @@ void main() {
     await frames(t, 8);
     expect(demo.server.comments.length, 1);
     expect(find.descendant(of: find.byType(CommentThread), matching: find.text('from Bob')), findsOneWidget);
+
+    // Deleting someone else's thread: the button is there (as in Dify), the server refuses, and a toast says why.
+    await t.tap(find.bySemanticsLabel('workflow.comments.aria.deleteComment'));
+    await frames(t, 2);
+    await t.tap(find.text('common.operation.confirm'));
+    await frames(t, 8);
+    expect(demo.server.comments.length, 1);
+    expect(find.text('Only the author can delete this thread'), findsOneWidget);
     await close(t);
   });
 }

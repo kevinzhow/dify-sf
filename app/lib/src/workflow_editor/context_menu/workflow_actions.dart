@@ -11,6 +11,7 @@ import '../../editor/undo_manager.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../ids.dart';
 import '../store/workflow_store.dart';
+import '../organize/workflow_organize.dart' show reactFlowSizeOf;
 import 'clipboard.dart';
 import 'node_meta.dart';
 
@@ -238,7 +239,7 @@ class WorkflowActions {
   /// React Flow's size of a node (its card and frame), or null when unknown.
   Size? sizeOf(Node n) {
     final c = canvas.graph?[n.id];
-    if (c != null) return c.layout.visual.isEmpty ? null : Size(c.layout.visual.width + 2, c.layout.visual.height + 2);
+    if (c != null) return reactFlowSizeOf(canvas, n);
     double? num(Value? v) => switch (v) {
       VInt(:final value) => value.toDouble(),
       VDouble(:final value) => value,
