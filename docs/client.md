@@ -202,6 +202,9 @@ Builds: `flutter build linux --release` and `flutter build web --release` succee
 
 ## Known gaps
 
+Feature by feature against Dify 1.17.1 (ported, partial, not ported and why): [`features.md`](features.md),
+generated from `tool/features/features.yaml` (update the entry with every merge; see the README).
+
 * **Web is built but not run.** There is no Chrome or Node on the build machine (the only Firefox is a snap that
   cannot use `dart test`'s temporary profile), so the web build compiles (also a wasm dry run) but the pure logic,
   `LocalStorageStore`, `fetch` streaming and CORS were never executed in a browser. `localStorage` is not IndexedDB: it survives reloads and tab crashes, not an OS crash before the browser
