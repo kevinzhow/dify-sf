@@ -27,8 +27,9 @@ String formatFileSize(num size) {
   return i == 0 ? '${s.toStringAsFixed(2)} bytes' : '${s.toStringAsFixed(2)} ${units[i]}B';
 }
 
-/// FileUploadSetting (not in the features panel): the supported file types, the upload method and, for lists, the
-/// maximum number of uploads.
+/// FileUploadSetting: the supported file types, the upload method and, for lists, the maximum number of uploads. In
+/// the features panel ([inFeaturePanel]) the file types come last, and not at all with [hideSupportFileType] (the
+/// legacy image upload).
 class FileUploadSetting extends StatelessWidget {
   const FileUploadSetting({
     super.key,
@@ -38,7 +39,11 @@ class FileUploadSetting extends StatelessWidget {
     this.maxFileUploadLimit = 10,
     this.validationError,
     this.sizeLimits = const (img: 10 << 20, doc: 15 << 20, audio: 50 << 20, video: 100 << 20),
+    this.inFeaturePanel = false,
+    this.hideSupportFileType = false,
   });
+
+  final bool inFeaturePanel, hideSupportFileType;
 
   final Map<String, Object?> payload;
   final bool isMultiple;
@@ -72,29 +77,30 @@ class FileUploadSetting extends StatelessWidget {
         ? (methods.contains('remote_url') ? 'all' : 'local_file')
         : (methods.contains('remote_url') ? 'remote_url' : null);
     final max = payload['max_length'];
+    final fileTypes = ModalField(
+      title: ad('variableConfig.file.supportFileTypes'),
+      errorMessage: validationError?.message,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 4,
+        children: [
+          for (final t in const ['document', 'image', 'audio', 'video'])
+            _FileTypeItem(type: t, selected: types.contains(t), onToggle: _toggleType),
+          _FileTypeItem(
+            type: 'custom',
+            selected: types.contains('custom'),
+            onToggle: _toggleType,
+            customFileTypes: _strings('allowed_file_extensions'),
+            onCustomFileTypesChange: (v) => onChange({...payload, 'allowed_file_extensions': v}),
+          ),
+        ],
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        ModalField(
-          title: ad('variableConfig.file.supportFileTypes'),
-          errorMessage: validationError?.message,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 4,
-            children: [
-              for (final t in const ['document', 'image', 'audio', 'video'])
-                _FileTypeItem(type: t, selected: types.contains(t), onToggle: _toggleType),
-              _FileTypeItem(
-                type: 'custom',
-                selected: types.contains('custom'),
-                onToggle: _toggleType,
-                customFileTypes: _strings('allowed_file_extensions'),
-                onCustomFileTypesChange: (v) => onChange({...payload, 'allowed_file_extensions': v}),
-              ),
-            ],
-          ),
-        ),
+        if (!inFeaturePanel) fileTypes,
         const SizedBox(height: 16),
         SizedBox(
           height: 32,
@@ -158,6 +164,7 @@ class FileUploadSetting extends StatelessWidget {
             ),
           ),
         ],
+        if (inFeaturePanel && !hideSupportFileType) ...[const SizedBox(height: 16), fileTypes],
       ],
     );
   }

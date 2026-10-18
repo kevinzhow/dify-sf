@@ -28,7 +28,10 @@ class DifyBlurredBox extends StatelessWidget {
     Widget box = inset == EdgeInsets.zero ? child : Padding(padding: inset, child: child);
     if (decoration != null) box = DecoratedBox(decoration: decoration!, child: box);
     if (blur <= 0) return box;
+    // The blur does not change the box's size: the content gets the constraints as they are (a `w-full` button
+    // stays full width).
     return Stack(
+      fit: StackFit.passthrough,
       children: [
         Positioned.fill(
           child: ClipRRect(

@@ -7,6 +7,7 @@
 /// - [PanelInputs]: `useNodeCrud` over the live data (`inputs`, `setInputs(next, textKey:, textBase:)`, `set`).
 /// - [writeInputs]: the same diff for any node of an [EditorController] (no panel needed).
 /// - [writeNodeConfig]: a document [Node] with an updated config (e.g. from `updateNodeVars`) as the fewest ops.
+/// - [writeConfigAt]: the same diff for one config path of any node, `$app` included (the features panel).
 /// - [mergeValue] / [selectorValue]: Dify's plain JSON as a config [Value] (references kept / made).
 /// - [NodeVars]: a node's variable scope (`NodeVars.of(props)`: `scope`, `filtered`, `nodesMap`, `beforeNodes`,
 ///   `parent`; `NodeVars.scopeOver` for an explicit node list).
@@ -103,6 +104,16 @@ void writeInputs(EditorController c, String nodeId, Json next, {Node? shown, int
     }
     w.write([key], seen.config[key], orig, plain);
   }
+}
+
+/// The same three-way write for one [path] of any config, the document registers ([Document.appNode], e.g.
+/// `['features', 'file_upload']`) included: the plain JSON [next] is written where it differs from [shown] (what the
+/// editor showed when the edit began) and from the document now, a changed nested map member by its own path.
+void writeConfigAt(EditorController c, String nodeId, List<String> path, {Object? shown, Object? next, int? base}) {
+  final config = nodeId == Document.appNode ? c.doc.app : c.doc.nodes[nodeId]?.config;
+  if (config == null || path.isEmpty) return;
+  final seen = shown == null ? null : mergeValue(null, shown, c.doc);
+  _Writer(c, nodeId, base).write(path, seen, ConfigTree.get(config, path), next);
 }
 
 /// (node type, key): the config keys kept as keyed lists, as the DSL import makes them (`*` = any type).

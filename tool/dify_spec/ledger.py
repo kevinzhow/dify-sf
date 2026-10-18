@@ -14,7 +14,8 @@ from pathlib import Path
 
 ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setting/model-provider-page',
          'packages/dify-ui/src', 'web/app/components/app/app-publisher',
-         'web/app/components/workflow-app/components/workflow-header', 'web/app/components/base/prompt-editor']
+         'web/app/components/workflow-app/components/workflow-header', 'web/app/components/base/prompt-editor',
+         'web/app/components/base/features']
 CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|concurrent|todo))*\(\s*(['"`])(.*?)\3''')
 
 

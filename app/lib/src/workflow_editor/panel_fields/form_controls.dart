@@ -119,6 +119,7 @@ class DifyTextarea extends StatefulWidget {
     this.disabled = false,
     this.minHeight = 80,
     this.verticalPadding = 8,
+    this.maxLength,
   });
 
   /// The text shown; a different value replaces what is typed.
@@ -128,6 +129,9 @@ class DifyTextarea extends StatefulWidget {
   final String? placeholder, semanticLabel;
   final bool disabled;
   final double minHeight, verticalPadding;
+
+  /// `maxLength`: typing stops there.
+  final int? maxLength;
 
   @override
   State<DifyTextarea> createState() => _DifyTextareaState();
@@ -202,6 +206,7 @@ class _DifyTextareaState extends State<DifyTextarea> {
               focusNode: _focus,
               enabled: !w.disabled,
               onChanged: w.onChanged,
+              inputFormatters: w.maxLength == null ? null : [LengthLimitingTextInputFormatter(w.maxLength)],
               minLines: w.minHeight >= 80 ? 3 : null,
               maxLines: null,
               keyboardType: TextInputType.multiline,

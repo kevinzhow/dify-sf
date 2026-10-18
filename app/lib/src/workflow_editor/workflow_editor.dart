@@ -24,6 +24,7 @@ class WorkflowEditor extends StatefulWidget {
     this.panels,
     this.menuOptions = const WorkflowMenuOptions(),
     this.overlay,
+    this.modal,
   });
 
   final EditorController controller;
@@ -43,6 +44,9 @@ class WorkflowEditor extends StatefulWidget {
 
   /// Drawn over the canvas, under the chrome (the candidate node that follows the pointer).
   final Widget Function(BuildContext context, CanvasController canvas)? overlay;
+
+  /// Drawn over everything, chrome included (the features drawer and its backdrop).
+  final Widget Function(BuildContext context, CanvasController canvas)? modal;
 
   /// What the context menus, the node "…" bar and the edit shortcuts call for actions that leave the canvas.
   final WorkflowMenuOptions menuOptions;
@@ -147,6 +151,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   ),
                 ),
               if (w.panels != null) Positioned(top: 56, right: 0, bottom: 4, child: w.panels!(context, canvas)),
+              if (w.modal != null) Positioned.fill(child: w.modal!(context, canvas)),
             ],
           );
         },

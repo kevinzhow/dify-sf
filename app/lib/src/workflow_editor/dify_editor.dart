@@ -9,6 +9,7 @@ import '../editor/editor_controller.dart';
 import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
 import 'context_menu/context_menu.dart';
+import 'features/workflow_features.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
 import 'header/features_trigger.dart';
@@ -217,6 +218,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     ),
                   ],
                 ),
+                // The Features drawer (chatflows open it from the header), over everything with its backdrop.
+                modal: (context, canvas) => WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
               ),
               NoticeOverlay(controller: controller),
             ],

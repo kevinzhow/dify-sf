@@ -274,6 +274,11 @@ class WorkflowStore {
   late final conversationVariables = _v(const <DifyJson>[]);
   void setConversationVariables(List<DifyJson> v) => conversationVariables.value = v;
 
+  /// Dify's `workflow.features` (the server's shape: `opening_statement`, `file_upload`, ...) as the document holds
+  /// it (protocol 1.7: `$app` config `features`), kept by AppRegistersSync. The features panel's store derives from it.
+  late final features = _v(const <String, Object?>{});
+  void setFeatures(DifyJson v) => features.value = v;
+
   // ----- form-slice.ts -----
 
   late final inputs = _v(const <String, Object>{});

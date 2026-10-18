@@ -37,6 +37,7 @@ class DifySelect<T> extends StatefulWidget {
     this.capitalize = false,
     this.textStyle,
     this.paddingX = 12,
+    this.semanticLabel,
   });
 
   final T? value;
@@ -50,6 +51,9 @@ class DifySelect<T> extends StatefulWidget {
   /// The trigger's text (`text-[13px]` and the like); `system-sm-regular` by default.
   final TextStyle? textStyle;
   final double paddingX;
+
+  /// The trigger's `aria-label`.
+  final String? semanticLabel;
 
   @override
   State<DifySelect<T>> createState() => _DifySelectState<T>();
@@ -96,6 +100,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
             disabled: w.disabled,
             textStyle: w.textStyle,
             paddingX: w.paddingX,
+            semanticLabel: w.semanticLabel,
             open: controller.isOpen,
             onTap: w.readonly || w.disabled ? null : controller.toggle,
           ),
@@ -148,7 +153,9 @@ class _SelectTrigger extends StatefulWidget {
     required this.paddingX,
     this.textStyle,
     this.onTap,
+    this.semanticLabel,
   });
+  final String? semanticLabel;
   final String text;
   final bool placeholder, readonly, disabled, open;
   final double paddingX;
@@ -175,6 +182,7 @@ class _SelectTriggerState extends State<_SelectTrigger> {
     return Semantics(
       button: true,
       enabled: !w.disabled,
+      label: w.semanticLabel,
       value: w.text,
       onTap: w.onTap,
       child: MouseRegion(
