@@ -8,3 +8,5 @@ Dify 1.17.1 workflow DSL format (`version: 0.7.0`) and are used as visual-test f
 - `sf_classify_extract_workflow.yml`
 - `sf_retrieval_human_workflow.yml`
 - `sf_triggers_workflow.yml`
+- `sf_run_workflow.yml` (no models: start, code, template, end; environment variables; a note)
+- `sf_chat_preview.yml` (no models: chatflow start, template, answer; conversation variables)

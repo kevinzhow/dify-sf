@@ -157,6 +157,11 @@ abstract final class VsTheme {
   static const inactiveSelection = Color(0xFFE5EBF1); // vs: editor.inactiveSelectionBackground
   static const cursor = Color(0xFF000000); // editorCursor.foreground
   static const lineHighlightBorder = Color(0xFFEEEEEE); // editor.lineHighlightBorder
+
+  /// The overview ruler's border and cursor as Chrome shows them on Dify's light panels (`editorOverviewRuler.border`
+  /// #7f7f7f4d drawn on the ruler's canvas; the cursor `editorCursor.foreground` at 0.7).
+  static const overviewRulerBorder = Color(0x267F7F7F);
+  static const overviewRulerCursor = Color(0xB3000000);
   static const lineNumber = Color(0xFF237893); // editorLineNumber.foreground
   static const activeLineNumber = Color(0xFF0B216F); // editorLineNumber.activeForeground
   static const indentGuide = Color(0xFFD3D3D3); // vs: editorIndentGuide.background1

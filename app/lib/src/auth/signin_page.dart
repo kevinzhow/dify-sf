@@ -111,10 +111,11 @@ class _NormalFormState extends State<NormalForm> {
           const SizedBox(height: 24),
           if (!_inviteError) ...[
             MailAndPasswordAuth(route: route, invite: _invite),
-            // split.tsx `mt-4 mb-5`: a 1 px gradient line, transparent at both ends.
+            // split.tsx `mt-4 mb-5`: a 1 px gradient line, transparent at both ends. CSS collapses its margins with
+            // the button's `mb-2` above and the terms line's `mt-2` below: 16 and 20 px in all.
             Container(
               height: 1,
-              margin: const EdgeInsets.only(top: 16, bottom: 20),
+              margin: const EdgeInsets.only(top: 16 - 8, bottom: 20 - 8),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0x03FFFFFF), Color(0x14101828), Color(0x03FFFFFF)],

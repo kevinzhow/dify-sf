@@ -45,7 +45,7 @@ class NewFeaturePanel extends StatelessWidget {
     this.onAutoAddPromptVariable,
     this.title,
     this.description,
-    this.top = 56,
+    this.top = 112,
   });
 
   final bool show, isChatMode, disabled, showFileUpload, showModeration;
@@ -55,7 +55,7 @@ class NewFeaturePanel extends StatelessWidget {
   final void Function(List<Json> variables)? onAutoAddPromptVariable;
   final String? title, description;
 
-  /// Where the drawer starts below the top of the editor (Dify's `top-28`: under the header).
+  /// Where the drawer starts below the top of the editor (Dify's `top-28`, 112 px: under the header).
   final double top;
 
   @override
@@ -138,7 +138,7 @@ class NewFeaturePanel extends StatelessWidget {
 /// `rounded-l-2xl border-[0.5px] bg-components-panel-bg-alt shadow-xl`, sliding in over 200 ms. Escape closes it, and
 /// so does swiping it to the right (touch). Nothing is drawn while not [show]n.
 class FeaturePanelDrawer extends StatefulWidget {
-  const FeaturePanelDrawer({super.key, required this.show, required this.child, this.onClose, this.top = 56});
+  const FeaturePanelDrawer({super.key, required this.show, required this.child, this.onClose, this.top = 112});
 
   final bool show;
   final Widget child;

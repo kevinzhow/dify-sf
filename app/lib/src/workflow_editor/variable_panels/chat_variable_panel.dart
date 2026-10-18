@@ -241,7 +241,9 @@ class _Tips extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // An `inline-block` badge on the box's 24 px line (the inherited 16 px font): 4 px above it.
                 Container(
+                  margin: const EdgeInsets.only(top: 4),
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                   decoration: BoxDecoration(
                     border: Border.all(color: DifyColors.dividerDeep),

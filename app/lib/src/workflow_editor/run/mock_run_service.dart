@@ -89,8 +89,11 @@ class MockWorkflowRunService extends WorkflowRunService {
     this.script,
     this.conversationVariables,
     DateTime Function()? now,
-    this.user = const {'id': 'mock-user', 'name': 'Mock User', 'email': 'mock@dify-sf.local'},
+    this.user = defaultUser,
   }) : _now = now ?? DateTime.now;
+
+  /// The account runs are created by when none is given.
+  static const DifyJson defaultUser = {'id': 'mock-user', 'name': 'Mock User', 'email': 'mock@dify-sf.local'};
 
   /// The graph runs walk (read when a run starts).
   final RunGraph Function() graph;
@@ -284,7 +287,10 @@ class MockWorkflowRunService extends WorkflowRunService {
     for (final x in vars) {
       _edited.remove(x['id']);
     }
-    _inspect[n.id] = vars;
+    // Dify lists the draft variables newest first: the node that ran last leads.
+    _inspect
+      ..remove(n.id)
+      ..[n.id] = vars;
   }
 
   static String _valueType(Object? v) => switch (v) {
@@ -372,7 +378,7 @@ class MockWorkflowRunService extends WorkflowRunService {
       'conversation_id': ?conversationId,
       'message_id': ?messageId,
       'graph': _graphJson(g),
-      'inputs': inputs,
+      'inputs': _runInputs(g, inputs, chat: chat, runId: runId, conversationId: conversationId),
       'status': WorkflowRunningStatus.running,
       'outputs': <String, Object?>{},
       'elapsed_time': 0,
@@ -408,7 +414,7 @@ class MockWorkflowRunService extends WorkflowRunService {
     final walk = _Walk(this, g, run, inputs: inputs, chat: chat, base: base, tracings: tracings);
     yield RunEvent.fromJson({
       ...base('workflow_started'),
-      'data': {'id': runId, 'workflow_id': 'mock-workflow', 'created_at': startedAt},
+      'data': {'id': runId, 'workflow_id': 'mock-workflow', 'inputs': history['inputs'], 'created_at': startedAt},
     });
 
     final entries = _entries(g, mode, request);
@@ -475,6 +481,35 @@ class MockWorkflowRunService extends WorkflowRunService {
       });
     }
     _active.remove(taskId);
+  }
+
+  /// A run's inputs as Dify records them (workflow_started, the run's detail): the Start node's variables (null when
+  /// not given), then the system variables.
+  DifyJson _runInputs(
+    RunGraph g,
+    DifyJson inputs, {
+    required ChatMessageRequest? chat,
+    required String runId,
+    String? conversationId,
+  }) {
+    final start = g.nodes.where((n) => n.type == 'start' && n.parentId == null).firstOrNull;
+    final declared = (start?.data['variables'] as List?)?.whereType<Map>() ?? const <Map>[];
+    return {
+      for (final v in declared)
+        if (v['variable'] case final String name) name: inputs[name],
+      ...inputs,
+      if (chat != null) 'sys.query': chat.query,
+      'sys.files': <Object?>[],
+      'sys.user_id': user['id'],
+      if (chat != null) ...{
+        'sys.conversation_id': conversationId,
+        'sys.dialogue_count': (_messages[conversationId]?.length ?? 0) + 1,
+      },
+      'sys.app_id': 'mock-app',
+      if (chat == null) 'sys.timestamp': _seconds,
+      'sys.workflow_id': 'mock-workflow',
+      'sys.workflow_run_id': runId,
+    };
   }
 
   /// Where a run begins: the trigger node(s) of a trigger run, else the Start node (or the first entry node).
@@ -570,7 +605,7 @@ class MockWorkflowRunService extends WorkflowRunService {
         {'role': 'user', 'text': 'Mock prompt', 'files': <Object?>[]},
       ],
     },
-    _ => null,
+    _ => const <String, Object?>{},
   };
 
   bool _usesModel(RunGraphNode n) =>
@@ -595,14 +630,9 @@ class MockWorkflowRunService extends WorkflowRunService {
     final d = n.data;
     List<Map> list(String key) => (d[key] as List?)?.whereType<Map>().toList() ?? const [];
     return switch (n.type) {
-      'start' => {
-        ...inputs,
-        'sys.files': <Object?>[],
-        'sys.user_id': user['id'],
-        'sys.app_id': 'mock-app',
-        'sys.workflow_id': 'mock-workflow',
-        'sys.workflow_run_id': 'mock-run',
-      },
+      // graphon 0.7: the Start node outputs its declared variables (null when not given), never the sys.* ones
+      // (those are the run's inputs, see _systemInputs).
+      'start' => {...inputs},
       'llm' || 'agent' || 'agent-v2' => {
         'text': scenario.llmText,
         'reasoning_content': '',
@@ -650,6 +680,7 @@ class MockWorkflowRunService extends WorkflowRunService {
           final List selector => '${_resolve(selector, pool) ?? ''}',
           _ => '',
         },
+        'files': <Object?>[],
       },
       _ => <String, Object?>{},
     };
@@ -711,6 +742,12 @@ class _Walk {
 
   MockRunScenario get s => svc.scenario;
 
+  /// Node id → the source handle a paused human input took: the action the user submitted.
+  final taken = <String, String>{};
+
+  /// The source handle [n] takes in this run (null: `source`).
+  String? branchOf(RunGraphNode n) => taken[n.id] ?? svc._branch(n);
+
   DifyJson workflowOutputs() => {for (final id in _ends) ...?pool[id]};
 
   RunEvent _ev(String event, DifyJson data) => RunEvent.fromJson({...base(event), 'data': data});
@@ -727,27 +764,35 @@ class _Walk {
   }) async* {
     final nodes = {for (final n in graph.nodes.where((n) => n.parentId == parentId)) n.id: n};
     final edges = graph.edges.where((e) => nodes.containsKey(e.source) && nodes.containsKey(e.target)).toList();
-    // Branch choices are known up front, so the edges the run takes and the nodes it reaches are too (a node
-    // ending in an exception with a fail branch takes that branch).
+    // The edges the run takes and the nodes it reaches follow from each node's branch (a node ending in an exception
+    // with a fail branch takes that branch). Known up front but for a paused human input's: the action submitted
+    // decides it, so the plan is made again once a level is done.
     String handleOf(RunGraphNode n) {
       final failBranch = n.data['error_strategy'] == errorHandleFailBranch;
       if (failBranch && (s.exceptionNodeIds.contains(n.id) || s.failNodeId == n.id)) return errorHandleFailBranch;
-      return svc._branch(n) ?? 'source';
+      return branchOf(n) ?? 'source';
     }
 
-    final active = <RunGraphEdge>[];
-    final reached = <String>{for (final e in entries) e.id};
-    final queue = [...entries.map((e) => e.id)];
-    while (queue.isNotEmpty) {
-      final id = queue.removeAt(0);
-      final handle = handleOf(nodes[id]!);
-      for (final e in edges.where((e) => e.source == id)) {
-        if (e.sourceHandle != handle && !(handle == 'source' && e.sourceHandle.isEmpty)) continue;
-        active.add(e);
-        if (reached.add(e.target)) queue.add(e.target);
+    var active = <RunGraphEdge>[];
+    var reached = <String>{};
+    var waiting = <String, Set<String>>{};
+    void plan() {
+      active = [];
+      reached = {for (final e in entries) e.id};
+      final queue = [...entries.map((e) => e.id)];
+      while (queue.isNotEmpty) {
+        final id = queue.removeAt(0);
+        final handle = handleOf(nodes[id]!);
+        for (final e in edges.where((e) => e.source == id)) {
+          if (e.sourceHandle != handle && !(handle == 'source' && e.sourceHandle.isEmpty)) continue;
+          active.add(e);
+          if (reached.add(e.target)) queue.add(e.target);
+        }
       }
+      waiting = {for (final id in reached) id: active.where((e) => e.target == id).map((e) => e.source).toSet()};
     }
-    final waiting = {for (final id in reached) id: active.where((e) => e.target == id).map((e) => e.source).toSet()};
+
+    plan();
     final done = <String>{};
     var ready = [
       for (final id in reached)
@@ -791,6 +836,7 @@ class _Walk {
         done.add(n.id);
         if (error != null) break;
       }
+      if (level.any((n) => taken.containsKey(n.id))) plan();
       ready = [
         for (final id in reached)
           if (!done.contains(id) && !ready.contains(id) && waiting[id]!.every(done.contains)) id,
@@ -798,15 +844,33 @@ class _Walk {
     }
   }
 
-  DifyJson _inputsOf(RunGraphNode n) => switch (n.type) {
-    'start' => {...inputs, if (chat != null) 'sys.query': chat!.query},
-    'end' || 'answer' || 'iteration-start' || 'loop-start' => const {},
-    _ => {
-      for (final e in n.data.entries)
-        if (e.value is List && (e.value as List).length >= 2 && (e.value as List).every((x) => x is String))
-          if (e.key.endsWith('selector')) e.key: svc._resolve(e.value, pool),
-    },
-  };
+  /// A node's inputs as graphon reports them: the Start node's declared variables (null when not given), the values of
+  /// a node's `variables` / an End's `outputs` (`{variable: value}`), else the values its `*_selector`s point at.
+  DifyJson _inputsOf(RunGraphNode n) {
+    List<Map> list(String key) => (n.data[key] as List?)?.whereType<Map>().toList() ?? const [];
+    return switch (n.type) {
+      'start' => {
+        for (final v in list('variables'))
+          if (v['variable'] case final String name) name: inputs[name],
+        for (final e in inputs.entries)
+          if (!e.key.startsWith('sys.')) e.key: e.value,
+      },
+      'answer' || 'iteration-start' || 'loop-start' => const {},
+      'end' => {
+        for (final o in list('outputs'))
+          if (o['variable'] case final String name) name: svc._resolve(o['value_selector'], pool),
+      },
+      _ when list('variables').any((v) => v['value_selector'] is List) => {
+        for (final v in list('variables'))
+          if (v['variable'] case final String name) name: svc._resolve(v['value_selector'], pool),
+      },
+      _ => {
+        for (final e in n.data.entries)
+          if (e.value is List && (e.value as List).length >= 2 && (e.value as List).every((x) => x is String))
+            if (e.key.endsWith('selector')) e.key: svc._resolve(e.value, pool),
+      },
+    };
+  }
 
   /// node_retry events, then node_finished (and the streamed text / answer on the way).
   Stream<RunEvent> _finish(RunGraphNode n, DifyJson t) async* {
@@ -852,6 +916,7 @@ class _Walk {
       if (run.stopped) return;
       yield _ev('workflow_started', {'id': run.runId, 'workflow_id': 'mock-workflow', 'created_at': svc._seconds});
       final actionId = submitted['action'] as String? ?? svc._branch(n);
+      if (actionId != null) taken[n.id] = actionId;
       yield _ev('human_input_form_filled', {
         'node_id': n.id,
         'node_title': t['title'],
@@ -892,9 +957,7 @@ class _Walk {
         : failed
         ? NodeRunningStatus.failed
         : NodeRunningStatus.succeeded;
-    final outputs = failed && !exception
-        ? null
-        : svc._outputs(n, t['inputs'] as DifyJson, pool, branch: svc._branch(n));
+    final outputs = failed && !exception ? null : svc._outputs(n, t['inputs'] as DifyJson, pool, branch: branchOf(n));
     if (outputs != null) pool[n.id] = outputs;
     if (n.type == 'end') _ends.add(n.id);
     if (n.type == 'answer' && chat != null && outputs != null) {
@@ -961,11 +1024,18 @@ class _Walk {
     for (var i = 0; i < rounds; i++) {
       await svc._wait();
       if (run.stopped || error != null) return;
-      yield _ev(loop ? 'loop_next' : 'iteration_next', {
-        ...t,
-        'index': i,
-        if (!loop) 'pre_iteration_output': roundOutputs.isEmpty ? null : roundOutputs.last,
-      });
+      // graphon 0.7 (Dify 1.17.1's engine): every round of an iteration is announced (`index` 0, 1, …); a loop's
+      // first round is not (LoopNode starts it with the LoopStartedEvent), the next ones are, `index` being the rounds
+      // completed so far (1, 2, …), with an empty `pre_loop_output` (workflow_response_converter.py).
+      if (!loop) {
+        yield _ev('iteration_next', {
+          ...t,
+          'index': i,
+          'pre_iteration_output': roundOutputs.isEmpty ? null : roundOutputs.last,
+        });
+      } else if (i > 0) {
+        yield _ev('loop_next', {...t, 'id': n.id, 'index': i, 'pre_loop_output': const <String, Object?>{}});
+      }
       final extra = loop
           ? {
               'loop_id': n.id,
@@ -980,7 +1050,12 @@ class _Walk {
       roundOutputs.add(children.isEmpty ? null : pool[children.last.id]?.values.firstOrNull);
     }
     if (run.stopped) return;
-    final outputs = loop ? <String, Object?>{} : {'output': roundOutputs};
+    // A loop's outputs: its loop variables and `loop_round`, the rounds run (loop_container_handler.py).
+    final loopVariables = {
+      for (final v in (n.data['loop_variables'] as List?)?.whereType<Map>() ?? const <Map>[])
+        if (v['label'] case final String label) label: v['value'],
+    };
+    final outputs = loop ? <String, Object?>{...loopVariables, 'loop_round': rounds} : {'output': roundOutputs};
     pool[n.id] = outputs;
     await svc._wait();
     final finished = {
@@ -991,7 +1066,12 @@ class _Walk {
       'elapsed_time': 0.42 * rounds,
       'execution_metadata': {
         'total_tokens': 0,
-        if (loop) 'loop_duration_map': durations else 'iteration_duration_map': durations,
+        if (loop) ...{
+          'loop_duration_map': durations,
+          'loop_variable_map': {for (var i = 0; i < rounds; i++) '$i': loopVariables},
+          'completed_reason': error == null ? 'loop_completed' : 'error',
+        } else
+          'iteration_duration_map': durations,
       },
       'finished_at': svc._seconds,
     };
@@ -1007,7 +1087,7 @@ class _MockInspectServices extends VariableInspectServices {
 
   @override
   Future<List<DifyJson>> fetchAllInspectVars() async => [
-    for (final vars in svc._inspect.values)
+    for (final vars in svc._inspect.values.toList().reversed)
       for (final v in vars) svc._withEdit(v),
   ];
 

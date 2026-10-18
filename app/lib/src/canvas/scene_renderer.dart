@@ -401,7 +401,9 @@ class SceneRenderer extends CanvasRenderer {
       _statusFrames.clear(slot);
       return;
     }
-    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _frameLift(slot, n, -0.1));
+    // In front of the card: the ring is the card's own border (1 px inside its edge), and behind it the card's
+    // opaque placeholder (drawn while the card's capture is replaced) would hide it.
+    _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _lift(slot) + 1e-4);
   }
 
   // ----- run state: dimming and loaders -----

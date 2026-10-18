@@ -102,7 +102,18 @@ List<RunFormProps> singleRunFormsOf(
   required Map<String, Object?> values,
   required ValueChanged<Map<String, Object?>> onChange,
   bool isChatMode = false,
+  List<DifyJson> Function(List<DifyJson> variables)? toVarInputs,
 }) {
+  // code / template-transform use-single-run-form-params: one form (no label) over the input variables, each named
+  // and labelled by its own name (toVarInputs).
+  if (toVarInputs != null && const {'code', 'template-transform'}.contains(node.type)) {
+    final variables = [
+      for (final v in (difyDataOf(node)['variables'] as List? ?? const []))
+        if (v is Map) v.cast<String, Object?>(),
+    ];
+    if (variables.isEmpty) return const [];
+    return [RunFormProps(inputs: toVarInputs(variables), values: values, onChange: onChange)];
+  }
   if (node.type == 'start') {
     final data = difyDataOf(node);
     final vars = [for (final v in (data['variables'] as List? ?? const [])) (v as Map).cast<String, Object?>()];
@@ -164,6 +175,12 @@ List<Map<String, Object?>> existVarValuesInForms(List<RunFormProps> forms, Workf
   for (final form in forms)
     {
       for (final input in form.inputs)
+        // getDependentVar: an input named by its variable (code, template-transform) stands for its selector.
+        if (_dependentVar(node, '${input['variable']}') case final s?)
+          if ((node.type != 'start' && s.first == node.id) ||
+              hasSetInspectVar(store, s.first, s.length > 1 ? s[1] : ''))
+            '${input['variable']}': true,
+      for (final input in form.inputs)
         if ('${input['variable']}'.startsWith('#') && '${input['variable']}'.contains('.'))
           if ('${input['variable']}'.substring(1, '${input['variable']}'.length - 1).split('.') case final s
               when (node.type != 'start' && s.first == node.id) ||
@@ -171,6 +188,17 @@ List<Map<String, Object?>> existVarValuesInForms(List<RunFormProps> forms, Workf
             '${input['variable']}': true,
     },
 ];
+
+/// The selector a code / template-transform input variable is set from (`getDependentVar`), if any.
+List<String>? _dependentVar(Node node, String variable) {
+  if (!const {'code', 'template-transform'}.contains(node.type) || variable.startsWith('#')) return null;
+  for (final v in (difyDataOf(node)['variables'] as List? ?? const [])) {
+    if (v is Map && v['variable'] == variable && v['value_selector'] is List) {
+      return [for (final s in v['value_selector'] as List) '$s'];
+    }
+  }
+  return null;
+}
 
 /// `getFilteredExistVarForms`: the forms without the inputs that have values, empty forms dropped.
 List<RunFormProps> filteredExistVarForms(List<RunFormProps> forms, List<Map<String, Object?>> exist) => [
@@ -194,7 +222,14 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
   if (const {'trigger-webhook', 'trigger-plugin', 'trigger-schedule'}.contains(node.type)) {
     store.setShowVariableInspectPanel(true);
   }
-  final forms = singleRunFormsOf(node, doc, values: const {}, onChange: (_) {}, isChatMode: scope.run.isChatMode());
+  final forms = singleRunFormsOf(
+    node,
+    doc,
+    values: const {},
+    onChange: (_) {},
+    isChatMode: scope.run.isChatMode(),
+    toVarInputs: c.toVarInputs,
+  );
   final missing = filteredExistVarForms(forms, existVarValuesInForms(forms, store, node));
   if (missing.isEmpty) {
     c
@@ -238,6 +273,7 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
           values: _values,
           onChange: (v) => setState(() => _values = v),
           isChatMode: scope.run.isChatMode(),
+          toVarInputs: c.toVarInputs,
         );
         if (forms.isEmpty) return const SizedBox.shrink();
         final exist = existVarValuesInForms(forms, store, widget.node);

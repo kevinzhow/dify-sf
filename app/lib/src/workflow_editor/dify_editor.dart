@@ -2,6 +2,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
 import '../canvas/canvas_controller.dart';
+import '../canvas/workflow_canvas.dart' show CanvasDefaults;
 import '../cards/card_kit.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/toast.dart';
@@ -13,6 +14,7 @@ import 'features/workflow_features.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
 import 'header/features_trigger.dart';
+import 'header/publisher/app_publisher.dart' show PublisherAppInfo;
 import 'header/titles.dart';
 import 'header/workflow_header.dart';
 import 'node_panel/node_panel.dart';
@@ -132,9 +134,16 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   WorkflowRunService _runService(BuildContext context, CanvasController canvas) {
     if (widget.runService case final s?) return s;
     final store = WorkflowStoreScope.of(context);
+    final user = widget.user;
     return _mockRuns ??= MockWorkflowRunService(
       graph: () => EditorRunGraph(controller, canvas),
       conversationVariables: () => store.conversationVariables.value,
+      // Visual tests compare a run with a real Dify run of the same workflow (about a second): at that pace.
+      scenario: CanvasDefaults.reportRect
+          ? const MockRunScenario(stepDelay: Duration(milliseconds: 50))
+          : const MockRunScenario(),
+      // Runs are the signed-in account's (Dify's created_by_account; the run panel's Executor).
+      user: user == null ? MockWorkflowRunService.defaultUser : {'id': user.id, 'name': user.name, 'email': ''},
     );
   }
 
@@ -516,6 +525,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
         title: widget.session(const EditingTitle()),
         left: widget.left,
         middle: FeaturesTrigger(
+          // The document as the publisher's app (its mode: a workflow or a chatflow, both Dify's workflow apps).
+          app: PublisherAppInfo(id: widget.controller.docId, name: widget.meta.appName, mode: widget.meta.appMode),
           hooks: WorkflowPublishHooks(
             checkBeforePublish: () => b.checkBeforePublish(difyToast),
             syncWorkflowDraft: b.syncWorkflowDraft,

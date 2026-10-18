@@ -185,7 +185,8 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
     return DifyFloating(
       controller: _popover,
       placement: DifyPlacement.bottomStart,
-      sideOffset: -36,
+      // Base UI anchors the popup on the trigger button, which lies inside the card's 1 px border.
+      sideOffset: -36 - 1,
       alignOffset: -28,
       // Over the trigger, shifted back into the window (Base UI keeps it on its side: the start edge overflows,
       // and the shift moves it to the collision padding).

@@ -393,8 +393,9 @@ class _StatusPanelState extends State<StatusPanel> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _label('resultPanel.time'),
+                      // `flex items-center system-sm-medium`: the 16 px line.
                       SizedBox(
-                        height: 20,
+                        height: 16,
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: running
@@ -415,7 +416,7 @@ class _StatusPanelState extends State<StatusPanel> {
                   children: [
                     _label('resultPanel.tokens'),
                     SizedBox(
-                      height: 20,
+                      height: 16,
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: running

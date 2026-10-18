@@ -294,7 +294,7 @@ void main() {
     expect(tool['iteration_id'], 'iter');
   });
 
-  test('loop: loop_next resets the children to waiting each round', () async {
+  test('loop: loop_next resets the children to waiting each round after the first', () async {
     const graph = StaticRunGraph(
       nodes: [
         RunGraphNode(id: 'start', type: 'start'),
@@ -316,7 +316,6 @@ void main() {
     expect(r.store.nodeRunDataOf('loop')['_loopLength'], 2);
     expect(r.store.nodeRunDataOf('loop')['_loopIndex'], 1);
     expect(r.transitions['inc'], [
-      NodeRunningStatus.waiting,
       NodeRunningStatus.running,
       NodeRunningStatus.succeeded,
       NodeRunningStatus.waiting,
@@ -367,6 +366,105 @@ void main() {
     expect(r.data['humanInputFormDataList'], isEmpty);
     expect((r.data['humanInputFilledFormDataList'] as List).single, containsPair('action_id', 'approve'));
     expect(r.transitions['yes']!.last, NodeRunningStatus.succeeded);
+  });
+
+  test('human input continues along the branch of the action submitted, not the first one', () async {
+    const graph = StaticRunGraph(
+      nodes: [
+        RunGraphNode(id: 'start', type: 'start'),
+        RunGraphNode(
+          id: 'hi',
+          type: 'human-input',
+          data: {
+            'user_actions': [
+              {'id': 'approve', 'title': 'Approve'},
+              {'id': 'reject', 'title': 'Reject'},
+            ],
+          },
+        ),
+        RunGraphNode(id: 'yes', type: 'code'),
+        RunGraphNode(id: 'no', type: 'code'),
+        RunGraphNode(id: 'after', type: 'template-transform'),
+      ],
+      edges: [
+        RunGraphEdge(id: 'a', source: 'start', target: 'hi'),
+        RunGraphEdge(id: 'b', source: 'hi', target: 'yes', sourceHandle: 'approve'),
+        RunGraphEdge(id: 'c', source: 'hi', target: 'no', sourceHandle: 'reject'),
+        RunGraphEdge(id: 'd', source: 'no', target: 'after'),
+      ],
+    );
+    final r = _Rig(
+      graph: graph,
+      scenario: const MockRunScenario(stepDelay: Duration.zero, pauseNodeIds: {'hi'}),
+    );
+    await r.run.handleRun({'inputs': <String, Object?>{}});
+    await settle();
+    final form = (r.data['humanInputFormDataList'] as List).single as Map;
+    await r.service.submitHumanInputForm(form['form_token'] as String, {
+      'action': 'reject',
+      'inputs': <String, Object?>{},
+    });
+    await settle();
+    expect(r.status, WorkflowRunningStatus.succeeded);
+    expect((r.data['humanInputFilledFormDataList'] as List).single, containsPair('action_id', 'reject'));
+    expect(r.tracing.map((t) => t['node_id']), ['start', 'hi', 'no', 'after']);
+    expect(r.transitions['yes'], isNull);
+    final hi = r.tracing.firstWhere((t) => t['node_id'] == 'hi');
+    expect((hi['outputs'] as Map)['__action_id'], 'reject');
+    // The node's last run (its Last Run tab) says so too.
+    expect(((await r.service.fetchNodeLastRun('hi'))!['outputs'] as Map)['__action_id'], 'reject');
+  });
+
+  test('loop rounds as graphon announces them: no loop_next for the first, then index 1, 2 (rounds done)', () async {
+    const graph = StaticRunGraph(
+      nodes: [
+        RunGraphNode(id: 'start', type: 'start'),
+        RunGraphNode(
+          id: 'loop',
+          type: 'loop',
+          data: {
+            'loop_variables': [
+              {'label': 'num', 'var_type': 'number', 'value_type': 'constant', 'value': 1},
+            ],
+          },
+        ),
+        RunGraphNode(id: 'ls', type: 'loop-start', parentId: 'loop'),
+        RunGraphNode(id: 'inc', type: 'code', parentId: 'loop'),
+      ],
+      edges: [
+        RunGraphEdge(id: 'a', source: 'start', target: 'loop'),
+        RunGraphEdge(id: 'b', source: 'ls', target: 'inc'),
+      ],
+    );
+    final service = MockWorkflowRunService(
+      graph: () => graph,
+      scenario: const MockRunScenario(stepDelay: Duration.zero, loopLength: 3),
+    );
+    final events = await service.runWorkflowDraft(const WorkflowDraftRunRequest()).toList();
+    final names = [
+      for (final e in events)
+        if (e.json['event'] case final String n when n.startsWith('loop') || n == 'node_started')
+          n == 'loop_next' ? 'next ${(e.json['data'] as Map)['index']}' : n,
+    ];
+    expect(names, [
+      'node_started', // start
+      'loop_started',
+      'node_started', 'node_started', // round 1: loop-start, inc
+      'next 1',
+      'node_started', 'node_started',
+      'next 2',
+      'node_started', 'node_started',
+      'loop_completed',
+    ]);
+    final rounds = [
+      for (final e in events)
+        if (e.json['event'] == 'node_finished' && (e.json['data'] as Map)['node_id'] == 'inc')
+          ((e.json['data'] as Map)['execution_metadata'] as Map)['loop_index'],
+    ];
+    expect(rounds, [0, 1, 2], reason: 'the loop log groups by loop_index and labels it index + 1');
+    final done = events.firstWhere((e) => e.json['event'] == 'loop_completed').json['data'] as Map;
+    expect(done['outputs'], {'num': 1, 'loop_round': 3});
+    expect((done['execution_metadata'] as Map)['completed_reason'], 'loop_completed');
   });
 
   test('trigger debug runs listen until the trigger fires', () async {

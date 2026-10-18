@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
 import '../../canvas/run_view.dart';
+import '../../canvas/workflow_canvas.dart' show CanvasDefaults;
 import '../../editor/editor_controller.dart';
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
@@ -15,6 +16,7 @@ import 'debug_chat.dart';
 import 'mock_run_service.dart';
 import 'run_graph.dart';
 import 'run_service.dart';
+import 'run_types.dart';
 import 'single_run.dart';
 import 'workflow_run.dart';
 
@@ -188,10 +190,26 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     binding;
+    if (CanvasDefaults.reportRect && !_reporting) {
+      _reporting = true;
+      store.workflowRunningData.addListener(_reportRun);
+    }
+  }
+
+  /// Visual tests: says when a run comes to an end (`VISUAL_RUN <status>`), so the comparison waits for it however
+  /// slow the browser draws.
+  bool _reporting = false;
+  String? _reported;
+  void _reportRun() {
+    final status = resultOf(store.workflowRunningData.value)['status'] as String?;
+    if (status == _reported) return;
+    _reported = status;
+    if (status != null && status != WorkflowRunningStatus.running) debugPrint('VISUAL_RUN $status');
   }
 
   @override
   void dispose() {
+    if (_reporting) store.workflowRunningData.removeListener(_reportRun);
     binding.dispose();
     for (final s in _singleRuns.values) {
       s.dispose();

@@ -3,6 +3,9 @@
 /// is open, a detail view (retries, iterations, loops, agent log).
 library;
 
+import 'dart:math' as math;
+
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../cards/card_kit.dart';
@@ -183,16 +186,20 @@ class _TracingPanelState extends State<TracingPanel> {
               ),
             ),
           ),
-        RunNodePanel(
-          nodeInfo: node,
-          allExecutions: widget.list,
-          onShowIterationDetail: _logs.handleShowIterationResultList,
-          onShowLoopDetail: _logs.handleShowLoopResultList,
-          onShowRetryDetail: _logs.handleShowRetryResultList,
-          onShowAgentOrToolLog: _logs.handleShowAgentOrToolLog,
-          hideInfo: widget.hideNodeInfo,
-          hideProcessDetail: widget.hideNodeProcessDetail,
-          onOpenUrl: widget.onOpenUrl,
+        // An empty branch title (`-mb-1.5`) still pulls the card up into the gap above it.
+        _PullUp(
+          by: branchTitle == null || branchTitle.isEmpty ? 6 : 0,
+          child: RunNodePanel(
+            nodeInfo: node,
+            allExecutions: widget.list,
+            onShowIterationDetail: _logs.handleShowIterationResultList,
+            onShowLoopDetail: _logs.handleShowLoopResultList,
+            onShowRetryDetail: _logs.handleShowRetryResultList,
+            onShowAgentOrToolLog: _logs.handleShowAgentOrToolLog,
+            hideInfo: widget.hideNodeInfo,
+            hideProcessDetail: widget.hideNodeProcessDetail,
+            onOpenUrl: widget.onOpenUrl,
+          ),
         ),
       ],
     );
@@ -231,4 +238,45 @@ class _TracingPanelState extends State<TracingPanel> {
       );
     },
   );
+}
+
+/// A negative top margin of [by]: the child is drawn [by] higher and takes that much less height.
+class _PullUp extends SingleChildRenderObjectWidget {
+  const _PullUp({required this.by, required super.child});
+  final double by;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderPullUp(by);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderPullUp renderObject) => renderObject.by = by;
+}
+
+class _RenderPullUp extends RenderProxyBox {
+  _RenderPullUp(this._by);
+  double _by;
+  set by(double v) {
+    if (v == _by) return;
+    _by = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    child!.layout(constraints.loosen().copyWith(minWidth: constraints.minWidth), parentUsesSize: true);
+    size = constraints.constrain(Size(child!.size.width, math.max(0, child!.size.height - _by)));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => context.paintChild(child!, offset - Offset(0, _by));
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => result.addWithPaintOffset(
+    offset: Offset(0, -_by),
+    position: position,
+    hitTest: (result, transformed) => child!.hitTest(result, position: transformed),
+  );
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) => transform.translateByDouble(0, -_by, 0, 1);
 }

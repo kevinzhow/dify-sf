@@ -11,6 +11,7 @@ import '../../canvas/canvas_controller.dart';
 import '../../editor/editor_controller.dart';
 import '../../workflow/dify_json.dart' show difyDataOf;
 import '../context_menu/clipboard.dart' show reactFlowTypeOf;
+import '../organize/workflow_organize.dart' show reactFlowSizeOf;
 import '../store/workflow_store.dart' show DifyJson;
 
 @immutable
@@ -143,6 +144,8 @@ class EditorRunGraph implements RunGraph {
 
   RunGraphNode _node(Node n) {
     final c = canvas?.graph?[n.id];
+    // React Flow's measured size (card and frame): what Dify's run reads to centre a running node.
+    final size = canvas == null ? null : reactFlowSizeOf(canvas!, n);
     return RunGraphNode(
       id: n.id,
       type: n.type,
@@ -150,8 +153,8 @@ class EditorRunGraph implements RunGraph {
       parentId: c?.parentId ?? runParentOf(n),
       x: n.x.toDouble(),
       y: n.y.toDouble(),
-      width: c?.size.width ?? 240,
-      height: c?.size.height ?? 90,
+      width: size?.width ?? c?.size.width ?? 240,
+      height: size?.height ?? c?.size.height ?? 90,
       data: _LazyData(() => difyDataOf(n)),
       rfType: reactFlowTypeOf(n),
     );

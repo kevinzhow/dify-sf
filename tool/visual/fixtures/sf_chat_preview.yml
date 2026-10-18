@@ -1,0 +1,154 @@
+app:
+  description: 'Chatflow without models for Debug & Preview: start, template, answer;
+    conversation variables.'
+  icon: 💬
+  icon_background: '#D1FAE5'
+  mode: advanced-chat
+  name: sf_chat_preview
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables:
+  - description: The user's display name
+    id: c9a8b7c6-0001-4e5f-8a9b-0c1d2e3f4a51
+    name: user_name
+    selector:
+    - conversation
+    - user_name
+    value: ''
+    value_type: string
+  - description: Messages so far
+    id: c9a8b7c6-0002-4e5f-8a9b-0c1d2e3f4a52
+    name: turns
+    selector:
+    - conversation
+    - turns
+    value: 0
+    value_type: number
+  - description: ''
+    id: c9a8b7c6-0003-4e5f-8a9b-0c1d2e3f4a53
+    name: topics
+    selector:
+    - conversation
+    - topics
+    value: []
+    value_type: array[string]
+  environment_variables:
+  - description: ''
+    id: e9a8b7c6-0001-4e5f-8a9b-0c1d2e3f4a61
+    name: greeting
+    selector:
+    - env
+    - greeting
+    value: Welcome
+    value_type: string
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: template-transform
+      id: 1762000000001-source-1762000000002-target
+      source: '1762000000001'
+      sourceHandle: source
+      target: '1762000000002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: template-transform
+        targetType: answer
+      id: 1762000000002-source-1762000000003-target
+      source: '1762000000002'
+      sourceHandle: source
+      target: '1762000000003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 52
+      id: '1762000000001'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        desc: ''
+        selected: false
+        template: Thanks, your message was received.
+        title: Template
+        type: template-transform
+        variables: []
+      height: 52
+      id: '1762000000002'
+      position:
+        x: 382
+        y: 282
+      positionAbsolute:
+        x: 382
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        answer: '{{#1762000000002.output#}}'
+        desc: ''
+        selected: false
+        title: Answer
+        type: answer
+        variables: []
+      height: 104
+      id: '1762000000003'
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: 40
+      y: 120
+      zoom: 0.8
+  rag_pipeline_variables: []

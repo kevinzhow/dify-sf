@@ -5,8 +5,9 @@
 Needs, while it runs (start them only for the run):
   * a local Dify 1.17.1 at $DIFY_URL (default http://localhost) and an account: $DIFY_EMAIL, $DIFY_PASSWORD
   * the dify-sf server at $DIFYSF_URL (default http://127.0.0.1:18080); protocol 1.8 accounts: the script signs in as
-    $DIFYSF_EMAIL / $DIFYSF_PASSWORD (default visual@example.com / Visual12345), setting that owner up on a fresh
-    server, and hands our app the session the way it keeps one (localStorage `dify-sf/tokens/<server>`)
+    $DIFYSF_EMAIL / $DIFYSF_PASSWORD (default alice@example.test / Visual12345: Dify's local account's email, and its
+    name "alice", so names, avatars and the workspace's name lay out alike), setting that owner up on a fresh server,
+    and hands our app the session the way it keeps one (localStorage `dify-sf/tokens/<server>`)
   * our web build: app/build/web (flutter build web --profile), served by this script; $OURS_QUERY adds query
     parameters to its URL (canvas=widgets: the widget renderer)
 
@@ -16,8 +17,26 @@ the canvas's top-left corner) is captured. Results go to DIR/visual-testing-resu
 layout alignment_audit.py reads; react = Dify, android = ours) plus a pixel-difference summary in DIR/report.md.
 --reuse-dify keeps the Dify captures of an earlier run in DIR (with the viewport Dify showed) and re-shoots ours
 only: Dify need not run.
+
+Cases beyond the canvas (cases.json):
+  * "steps": what a user does after the editor opened, done in Dify by element (Playwright locators) and replayed in
+    ours at the same place relative to the canvas (or, on a "page" case, the window): ours is driven through its own UI
+    the same way, so both arrive in the same state by the same clicks. A step is one of
+      {"click": LOC, "at": [x, y]?}   LOC: a CSS selector, {"role": ..., "name": ...} or {"text": ...}; "at": the
+                                      point inside the element (CSS px from its top-left; default its middle)
+      {"hover": LOC}  {"type": "text"}  {"press": "Enter"}  {"park": true} (the pointer to 0,0)
+      {"wait": ms, "ours": ms?}       (ours: the wait on our side when it differs, e.g. the mock run's pace)
+    with "dify": true on a step that is Dify's alone (not replayed). The resolved points are kept with the Dify capture
+    (<case>.steps.json) for --reuse-dify.
+  * "page": {"dify": "/signin", "ours": "query", "signedIn": false, "routes": [...]}: a page outside the editor; the
+    region is relative to the window. "routes": canned answers, [{"side": "dify"|"ours", "url": glob, "method",
+    "json"}] (Dify's /install only renders before Dify's setup: its setup status is answered "not_started").
+  * "comments": [{"x", "y", "content", "replies": [...]}]: canvas comments created through each side's API first.
+  * "members": true: dify-sf's workspace gets the members Dify's has (same roles, active), by invitation.
+  * "invite": true: an invitation is created on both sides first; "{token}" and "{email}" in "page" paths and queries
+    are its own on each side (deleted again afterwards).
 """
-import argparse, base64, functools, http.server, json, os, pathlib, re, threading, time
+import argparse, base64, functools, http.server, json, os, pathlib, re, sys, threading, time
 import numpy as np
 import requests
 from PIL import Image, ImageChops
@@ -84,10 +103,10 @@ def dify_import(s, text):
 @functools.cache
 def sf_tokens():
     """An access / refresh token pair of the dify-sf server (protocol 1.8): the first owner on a fresh server."""
-    email = os.environ.get('DIFYSF_EMAIL', 'visual@example.com')
+    email = os.environ.get('DIFYSF_EMAIL', 'alice@example.test')
     password = os.environ.get('DIFYSF_PASSWORD', 'Visual12345')
     if requests.get(f'{SF}/v1/setup').json().get('step') != 'finished':
-        r = requests.post(f'{SF}/v1/setup', json={'email': email, 'name': 'Visual', 'password': password})
+        r = requests.post(f'{SF}/v1/setup', json={'email': email, 'name': os.environ.get('DIFYSF_NAME', 'alice'), 'password': password})
     else:
         r = requests.post(f'{SF}/v1/auth/login', json={'email': email, 'password': password})
     r.raise_for_status()
@@ -103,26 +122,199 @@ def sf_import(text):
     return r.json()['id']
 
 
+def sf_api(method, path, body=None):
+    r = requests.request(method, f'{SF}{path}', json=body,
+                         headers={'Authorization': f'Bearer {sf_tokens()["access_token"]}'})
+    r.raise_for_status()
+    return r.json() if r.content else None
+
+
+def add_comments(case, s, app_id, doc):
+    """The case's canvas comments, on Dify's app (when [s]) and on our document."""
+    for c in case.get('comments', []):
+        body = {'position_x': c['x'], 'position_y': c['y'], 'content': c['content'], 'mentioned_user_ids': []}
+        if s:
+            r = s.post(f'{DIFY}/console/api/apps/{app_id}/workflow/comments', json=body)
+            r.raise_for_status()
+            for reply in c.get('replies', []):
+                s.post(f'{DIFY}/console/api/apps/{app_id}/workflow/comments/{r.json()["id"]}/replies',
+                       json={'content': reply, 'mentioned_user_ids': []}).raise_for_status()
+        made = sf_api('POST', f'/v1/docs/{doc}/comments', body)
+        for reply in c.get('replies', []):
+            sf_api('POST', f'/v1/docs/{doc}/comments/{made["id"]}/replies', {'content': reply})
+
+
+def mirror_members(s):
+    """dify-sf's workspace gets the members of Dify's (beside its owner): the same roles, activated, in Dify's order of
+    joining (so both member lists have the same rows)."""
+    if s is None:
+        return
+    ours = {m['email'] for m in sf_api('GET', '/v1/workspace/members')['accounts']}
+    for m in sorted(s.get(f'{DIFY}/console/api/workspaces/current/members').json()['accounts'],
+                    key=lambda m: m['created_at']):
+        if m['role'] == 'owner' or m['status'] != 'active' or m['email'] in ours:
+            continue
+        res = sf_api('POST', '/v1/workspace/members/invite-email', {'emails': [m['email']], 'role': m['role']})
+        token = re.search(r'token=([^&]+)', res['invitation_results'][0]['url']).group(1)
+        requests.post(f'{SF}/v1/activate', json={'token': requests.utils.unquote(token), 'name': m['name'],
+                                                  'password': 'Visual12345'}).raise_for_status()
+
+
+# A new address each run (Dify keeps an account that once joined, and inviting it again is another flow), of one length.
+INVITEE = f'invitee{int(time.time()) % 1000000:06d}@example.com'
+
+
+def make_invites(s):
+    """An invitation on each side (Dify's when [s]): {side: {'token', 'email'}}."""
+    drop_invites(s)  # one left by an interrupted run
+    out = {}
+    res = sf_api('POST', '/v1/workspace/members/invite-email', {'emails': [INVITEE], 'role': 'normal'})
+    url = res['invitation_results'][0]['url']
+    out['ours'] = {'token': re.search(r'token=([^&]+)', url).group(1), 'email': requests.utils.quote(INVITEE)}
+    if s:
+        r = s.post(f'{DIFY}/console/api/workspaces/current/members/invite-email',
+                   json={'emails': [INVITEE], 'role': 'normal', 'language': 'en-US'})
+        r.raise_for_status()
+        url = r.json()['invitation_results'][0]['url']
+        out['dify'] = {'token': re.search(r'token=([^&]+)', url).group(1), 'email': requests.utils.quote(INVITEE)}
+    return out
+
+
+def drop_invites(s):
+    """Removes the invited (pending) member again on both sides."""
+    for m in sf_api('GET', '/v1/workspace/members')['accounts']:
+        if m['email'].startswith('invitee'):
+            sf_api('DELETE', f'/v1/workspace/members/{m["id"]}')
+    if s:
+        for m in s.get(f'{DIFY}/console/api/workspaces/current/members').json()['accounts']:
+            if m['email'].startswith('invitee'):
+                s.delete(f'{DIFY}/console/api/workspaces/current/members/{m["id"]}')
+
+
 def serve(directory):
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=directory)
-    handler.log_message = lambda *a: None
+    class Quiet(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    handler = functools.partial(Quiet, directory=directory)
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, f'http://127.0.0.1:{server.server_address[1]}'
 
 
-def capture_dify(browsers, s, app_id, case, out):
+def locate(page, loc):
+    if isinstance(loc, str):
+        return page.locator(loc).first
+    if 'role' in loc:
+        return page.get_by_role(loc['role'], name=loc['name'], exact=loc.get('exact', True)).first
+    return page.get_by_text(loc['text'], exact=loc.get('exact', True)).first
+
+
+def run_dify_steps(page, steps, box):
+    """Does [steps] in Dify; returns them with each pointer step's point relative to [box] (for the replay)."""
+    done = []
+    for i, st in enumerate(steps):
+        st = dict(st)
+        for k in ('click', 'hover'):
+            if k in st:
+                el = locate(page, st[k])
+                try:
+                    el.wait_for(state='visible', timeout=30000)
+                except Exception:
+                    page.screenshot(path='/tmp/visual-step-failed.png')
+                    raise RuntimeError(f'step {i} {st}: not found (Dify page in /tmp/visual-step-failed.png)')
+                r = el.bounding_box()
+                ax, ay = st.get('at', [r['width'] / 2, r['height'] / 2])
+                x, y = r['x'] + ax, r['y'] + ay
+                if k == 'click':
+                    page.mouse.click(x, y)
+                else:
+                    page.mouse.move(x, y)
+                st['point'] = [x - box['x'], y - box['y']]
+        if 'type' in st:
+            page.keyboard.type(st['type'], delay=20)
+        if 'press' in st:
+            page.keyboard.press(st['press'])
+        if st.get('park'):
+            page.mouse.move(0, 0)
+        if 'wait' in st:
+            page.wait_for_timeout(st['wait'])
+        done.append(st)
+    return done
+
+
+def run_our_steps(page, steps, box, log=()):
+    """Replays the steps done in Dify ([run_dify_steps]) on ours, at the same points relative to [box]. A step's
+    "until" (ours only): after its wait, also until our app has printed that many lines starting with it (e.g.
+    `VISUAL_RUN`: a run came to an end; the mock run's pace depends on how fast the browser draws), at most 30 s."""
+    for st in steps:
+        if st.get('dify'):
+            continue
+        if 'point' in st:
+            x, y = box['x'] + st['point'][0], box['y'] + st['point'][1]
+            if 'click' in st:
+                page.mouse.click(x, y)
+            else:
+                page.mouse.move(x, y)
+            page.wait_for_timeout(150)
+        if 'type' in st:
+            page.keyboard.type(st['type'], delay=20)
+        if 'press' in st:
+            page.keyboard.press(st['press'])
+        if st.get('park'):
+            page.mouse.move(0, 0)
+        if 'wait' in st:
+            page.wait_for_timeout(st.get('ours', st['wait']))
+        if 'until' in st:
+            t0 = time.time()
+            while sum(1 for m in log if m.startswith(st['until'])) < st.get('count', 1) and time.time() - t0 < 30:
+                page.wait_for_timeout(200)
+            page.wait_for_timeout(300)
+
+
+def add_routes(page, case, side):
+    for r in (case.get('page') or {}).get('routes', []):
+        if r.get('side', 'both') not in (side, 'both'):
+            continue
+        page.route(r['url'], canned(r.get('method', 'GET'), json.dumps(r['json'])))
+
+
+def canned(method, body):
+    """A route handler answering [method] requests with the JSON [body] (others go through)."""
+    def handler(route):
+        if route.request.method == method:
+            route.fulfill(status=200, content_type='application/json', body=body)
+        else:
+            route.continue_()
+    return handler
+
+
+def fill(text, invite):
+    return text.format(**invite) if invite else text
+
+
+def capture_dify(browsers, s, app_id, case, out, invite=None):
     ctx = browsers.context(*case['window'])
-    ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies])
+    pg_case = case.get('page')
+    if not pg_case or pg_case.get('signedIn', True):
+        ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies])
     page = ctx.new_page()
-    page.goto(f'{DIFY}/app/{app_id}/workflow')
-    page.wait_for_selector('.react-flow__node', timeout=60000)
-    page.wait_for_timeout(1500)  # icons, fonts, fit
-    box = page.locator('.react-flow').bounding_box()
-    # Dify fits the view on load: read the viewport it actually shows, and open ours at the same one.
-    t = page.evaluate("getComputedStyle(document.querySelector('.react-flow__viewport')).transform")
-    m = [float(v) for v in re.findall(r'-?[\d.]+(?:e-?\d+)?', t)]
-    viewport = (m[4], m[5], m[0]) if len(m) == 6 else tuple(case['viewport'])
+    add_routes(page, case, 'dify')
+    if pg_case:
+        page.goto(DIFY + fill(pg_case['dify'], invite))
+        page.wait_for_load_state('networkidle')
+        page.wait_for_timeout(2500)  # fonts, the page's own checks
+        box = {'x': 0, 'y': 0, 'width': case['window'][0], 'height': case['window'][1]}
+        viewport = (0, 0, 1)
+    else:
+        page.goto(f'{DIFY}/app/{app_id}/workflow')
+        page.wait_for_selector('.react-flow__node', timeout=60000)
+        page.wait_for_timeout(1500)  # icons, fonts, fit
+        box = page.locator('.react-flow').bounding_box()
+        # Dify fits the view on load: read the viewport it actually shows, and open ours at the same one.
+        t = page.evaluate("getComputedStyle(document.querySelector('.react-flow__viewport')).transform")
+        m = [float(v) for v in re.findall(r'-?[\d.]+(?:e-?\d+)?', t)]
+        viewport = (m[4], m[5], m[0]) if len(m) == 6 else tuple(case['viewport'])
     if case.get('select'):
         # Open the node's panel as a user would (the viewport is read before: the panel does not move it), clicking
         # near its top-left corner (the middle may be a control of its own, as an LLM node's model badge).
@@ -145,6 +337,10 @@ def capture_dify(browsers, s, app_id, case, out):
             page.wait_for_timeout(300)
         except Exception:
             print(f'  {case["id"]}: a Dify toast stayed')
+    steps = run_dify_steps(page, case.get('steps', []), box)
+    out.with_suffix('.steps.json').write_text(json.dumps(steps))
+    if steps:
+        page.wait_for_timeout(800)
     shot(page, box, case, out)
     # Where Dify draws text (every non-empty text node on the page: canvas, header, node panel), relative to the
     # captured region.
@@ -188,14 +384,18 @@ TEXT_RECTS = """() => {
 }"""
 
 
-def capture_ours(browsers, base, doc, case, out, viewport):
+def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None):
     # Our page is only the editor; Dify's has its app sidebar too, so a whole-canvas case gives ours the size of
     # Dify's canvas (`oursWindow`).
     w, h = case.get('oursWindow', case['window'])
     ctx = browsers.context(w, h)
+    pg_case = case.get('page')
     # Signed in before the app starts: its token store (web) is localStorage['dify-sf/tokens/<server>'].
-    ctx.add_init_script(f'localStorage.setItem({json.dumps("dify-sf/tokens/" + SF)}, {json.dumps(json.dumps(sf_tokens()))})')
+    if not pg_case or pg_case.get('signedIn', True):
+        ctx.add_init_script(
+            f'localStorage.setItem({json.dumps("dify-sf/tokens/" + SF)}, {json.dumps(json.dumps(sf_tokens()))})')
     page = ctx.new_page()
+    add_routes(page, case, 'ours')
     rect = []
     views = []
     page.on('console', lambda m: rect.append(m.text) if m.text.startswith('CANVAS_RECT') else None)
@@ -204,26 +404,43 @@ def capture_ours(browsers, base, doc, case, out, viewport):
     page.on('console', lambda m: settled.append(1) if m.text.startswith('CANVAS_SETTLED') else None)
     bars = []
     page.on('console', lambda m: bars.append(m.text) if m.text.startswith('NODE_CONTROL ') else None)
-    x, y, z = viewport
-    select = f'&select={case["select"]}' if case.get('select') else ''
-    page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else ''))
-    t0 = time.time()
-    while not rect and time.time() - t0 < 60:
-        page.wait_for_timeout(200)
-    # Until every card on screen shows its final capture (the scene renderer says so), at most 20 s.
-    t1 = time.time()
-    while not settled and time.time() - t1 < 20:
-        page.wait_for_timeout(200)
-    page.wait_for_timeout(500 if settled else 0)
-    l, t, w, h = (float(v) for v in rect[-1].split()[1].split(','))
-    box = {'x': l, 'y': t, 'width': w, 'height': h}
+    log = []
+    page.on('console', lambda m: log.append(m.text) if m.text.startswith('VISUAL_') else None)
+    if pg_case:
+        query = fill(pg_case.get('ours', ''), invite)
+        page.goto(f'{base}/?server={SF}&visual=1' + (f'&{query}' if query else '') + (f'&{EXTRA}' if EXTRA else ''))
+        page.wait_for_selector('flutter-view', timeout=60000)
+        page.wait_for_load_state('networkidle')
+        page.wait_for_timeout(3000)  # the first frames, fonts, the page's own requests
+        box = {'x': 0, 'y': 0, 'width': w, 'height': h}
+    else:
+        x, y, z = viewport
+        select = f'&select={case["select"]}' if case.get('select') else ''
+        page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else ''))
+        t0 = time.time()
+        while not rect and time.time() - t0 < 60:
+            page.wait_for_timeout(200)
+        # Until every card on screen shows its final capture (the scene renderer says so), at most 20 s.
+        t1 = time.time()
+        while not settled and time.time() - t1 < 20:
+            page.wait_for_timeout(200)
+        page.wait_for_timeout(500 if settled else 0)
+        l, t, w, h = (float(v) for v in rect[-1].split()[1].split(','))
+        box = {'x': l, 'y': t, 'width': w, 'height': h}
+    if steps:
+        run_our_steps(page, steps, box, log)
+        page.wait_for_timeout(1200)
     shot(page, box, case, out)
     if views:
-        print(f'  ours at rest: {views[-1]}{"" if settled else " (never settled)"}')
+        print(f'  ours at rest: {views[-1]}{"" if settled or pg_case else " (never settled)"}')
     ctx.close()
     masks = []
     if bars and 'node-run' in case.get('intentional', {}):
         masks.append(node_run_mask(bars[-1], box, case))
+    for rect_ in case.get('masks', {}).values():
+        # The case's documented masks ({name: {"rect": [left, top, right, bottom] in CSS px of the region, "why"}}):
+        # what dify-sf intentionally lacks, or content that depends on data (times, ids) beyond its text.
+        masks.append([v * DSF for v in rect_['rect']])
     out.with_suffix('.mask.json').write_text(json.dumps(masks))
     return box
 
@@ -274,12 +491,16 @@ def similarity(a, b, text_rects=(), masks=()):
 
 
 def main():
+    sys.stdout.reconfigure(line_buffering=True)
     ap = argparse.ArgumentParser()
     ap.add_argument('--cases', default=str(ROOT / 'tool/visual/cases.json'))
     ap.add_argument('--only')
     ap.add_argument('--out', default=str(ROOT / 'build/visual'))
     ap.add_argument('--reuse-dify', action='store_true',
                     help="reuse the Dify captures already in --out (no Dify needed): re-shoot ours only")
+    ap.add_argument('--reuse-dify-from', metavar='DIR',
+                    help='--reuse-dify with the Dify captures of DIR (copied into --out), e.g. the widget renderer '
+                         'against the captures the scene renderer was compared with')
     a = ap.parse_args()
     cases = json.loads(pathlib.Path(a.cases).read_text())
     if a.only:
@@ -289,33 +510,56 @@ def main():
     (out / 'visual-testing-results/android').mkdir(parents=True, exist_ok=True)
     (out / 'diff').mkdir(exist_ok=True)
     (out / 'visual-testing-results/react/metadata.json').write_text(json.dumps({'density': DSF}))
+    if a.reuse_dify_from:
+        import shutil
+        src = pathlib.Path(a.reuse_dify_from) / 'visual-testing-results/react'
+        for c in cases:
+            for f in src.glob(f'{c["id"]}.*'):
+                shutil.copy(f, out / 'visual-testing-results/react' / f.name)
+        a.reuse_dify = True
     s = None if a.reuse_dify else dify_session()
     server, base = serve(str(ROOT / 'app/build/web'))
     rows = []
     with sync_playwright() as p:
         browsers = Browsers(p)
         for c in cases:
-            text = with_viewport((ROOT / c['fixture']).read_text(), *c['viewport'])
+            text = with_viewport((ROOT / c['fixture']).read_text(), *c['viewport']) if c.get('fixture') else ''
             if not c.get('keepSelection'):
                 # A node saved as selected opens its panel in Dify; canvas cases compare the canvas alone.
                 text = re.sub(r'^(\s+)selected: true$', r'\1selected: false', text, flags=re.M)
             web = out / 'visual-testing-results/react' / f'{c["id"]}.png'
             ours = out / 'visual-testing-results/android' / f'{c["id"]}.png'
             view = web.with_suffix('.view.json')
-            doc = sf_import(text)
-            if a.reuse_dify:
-                viewport = tuple(json.loads(view.read_text()))
-                obox = capture_ours(browsers, base, doc, c, ours, viewport)
-            else:
-                app_id = dify_import(s, text)
-                try:
-                    dbox, viewport = capture_dify(browsers, s, app_id, c, web)
-                    view.write_text(json.dumps(viewport))
-                    obox = capture_ours(browsers, base, doc, c, ours, viewport)
-                    print(f'{c["id"]}: Dify viewport x={viewport[0]:.3f} y={viewport[1]:.3f} zoom={viewport[2]:.4f}; '
-                          f'canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} ours {obox["x"]:.2f},{obox["y"]:.2f}')
-                finally:
-                    s.delete(f'{DIFY}/console/api/apps/{app_id}')
+            doc = None if c.get('page') else sf_import(text)
+            if c.get('members'):
+                mirror_members(s)
+            invites = make_invites(s) if c.get('invite') else {}
+            try:
+                if a.reuse_dify:
+                    viewport = tuple(json.loads(view.read_text()))
+                    if doc:
+                        add_comments(c, None, None, doc)
+                    steps = json.loads(web.with_suffix('.steps.json').read_text()) \
+                        if web.with_suffix('.steps.json').exists() else []
+                    obox = capture_ours(browsers, base, doc, c, ours, viewport, steps, invites.get('ours'))
+                else:
+                    app_id = None if c.get('page') else dify_import(s, text)
+                    try:
+                        if app_id:
+                            add_comments(c, s, app_id, doc)
+                        dbox, viewport = capture_dify(browsers, s, app_id, c, web, invites.get('dify'))
+                        view.write_text(json.dumps(viewport))
+                        steps = json.loads(web.with_suffix('.steps.json').read_text())
+                        obox = capture_ours(browsers, base, doc, c, ours, viewport, steps, invites.get('ours'))
+                        print(f'{c["id"]}: Dify viewport x={viewport[0]:.3f} y={viewport[1]:.3f} '
+                              f'zoom={viewport[2]:.4f}; canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} '
+                              f'ours {obox["x"]:.2f},{obox["y"]:.2f}')
+                    finally:
+                        if app_id:
+                            s.delete(f'{DIFY}/console/api/apps/{app_id}')
+            finally:
+                if c.get('invite'):
+                    drop_invites(s)
             text_rects = json.loads(web.with_suffix('.text.json').read_text())
             masks = json.loads(ours.with_suffix('.mask.json').read_text())
             same, non_text, heat = similarity(web, ours, text_rects, masks)

@@ -1059,17 +1059,20 @@ class _ChatInputAreaState extends State<ChatInputArea> {
         ),
       ),
     );
+    // The input (`z-10`) lies over the feature bar's top (`-translate-y-2`): laid out bottom-up, so the bar, first,
+    // is painted first.
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      verticalDirection: VerticalDirection.up,
       children: [
-        input,
         if (widget.showFeatureBar)
           FeatureBar(
             features: widget.features,
             disabled: widget.featureBarDisabled,
             onFeatureBarClick: widget.onFeatureBarClick,
           ),
+        input,
       ],
     );
   }

@@ -538,6 +538,20 @@ class CodeEditorViewState extends State<CodeEditorView> {
                     ),
                   ),
                 ),
+                // Monaco's decorations overview ruler on the scrollbar: its left border and the cursor's place (read-only
+                // viewers; see the current line).
+                if (widget.readOnly)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: CodeEditorMetrics.verticalScrollbarWidth,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _OverviewRulerPainter(paintState, Listenable.merge([_controller, _scroll])),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   left: 0,
                   right: 0,
@@ -638,6 +652,32 @@ class _PaintState {
   }
 }
 
+/// Monaco's decorations overview ruler (`overviewRulerBorder`, the cursor lane): a 1 device pixel border on its left
+/// and the cursor as a 2 px bar at the cursor line's place (the line's top scaled by the ruler's height over the
+/// scroll height, which `scrollBeyondLastLine` extends by a viewport less a line). An editor never touched has its
+/// cursor at 1:1.
+class _OverviewRulerPainter extends CustomPainter {
+  _OverviewRulerPainter(this.s, Listenable repaint) : super(repaint: repaint);
+  final _PaintState s;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final px = 1 / ui.PlatformDispatcher.instance.implicitView!.devicePixelRatio;
+    canvas.drawRect(Rect.fromLTWH(0, 0, px, size.height), Paint()..color = VsTheme.overviewRulerBorder);
+    final box = s.box;
+    final sel = s.view._controller.selection;
+    final lh = s.view._metrics.lineHeight;
+    final row = box == null || !sel.isValid ? 0 : s.caretRow(box);
+    final content = box?.size.height ?? lh;
+    final scrollHeight = content + math.max(0.0, size.height - lh);
+    final y = scrollHeight <= 0 ? 0.0 : (row * lh * size.height / scrollHeight).clamp(0.0, size.height - 2);
+    canvas.drawRect(Rect.fromLTWH(px, y, size.width - px, 2), Paint()..color = VsTheme.overviewRulerCursor);
+  }
+
+  @override
+  bool shouldRepaint(_OverviewRulerPainter old) => old.s != s;
+}
+
 class _BackPainter extends CustomPainter {
   _BackPainter(this.s, Listenable repaint) : super(repaint: repaint);
   final _PaintState s;
@@ -655,11 +695,16 @@ class _BackPainter extends CustomPainter {
     final sel = view._controller.selection;
     final focused = view._focus.hasFocus;
     final left = s.contentLeft;
-    final caretRow = sel.isValid ? s.caretRow(box) : -1;
+    // Monaco's cursor starts at 1:1, so an editor never touched has its first line current.
+    final caretRow = sel.isValid ? s.caretRow(box) : 0;
 
     // Current line: a 2 px #eeeeee border around the cursor's row (only with an empty selection).
-    if (sel.isValid && sel.isCollapsed) {
-      final r = Rect.fromLTWH(left, caretRow * lh, math.max(0.0, s.width - left), lh).deflate(1);
+    if (!sel.isValid || sel.isCollapsed) {
+      // Read-only viewers (run logs): the view lines end where the vertical scrollbar and its overview ruler begin.
+      // Dify's editable editors in node panels lay Monaco out wider than their box, which hides both: there the
+      // line runs to the box's edge.
+      final end = view.widget.readOnly ? CodeEditorMetrics.verticalScrollbarWidth : 0.0;
+      final r = Rect.fromLTWH(left, caretRow * lh, math.max(0.0, s.width - end - left), lh).deflate(1);
       canvas.drawRect(
         r,
         Paint()
