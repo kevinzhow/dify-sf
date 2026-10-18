@@ -38,6 +38,10 @@ class CanvasController {
   /// delete key are off while it is true). The workflow editor points it at its store.
   bool Function() isReadOnly = _never;
 
+  /// Dify's nodeAnimation flag, owned by the workflow store.
+  bool Function() animatePositions = _never;
+  VoidCallback? onInteraction;
+
   static bool _never() => false;
 
   /// React Flow's `isValidConnection` (with Dify's handleNodeConnect checks): whether dropping a connection from

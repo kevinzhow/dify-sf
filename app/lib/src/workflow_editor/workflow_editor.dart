@@ -81,6 +81,8 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
     bridge; // hydrate the store from the stored preferences as soon as they load
     store.setCanvasReadOnly(!widget.canEdit);
     canvas.isReadOnly = () => store.nodesReadOnly;
+    canvas.animatePositions = () => store.nodeAnimation.value;
+    canvas.onInteraction = () => store.setNodeAnimation(false);
     // useWorkflow().isValidConnection, with handleNodeConnect's checks.
     canvas.isValidConnection = (source, handle, target) {
       final doc = widget.controller.doc;

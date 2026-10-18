@@ -62,7 +62,7 @@ class WorkflowCanvas extends StatefulWidget {
   State<WorkflowCanvas> createState() => WorkflowCanvasState();
 }
 
-class WorkflowCanvasState extends State<WorkflowCanvas> {
+class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProviderStateMixin {
   late final graph = CanvasGraph(layoutOf: widget.cards.layoutOf);
   late final CanvasController canvas = widget.canvas ?? (_ownCanvas = CanvasController());
   CanvasController? _ownCanvas;
@@ -84,6 +84,52 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   late CanvasRenderer renderer;
   final _focus = FocusNode(debugLabel: 'canvas');
   bool _fitted = false;
+  late final _positionAnimation = AnimationController(vsync: this, duration: const Duration(milliseconds: 200))
+    ..addListener(_positionFrame)
+    ..addStatusListener((status) {
+      if (status == AnimationStatus.completed) _finishPositions();
+    });
+  final _positions = <int, ({Offset from, Offset to})>{};
+  Map<String, (int, int)> _documentPositions = {};
+
+  void _positionFrame() {
+    const curve = Cubic(0.42, 0, 0.58, 1); // CSS ease-in-out
+    final t = curve.transform(_positionAnimation.value);
+    for (final e in _positions.entries) {
+      final n = graph.slots[e.key];
+      if (n == null) continue;
+      final p = Offset.lerp(e.value.from, e.value.to, t)!;
+      n
+        ..x = p.dx
+        ..y = p.dy;
+      graph.grid.put(n.slot, n.rect.topLeft);
+    }
+    renderer.moved(_positions.keys);
+    canvas.visualChanges.notifyListeners();
+    a11y.viewMoved();
+  }
+
+  void _finishPositions() {
+    if (_positions.isEmpty) return;
+    _positionAnimation.stop();
+    final slots = _positions.keys.toSet();
+    for (final e in _positions.entries) {
+      final n = graph.slots[e.key];
+      if (n == null) continue;
+      n
+        ..x = e.value.to.dx
+        ..y = e.value.to.dy;
+      graph.grid.put(n.slot, n.rect.topLeft);
+    }
+    _positions.clear();
+    renderer.endMove(slots);
+    canvas.visualChanges.notifyListeners();
+  }
+
+  void _interacting() {
+    _finishPositions();
+    canvas.onInteraction?.call();
+  }
 
   EditorController get c => widget.controller;
 
@@ -113,6 +159,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       view: view,
       selection: selection,
       onTap: (n) {
+        _interacting();
         // Comment mode: a node's button does not select it (Dify's node.tsx guard).
         if (canvas.controlMode.value == ControlMode.comment) return;
         selection.selectNodes([n.slot]);
@@ -190,6 +237,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       kind = CanvasRendererKind.widgets;
       renderer = _makeRenderer(kind);
       renderer.apply(_everything());
+      if (_positions.isNotEmpty) renderer.beginMove(_positions.keys.toSet());
     });
   }
 
@@ -200,12 +248,47 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
   }
 
   void _documentChanged() {
+    final nextPositions = {for (final n in c.doc.nodes.values) n.id: (n.x, n.y)};
+    final changedPositions =
+        nextPositions.length != _documentPositions.length ||
+        nextPositions.entries.any((e) => _documentPositions[e.key] != e.value);
+    _documentPositions = nextPositions;
+    final before = changedPositions ? {for (final n in graph.nodes) n.slot: Offset(n.x, n.y)} : <int, Offset>{};
+    if (changedPositions && _positions.isNotEmpty) {
+      _positionAnimation.stop();
+      renderer.endMove(_positions.keys.toSet());
+      _positions.clear();
+    }
+    // Acknowledgements and content/selection-only changes keep the current visual positions. Content and edges
+    // still synchronize while a transition runs, just as they do during an interactive node drag.
+    final held = {
+      for (final slot in _positions.keys)
+        if (graph.slots[slot] case final n?) n.id,
+    };
+    graph.dragging.addAll(held);
     final change = graph.sync(c.doc);
+    graph.dragging.removeAll(held);
     for (final n in change.removed) {
       selection.forget(n.slot);
     }
     if (!change.isEmpty) {
       renderer.apply(change);
+      if (changedPositions && canvas.animatePositions()) {
+        for (final n in change.moved) {
+          final from = before[n.slot];
+          if (from == null) continue;
+          _positions[n.slot] = (from: from, to: Offset(n.x, n.y));
+          n
+            ..x = from.dx
+            ..y = from.dy;
+          graph.grid.put(n.slot, n.rect.topLeft);
+        }
+        if (_positions.isNotEmpty) {
+          renderer.beginMove(_positions.keys.toSet());
+          renderer.moved(_positions.keys);
+          _positionAnimation.forward(from: 0);
+        }
+      }
       a11y.changed();
       if (change.added.isNotEmpty && canvas.nodeRun.value.isNotEmpty) _runStatusChanged(all: true);
     }
@@ -287,6 +370,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     view.removeListener(a11y.viewMoved);
     view.removeListener(_viewMoved);
     _rest?.cancel();
+    _positionAnimation.dispose();
     renderer.dispose();
     input.dispose();
     a11y.dispose();
@@ -325,12 +409,17 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
         return Focus(
           focusNode: _focus,
           // Keys typed into a live card (the note editor) are not the canvas's.
-          onKeyEvent: (node, e) => node.hasPrimaryFocus ? input.key(node, e) : KeyEventResult.ignored,
+          onKeyEvent: (node, e) {
+            if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
+            _interacting();
+            return input.key(node, e);
+          },
           child: MouseRegion(
             onExit: input.exit,
             child: Listener(
               onPointerDown: (e) {
                 if (input.claimed(e)) return;
+                _interacting();
                 _focus.requestFocus();
                 input.down(e);
               },

@@ -57,7 +57,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Chatflow Debug & Preview](#chat-preview) | 2 |  |  |  |  | 2 |
 | [Comments](#comments) | 7 |  |  |  |  | 7 |
 | [Note node](#notes) | 3 |  |  |  |  | 3 |
-| [Organize (auto layout)](#organize) | 1 | 1 |  |  |  | 2 |
+| [Organize (auto layout)](#organize) | 2 |  |  |  |  | 2 |
 | [Undo / redo & change history](#history) | 2 |  | 1 |  |  | 3 |
 | [Version history](#versions) |  | 1 | 1 |  |  | 2 |
 | [Accounts, sign-in & members](#accounts) | 6 |  | 8 | 1 |  | 15 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **144** | **42** | **40** | **11** | **10** | **247** |
+| **Total** | **145** | **41** | **40** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -540,7 +540,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Organize blocks (Mod+O): ELK layered layout, containers first, one undo step | ported | Deviation: A pure-Dart port of elkjs's layered algorithm (exact coordinates on 126 graphs); only changed nodes get moveNode ops; a self-loop makes it a no-op. | spec `workflow/utils/elk-layout.spec.ts`, spec `workflow/hooks/use-workflow-organize.spec.tsx`, spec `workflow/hooks/use-workflow-organize.helpers.spec.ts`, `app/test/organize` |
-| Organize: 0.2 s node animation and viewport reset to zoom 0.7 | partial | The viewport reset is ported; the node animation flag is set in the store but no renderer reads it (nodes jump). |  |
+| Organize: 0.2 s node animation and viewport reset to zoom 0.7 | ported |  | spec `workflow/hooks/use-workflow-organize.spec.tsx`, `app/test/organize/position_animation_test.dart` |
 
 <a id="history"></a>
 

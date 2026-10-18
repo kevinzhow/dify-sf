@@ -1579,9 +1579,8 @@ features:
   area: organize
   title: 'Organize: 0.2 s node animation and viewport reset to zoom 0.7'
   dify: [web/app/components/workflow/hooks/use-workflow-organize.ts, web/app/components/workflow/style.css]
-  status: partial
-  reason: The viewport reset is ported; the node animation flag is set in the store but no renderer reads it (nodes jump).
-  evidence: []
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-workflow-organize.spec.tsx', app/test/organize/position_animation_test.dart]
   ours: [app/lib/src/workflow_editor/organize/workflow_organize.dart]
 
 # ---------------------------------------------------------------- history
