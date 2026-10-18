@@ -44,6 +44,7 @@ Widget Function(BuildContext, CanvasController) workflowOperatorBuilder(
   EditorController editor, [
   OperatorOptions options = const OperatorOptions(),
   Widget? variableTrigger,
+  Widget? variableInspectPanel,
 ]) =>
     (context, canvas) => WorkflowOperator(
       canvas: canvas,
@@ -51,4 +52,5 @@ Widget Function(BuildContext, CanvasController) workflowOperatorBuilder(
       graphChanges: editor,
       options: options,
       variableTrigger: variableTrigger,
+      variableInspectPanel: variableInspectPanel,
     );

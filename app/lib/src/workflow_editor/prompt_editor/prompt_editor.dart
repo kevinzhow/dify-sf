@@ -634,18 +634,17 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
           expands: w.height != null,
           keyboardType: TextInputType.multiline,
           style: style,
-          // An inline chip (18 px, `vertical-align: middle`) fits in a 20 or 24 px CSS line: those lines keep the
-          // line height (a strut; without it Flutter would make a chip's line taller). In an 18 px line the chip
-          // reaches out of it and makes it taller, which Flutter's own line metrics (no strut) come closest to.
-          strutStyle: lineHeight >= chipFitsLineHeight
-              ? StrutStyle(
-                  fontFamily: family,
-                  fontSize: fontSize,
-                  height: lineHeight / fontSize,
-                  leadingDistribution: TextLeadingDistribution.even,
-                  forceStrutHeight: true,
-                )
-              : StrutStyle.disabled,
+          // CSS's strut: every line is at least the line height. An inline chip (18 px, `vertical-align: middle`, see
+          // CssMiddle) fits in 20 and 24 px lines (Chrome makes a 20 px line of 13 px text 0.52 px taller); those
+          // lines keep their height (forced: Flutter would add room above a line with a chip). In an 18 px line the
+          // chip makes the line taller, as in Chrome.
+          strutStyle: StrutStyle(
+            fontFamily: family,
+            fontSize: fontSize,
+            height: lineHeight / fontSize,
+            leadingDistribution: TextLeadingDistribution.even,
+            forceStrutHeight: lineHeight >= chipFitsLineHeight,
+          ),
           cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
           decoration: const InputDecoration.collapsed(hintText: null),

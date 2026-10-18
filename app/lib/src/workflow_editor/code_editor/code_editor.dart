@@ -11,6 +11,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/icon_button.dart';
@@ -268,38 +269,47 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
   Widget _box({required double? bodyHeight, required bool expanded}) {
     final focus = widget.isFocus;
     final title = widget.titleWidget ?? Text(difyTransform(DifyType.systemXsSemiboldUppercase, widget.title ?? ''));
+    // `<div className="ml-1">` around an inline button (the generator's, the expand toggle's): the div's text line
+    // ends below the button, and the right-hand group, as tall as such a div, is centred in the h-7 bar (overflowing
+    // it): those buttons sit 1.25 px above the copy button.
+    Widget inlineButton(Widget button) => Padding(
+      padding: EdgeInsets.only(left: 4, bottom: Css.inlineButtonLineGap),
+      child: button,
+    );
     final header = SizedBox(
       height: 28,
       child: Padding(
         padding: const EdgeInsets.only(top: 4, right: 8, left: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: DefaultTextStyle.merge(
-                style: difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textSecondary),
-                child: Align(alignment: Alignment.centerLeft, child: title),
+        child: OverflowBox(
+          minHeight: 0,
+          maxHeight: double.infinity,
+          child: Row(
+            children: [
+              Expanded(
+                child: DefaultTextStyle.merge(
+                  style: difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textSecondary),
+                  child: Align(alignment: Alignment.centerLeft, child: title),
+                ),
               ),
-            ),
-            ?widget.headerRight,
-            if (widget.codeGenerator != null)
-              Padding(padding: const EdgeInsets.only(left: 4), child: widget.codeGenerator),
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: DifyIconButton(
-                label: DifyI18n.tr('common', 'operation.copy'),
-                onPressed: _handleCopy,
-                icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
+              ?widget.headerRight,
+              if (widget.codeGenerator case final generator?) inlineButton(generator),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: DifyIconButton(
+                  label: DifyI18n.tr('common', 'operation.copy'),
+                  onPressed: _handleCopy,
+                  icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: DifyIconButton(
-                label: DifyI18n.tr('share', _isExpand ? 'chat.collapse' : 'chat.expand'),
-                onPressed: () => _setExpand(!_isExpand),
-                icon: RemixIcon(_isExpand ? 'collapse-diagonal-line' : 'expand-diagonal-line', size: 16),
+              inlineButton(
+                DifyIconButton(
+                  label: DifyI18n.tr('share', _isExpand ? 'chat.collapse' : 'chat.expand'),
+                  onPressed: () => _setExpand(!_isExpand),
+                  icon: RemixIcon(_isExpand ? 'collapse-diagonal-line' : 'expand-diagonal-line', size: 16),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -26,6 +26,7 @@ class WorkflowOperator extends StatefulWidget {
     this.graphChanges,
     this.options = const OperatorOptions(),
     this.variableTrigger,
+    this.variableInspectPanel,
   });
 
   final CanvasController canvas;
@@ -35,11 +36,17 @@ class WorkflowOperator extends StatefulWidget {
   final Listenable? graphChanges;
   final OperatorOptions options;
 
-  /// variable-inspect/trigger.tsx (a later phase).
+  /// variable-inspect/trigger.tsx.
   final Widget? variableTrigger;
 
-  /// The minimap's top above the bar: `bottom-10` from the bottom of the 36 px zoom control, 73 px tall.
-  static const miniMapRise = 73.0 + 40 - 36;
+  /// variable-inspect/index.tsx, under the bar (so the bar, the minimap and the control bar move up while it is
+  /// open). It draws its 4 px resize strip in the bottom of the bar's `pb-2`, which the bar gives up while the store
+  /// shows the panel.
+  final Widget? variableInspectPanel;
+
+  /// The minimap's top above the bar: 73 px tall, `bottom-10` from the bottom of the zoom control's `relative` box,
+  /// which the row stretches to its tallest item: the undo / redo bar's 37 px (32 px buttons, p-0.5, the border).
+  static const miniMapRise = 73.0 + 40 - 37;
 
   @override
   State<WorkflowOperator> createState() => _WorkflowOperatorState();
@@ -57,31 +64,42 @@ class _WorkflowOperatorState extends State<WorkflowOperator> {
       onSize: (size) => store
         ..setBottomPanelWidth(size.width + 8)
         ..setBottomPanelHeight(size.height),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            UndoRedo(history: widget.history, onUndo: a.historyBack, onRedo: a.historyForward),
-            // VariableTrigger's wrapper is `flex items-center`, stretched to the row (the zoom pill's h-9).
-            if (widget.variableTrigger != null) SizedBox(height: 36, child: Center(child: widget.variableTrigger)),
-            ListenableBuilder(
-              listenable: Listenable.merge([store.showUserComments, store.showUserCursors, store.controlMode]),
-              builder: (context, _) => ZoomInOut(
-                canvas: widget.canvas,
-                options: widget.options,
-                showMiniMap: _showMiniMap,
-                onToggleMiniMap: () => setState(() => _showMiniMap = !_showMiniMap),
-                showUserComments: store.showUserComments.value,
-                onToggleUserComments: () => store.setShowUserComments(!store.showUserComments.value),
-                showUserCursors: store.showUserCursors.value,
-                onToggleUserCursors: () => store.setShowUserCursors(!store.showUserCursors.value),
-                isCommentMode: store.controlMode.value == ControlMode.comment,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ValueListenableBuilder(
+            valueListenable: store.showVariableInspectPanel,
+            builder: (context, open, child) => Padding(
+              padding: EdgeInsets.fromLTRB(4, 0, 4, open && widget.variableInspectPanel != null ? 4 : 8),
+              child: child,
             ),
-          ],
-        ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                UndoRedo(history: widget.history, onUndo: a.historyBack, onRedo: a.historyForward),
+                // VariableTrigger's wrapper is `flex items-center`, stretched to the row (the zoom pill's h-9).
+                if (widget.variableTrigger != null) SizedBox(height: 36, child: Center(child: widget.variableTrigger)),
+                ListenableBuilder(
+                  listenable: Listenable.merge([store.showUserComments, store.showUserCursors, store.controlMode]),
+                  builder: (context, _) => ZoomInOut(
+                    canvas: widget.canvas,
+                    options: widget.options,
+                    showMiniMap: _showMiniMap,
+                    onToggleMiniMap: () => setState(() => _showMiniMap = !_showMiniMap),
+                    showUserComments: store.showUserComments.value,
+                    onToggleUserComments: () => store.setShowUserComments(!store.showUserComments.value),
+                    showUserCursors: store.showUserCursors.value,
+                    onToggleUserCursors: () => store.setShowUserCursors(!store.showUserCursors.value),
+                    isCommentMode: store.controlMode.value == ControlMode.comment,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ?widget.variableInspectPanel,
+        ],
       ),
     );
     return OperatorShortcutsTarget(

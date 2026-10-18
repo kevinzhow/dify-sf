@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../design/css_metrics.dart';
@@ -115,4 +116,36 @@ class HeaderCloseButton extends StatelessWidget {
       child: const Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
     ),
   );
+}
+
+/// A flex item that may render nothing (a fragment, `null`), after a [gap] (the row's `gap-*`): the gap goes with
+/// it when [child] lays out zero wide, as a flex row has no item (and no gap) for an empty fragment.
+class GapBefore extends SingleChildRenderObjectWidget {
+  const GapBefore({super.key, required this.gap, required Widget super.child});
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderGapBefore(gap);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) =>
+      (renderObject as _RenderGapBefore).gap = gap;
+}
+
+class _RenderGapBefore extends RenderShiftedBox {
+  _RenderGapBefore(this._gap) : super(null);
+  double _gap;
+  set gap(double v) {
+    if (v == _gap) return;
+    _gap = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final c = child!..layout(constraints.loosen().deflate(EdgeInsets.only(left: _gap)), parentUsesSize: true);
+    final empty = c.size.width == 0;
+    (c.parentData! as BoxParentData).offset = Offset(empty ? 0 : _gap, 0);
+    size = constraints.constrain(empty ? Size.zero : Size(c.size.width + _gap, c.size.height));
+  }
 }

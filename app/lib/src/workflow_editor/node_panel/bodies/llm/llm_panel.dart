@@ -350,7 +350,7 @@ class _LlmPanelState extends State<LlmPanel> {
             availableNodes: promptEnv.availableNodes,
             getVarType: promptEnv.getVarType,
             onOpenUrl: promptEnv.onOpenUrl,
-            headerExtra: s.generatePrompt == null ? null : (id) => _generatorButton(id, prompt),
+            headerExtra: (id) => _generatorButton(id, prompt),
           ),
         ),
       if (prompt.isShowVars)
@@ -460,26 +460,30 @@ class _LlmPanelState extends State<LlmPanel> {
     return _promptJson(next as PromptItem, orig);
   }
 
-  /// PromptGeneratorBtn: the generated prompt replaces the item's ([id]; the completion prompt for null).
-  Widget _generatorButton(String? id, LlmPromptConfig prompt) => DifyIconButton(
-    label: DifyI18n.tr('app-debug', 'operation.automatic'),
-    icon: const DifyIcon('vender/other/generator', size: 16, color: DifyColors.utilColorsBlueBlue600),
-    onPressed: () async {
-      final current = _manager.inputs['prompt_template'];
-      final item = id == null ? current : jsList(current).where((p) => jsGet(p, 'id') == id).firstOrNull;
-      final res = await _services.generatePrompt?.call(props.id, jsStr(jsGet(item, 'text')) ?? '');
-      if (res == null || !mounted) return;
-      final latest = _manager.inputs['prompt_template'];
-      prompt.handlePromptChange(
-        id == null
-            ? {...jsMap(latest), 'text': res}
-            : [
-                for (final p in jsList(latest))
-                  if (jsGet(p, 'id') == id) {...jsMap(p), 'text': res} else p,
-              ],
-      );
-    },
-  );
+  /// PromptGeneratorBtn (every prompt item has one, as in Dify): the generated prompt replaces the item's ([id]; the
+  /// completion prompt for null).
+  Widget _generatorButton(String? id, LlmPromptConfig prompt) {
+    final generate = _services.generatePrompt;
+    return GeneratorButton(
+      onPressed: generate == null
+          ? null
+          : () async {
+              final current = _manager.inputs['prompt_template'];
+              final item = id == null ? current : jsList(current).where((p) => jsGet(p, 'id') == id).firstOrNull;
+              final res = await generate(props.id, jsStr(jsGet(item, 'text')) ?? '');
+              if (res == null || !mounted) return;
+              final latest = _manager.inputs['prompt_template'];
+              prompt.handlePromptChange(
+                id == null
+                    ? {...jsMap(latest), 'text': res}
+                    : [
+                        for (final p in jsList(latest))
+                          if (jsGet(p, 'id') == id) {...jsMap(p), 'text': res} else p,
+                      ],
+              );
+            },
+    );
+  }
 }
 
 /// `extractPluginId` of a provider name (`org/name/provider` -> `org/name`).

@@ -288,9 +288,9 @@ class PromptEditorController extends TextEditingController {
 const chipFitsLineHeight = 20.0;
 
 /// CSS `vertical-align: middle` for an inline box: its middle on the baseline raised by half the x-height (Noto
-/// Sans: 536 / 1000 em). Reports that baseline for [PlaceholderAlignment.baseline]. In a fixed line of [lineHeight]
-/// (at least [chipFitsLineHeight]) the box sits where it does on Chrome's baseline, which lies on rounded font
-/// metrics ([Css.textLine]) where Flutter's does not.
+/// Sans: 536 / 1000 em). Reports that baseline for [PlaceholderAlignment.baseline]. In lines of [lineHeight] (text
+/// with even leading over a strut of the same height) the box sits where it does in Chrome's line, measured from the
+/// line's top: Chrome's baseline lies on rounded font metrics ([Css.textLine]), Flutter's does not.
 class CssMiddle extends SingleChildRenderObjectWidget {
   const CssMiddle({super.key, required this.fontSize, this.lineHeight = 0, required Widget super.child});
   final double fontSize, lineHeight;
@@ -323,7 +323,7 @@ class RenderCssMiddle extends RenderProxyBox {
 
   /// How far below Chrome's baseline Flutter puts the strut's (Noto Sans: ascent 1069, descent 293 per 1000).
   double get _baselineGap {
-    if (_lineHeight < chipFitsLineHeight) return 0;
+    if (_lineHeight <= 0) return 0;
     final flutter = _fontSize * 1.069 + (_lineHeight - _fontSize * (1.069 + 0.293)) / 2;
     return flutter - Css.textLine(_fontSize, _lineHeight).above;
   }

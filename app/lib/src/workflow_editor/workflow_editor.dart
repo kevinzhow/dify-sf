@@ -137,7 +137,14 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
-                    child: Center(child: w.control!(context, canvas)),
+                    // The bar (38 px: 33 px buttons with their 1 px margins, p-0.5, the border) is wider than the
+                    // 36 px left for it: like the centred flex item, it overflows both sides evenly.
+                    child: OverflowBox(
+                      minWidth: 0,
+                      maxWidth: double.infinity,
+                      minHeight: 0,
+                      child: w.control!(context, canvas),
+                    ),
                   ),
                 ),
               if (w.operator != null)

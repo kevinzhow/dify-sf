@@ -99,8 +99,8 @@ class EditBody extends StatelessWidget {
   }
 }
 
-/// A native `<input type="radio">` (13 px, the browser's accent when checked) and its label (`mr-4 h-7 space-x-2`,
-/// `text-[13px] leading-4.5 text-text-secondary`).
+/// A native `<input type="radio">` (Chrome's: 13 px, white in a 1 px #767676 ring; the accent's ring and dot when
+/// checked) and its label (`mr-4 h-7 space-x-2`, `text-[13px] leading-4.5 text-text-secondary`).
 class BodyTypeRadio extends StatelessWidget {
   const BodyTypeRadio({
     super.key,
@@ -145,13 +145,14 @@ class BodyTypeRadio extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: DifyColors.componentsInputBgActive,
+                    color: const Color(0xFFFFFFFF),
                     border: Border.all(color: checked ? accent : const Color(0xFF767676)),
                   ),
+                  // Chrome's dot: 0.3 of the control's width as its radius.
                   child: checked
                       ? Container(
-                          width: 7,
-                          height: 7,
+                          width: 13 * 0.6,
+                          height: 13 * 0.6,
                           decoration: BoxDecoration(shape: BoxShape.circle, color: accent),
                         )
                       : null,

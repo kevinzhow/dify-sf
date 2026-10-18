@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:collab_client/collab_client.dart';
+import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/context_menu/clipboard.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
@@ -81,9 +82,9 @@ Future<void> _probe(WidgetTester t, Map<String, Object?> c, File file) async {
   await t.pumpWidget(
     panelApp(
       h,
-      // The app theme's font (panelApp's MaterialApp has the default theme).
+      // The app theme (panelApp's MaterialApp has the default one).
       Theme(
-        data: ThemeData(fontFamily: 'Noto Sans'),
+        data: difyTheme(fontFamily: 'Noto Sans'),
         child: DefaultTextStyle.merge(
           style: const TextStyle(fontFamily: 'Noto Sans'),
           child: WorkflowNodePanel(key: ValueKey(nodeId), node: h[nodeId]!, actions: panelActions(h)),

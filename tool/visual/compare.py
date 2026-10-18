@@ -117,8 +117,16 @@ def capture_dify(browsers, s, app_id, case, out):
         # Then off the canvas: the pointer resting on the node would show its hover state (the node control, the
         # highlighted edges), which ours, selected without a pointer, does not.
         page.mouse.move(0, 0)
-        # Long enough for transient toasts to go (Dify reports the models it cannot load here).
+        # Long enough for transient toasts to go (Dify reports the models it cannot load here, the failed request
+        # coming back a while after the click): then until no toast is left (dify-ui's toast viewport is empty).
         page.wait_for_timeout(5000)
+        try:
+            page.wait_for_function(
+                "() => [...document.querySelectorAll('[class*=\"toast-viewport\"] *')].every(e => !e.getClientRects().length)",
+                timeout=15000)
+            page.wait_for_timeout(300)
+        except Exception:
+            print(f'  {case["id"]}: a Dify toast stayed')
     shot(page, box, case, out)
     # Where Dify draws text (every non-empty text node on the page: canvas, header, node panel), relative to the
     # captured region.
@@ -174,6 +182,8 @@ def capture_ours(browsers, base, doc, case, out, viewport):
     page.on('console', lambda m: views.append(m.text) if m.text.startswith('CANVAS_VIEW') else None)
     settled = []
     page.on('console', lambda m: settled.append(1) if m.text.startswith('CANVAS_SETTLED') else None)
+    bars = []
+    page.on('console', lambda m: bars.append(m.text) if m.text.startswith('NODE_CONTROL ') else None)
     x, y, z = viewport
     select = f'&select={case["select"]}' if case.get('select') else ''
     page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1&name=alice{select}' + (f'&{EXTRA}' if EXTRA else ''))
@@ -191,7 +201,27 @@ def capture_ours(browsers, base, doc, case, out, viewport):
     if views:
         print(f'  ours at rest: {views[-1]}{"" if settled else " (never settled)"}')
     ctx.close()
+    masks = []
+    if bars and 'node-run' in case.get('intentional', {}):
+        masks.append(node_run_mask(bars[-1], box, case))
+    out.with_suffix('.mask.json').write_text(json.dumps(masks))
     return box
+
+
+def node_run_mask(line, box, case):
+    """Intentional difference `node-run` (the owner's decision): our node control (node-control.tsx) shows "Run this
+    step" left of the `…` button; Dify 1.17.1 never does, as its `!nodesReadOnly` tests the object useNodesReadOnly()
+    returns (always truthy), a Dify bug. Ours reports where its bar is (`NODE_CONTROL left,top,width,height`, CSS px
+    on the page, scaled with the canvas); the bars share their right end, Dify's being 20 px (at zoom 1) shorter: the
+    part of ours left of Dify's bar and Dify's rounded left end with its shadow (shadow-md reaches ~5 px aside, ~9 px
+    below) are left out of the measure, on both sides. Returns [left, top, right, bottom] in image pixels."""
+    l, t, w, h = (float(v) for v in line.split()[1].split(','))
+    k = h / 24  # the canvas zoom: the bar is h-6 at zoom 1
+    ox, oy = box['x'] + case['region'][0], box['y'] + case['region'][1]
+    # Ours: 0.5 border, px-0.5, run 20, `…` 20, px-0.5, 0.5 border; Dify's bar starts where our run button ends
+    # (l + 20k), its rounded end (rounded-lg) and side shadow reach 8 px past that.
+    rect = [l - 6 * k, t - 2 * k, l + (20 + 8 + 6) * k, t + h + 10 * k]
+    return [(rect[0] - ox) * DSF, (rect[1] - oy) * DSF, (rect[2] - ox) * DSF, (rect[3] - oy) * DSF]
 
 
 def shot(page, box, case, out):
@@ -199,23 +229,27 @@ def shot(page, box, case, out):
     page.screenshot(path=str(out), clip={'x': box['x'] + ox, 'y': box['y'] + oy, 'width': w, 'height': h})
 
 
-def similarity(a, b, text_rects=()):
+def similarity(a, b, text_rects=(), masks=()):
     """Share of pixels within 16/255: over all pixels, and over the pixels outside Dify's text boxes (the acceptance
-    measure; browsers and Flutter rasterise glyphs differently, text placement is checked by alignment_audit.py)."""
+    measure; browsers and Flutter rasterise glyphs differently, text placement is checked by alignment_audit.py) and
+    outside the regions of intentional differences ([masks], image pixels; left out of both measures)."""
     ia = np.asarray(Image.open(a).convert('RGB'), dtype=np.int16)
     ib = np.asarray(Image.open(b).convert('RGB'), dtype=np.int16)
     diff = np.abs(ia - ib).max(axis=2)
     keep = np.ones(diff.shape, bool)
     h, w = diff.shape
+    counted = np.ones(diff.shape, bool)
+    for l, t, r, btm in masks:
+        counted[max(0, int(t)):max(0, int(np.ceil(btm))), max(0, int(l)):max(0, int(np.ceil(r)))] = False
     for l, t, r, btm in text_rects:
         # Clamped to the image (text left of or above the region, as Dify's app sidebar, would index from the end).
         y0, y1 = max(0, int(t) - 1), min(h, int(np.ceil(btm)) + 1)
         x0, x1 = max(0, int(l) - 1), min(w, int(np.ceil(r)) + 1)
         if y0 < y1 and x0 < x1:
             keep[y0:y1, x0:x1] = False
-    same = (diff <= 16).mean()
-    non_text = (diff[keep] <= 16).mean()
-    heat = Image.fromarray(np.where(diff > 16, 255, np.where(keep, 0, 60)).astype(np.uint8))
+    same = (diff[counted] <= 16).mean()
+    non_text = (diff[keep & counted] <= 16).mean()
+    heat = Image.fromarray(np.where(~counted, 120, np.where(diff > 16, 255, np.where(keep, 0, 60))).astype(np.uint8))
     return same, non_text, heat
 
 
@@ -262,10 +296,13 @@ def main():
                           f'canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} ours {obox["x"]:.2f},{obox["y"]:.2f}')
                 finally:
                     s.delete(f'{DIFY}/console/api/apps/{app_id}')
-            same, non_text, heat = similarity(web, ours, json.loads(web.with_suffix('.text.json').read_text()))
+            text_rects = json.loads(web.with_suffix('.text.json').read_text())
+            masks = json.loads(ours.with_suffix('.mask.json').read_text())
+            same, non_text, heat = similarity(web, ours, text_rects, masks)
             heat.save(out / 'diff' / f'{c["id"]}.png')
             rows.append((c['id'], non_text, same))
-            print(f'{c["id"]}: non-text {non_text * 100:.2f}%, all {same * 100:.2f}% of pixels within 16/255')
+            unmasked = f' (unmasked non-text {similarity(web, ours, text_rects)[1] * 100:.2f}%)' if masks else ''
+            print(f'{c["id"]}: non-text {non_text * 100:.2f}%, all {same * 100:.2f}% of pixels within 16/255{unmasked}')
         browsers.close()
     server.shutdown()
     (out / 'report.md').write_text(

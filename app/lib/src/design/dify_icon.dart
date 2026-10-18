@@ -29,11 +29,11 @@ Widget _icon(BuildContext context, String asset, double size, Color? color) {
   if (picture != null) {
     return CustomPaint(size: Size.square(size), painter: _PicturePainter(picture));
   }
-  return SvgPicture.asset(
-    asset,
-    width: size,
-    height: size,
-    theme: SvgTheme(currentColor: c),
+  // Fitted (contained) in the square like the preloaded picture and a CSS-sized <svg>: SvgPicture given a width and a
+  // height scales a non-square icon to the height and overflows the width.
+  return SizedBox.square(
+    dimension: size,
+    child: SvgPicture.asset(asset, theme: SvgTheme(currentColor: c)),
   );
 }
 

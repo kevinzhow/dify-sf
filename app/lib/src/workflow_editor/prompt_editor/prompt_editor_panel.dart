@@ -8,12 +8,14 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/var_types.dart' show plainOf;
 import '../code_editor/code_editor.dart';
+import '../node_panel/bodies/llm/group_host.dart' show LlmGroupScope, modelPluginInstalledIn;
 import '../panel_fields/controls.dart' show DifySwitch, DifySwitchSize;
 import '../panel_fields/field.dart' show ToggleExpandBtn;
 import '../panel_fields/var_picker_model.dart';
@@ -201,7 +203,12 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
               color: DifyColors.textTertiary,
             ),
           ),
-          if (w.headerExtra != null) Padding(padding: const EdgeInsets.only(left: 5), child: w.headerExtra),
+          // `<div className="ml-1.25">` around the inline button: the div's text line ends below it.
+          if (w.headerExtra != null)
+            Padding(
+              padding: EdgeInsets.only(left: 5, bottom: Css.inlineButtonLineGap),
+              child: w.headerExtra,
+            ),
           Container(
             width: 1,
             height: 12,
@@ -326,7 +333,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
         showManageInputField: w.showManageInputField,
         onManageInputField: w.onManageInputField,
         onJumpToNode: w.onJumpToNode,
-        isModelPluginInstalled: w.isModelPluginInstalled,
+        isModelPluginInstalled: w.isModelPluginInstalled ?? modelPluginInstalledIn(LlmGroupScope.of(context).models),
       ),
       onChange: w.onChange,
       onBlur: () => setState(() => _isFocus = false),

@@ -406,7 +406,9 @@ class _CodePanelState extends State<_CodePanel> {
                 language: CodeLanguage.parse(language),
                 value: jsStr(inputs['code']) ?? '',
                 onChange: c.handleCodeChange,
-                codeGenerator: host.codeGenerator?.call(context, props.id, language, c.handleGeneratedCode),
+                codeGenerator:
+                    host.codeGenerator?.call(context, props.id, language, c.handleGeneratedCode) ??
+                    const GeneratorButton(),
               ),
             ],
           ),

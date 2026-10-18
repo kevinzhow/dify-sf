@@ -93,8 +93,17 @@ class HeaderInNormal extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 8,
           children: [
-            const OnlineUsers(),
-            ?data.left,
+            // The `left` slot and its gap go when it shows nothing.
+            if (data.left case final left?)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const OnlineUsers(),
+                  GapBefore(gap: 8, child: left),
+                ],
+              )
+            else
+              const OnlineUsers(),
             const HeaderDivider(),
             RunAndHistory(
               showRunButton: !data.isChatMode,

@@ -13,6 +13,7 @@ import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
+import '../../i18n/dify_i18n.dart';
 
 /// Pointer, focus and keyboard activation for controls that are not buttons (switch, segmented item).
 class _Control extends StatefulWidget {
@@ -782,6 +783,9 @@ class DifySegmentedControl<T> extends StatelessWidget {
     this.checkedTextColor = DifyColors.textAccentLightModeOnly,
     this.bordered = true,
     this.tooltip = false,
+    this.padding = 2,
+    this.radius = 10,
+    this.itemRadius = DifyRadius.lg,
   });
 
   final T value;
@@ -793,13 +797,16 @@ class DifySegmentedControl<T> extends StatelessWidget {
   final Color textColor, checkedTextColor;
   final bool bordered, tooltip;
 
+  /// A call site's `p-*` and `rounded-*` over the control's `p-0.5 rounded-[10px]` and the items' `rounded-lg`.
+  final double padding, radius, itemRadius;
+
   @override
   Widget build(BuildContext context) => Container(
     height: height,
-    padding: const EdgeInsets.all(2),
+    padding: EdgeInsets.all(padding),
     decoration: BoxDecoration(
       color: DifyColors.componentsSegmentedControlBgNormal,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(radius),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -832,7 +839,7 @@ class DifySegmentedControl<T> extends StatelessWidget {
                           : hovered && !disabled
                           ? DifyColors.stateBaseHover
                           : null,
-                      borderRadius: BorderRadius.circular(DifyRadius.lg),
+                      borderRadius: BorderRadius.circular(itemRadius),
                       border: bordered
                           ? Border.all(
                               color: checked
@@ -1013,5 +1020,20 @@ class _InfotipState extends State<Infotip> {
         ),
       ),
     ),
+  );
+}
+
+/// prompt-generator-btn.tsx / code-generator-button.tsx: `IconButton` around `Generator size-4 text-primary-600`,
+/// shown whether or not a model can generate (Dify's modal then has none to pick). [onPressed] null: there is no
+/// generator here, and the button says so.
+class GeneratorButton extends StatelessWidget {
+  const GeneratorButton({super.key, this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => DifyIconButton(
+    label: DifyI18n.tr('app-debug', 'operation.automatic'),
+    icon: const DifyIcon('vender/other/generator', size: 16, color: DifyColors.utilColorsBlueBlue600),
+    onPressed: onPressed ?? () => toast.error(DifyI18n.tr('app-debug', 'noModelProviderConfigured')),
   );
 }

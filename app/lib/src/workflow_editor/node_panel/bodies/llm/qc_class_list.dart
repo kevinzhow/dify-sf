@@ -394,7 +394,8 @@ class _ClassListState extends State<ClassList> {
                   Flexible(
                     child: Text.rich(
                       TextSpan(
-                        text: '${_w('$_p.class').toUpperCase()} ',
+                        // The button is a flex box: the space after the title ends its anonymous item and goes.
+                        text: _w('$_p.class').toUpperCase(),
                         children: const [
                           TextSpan(
                             text: '*',

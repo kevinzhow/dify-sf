@@ -20,6 +20,8 @@ import 'note_node/note_node.dart';
 import 'operator/operator.dart';
 import 'store/app_registers_sync.dart';
 import 'store/store.dart';
+import 'variable_inspect/inspect_vars.dart';
+import 'variable_inspect/panel.dart';
 import 'variable_inspect/trigger.dart';
 import 'variable_panels/variable_panels.dart';
 import 'block_selector/block_selector.dart';
@@ -37,6 +39,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.serverLabel = '',
     this.actions = const [],
     this.meta = const DocMeta(),
+    this.variableInspectServices = VariableInspectServices.none,
   });
 
   final EditorController controller;
@@ -47,6 +50,9 @@ class DifyWorkflowEditor extends StatefulWidget {
 
   /// The host's actions (add node, export, demo), shown behind the session menu.
   final List<Widget> actions;
+
+  /// The variable inspect panel's draft variables (no runs without a runtime: none by default).
+  final VariableInspectServices variableInspectServices;
 
   @override
   State<DifyWorkflowEditor> createState() => _DifyWorkflowEditorState();
@@ -203,7 +209,22 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                   );
                 },
                 control: workflowControlBuilder(options),
-                operator: workflowOperatorBuilder(controller, options, const VariableInspectTrigger()),
+                // The variable inspect trigger and panel share the editor's inspect data; "View log" opens a node's
+                // panel on its Last Run tab.
+                operator: (context, canvas) => VariableInspectHost(
+                  services: widget.variableInspectServices,
+                  nodes: () => controller.doc.nodes.values,
+                  onViewNode: (nodeId) {
+                    WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                    controller.selectNode(nodeId);
+                  },
+                  child: workflowOperatorBuilder(
+                    controller,
+                    options,
+                    const VariableInspectTrigger(),
+                    const VariableInspectPanel(),
+                  )(context, canvas),
+                ),
                 // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
                 // variable panels.
                 panels: (context, canvas) => WorkflowPanels(

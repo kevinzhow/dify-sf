@@ -32,6 +32,26 @@ abstract final class Css {
     final above = a + ((lineHeight - a - d) / 2).floorToDouble();
     return (above: above, below: lineHeight - above);
   }
+
+  /// A forced strut putting the baseline of text in [style] (its font size and line height) where Chrome does
+  /// ([textLine]): Flutter's lies [_ascent] + half the leading below the line's top, unrounded (0.4 to 0.7 px lower for
+  /// 12 px text in 16 or 18 px lines, 14 px text in 20 or 24 px lines). The strut's own font size moves its baseline
+  /// (half the leading is `(lineHeight - (ascent + descent) * size) / 2`) and keeps the line height. Null for styles
+  /// without a line height.
+  static StrutStyle? lineStrut(TextStyle style) {
+    final size = style.fontSize, height = style.height;
+    if (size == null || height == null) return null;
+    final lineHeight = size * height;
+    final strutSize = (textLine(size, lineHeight).above - lineHeight / 2) / ((_ascent - _descent) / 2);
+    if (strutSize <= 0) return null;
+    return StrutStyle(
+      fontFamily: style.fontFamily,
+      fontSize: strutSize,
+      height: lineHeight / strutSize,
+      leadingDistribution: TextLeadingDistribution.even,
+      forceStrutHeight: true,
+    );
+  }
 }
 
 /// CSS `border: <width> dashed` around a box with rounded corners, as Chrome strokes it (one closed path along the

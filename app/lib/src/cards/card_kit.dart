@@ -1,6 +1,7 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../workflow/model_catalog.dart';
@@ -76,13 +77,18 @@ class DifyText extends StatelessWidget {
   final int? maxLines;
 
   @override
-  Widget build(BuildContext context) => Text(
-    style.uppercase ? text.toUpperCase() : text,
-    style: difyStyle(style, color),
-    textAlign: align,
-    maxLines: maxLines,
-    overflow: maxLines == null ? null : TextOverflow.ellipsis,
-  );
+  Widget build(BuildContext context) {
+    final s = difyStyle(style, color);
+    return Text(
+      style.uppercase ? text.toUpperCase() : text,
+      style: s,
+      // The baseline where Chrome puts it.
+      strutStyle: Css.lineStrut(s),
+      textAlign: align,
+      maxLines: maxLines,
+      overflow: maxLines == null ? null : TextOverflow.ellipsis,
+    );
+  }
 }
 
 /// A row on the card: `flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1`.

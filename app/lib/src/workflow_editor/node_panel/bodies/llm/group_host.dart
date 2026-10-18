@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import '../../../../workflow/model_catalog.dart';
 import '../../../../design/widgets/toast.dart';
 import '../../../panel_fields/node_config.dart' show Json;
+import '../../../prompt_editor/prompt_editor_types.dart' show extractPluginId;
 
 /// dify-ui's toast types.
 typedef LlmToastType = DifyToastType;
@@ -166,6 +167,11 @@ typedef InlineAgentWorkspaceArgs = ({
   ValueChanged<Json> onSaved,
   VoidCallback? onSaveInlineToRoster,
 });
+
+/// useLlmModelPluginInstalled over [catalog]: whether one of its providers comes from the plugin [pluginId]
+/// (`org/name`).
+bool Function(String pluginId) modelPluginInstalledIn(ModelCatalog catalog) =>
+    (pluginId) => catalog.providers.any((p) => extractPluginId(p.provider) == pluginId);
 
 /// Hands [services] to the model-node panels below it.
 class LlmGroupScope extends InheritedWidget {

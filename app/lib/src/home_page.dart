@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'cards/card_kit.dart' show cardFontFamily;
 
 import 'demo/demo_backend.dart';
+import 'design/dify_theme.dart';
 import 'design/widgets/toast.dart';
 import 'editor/editor_controller.dart';
 import 'editor/editor_page.dart';
@@ -237,9 +238,7 @@ Widget buildApp(AppSettings settings, {Backend Function(Uri)? backendFor, Launch
   title: 'dify-sf',
   debugShowCheckedModeBanner: false,
   // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
-  theme: ThemeData(
-    colorSchemeSeed: const Color(0xFF3F51B5),
-    useMaterial3: true,
+  theme: difyTheme(
     fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
   ),
   home: HomePage(settings: settings, backendFor: backendFor, launch: launch),
