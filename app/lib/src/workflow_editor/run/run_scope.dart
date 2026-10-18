@@ -3,9 +3,11 @@
 /// the canvas cards, and hands all of it down in a [WorkflowRunScope].
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
+import '../../canvas/run_view.dart';
 import '../../editor/editor_controller.dart';
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
@@ -13,42 +15,66 @@ import 'debug_chat.dart';
 import 'mock_run_service.dart';
 import 'run_graph.dart';
 import 'run_service.dart';
-import 'run_types.dart';
 import 'single_run.dart';
 import 'workflow_run.dart';
 
 /// The canvas status a node's run fields show (Dify's node.tsx borders and header icon read `_runningStatus`).
-String canvasStatusOf(DifyJson runData) => switch (runData['_runningStatus']) {
-  NodeRunningStatus.running ||
-  NodeRunningStatus.succeeded ||
-  NodeRunningStatus.failed ||
-  NodeRunningStatus.exception ||
-  NodeRunningStatus.paused => runData['_runningStatus'] as String,
-  _ => 'idle',
-};
+String canvasStatusOf(DifyJson runData, {bool hasVarValue = false}) =>
+    NodeRunView.fromRunData(runData, hasVarValue: hasVarValue).status;
 
-/// Keeps [CanvasController.nodeRunStatus] in step with [WorkflowStore.nodeRunData].
+/// Keeps [CanvasController.nodeRun] / [CanvasController.edgeRun] in step with [WorkflowStore.nodeRunData],
+/// [WorkflowStore.edgeRunData] and the nodes with inspect variables (`hasNodeInspectVars`: the success border
+/// without a running status). Only changed entries are replaced, so the canvas touches only the nodes that changed.
 class RunCanvasBinding {
   RunCanvasBinding(this.store, this.canvas) {
-    store.nodeRunData.addListener(_sync);
-    _sync();
+    store.nodeRunData.addListener(_syncNodes);
+    store.nodesWithInspectVars.addListener(_syncNodes);
+    store.edgeRunData.addListener(_syncEdges);
+    _syncNodes();
+    _syncEdges();
   }
 
   final WorkflowStore store;
   final CanvasController canvas;
 
-  void _sync() {
-    final next = <String, String>{};
+  /// The view made from each node's run fields (the store replaces only the entries a run event changes, so the
+  /// others are reused as they are).
+  var _views = <String, (DifyJson, bool, NodeRunView)>{};
+
+  void _syncNodes() {
+    final withVars = {for (final n in store.nodesWithInspectVars.value) n['nodeId']};
+    final next = <String, NodeRunView>{};
+    final views = <String, (DifyJson, bool, NodeRunView)>{};
     store.nodeRunData.value.forEach((id, data) {
-      final s = canvasStatusOf(data);
-      if (s != 'idle') next[id] = s;
+      final hasVar = withVars.contains(id);
+      final old = _views[id];
+      final v = old != null && identical(old.$1, data) && old.$2 == hasVar
+          ? old.$3
+          : NodeRunView.fromRunData(data, hasVarValue: hasVar);
+      views[id] = (data, hasVar, v);
+      if (v != NodeRunView.idle) next[id] = v;
     });
-    final old = canvas.nodeRunStatus.value;
-    if (old.length == next.length && next.entries.every((e) => old[e.key] == e.value)) return;
-    canvas.nodeRunStatus.value = next;
+    _views = views;
+    for (final id in withVars) {
+      if (id is String && !next.containsKey(id)) next[id] = const NodeRunView(hasVarValue: true);
+    }
+    if (!mapEquals(canvas.nodeRun.value, next)) canvas.nodeRun.value = next;
   }
 
-  void dispose() => store.nodeRunData.removeListener(_sync);
+  void _syncEdges() {
+    final next = <String, EdgeRunView>{};
+    store.edgeRunData.value.forEach((id, data) {
+      final v = EdgeRunView.fromRunData(data);
+      if (v != EdgeRunView.idle) next[id] = v;
+    });
+    if (!mapEquals(canvas.edgeRun.value, next)) canvas.edgeRun.value = next;
+  }
+
+  void dispose() {
+    store.nodeRunData.removeListener(_syncNodes);
+    store.nodesWithInspectVars.removeListener(_syncNodes);
+    store.edgeRunData.removeListener(_syncEdges);
+  }
 }
 
 /// One editor's run/debug objects (see run_service.dart's API notes).

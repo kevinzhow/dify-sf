@@ -22,6 +22,9 @@ import '../../header/header_widgets.dart' show Spinning;
 import '../../panel_fields/form_controls.dart' show DifyTextarea;
 import '../../store/workflow_store.dart' show DifyJson;
 import '../run_types.dart' show WorkflowRunningStatus;
+import '../../node_panel/bodies/data/human_input/human_input_kit.dart' show HumanInputHost;
+import 'before_run_form.dart' show RunFilePicker;
+import 'human_input_content.dart';
 import 'markdown.dart';
 import 'run_widgets.dart';
 import 'tracing_panel.dart';
@@ -38,6 +41,9 @@ class ChatContext extends InheritedWidget {
     this.onRegenerate,
     this.readonly = false,
     this.toast,
+    this.onHumanInputFormSubmit,
+    this.getHumanInputNodeData,
+    this.pickFile,
     required super.child,
   });
 
@@ -46,11 +52,22 @@ class ChatContext extends InheritedWidget {
   final bool readonly;
   final void Function(DifyToastType type, String message)? toast;
 
+  /// Submits a paused run's human input form (`onHumanInputFormSubmit`).
+  final HumanInputFormSubmit? onHumanInputFormSubmit;
+
+  /// A form's Human Input node data (`getHumanInputNodeData`: its delivery methods give the form's tips).
+  final HumanInputNodeData? getHumanInputNodeData;
+  final RunFilePicker? pickFile;
+
   static ChatContext? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ChatContext>();
 
   @override
   bool updateShouldNotify(ChatContext old) =>
-      onSend != old.onSend || onRegenerate != old.onRegenerate || readonly != old.readonly;
+      onSend != old.onSend ||
+      onRegenerate != old.onRegenerate ||
+      readonly != old.readonly ||
+      onHumanInputFormSubmit != old.onHumanInputFormSubmit ||
+      getHumanInputNodeData != old.getHumanInputNodeData;
 }
 
 void _copy(BuildContext context, String text) {
@@ -500,8 +517,9 @@ class _ChatAnswerState extends State<ChatAnswer> {
       for (final q in (item['suggestedQuestions'] as List? ?? const []))
         if (q is String && q.trim().isNotEmpty) q,
     ];
-    final bubble = Container(
-      width: process != null ? double.infinity : null,
+    Widget bubbleBox(List<Widget> children, {required bool full, Key? key}) => Container(
+      key: key,
+      width: full ? double.infinity : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: DifyGradients.chatBubbleBg,
@@ -509,61 +527,106 @@ class _ChatAnswerState extends State<ChatAnswer> {
       ),
       child: DefaultTextStyle.merge(
         style: difyStyle(DifyType.bodyLgRegular, DifyColors.textPrimary),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (process != null) WorkflowProcessItem(data: process, hideProcessDetail: widget.hideProcessDetail),
-            if (hasReasoning) ReasoningPanel(content: reasoning, done: reasoningDone),
-            if (responding && contentIsEmpty && !hasReasoning)
-              const SizedBox(width: 24, height: 20, child: Center(child: LoadingAnim())),
-            if (!contentIsEmpty)
-              Padding(
-                padding: EdgeInsets.only(top: process != null ? 0 : 0),
-                child: DifyMarkdown(
-                  content: RegExp(r'^\\\\\S').hasMatch(content) && !RegExp(r'^`.*`$').hasMatch(content)
-                      ? '`$content`'
-                      : content,
-                  color: item['isError'] == true ? const Color(0xFFF04438) : null,
-                ),
-              ),
-            if (allFiles.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: RunFileList(files: allFiles),
-              ),
-            if (messageFiles.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: RunFileList(files: messageFiles),
-              ),
-            if (isOpening && suggested.isNotEmpty)
-              Wrap(
-                children: [
-                  for (final q in suggested)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, right: 4),
-                      child: _SuggestedQuestion(
-                        question: q,
-                        readonly: ctx?.readonly ?? false,
-                        onTap: () => ctx?.onSend?.call(q),
-                      ),
-                    ),
-                ],
-              ),
-            ContentSwitch(
-              count: (item['siblingCount'] as num?)?.toInt(),
-              currentIndex: (item['siblingIndex'] as num?)?.toInt(),
-              prevDisabled: item['prevSibling'] == null,
-              nextDisabled: item['nextSibling'] == null,
-              switchSibling: (next) {
-                final id = item[next ? 'nextSibling' : 'prevSibling'];
-                if (id is String) widget.switchSibling?.call(id);
-              },
-            ),
-          ],
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
       ),
     );
+    Widget contentSwitch() => ContentSwitch(
+      count: (item['siblingCount'] as num?)?.toInt(),
+      currentIndex: (item['siblingIndex'] as num?)?.toInt(),
+      prevDisabled: item['prevSibling'] == null,
+      nextDisabled: item['nextSibling'] == null,
+      switchSibling: (next) {
+        final id = item[next ? 'nextSibling' : 'prevSibling'];
+        if (id is String) widget.switchSibling?.call(id);
+      },
+    );
+    final responseParts = <Widget>[
+      if (hasReasoning) ReasoningPanel(content: reasoning, done: reasoningDone),
+      if (responding && contentIsEmpty && !hasReasoning)
+        const SizedBox(width: 24, height: 20, child: Center(child: LoadingAnim())),
+      if (!contentIsEmpty)
+        DifyMarkdown(
+          content: RegExp(r'^\\\\\S').hasMatch(content) && !RegExp(r'^`.*`$').hasMatch(content)
+              ? '`$content`'
+              : content,
+          color: item['isError'] == true ? const Color(0xFFF04438) : null,
+        ),
+      if (allFiles.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: RunFileList(files: allFiles),
+        ),
+      if (messageFiles.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: RunFileList(files: messageFiles),
+        ),
+      if (isOpening && suggested.isNotEmpty)
+        Wrap(
+          children: [
+            for (final q in suggested)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 4),
+                child: _SuggestedQuestion(
+                  question: q,
+                  readonly: ctx?.readonly ?? false,
+                  onTap: () => ctx?.onSend?.call(q),
+                ),
+              ),
+          ],
+        ),
+      contentSwitch(),
+    ];
+    // Human input forms (answer/index.tsx): the workflow process and the forms in a first bubble, the response in a
+    // second one joined to it by a short line.
+    final forms = [for (final f in (item['humanInputFormDataList'] as List? ?? const [])) f as DifyJson];
+    final filled = [for (final f in (item['humanInputFilledFormDataList'] as List? ?? const [])) f as DifyJson];
+    final Widget bubble;
+    if (forms.isEmpty && filled.isEmpty) {
+      bubble = bubbleBox([
+        if (process != null) WorkflowProcessItem(data: process, hideProcessDetail: widget.hideProcessDetail),
+        ...responseParts,
+      ], full: process != null);
+    } else {
+      bubble = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          bubbleBox(key: const Key('chat-answer-container-humaninput'), [
+            if (process != null) WorkflowProcessItem(data: process, hideProcessDetail: widget.hideProcessDetail),
+            if (forms.isNotEmpty)
+              HumanInputFormList(
+                humanInputFormDataList: forms,
+                onHumanInputFormSubmit: ctx?.onHumanInputFormSubmit,
+                getHumanInputNodeData: ctx?.getHumanInputNodeData,
+                pickFile: ctx?.pickFile,
+                email: HumanInputHost.of(context).userEmail,
+              ),
+            if (filled.isNotEmpty) HumanInputFilledFormList(humanInputFilledFormDataList: filled),
+            if (!responding && contentIsEmpty) contentSwitch(),
+          ], full: true),
+          if (responding || !contentIsEmpty || hasReasoning)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  bubbleBox(responseParts, full: true),
+                  // `absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg`.
+                  const Positioned(
+                    top: -8,
+                    left: 24,
+                    width: 2,
+                    height: 12,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(gradient: DifyGradients.chatAnswerHumanInputFormDividerBg),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
     final showOps = !responding && !isOpening && _hover;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1082,6 +1145,9 @@ class DebugChat extends StatefulWidget {
     this.onFeatureBarClick,
     this.noChatInput = false,
     this.toast,
+    this.onHumanInputFormSubmit,
+    this.getHumanInputNodeData,
+    this.pickFile,
   });
 
   final List<DifyJson> chatList;
@@ -1104,6 +1170,9 @@ class DebugChat extends StatefulWidget {
   final VoidCallback? onFeatureBarClick;
   final bool noChatInput;
   final void Function(DifyToastType type, String message)? toast;
+  final HumanInputFormSubmit? onHumanInputFormSubmit;
+  final HumanInputNodeData? getHumanInputNodeData;
+  final RunFilePicker? pickFile;
 
   @override
   State<DebugChat> createState() => _DebugChatState();
@@ -1142,6 +1211,9 @@ class _DebugChatState extends State<DebugChat> {
       onSend: widget.onSend,
       onRegenerate: widget.onRegenerate,
       toast: widget.toast,
+      onHumanInputFormSubmit: widget.onHumanInputFormSubmit,
+      getHumanInputNodeData: widget.getHumanInputNodeData,
+      pickFile: widget.pickFile,
       child: Stack(
         children: [
           if (list.isEmpty && widget.emptyNode != null) Positioned.fill(child: Center(child: widget.emptyNode)),

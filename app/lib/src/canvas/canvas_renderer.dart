@@ -22,8 +22,11 @@ abstract class CanvasRenderer {
   /// Selection or hover changed for these slots (and the selected edge may have changed).
   void selectionChanged(Set<int> slots);
 
-  /// A node's run status changed.
+  /// A node's run view ([CanvasNode.run]) changed.
   void statusChanged(int slot);
+
+  /// The edges' run views ([CanvasGraph.edgeRun]) changed.
+  void edgeRunChanged();
 
   Widget build(BuildContext context);
   void dispose();

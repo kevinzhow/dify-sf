@@ -5396,3 +5396,131 @@ web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: Work
 web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > keeps workspace settings visible for dataset operators without member management permission
 web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > shows invite members when member management permission is available
 web/app/components/main-nav/components/__tests__/workspace-card.spec.tsx :: WorkspaceCard > hides invite members when member management permission is missing
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should backup the current draft once and skip subsequent backups until it is cleared
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should load a backup draft into canvas, environment variables, and features state
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should prepare the graph and dispatch a workflow run through ssePost for user-input mode
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should dispatch $title trigger runs through the debug runner integration
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should expose the workflow-failed tracker through the callback factory context
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should split serialized workflow data into chunks when it exceeds the amplitude string limit
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should track workflow failures when the error or workflow data is malformed
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should lazily create audio players with the correct public and private tts urls
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should stop workflow runs by task id or by aborting active debug controllers
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should restore published workflow graph, features, and environment variables
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.ts :: useWorkflowRun > should restore published workflows with empty environment variables as an empty list
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-callbacks.spec.ts :: useWorkflowRun callbacks helpers > should create base callbacks that wrap workflow events, errors, pause continuation, and lazy tts playback
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-callbacks.spec.ts :: useWorkflowRun callbacks helpers > should create final callbacks that preserve rest callback override order and eager abort-controller wiring
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-callbacks.spec.ts :: useWorkflowRun callbacks helpers > should route base workflow events through handlers, user callbacks, and pause continuation with the same callback object
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-callbacks.spec.ts :: useWorkflowRun callbacks helpers > should skip base debug-only side effects and audio playback when debug mode is off or audio is empty
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-callbacks.spec.ts :: useWorkflowRun callbacks helpers > should route final workflow events through handlers and continue paused runs with final callbacks
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should resolve run history urls and run endpoints for workflow modes
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should build request bodies and validation errors for trigger runs
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should return empty trigger urls when app id is missing and keep user-input urls empty outside workflow debug
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should configure listening state for trigger and non-trigger modes
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should clear listening state, stop state, and remove debug controllers
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should derive listening node ids, tts config, and published workflow mappings
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should handle trigger debug null and invalid json responses as request failures
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should handle trigger debug json failures and stream responses
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should retry waiting trigger debug responses until a stream is returned
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should stop trigger debug processing when the controller aborts before handling the response
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should handle Response and non-Response trigger debug exceptions correctly
+web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts :: useWorkflowRun utils > should expose the canonical workflow state factories
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should run the workflow immediately when there are no start variables and no image upload input
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should not sync or run when only the start placeholder exists
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should open the input panel instead of running immediately when start inputs are required
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should open the input panel when image upload is enabled even without start variables
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should cancel the current debug panel instead of starting another workflow when one is already open
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should short-circuit workflow start when a run is already in progress
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should configure schedule trigger runs and execute the workflow with schedule options
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should cancel schedule trigger execution when the debug panel is already open
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should ignore $title trigger execution when the node id is empty
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should warn when the $title trigger node cannot be found
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should configure $title trigger runs with node-specific options
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should run all triggers and mark the listener state as global
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should ignore run-all requests when there are no trigger nodes
+web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx :: useWorkflowStartRunByCanEdit > should route handleStartWorkflowRun to the chatflow path when chat mode is enabled
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should render Markdown for literal content
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should render Textarea for valid output variable content
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should call onInputChange when textarea value changes
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should render nothing if field name is valid but not found in formInputFields
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should delegate select fields to the shared renderer
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should delegate single-file fields to the shared renderer
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-item.spec.tsx :: ContentItem > should delegate file-list fields to the shared renderer
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-wrapper.spec.tsx :: ContentWrapper > should render node title and children by default when not collapsible
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-wrapper.spec.tsx :: ContentWrapper > should show/hide content when toggling expansion
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-wrapper.spec.tsx :: ContentWrapper > should expand with the %s key
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/content-wrapper.spec.tsx :: ContentWrapper > should render children initially if expanded is true
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/expiration-time.spec.tsx :: ExpirationTime > should render "Future" state with relative time
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/expiration-time.spec.tsx :: ExpirationTime > should render "Expired" state when time is in the past
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders paragraph input and emits string changes
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders paragraph input with an accessible name
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders paragraph input with an empty value when the current value is not a string
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders select input and emits selected values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders single-file input and emits one file
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders existing single-file values and emits null when cleared
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders file-list input and emits file arrays with max count
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > uses the default max count for file-list inputs without an explicit limit
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/field-renderer.spec.tsx :: HumanInputFieldRenderer > renders nothing for unsupported input types
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should render content parts and action buttons
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should handle input changes and submit correctly
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should submit file field values using the backend payload shape
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should disable buttons until select, file, and file list inputs have uploaded values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should ignore input fields that are not rendered in form content when checking actions
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should disable buttons during submission
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should handle missing resolved_default_values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/human-input-form.spec.tsx :: HumanInputForm > should handle mixed supported input types in initializeInputs
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-content-item.spec.tsx :: SubmittedContentItem > renders file-list output placeholders as readonly file lists
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-content-item.spec.tsx :: SubmittedContentItem > renders empty text for paragraph and select placeholders with non-string values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-content-item.spec.tsx :: SubmittedContentItem > renders nothing when output placeholders do not have a usable submitted value
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-content-item.spec.tsx :: SubmittedContentItem > skips file placeholders when submitted values have incompatible shapes
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-content-item.spec.tsx :: SubmittedContentItem > renders nothing for unsupported output field types
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-field-values.spec.tsx :: SubmittedFieldValues > renders text and select values as text
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-field-values.spec.tsx :: SubmittedFieldValues > renders file and file-list values as file lists
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-field-values.spec.tsx :: SubmittedFieldValues > skips fields with missing values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-field-values.spec.tsx :: SubmittedFieldValues > infers value types when field definitions are unavailable
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted-field-values.spec.tsx :: SubmittedFieldValues > skips file fields when submitted values have incompatible shapes
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted.spec.tsx :: SubmittedHumanInputContent Integration > should render both content and executed action
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted.spec.tsx :: SubmittedHumanInputContent Integration > should prefer structured form data over rendered markdown when available
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted.spec.tsx :: SubmittedHumanInputContent Integration > should render submitted select and file fields with the original form layout
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted.spec.tsx :: SubmittedHumanInputContent Integration > should fallback to rendered markdown when structured form data is empty
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/submitted.spec.tsx :: SubmittedHumanInputContent Integration > should render submitted field values when original form layout is unavailable
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/tips.spec.tsx :: Tips > should render email tip in normal mode
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/tips.spec.tsx :: Tips > should render email tip in debug mode
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/tips.spec.tsx :: Tips > should render debug mode tip
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/tips.spec.tsx :: Tips > should render nothing when all flags are false
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Rendering > should render form, tips, and expiration time when all conditions met
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Rendering > should hide ExpirationTime when expiration_time is not a number
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Rendering > should hide Tips when both tip flags are false
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Rendering > should render different email tips based on debug mode
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Rendering > should render "Expired" state when expiration time is in the past
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Interactions > should update input values and call onSubmit
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Interactions > should handle loading state during submission
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Edge Cases > should handle missing resolved_default_values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Edge Cases > should return null in ContentItem if field is not found
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/unsubmitted.spec.tsx :: UnsubmittedHumanInputContent Integration > Edge Cases > should render text-input type in initializeInputs correctly
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > getButtonStyle > should map all supported button styles
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > getButtonStyle > should return undefined for unsupported style values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > splitByOutputVar > should split content around output variable placeholders
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > splitByOutputVar > should return original content when no placeholders exist
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > form content inputs > should extract and filter input fields rendered in form content
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should initialize paragraph fields with constants and variable defaults
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should initialize select fields with empty strings
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should initialize single file fields with null
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should initialize file list fields with empty arrays
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should fallback to empty string when variable default is missing
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should fallback to default paragraph values when resolved defaults are not strings
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should ignore resolved defaults for non-paragraph fields
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > initializeInputs > should ignore unsupported input types
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > required input checks > should ignore fields that are not present in values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > required input checks > should detect empty select values and unuploaded file values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > required input checks > should accept uploaded single and multiple file values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > required input checks > should treat unsupported input types as valid by default
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > getProcessedHumanInputFormInputs > should return undefined when no values are provided
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > getProcessedHumanInputFormInputs > should process file values and fallback invalid file values
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > time helpers > should format relative time for supported and fallback locales
+web/app/components/base/chat/chat/answer/human-input-content/__tests__/utils.spec.ts :: human-input utils > time helpers > should compare utc timestamp against current time
+web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > should render empty list when no form data is provided
+web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > should render only items with display_in_ui set to true
+web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should set default tips when node data is not found
+web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should set default tips when delivery_methods is empty
+web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should show tips correctly based on delivery methods
+web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should show debug mode tip if WebApp is disabled

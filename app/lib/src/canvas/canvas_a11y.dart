@@ -48,7 +48,7 @@ class CanvasA11y extends ChangeNotifier {
     } else {
       final byStatus = <String, int>{};
       for (final n in on) {
-        byStatus.update(n.status.value, (c) => c + 1, ifAbsent: () => 1);
+        byStatus.update(n.status, (c) => c + 1, ifAbsent: () => 1);
       }
       final parts = [
         for (final e in byStatus.entries)
@@ -68,7 +68,7 @@ class CanvasA11y extends ChangeNotifier {
     return [
       node.title.isEmpty ? node.id : node.title,
       '${node.type} node',
-      if (n.status.value != 'idle') n.status.value,
+      if (n.status != 'idle') n.status,
       if (selection.nodes.contains(n.slot)) 'selected',
     ].join(', ');
   }

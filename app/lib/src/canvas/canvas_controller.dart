@@ -23,9 +23,12 @@ class CanvasController {
   /// The node drawn by a live widget instead of its card (the selected note's editor), if any.
   final liveCard = ValueNotifier<LiveCard?>(null);
 
-  /// Run status shown on the cards, by node id (`running`, `succeeded`, `failed`, `exception`, `paused`; a node
-  /// missing is idle). Local view state set by the run (never part of the document).
-  final nodeRunStatus = ValueNotifier<Map<String, String>>(const {});
+  /// The run fields shown on the nodes, by node id (a node missing is [NodeRunView.idle]). Local view state set by
+  /// the run (never part of the document).
+  final nodeRun = ValueNotifier<Map<String, NodeRunView>>(const {});
+
+  /// The run fields shown on the edges, by edge id (an edge missing is [EdgeRunView.idle]).
+  final edgeRun = ValueNotifier<Map<String, EdgeRunView>>(const {});
 
   /// Dify's `nodesReadOnly` for the canvas's own gestures (React Flow's `nodesDraggable` / `nodesConnectable` and the
   /// delete key are off while it is true). The workflow editor points it at its store.
@@ -69,6 +72,7 @@ class CanvasController {
     selection.dispose();
     controlMode.dispose();
     liveCard.dispose();
-    nodeRunStatus.dispose();
+    nodeRun.dispose();
+    edgeRun.dispose();
   }
 }

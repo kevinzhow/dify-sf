@@ -8,12 +8,34 @@ abstract class CardSpec {
   const CardSpec();
 
   /// The node's card layout (size, handles), computed from the node's data and the document (for labels of the
-  /// variables it references).
-  CardLayout layoutOf(Node node, Document doc);
+  /// variables it references); [run] and [selected] for the cards whose size depends on them
+  /// ([layoutDependsOnRun]).
+  CardLayout layoutOf(Node node, Document doc, {NodeRunView run = NodeRunView.idle, bool selected = false});
+
+  /// Whether [node]'s layout depends on its run state and selection (the canvas lays it out again when they change).
+  bool layoutDependsOnRun(Node node) => false;
+
+  /// Where [node]'s card shows a spinning loader for its run state ([CanvasNode.cardRun], [CanvasNode.selected]),
+  /// on the canvas: renderers that cannot animate inside a card draw these themselves (see [CanvasSpinners]).
+  List<Rect> spinners(CanvasNode node, CanvasGraph graph) => const [];
 
   /// The card for [node]. [live] cards show run status in their content (captures for zoomed-out views leave it
   /// out: the canvas draws status itself). [onPainted] is called after a frame in which the card repainted.
   Widget build(BuildContext context, CanvasNode node, CanvasGraph graph, {required bool live, VoidCallback? onPainted});
+}
+
+/// Whether cards below draw their loaders: false where the renderer draws them over the card instead (a captured
+/// card cannot animate without being captured every frame); the card leaves their place empty.
+class CanvasSpinners extends InheritedWidget {
+  const CanvasSpinners({super.key, required this.drawnByCanvas, required super.child});
+
+  final bool drawnByCanvas;
+
+  static bool drawnByCanvasOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<CanvasSpinners>()?.drawnByCanvas ?? false;
+
+  @override
+  bool updateShouldNotify(CanvasSpinners old) => drawnByCanvas != old.drawnByCanvas;
 }
 
 /// BlockIcon background by node type (block-icon.tsx).

@@ -296,6 +296,10 @@ class _ChatWrapperState extends State<ChatWrapper> {
         showFeatureBar: true,
         onFeatureBarClick: () => store.setShowFeaturesPanel(true),
         toast: widget.panel.toast,
+        // chat-wrapper.tsx doHumanInputFormSubmit / getHumanInputNodeData.
+        onHumanInputFormSubmit: chat.handleSubmitHumanInputForm,
+        getHumanInputNodeData: (id) => chat.getHumanInputNodeData(id)?.data,
+        pickFile: widget.panel.pickFile,
         emptyNode: const DebugEmpty(),
         chatNode: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

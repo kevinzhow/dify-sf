@@ -115,16 +115,28 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     view.addListener(_viewMoved);
     selection.addListener(_selectionChanged);
     c.addListener(_documentChanged);
-    canvas.nodeRunStatus.addListener(_runStatusChanged);
+    canvas.nodeRun.addListener(_runStatusChanged);
+    canvas.edgeRun.addListener(_edgeRunChanged);
     _documentChanged();
+    if (canvas.edgeRun.value.isNotEmpty) _edgeRunChanged();
   }
 
-  /// Shows [CanvasController.nodeRunStatus] on the cards.
-  void _runStatusChanged() {
-    final statuses = canvas.nodeRunStatus.value;
-    for (final n in graph.nodes) {
-      setStatus(n.id, statuses[n.id] ?? 'idle');
+  Map<String, NodeRunView> _shownRun = const {};
+
+  /// Shows [CanvasController.nodeRun] on the nodes: only the nodes whose run view changed are touched.
+  void _runStatusChanged({bool all = false}) {
+    final next = canvas.nodeRun.value, old = _shownRun;
+    _shownRun = next;
+    final ids = all ? graph.nodes.map((n) => n.id) : {...old.keys, ...next.keys};
+    for (final id in ids) {
+      setRun(id, next[id] ?? NodeRunView.idle);
     }
+  }
+
+  /// Shows [CanvasController.edgeRun] on the edges.
+  void _edgeRunChanged() {
+    graph.edgeRun = canvas.edgeRun.value;
+    renderer.edgeRunChanged();
   }
 
   Timer? _rest;
@@ -186,7 +198,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     if (!change.isEmpty) {
       renderer.apply(change);
       a11y.changed();
-      if (change.added.isNotEmpty && canvas.nodeRunStatus.value.isNotEmpty) _runStatusChanged();
+      if (change.added.isNotEmpty && canvas.nodeRun.value.isNotEmpty) _runStatusChanged(all: true);
     }
     // The panel (or a test) selected a node or an edge: show it.
     final id = c.selectedNodeId;
@@ -207,6 +219,14 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
       _hovered = selection.hovered;
       if (_hovered != null) graph.slots[_hovered!]?.hovered.value = true;
     }
+    final resized = CanvasChange();
+    for (final slot in selection.changed) {
+      final n = graph.slots[slot];
+      if (n == null) continue;
+      n.selected.value = selection.nodes.contains(slot);
+      if (widget.cards.layoutDependsOnRun(n.node.value) && graph.relayout(n, c.doc)) resized.resized.add(n);
+    }
+    if (resized.resized.isNotEmpty) renderer.apply(resized..edgesChanged = true);
     renderer.selectionChanged(selection.changed);
     a11y.changed();
   }
@@ -229,19 +249,31 @@ class WorkflowCanvasState extends State<WorkflowCanvas> {
     canvas.fitView();
   }
 
-  /// Sets a node's run status (from a run, or a simulation of one).
-  void setStatus(String id, String status) {
+  /// Sets a node's run view (from a run, or a simulation of one); a card whose size depends on it is laid out again.
+  void setRun(String id, NodeRunView run) {
     final n = graph[id];
-    if (n == null || n.status.value == status) return;
-    n.status.value = status;
+    if (n == null || n.run.value == run) return;
+    final statusChanged = n.run.value.status != run.status;
+    n.run.value = run;
+    n.cardRun.value = run.forCard;
+    if (widget.cards.layoutDependsOnRun(n.node.value) && graph.relayout(n, c.doc)) {
+      final change = CanvasChange()
+        ..resized.add(n)
+        ..edgesChanged = true;
+      renderer.apply(change);
+    }
     renderer.statusChanged(n.slot);
-    a11y.changed();
+    if (statusChanged) a11y.changed();
   }
+
+  /// Sets a node's run status alone (tests, simulations).
+  void setStatus(String id, String status) => setRun(id, NodeRunView(runningStatus: status == 'idle' ? null : status));
 
   @override
   void dispose() {
     c.removeListener(_documentChanged);
-    canvas.nodeRunStatus.removeListener(_runStatusChanged);
+    canvas.nodeRun.removeListener(_runStatusChanged);
+    canvas.edgeRun.removeListener(_edgeRunChanged);
     selection.removeListener(_selectionChanged);
     view.removeListener(a11y.viewMoved);
     view.removeListener(_viewMoved);

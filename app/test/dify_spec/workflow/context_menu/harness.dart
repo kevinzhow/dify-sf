@@ -62,7 +62,7 @@ class Harness {
   final canvas = CanvasController();
   final store = WorkflowStore();
   late final graph = CanvasGraph(
-    layoutOf: (n, d) {
+    layoutOf: (n, d, {run = NodeRunView.idle, selected = false}) {
       final size = switch (n.config['_dify_node']) {
         VMap(:final entries) => switch ((entries['width'], entries['height'])) {
           (VInt(value: final w), VInt(value: final h)) => Size(w.toDouble(), h.toDouble()),

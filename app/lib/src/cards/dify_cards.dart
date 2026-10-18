@@ -133,7 +133,27 @@ class DifyCards extends CardSpec {
       BodyContext(n, lookup, start: start, viewOrigin: viewOrigin);
 
   @override
-  CardLayout layoutOf(Node node, Document doc) {
+  bool layoutDependsOnRun(Node node) => NodeExtras.hasRetry(node);
+
+  @override
+  List<Rect> spinners(CanvasNode node, CanvasGraph graph) {
+    final n = node.node.value, run = node.cardRun.value;
+    if (isNoteCard(n)) return const [];
+    final body = bodyOf(n.type);
+    if (!body.chrome.header) return const [];
+    final retry = NodeExtras.retrySpinner(n, run, selected: node.selected.value);
+    if (!run.isLoading && retry == null) return const [];
+    final card = node.rect;
+    final ctx = context(n, (id) => graph[id]?.node.value, graph.startNode);
+    return [
+      // NodeHeaderMeta's last item, at the right end of the header (`px-3 pt-3`, a 24 px row).
+      if (run.isLoading) Rect.fromLTWH(card.right - border - 12 - 14, card.top + border + 12 + 5, 14, 14),
+      if (retry != null) retry.shift(Offset(card.left + border, card.top + border + header + body.height(ctx))),
+    ];
+  }
+
+  @override
+  CardLayout layoutOf(Node node, Document doc, {NodeRunView run = NodeRunView.idle, bool selected = false}) {
     // A note (custom-note) is its own card: the node element at its data's size, no handles, under everything.
     if (isNoteCard(node)) {
       return CardLayout(card: Offset.zero & NoteData.of(node).size, sources: const {}, target: false, underlay: true);
@@ -154,7 +174,7 @@ class DifyCards extends CardSpec {
         border +
             header +
             body.height(ctx) +
-            NodeExtras.height(node) +
+            NodeExtras.height(node, run, selected) +
             (chrome == CardChrome.base ? _descHeight(node) : 0) +
             _bottom +
             border,
@@ -164,7 +184,7 @@ class DifyCards extends CardSpec {
     // Body handles are `top-1/2! -translate-y-1/2!` on their row; with React Flow's own translate(0, -50%) the
     // handle ends up half its height (8 px) above the row's middle.
     final own = body.sources(ctx);
-    final failBranch = NodeExtras.failBranchY(node);
+    final failBranch = NodeExtras.failBranchY(node, run, selected);
     final sources = {
       if (own == null)
         'source': CanvasNode.defaultHandleY

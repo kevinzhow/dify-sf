@@ -38,8 +38,13 @@ void main() {
 
     // Every card's status as it changes.
     final seen = <String, List<String>>{};
+    final last = {for (final n in canvasState.graph.nodes) n.id: n.status};
     for (final n in canvasState.graph.nodes) {
-      n.status.addListener(() => (seen[n.id] ??= []).add(n.status.value));
+      n.run.addListener(() {
+        if (last[n.id] == n.status) return;
+        last[n.id] = n.status;
+        (seen[n.id] ??= []).add(n.status);
+      });
     }
     final opsBefore = demo.server.head;
     final docBefore = c.doc.toJson().toString();
@@ -60,7 +65,7 @@ void main() {
     expect(tracingOf(store.workflowRunningData.value).map((e) => e['node_id']), ['start', 'llm', 'code', 'answer']);
     for (final id in ['start', 'llm', 'code', 'answer']) {
       expect(seen[id], ['running', 'succeeded'], reason: id);
-      expect(canvasState.graph[id]!.status.value, 'succeeded');
+      expect(canvasState.graph[id]!.status, 'succeeded');
     }
     // The variable inspect panel got the run's values (each node's last outputs).
     final inspected = {for (final n in store.nodesWithInspectVars.value) n['nodeId']: n['vars'] as List};
@@ -72,10 +77,12 @@ void main() {
     expect(c.doc.toJson().toString(), docBefore);
     expect(c.undo.past, isEmpty);
 
-    // Closing the run (Dify's handleCancelDebugAndPreviewPanel) clears the statuses.
+    // Closing the run (Dify's handleCancelDebugAndPreviewPanel) clears the statuses; nodes with inspect variables
+    // keep the success border and icon (getNodeStatusBorders' `hasVarValue && !runningStatus`).
     scope.run.handleCancelDebugAndPreviewPanel();
     await t.pump();
-    expect(canvasState.graph['llm']!.status.value, 'idle');
+    expect(canvasState.graph['llm']!.run.value.runningStatus, isNull);
+    expect(canvasState.graph['llm']!.status, 'succeeded');
     expect(demo.server.head, opsBefore);
 
     await t.pumpWidget(const SizedBox());

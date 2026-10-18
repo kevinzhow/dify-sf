@@ -59,7 +59,10 @@ Future<void> settle(WidgetTester t) async {
 /// A canvas holding [nodes] (ids), with [selected] selected.
 CanvasController canvasWith(List<String> nodes, {String? selected}) {
   final c = CanvasController();
-  final g = CanvasGraph(layoutOf: (_, _) => const CardLayout(card: Rect.fromLTWH(0, 0, 240, 80)));
+  final g = CanvasGraph(
+    layoutOf: (_, _, {run = NodeRunView.idle, selected = false}) =>
+        const CardLayout(card: Rect.fromLTWH(0, 0, 240, 80)),
+  );
   g.sync(
     Document(
       nodes: [for (final (i, id) in nodes.indexed) Node(id: id, type: 'code', title: id, x: i * 300, y: 0)],

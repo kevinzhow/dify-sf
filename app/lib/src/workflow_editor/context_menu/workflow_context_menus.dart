@@ -259,8 +259,9 @@ class _WorkflowContextMenusState extends State<WorkflowContextMenus> {
               scale: view.scale,
               alignment: Alignment.topRight,
               child: ValueListenableBuilder(
-                valueListenable: n.status,
-                builder: (context, status, _) => status != 'idle'
+                valueListenable: n.run,
+                // `!data._runningStatus && <NodeControl />`.
+                builder: (context, run, _) => run.runningStatus != null
                     ? const SizedBox.shrink()
                     : MouseRegion(
                         onEnter: (_) => _setBar(hover: id),

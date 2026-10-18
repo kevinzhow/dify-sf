@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/foundation.dart';
 
+import 'run_view.dart';
 import 'spatial_grid.dart';
+
+export 'run_view.dart' show NodeRunView, EdgeRunView;
 
 /// Where a node's card and handles sit, relative to the node's position (the top-left of React Flow's node element,
 /// which is the selection frame: the card sits 1 px inside it).
@@ -55,8 +58,18 @@ class CanvasNode {
   /// The document's node (content changes are published here; cards listen).
   final ValueNotifier<Node> node;
 
-  /// Run status shown on the canvas: idle, running, succeeded, failed, exception.
-  final status = ValueNotifier('idle');
+  /// The node's run fields as the canvas shows them (local view state, see [NodeRunView]).
+  final run = ValueNotifier(NodeRunView.idle);
+
+  /// What of [run] the card itself draws ([NodeRunView.forCard]: the renderer dims the node), so a card is not
+  /// rebuilt (or recaptured) when only the dimming changes.
+  final cardRun = ValueNotifier(NodeRunView.idle);
+
+  /// The node is selected (cards whose content depends on it listen: Dify's retry row).
+  final selected = ValueNotifier(false);
+
+  /// The run status the canvas shows: idle, running, paused, succeeded, failed, exception.
+  String get status => run.value.status;
 
   /// The pointer is over the card (Dify raises its shadow).
   final hovered = ValueNotifier(false);
@@ -140,8 +153,19 @@ class CanvasChange {
 class CanvasGraph {
   CanvasGraph({required this.layoutOf});
 
-  /// A node's card layout (cards differ by type and content, and show labels of other nodes).
-  final CardLayout Function(Node node, Document doc) layoutOf;
+  /// A node's card layout (cards differ by type and content, and show labels of other nodes; a few by run state
+  /// and selection: Dify's retry row).
+  final CardLayout Function(Node node, Document doc, {NodeRunView run, bool selected}) layoutOf;
+
+  /// Edge id → its run fields (local view state).
+  Map<String, EdgeRunView> edgeRun = const {};
+
+  /// How [e] is stroked now (custom-edge.tsx): its run view, selection, and whether it leaves a fail branch.
+  EdgeStroke strokeOf(CanvasEdge e, {bool selected = false}) => customEdgeStroke(
+    edgeRun[e.id] ?? EdgeRunView.idle,
+    selected: selected,
+    isFailBranch: e.sourceHandle == 'fail-branch',
+  );
 
   /// The workflow's Start node (system variables are shown under it).
   Node? get startNode => _byId.values.map((n) => n.node.value).where((n) => n.type == 'start').firstOrNull;
@@ -213,6 +237,20 @@ class CanvasGraph {
     return absoluteOf(parent, doc, guard + 1) + own;
   }
 
+  /// Lays [n] out again for its run state and selection; whether its layout changed.
+  bool relayout(CanvasNode n, Document doc) {
+    final layout = layoutOf(n.node.value, doc, run: n.cardRun.value, selected: n.selected.value);
+    if (layout.card == n.layout.card &&
+        layout.visual == n.layout.visual &&
+        layout.underlay == n.layout.underlay &&
+        mapEquals(layout.sources, n.layout.sources)) {
+      return false;
+    }
+    n.layout = layout;
+    grid.put(n.slot, n.rect.topLeft);
+    return true;
+  }
+
   CanvasChange sync(Document doc) {
     final change = CanvasChange();
     for (final id in [..._byId.keys]) {
@@ -260,7 +298,7 @@ class CanvasGraph {
       n
         ..parentId = parentOf(node)
         ..depth = _depth(node, doc);
-      final layout = layoutOf(node, doc);
+      final layout = layoutOf(node, doc, run: n.cardRun.value, selected: n.selected.value);
       if (layout.card != n.layout.card ||
           layout.visual != n.layout.visual ||
           layout.underlay != n.layout.underlay ||

@@ -18,7 +18,9 @@ import '../../store/workflow_store.dart';
 import '../../store/workflow_store_scope.dart';
 import '../run_scope.dart';
 import '../run_types.dart';
+import '../../node_panel/bodies/data/human_input/human_input_kit.dart' show HumanInputHost;
 import 'before_run_form.dart';
+import 'human_input_content.dart';
 import 'result_panel.dart';
 import 'run_widgets.dart';
 import 'tracing_panel.dart';
@@ -36,6 +38,7 @@ class RunPanelContext {
     this.onCancel,
     this.pickFile,
     this.toast,
+    this.onHumanInputFormSubmit,
   });
 
   /// The Start node's `variables` (InputVar JSON).
@@ -52,6 +55,9 @@ class RunPanelContext {
   final VoidCallback? onCancel;
   final RunFilePicker? pickFile;
   final void Function(DifyToastType type, String message)? toast;
+
+  /// `submitHumanInputForm(token, data)`; null: the editor's run service.
+  final HumanInputFormSubmit? onHumanInputFormSubmit;
 }
 
 /// The left-edge tab of the run panels: `mr-6 border-b-2 py-3`, active `border-[rgb(21,94,239)]`.
@@ -367,12 +373,26 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
         final status = result?['status'];
         final reasoning = data?['reasoningContent'];
         final text = data?['resultText'];
+        final forms = [for (final f in (data?['humanInputFormDataList'] as List? ?? const [])) f as DifyJson];
+        final filled = [for (final f in (data?['humanInputFilledFormDataList'] as List? ?? const [])) f as DifyJson];
+        final scope = WorkflowRunScope.maybeOf(context);
         return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (forms.isNotEmpty)
+                  HumanInputFormList(
+                    inPanel: true,
+                    humanInputFormDataList: forms,
+                    onHumanInputFormSubmit: widget.panel.onHumanInputFormSubmit ?? scope?.service.submitHumanInputForm,
+                    getHumanInputNodeData: (id) => scope?.run.graph.nodes.where((n) => n.id == id).firstOrNull?.data,
+                    pickFile: widget.panel.pickFile,
+                    email: HumanInputHost.of(context).userEmail,
+                  ),
+                if (filled.isNotEmpty)
+                  HumanInputFilledFormList(inPanel: true, first: forms.isEmpty, humanInputFilledFormDataList: filled),
                 if (reasoning is Map && ReasoningPanel.textOf(reasoning).isNotEmpty)
                   ReasoningPanel(
                     content: reasoning,

@@ -10,8 +10,11 @@ import '../canvas/node_card.dart';
 import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
+import '../design/widgets/tooltip.dart' show DifyTooltip;
 import 'card_kit.dart';
+import 'card_spinner.dart';
 import 'dify_cards.dart';
+import 'node_helpers.dart';
 import 'node_body.dart';
 import 'node_extras.dart';
 
@@ -43,7 +46,9 @@ class DifyNodeCard extends StatelessWidget {
         listenable: Listenable.merge([
           node.node,
           node.hovered,
-          if (live) node.status,
+          // The run state shows in live cards; it sizes the retry row (with the selection) in every card.
+          if (live || NodeExtras.hasRetry(node.node.value)) node.cardRun,
+          if (NodeExtras.hasRetry(node.node.value)) node.selected,
           if (body.chrome == CardChrome.container) graph.restingOrigin,
         ]),
         builder: (context, _) {
@@ -82,7 +87,9 @@ class DifyNodeCard extends StatelessWidget {
     );
   }
 
-  List<BoxShadow> get _shadow => node.hovered.value && node.status.value == 'idle' ? DifyShadows.lg : DifyShadows.xs;
+  // `!data._runningStatus && 'hover:shadow-lg'`.
+  List<BoxShadow> get _shadow =>
+      node.hovered.value && node.cardRun.value.runningStatus == null ? DifyShadows.lg : DifyShadows.xs;
 
   Widget _card(BuildContext context, Node n, NodeBody body, BodyContext ctx) {
     final container = body.chrome == CardChrome.container;
@@ -100,9 +107,9 @@ class DifyNodeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Header(node: n, status: live ? node.status.value : null),
+            _Header(node: n, run: live ? node.cardRun.value : null),
             body.build(context, ctx),
-            NodeExtras.build(n),
+            NodeExtras.build(n, node.cardRun.value, node.selected.value),
             if (desc.isNotEmpty && n.type != 'start-placeholder')
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -139,11 +146,11 @@ class DifyNodeCard extends StatelessWidget {
 
 /// The header: `flex items-center rounded-t-2xl px-3 pt-3 pb-2`, block icon, title (`mr-1`), NodeHeaderMeta.
 class _Header extends StatelessWidget {
-  const _Header({required this.node, this.status});
+  const _Header({required this.node, this.run});
   final Node node;
 
-  /// The run status, on live cards only.
-  final String? status;
+  /// The run state, on live cards only.
+  final NodeRunView? run;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -173,24 +180,98 @@ class _Header extends StatelessWidget {
               key: Key('broken-badge-${node.id}'),
             ),
           ),
-        if (node.config['is_parallel'] case VBool(value: true) when node.type == 'iteration')
-          Container(
-            margin: const EdgeInsets.only(left: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-            decoration: BoxDecoration(
-              border: Border.all(color: DifyColors.textWarning),
-              borderRadius: BorderRadius.circular(DifyRadius.badge),
-            ),
-            child: DifyText(
-              DifyI18n.tr('workflow', 'nodes.iteration.parallelModeUpper'),
-              DifyType.system2xsMediumUppercase,
-              color: DifyColors.textWarning,
-            ),
-          ),
-        if (status != null) _StatusIcon(status: status!),
+        NodeHeaderMeta(node: node, run: run),
       ],
     ),
   );
+}
+
+/// NodeHeaderMeta: the iteration's PARALLEL badge (its tooltip where the card is a widget, not a capture), then on
+/// live cards ([run]) the run part ([NodeHeaderRunMeta]).
+class NodeHeaderMeta extends StatelessWidget {
+  const NodeHeaderMeta({super.key, required this.node, this.run});
+  final Node node;
+  final NodeRunView? run;
+
+  @override
+  Widget build(BuildContext context) {
+    final parallel =
+        node.type == 'iteration' && node.config['is_parallel'] is VBool && (node.config['is_parallel']! as VBool).value;
+    Widget? badge;
+    if (parallel) {
+      badge = Container(
+        margin: const EdgeInsets.only(left: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        decoration: BoxDecoration(
+          border: Border.all(color: DifyColors.textWarning),
+          borderRadius: BorderRadius.circular(DifyRadius.badge),
+        ),
+        child: DifyText(
+          DifyI18n.tr('workflow', 'nodes.iteration.parallelModeUpper'),
+          DifyType.system2xsMediumUppercase,
+          color: DifyColors.textWarning,
+        ),
+      );
+      if (!CanvasSpinners.drawnByCanvasOf(context)) {
+        badge = DifyTooltip(
+          content: SizedBox(
+            width: 180,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${DifyI18n.tr('workflow', 'nodes.iteration.parallelModeEnableTitle')}\n',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  TextSpan(text: DifyI18n.tr('workflow', 'nodes.iteration.parallelModeEnableDesc')),
+                ],
+              ),
+              style: difyStyle(DifyType.systemXsRegular, DifyColors.textSecondary),
+            ),
+          ),
+          child: badge,
+        );
+      }
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [?badge, if (run != null) ...NodeHeaderRunMeta.children(node.type, run!)],
+    );
+  }
+}
+
+/// NodeHeaderMeta's run part: the iteration's `index/length` while it runs, the loop's round
+/// (`nodes.loop.currentLoopCount` while it runs, `totalLoopCount` after), then the loader (`isLoading`) or the
+/// status icon.
+abstract final class NodeHeaderRunMeta {
+  static List<Widget> children(String type, NodeRunView run) {
+    final status = run.runningStatus;
+    final iterLength = run.iterationLength ?? 0, iterIndex = run.iterationIndex ?? 0;
+    final loopKey = getLoopIndexTextKey(status);
+    return [
+      if (iterLength != 0 && iterIndex != 0 && status == 'running')
+        Padding(
+          key: const Key('iteration-progress'),
+          padding: const EdgeInsets.only(right: 6),
+          child: DifyText(
+            '${iterIndex > iterLength ? iterLength : iterIndex}/$iterLength',
+            DifyType.systemXsMedium,
+            color: DifyColors.textAccent,
+          ),
+        ),
+      if (type == 'loop' && (run.loopIndex ?? 0) != 0 && loopKey != null)
+        Padding(
+          key: const Key('loop-index'),
+          padding: const EdgeInsets.only(right: 8),
+          child: DifyText(
+            DifyI18n.tr('workflow', loopKey, {'count': run.loopIndex}),
+            DifyType.systemXsMedium,
+            color: status == 'running' ? DifyColors.textAccent : DifyColors.textTertiary,
+          ),
+        ),
+      _StatusIcon(run: run),
+    ];
+  }
 }
 
 /// EntryNodeContainer: `rounded-2xl bg-workflow-block-wrapper-bg-1`, the START/TRIGGER label above the node.
@@ -307,15 +388,17 @@ class BlockIcon extends StatelessWidget {
   }
 }
 
-/// The run status icon at the header's right (NodeHeaderMeta).
+/// The run status icon at the header's right (NodeHeaderMeta): the spinning loader while the node (or its single
+/// run) runs, else the failed / exception / succeeded (also: inspect variables without a running status) / paused
+/// icon.
 class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.status});
-  final String status;
+  const _StatusIcon({required this.run});
+  final NodeRunView run;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) = switch (status) {
-      'running' => ('loader-2-line', DifyColors.textAccent),
+    if (run.isLoading) return const CardSpinner(key: Key('status-spinner'));
+    final (icon, color) = switch (run.status) {
       'failed' => ('error-warning-fill', DifyColors.textDestructive),
       'exception' => ('alert-fill', DifyColors.textWarningSecondary),
       'succeeded' => ('checkbox-circle-fill', DifyColors.textSuccess),
@@ -323,6 +406,6 @@ class _StatusIcon extends StatelessWidget {
       _ => (null, null),
     };
     if (icon == null) return const SizedBox.shrink();
-    return RemixIcon(icon, size: 14, color: color);
+    return RemixIcon(icon, size: 14, color: color, key: Key('status-$icon'));
   }
 }

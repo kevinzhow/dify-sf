@@ -241,10 +241,29 @@ class HumanInputFile {
     this.uploadedId,
     this.url,
     this.progress = 100,
+    this.name = '',
+    this.size = 0,
   });
+
+  /// From a picked file's JSON (the run forms' `{type, transfer_method, url, upload_file_id, name, size}`).
+  factory HumanInputFile.fromJson(Map<String, Object?> j) => HumanInputFile(
+    transferMethod: jsStr(j['transfer_method']) ?? jsStr(j['transferMethod']) ?? 'local_file',
+    supportFileType: jsStr(j['type']) ?? jsStr(j['supportFileType']) ?? 'document',
+    uploadedId: jsStr(j['upload_file_id']) ?? jsStr(j['uploadedId']),
+    url: jsStr(j['url']) ?? jsStr(j['remote_url']),
+    progress: (j['progress'] as num?)?.toInt() ?? 100,
+    name: jsStr(j['name']) ?? jsStr(j['filename']) ?? '',
+    size: (j['size'] as num?)?.toInt() ?? 0,
+  );
+
   final String transferMethod, supportFileType;
   final String? uploadedId, url;
   final int progress;
+  final String name;
+  final int size;
+
+  /// The file as the run forms' file inputs list it.
+  Json toEntryJson() => {...toJson(), 'name': name, 'size': size};
 
   /// `fileIsUploaded`.
   bool get isUploaded => (uploadedId != null && uploadedId!.isNotEmpty) || transferMethod == 'remote_url';
@@ -271,6 +290,29 @@ bool hasInvalidSelectOrFileInput(List<Object?> inputs, Map<String, Object?> valu
   if (isFileListFormInput(input)) return !uploadedList(value);
   return false;
 });
+
+/// `hasInvalidRequiredHumanInput`: [hasInvalidSelectOrFileInput], and a paragraph without text.
+bool hasInvalidRequiredHumanInput(List<Object?> inputs, Map<String, Object?> values) =>
+    hasInvalidSelectOrFileInput(inputs, values) ||
+    inputs.any((input) {
+      final name = inputNameOf(input);
+      if (!values.containsKey(name) || !isParagraphFormInput(input)) return false;
+      final value = values[name];
+      return value is! String || value.trim().isEmpty;
+    });
+
+/// `getButtonStyle`: the dify-ui Button variant of a user action's style (null for an unknown style).
+String? getButtonStyle(String? style) => switch (style) {
+  UserActionButtonType.primary => 'primary',
+  UserActionButtonType.defaultStyle => 'secondary',
+  UserActionButtonType.accent => 'secondary-accent',
+  UserActionButtonType.ghost => 'ghost',
+  _ => null,
+};
+
+/// `isRelativeTimeSameOrAfter`: [utcMilliseconds] is now or later.
+bool isRelativeTimeSameOrAfter(int utcMilliseconds, {DateTime? now}) =>
+    utcMilliseconds >= (now ?? DateTime.now()).millisecondsSinceEpoch;
 
 /// `getProcessedHumanInputFormInputs`: [values] with files as the server wants them.
 Map<String, Object?>? processedHumanInputFormInputs(List<Object?> inputs, Map<String, Object?>? values) {

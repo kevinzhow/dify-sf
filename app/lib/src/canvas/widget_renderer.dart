@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../design/dify_tokens.g.dart';
@@ -8,10 +10,15 @@ import 'canvas_view_state.dart';
 import 'edge_curve.dart';
 import 'live_card.dart';
 import 'node_card.dart';
+import 'run_view.dart';
 
 /// Draws the canvas with plain widgets: only cards in (or near) the viewport are built, pan/zoom is one layer
 /// transform, each card is its own repaint boundary; the [live] card is drawn in its node's place. Used in widget
 /// tests and where Flutter GPU is not available.
+///
+/// Card widgets are made once per document change and reused, so panning, selection and run updates do not rebuild
+/// cards: a card listens to its own node (content, run state); the run's dimming and status border are drawn around
+/// it by a builder listening to that node's run view alone.
 class WidgetRenderer extends CanvasRenderer {
   WidgetRenderer({required this.graph, required this.view, required this.selection, required this.cards, this.live});
 
@@ -26,11 +33,17 @@ class WidgetRenderer extends CanvasRenderer {
   Set<int> _moving = {};
   (Offset, Offset)? _preview;
 
+  /// The card widgets, per node (dropped on document changes: cards show labels of other nodes).
+  var _cardWidgets = Expando<Widget>();
+
   void _bump() => _version.value++;
 
   @override
   void apply(CanvasChange change) {
     if (change.edgesChanged) _edgesVersion.value++;
+    if (change.added.isNotEmpty || change.removed.isNotEmpty || change.changed.isNotEmpty) {
+      _cardWidgets = Expando<Widget>();
+    }
     _bump();
   }
 
@@ -60,8 +73,15 @@ class WidgetRenderer extends CanvasRenderer {
   @override
   void selectionChanged(Set<int> slots) => _bump();
 
+  // The node's builder listens to its run view.
   @override
-  void statusChanged(int slot) => _bump();
+  void statusChanged(int slot) {}
+
+  @override
+  void edgeRunChanged() {
+    _edgesVersion.value++;
+    _bump();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,16 +152,6 @@ class WidgetRenderer extends CanvasRenderer {
 
   Widget _card(BuildContext context, CanvasNode n) {
     final selected = selection.nodes.contains(n.slot);
-    // getNodeStatusBorders: no status border while the selected border shows.
-    final status = selected
-        ? null
-        : switch (n.status.value) {
-            'running' || 'paused' => DifyColors.stateAccentSolid,
-            'succeeded' => DifyColors.stateSuccessSolid,
-            'failed' => DifyColors.stateDestructiveSolid,
-            'exception' => DifyColors.stateWarningSolid,
-            _ => null,
-          };
     final connected = {
       for (final e in graph.edges) ...[
         if (e.target == n.slot) ('in', ''),
@@ -169,63 +179,77 @@ class WidgetRenderer extends CanvasRenderer {
           : null,
     );
     final card = local(n.rect.topLeft), visual = local(n.visual.topLeft);
+    final cardWidget = _cardWidgets[n] ??= KeyedSubtree(
+      key: ValueKey('node-${n.id}'),
+      child: RepaintBoundary(child: cards.build(context, n, graph, live: true)),
+    );
     return Positioned.fromRect(
+      key: ValueKey('canvas-node-${n.id}'),
       rect: bounds,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: visual.dx,
-            top: visual.dy,
-            width: n.visual.width,
-            height: n.visual.height,
-            child: KeyedSubtree(
-              key: ValueKey('node-${n.id}'),
-              child: RepaintBoundary(child: cards.build(context, n, graph, live: true)),
-            ),
-          ),
-          // Over the card (it covers only the 1 px around it): an entry node's tab, drawn with the card, would hide
-          // it.
-          if (selected && !n.layout.underlay)
-            Positioned.fromRect(
-              rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                    border: Border.all(color: DifyColors.componentsOptionCardOptionSelectedBorder),
-                  ),
+      child: ValueListenableBuilder<NodeRunView>(
+        valueListenable: n.run,
+        builder: (context, run, _) {
+          // getNodeStatusBorders: no status border while the selected border shows.
+          final status = selected ? null : statusBorderColor(run.status);
+          // node.tsx: `_waitingRun && 'opacity-70'` on the node element (card, frames and handles).
+          return Opacity(
+            opacity: run.waiting ? 0.7 : 1,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: visual.dx,
+                  top: visual.dy,
+                  width: n.visual.width,
+                  height: n.visual.height,
+                  child: cardWidget,
                 ),
-              ),
-            ),
-          if (status != null)
-            Positioned.fromRect(
-              rect: Rect.fromLTWH(card.dx, card.dy, n.size.width, n.size.height),
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(DifyRadius.nodeCard),
-                    border: Border.all(color: status),
+                // Over the card (it covers only the 1 px around it): an entry node's tab, drawn with the card,
+                // would hide it.
+                if (selected && !n.layout.underlay)
+                  Positioned.fromRect(
+                    rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                          border: Border.all(color: DifyColors.componentsOptionCardOptionSelectedBorder),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                if (status != null)
+                  Positioned.fromRect(
+                    key: Key('status-border-${n.id}'),
+                    rect: Rect.fromLTWH(card.dx, card.dy, n.size.width, n.size.height),
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(DifyRadius.nodeCard),
+                          border: Border.all(color: status),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (n.layout.target)
+                  Positioned(
+                    left: local(n.inHandle.topLeft).dx,
+                    top: local(n.inHandle.topLeft).dy,
+                    child: KeyedSubtree(key: Key('in-${n.id}'), child: marker(connected.contains(('in', '')))),
+                  ),
+                for (final (i, (id, handle)) in n.outHandles.indexed)
+                  Positioned(
+                    left: local(handle.topLeft).dx,
+                    top: local(handle.topLeft).dy,
+                    child: KeyedSubtree(
+                      key: Key(i == 0 ? 'out-${n.id}' : 'out-${n.id}-$id'),
+                      child: marker(connected.contains(('out', id)), right: true),
+                    ),
+                  ),
+              ],
             ),
-          if (n.layout.target)
-            Positioned(
-              left: local(n.inHandle.topLeft).dx,
-              top: local(n.inHandle.topLeft).dy,
-              child: KeyedSubtree(key: Key('in-${n.id}'), child: marker(connected.contains(('in', '')))),
-            ),
-          for (final (i, (id, handle)) in n.outHandles.indexed)
-            Positioned(
-              left: local(handle.topLeft).dx,
-              top: local(handle.topLeft).dy,
-              child: KeyedSubtree(
-                key: Key(i == 0 ? 'out-${n.id}' : 'out-${n.id}-$id'),
-                child: marker(connected.contains(('out', id)), right: true),
-              ),
-            ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -263,13 +287,18 @@ class _EdgePainter extends CustomPainter {
       if (isLive != live) continue;
       final a = graph.slots[e.source], b = graph.slots[e.target];
       if (a == null || b == null || a.depth != depth) continue;
-      canvas.drawPath(
-        _path(edgeCurve(a.outPortFor(e.sourceHandle), b.inPort)),
-        Paint()
-          ..color = e.id == selected ? DifyColors.workflowLinkLineHandle : DifyColors.workflowLinkLineNormal
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
+      final from = a.outPortFor(e.sourceHandle), to = b.inPort;
+      final stroke = graph.strokeOf(e, selected: e.id == selected);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      // custom-edge-linear-gradient-render.tsx: userSpaceOnUse from the source handle to the target handle.
+      if (stroke.isGradient && from != to) {
+        paint.shader = ui.Gradient.linear(from, to, [stroke.at(0), stroke.at(1)]);
+      } else {
+        paint.color = stroke.at(0);
+      }
+      canvas.drawPath(_path(edgeCurve(from, to)), paint);
     }
   }
 

@@ -7,14 +7,17 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_scene/scene.dart';
 import 'package:vector_math/vector_math.dart' as vm;
 
+import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
 import 'edge_curve.dart';
+import 'edge_segments.dart';
 import 'live_card.dart';
 import 'node_card.dart';
+import 'run_view.dart';
 
 /// Canvas (x right, y down) to world: the camera sits on -Z looking along +Z (world +X is screen-right, +Y up);
 /// [lift] is the distance in front of the canvas plane (towards the camera).
@@ -65,15 +68,6 @@ class SceneTuning {
   static const exactBudget = 6;
 }
 
-/// The card border by run status (getNodeStatusBorders) and the selected frame (option-card selected border).
-const _statusColors = {
-  'running': DifyColors.stateAccentSolid,
-  'paused': DifyColors.stateAccentSolid,
-  'succeeded': DifyColors.stateSuccessSolid,
-  'failed': DifyColors.stateDestructiveSolid,
-  'exception': DifyColors.stateWarningSolid,
-};
-
 /// Draws the canvas with Flutter Scene.
 ///
 /// * Live tier: cards at 0.5x or more near the view hold a live `WidgetComponent`, recaptured when they repaint
@@ -81,7 +75,10 @@ const _statusColors = {
 /// * Delayed tier: every card has an overview capture (half density), made in the background while the view rests
 ///   and refreshed when its content changes (on-screen cards first, coalesced); it is the card below 0.5x.
 /// * Below 0.2x cards come from one capture per node type, one instanced draw per type.
-/// * Status, selection and hover are instanced frames behind the cards, never in a capture.
+/// * Status, selection and hover are instanced frames behind the cards, never in a capture; a waiting node
+///   (`_waitingRun`) is drawn at 70 % through its materials; a card's loaders turn as quads over the card (a
+///   capture would have to be redone every frame), see [CanvasSpinners].
+/// * Edges are line batches, one per colour (run colours, gradients quantised, see [edgeSegmentsByColor]).
 /// * No capture or release work runs while the view moves.
 class SceneRenderer extends CanvasRenderer {
   SceneRenderer({
@@ -147,13 +144,22 @@ class SceneRenderer extends CanvasRenderer {
   // One marker instance per connected handle: (slot, handle id or '' for the target handle) -> instance.
   final _markerAt = <(int, String), int>{};
   final _markerFree = <int>[];
-  late final UnlitMaterial _edgeMaterial;
-  late final UnlitMaterial _selectedEdgeMaterial;
   late final UnlitMaterial _previewMaterial;
-  Node? _staticEdges;
-  Node? _liveEdges;
-  Node? _selectedEdge;
+  final _edgeMaterials = <Color, UnlitMaterial>{};
+  List<Node> _staticEdges = const [];
+  List<Node> _liveEdges = const [];
+  List<Node> _selectedEdge = const [];
   Node? _preview;
+
+  /// The material each card capture is drawn with (its alpha dims a waiting node).
+  final _materialOf = Expando<UnlitMaterial>();
+
+  /// Loader quads by slot (see [CardSpec.spinners]), and the loader's texture.
+  final _spinners = <int, List<Node>>{};
+  late final _spinnerMaterial = UnlitMaterial()
+    ..alphaMode = AlphaMode.blend
+    ..displayReferred = true;
+  bool _spinnerReady = false;
 
   Set<int> _moving = {};
   Offset? _lastCenter;
@@ -173,9 +179,8 @@ class SceneRenderer extends CanvasRenderer {
     if (_disposed) return;
     scene.toneMapping = ToneMappingMode.linear; // a flat 2D canvas: colours pass through unchanged
     // Dify's edge colours (custom-edge.tsx, custom-connection-line.tsx).
-    _edgeMaterial = UnlitMaterial()..baseColorFactor = srgb(DifyColors.workflowLinkLineNormal);
-    _selectedEdgeMaterial = UnlitMaterial()..baseColorFactor = srgb(DifyColors.workflowLinkLineHandle);
     _previewMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFFD0D5DD));
+    _captureSpinner();
     // Opaque scene geometry behind the cards. (Display-referred surfaces are composited without depth order among
     // themselves, which would draw the frames over the cards.)
     // Rings, not filled shapes: a container card's background is translucent and would show a fill through it.
@@ -205,8 +210,9 @@ class SceneRenderer extends CanvasRenderer {
       _addSlot(n);
     }
     for (final n in [...change.moved, ...change.resized]) {
-      if (change.resized.contains(n) && _live[n.slot] != null) {
-        _detach(n.slot); // recaptured at the new size by residency
+      if (change.resized.contains(n)) {
+        if (_live[n.slot] != null) _detach(n.slot); // recaptured at the new size by residency
+        _markDirty(n.slot); // and its overview
       }
       _place(n.slot);
     }
@@ -248,7 +254,7 @@ class SceneRenderer extends CanvasRenderer {
     if (type != null) {
       m
         ..baseColorTexture = type
-        ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+        ..baseColorFactor = _textureFactor(slot);
     }
     _placeholders[slot] = m;
     final pn = Node(mesh: Mesh(_unitQuad, m));
@@ -282,6 +288,7 @@ class SceneRenderer extends CanvasRenderer {
     _skeleton[slot] = null;
     _statusFrames.clear(slot);
     _selectedFrames.clear(slot);
+    _setSpinners(slot, const []);
     for (final k in [..._markerAt.keys.where((k) => k.$1 == slot)]) {
       _dropMarker(k);
     }
@@ -386,13 +393,117 @@ class SceneRenderer extends CanvasRenderer {
   /// behind it, seen through the card's transparent border.
   void _statusChanged(int slot) {
     final n = graph.slots[slot];
+    _dim(slot);
+    _syncSpinners(slot);
     // getNodeStatusBorders: no status border while the selected border shows.
-    final color = n == null || selection.nodes.contains(slot) ? null : _statusColors[n.status.value];
+    final color = n == null || selection.nodes.contains(slot) ? null : statusBorderColor(n.status);
     if (n == null || color == null) {
       _statusFrames.clear(slot);
       return;
     }
     _statusFrames.set(slot, n.rect, DifyRadius.nodeCard, srgb(color), _frameLift(slot, n, -0.1));
+  }
+
+  // ----- run state: dimming and loaders -----
+
+  /// node.tsx `_waitingRun && 'opacity-70'`: the node's captures (live, the one being replaced, the exact one, the
+  /// overview) are drawn at 70 %.
+  void _dim(int slot) {
+    final n = graph.slots[slot];
+    final alpha = n != null && n.run.value.waiting ? 0.7 : 1.0;
+    void set(UnlitMaterial? m) {
+      if (m != null && m.baseColorFactor.a != alpha) m.baseColorFactor = m.baseColorFactor.clone()..a = alpha;
+    }
+
+    set(_placeholders.elementAtOrNull(slot));
+    for (final c in [_live.elementAtOrNull(slot), _replaced[slot], _exact[slot]?.component]) {
+      if (c != null) set(_materialOf[c]);
+    }
+    // Below 0.2x: the type card's instance tint.
+    final sk = _skeleton.elementAtOrNull(slot);
+    if (sk != null) _skeletonMeshes[sk.$1]?.setInstanceColor(sk.$2, vm.Vector4(1, 1, 1, alpha));
+  }
+
+  /// A capture's tint: white, at 70 % while the node waits.
+  vm.Vector4 _textureFactor(int slot) =>
+      vm.Vector4(1, 1, 1, (graph.slots.elementAtOrNull(slot)?.run.value.waiting ?? false) ? 0.7 : 1);
+
+  /// A card capture's material, dimmed like its node.
+  UnlitMaterial _cardMaterial(int slot) => UnlitMaterial()
+    ..alphaMode = AlphaMode.blend
+    ..displayReferred = true
+    ..baseColorFactor = _textureFactor(slot);
+
+  /// The loader icon (`i-ri-loader-2-line`, text-accent), captured once for the loader quads.
+  void _captureSpinner() {
+    final host = Node();
+    late final WidgetComponent c;
+    c = WidgetComponent.bindOnly(
+      child: _SpinnerGlyph(onPainted: () => c.controller.requestCapture()),
+      size: const Size(14, 14),
+      pixelRatio: _dpr * CanvasViewState.maxScale * 2,
+      update: WidgetUpdatePolicy.manual,
+      input: WidgetInput.manual,
+      bind: (texture) {
+        _spinnerMaterial.baseColorTexture = GpuTextureSource(texture);
+        _spinnerReady = true;
+        for (final nodes in _spinners.values) {
+          for (final n in nodes) {
+            n.visible = true;
+          }
+        }
+        SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
+      },
+    );
+    host.addComponent(c);
+    scene.add(host);
+  }
+
+  /// Shows [slot]'s loaders where its card has them now.
+  void _syncSpinners(int slot) {
+    final n = graph.slots[slot];
+    _setSpinners(slot, n == null || _hidden.contains(slot) ? const [] : cards.spinners(n, graph));
+  }
+
+  final _spinnerRects = <int, List<Rect>>{};
+
+  void _setSpinners(int slot, List<Rect> rects) {
+    final have = _spinners[slot] ?? const <Node>[];
+    if (rects.isEmpty) {
+      for (final q in have) {
+        scene.remove(q);
+      }
+      _spinners.remove(slot);
+      _spinnerRects.remove(slot);
+      return;
+    }
+    final nodes = [...have];
+    while (nodes.length < rects.length) {
+      final q = Node(mesh: Mesh(_unitQuad, _spinnerMaterial))..visible = _spinnerReady;
+      scene.add(q);
+      nodes.add(q);
+    }
+    while (nodes.length > rects.length) {
+      scene.remove(nodes.removeLast());
+    }
+    _spinners[slot] = nodes;
+    _spinnerRects[slot] = rects;
+    _turnSpinners();
+  }
+
+  /// `animate-spin`: one clockwise turn a second, just in front of the card.
+  void _turnSpinners() {
+    if (_spinners.isEmpty) return;
+    final angle = (_nowUs() % spinPeriod.inMicroseconds) / spinPeriod.inMicroseconds * 2 * pi;
+    _spinners.forEach((slot, nodes) {
+      final rects = _spinnerRects[slot]!, lift = _lift(slot) + 0.01;
+      for (var i = 0; i < nodes.length; i++) {
+        final r = rects[i];
+        nodes[i].localTransform = vm.Matrix4.translation(toWorld(r.center, lift))
+          ..rotateZ(-angle)
+          ..scaleByVector3(vm.Vector3(r.width, r.height, 1));
+      }
+    });
   }
 
   /// The selected frame: 1 px outside the card (radius 16), option-card selected border.
@@ -422,6 +533,11 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   @override
+  void edgeRunChanged() {
+    if (_ready.value) _rebuildEdges();
+  }
+
+  @override
   void selectionChanged(Set<int> slots) {
     if (!_ready.value) return;
     for (final s in slots) {
@@ -448,14 +564,8 @@ class SceneRenderer extends CanvasRenderer {
     for (final s in slots) {
       _place(s);
     }
-    _replaceEdgeNode(_liveEdges, (n) => _liveEdges = n, _edgesWhere(live: true), _edgeMaterial);
-    _replaceEdgeNode(
-      _nestedLiveEdges,
-      (n) => _nestedLiveEdges = n,
-      _edgesWhere(live: true, nested: true),
-      _edgeMaterial,
-      lift: 0.75,
-    );
+    _liveEdges = _replaceEdgeNodes(_liveEdges, _edgesWhere(live: true));
+    _nestedLiveEdges = _replaceEdgeNodes(_nestedLiveEdges, _edgesWhere(live: true, nested: true), lift: 0.75);
     _syncLive();
   }
 
@@ -478,75 +588,62 @@ class SceneRenderer extends CanvasRenderer {
         ((graph.slots[e.source]?.depth ?? 0) > 0) == nested,
   );
 
-  Node? _edgeNode(
-    Iterable<CanvasEdge> edges,
-    UnlitMaterial material, {
-    double lift = -1,
-  }) {
-    final out = <double>[];
-    for (final e in edges) {
-      final a = graph.slots[e.source], b = graph.slots[e.target];
-      if (a == null || b == null) continue;
-      final pts = edgeCurve(a.outPortFor(e.sourceHandle), b.inPort);
-      for (var k = 0; k + 1 < pts.length; k++) {
-        final p = toWorld(pts[k]), q = toWorld(pts[k + 1]);
-        out.addAll([p.x, p.y, p.z, q.x, q.y, q.z]);
+  UnlitMaterial _edgeMaterial(Color c) => _edgeMaterials[c] ??= UnlitMaterial()..baseColorFactor = srgb(c);
+
+  /// One line batch per colour the edges are drawn in (see [edgeSegmentsByColor]).
+  List<Node> _edgeNodes(Iterable<CanvasEdge> edges, {double lift = -1, String? selected}) {
+    final nodes = <Node>[];
+    edgeSegmentsByColor(graph, edges, selected: selected).forEach((color, segments) {
+      final out = Float32List(segments.length * 6);
+      var i = 0;
+      for (final (a, b) in segments) {
+        final p = toWorld(a), q = toWorld(b);
+        out
+          ..[i++] = p.x
+          ..[i++] = p.y
+          ..[i++] = p.z
+          ..[i++] = q.x
+          ..[i++] = q.y
+          ..[i++] = q.z;
       }
-    }
-    if (out.isEmpty) return null;
-    final geometry = LineSegmentsGeometry(
-      LineSegmentData(positions: Float32List.fromList(out)),
-      width: SceneTuning.edgeWidth,
-    );
-    return Node(mesh: Mesh(geometry, material))..position = toWorld(Offset.zero, lift);
+      final geometry = LineSegmentsGeometry(LineSegmentData(positions: out), width: SceneTuning.edgeWidth);
+      nodes.add(Node(mesh: Mesh(geometry, _edgeMaterial(color)))..position = toWorld(Offset.zero, lift));
+    });
+    return nodes;
   }
 
-  void _replaceEdgeNode(
-    Node? old,
-    void Function(Node?) set,
-    Iterable<CanvasEdge> edges,
-    UnlitMaterial material, {
-    double lift = -1,
-  }) {
-    if (old != null) scene.remove(old);
-    final n = _edgeNode(edges, material, lift: lift);
-    if (n != null) scene.add(n);
-    set(n);
+  List<Node> _replaceEdgeNodes(List<Node> old, Iterable<CanvasEdge> edges, {double lift = -1, String? selected}) {
+    for (final n in old) {
+      scene.remove(n);
+    }
+    final nodes = _edgeNodes(edges, lift: lift, selected: selected);
+    for (final n in nodes) {
+      scene.add(n);
+    }
+    return nodes;
   }
 
   // Edges inside containers lie above the container's body and below its children.
-  Node? _nestedEdges;
-  Node? _nestedLiveEdges;
+  List<Node> _nestedEdges = const [];
+  List<Node> _nestedLiveEdges = const [];
 
   void _rebuildEdges() {
     _syncMarkers();
-    _replaceEdgeNode(_staticEdges, (n) => _staticEdges = n, _edgesWhere(live: false), _edgeMaterial);
-    _replaceEdgeNode(_liveEdges, (n) => _liveEdges = n, _edgesWhere(live: true), _edgeMaterial);
-    _replaceEdgeNode(
-      _nestedEdges,
-      (n) => _nestedEdges = n,
-      _edgesWhere(live: false, nested: true),
-      _edgeMaterial,
-      lift: 0.25,
-    );
-    _replaceEdgeNode(
-      _nestedLiveEdges,
-      (n) => _nestedLiveEdges = n,
-      _edgesWhere(live: true, nested: true),
-      _edgeMaterial,
-      lift: 0.75,
-    );
+    _staticEdges = _replaceEdgeNodes(_staticEdges, _edgesWhere(live: false));
+    _liveEdges = _replaceEdgeNodes(_liveEdges, _edgesWhere(live: true));
+    _nestedEdges = _replaceEdgeNodes(_nestedEdges, _edgesWhere(live: false, nested: true), lift: 0.25);
+    _nestedLiveEdges = _replaceEdgeNodes(_nestedLiveEdges, _edgesWhere(live: true, nested: true), lift: 0.75);
     _showSelectedEdge();
   }
 
+  /// The selected edge again, above the others in the running colour (custom-edge.tsx `selected`).
   void _showSelectedEdge() {
     final id = selection.edge;
-    _replaceEdgeNode(
+    _selectedEdge = _replaceEdgeNodes(
       _selectedEdge,
-      (n) => _selectedEdge = n,
       [if (id != null) ...graph.edges.where((e) => e.id == id)],
-      _selectedEdgeMaterial,
       lift: -0.9,
+      selected: id,
     );
   }
 
@@ -576,6 +673,7 @@ class SceneRenderer extends CanvasRenderer {
 
   WidgetComponent _component(int slot, double density) {
     final n = graph.slots[slot]!;
+    final material = _cardMaterial(slot);
     late final WidgetComponent c;
     c = WidgetComponent(
       // Cards stay out of the semantics tree; the canvas exposes its own summary (CanvasA11y).
@@ -589,9 +687,11 @@ class SceneRenderer extends CanvasRenderer {
       pixelRatio: density,
       worldHeight: 1,
       geometry: _unitQuad,
+      material: material,
       update: WidgetUpdatePolicy.manual,
       input: WidgetInput.manual,
     );
+    _materialOf[c] = material;
     return c;
   }
 
@@ -703,6 +803,7 @@ class SceneRenderer extends CanvasRenderer {
     const pad = SceneTuning.capturePad;
     final padded = n.visual.size + const Offset(2 * pad, 2 * pad);
     final w = (padded.width * density + fx).ceil() + 1, h = (padded.height * density + fy).ceil() + 1;
+    final material = _cardMaterial(slot);
     late final WidgetComponent c;
     c = WidgetComponent(
       child: ExcludeSemantics(
@@ -723,9 +824,11 @@ class SceneRenderer extends CanvasRenderer {
       pixelRatio: density,
       worldHeight: 1,
       geometry: _unitQuad,
+      material: material,
       update: WidgetUpdatePolicy.manual,
       input: WidgetInput.manual,
     );
+    _materialOf[c] = material;
     final rect = view.toCanvas(Offset(ix, iy) / _dpr) & Size(w / density, h / density);
     final node = Node(name: '${n.id}-exact')
       ..position = toWorld(rect.center, _lift(slot))
@@ -797,7 +900,7 @@ class SceneRenderer extends CanvasRenderer {
           if (n.type == type && !_hasOverview[n.slot]) {
             _placeholders[n.slot]
               ?..baseColorTexture = source
-              ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+              ..baseColorFactor = _textureFactor(n.slot);
           }
         }
         SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
@@ -880,7 +983,7 @@ class SceneRenderer extends CanvasRenderer {
           // The wrapped texture keeps its image alive after the component (and its host) is gone.
           _placeholders[slot]
             ?..baseColorTexture = GpuTextureSource(texture)
-            ..baseColorFactor = vm.Vector4(1, 1, 1, 1);
+            ..baseColorFactor = _textureFactor(slot);
           _hasOverview[slot] = true;
           final now = _nowUs(), since = _dirtySince[slot];
           _lastOverviewAt[slot] = now;
@@ -915,6 +1018,7 @@ class SceneRenderer extends CanvasRenderer {
   /// Keeps live components on the cards near the view, releases far ones, sharpens at rest, refreshes overviews.
   void _tick() {
     if (view.viewport.isEmpty) return;
+    _turnSpinners();
     _skeletonSwitch();
     final now = _nowUs();
     if (view.center != _lastCenter || view.scale != _lastScale) {
@@ -972,7 +1076,10 @@ class SceneRenderer extends CanvasRenderer {
   }
 
   /// The card with room around it for its shadow (the capture covers [SceneTuning.capturePad] on every side).
-  Widget _padded(Widget card) => Padding(padding: const EdgeInsets.all(SceneTuning.capturePad), child: card);
+  Widget _padded(Widget card) => CanvasSpinners(
+    drawnByCanvas: true,
+    child: Padding(padding: const EdgeInsets.all(SceneTuning.capturePad), child: card),
+  );
 
   Camera _camera() => OrthographicCamera(
     position: toWorld(view.center, 50),
@@ -1142,4 +1249,16 @@ class _Exact {
   final (double, double, double) key;
   final Node node;
   final WidgetComponent component;
+}
+
+/// The loader glyph the scene's loader quads show (captured once).
+class _SpinnerGlyph extends StatelessWidget {
+  const _SpinnerGlyph({required this.onPainted});
+  final VoidCallback onPainted;
+
+  @override
+  Widget build(BuildContext context) {
+    SchedulerBinding.instance.addPostFrameCallback((_) => onPainted());
+    return const RemixIcon('loader-2-line', size: 14, color: DifyColors.textAccent);
+  }
 }

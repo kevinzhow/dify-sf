@@ -3,6 +3,7 @@
 // dify-spec: web/app/components/workflow/panel/__tests__/record.spec.tsx
 import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/resize_handle.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/human_input_content.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/result_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/run_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/run_widgets.dart';
@@ -190,12 +191,18 @@ void main() {
       WidgetTester t, {
       void Function(WorkflowStore)? init,
       void Function(DifyToastType, String)? toast,
+      HumanInputFormSubmit? submit,
     }) async {
       final cancels = <int>[];
       final store = await renderRun(
         t,
         WorkflowPreview(
-          panel: RunPanelContext(onCancel: () => cancels.add(1), toast: toast, onRun: (_) {}),
+          panel: RunPanelContext(
+            onCancel: () => cancels.add(1),
+            toast: toast,
+            onRun: (_) {},
+            onHumanInputFormSubmit: submit,
+          ),
         ),
         initialStoreState: init,
         size: const Size(1000, 900),
@@ -268,6 +275,67 @@ void main() {
         ),
       );
       expect(t.widget<ResultPanel>(find.byType(ResultPanel)).status, 'succeeded');
+    });
+
+    testWidgets('should render paused human input results and submit pending forms', (t) async {
+      final submits = <(String, DifyJson)>[];
+      await pump(
+        t,
+        submit: (token, data) async => submits.add((token, data)),
+        init: (s) => s.setWorkflowRunningData(
+          runningData(
+            res: result({'status': 'paused', 'files': <Object?>[]}),
+            extra: {
+              'humanInputFormDataList': [
+                {
+                  'form_id': 'form-1',
+                  'node_id': 'human-1',
+                  'node_title': 'Approval',
+                  'form_content': r'{{#$output.answer#}}',
+                  'inputs': [
+                    {
+                      'type': 'paragraph',
+                      'output_variable_name': 'answer',
+                      'default': {'type': 'constant', 'value': '', 'selector': <Object?>[]},
+                    },
+                  ],
+                  'actions': [
+                    {'id': 'approve', 'title': 'Approve', 'button_style': 'primary'},
+                  ],
+                  'form_token': 'form-token',
+                  'display_in_ui': true,
+                },
+              ],
+              'humanInputFilledFormDataList': [
+                {
+                  'node_id': 'human-0',
+                  'node_title': 'Earlier',
+                  'rendered_content': 'done',
+                  'action_id': 'ok',
+                  'action_text': 'OK',
+                },
+              ],
+            },
+          ),
+        ),
+      );
+      // A paused run opens the RESULT tab with the pending forms and the filled ones.
+      expect(t.widget<HumanInputFormList>(find.byType(HumanInputFormList)).humanInputFormDataList, hasLength(1));
+      expect(
+        t.widget<HumanInputFilledFormList>(find.byType(HumanInputFilledFormList)).humanInputFilledFormDataList,
+        hasLength(1),
+      );
+      await t.enterText(
+        find.descendant(of: find.byKey(const Key('content-item-textarea')), matching: find.byType(EditableText)),
+        'ok',
+      );
+      await t.tap(find.text('Approve'));
+      await t.pump();
+      expect(submits.single.$1, 'form-token');
+      expect(submits.single.$2, {
+        'inputs': {'answer': 'ok'},
+        'action': 'approve',
+      });
     });
 
     testWidgets('should copy successful string output and show a success toast', (t) async {
