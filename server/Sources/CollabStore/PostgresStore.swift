@@ -107,6 +107,15 @@ public struct PostgresStore: Sendable {
     }
 
     public func documentHead(_ id: String) async throws -> Int? { try await bounded { try await self.documentHeadImpl(id) } }
+    /// The document row's revision (bumped by every commit), nil if unknown.
+    public func documentRevision(_ id: String) async throws -> Int? {
+        try await bounded {
+            for try await rev in try await self.client.query("SELECT rev FROM documents WHERE id = \(id)", logger: self.logger).decode(Int.self) {
+                return rev
+            }
+            return nil
+        }
+    }
     public func load(_ id: String) async throws -> LoadedDocument? { try await bounded { try await self.loadImpl(id) } }
     public func entries(_ id: String, after: Int, through: Int) async throws -> [LogEntry] {
         try await bounded { try await self.entriesImpl(id, after: after, through: through) }
@@ -297,7 +306,11 @@ public struct PostgresStore: Sendable {
     ///
     /// `.notCommitted` means the transaction definitely did not commit; `.uncertain` means its outcome is unknown (the caller
     /// must re-read durable state before doing anything else).
-    public func commit(doc id: String, expectedRev: Int, groups: [CommitGroup], newHead: Int, snapshot: Snapshot?) async throws -> Int {
+    ///
+    /// `metadata` (a replacement from a Dify file, `POST /replace`) replaces the document's import metadata and `secrets` are
+    /// stored, in the same transaction.
+    public func commit(doc id: String, expectedRev: Int, groups: [CommitGroup], newHead: Int, snapshot: Snapshot?,
+                       metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Int {
         let snapshotJSON = try snapshot.map { try WireJSON.encodeString($0.doc) }
         var rows = Rows()
         for g in groups {
@@ -311,6 +324,8 @@ public struct PostgresStore: Sendable {
             }
             if g.batch.highChanged { rows.highClient.append(g.client); rows.highValue.append(g.batch.newHigh) }
         }
+        rows.metadata = try metadata.map { try WireJSON.encodeString($0) }
+        for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) { rows.secretRef.append(ref); rows.secretValue.append(value) }
         let snap = snapshot.map { ($0.seq, snapshotJSON!) }
         let frozen = rows
         do {
@@ -331,6 +346,8 @@ public struct PostgresStore: Sendable {
         var opSeq: [Int] = [], opClient: [String] = [], opCseq: [Int] = [], opBase: [Int] = [], opJSON: [String] = [], opFp: [Int64] = []
         var rejClient: [String] = [], rejCseq: [Int] = [], rejJSON: [String] = [], rejFp: [Int64] = []
         var highClient: [String] = [], highValue: [Int] = []
+        var metadata: String?
+        var secretRef: [String] = [], secretValue: [String] = []
     }
 
     private func commitTransaction(_ id: String, _ expectedRev: Int, _ r: Rows, _ newHead: Int, _ snap: (Int, String)?) async throws -> Int {
@@ -361,6 +378,19 @@ public struct PostgresStore: Sendable {
                     INSERT INTO client_state (doc_id, client_id, high)
                     SELECT \(id), u.client, max(u.high) FROM unnest(\(r.highClient)::text[], \(r.highValue)::bigint[]) AS u(client, high) GROUP BY u.client
                     ON CONFLICT (doc_id, client_id) DO UPDATE SET high = GREATEST(client_state.high, EXCLUDED.high)
+                    """, logger: logger)
+            }
+            if let meta = r.metadata {
+                _ = try await tx.query("""
+                    INSERT INTO doc_meta (doc_id, dsl) VALUES (\(id), \(meta)::text::jsonb)
+                    ON CONFLICT (doc_id) DO UPDATE SET dsl = EXCLUDED.dsl, updated_at = now()
+                    """, logger: logger)
+            }
+            if !r.secretRef.isEmpty {
+                _ = try await tx.query("""
+                    INSERT INTO secrets (doc_id, ref, value)
+                    SELECT \(id), u.ref, u.value FROM unnest(\(r.secretRef)::text[], \(r.secretValue)::text[]) AS u(ref, value)
+                    ON CONFLICT (doc_id, ref) DO NOTHING
                     """, logger: logger)
             }
             if let (seq, json) = snap {

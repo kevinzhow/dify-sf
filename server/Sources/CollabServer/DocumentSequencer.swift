@@ -337,6 +337,115 @@ actor DocumentSequencer {
         return responses
     }
 
+    // MARK: - Replace (POST /replace)
+
+    /// What a replacement writes besides its ops.
+    struct ReplaceWork: Sendable {
+        var ops: [Op]
+        /// New import metadata (nil = unchanged).
+        var metadata: Value?
+        var secrets: [String: String] = [:]
+    }
+
+    struct ReplaceOutcome: Sendable {
+        var head: Int
+        /// Ops committed (by this request, or by the earlier request a replay found).
+        var ops: Int
+        var doc: Document
+        /// The client's next cseq after the replacement.
+        var nextCseq: Int
+        /// A retry of a replacement that was already committed: nothing was planned or written now.
+        var replayed: Bool
+    }
+
+    /// Replaces the document's content in ONE transaction: `plan` gets the document at head and that head, and returns the
+    /// ops (plus metadata and secrets) to commit as `client`'s cseqs `cseq, cseq + 1, ...` with base = head. Runs under the
+    /// document's mutual exclusion, so nothing can commit between planning and committing in this process; another process
+    /// committing meanwhile makes the commit's revision check fail, and the replacement is re-planned on fresh state.
+    /// Either every op is committed or none (`409 conflict` if the sequencer refused one, which a correct plan never causes).
+    ///
+    /// `cseq` must be the client's next cseq (`high + 1`): `409 outstanding_ops` above it (the client has ops the server has
+    /// not handled yet), and below it the request is a retry: if `cseq...high` are all committed ops (what a replacement
+    /// leaves) it is answered as the earlier success (`replayed`), else `409 cseq_used`.
+    func replace<Info: Sendable>(client: ClientID, cseq: Int,
+                                 plan: @Sendable (Document, Int) async throws -> (ReplaceWork, Info)) async throws -> (ReplaceOutcome, Info?) {
+        try await exclusive {
+            var attempts = 0
+            while true {
+                attempts += 1
+                var live = try await ensureLoaded()
+                let high: Int
+                if let h = live.highs[client] {
+                    high = h
+                } else {
+                    do { high = try await store.clientHigh(docId, client: client) } catch { throw ServerError.unavailable("\(error)") }
+                }
+                let head = live.core.seq
+                if cseq <= high {
+                    let known: KnownOutcomes
+                    do { known = try await store.knownOutcomes(docId, client: client, range: cseq...high) } catch {
+                        throw ServerError.unavailable("\(error)")
+                    }
+                    guard known.rejected.isEmpty, known.committed.count == high - cseq + 1 else {
+                        throw ServerError.http(status: 409, code: "cseq_used",
+                                               message: "cseq \(cseq) is already used by this client; its next cseq is \(high + 1)")
+                    }
+                    return (ReplaceOutcome(head: head, ops: known.committed.count, doc: live.core.doc, nextCseq: high + 1, replayed: true), nil)
+                }
+                if cseq > high + 1 {
+                    throw ServerError.http(status: 409, code: "outstanding_ops",
+                                           message: "the server has handled this client's cseqs up to \(high): wait until its ops are resolved, then send cseq \(high + 1)")
+                }
+                let (work, info) = try await plan(live.core.doc, head)
+                if work.ops.isEmpty && work.metadata == nil && work.secrets.isEmpty {
+                    // Nothing to commit, so no revision check either: make sure "nothing to do" was decided on current state.
+                    let rev: Int?
+                    do { rev = try await store.documentRevision(docId) } catch { throw ServerError.unavailable("\(error)") }
+                    if rev != live.rev {
+                        state = nil
+                        if attempts >= 25 { throw ServerError.unavailable("document is contended") }
+                        continue
+                    }
+                    return (ReplaceOutcome(head: head, ops: 0, doc: live.core.doc, nextCseq: cseq, replayed: false), info)
+                }
+                var working = live.core
+                let req = SubmitRequest(client: client, ops: work.ops.enumerated().map { IncomingOp(cseq: cseq + $0.offset, base: head, op: $0.element) })
+                let batch = working.process(req, clientHigh: high, known: KnownOutcomes())
+                guard batch.rejections.isEmpty, batch.entries.count == work.ops.count else {
+                    let why = batch.rejections.sorted { $0.key < $1.key }.first.map { "cseq \($0.key): \($0.value)" } ?? "not every op was sequenced"
+                    logger.error("document \(docId): replacement refused by the sequencer (\(why)); nothing committed")
+                    throw ServerError.http(status: 409, code: "conflict", message: "the replacement was refused (\(why)); 0 ops committed")
+                }
+                let snapshot = Sequencer.snapshotDue(oldSeq: live.core.seq, newSeq: working.seq, every: config.snapshotEvery) ? working.snapshot : nil
+                let newRev: Int
+                do {
+                    newRev = try await store.commit(doc: docId, expectedRev: live.rev, groups: batch.isEmpty ? [] : [.init(client: client, batch: batch)],
+                                                    newHead: working.seq, snapshot: snapshot, metadata: work.metadata, secrets: work.secrets)
+                } catch StoreError.revisionMismatch {
+                    state = nil
+                    logger.warning("document \(docId): revision changed under a replacement, re-planning (attempt \(attempts))")
+                    if attempts >= 25 { throw ServerError.unavailable("document is contended") }
+                    try? await Task.sleep(for: .milliseconds(Int.random(in: 1...(5 * attempts))))
+                    continue
+                } catch StoreError.notCommitted(let why) {
+                    throw ServerError.unavailable("not committed: \(why)")
+                } catch {
+                    state = nil
+                    logger.error("document \(docId): replacement commit outcome unknown: \(error)")
+                    throw ServerError.unavailable("commit outcome unknown")
+                }
+                live.core = working
+                live.rev = newRev
+                if batch.highChanged { live.highs[client] = batch.newHigh }
+                state = live
+                for e in batch.entries { broadcast(e) }
+                published = working.seq
+                return (ReplaceOutcome(head: working.seq, ops: batch.entries.count, doc: working.doc,
+                                       nextCseq: cseq + batch.entries.count, replayed: false), info)
+            }
+        }
+    }
+
     private func broadcast(_ entry: LogEntry) {
         guard !subs.isEmpty, let frame = try? StreamEvent.commit(entry).sseFrame() else { return }
         for (id, proto) in legacySubs where !StreamCompat.streamCarries(entry.op, proto: proto) {

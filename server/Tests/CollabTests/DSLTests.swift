@@ -5,15 +5,15 @@ import Yams
 @testable import CollabDSL
 
 /// Dify's own 24 sample workflows (Fixtures/dify, Apache-2.0, see NOTICE.md).
-private let fixtureDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/dify")
-private let fixtures: [String] = ((try? FileManager.default.contentsOfDirectory(atPath: fixtureDir.path)) ?? [])
+let fixtureDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/dify")
+let fixtures: [String] = ((try? FileManager.default.contentsOfDirectory(atPath: fixtureDir.path)) ?? [])
     .filter { $0.hasSuffix(".yml") }.sorted()
 
-private func load(_ name: String) throws -> String { try String(contentsOf: fixtureDir.appendingPathComponent(name), encoding: .utf8) }
-private func parse(_ yaml: String) throws -> Value { try DifyDSL.value(of: Yams.compose(yaml: yaml)!) }
+func load(_ name: String) throws -> String { try String(contentsOf: fixtureDir.appendingPathComponent(name), encoding: .utf8) }
+func parse(_ yaml: String) throws -> Value { try DifyDSL.value(of: Yams.compose(yaml: yaml)!) }
 
 /// What a round trip must preserve: everything except UI selection, with nodes and edges compared by id.
-private func normalized(_ v: Value) -> Value {
+func normalized(_ v: Value) -> Value {
     switch v {
     case .map(var m):
         m["selected"] = nil
@@ -31,7 +31,7 @@ private func normalized(_ v: Value) -> Value {
     }
 }
 
-private func firstDifference(_ a: Value, _ b: Value, _ path: String = "") -> String? {
+func firstDifference(_ a: Value, _ b: Value, _ path: String = "") -> String? {
     switch (a, b) {
     case (.map(let x), .map(let y)):
         for k in Set(x.keys).union(y.keys).sorted() {

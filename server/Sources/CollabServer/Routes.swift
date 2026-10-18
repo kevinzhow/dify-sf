@@ -41,6 +41,7 @@ struct Routes: Sendable {
         // Dify workflow files (protocol 1.5): import creates a document, export renders the current state.
         r.post("v1", "docs", "import") { req in await handle(req) { try await importDSL(req, id: nil) } }
         r.put("v1", "docs", ":doc", "import") { req in await handle(req) { try await importDSL(req, id: try docId(req)) } }
+        r.post("v1", "docs", ":doc", "replace") { req in await handle(req) { try await replaceDSL(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "export") { req in await handle(req) { try await exportDSL(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "meta") { req in await handle(req) { try await appMeta(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "secrets") { req in await handle(req) { try await storeSecret(req, try docId(req)) } }
@@ -180,6 +181,73 @@ struct Routes: Sendable {
         struct Created: Encodable { var id: String; var head: Int; var created: Bool; var nodes: Int; var edges: Int }
         return try json(Created(id: docId, head: head, created: created, nodes: imported.document.nodes.count,
                                 edges: imported.document.edges.count), status: created ? .created : .ok)
+    }
+
+    /// `POST /v1/docs/{doc}/replace` (docs/protocol.md section 2, "Replacing a document"): overwrites the document with a Dify
+    /// workflow file, as ordinary ops of the caller's client id committed in one transaction. Body: the YAML, or JSON
+    /// `{"yaml": "...", "client"?, "cseq"?, "confirm"?}`; `client`, `cseq` and `confirm` may also be query parameters.
+    private func replaceDSL(_ req: Request, _ doc: String) async throws -> Response {
+        let principal = try await authenticate(req, .edit)
+        let data = try await req.body.collect(max: .specified(ByteCount(value: Self.maxImportBytes))) ?? Data()
+        struct Wrapped: Decodable { var yaml: String; var client: String?; var cseq: Int?; var confirm: Bool? }
+        let wrapped = try? WireJSON.decode(Wrapped.self, from: data)
+        let q = query(req)
+        guard let client = wrapped?.client ?? q["client"], Self.validClientId(client) else {
+            throw ServerError.badRequest("client (the caller's client id) is required")
+        }
+        guard let cseq = wrapped?.cseq ?? q["cseq"].flatMap({ Int($0) }), cseq >= 1 else {
+            throw ServerError.badRequest("cseq (the client's next cseq, >= 1) is required")
+        }
+        let confirm = wrapped?.confirm ?? (q["confirm"] == "true")
+        try await requireDoc(doc)
+        try await requireOwnClient(doc, client, principal, bindIfFree: true)
+        let text = wrapped?.yaml ?? String(decoding: data, as: UTF8.self)
+        let root: Value
+        do { root = try DifyDSL.parseYAML(text) } catch {
+            throw ServerError.badRequest("Invalid YAML format: \(error)")
+        }
+        let meta: Value?
+        do { meta = try await store.documentMetadata(doc) } catch { throw ServerError.unavailable("\(error)") }
+        let checked: (version: String, status: DifyDSL.VersionStatus)
+        do { checked = try DifyDSL.checkReplacement(root, appMode: DifyDSL.appMode(meta), confirm: confirm) } catch {
+            if let v = error.pendingVersion {
+                struct Pending: Encodable {
+                    struct E: Encodable { var code: String; var message: String; var imported_dsl_version: String; var current_dsl_version: String }
+                    var error: E
+                }
+                return try json(Pending(error: .init(code: "version_unconfirmed", message: error.message, imported_dsl_version: v,
+                                                     current_dsl_version: DifyDSL.currentDSLVersion)), status: .badRequest)
+            }
+            throw ServerError.badRequest(error.message)
+        }
+        let store = self.store
+        typealias Renamed = (nodes: [String: String], edges: [String: String])
+        let (outcome, renamed) = try await registry.sequencer(doc).replace(client: client, cseq: cseq) { current, head -> (DocumentSequencer.ReplaceWork, Renamed) in
+            let metadata: Value?, secrets: [String: String]
+            do {
+                metadata = try await store.documentMetadata(doc)
+                secrets = try await store.secrets(doc)
+            } catch { throw ServerError.unavailable("\(error)") }
+            let plan: DifyDSL.ReplacementPlan
+            do {
+                plan = try DifyDSL.planReplacement(root, current: current, metadata: metadata, storedSecrets: secrets, client: client, base: head)
+            } catch let e as Replacement.Failure {
+                throw ServerError.badRequest("the workflow cannot be applied to this document: \(e)")
+            } catch {
+                throw ServerError.badRequest("not an importable Dify workflow: \(error)")
+            }
+            return (.init(ops: plan.ops, metadata: plan.metadata == metadata ? nil : plan.metadata, secrets: plan.secrets),
+                    (plan.renamedNodes, plan.renamedEdges))
+        }
+        struct RenamedIds: Encodable { var nodes: [String: String]; var edges: [String: String] }
+        struct Replaced: Encodable {
+            var head: Int; var ops: Int; var nodes: Int; var edges: Int; var next_cseq: Int; var replayed: Bool
+            var status: String; var imported_dsl_version: String; var current_dsl_version: String; var renamed: RenamedIds
+        }
+        return try json(Replaced(head: outcome.head, ops: outcome.ops, nodes: outcome.doc.nodes.count, edges: outcome.doc.edges.count,
+                                 next_cseq: outcome.nextCseq, replayed: outcome.replayed, status: checked.status.rawValue,
+                                 imported_dsl_version: checked.version, current_dsl_version: DifyDSL.currentDSLVersion,
+                                 renamed: RenamedIds(nodes: renamed?.nodes ?? [:], edges: renamed?.edges ?? [:])))
     }
 
     /// The current state as a Dify workflow file: YAML, or `?format=json`. Documents that were not imported get a

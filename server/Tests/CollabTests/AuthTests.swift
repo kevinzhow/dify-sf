@@ -155,7 +155,7 @@ struct AuthRouteTests {
                 (.post, "/v1/auth/logout"), (.get, "/v1/account"), (.put, "/v1/account/name"), (.put, "/v1/account/password"),
                 (.get, "/v1/workspace/members"), (.post, "/v1/workspace/members/invite-email"),
                 (.put, "/v1/workspace/members/x/update-role"), (.delete, "/v1/workspace/members/x"),
-                (.post, "/v1/docs"), (.put, d), (.get, d), (.post, "/v1/docs/import"), (.put, "\(d)/import"), (.get, "\(d)/export"),
+                (.post, "/v1/docs"), (.put, d), (.get, d), (.post, "/v1/docs/import"), (.put, "\(d)/import"), (.post, "\(d)/replace"), (.get, "\(d)/export"),
                 (.get, "\(d)/meta"), (.post, "\(d)/secrets"), (.get, "\(d)/snapshot"), (.post, "\(d)/clients"), (.get, "\(d)/clients"),
                 (.put, "\(d)/clients/c1"), (.post, "\(d)/ops"), (.get, "\(d)/events"), (.get, "\(d)/comments"), (.post, "\(d)/comments"),
                 (.get, "\(d)/comments/mention-users"), (.get, "\(d)/comments/\(comment)"), (.put, "\(d)/comments/\(comment)"),
@@ -202,6 +202,7 @@ struct AuthRouteTests {
                 #expect(try await api.post("\(d)/comments", #"{"position_x":1,"position_y":2,"content":"c"}"#, token: token).status == 403)
                 #expect(try await api.post("\(d)/secrets", #"{"value":"v"}"#, token: token).status == 403)
                 #expect(try await api.put("\(d)/import", "app: {}", token: token).status == 403)
+                #expect(try await api.post("\(d)/replace?client=ro-\(who)&cseq=1", "app: {}", token: token).status == 403)
                 #expect(try await api.post("/v1/workspace/members/invite-email", #"{"emails":["z@example.com"],"role":"normal"}"#,
                                            token: token).status == 403)
             }

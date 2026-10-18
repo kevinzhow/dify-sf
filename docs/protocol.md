@@ -9,6 +9,11 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* Additive, no version change: **replacing a document from a Dify workflow file**, `POST /v1/docs/{doc}/replace` (Dify's
+  "Import DSL" in the editor, which overwrites the open app's draft; section 2, "Replacing a document"). The server commits
+  the replacement as ordinary ops of the caller's client id (cseqs reserved by the caller, section 9, "Replacing the
+  document"), all in one transaction; other clients see ordinary commits. The op vocabulary is unchanged. New error codes:
+  `version_unconfirmed` (400), `conflict`, `outstanding_ops`, `cseq_used` (409).
 * Clarification, no version change: **a `403 forbidden` on `POST /ops` is final** (section 9, "Refused submissions"): the
   client finishes the waiting ops as rejected with the local reason `forbidden` (not saved, dropped from the journal),
   stops sending until its account may edit again, and then sends `floor` first. The server is unchanged.
@@ -190,6 +195,7 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | POST, PUT, DELETE | `/v1/docs/{doc}/comments/...` | edit | Create, edit/move (author only), delete (author only), resolve, reply (below). |
 | POST | `/v1/docs/{doc}/secrets` | edit | 1.7. Store the plaintext of a secret environment variable: body `{"value":"..."}` -> `201 {"ref":"sec-<32 hex>","masked":"..."}` (below); `400` without a string `value`, `404` if the document is unknown. |
 | POST, PUT | `/v1/docs/import`, `/v1/docs/{doc}/import` | edit | Create a document from a Dify workflow file (1.5). |
+| POST | `/v1/docs/{doc}/replace` | edit | Overwrite the document with a Dify workflow file, as ops of the caller's client (below). |
 | GET | `/v1/docs/{doc}/export` | member | The document as a Dify workflow file (YAML, or `?format=json`); secret environment variables are `""` unless `?include_secret=true` (1.7), which needs **privileged** (1.8; `403 forbidden` otherwise). |
 | POST | `/v1/docs/{doc}/ops` | edit | Submit a batch of ops (section 4). 1.8: the whole batch is `403 forbidden` for a read-only role or a client id bound to another account. |
 | GET | `/v1/docs/{doc}/events` | member | SSE stream (section 5). The token may also come as `?access_token=`. |
@@ -316,6 +322,100 @@ secret stays `""` without a reference. `GET /v1/docs/{doc}/export` never writes 
 unknown or missing reference) and, since 1.8, is for the owner and admins only (`403 forbidden` for everyone else; Dify lets
 every editor export secrets, dify-sf keeps plaintext secrets to the privileged roles). Stored secrets are never deleted, also not when the variable is removed.
 
+### Replacing a document: `POST /v1/docs/{doc}/replace`
+
+Dify 1.17.1's "Import DSL" in the workflow editor (back up, choose a file, "Overwrite and Import"): the open document gets the
+content of a Dify workflow file. Unlike `import`, which creates a document, `replace` changes an existing one **with ordinary
+ops**: they are committed under the caller's client id, appear on every stream as `commit` events (no snapshot reset), carry
+stamps like any edit (so stale writes of others conflict with them, naming the caller) and leave tombstones. The op vocabulary
+is unchanged.
+
+Request (edit role): the body is the YAML (any content type), or JSON `{"yaml": "...", "client": "...", "cseq": N,
+"confirm": bool}`. `client`, `cseq` and `confirm` may also be query parameters (`?client=...&cseq=N&confirm=true`; JSON members
+win).
+
+* `client` (required): the caller's own client id (`403 forbidden` if it belongs to another account; an unbound id is bound).
+* `cseq` (required): the client's **next cseq**. The replacement's ops get the cseqs `cseq, cseq + 1, ...` of that client, so
+  the client must have no unresolved ops and must not create ops until the answer arrives (section 9, "Replacing the
+  document").
+* `confirm`: Dify's confirmation of a file whose DSL version needs it (below).
+
+Checks, in Dify's order (`AppDslService.import_app` with an `app_id`, and the editor's `validateDSLContent`); every refusal is
+`400` with Dify's message where Dify has one, and changes nothing:
+
+| Problem | `error.message` |
+|---|---|
+| not YAML | `Invalid YAML format: ...` |
+| not a mapping | `Invalid YAML format: content must be a mapping` |
+| `version` not a string | `Invalid version type, expected str, got <class 'float'>` |
+| `version` not a version | `Invalid DSL version: ...` (Dify imports such a file and reports `failed`; dify-sf refuses it) |
+| no `app` | `Missing app data in YAML content` |
+| newer than `0.7.0` (Dify 1.17.1's DSL version) or an older major version, without `confirm` | code **`version_unconfirmed`**; the error also carries `imported_dsl_version` and `current_dsl_version` (Dify's "pending" import: show its version dialog, then repeat with `confirm=true`) |
+| no `app.mode` / an unknown mode | `loss app mode` / `'x' is not a valid AppMode` |
+| a mode other than `workflow` and `advanced-chat` | `Only workflow or advanced chat apps can be overwritten (...)` |
+| no `workflow` | `Missing workflow data for workflow/advanced chat app` |
+| node types the open app's mode cannot run (an `answer` node in a `workflow` app; `end`, `trigger-webhook`, `trigger-schedule`, `trigger-plugin` in an `advanced-chat` app) | `Import Failed: ...` |
+| not an importable workflow (as `import`), or content ops cannot write (below) | `not an importable Dify workflow: ...` / `the workflow cannot be applied to this document: ...` |
+
+**The app keeps its mode** (as in Dify, which never changes an app's mode on overwrite): a `workflow` file without `answer`
+nodes may replace a chatflow and stays a chatflow. The rest of the import metadata (`app` name, description, icon, `kind`,
+`version`, `dependencies`, layout and edge extras; `GET /meta`) becomes the file's, in the same transaction as the ops.
+
+The file is imported exactly as `import` does (same mapping, same secret handling: each non-empty secret environment variable is
+stored server-side and the document gets its mask and a `secret_ref`; a secret whose plaintext equals what the document's
+variable of the same id already references keeps that reference). Then the server computes the ops that turn the document at
+head into the imported one, with `base` = that head:
+
+1. `removeEdge` for every live edge the file does not have (or has with other endpoints or handles), `removeNode` for every live
+   node it does not have;
+2. the document-level registers (`$app`: environment and conversation variables, features), new nodes (`addNode`; config
+   entries that reference other nodes are written right after every node exists), titles (`setField` title), positions
+   (`moveNode`), config entries (`setField`; `outputs` first) and new edges (`addEdge`).
+
+Keyed lists (node lists and `$app` variables) are reconciled item by item (`removeItem`, `updateItem`, `insertItem`) when the
+items both sides have keep their order, no new item id is tombstoned and some item is unchanged (or one op suffices);
+otherwise the entry is written whole with one `setField`. Unchanged registers get no op: replacing a document with its own
+export writes nothing. A reference the file has to a missing output (imported as `$broken`, which clients cannot write) is
+written as the plain `[node, output]` pair Dify writes for it; exports are the same.
+
+**Ids.** Node and edge ids of the file are kept, except where the op vocabulary forbids it (ids are never reused, a node's type
+cannot change, a config key cannot be removed, edges are immutable):
+
+* a node id that is **tombstoned**, or live with **another type** or with **a config key the file's node lacks**, gets a fresh
+  id (Dify's style: the current time in milliseconds, incremented until unused); the live node, if any, is removed;
+* an edge id that is tombstoned, or live with other endpoints or handles, and every edge of a renamed node, gets a fresh id in
+  Dify's format `<source>-<sourceHandle>-<target>-<targetHandle>` (with `-1`, `-2`, ... if that is taken);
+* everything in the file that names a renamed node follows it: edge endpoints, selectors (`[node, output, ...]`, references),
+  `parentId`, `iteration_id`, `loop_id`, `start_node_id`, and `{{#node.output#}}` in every string.
+
+The answer lists the renamings; the export is then the file with those ids renamed.
+
+**Atomicity.** The whole replacement is one transaction: every op is committed, together with the new metadata and secrets, or
+nothing is. It is computed and committed under the document's single sequencer, so no other op can commit in between (several
+server processes: the revision check of the commit refuses a stale computation, and the server computes it again on fresh
+state). Concurrent edits of others are serialised before or after it; one based on a version before the replacement that
+writes a register the replacement wrote is a stale write and is rejected with `conflict` (`by` = the caller's client,
+`byName` = its account's name), as against any edit (section 6).
+
+Answer `200`:
+
+```json
+{"head": 57, "ops": 57, "nodes": 6, "edges": 4, "next_cseq": 58, "replayed": false,
+ "status": "completed-with-warnings", "imported_dsl_version": "0.3.1", "current_dsl_version": "0.7.0",
+ "renamed": {"nodes": {"1754683430480": "1760870000000"}, "edges": {"...": "..."}}}
+```
+
+* `head`: the head after the replacement; `ops`: how many ops it committed (cseqs `cseq ... next_cseq - 1`); `nodes`, `edges`:
+  the document's counts; `next_cseq`: the client's next cseq (= `cseq + ops`).
+* `status`: Dify's import status: `completed`, `completed-with-warnings` (an older minor DSL version: Dify's "DSL version
+  difference may affect certain features"), or `pending` (confirmed with `confirm`).
+* `replayed: true`: a retry of a replacement that was committed already (`cseq <= high` and the client's cseqs `cseq ... high`
+  are all committed ops): nothing was computed or written now; `ops`, `next_cseq` describe the earlier one. So a retry after a
+  timeout or `503` is safe.
+* `409` (nothing changed): `outstanding_ops`: `cseq` is beyond the client's next cseq (the server has not handled ops of this
+  client yet: wait until they are resolved); `cseq_used`: `cseq` was used by an ordinary op; `conflict`: the sequencer refused
+  an op of the replacement (cannot happen with a correct server; the message says `0 ops committed`).
+
 ### Comments: `/v1/docs/{doc}/comments`
 
 Additive and optional (added without a protocol version change; authors became accounts in 1.8). Canvas comments mirror Dify
@@ -406,6 +506,8 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 403 | `not_author` | A comment or reply edited, moved or deleted by someone other than its author (comments). | Tell the user; do not retry. |
 | 404 | `not_found` | Unknown document (or comment, reply). | `PUT` it (if creation is intended) or give up. |
 | 409 | `setup_done`, `email_taken` | 1.8: `POST /setup` after the install; an email in use. | Sign in instead. |
+| 409 | `outstanding_ops`, `cseq_used`, `conflict` | `POST /replace`: the client has unresolved ops; the `cseq` is used; an op of the replacement was refused (nothing committed). | Resolve the ops, then retry with the next cseq. |
+| 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |
 | 429 | `login_rate_limited` | 1.8: too many failed sign-ins for this email (Dify's rule). | Wait (24 hours by default). |
 | 503 | `unavailable` | Database unavailable, or the commit outcome was uncertain. | Retry the identical request with backoff. **Safe**: ops are idempotent. |
@@ -759,6 +861,18 @@ Consequences for concurrent ops:
   removes the edge like any other edge.
 * A restore cannot bring back an edge that a `removeEdge` deleted, nor an edge that a different delete removed (for example the
   earlier delete of the other endpoint). Undo in reverse order (last delete first) restores everything.
+
+**Replacing the document (`POST /replace`).** The replacement's ops are this client's ops, under cseqs the client reserves:
+1. Wait until the outbox is empty (every op committed or rejected), and refuse new edits locally until step 3.
+2. Send `POST /v1/docs/{doc}/replace` with `client` = this client's id and `cseq` = `nextCseq`. On a transport error, a timeout or
+   a `503`, repeat the identical request (a committed replacement is answered `replayed`).
+3. On `200`, set `nextCseq = next_cseq` (persist it like any counter) and accept edits again. The replacement arrives on the
+   stream as commits of this client whose cseqs are in no outbox entry; they are applied like any commit. On a `4xx`, nothing
+   was written: `nextCseq` stays.
+A client that crashes between steps 2 and 3 restarts with `nextCseq` = the reserved cseq: if the replacement was committed, its
+next op is answered `clientIdInUse` and the client moves to a new id (above), re-sending its unsaved edits. The replacement is
+not an entry of the editor's undo history; clear the history after it (Dify reloads the draft and starts a new one), since
+entries recorded before it may no longer apply.
 
 **Document-level registers (1.7).** The document's `app` map is written through the reserved node id `$app`, which always
 exists (never `nodeNotFound`/`nodeDeleted`). Allowed: `setField` with a `config` field, `insertItem`, `removeItem`, `updateItem`;
