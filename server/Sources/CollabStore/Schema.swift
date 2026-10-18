@@ -11,6 +11,9 @@
 /// * `secrets` holds the plaintext of secret environment variables (protocol 1.7), never part of a document.
 /// * `comments` and `comment_replies` are canvas comments (additive, Dify's workflow comments): a resource beside the
 ///   document, not part of it (no ops, no log, no snapshots, no export, no undo).
+/// * Accounts (protocol 1.8, Dify's community edition: one workspace per server): `accounts`, `members` (the workspace's
+///   members and their roles), `sessions` (opaque bearer tokens, stored only as SHA-256), `invitations` (activation links)
+///   and `client_accounts` (which account a client id belongs to).
 public enum Schema {
     public static let statements: [String] = [
         """
@@ -90,8 +93,8 @@ public enum Schema {
             PRIMARY KEY (doc_id, ref)
         )
         """,
-        // Canvas comments (Dify's workflow_comments / workflow_comment_replies / workflow_comment_mentions). Mentions are client
-        // ids in order (Dify's mention rows). Authors are client ids; display names are looked up in `clients` when read.
+        // Canvas comments (Dify's workflow_comments / workflow_comment_replies / workflow_comment_mentions). Authors, resolvers
+        // and mentions are account ids since protocol 1.8 (client ids before; such old rows keep them and match no account).
         """
         CREATE TABLE IF NOT EXISTS comments (
             doc_id      text             NOT NULL REFERENCES documents(id),
@@ -124,6 +127,71 @@ public enum Schema {
         )
         """,
         "CREATE INDEX IF NOT EXISTS comment_replies_by_comment ON comment_replies (doc_id, comment_id, created_at)",
+        // Protocol 1.8: accounts (Dify's `accounts` / `tenant_account_joins`). Emails are unique ignoring case; the password is
+        // Dify's scheme (PBKDF2-HMAC-SHA256, base64), NULL until an invited account is activated.
+        """
+        CREATE TABLE IF NOT EXISTS accounts (
+            id                 text        PRIMARY KEY,
+            email              text        NOT NULL,
+            name               text        NOT NULL,
+            avatar_url         text,
+            password_hash      text,
+            password_salt      text,
+            status             text        NOT NULL,
+            interface_language text,
+            timezone           text,
+            created_at         timestamptz NOT NULL DEFAULT now(),
+            last_login_at      timestamptz
+        )
+        """,
+        "CREATE UNIQUE INDEX IF NOT EXISTS accounts_email ON accounts (lower(email))",
+        // The one workspace's members. At most one owner (the partial unique index).
+        """
+        CREATE TABLE IF NOT EXISTS members (
+            account_id text        PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+            role       text        NOT NULL,
+            invited_by text,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE UNIQUE INDEX IF NOT EXISTS members_one_owner ON members (role) WHERE role = 'owner'",
+        // Bearer tokens (access and refresh), by SHA-256 of the token. `session_id` groups every token of one sign-in (also
+        // across refreshes): logout revokes them all.
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            token_hash text        PRIMARY KEY,
+            account_id text        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            session_id text        NOT NULL,
+            kind       text        NOT NULL,
+            expires_at timestamptz NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS sessions_by_session ON sessions (session_id)",
+        "CREATE INDEX IF NOT EXISTS sessions_by_account ON sessions (account_id)",
+        """
+        CREATE TABLE IF NOT EXISTS invitations (
+            token_hash text        PRIMARY KEY,
+            account_id text        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            email      text        NOT NULL,
+            role       text        NOT NULL,
+            invited_by text        NOT NULL,
+            expires_at timestamptz NOT NULL,
+            used_at    timestamptz,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        // A client id belongs to the account that obtained it (POST /clients) or used it first; ops under it from any other
+        // account are refused (protocol 1.8). Never changes once written.
+        """
+        CREATE TABLE IF NOT EXISTS client_accounts (
+            doc_id     text        NOT NULL,
+            client_id  text        NOT NULL,
+            account_id text        NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (doc_id, client_id)
+        )
+        """,
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",

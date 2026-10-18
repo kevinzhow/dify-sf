@@ -14,7 +14,7 @@ public struct StoredComment: Sendable, Equatable {
     public var resolved: Bool
     public var resolvedBy: ClientID?
     public var resolvedAt: Date?
-    /// Mentioned client ids, in the order given.
+    /// Mentioned account ids, in the order given (protocol 1.8; client ids before).
     public var mentions: [ClientID]
     /// Oldest first.
     public var replies: [StoredReply]
@@ -34,7 +34,7 @@ public struct StoredReply: Sendable, Equatable {
 public enum CommentError: Error, Sendable, Equatable {
     /// No such comment (or reply) in this document.
     case notFound
-    /// Only the author (the client id that created it) may edit or delete it.
+    /// Only the author (the account that created it, protocol 1.8) may edit or delete it.
     case notAuthor
 }
 

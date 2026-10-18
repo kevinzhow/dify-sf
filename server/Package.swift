@@ -17,6 +17,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-configuration.git", exact: "1.2.2"),
         .package(url: "https://github.com/swift-server/async-http-client.git", exact: "1.35.0"),
         .package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2"),
+        // Already in the graph through Vapor (same version as Package.resolved): SHA-256 for token hashes, PBKDF2 for passwords.
+        .package(url: "https://github.com/apple/swift-crypto.git", exact: "4.5.2"),
     ],
     targets: [
         // Pure protocol logic: document model, ops, wire format, sequencer, client state machine. No I/O.
@@ -39,6 +41,8 @@ let package = Package(
             .product(name: "Vapor", package: "vapor"),
             .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
             .product(name: "Configuration", package: "swift-configuration"),
+            .product(name: "Crypto", package: "swift-crypto"),
+            .product(name: "CryptoExtras", package: "swift-crypto"),
         ]),
         .executableTarget(name: "collab-server", dependencies: ["CollabServer"]),
         // Real HTTP/SSE driver around the pure client state machine (used by the chaos/storm harness).

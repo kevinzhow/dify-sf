@@ -8,33 +8,10 @@ import Testing
 import VaporTesting
 @testable import CollabServer
 
-/// Integration tests against a real Postgres. Enabled when TEST_DB_HOST is set (see server/run-db-tests.sh).
-private let dbHost = ProcessInfo.processInfo.environment["TEST_DB_HOST"]
-
 private func node(_ id: String) -> Node { Node(id: id, type: "llm", config: ["prompt": .string("p")]) }
 private func prompt(_ n: String, _ v: String) -> Op { .setField(n, .config(["prompt"]), .string(v)) }
 private func req(_ client: String, _ ops: [(Int, Int, Op)]) -> SubmitRequest {
     SubmitRequest(client: client, ops: ops.map { IncomingOp(cseq: $0.0, base: $0.1, op: $0.2) })
-}
-
-/// Boots a PostgresClient for the duration of `body`.
-private func withStore<T: Sendable>(_ body: @Sendable (PostgresStore, Logger) async throws -> T) async throws -> T {
-    var logger = Logger(label: "test")
-    logger.logLevel = .error
-    let cfg = PostgresClient.Configuration(host: dbHost!, port: Int(ProcessInfo.processInfo.environment["TEST_DB_PORT"] ?? "5432") ?? 5432,
-                                           username: "collab", password: "collab", database: "collab", tls: .disable)
-    let client = PostgresClient(configuration: cfg, backgroundLogger: logger)
-    return try await withThrowingTaskGroup(of: T?.self) { group in
-        group.addTask { await client.run(); return nil }
-        let store = PostgresStore(client: client, logger: logger)
-        var migrated = false
-        for _ in 0..<50 where !migrated {
-            do { try await store.migrate(); migrated = true } catch { try await Task.sleep(for: .milliseconds(100)) }
-        }
-        let result = try await body(store, logger)
-        group.cancelAll()
-        return result
-    }!
 }
 
 private func freshDoc(_ store: PostgresStore, nodes: [String] = ["a", "b"]) async throws -> String {
@@ -43,7 +20,9 @@ private func freshDoc(_ store: PostgresStore, nodes: [String] = ["a", "b"]) asyn
     return id
 }
 
-@Suite("Postgres store + sequencer", .enabled(if: dbHost != nil))
+/// Integration tests against a real Postgres. Enabled when TEST_DB_HOST is set (see server/run-db-tests.sh); every test has a
+/// fresh schema (`withStore`).
+@Suite("Postgres store + sequencer", .enabled(if: testDbHost != nil))
 struct PostgresIntegrationTests {
     @Test func ackedOpsSurviveRestartAndDuplicatesReturnTheOriginalOutcome() async throws {
         try await withStore { store, logger in
@@ -131,17 +110,23 @@ struct PostgresIntegrationTests {
         }
     }
 
-    @Test func conflictNoticesCarryTheAuthorsDisplayName() async throws {
+    @Test func conflictNoticesCarryTheAuthorsAccountName() async throws {
         try await withStore { store, logger in
             let doc = try await freshDoc(store)
+            let (hash, salt) = try Passwords.hash("alice-pass-1")
+            let alice = try await store.createOwner(id: "acc-alice", email: "alice@example.com", name: "Alice", passwordHash: hash,
+                                                    passwordSalt: salt, interfaceLanguage: nil, timezone: nil)
             let seqr = DocumentSequencer(docId: doc, store: store, config: ServerConfig.defaults, logger: logger)
-            try await seqr.setName(client: "alice", name: "Alice")
+            #expect(try await seqr.bind(client: "alice", to: alice.id) == alice.id)
+            #expect(try await seqr.bind(client: "alice", to: "someone-else") == alice.id)  // a binding never changes
             _ = try await seqr.submit(req("alice", [(1, 0, prompt("a", "A"))]))
             let r = try await seqr.submit(req("bob", [(1, 0, prompt("a", "B"))]))
             guard case .reject(_, .conflict(let c)) = r.results[0] else { Issue.record("expected a conflict"); return }
             #expect(c.by == "alice" && c.byName == "Alice")
-            try await seqr.setName(client: "bob", name: "Bob")
-            #expect(try await seqr.clientNames(force: true) == ["alice": "Alice", "bob": "Bob"])
+            try await store.updateAccountName(alice.id, name: "Alice B")
+            #expect(try await seqr.clientNames().isEmpty == false)
+            let dir = try await seqr.clientDirectory(force: true)
+            #expect(dir.count == 1 && dir["alice"]?.account == alice.id && dir["alice"]?.name == "Alice B")
         }
     }
 
@@ -192,12 +177,13 @@ struct PostgresIntegrationTests {
                 Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
             }) { app in
                 try await app.testing { client in
+                    let h = try await ownerHeaders(client)
                     func meta(_ doc: String) async throws -> (Int, Value) {
-                        let res = try await client.get("/v1/docs/\(doc)/meta")
+                        let res = try await client.get("/v1/docs/\(doc)/meta", headers: h)
                         return (res.status.code, try WireJSON.decode(Value.self, from: Data(try await res.body.requireString().utf8)))
                     }
                     let imported = "t-\(UUID().uuidString.lowercased().prefix(12))"
-                    let put = try await client.put("/v1/docs/\(imported)/import") { $0.body = .init(string: yaml) }
+                    let put = try await client.put("/v1/docs/\(imported)/import", headers: h) { $0.body = .init(string: yaml) }
                     #expect(put.status.code == 201)
                     let (status, body) = try await meta(imported)
                     #expect(status == 200)
@@ -243,8 +229,9 @@ struct PostgresIntegrationTests {
                 Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
             }) { app in
                 try await app.testing { client in
+                    let h = try await ownerHeaders(client)
                     func json(_ text: String) throws -> Value { try WireJSON.decode(Value.self, from: Data(text.utf8)) }
-                    func getJSON(_ path: String) async throws -> Value { try json(try await client.get(.init(stringLiteral: path)).body.requireString()) }
+                    func getJSON(_ path: String) async throws -> Value { try json(try await client.get(.init(stringLiteral: path), headers: h).body.requireString()) }
                     func env(_ v: Value, workflow: Bool) -> [Value] {
                         guard case .map(var m) = v else { return [] }
                         if workflow, case .map(let w)? = m["workflow"] { m = w }
@@ -253,21 +240,21 @@ struct PostgresIntegrationTests {
                     }
                     func member(_ v: Value, _ k: String) -> Value? { if case .map(let m) = v { return m[k] }; return nil }
                     let doc = "t-\(UUID().uuidString.lowercased().prefix(12))"
-                    #expect(try await client.put("/v1/docs/\(doc)/import") { $0.body = .init(string: yaml) }.status.code == 201)
+                    #expect(try await client.put("/v1/docs/\(doc)/import", headers: h) { $0.body = .init(string: yaml) }.status.code == 201)
 
                     // The imported secret is stored aside; the document has its mask and reference only.
-                    let snap = try await client.get("/v1/docs/\(doc)/snapshot")
+                    let snap = try await client.get("/v1/docs/\(doc)/snapshot", headers: h)
                     let snapText = try await snap.body.requireString()
                     #expect(!snapText.contains("sk-imported-secret") && snapText.contains("sk-imp************et"))
                     #expect(try await store.secrets(doc).values.sorted() == ["sk-imported-secret"])
 
                     // POST /secrets: 201 {ref, masked}; validation; unknown document.
-                    let stored = try await client.post("/v1/docs/\(doc)/secrets") { $0.body = .init(string: #"{"value":"sk-typed-in-the-panel"}"#) }
+                    let stored = try await client.post("/v1/docs/\(doc)/secrets", headers: h) { $0.body = .init(string: #"{"value":"sk-typed-in-the-panel"}"#) }
                     #expect(stored.status.code == 201)
                     guard case .map(let sm) = try json(try await stored.body.requireString()), case .string(let ref)? = sm["ref"] else { Issue.record("secret"); return }
                     #expect(ref.hasPrefix("sec-") && ref.count == 36 && sm["masked"] == .string("sk-typ************el"))
-                    #expect(try await client.post("/v1/docs/\(doc)/secrets") { $0.body = .init(string: #"{"v":1}"#) }.status.code == 400)
-                    #expect(try await client.post("/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/secrets") {
+                    #expect(try await client.post("/v1/docs/\(doc)/secrets", headers: h) { $0.body = .init(string: #"{"v":1}"#) }.status.code == 400)
+                    #expect(try await client.post("/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/secrets", headers: h) {
                         $0.body = .init(string: #"{"value":"x"}"#)
                     }.status.code == 404)
 
@@ -290,7 +277,7 @@ struct PostgresIntegrationTests {
                     let full = env(try await getJSON("/v1/docs/\(doc)/export?format=json&include_secret=true"), workflow: true)
                     #expect(full.map { member($0, "value") } == [.string("sk-imported-secret"), .string("sk-typed-in-the-panel")])
                     #expect((plain + full).allSatisfy { member($0, "secret_ref") == nil })
-                    let yamlOut = try await client.get("/v1/docs/\(doc)/export?include_secret=true").body.requireString()
+                    let yamlOut = try await client.get("/v1/docs/\(doc)/export?include_secret=true", headers: h).body.requireString()
                     #expect(yamlOut.contains("sk-typed-in-the-panel"))
 
                     // A 1.6 stream never carries the $app commit: its catch-up becomes a snapshot.
@@ -304,144 +291,119 @@ struct PostgresIntegrationTests {
     }
 
     @Test func commentRoutesAuthorsRepliesResolveAndTheStreamNotification() async throws {
-        try await withStore { store, logger in
-            let registry = DocumentRegistry(store: store, config: ServerConfig.defaults, logger: logger)
-            try await withApp(configure: { app in
-                Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
-            }) { app in
-                try await app.testing { client in
-                    func json(_ text: String) throws -> [String: Value] {
-                        guard case .map(let m) = try WireJSON.decode(Value.self, from: Data(text.utf8)) else { return [:] }
-                        return m
-                    }
-                    func send(_ method: String, _ path: String, _ body: String? = nil) async throws -> (Int, [String: Value]) {
-                        func read(_ status: Int, _ text: String?) throws -> (Int, [String: Value]) {
-                            (status, status == 204 ? [:] : try json(text ?? ""))
-                        }
-                        switch method {
-                        case "GET":
-                            let res = try await client.get(.init(stringLiteral: path))
-                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
-                        case "DELETE":
-                            let res = try await client.delete(.init(stringLiteral: path))
-                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
-                        case "PUT":
-                            let res = try await client.put(.init(stringLiteral: path)) { if let body { $0.body = .init(string: body) } }
-                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
-                        default:
-                            let res = try await client.post(.init(stringLiteral: path)) { if let body { $0.body = .init(string: body) } }
-                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
-                        }
-                    }
-                    func errorCode(_ m: [String: Value]) -> Value? { if case .map(let e)? = m["error"] { return e["code"] }; return nil }
-                    func str(_ v: Value?) -> String { if case .string(let s)? = v { return s }; return "" }
-                    func list(_ v: Value?) -> [Value] { if case .list(let xs)? = v { return xs }; return [] }
-                    func obj(_ v: Value) -> [String: Value] { if case .map(let m) = v { return m }; return [:] }
+        try await withServer { api, store, registry in
+            func list(_ v: Value?) -> [Value] { if case .list(let xs)? = v { return xs }; return [] }
+            func obj(_ v: Value) -> [String: Value] { if case .map(let m) = v { return m }; return [:] }
+            // Accounts (1.8): Olivia (owner) and Bob (editor); authors are accounts.
+            let olivia = try await api.setupOwner()
+            let oliviaId = try await api.get("/v1/account", token: olivia).str("id")
+            let (bobId, bob) = try await api.member("bob@example.com", role: "editor", name: "Bob", inviter: olivia)
 
-                    let doc = try await freshDoc(store)
-                    let base = "/v1/docs/\(doc)/comments"
-                    #expect(try await client.put("/v1/docs/\(doc)/clients/alice") { $0.body = .init(string: #"{"name":"Alice"}"#) }.status.code == 200)
-                    let seqr = await registry.sequencer(doc)
-                    let sub = try await seqr.subscribe(lastEventId: 0, maxReplay: 100)
-                    #expect(sub.head == 0)
+            let doc = try await freshDoc(store)
+            let base = "/v1/docs/\(doc)/comments"
+            let seqr = await registry.sequencer(doc)
+            let sub = try await seqr.subscribe(lastEventId: 0, maxReplay: 100)
+            #expect(sub.head == 0)
 
-                    // Create: 201, server id, author and name, mentions filtered and deduplicated.
-                    let (s1, c1) = try await send("POST", base,
-                        #"{"client":"alice","position_x":120.5,"position_y":-40,"content":"check this","mentioned_client_ids":["bob","bob","bad id"]}"#)
-                    #expect(s1 == 201)
-                    let id1 = str(c1["id"])
-                    #expect(id1.count == 36 && c1["created_by"] == .string("alice") && c1["created_by_name"] == .string("Alice"))
-                    #expect(c1["position_x"] == .double(120.5) && c1["position_y"] == .int(-40))
-                    #expect(c1["resolved"] == .bool(false) && c1["reply_count"] == .int(0) && list(c1["replies"]).isEmpty)
-                    #expect(list(c1["mentions"]).map { obj($0)["client"] } == [.string("bob")])
-                    #expect(str(c1["created_at"]).hasSuffix("Z") && c1["resolved_by"] == nil)
+            // Create: 201, server id, author and name, mentions filtered to members and deduplicated.
+            let c1 = try await api.post(base, #"{"position_x":120.5,"position_y":-40,"content":"check this","mentioned_user_ids":["\#(bobId)","\#(bobId)","nobody"]}"#,
+                                        token: olivia)
+            #expect(c1.status == 201)
+            let id1 = c1.str("id")
+            #expect(id1.count == 36 && c1.json["created_by"] == .string(oliviaId) && c1.json["created_by_name"] == .string("Olivia"))
+            #expect(c1.json["position_x"] == .double(120.5) && c1.json["position_y"] == .int(-40))
+            #expect(c1.json["resolved"] == .bool(false) && c1.json["reply_count"] == .int(0) && c1.list("replies").isEmpty)
+            #expect(c1.list("mentions").map { obj($0)["account"] } == [.string(bobId)])
+            #expect(c1.list("mentions").map { obj($0)["name"] } == [.string("Bob")])
+            #expect(c1.str("created_at").hasSuffix("Z") && c1.json["resolved_by"] == nil)
 
-                    // A doc op in between: the comment did not take a seq.
-                    let op = try await seqr.submit(req("alice", [(1, 0, prompt("a", "edited"))]))
-                    #expect(op.results == [.ack(cseq: 1, seq: 1)])
+            // A doc op in between: the comment did not take a seq.
+            let op = try await seqr.submit(req("alice", [(1, 0, prompt("a", "edited"))]))
+            #expect(op.results == [.ack(cseq: 1, seq: 1)])
 
-                    let (s2, c2) = try await send("POST", base, #"{"client":"bob","position_x":1,"position_y":2,"content":"second"}"#)
-                    #expect(s2 == 201)
-                    let id2 = str(c2["id"])
+            let c2 = try await api.post(base, #"{"position_x":1,"position_y":2,"content":"second"}"#, token: bob)
+            #expect(c2.status == 201 && c2.json["created_by"] == .string(bobId))
+            let id2 = c2.str("id")
 
-                    // Validation (Dify's rules) and unknowns.
-                    #expect(try await send("POST", base, #"{"client":"bob","position_x":1,"position_y":2,"content":"   "}"#).0 == 400)
-                    let long = String(repeating: "x", count: 1001)
-                    #expect(try await send("POST", base, #"{"client":"bob","position_x":1,"position_y":2,"content":"\#(long)"}"#).0 == 400)
-                    #expect(try await send("POST", base, #"{"position_x":1,"position_y":2,"content":"no author"}"#).0 == 400)
-                    #expect(try await send("POST", base, #"{"client":"bob","content":"no position"}"#).0 == 400)
-                    #expect(try await send("GET", "/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/comments").0 == 404)
-                    let (s404, e404) = try await send("GET", "\(base)/no-such-comment")
-                    #expect(s404 == 404 && errorCode(e404) == .string("not_found"))
+            // Validation (Dify's rules) and unknowns.
+            #expect(try await api.post(base, #"{"position_x":1,"position_y":2,"content":"   "}"#, token: bob).status == 400)
+            let long = String(repeating: "x", count: 1001)
+            #expect(try await api.post(base, #"{"position_x":1,"position_y":2,"content":"\#(long)"}"#, token: bob).status == 400)
+            #expect(try await api.post(base, #"{"content":"no position"}"#, token: bob).status == 400)
+            #expect(try await api.get("/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/comments", token: bob).status == 404)
+            let e404 = try await api.get("\(base)/no-such-comment", token: bob)
+            #expect(e404.status == 404 && e404.errorCode == "not_found")
 
-                    // List: newest first, all of them.
-                    let (sl, l1) = try await send("GET", base)
-                    #expect(sl == 200 && list(l1["comments"]).map { str(obj($0)["id"]) } == [id2, id1])
+            // List: newest first, all of them. Mention candidates: the members.
+            #expect(try await api.get(base, token: bob).list("comments").map { obj($0)["id"] } == [.string(id2), .string(id1)])
+            let users = try await api.get("\(base)/mention-users", token: bob)
+            #expect(users.status == 200 && Set(users.list("users").map { obj($0)["id"] }) == [.string(oliviaId), .string(bobId)])
 
-                    // Only the author edits or moves (Dify: only the creator may drag a pin).
-                    let (s403, e403) = try await send("PUT", "\(base)/\(id1)", #"{"client":"bob","content":"hijack"}"#)
-                    #expect(s403 == 403 && errorCode(e403) == .string("not_author"))
-                    #expect(try await send("PUT", "\(base)/\(id1)", #"{"client":"bob","position_x":0,"position_y":0}"#).0 == 403)
-                    #expect(try await send("DELETE", "\(base)/\(id1)?client=bob").0 == 403)
-                    #expect(try await send("PUT", "\(base)/no-such", #"{"client":"bob","content":"x"}"#).0 == 404)
-                    // A move without content keeps content and mentions; an explicit list replaces the mentions.
-                    let (sm, moved) = try await send("PUT", "\(base)/\(id1)", #"{"client":"alice","position_x":300,"position_y":400}"#)
-                    #expect(sm == 200 && moved["position_x"] == .int(300) && moved["content"] == .string("check this"))
-                    #expect(list(moved["mentions"]).count == 1)
-                    let (_, edited) = try await send("PUT", "\(base)/\(id1)", #"{"client":"alice","content":"check that","mentioned_client_ids":[]}"#)
-                    #expect(edited["content"] == .string("check that") && list(edited["mentions"]).isEmpty && edited["position_y"] == .int(400))
+            // Only the author edits or moves (Dify: only the creator may drag a pin).
+            let e403 = try await api.put("\(base)/\(id1)", #"{"content":"hijack"}"#, token: bob)
+            #expect(e403.status == 403 && e403.errorCode == "not_author")
+            #expect(try await api.put("\(base)/\(id1)", #"{"position_x":0,"position_y":0}"#, token: bob).status == 403)
+            #expect(try await api.delete("\(base)/\(id1)", token: bob).status == 403)
+            #expect(try await api.put("\(base)/no-such", #"{"content":"x"}"#, token: bob).status == 404)
+            // A move without content keeps content and mentions; an explicit list replaces the mentions.
+            let moved = try await api.put("\(base)/\(id1)", #"{"position_x":300,"position_y":400}"#, token: olivia)
+            #expect(moved.status == 200 && moved.json["position_x"] == .int(300) && moved.json["content"] == .string("check this"))
+            #expect(moved.list("mentions").count == 1)
+            let edited = try await api.put("\(base)/\(id1)", #"{"content":"check that","mentioned_user_ids":[]}"#, token: olivia)
+            #expect(edited.json["content"] == .string("check that") && edited.list("mentions").isEmpty && edited.json["position_y"] == .int(400))
 
-                    // Replies: anyone; only the author edits/deletes; an omitted mention list clears (Dify).
-                    let (sr, r1) = try await send("POST", "\(base)/\(id1)/replies", #"{"client":"bob","content":"on it","mentioned_client_ids":["alice"]}"#)
-                    #expect(sr == 201 && r1["created_by"] == .string("bob") && list(r1["mentions"]).map { obj($0)["name"] } == [.string("Alice")])
-                    let rid = str(r1["id"])
-                    #expect(try await send("POST", "\(base)/\(id1)/replies", #"{"client":"alice","content":"thanks"}"#).0 == 201)
-                    #expect(try await send("POST", "\(base)/no-such/replies", #"{"client":"bob","content":"x"}"#).0 == 404)
-                    #expect(try await send("PUT", "\(base)/\(id1)/replies/\(rid)", #"{"client":"alice","content":"not yours"}"#).0 == 403)
-                    #expect(try await send("DELETE", "\(base)/\(id1)/replies/\(rid)?client=alice").0 == 403)
-                    let (su, r1b) = try await send("PUT", "\(base)/\(id1)/replies/\(rid)", #"{"client":"bob","content":"done"}"#)
-                    #expect(su == 200 && r1b["content"] == .string("done") && list(r1b["mentions"]).isEmpty)
-                    let (_, withReplies) = try await send("GET", "\(base)/\(id1)")
-                    #expect(withReplies["reply_count"] == .int(2) && list(withReplies["replies"]).map { obj($0)["content"] } == [.string("done"), .string("thanks")])
-                    #expect(try await send("DELETE", "\(base)/\(id1)/replies/\(rid)?client=bob").0 == 204)
-                    #expect(try await send("DELETE", "\(base)/\(id1)/replies/\(rid)?client=bob").0 == 404)
+            // Replies: any editor; only the author edits/deletes; an omitted mention list clears (Dify).
+            let r1 = try await api.post("\(base)/\(id1)/replies", #"{"content":"on it","mentioned_user_ids":["\#(oliviaId)"]}"#, token: bob)
+            #expect(r1.status == 201 && r1.json["created_by"] == .string(bobId) && r1.list("mentions").map { obj($0)["name"] } == [.string("Olivia")])
+            let rid = r1.str("id")
+            #expect(try await api.post("\(base)/\(id1)/replies", #"{"content":"thanks"}"#, token: olivia).status == 201)
+            #expect(try await api.post("\(base)/no-such/replies", #"{"content":"x"}"#, token: bob).status == 404)
+            #expect(try await api.put("\(base)/\(id1)/replies/\(rid)", #"{"content":"not yours"}"#, token: olivia).status == 403)
+            #expect(try await api.delete("\(base)/\(id1)/replies/\(rid)", token: olivia).status == 403)
+            let r1b = try await api.put("\(base)/\(id1)/replies/\(rid)", #"{"content":"done"}"#, token: bob)
+            #expect(r1b.status == 200 && r1b.json["content"] == .string("done") && r1b.list("mentions").isEmpty)
+            let withReplies = try await api.get("\(base)/\(id1)", token: bob)
+            #expect(withReplies.json["reply_count"] == .int(2) && withReplies.list("replies").map { obj($0)["content"] } == [.string("done"), .string("thanks")])
+            #expect(try await api.delete("\(base)/\(id1)/replies/\(rid)", token: bob).status == 204)
+            #expect(try await api.delete("\(base)/\(id1)/replies/\(rid)", token: bob).status == 404)
 
-                    // Resolve: anyone, idempotent (the first resolver and time stay).
-                    let (sv, res1) = try await send("POST", "\(base)/\(id1)/resolve", #"{"client":"bob"}"#)
-                    #expect(sv == 200 && res1["resolved"] == .bool(true) && res1["resolved_by"] == .string("bob") && res1["resolved_at"] != nil)
-                    let (sv2, res2) = try await send("POST", "\(base)/\(id1)/resolve", #"{"client":"alice"}"#)
-                    #expect(sv2 == 200 && res2["resolved_by"] == .string("bob") && res2["resolved_at"] == res1["resolved_at"])
-                    #expect(try await send("POST", "\(base)/no-such/resolve", #"{"client":"bob"}"#).0 == 404)
-                    // Resolved comments stay in the list.
-                    #expect(list(try await send("GET", base).1["comments"]).count == 2)
+            // Resolve: any editor, idempotent (the first resolver and time stay).
+            let res1 = try await api.post("\(base)/\(id1)/resolve", nil, token: bob)
+            #expect(res1.status == 200 && res1.json["resolved"] == .bool(true) && res1.json["resolved_by"] == .string(bobId)
+                    && res1.json["resolved_by_name"] == .string("Bob") && res1.json["resolved_at"] != nil)
+            let res2 = try await api.post("\(base)/\(id1)/resolve", nil, token: olivia)
+            #expect(res2.status == 200 && res2.json["resolved_by"] == .string(bobId) && res2.json["resolved_at"] == res1.json["resolved_at"])
+            #expect(try await api.post("\(base)/no-such/resolve", nil, token: bob).status == 404)
+            #expect(try await api.get(base, token: bob).list("comments").count == 2)
 
-                    // Comments are not part of the document: not in the snapshot nor the export.
-                    let snapText = try await client.get("/v1/docs/\(doc)/snapshot").body.requireString()
-                    let exportText = try await client.get("/v1/docs/\(doc)/export?format=json").body.requireString()
-                    #expect(!snapText.contains("check that") && !exportText.contains("check that"))
+            // Comments are not part of the document: not in the snapshot nor the export.
+            let snapText = try await api.get("/v1/docs/\(doc)/snapshot", token: bob).text
+            let exportText = try await api.get("/v1/docs/\(doc)/export?format=json", token: bob).text
+            #expect(!snapText.contains("check that") && !exportText.contains("check that"))
 
-                    // Delete (author): replies go with it.
-                    #expect(try await send("DELETE", "\(base)/\(id1)").0 == 400)  // no client
-                    #expect(try await send("DELETE", "\(base)/\(id1)?client=alice").0 == 204)
-                    #expect(try await send("GET", "\(base)/\(id1)").0 == 404)
-                    #expect(try await store.comment(doc, id: id1) == nil)
-                    #expect(list(try await send("GET", base).1["comments"]).map { str(obj($0)["id"]) } == [id2])
+            // A rename shows everywhere (names are looked up when read).
+            #expect(try await api.put("/v1/account/name", #"{"name":"Olivia R"}"#, token: olivia).status == 200)
+            #expect(try await api.get("\(base)/\(id1)", token: bob).json["created_by_name"] == .string("Olivia R"))
 
-                    // The stream: one `comments` frame per change (none for the no-op resolve), never with an id; the
-                    // commit in between kept its seq and is the only frame with an id.
-                    await seqr.unsubscribe(sub.id)
-                    var frames: [String] = []
-                    for await f in sub.live { frames.append(f) }
-                    func c(_ id: String, _ a: String) -> String { "event: comments\ndata: {\"action\":\"\(a)\",\"comment\":\"\(id)\"}\n\n" }
-                    let expected = [c(id1, "created")] + [try StreamEvent.commit(LogEntry(seq: 1, client: "alice", cseq: 1, base: 0,
-                                                                                          op: prompt("a", "edited"))).sseFrame()]
-                        + [c(id2, "created"), c(id1, "updated"), c(id1, "updated"), c(id1, "reply"), c(id1, "reply"), c(id1, "reply"),
-                           c(id1, "reply"), c(id1, "resolved"), c(id1, "deleted")]
-                    #expect(frames == expected)
-                    #expect(frames.filter { $0.contains("id: ") }.count == 1)
-                    #expect(try await store.documentHead(doc) == 1)
-                }
-            }
+            // Delete (author): replies go with it.
+            #expect(try await api.delete("\(base)/\(id1)", token: olivia).status == 204)
+            #expect(try await api.get("\(base)/\(id1)", token: bob).status == 404)
+            #expect(try await store.comment(doc, id: id1) == nil)
+            #expect(try await api.get(base, token: bob).list("comments").map { obj($0)["id"] } == [.string(id2)])
+
+            // The stream: one `comments` frame per change (none for the no-op resolve), never with an id; the
+            // commit in between kept its seq and is the only frame with an id.
+            await seqr.unsubscribe(sub.id)
+            var frames: [String] = []
+            for await f in sub.live { frames.append(f) }
+            func c(_ id: String, _ a: String) -> String { "event: comments\ndata: {\"action\":\"\(a)\",\"comment\":\"\(id)\"}\n\n" }
+            let expected = [c(id1, "created")] + [try StreamEvent.commit(LogEntry(seq: 1, client: "alice", cseq: 1, base: 0,
+                                                                                  op: prompt("a", "edited"))).sseFrame()]
+                + [c(id2, "created"), c(id1, "updated"), c(id1, "updated"), c(id1, "reply"), c(id1, "reply"), c(id1, "reply"),
+                   c(id1, "reply"), c(id1, "resolved"), c(id1, "deleted")]
+            #expect(frames == expected)
+            #expect(frames.filter { $0.contains("id: ") }.count == 1)
+            #expect(try await store.documentHead(doc) == 1)
         }
     }
 

@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.7
+# dify-sf collaboration protocol, version 1.8
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,37 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.8 (**breaking: every client must sign in; old clients get `401`**): **accounts** (email + password, Dify 1.17.1's
+  community edition: one workspace per server). Server and clients of this repository are updated together; there is no
+  compatibility mode for clients older than 1.8.
+  * New endpoints (section 2, "Accounts"): `GET`/`POST /v1/setup` (Dify's install: the first account is the workspace
+    owner), `POST /v1/auth/login`, `/v1/auth/refresh`, `/v1/auth/logout`, `GET /v1/account`, `PUT /v1/account/name`,
+    `PUT /v1/account/password`, `GET /v1/workspace/members`, `POST /v1/workspace/members/invite-email`,
+    `PUT /v1/workspace/members/{id}/update-role`, `DELETE /v1/workspace/members/{id}`, `POST /v1/activate/check`,
+    `POST /v1/activate`. New error codes: `unauthorized` (401), `invalid_credentials` (401), `forbidden` (403),
+    `account_banned` (403), `setup_done` (409), `email_taken` (409), `login_rate_limited` (429), `invalid_password` (400),
+    `invalid_token` (400), `invalid_role` (400), `cannot_operate_self` (400).
+  * **Every other `/v1` endpoint requires `Authorization: Bearer <access token>`** (else `401 unauthorized`); `/healthz`,
+    setup, login, refresh and activation do not. The event stream also accepts `?access_token=` (for the browser's native
+    `EventSource`, which cannot set headers). Tokens are opaque; access tokens live 60 minutes, refresh tokens 30 days and
+    rotate on use. CORS allows the `Authorization` header.
+  * **Roles** (Dify's): `owner`, `admin`, `editor` may write (ops, document creation and import, secrets, comment writes);
+    `normal` and `dataset_operator` only read (snapshot, stream, export, meta, comments): their `POST /ops` is refused as a
+    whole with `403 forbidden`. Only `owner` and `admin` export with `include_secret=true` and manage members.
+  * **Client ids belong to accounts.** `POST /v1/docs/{doc}/clients` binds the issued id to the caller's account; a client
+    id the client chose itself is bound to the first account that uses it (`POST /ops` or `PUT /clients/{client}`). Ops under
+    a client id bound to another account are refused as a whole with `403 forbidden`, and so is a stream opened with such a
+    `client`. A `name` in `POST /clients` is ignored and `PUT /clients/{client}` no longer names anything (it binds, see
+    section 2); names are the accounts' names. The directory changes shape: `GET /clients` answers
+    `{"clients":{"<client id>":{"account":"<account id>","name":"Bo","avatar_url":"..."?}}}`. `byName` in conflict notices is
+    the author's account name.
+  * **Comments are by accounts**: `created_by`, `resolved_by` and mentions are account ids (with `_name` and `_avatar_url`
+    members); bodies no longer carry `client` (the author is the caller); mentions are sent as `mentioned_user_ids` (Dify's
+    name) and filtered to workspace members; mention entries are `{"account","name"?,"avatar_url"?}`. Any of the author's
+    clients and sessions may edit. Writes need the edit role (Dify's `edit_permission_required`), reads any member. New
+    `GET /v1/docs/{doc}/comments/mention-users` (Dify's mention candidates: the members).
+  * Unchanged: ops, commits, snapshots, the stream's events, the conflict rules. `restoreNode` stays "only the deleter" **per
+    client id**, not per account (undo stacks belong to one app instance; section 9). Streams accept `proto=1.8` (as 1.7).
 * Additive, no version change: **canvas comments** (Dify's workflow comments): `/v1/docs/{doc}/comments` endpoints beside
   the document (section 2, "Comments") and a best-effort stream event `comments` without an `id:` (section 5). Clients that do
   not use comments are unaffected (they ignore the unknown event). CORS now also allows `DELETE`.
@@ -103,8 +134,8 @@ One **document** (a workflow graph) is edited by many clients at once.
   `GET /v1/docs/{doc}/events`. The SSE event id is the global sequence number (`seq`). A reconnecting client sends
   `Last-Event-ID` and resumes exactly where it stopped. A client that is too far behind (or has no state) gets a
   `snapshot` event instead.
-* There is no WebSocket and no server-side session. Every request is self-contained; the only server memory about
-  a client is durable (in Postgres).
+* There is no WebSocket and no server-side session state per connection. Every request is self-contained and carries
+  its bearer token (1.8); the only server memory about a client is durable (in Postgres).
 
 Guarantees (the three promises of the product):
 
@@ -117,6 +148,8 @@ Guarantees (the three promises of the product):
 Transport conventions:
 
 * Base URL: `http://host:port`. All paths are under `/v1` except `/healthz`.
+* Authentication (1.8): every `/v1` request except setup, login, refresh and activation sends
+  `Authorization: Bearer <access token>` (section 2, "Accounts").
 * Bodies are UTF-8 JSON (`Content-Type: application/json`). Keys in server output are sorted, clients may send any order.
 * Numbers in documents are **64-bit integers only**. Floating point is not representable (a float in a request makes
   that op invalid). Encode decimals as scaled integers or strings.
@@ -128,31 +161,113 @@ Transport conventions:
 
 ## 2. Endpoints
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/healthz` | Liveness + database check. `200 {"status":"ok"}` or `503`. |
-| POST | `/v1/docs` | Create a document with a server-generated id. Body optional: `{"template":"example"\|"empty"}`. `201 {"id","head":0,"created":true}`. |
-| PUT | `/v1/docs/{doc}` | Create the document if absent (idempotent). Body optional as above. `201` if created, `200` if it existed: `{"id","head","created":bool}`. |
-| GET | `/v1/docs/{doc}` | Metadata: `200 {"id","head"}`, `404` if unknown. |
-| GET | `/v1/docs/{doc}/snapshot` | Full document at the current head: `200 {"seq":N,"doc":Document}`. For bootstrapping/debugging; the stream also delivers snapshots. |
-| POST | `/v1/docs/{doc}/clients` | Issue a fresh unique client id: `201 {"client":"s-<32 hex>"}`, `404` if the document is unknown. Optional body `{"name":"Bo"}` registers a display name (1.3). Use one id per client *instance* (section 9). |
-| PUT | `/v1/docs/{doc}/clients/{client}` | Name (or rename) a client id: body `{"name":"Bo"}` (1.3). |
-| GET | `/v1/docs/{doc}/clients` | Name directory: `{"clients":{"<id>":"<name>"}}` (1.3). |
-| GET | `/v1/docs/{doc}/meta` | Dify app metadata (mode, name, variables, features): `200 {...}` (below), `404` if unknown. Optional, additive. |
-| GET, POST | `/v1/docs/{doc}/comments` | Canvas comments: list (`200 {"comments":[Comment...]}`), create (`201 Comment`). Additive (below). |
-| GET, PUT, DELETE | `/v1/docs/{doc}/comments/{id}` | One comment: read, edit/move (author only), delete (author only, `204`). |
-| POST | `/v1/docs/{doc}/comments/{id}/resolve` | Resolve (anyone, idempotent): `200 Comment`. |
-| POST | `/v1/docs/{doc}/comments/{id}/replies` | Reply (anyone): `201 Reply`. |
-| PUT, DELETE | `/v1/docs/{doc}/comments/{id}/replies/{rid}` | Edit (author only, `200 Reply`) or delete (author only, `204`) a reply. |
-| POST | `/v1/docs/{doc}/secrets` | 1.7. Store the plaintext of a secret environment variable: body `{"value":"..."}` -> `201 {"ref":"sec-<32 hex>","masked":"..."}` (below); `400` without a string `value`, `404` if the document is unknown. |
-| POST, PUT | `/v1/docs/import`, `/v1/docs/{doc}/import` | Create a document from a Dify workflow file (1.5). |
-| GET | `/v1/docs/{doc}/export` | The document as a Dify workflow file (YAML, or `?format=json`); secret environment variables are `""` unless `?include_secret=true` (1.7). |
-| POST | `/v1/docs/{doc}/ops` | Submit a batch of ops (section 4). |
-| GET | `/v1/docs/{doc}/events` | SSE stream (section 5). |
+Access (1.8): **public** = no token; **member** = any signed-in member of the workspace; **edit** = the `owner`, `admin` or
+`editor` role; **privileged** = `owner` or `admin`. Without a valid access token a non-public endpoint answers `401 unauthorized`;
+with a role that is not enough, `403 forbidden` (section "Accounts").
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/healthz` | public | Liveness + database check. `200 {"status":"ok"}` or `503`. |
+| GET, POST | `/v1/setup` | public | Install: is there a workspace yet; create the owner (1.8, "Accounts"). |
+| POST | `/v1/auth/login`, `/v1/auth/refresh` | public | Sign in; new token pair (1.8). |
+| POST | `/v1/auth/logout` | member | Revoke the session's tokens (1.8). |
+| GET | `/v1/account` | member | The caller's account (1.8). `PUT /v1/account/name`, `PUT /v1/account/password` change it. |
+| GET | `/v1/workspace/members` | member | The members (1.8). |
+| POST, PUT, DELETE | `/v1/workspace/members/...` | privileged | Invite, change a role, remove (1.8). |
+| POST | `/v1/activate/check`, `/v1/activate` | public | Accept an invitation (1.8). |
+| POST | `/v1/docs` | edit | Create a document with a server-generated id. Body optional: `{"template":"example"\|"empty"}`. `201 {"id","head":0,"created":true}`. |
+| PUT | `/v1/docs/{doc}` | edit | Create the document if absent (idempotent). Body optional as above. `201` if created, `200` if it existed: `{"id","head","created":bool}`. |
+| GET | `/v1/docs/{doc}` | member | Metadata: `200 {"id","head"}`, `404` if unknown. |
+| GET | `/v1/docs/{doc}/snapshot` | member | Full document at the current head: `200 {"seq":N,"doc":Document}`. For bootstrapping/debugging; the stream also delivers snapshots. |
+| POST | `/v1/docs/{doc}/clients` | member | Issue a fresh unique client id bound to the caller's account: `201 {"client":"s-<32 hex>","account":"<account id>","name":"<account name>"}`, `404` if the document is unknown. A body is ignored (1.3's `name`; 1.8: names are the accounts'). Use one id per client *instance* (section 9). |
+| PUT | `/v1/docs/{doc}/clients/{client}` | member | 1.8: binds a client id the client chose itself to the caller's account if nobody has it yet: `200 {"client","account","name"}`; `403 forbidden` if it belongs to another account. A body is ignored (it named the id in 1.3). |
+| GET | `/v1/docs/{doc}/clients` | member | Directory of bound client ids: `{"clients":{"<client id>":{"account":"<account id>","name":"Bo","avatar_url":"..."?}}}` (1.8). |
+| GET | `/v1/docs/{doc}/meta` | member | Dify app metadata (mode, name, variables, features): `200 {...}` (below), `404` if unknown. Optional, additive. |
+| GET | `/v1/docs/{doc}/comments`, `/comments/{id}`, `/comments/mention-users` | member | Canvas comments: list, one, mention candidates (below). |
+| POST, PUT, DELETE | `/v1/docs/{doc}/comments/...` | edit | Create, edit/move (author only), delete (author only), resolve, reply (below). |
+| POST | `/v1/docs/{doc}/secrets` | edit | 1.7. Store the plaintext of a secret environment variable: body `{"value":"..."}` -> `201 {"ref":"sec-<32 hex>","masked":"..."}` (below); `400` without a string `value`, `404` if the document is unknown. |
+| POST, PUT | `/v1/docs/import`, `/v1/docs/{doc}/import` | edit | Create a document from a Dify workflow file (1.5). |
+| GET | `/v1/docs/{doc}/export` | member | The document as a Dify workflow file (YAML, or `?format=json`); secret environment variables are `""` unless `?include_secret=true` (1.7), which needs **privileged** (1.8; `403 forbidden` otherwise). |
+| POST | `/v1/docs/{doc}/ops` | edit | Submit a batch of ops (section 4). 1.8: the whole batch is `403 forbidden` for a read-only role or a client id bound to another account. |
+| GET | `/v1/docs/{doc}/events` | member | SSE stream (section 5). The token may also come as `?access_token=`. |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
 node.
+
+### Accounts (1.8)
+
+Email + password accounts as in Dify 1.17.1's community edition: **one workspace per server**, created by the install
+(`POST /v1/setup`); everyone else joins by invitation. No email codes, no third-party sign-in, no mail server.
+
+**Accounts and roles.** An account has an `id` (a UUID), an `email` (unique ignoring case), a `name`, an optional
+`avatar_url`, a `status` (`active`; `pending` = invited, not activated; `banned`), optional `interface_language` and
+`timezone`, `created_at` and `last_login_at`. Each member has one role (Dify's `TenantAccountRole`):
+
+| role | edits workflows (ops, create, import, secrets, comment writes) | members, `include_secret` | reads, streams, exports, comments |
+|---|---|---|---|
+| `owner` (exactly one: the installer) | yes | yes | yes |
+| `admin` | yes | yes | yes |
+| `editor` | yes | no | yes |
+| `normal`, `dataset_operator` | no (`403 forbidden`; the editor is read-only, Dify's `nodesReadOnly`) | no | yes |
+
+**Passwords** follow Dify's rule `^(?=.*[a-zA-Z])(?=.*\d).{8,}$` (at least 8 characters with a letter and a digit; else `400
+invalid_password` with Dify's message) and Dify's storage (PBKDF2-HMAC-SHA256, 10000 iterations, 16-byte random salt,
+base64), so accounts can move between Dify and dify-sf.
+
+**Tokens.** Sign-in answers a pair of opaque tokens (32 random bytes, base64url; the server keeps only their SHA-256):
+
+* the **access token** (60 minutes) goes into every request: `Authorization: Bearer <access token>`;
+* the **refresh token** (30 days) gets a new pair from `POST /v1/auth/refresh`. Refreshing **rotates**: the refresh token is
+  spent (a second use is `401`); the old access token keeps working until it expires. Every token of one sign-in belongs to
+  one session; `POST /v1/auth/logout` revokes all of them (other sign-ins of the same account stay).
+* A request with no, an unknown, an expired or a revoked access token gets `401 unauthorized`. Clients refresh once and repeat
+  the request; if the refresh is refused too, the user is signed out. (`401` never means anything else: wrong passwords at
+  login are `401 invalid_credentials` from an endpoint that takes no token.)
+
+Responses that sign someone in (`setup`, `login`, `activate`) are
+`{"access_token":"...","refresh_token":"...","account":Account}`; `refresh` answers `{"access_token","refresh_token"}`.
+`Account` = `{"id","email","name","avatar_url"?,"role","interface_language"?,"timezone"?,"created_at"}` (times are ISO-8601 UTC
+with milliseconds; absent members are unset).
+
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| GET | `/v1/setup` | - | `200 {"step":"not_started"\|"finished"}` (Dify's `/console/api/setup`) |
+| POST | `/v1/setup` | `{"email","name","password","interface_language"?,"timezone"?}` | `201` signed in as the **owner**; only while no account exists, else `409 setup_done`. `name`: 1-30 characters. `language` is accepted for `interface_language` (Dify's name) |
+| POST | `/v1/auth/login` | `{"email","password","remember_me"?,"invite_token"?}` | `200` signed in. `401 invalid_credentials` for an unknown email and for a wrong password alike (same body); `429 login_rate_limited` (below); `403 account_banned`; `403 forbidden` for an account that is no longer a member. `remember_me` is accepted and ignored (the refresh token lasts 30 days anyway). `invite_token`: Dify's way in for an invited account without a password: the password given becomes its password |
+| POST | `/v1/auth/refresh` | `{"refresh_token"}` | `200 {"access_token","refresh_token"}`; `401 unauthorized` if it is unknown, spent, expired, or the account was removed |
+| POST | `/v1/auth/logout` | - | `204`; revokes the session |
+| GET | `/v1/account` | - | `200 Account` |
+| PUT | `/v1/account/name` | `{"name"}` | `200 Account`; 3-30 characters (Dify) |
+| PUT | `/v1/account/password` | `{"password","new_password","repeat_new_password"}` | `204`; `400 invalid_password` if the current password is wrong, the new ones differ, or the new one breaks the rule |
+| GET | `/v1/workspace/members` | - | `200 {"accounts":[{"id","name","email","avatar_url"?,"role","status","last_login_at"?,"created_at"}]}`, owner first |
+| POST | `/v1/workspace/members/invite-email` | `{"emails":[...],"role"}` | `201 {"invitation_results":[{"email","status":"success","url":"/activate?email=...&token=..."} \| {"email","status":"already_member","message"} \| {"email","status":"failed","message"}]}`; privileged; `role` any but `owner` (`400 invalid_role`); 1-100 emails |
+| PUT | `/v1/workspace/members/{id}/update-role` | `{"role"}` | `200 {"result":"success"}`; privileged; not `owner` (`400 invalid_role`); not oneself (`400 cannot_operate_self`); never the owner (`403 forbidden`); `404` for a non-member |
+| DELETE | `/v1/workspace/members/{id}` | - | `200 {"result":"success"}`; privileged; not oneself, never the owner; revokes the member's sessions. A never-activated (pending) account is deleted; an active one stays (its comments keep their author) but cannot sign in to the workspace until invited again |
+| POST | `/v1/activate/check` | `{"token"}` | `200 {"is_valid":true,"data":{"email","workspace_name","account_status":"pending","requires_setup":true}}` or `{"is_valid":false}` (also `GET /v1/activate/check?token=`, Dify's form; the last two members are Dify's and always these values for a valid link) |
+| POST | `/v1/activate` | `{"token","name","password","interface_language"?,"timezone"?}` | `200` signed in; sets the invited account's name and password and activates it. `400 invalid_token` for an unknown, expired (72 hours) or used token |
+
+* **Invitations.** There is no mail server: as Dify does when mail is not configured, the answer carries each activation link
+  (relative to the web app; the app builds `/activate?token=...` into its own URL). Inviting a new email creates a `pending`
+  account with the role; inviting an existing account that is no longer a member makes it a member again (it signs in with
+  its old password; its link is not valid for activation). The workspace's name is `"<owner name>'s Workspace"` (Dify's default).
+* **Login rate limit** (Dify's `login_error_rate_limit`): every failed sign-in for an email counts and renews a 24-hour window;
+  with **more than 5** failures in the window the email is locked: `429 login_rate_limited`, even with the right password,
+  until the window passes. A successful sign-in clears the count. The count is kept per server process
+  (`COLLAB_AUTH_LOGIN_MAX_FAILURES`, `COLLAB_AUTH_LOGIN_LOCKOUT_SECONDS`).
+* **Configuration**: `COLLAB_AUTH_ACCESS_TOKEN_MINUTES` (60), `COLLAB_AUTH_REFRESH_TOKEN_DAYS` (30),
+  `COLLAB_AUTH_INVITE_EXPIRY_HOURS` (72).
+* **Token in the URL** (`?access_token=`) is accepted by `GET /v1/docs/{doc}/events` only, for the native `EventSource`. The
+  server never logs query strings; clients that can set headers (all of ours: they read the stream with `fetch`/HTTP streaming)
+  send the header.
+* **Client ids and identity.** A client id belongs to one account: the one that obtained it (`POST /clients`) or, for an id
+  the client chose itself, the first one that used it (`POST /ops`, `PUT /clients/{client}`). Ops under someone else's client
+  id are refused as a whole (`403 forbidden`, nothing applied): nobody can act as another account. Several client ids of one
+  account (tabs, devices) are one user: the directory maps them to the account, comments and presence are per account. A
+  stream's `client` parameter must be the caller's own id or an unbound one (`403` otherwise; an unbound id stays unbound).
+* **Test harnesses** use real accounts: the chaos/storm harness installs a test account on its fresh database
+  (`POST /v1/setup`) or signs in with it; all its clients share that account, each with its own client id. There is no
+  test-only switch that turns authentication off.
 
 ### Dify app metadata: `GET /v1/docs/{doc}/meta`
 
@@ -195,60 +310,66 @@ an op, the log, a snapshot or the event stream:
 Importing a Dify file stores each non-empty secret value the same way (the item gets the mask and a `secret_ref`); an empty
 secret stays `""` without a reference. `GET /v1/docs/{doc}/export` never writes `secret_ref`; a secret's `value` is `""`
 (Dify's default) unless `?include_secret=true` (Dify's option of the same name), which writes the stored plaintext (`""` for an
-unknown or missing reference). Stored secrets are never deleted, also not when the variable is removed.
+unknown or missing reference) and, since 1.8, is for the owner and admins only (`403 forbidden` for everyone else; Dify lets
+every editor export secrets, dify-sf keeps plaintext secrets to the privileged roles). Stored secrets are never deleted, also not when the variable is removed.
 
 ### Comments: `/v1/docs/{doc}/comments`
 
-Additive and optional (no protocol version change; clients that do not use it are unaffected). Canvas comments mirror Dify
+Additive and optional (added without a protocol version change; authors became accounts in 1.8). Canvas comments mirror Dify
 1.17.1's workflow comments (pins on the canvas with a thread of replies and @-mentions). They are a server resource **beside**
 the document: not part of it, not in the op log, snapshots, the stream's commits or the export (`GET /export`), and not undoable.
 
-Identity: there are no accounts. The **author** of a comment or reply is the client id that created it (`client` in the
-body, or `?client=` for `DELETE`); its name is the client's registered display name (1.3, `GET /clients`), looked up when the
-comment is read (so a rename shows everywhere). "Only the creator may edit or delete" means: the same client id. Mentions are
-client ids; the candidates are the name directory (`GET /clients`).
+Identity (1.8): the **author** of a comment or reply is the **account** that created it (the caller); its name and avatar are
+the account's, looked up when the comment is read (so a rename shows everywhere). "Only the creator may edit or delete" means:
+the same account, from any of its clients or sessions. Mentions are account ids of workspace members; the candidates are
+`GET /comments/mention-users`. Reading needs any member; every write needs the edit role (Dify's `edit_permission_required`:
+a `normal` or `dataset_operator` member gets `403 forbidden`).
 
 | Method | Path | Body | Answer |
 |---|---|---|---|
 | GET | `/comments` | - | `200 {"comments":[Comment...]}`: all of them, resolved ones included, newest first (Dify's order) |
 | GET | `/comments/{id}` | - | `200 Comment` |
-| POST | `/comments` | `{"client","position_x","position_y","content","mentioned_client_ids"?:[...]}` | `201 Comment` |
-| PUT | `/comments/{id}` | `{"client","content"?,"position_x"?,"position_y"?,"mentioned_client_ids"?}` | `200 Comment`; author only |
-| DELETE | `/comments/{id}?client=...` | - | `204`; author only; its replies go with it |
-| POST | `/comments/{id}/resolve` | `{"client"}` | `200 Comment`; anyone |
-| POST | `/comments/{id}/replies` | `{"client","content","mentioned_client_ids"?:[...]}` | `201 Reply`; anyone, also on a resolved comment |
-| PUT | `/comments/{id}/replies/{rid}` | `{"client","content","mentioned_client_ids"?}` | `200 Reply`; author only |
-| DELETE | `/comments/{id}/replies/{rid}?client=...` | - | `204`; author only |
+| GET | `/comments/mention-users` | - | `200 {"users":[{"id","name","email","avatar_url"?,"role"}]}`: the workspace members (Dify's mention candidates) |
+| POST | `/comments` | `{"position_x","position_y","content","mentioned_user_ids"?:[...]}` | `201 Comment` |
+| PUT | `/comments/{id}` | `{"content"?,"position_x"?,"position_y"?,"mentioned_user_ids"?}` | `200 Comment`; author only |
+| DELETE | `/comments/{id}` | - | `204`; author only; its replies go with it |
+| POST | `/comments/{id}/resolve` | - | `200 Comment`; any editor |
+| POST | `/comments/{id}/replies` | `{"content","mentioned_user_ids"?:[...]}` | `201 Reply`; any editor, also on a resolved comment |
+| PUT | `/comments/{id}/replies/{rid}` | `{"content","mentioned_user_ids"?}` | `200 Reply`; author only |
+| DELETE | `/comments/{id}/replies/{rid}` | - | `204`; author only |
 
 ```json
 {"id": "0192f3a1-...", "position_x": 412.5, "position_y": 180, "content": "Should this be gpt-4o?",
- "created_by": "s-3f9a...", "created_by_name": "Alice", "created_at": "2026-10-18T09:12:03.512Z", "updated_at": "2026-10-18T09:12:03.512Z",
- "resolved": true, "resolved_by": "s-77c1...", "resolved_by_name": "Bo", "resolved_at": "2026-10-18T09:20:44.020Z",
- "mentions": [{"client": "s-77c1...", "name": "Bo"}],
- "replies": [{"id": "0192f3a4-...", "content": "Yes", "created_by": "s-77c1...", "created_by_name": "Bo",
+ "created_by": "6c1f...", "created_by_name": "Alice", "created_by_avatar_url": "https://...", "created_at": "2026-10-18T09:12:03.512Z",
+ "updated_at": "2026-10-18T09:12:03.512Z",
+ "resolved": true, "resolved_by": "9d02...", "resolved_by_name": "Bo", "resolved_at": "2026-10-18T09:20:44.020Z",
+ "mentions": [{"account": "9d02...", "name": "Bo"}],
+ "replies": [{"id": "0192f3a4-...", "content": "Yes", "created_by": "9d02...", "created_by_name": "Bo",
               "created_at": "...", "updated_at": "...", "mentions": []}],
  "reply_count": 1}
 ```
 
 * Field names follow Dify's `WorkflowCommentDetail` (`position_x`, `position_y`, `created_by`, `resolved_by`, ...). Positions are
   canvas (flow) coordinates, JSON numbers (fractions allowed; this is not a document value). Times are ISO-8601 UTC with
-  milliseconds. Members ending in `_name` and `name` are present only when the client registered a display name; `resolved_by`,
-  `resolved_by_name` and `resolved_at` only on a resolved comment. Replies are oldest first.
+  milliseconds. Members ending in `_name`/`_avatar_url` and `name`/`avatar_url` are present when the account exists (and has an
+  avatar); `resolved_by`, `resolved_by_name` and `resolved_at` only on a resolved comment. Replies are oldest first. Comments
+  written before 1.8 keep their client-id authors: no account matches them (no name, nobody may edit them).
 * Ids are server-generated UUIDs (version 7, as Dify).
 * `content`: Dify's rule: not blank (after trimming whitespace) and at most 1000 characters (Unicode scalars). Otherwise
-  `400 bad_request`; so is a missing or invalid `client`, a missing position on create, or a body of the wrong shape.
-* `mentioned_client_ids`: entries that are not valid client ids and duplicates are dropped (Dify keeps only valid ids, once,
-  in order); ids need not be in the directory (`name` is then absent).
+  `400 bad_request`; so is a missing position on create, or a body of the wrong shape. A `client` member in a body is ignored.
+* `mentioned_user_ids`: ids that are not workspace members and duplicates are dropped (Dify's
+  `_filter_valid_mentioned_user_ids`: members only, once, in order).
 * `PUT /comments/{id}`: omitted fields stay as they are. Only the author may change anything, **also the position** (Dify lets
-  only the creator drag a pin); `content` may be omitted for a move (Dify always sends it). `mentioned_client_ids` omitted keeps
+  only the creator drag a pin); `content` may be omitted for a move (Dify always sends it). `mentioned_user_ids` omitted keeps
   the mentions, a list (also `[]`) replaces them (Dify). `updated_at` changes.
 * `PUT /replies/{rid}`: `content` is required; the mentions are replaced by the list given, **an omitted list clears them**
   (Dify's behaviour).
 * Resolve is idempotent as Dify's: resolving a resolved comment answers `200` with the comment unchanged (the first resolver
   and time stay). There is no "unresolve" (Dify has none). Resolving changes `updated_at`.
 * Errors: `404 not_found` for an unknown document, comment or reply (a reply id is looked up within its comment); `403` with
-  code **`not_author`** when someone other than the author edits, moves or deletes a comment or reply:
-  `{"error":{"code":"not_author","message":"only the author may change or delete this comment"}}`.
+  code **`not_author`** when another account edits, moves or deletes a comment or reply:
+  `{"error":{"code":"not_author","message":"only the author may change or delete this comment"}}`; `403 forbidden` for a write
+  by a read-only role.
 
 **Live updates.** After every change (create, edit/move, delete, resolve that changed something, reply created, edited or
 deleted) the server sends an `event: comments` on the document's event stream (section 5) to every stream of the document
@@ -259,12 +380,13 @@ REST list is the truth; clients must also refetch after every (re)connect of the
 
 Browser clients on another origin are supported. The server answers `OPTIONS` preflights itself and adds
 `Access-Control-Allow-Origin: <origin>` (never `*` unless configured so) and `Vary: Origin` to every response for an allowed origin.
-Allowed methods: `GET, POST, PUT, DELETE, OPTIONS`; allowed request headers: `Content-Type, Accept, Last-Event-ID, Cache-Control`
-(so `fetch`-based SSE with `Last-Event-ID` works; the native `EventSource` cannot send custom headers, use `?lastEventId=`);
+Allowed methods: `GET, POST, PUT, DELETE, OPTIONS`; allowed request headers: `Content-Type, Accept, Authorization, Last-Event-ID,
+Cache-Control` (so `fetch`-based SSE with `Authorization` and `Last-Event-ID` works; the native `EventSource` cannot send custom
+headers, use `?lastEventId=` and `?access_token=`);
 exposed response headers: `Content-Type`; preflight cache `Access-Control-Max-Age: 600`. Allowed origins are configured with
 `COLLAB_CORS_ALLOWED_ORIGINS` (comma separated; entries are exact origins, `scheme://host:*` for any port, or `*`). The default is
 `http://localhost:*,http://127.0.0.1:*,http://[::1]:*` (local development). Requests from other origins get no CORS headers, so the
-browser blocks them. There are no cookies or credentials in this protocol.
+browser blocks them. There are no cookies in this protocol: credentials are bearer tokens in the `Authorization` header (1.8).
 
 ### Error responses
 
@@ -272,10 +394,17 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 
 | HTTP | code | Meaning | Client action |
 |---|---|---|---|
-| 400 | `bad_request` | Malformed JSON, bad ids, `ops` not strictly increasing in `cseq`, more than 100 ops, bad `Last-Event-ID`, invalid comment content. | Bug in the client; do not retry the same body. |
+| 400 | `bad_request` | Malformed JSON, bad ids, `ops` not strictly increasing in `cseq`, more than 100 ops, bad `Last-Event-ID`, invalid comment content, invalid email or name. | Bug in the client; do not retry the same body. |
+| 400 | `invalid_password`, `invalid_token`, `invalid_role`, `cannot_operate_self` | Accounts (1.8): a password that breaks the rule or a wrong current password; an unknown, used or expired activation token; a role that cannot be given; a member action on oneself. | Tell the user. |
+| 401 | `unauthorized` | 1.8: no, unknown, expired or revoked access token (or refresh token at `/auth/refresh`). | Refresh once and repeat; if that fails, sign out. |
+| 401 | `invalid_credentials` | 1.8, login: unknown email or wrong password (one answer for both). | Tell the user. |
+| 403 | `forbidden` | 1.8: the role does not allow it (writes by `normal`/`dataset_operator`, member management or `include_secret` by non-privileged), a client id of another account, the owner as target, a removed member signing in. | Tell the user; do not retry. |
+| 403 | `account_banned` | 1.8, login: the account is banned. | Tell the user. |
 | 403 | `not_author` | A comment or reply edited, moved or deleted by someone other than its author (comments). | Tell the user; do not retry. |
 | 404 | `not_found` | Unknown document (or comment, reply). | `PUT` it (if creation is intended) or give up. |
+| 409 | `setup_done`, `email_taken` | 1.8: `POST /setup` after the install; an email in use. | Sign in instead. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |
+| 429 | `login_rate_limited` | 1.8: too many failed sign-ins for this email (Dify's rule). | Wait (24 hours by default). |
 | 503 | `unavailable` | Database unavailable, or the commit outcome was uncertain. | Retry the identical request with backoff. **Safe**: ops are idempotent. |
 | 500 | `internal` | Server bug. | Retry with backoff. |
 
@@ -456,10 +585,13 @@ reports each op as committed / rejected / lost accordingly.
 
 Query parameters (all optional):
 
-* `client`: the client id. Needed for `committed` in snapshot events.
+* `access_token` (1.8): the access token, for clients that cannot set the `Authorization` header (the browser's native
+  `EventSource`). The header wins if both are present. No valid token: `401 unauthorized` (before the stream starts).
+* `client`: the client id. Needed for `committed` in snapshot events. 1.8: it must be the caller's own client id or one not
+  bound to any account (`403 forbidden` otherwise); naming it here does not bind it.
 * `from`: the client's lowest unresolved `cseq`. Snapshot events then include `committed` for `cseq >= from`.
 * `lastEventId`: same as the `Last-Event-ID` header (for clients that cannot set headers). The header wins if both are present.
-* `proto` (1.6): the protocol version the client implements, `major.minor` (e.g. `1.7`); anything else is `400 bad_request`.
+* `proto` (1.6): the protocol version the client implements, `major.minor` (e.g. `1.8`); anything else is `400 bad_request`.
   Without it (or below `1.6`) the stream never carries a `restoreNode` commit; below `1.7` it never carries a commit that
   writes `$app` (see the resume rules below).
 
@@ -648,7 +780,7 @@ anywhere before). Differences:
 
 | `type` | Extra fields | Meaning |
 |---|---|---|
-| `conflict` | `node`, `field` (FieldKey or `null` = whole node), `seq`, `by`, optional `byName` | Stale write with a different value; the newer write at `seq` by `by` is kept. UI: show the winning value and offer "re-apply mine" (re-send as a new op based on the latest version). |
+| `conflict` | `node`, `field` (FieldKey or `null` = whole node), `seq`, `by`, optional `byName` | Stale write with a different value; the newer write at `seq` by `by` (a client id) is kept; `byName` is the name of the account `by` belongs to (1.8; 1.3: its display name), when it belongs to one. UI: show the winning value and offer "re-apply mine" (re-send as a new op based on the latest version). |
 | `nodeDeleted` | `node` | The node was deleted. |
 | `nodeNotFound` | `node` | Unknown node id. |
 | `nodeExists` | `node` | Node id already used (even if deleted). |
@@ -697,8 +829,15 @@ resend the same ops after backoff. Duplicate responses are harmless.
 the view, do not resend it, and finish it when the stream delivers `seq` (or a snapshot at/after `seq`). `reject(reason)`: the op is
 finished as rejected: remove it from the view, tell the user (with the op, so they can re-apply it). `gap`: resend from the oldest unresolved op.
 
+**Signing in (1.8).** Before anything else the client needs an access token (`POST /v1/auth/login`, or setup/activation) and
+sends it with every request. On a `401 unauthorized` from any request (a POST, the stream, the comments, ...) it refreshes once
+(`POST /v1/auth/refresh`, one refresh at a time even when several requests fail together) and repeats the request with the new
+token; if the refresh is refused, the session is over: sign the user out (keep the journal: the same account may resume it
+after signing in again). A `401` is not a transport failure to back off from, and a `403 forbidden` on `POST /ops` (read-only
+role, or a client id of another account) is final for that batch: do not resend it, tell the user.
+
 **Stream handling.** Open the stream with `Last-Event-ID = lastSeq` (omit if no state) and `client`, `from = oldest unresolved cseq`,
-`proto` = the protocol version you implement (1.7).
+`proto` = the protocol version you implement (1.8).
 Apply `commit` events in order to `confirmed`; if the commit is your own (`client`, `cseq` match an outbox op) the op is finished as
 committed. On `snapshot`, replace `confirmed`, set `lastSeq`, finish ops listed in `committed`. After every change recompute `view`;
 a pending op that no longer validates because of a newer remote commit raises an early `conflictDetected` warning (once) and is hidden
@@ -730,9 +869,16 @@ obtain a new one, start again at `cseq = 1`, and re-create (re-send as new ops) 
 
 **Never** reuse a `cseq` for a different op, and never reuse a client id after losing its counters (use a new id instead).
 
+**Client ids and accounts (1.8).** A client id belongs to the account that obtained it (or first used it); a journal therefore
+belongs to an account too. When a different account signs in on the same device, start with a new client id (the old one's
+ops would be `403`). The unit of identity for people is the account (names, comments, presence: several tabs of one account
+are one user); the unit of the op stream, of idempotency and of undo stays the client id.
+
 **Undo of a delete (1.6).** Before submitting `removeNode`, keep the node and its edges as the view shows them. To undo, submit
 `restoreNode` with them (as a new op, `base = lastSeq` as usual). Only undo your own deletes: a restore of a node someone else
-deleted is `notDeleter`. If it is rejected with `conflict`, the document changed in a way the undo would overwrite; show it like any
+deleted is `notDeleter`. "Own" means the same **client id**, also since 1.8: undo stacks live in one app instance (Dify's
+workflow history is per browser tab too), and a second tab of the same account has not seen the delete in its history, so it
+has nothing to undo; restoring by account would let one tab silently revive what another tab deleted. If it is rejected with `conflict`, the document changed in a way the undo would overwrite; show it like any
 conflict.
 
 **Document-level registers (1.7).** Edit variables and features with item and config ops on node `$app`, like node config;
@@ -743,9 +889,11 @@ history; the reference client's undo does not record writes of `$app` either.
 
 ## 10. Examples
 
-Create and use a document:
+Create and use a document (1.8: every request below carries `Authorization: Bearer <access token>`, obtained first):
 
 ```
+POST /v1/auth/login {"email":"alice@example.com","password":"alice-pass-1"}
+                             -> 200 {"access_token":"q3Rk...","refresh_token":"Zp0a...","account":{...,"role":"owner"}}
 PUT /v1/docs/demo            -> 201 {"id":"demo","head":0,"created":true}
 GET /v1/docs/demo/events     -> snapshot (seq 0), ready
 POST /v1/docs/demo/ops {"client":"a","ops":[{"cseq":1,"base":0,"op":{"t":"moveNode","node":"llm","x":10,"y":20}}]}

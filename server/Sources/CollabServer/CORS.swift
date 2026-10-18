@@ -7,7 +7,7 @@ struct CORSPolicy: Middleware {
     let allowedOrigins: [String]
 
     static let allowedMethods = "GET, POST, PUT, DELETE, OPTIONS"
-    static let allowedHeaders = "Content-Type, Accept, Last-Event-ID, Cache-Control"
+    static let allowedHeaders = "Content-Type, Accept, Authorization, Last-Event-ID, Cache-Control"
     static let exposedHeaders = "Content-Type"
 
     func allows(_ origin: String) -> Bool {

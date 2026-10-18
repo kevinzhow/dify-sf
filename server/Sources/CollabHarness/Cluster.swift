@@ -185,10 +185,11 @@ public final class ServerProcess: @unchecked Sendable {
 
 /// Plain GET helper that always drains the body (an unconsumed body wedges AsyncHTTPClient's connection).
 public enum HarnessHTTP {
-    public static func get(_ url: String, timeout: Duration) async throws -> (Int, Data) {
+    public static func get(_ url: String, timeout: Duration, bearer: String? = nil) async throws -> (Int, Data) {
         try await withTimeout(timeout) {
             var r = HTTPClientRequest(url: url)
             r.method = .GET
+            if let bearer { r.headers.add(name: "Authorization", value: "Bearer \(bearer)") }
             let resp = try await HTTPClient.shared.execute(r, deadline: .now() + .seconds(Int64(timeout.components.seconds) + 1))
             let data = Data(buffer: try await resp.body.collect(upTo: 256 << 20))
             return (Int(resp.status.code), data)

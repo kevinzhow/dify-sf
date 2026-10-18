@@ -500,7 +500,7 @@ struct AppRegisterTests {
         #expect(StreamCompat.streamCarries(insVar("x"), proto: "1.7") && StreamCompat.streamCarries(insVar("x"), proto: "2.0"))
         #expect(!StreamCompat.streamCarries(insVar("x"), proto: "1.6") && !StreamCompat.streamCarries(insVar("x"), proto: nil))
         #expect(StreamCompat.streamCarries(set("a", ["p"], "x"), proto: "1.6"))
-        #expect(StreamCompat.acceptsAll("1.7") && !StreamCompat.acceptsAll("1.6") && protocolVersion == "1.7")
+        #expect(StreamCompat.acceptsAll("1.7") && !StreamCompat.acceptsAll("1.6") && protocolVersion == "1.8")
     }
 }
 

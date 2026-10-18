@@ -22,14 +22,14 @@ The conflict catalog reports the same as M1 (I1), M2 (I2), M3 (I3), M4 (I4), M5 
 
 | layer | what runs | faults | command |
 |---|---|---|---|
-| unit + Postgres | document rules, sequencer, wire format, store | - | `cd server && ./run-db-tests.sh` |
+| unit + Postgres | document rules, sequencer, wire format, store; accounts (1.8): Dify's password hash and rule, setup once, login (same answer for unknown emails), rate limit, refresh rotation, logout, 401 on every protected endpoint, the role matrix, invitations, owner protection, client ids bound to accounts, comments by account, SSE with header or `?access_token=`; each route test on its own fresh schema | - | `cd server && ./run-db-tests.sh` |
 | Dify DSL round trip | Dify's own 24 sample workflows: import -> export gives the same file (parsed, ignoring UI selection), import(export) gives the same document; edits (also of variables and features, 1.7) show up in the export; secrets never enter the document and come back only with `include_secret` | - | part of the unit suite (`DSLTests`) |
 | Dify acceptance | the same 24 samples through a real local Dify: Dify's reading of dify-sf's export equals its reading of the original; a workflow edited in dify-sf imports with the edits | - | `bench/dify-acceptance/roundtrip_via_dify.py` (docs/results/dify-dsl-acceptance.md) |
 | named scenarios | 46 hand-scripted interleavings (S1-S13: stale tabs, crashes before/after commit, delete vs edit, lists, same value, undo of a delete and clients older than 1.6, document-level registers and clients older than 1.7) | scripted | `collab-sim --scenarios-only` |
 | deterministic fuzz | random clients, ops and schedules in a simulated world (lossy reordering network, client/server crashes, long offline); users undo deletes (`restoreNode`) and edit the document-level registers (`$app`, 1.7), and up to 30% of the clients play pre-1.6 or pre-1.7 clients whose streams must never carry what they cannot decode | all, random | `collab-sim --runs 20000` |
 | mutation tests | the same fuzz with a protocol defect switched on (skip stale check, skip broken markers, no dedup, early ack, restore without stamps, restore of edges to deleted nodes, restore by someone else, unversioned `$app` registers, ...) | defect | `collab-sim --runs 1000 --mutation <name>`: must find violations |
 | conflict catalog | the 88 tier-A cases shared with the Dify measurements, 20 network seeds each | timing T1/T2 | `collab-sim --catalog bench/catalog/A-cases.json` |
-| client conformance | the Dart client against the real server: endpoints, retransmits, gaps, reject reasons, same-value rule, CORS, resume, ordering, ids, names, declared outputs, restore, document-level registers and secrets, canvas comments | - | `DIFYSF_URL=http://127.0.0.1:8080 dart test test/conformance_test.dart` |
+| client conformance | the Dart client against the real server: accounts and tokens (setup or sign-in, refresh, roles, client ids bound to accounts), endpoints, retransmits, gaps, reject reasons, same-value rule, CORS, resume, ordering, ids, names, declared outputs, restore, document-level registers and secrets, canvas comments | - | `DIFYSF_URL=http://127.0.0.1:8080 dart test test/conformance_test.dart` (signs in as `DIFYSF_EMAIL`/`DIFYSF_PASSWORD`, installing that owner on a fresh server) |
 | client unit + randomized | the Dart state machine, journal, transport, seeded randomized runs with crashes and partitions | random | `cd packages/collab_client && dart test` |
 | chaos (real processes) | real server, Postgres and client processes through a fault proxy; each run verified against the database and every client | server kill -9, client kill -9 / pause, connection cuts, Postgres cuts, duplicate POSTs | `bench/chaos/run.sh 330` |
 | storm (real processes) | 100 clients on a 500-node workflow, 120 s per round, ground-truth ledger | 19 network profiles (latency, jitter, asymmetric, loss 1-15%, reorder/duplicate, 256 kbit/s, clean disconnects, half-open streams, flapping, long offline, slow server, lost POST responses, buffering proxy, stream lifetime cap) x mix b / mix c (+ process faults, server kill -9) | `bench/storm/run.sh sweep c` with `CLIENTS=100 DURATION=120` |
@@ -49,6 +49,14 @@ writes, deliberately conflicting writes and disjoint writes are classified when 
 * `docs/results/dify-vs-difysf.md`: the whole comparison (real browser, code-level simulator, formula, dify-sf)
 
 How Dify was measured (real browser, simulator running Dify's own code, formal models, formula): `research/README.md`.
+
+## Accounts in the harnesses (1.8)
+
+Every client signs in, also in the chaos/storm harness: the orchestrator installs a test account on its fresh database
+(`POST /v1/setup`, or signs in if it exists; `HARNESS_ACCOUNT_EMAIL`/`HARNESS_ACCOUNT_PASSWORD` override the defaults), and each
+worker process signs in with it once and shares the token among its clients (each with its own client id; a `401` makes the
+next request sign in again). Signing in goes to the server directly, not through the fault proxy. There is no switch that
+turns authentication off. The deterministic simulator (`collab-sim`) runs the protocol core without HTTP and is unaffected.
 
 ## Running on a shared machine
 

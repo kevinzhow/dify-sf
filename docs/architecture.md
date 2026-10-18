@@ -8,8 +8,8 @@
 | `CollabInvariants` | Independent oracle (flat path-keyed replay) + invariant checks I1-I6 over plain "evidence". | none |
 | `CollabSim` | Deterministic simulator (seeded network with loss/reorder/duplication, client and server crashes), named scenarios, fuzz, mutation switches. Runs the *same* `Sequencer` and `Client` as production. | none |
 | `CollabStore` | Postgres persistence with postgres-nio (plain SQL, no ORM). | Postgres |
-| `CollabServer` | Vapor 5 app: routes, per-document sequencer actor, SSE hub, configuration (swift-configuration), lifecycle (ServiceLifecycle). | HTTP, Postgres |
-| `CollabClientKit` | HTTP/SSE transport + driver that runs the pure `Client` against a real server. | HTTP |
+| `CollabServer` | Vapor 5 app: routes, accounts and bearer-token authentication (1.8), per-document sequencer actor, SSE hub, configuration (swift-configuration), lifecycle (ServiceLifecycle). | HTTP, Postgres |
+| `CollabClientKit` | HTTP/SSE transport (signs in, sends the bearer token) + driver that runs the pure `Client` against a real server. | HTTP |
 | `CollabHarness` | Chaos/storm harness: worker processes, Toxiproxy/netem fault layer, ledgers, checks. | processes, HTTP |
 
 Executables: `collab-server`, `collab-sim`, `collab-bench`.
@@ -78,7 +78,28 @@ rewrites references into explicit `$broken` markers; restoring it (1.6, undo) tu
 node, so writes based on a version before the restore are stale. Dify's environment variables, conversation variables and
 features are document-level registers (1.7, node id `$app`) under the same rules; secret values stay in a server-side table.
 Canvas comments (Dify's workflow comments) are not part of the document at all: plain REST resources in their own tables
-(author = client id, only the author edits), announced on the document's stream by an `event: comments` without an `id`.
+(author = account, only the author edits), announced on the document's stream by an `event: comments` without an `id`.
+
+## Accounts (protocol 1.8)
+
+Dify's community edition model: one workspace per server, created by `POST /v1/setup`; members join by invitation; roles
+`owner`/`admin`/`editor` write, `normal`/`dataset_operator` read. Tables `accounts`, `members`, `sessions`, `invitations`,
+`client_accounts` (`CollabStore/Accounts.swift`, plain SQL like the rest).
+
+* **Passwords**: Dify's scheme (PBKDF2-HMAC-SHA256, 10000 rounds, base64 of the hex digest) through swift-crypto's
+  `CryptoExtras`, which Vapor already depends on: no new package. Constant-time comparison; an unknown email costs the same
+  hash as a wrong password.
+* **Tokens are opaque, not JWTs**: 32 random bytes, stored as SHA-256. Every request looks its token up (one indexed join);
+  that costs one query per request but makes logout and member removal take effect immediately, and the commit path already
+  spends a transaction per batch. Refresh tokens rotate in one transaction; all tokens of a sign-in share a `session_id`
+  (logout deletes them).
+* **Authorization lives in the routes** (`Routes.authenticate(req, .member | .edit | .privileged)`), before any document work.
+  The client-id binding is checked in the document's sequencer actor, which caches `client -> account` (a binding never
+  changes, so the cache cannot go stale); the first `POST /ops` of a self-chosen id binds it.
+* The **login rate limit** is Dify's (more than 5 failures per email in a 24-hour window), kept in memory per process
+  (Dify uses Redis): a restart forgets it, several processes count separately. Good enough for one self-hosted server.
+* Names: the conflict notices' `byName`, the client directory and comment authors all come from the `accounts` table at
+  answer time, so a rename shows everywhere.
 
 ## Testing strategy
 

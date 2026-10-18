@@ -61,8 +61,8 @@ public struct ClassStats: Codable, Sendable {
 }
 
 public enum Checker {
-    public static func fetchSnapshot(baseURL: String, doc: String) async throws -> SnapshotResponse {
-        let (status, data) = try await HarnessHTTP.get("\(baseURL)/v1/docs/\(doc)/snapshot", timeout: .seconds(60))
+    public static func fetchSnapshot(baseURL: String, doc: String, bearer: String? = nil) async throws -> SnapshotResponse {
+        let (status, data) = try await HarnessHTTP.get("\(baseURL)/v1/docs/\(doc)/snapshot", timeout: .seconds(60), bearer: bearer)
         guard status == 200 else { throw HarnessError("snapshot: HTTP \(status)") }
         return try WireJSON.decode(SnapshotResponse.self, from: data)
     }
@@ -81,12 +81,13 @@ public enum Checker {
 
     /// Builds the evidence, runs I1-I6, the recovery-equivalence check and the ground-truth ledger checks.
     public static func check(doc: String, dir: String, clientIds: [String], plan: PlanKind, initial: Document,
-                             store: PostgresStore, serverURL: String, extraViolations: [String] = []) async throws -> CheckReport {
+                             store: PostgresStore, serverURL: String, bearer: String? = nil,
+                             extraViolations: [String] = []) async throws -> CheckReport {
         var report = CheckReport()
         guard let head = try await store.documentHead(doc) else { throw HarnessError("document \(doc) vanished") }
         report.head = head
         let log = try await fetchLog(store: store, doc: doc, head: head)
-        let snap = try await fetchSnapshot(baseURL: serverURL, doc: doc)
+        let snap = try await fetchSnapshot(baseURL: serverURL, doc: doc, bearer: bearer)
 
         var pre = extraViolations
         if snap.seq != head { pre.append("RECOVERY: GET snapshot at seq \(snap.seq) but database head is \(head)") }

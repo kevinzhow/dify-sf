@@ -20,13 +20,17 @@ Docker. Everything builds and runs in containers (Swift 6.4.1, PostgreSQL 15, To
 ```sh
 docker build -t dify-sf-dev:local -f docker/Dockerfile.dev docker   # toolchain image (once)
 docker compose up --build                                           # Postgres + server on 127.0.0.1:8080 (COLLAB_PORT=... to change)
-curl -s -X PUT localhost:8080/v1/docs/demo                          # create a document with the example workflow
-curl -N localhost:8080/v1/docs/demo/events                          # watch the event stream
+# protocol 1.8: install the owner once (or sign in: POST /v1/auth/login), then send the access token with every request
+TOKEN=$(curl -s localhost:8080/v1/setup -d '{"email":"me@example.com","name":"Me","password":"change-me-1"}' | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" localhost:8080/v1/docs/demo   # create a document with the example workflow
+curl -N -H "Authorization: Bearer $TOKEN" localhost:8080/v1/docs/demo/events    # watch the event stream
 ```
 
 Configuration is read with swift-configuration from environment variables or `--collab.*` arguments:
 `COLLAB_HTTP_HOST` / `COLLAB_HTTP_PORT`, `COLLAB_DB_HOST` / `PORT` / `USER` / `PASSWORD` / `NAME`, `COLLAB_DB_POOL_SIZE`,
-`COLLAB_CORS_ALLOWED_ORIGINS` (default: localhost dev origins), `COLLAB_SSE_PING_SECONDS` (10), `COLLAB_MAX_REPLAY` (2000), `COLLAB_SNAPSHOT_EVERY` (200), `COLLAB_LOG_LEVEL`.
+`COLLAB_CORS_ALLOWED_ORIGINS` (default: localhost dev origins), `COLLAB_SSE_PING_SECONDS` (10), `COLLAB_MAX_REPLAY` (2000), `COLLAB_SNAPSHOT_EVERY` (200), `COLLAB_LOG_LEVEL`,
+accounts: `COLLAB_AUTH_ACCESS_TOKEN_MINUTES` (60), `COLLAB_AUTH_REFRESH_TOKEN_DAYS` (30), `COLLAB_AUTH_INVITE_EXPIRY_HOURS` (72),
+`COLLAB_AUTH_LOGIN_MAX_FAILURES` (5), `COLLAB_AUTH_LOGIN_LOCKOUT_SECONDS` (86400).
 
 ## Test
 

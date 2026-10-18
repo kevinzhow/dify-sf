@@ -5,7 +5,7 @@ import Foundation
 import Testing
 @testable import CollabServer
 
-/// Canvas comments without a database: the stream notification, validation, ids, wire shape. Routes against Postgres:
+/// Canvas comments without a database: the stream notification, validation, ids, wire shape (authors are accounts, 1.8). Routes against Postgres:
 /// `PostgresIntegrationTests.commentRoutes...`.
 @Suite("Comments")
 struct CommentsTests {
@@ -35,11 +35,6 @@ struct CommentsTests {
         #expect(throws: ServerError.self) { try Routes.validateContent(String(repeating: "a", count: 1001)) }
     }
 
-    @Test func mentionsDropInvalidIdsAndDuplicatesInOrder() {
-        #expect(Routes.mentions(["b", "a", "b", "", "bad id", "c"]) == ["b", "a", "c"])
-        #expect(Routes.mentions([]) == [])
-    }
-
     @Test func idsAreTimeOrderedUUIDv7() {
         let a = PostgresStore.newCommentId(now: Date(timeIntervalSince1970: 1_700_000_000))
         let b = PostgresStore.newCommentId(now: Date(timeIntervalSince1970: 1_700_000_001))
@@ -53,10 +48,12 @@ struct CommentsTests {
         let c = StoredComment(id: "x", positionX: 1.5, positionY: -2, content: "hi", createdBy: "alice", createdAt: t, updatedAt: t,
                               resolved: false, resolvedBy: nil, resolvedAt: nil, mentions: ["bob", "eve"],
                               replies: [StoredReply(id: "r", content: "yo", createdBy: "bob", createdAt: t, updatedAt: t, mentions: [])])
-        let text = try WireJSON.encodeString(Routes.wire(c, names: ["alice": "Alice", "bob": "Bo"]))
+        let names: Routes.Names = ["alice": ("Alice", nil), "bob": ("Bo", "https://example.com/bo.png")]
+        let text = try WireJSON.encodeString(Routes.wire(c, names: names))
         #expect(text == #"{"content":"hi","created_at":"2023-11-14T22:13:20.250Z","created_by":"alice","created_by_name":"Alice","id":"x","#
-            + #""mentions":[{"client":"bob","name":"Bo"},{"client":"eve"}],"position_x":1.5,"position_y":-2,"#
-            + #""replies":[{"content":"yo","created_at":"2023-11-14T22:13:20.250Z","created_by":"bob","created_by_name":"Bo","id":"r","#
+            + #""mentions":[{"account":"bob","avatar_url":"https://example.com/bo.png","name":"Bo"},{"account":"eve"}],"position_x":1.5,"position_y":-2,"#
+            + #""replies":[{"content":"yo","created_at":"2023-11-14T22:13:20.250Z","created_by":"bob","created_by_avatar_url":"https://example.com/bo.png","#
+            + #""created_by_name":"Bo","id":"r","#
             + #""mentions":[],"updated_at":"2023-11-14T22:13:20.250Z"}],"reply_count":1,"resolved":false,"updated_at":"2023-11-14T22:13:20.250Z"}"#)
     }
 }

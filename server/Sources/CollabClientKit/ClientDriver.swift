@@ -233,8 +233,8 @@ public actor ClientDriver {
     private func didFailPost(_ error: Error) {
         guard !stopped else { return }
         stats.postFailures += 1
-        if case TransportError.status(let code, let body) = error, code == 400 {
-            FileHandle.standardError.write(Data("client \(id): server rejected the request (400): \(body)\n".utf8))
+        if case TransportError.status(let code, let body) = error, code == 400 || code == 403 {
+            FileHandle.standardError.write(Data("client \(id): server rejected the request (\(code)): \(body)\n".utf8))
         }
         client.submitFailed(now: now())
     }

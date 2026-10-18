@@ -16,24 +16,38 @@ struct Routes: Sendable {
     static let maxBodyBytes = 1 << 20
     static let maxOpsPerRequest = 100
 
+    /// Dify's login error rate limit (per process).
+    let limiter: LoginLimiter
+
+    init(registry: DocumentRegistry, store: PostgresStore, config: ServerConfig, logger: Logger) {
+        self.registry = registry
+        self.store = store
+        self.config = config
+        self.logger = logger
+        limiter = LoginLimiter(maxFailures: config.loginMaxFailures, lockoutSeconds: config.loginLockoutSeconds)
+    }
+
+    /// Every `/v1` route except setup, login, refresh and activation requires `Authorization: Bearer <access token>`
+    /// (protocol 1.8): reads need any member, writes the edit role (`owner`, `admin`, `editor`).
     func register(on app: Application) {
         let r = app.routes
         r.get("healthz") { req in await handle(req) { try await healthz() } }
+        registerAuth(on: r)
         r.post("v1", "docs") { req in await handle(req) { try await createDoc(req, id: nil) } }
         r.put("v1", "docs", ":doc") { req in
             await handle(req) { try await createDoc(req, id: try docId(req)) }
         }
-        r.get("v1", "docs", ":doc") { req in await handle(req) { try await docInfo(try docId(req)) } }
+        r.get("v1", "docs", ":doc") { req in await handle(req) { try await docInfo(req, try docId(req)) } }
         // Dify workflow files (protocol 1.5): import creates a document, export renders the current state.
         r.post("v1", "docs", "import") { req in await handle(req) { try await importDSL(req, id: nil) } }
         r.put("v1", "docs", ":doc", "import") { req in await handle(req) { try await importDSL(req, id: try docId(req)) } }
         r.get("v1", "docs", ":doc", "export") { req in await handle(req) { try await exportDSL(req, try docId(req)) } }
-        r.get("v1", "docs", ":doc", "meta") { req in await handle(req) { try await appMeta(try docId(req)) } }
+        r.get("v1", "docs", ":doc", "meta") { req in await handle(req) { try await appMeta(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "secrets") { req in await handle(req) { try await storeSecret(req, try docId(req)) } }
-        r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(try docId(req)) } }
+        r.get("v1", "docs", ":doc", "snapshot") { req in await handle(req) { try await snapshot(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "clients") { req in await handle(req) { try await issueClientId(req, try docId(req)) } }
-        r.get("v1", "docs", ":doc", "clients") { req in await handle(req) { try await clientDirectory(try docId(req)) } }
-        r.put("v1", "docs", ":doc", "clients", ":client") { req in await handle(req) { try await nameClient(req, try docId(req)) } }
+        r.get("v1", "docs", ":doc", "clients") { req in await handle(req) { try await clientDirectory(req, try docId(req)) } }
+        r.put("v1", "docs", ":doc", "clients", ":client") { req in await handle(req) { try await bindClient(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "ops") { req in await handle(req) { try await submit(req, doc: try docId(req)) } }
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
         registerComments(on: r)
@@ -57,6 +71,8 @@ struct Routes: Sendable {
                 logger.warning("503: \(m)")
                 return error(.serviceUnavailable, "unavailable", m)
             case .internalError(let m): return error(.internalServerError, "internal", m)
+            case .unauthorized(let m): return error(.unauthorized, "unauthorized", m)
+            case .http(let status, let code, let m): return error(HTTPResponse.Status(code: status), code, m)
             }
         } catch let e as Abort where e.status == .contentTooLarge {
             return error(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes")
@@ -125,6 +141,7 @@ struct Routes: Sendable {
     }
 
     private func createDoc(_ req: Request, id: String?) async throws -> Response {
+        _ = try await authenticate(req, .edit)
         struct CreateBody: Decodable { var template: String? }
         let data = try await body(req)
         let template = data.isEmpty ? nil : (try? WireJSON.decode(CreateBody.self, from: data))?.template
@@ -144,6 +161,7 @@ struct Routes: Sendable {
     /// Body: the Dify DSL as YAML (any content type), or JSON `{"yaml": "..."}`. Creates the document if absent
     /// (`201`); an existing document is left alone (`200`, `created: false`), so a retried import is harmless.
     private func importDSL(_ req: Request, id: String?) async throws -> Response {
+        _ = try await authenticate(req, .edit)
         let data = try await req.body.collect(max: .specified(ByteCount(value: Self.maxImportBytes))) ?? Data()
         struct Wrapped: Decodable { var yaml: String }
         let text = (try? WireJSON.decode(Wrapped.self, from: data))?.yaml ?? String(decoding: data, as: UTF8.self)
@@ -166,8 +184,10 @@ struct Routes: Sendable {
 
     /// The current state as a Dify workflow file: YAML, or `?format=json`. Documents that were not imported get a
     /// minimal app skeleton. Secret environment variables are exported with `""` unless `?include_secret=true` (Dify's
-    /// option of the same name): then with their stored plaintext (protocol 1.7).
+    /// option of the same name): then with their stored plaintext (protocol 1.7), for the owner and admins only (1.8).
     private func exportDSL(_ req: Request, _ id: String) async throws -> Response {
+        let p = try await authenticate(req)
+        if query(req)["include_secret"] == "true" { try authorize(p, .privileged) }
         let meta: Value?
         do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
         let s = try await registry.sequencer(id).currentSnapshot()
@@ -191,7 +211,8 @@ struct Routes: Sendable {
     /// The Dify app metadata (mode, name, variables, features) without the graph; see `DifyDSL.appMeta`. Variables and
     /// features come from the document at head (protocol 1.7). Documents that were not imported get the same defaults as
     /// their export.
-    private func appMeta(_ id: String) async throws -> Response {
+    private func appMeta(_ req: Request, _ id: String) async throws -> Response {
+        _ = try await authenticate(req)
         try await requireDoc(id)
         let meta: Value?
         do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
@@ -203,6 +224,7 @@ struct Routes: Sendable {
     /// `201 {"ref": "sec-<32 hex>", "masked": "<Dify's mask>"}`. The client then writes the variable with ordinary item ops,
     /// with `value` = the mask and `secret_ref` = the reference; the plaintext never enters ops, the log or snapshots.
     private func storeSecret(_ req: Request, _ doc: String) async throws -> Response {
+        _ = try await authenticate(req, .edit)
         struct SecretBody: Decodable { var value: String }
         let data = try await body(req)
         guard let value = (try? WireJSON.decode(SecretBody.self, from: data))?.value else {
@@ -215,25 +237,13 @@ struct Routes: Sendable {
         return try json(Stored(ref: ref, masked: DifyDSL.maskSecret(value)), status: .created)
     }
 
-    private func docInfo(_ id: String) async throws -> Response {
+    private func docInfo(_ req: Request, _ id: String) async throws -> Response {
+        _ = try await authenticate(req)
         let head: Int?
         do { head = try await store.documentHead(id) } catch { throw ServerError.unavailable("\(error)") }
         guard let head else { throw ServerError.notFound }
         struct Info: Encodable { var id: String; var head: Int }
         return try json(Info(id: id, head: head))
-    }
-
-    private struct NameBody: Decodable { var name: String? }
-
-    private func displayName(_ req: Request, required: Bool) async throws -> String? {
-        let data = try await body(req)
-        let name = data.isEmpty ? nil : (try? WireJSON.decode(NameBody.self, from: data))?.name
-        if let n = name {
-            guard !n.isEmpty, n.utf8.count <= 64, !n.unicodeScalars.contains(where: { $0.value < 32 || $0.value == 127 }) else {
-                throw ServerError.badRequest("name must be 1-64 bytes without control characters")
-            }
-        } else if required { throw ServerError.badRequest("missing name") }
-        return name
     }
 
     func requireDoc(_ doc: String) async throws {
@@ -243,40 +253,57 @@ struct Routes: Sendable {
     }
 
     /// Hands out a fresh, unique client id (a UUID): the safe way to avoid two tabs/processes sharing one cseq stream.
-    /// Optional body `{"name": "Bo"}` registers a display name for it (protocol 1.3).
+    /// Protocol 1.8: the id belongs to the caller's account (ops under it from any other account are `403`). A `name` in the
+    /// body (1.3) is ignored: names are the accounts' names.
     private func issueClientId(_ req: Request, _ doc: String) async throws -> Response {
-        let name = try await displayName(req, required: false)
+        let p = try await authenticate(req)
         try await requireDoc(doc)
         let id = "s-" + UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "")
-        if let name { try await registry.sequencer(doc).setName(client: id, name: name) }
-        struct Issued: Encodable { var client: String; var name: String? }
-        return try json(Issued(client: id, name: name), status: .created)
+        _ = try await registry.sequencer(doc).bind(client: id, to: p.id)
+        struct Issued: Encodable { var client: String; var account: String; var name: String }
+        return try json(Issued(client: id, account: p.id, name: p.account.name), status: .created)
     }
 
-    /// `PUT /clients/{client}` `{"name": ...}`: names (or renames) a client id the client chose itself.
-    private func nameClient(_ req: Request, _ doc: String) async throws -> Response {
+    /// `PUT /clients/{client}` (1.3, kept for compatibility): since 1.8 it no longer names anything; it binds a client id
+    /// the client chose itself to the caller's account (if nobody has it yet) and answers the account's name. `403` if the
+    /// id belongs to another account. Any body is ignored.
+    private func bindClient(_ req: Request, _ doc: String) async throws -> Response {
+        let p = try await authenticate(req)
         guard let client = req.parameters.get("client"), Self.validClientId(client) else { throw ServerError.badRequest("invalid client id") }
-        let name = try await displayName(req, required: true)!
         try await requireDoc(doc)
-        try await registry.sequencer(doc).setName(client: client, name: name)
-        struct Named: Encodable { var client: String; var name: String }
-        return try json(Named(client: client, name: name))
+        try await requireOwnClient(doc, client, p, bindIfFree: true)
+        struct Bound: Encodable { var client: String; var account: String; var name: String }
+        return try json(Bound(client: client, account: p.id, name: p.account.name))
     }
 
-    /// `GET /clients`: every registered display name of the document.
-    private func clientDirectory(_ doc: String) async throws -> Response {
-        try await requireDoc(doc)
-        let names = try await registry.sequencer(doc).clientNames(force: true)
-        struct Directory: Encodable { var clients: [String: String] }
-        return try json(Directory(clients: names))
+    /// `403 forbidden` unless `client` belongs to the caller (an unbound id is bound to it with `bindIfFree`, else left alone).
+    func requireOwnClient(_ doc: String, _ client: String, _ p: Principal, bindIfFree: Bool) async throws {
+        let seqr = await registry.sequencer(doc)
+        let owner = bindIfFree ? try await seqr.bind(client: client, to: p.id) : try await seqr.account(of: client)
+        if let owner, owner != p.id {
+            throw ServerError.http(status: 403, code: "forbidden", message: "client id \(client) belongs to another account")
+        }
     }
 
-    private func snapshot(_ id: String) async throws -> Response {
+    /// `GET /clients` (1.8): `{"clients": {"<client id>": {"account", "name", "avatar_url"?}}}` for every client id bound
+    /// to an account.
+    private func clientDirectory(_ req: Request, _ doc: String) async throws -> Response {
+        _ = try await authenticate(req)
+        try await requireDoc(doc)
+        let dir = try await registry.sequencer(doc).clientDirectory(force: true)
+        struct Entry: Encodable { var account: String; var name: String; var avatar_url: String? }
+        struct Directory: Encodable { var clients: [String: Entry] }
+        return try json(Directory(clients: dir.mapValues { Entry(account: $0.account, name: $0.name, avatar_url: $0.avatarUrl) }))
+    }
+
+    private func snapshot(_ req: Request, _ id: String) async throws -> Response {
+        _ = try await authenticate(req)
         let s = try await registry.sequencer(id).currentSnapshot()
         return try json(SnapshotResponse(seq: s.seq, doc: s.doc))
     }
 
     private func submit(_ req: Request, doc: String) async throws -> Response {
+        let principal = try await authenticate(req, .edit)
         let data = try await body(req)
         let parsed: SubmitRequest
         do { parsed = try WireJSON.decode(SubmitRequest.self, from: data) } catch {
@@ -292,11 +319,14 @@ struct Routes: Sendable {
         if let first = parsed.ops.first, let f = parsed.floor, first.cseq < f {
             throw ServerError.badRequest("ops below the floor")
         }
+        // 1.8: the whole batch is refused if the client id belongs to another account (the first use binds a free id).
+        try await requireOwnClient(doc, parsed.client, principal, bindIfFree: true)
         let response = try await registry.sequencer(doc).submit(parsed)
         return try json(response)
     }
 
     private func events(_ req: Request, doc: String) async throws -> Response {
+        let principal = try await authenticate(req, allowQuery: true)
         let q = query(req)
         var lastEventId: Int?
         let header = req.headers[HTTPField.Name("Last-Event-ID")!] ?? q["lastEventId"]
@@ -307,6 +337,8 @@ struct Routes: Sendable {
         let clientParam = q["client"]
         if let c = clientParam, !Self.validClientId(c) { throw ServerError.badRequest("invalid client id") }
         let client = clientParam
+        // The snapshot's `committed` map is about the client's own ops: only for its account (an unbound id is not bound).
+        if let client { try await requireOwnClient(doc, client, principal, bindIfFree: false) }
         var fromParam: Int?
         if let f = q["from"] {
             guard let n = Int(f), n >= 1 else { throw ServerError.badRequest("bad from") }

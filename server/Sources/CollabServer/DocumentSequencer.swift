@@ -15,6 +15,10 @@ public enum ServerError: Error, Sendable {
     /// Database unavailable or the commit outcome is uncertain: the client retries the identical request.
     case unavailable(String)
     case internalError(String)
+    /// 401 `unauthorized`: no, an unknown, an expired or a revoked access token (protocol 1.8).
+    case unauthorized(String)
+    /// Any other status with its error code (`invalid_credentials`, `setup_done`, `forbidden`, ...).
+    case http(status: Int, code: String, message: String)
 }
 
 /// One document's single writer.
@@ -148,33 +152,58 @@ actor DocumentSequencer {
         return await annotated(response)
     }
 
-    // MARK: - Client display names (protocol 1.3)
+    // MARK: - Client ids and their accounts (protocol 1.8)
 
-    private var names: [ClientID: String] = [:]
-    private var namesRefreshedAt: ContinuousClock.Instant?
+    typealias DirectoryEntry = (account: String, name: String, avatarUrl: String?)
+    private var directory: [ClientID: DirectoryEntry] = [:]
+    private var directoryRefreshedAt: ContinuousClock.Instant?
+    /// client id -> account. A binding never changes once made, so this cache never goes stale.
+    private var bindings: [ClientID: String] = [:]
 
-    /// Display names of this document's clients (refreshed from the database at most every 2 s unless forced).
-    func clientNames(force: Bool = false) async throws -> [ClientID: String] {
-        if force || namesRefreshedAt == nil || ContinuousClock.now - namesRefreshedAt! > .seconds(2) {
-            do { names = try await store.clientNames(docId) } catch { throw ServerError.unavailable("\(error)") }
-            namesRefreshedAt = ContinuousClock.now
+    /// client id -> (account, account name, avatar) of every bound client id (refreshed from the database at most every 2 s
+    /// unless forced, so renamed accounts show up).
+    func clientDirectory(force: Bool = false) async throws -> [ClientID: DirectoryEntry] {
+        if force || directoryRefreshedAt == nil || ContinuousClock.now - directoryRefreshedAt! > .seconds(2) {
+            do { directory = try await store.clientDirectory(docId) } catch { throw ServerError.unavailable("\(error)") }
+            directoryRefreshedAt = ContinuousClock.now
+            for (c, e) in directory { bindings[c] = e.account }
         }
-        return names
+        return directory
     }
 
-    func setName(client: ClientID, name: String) async throws {
-        do { try await store.setClientName(docId, client: client, name: name) } catch { throw ServerError.unavailable("\(error)") }
-        names[client] = name
+    /// Account name per client id (for `byName`).
+    func clientNames() async throws -> [ClientID: String] { try await clientDirectory().mapValues(\.name) }
+
+    /// The account `client` is bound to, nil if none.
+    func account(of client: ClientID) async throws -> String? {
+        if let a = bindings[client] { return a }
+        let a: String?
+        do { a = try await store.clientAccount(docId, client: client) } catch { throw ServerError.unavailable("\(error)") }
+        if let a { bindings[client] = a }
+        return a
     }
 
-    /// Adds `byName` to conflict notices whose author registered a name. Never fails the request.
+    /// Binds `client` to `account` unless it is bound already (`404` for an unknown document); returns the account it is
+    /// bound to.
+    func bind(client: ClientID, to account: String) async throws -> String {
+        if let a = try await self.account(of: client) { return a }
+        do {
+            guard try await store.documentHead(docId) != nil else { throw ServerError.notFound }
+            let a = try await store.bindClient(docId, client: client, account: account)
+            bindings[client] = a
+            directoryRefreshedAt = nil
+            return a
+        } catch let e as ServerError { throw e } catch { throw ServerError.unavailable("\(error)") }
+    }
+
+    /// Adds `byName` (the author's account name, 1.8) to conflict notices whose author is bound to an account. Never fails the request.
     private func annotated(_ r: SubmitResponse) async -> SubmitResponse {
         func author(_ reason: RejectReason) -> ClientID? { if case .conflict(let c) = reason { return c.by }; return nil }
         var any = false
         for res in r.results { if case .reject(_, let reason) = res, author(reason) != nil { any = true } }
         for reason in (r.known?.rejected.values.map { $0 } ?? []) where author(reason) != nil { any = true }
         guard any else { return r }
-        let table = (try? await clientNames()) ?? names
+        let table = (try? await clientNames()) ?? directory.mapValues(\.name)
         func named(_ reason: RejectReason) -> RejectReason {
             guard case .conflict(var c) = reason, let n = table[c.by] else { return reason }
             c.byName = n

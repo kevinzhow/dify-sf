@@ -34,6 +34,14 @@ public struct ServerConfig: Sendable {
     /// TEST ONLY: deliberately break the server so that the harness can prove it notices
     /// (`ackBeforeCommit`, `skipStaleCheck`). Empty in every real deployment.
     public var testDefect: String
+    /// Accounts (protocol 1.8), Dify's defaults: access tokens live 60 minutes, refresh tokens 30 days, activation links 72 hours.
+    public var accessTokenMinutes: Int
+    public var refreshTokenDays: Int
+    public var inviteExpiryHours: Int
+    /// Dify's login error rate limit: more than `loginMaxFailures` failed sign-ins for one email lock it for
+    /// `loginLockoutSeconds` (Dify: 5 and 86400), counted from the last failure. Per server process.
+    public var loginMaxFailures: Int
+    public var loginLockoutSeconds: Int
 
     public init(reader: ConfigReader) {
         httpHost = reader.string(forKey: "collab.http.host", default: "127.0.0.1")
@@ -56,6 +64,11 @@ public struct ServerConfig: Sendable {
         corsAllowedOrigins = reader.string(forKey: "collab.cors.allowedOrigins", default: "http://localhost:*,http://127.0.0.1:*,http://[::1]:*")
             .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         testDefect = reader.string(forKey: "collab.test.defect", default: "")
+        accessTokenMinutes = reader.int(forKey: "collab.auth.accessTokenMinutes", default: 60)
+        refreshTokenDays = reader.int(forKey: "collab.auth.refreshTokenDays", default: 30)
+        inviteExpiryHours = reader.int(forKey: "collab.auth.inviteExpiryHours", default: 72)
+        loginMaxFailures = reader.int(forKey: "collab.auth.loginMaxFailures", default: 5)
+        loginLockoutSeconds = reader.int(forKey: "collab.auth.loginLockoutSeconds", default: 86_400)
     }
 }
 

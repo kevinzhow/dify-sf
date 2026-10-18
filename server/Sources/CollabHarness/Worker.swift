@@ -46,6 +46,23 @@ public struct WorkerConfig: Codable, Sendable {
     public var timings = ClientTimings()
     public var duplicatePostRate = 0.0
     public var replayOldRate = 0.0
+    /// Protocol 1.8: the account the clients sign in with (all clients of a run share it, each with its own client id), and
+    /// the server's own address for signing in (not through the fault proxy). nil = no accounts (a server before 1.8).
+    public var auth: HarnessAccount?
+}
+
+/// The account of a harness run. The orchestrator installs it on a fresh server (`POST /v1/setup`) or signs in with it.
+public struct HarnessAccount: Codable, Sendable {
+    public var base: String
+    public var email: String
+    public var password: String
+
+    /// Test credentials (override with HARNESS_ACCOUNT_EMAIL / HARNESS_ACCOUNT_PASSWORD for a database whose owner differs).
+    public static func standard(base: String) -> HarnessAccount {
+        let env = ProcessInfo.processInfo.environment
+        return HarnessAccount(base: base, email: env["HARNESS_ACCOUNT_EMAIL"] ?? "harness@example.com",
+                              password: env["HARNESS_ACCOUNT_PASSWORD"] ?? "harness-pass-1")
+    }
 }
 
 /// Hosts one or more independent clients (each with its own HTTP connections and state machine) in one process.
@@ -64,6 +81,7 @@ public enum Worker {
         let stop = StopFlag()
         var drivers: [(spec: WorkerClientSpec, driver: ClientDriver, recorder: AppliedRecorder)] = []
         let t = cfg.timings
+        let auth = cfg.auth.map { ServerAuth(base: $0.base, email: $0.email, password: $0.password) }
         let clientConfig = ClientConfig(retransmitAfter: t.retransmitAfterMs, streamSilence: t.streamSilenceMs,
                                         reconnectBase: t.reconnectBaseMs, reconnectMax: t.reconnectMaxMs, maxBatch: t.maxBatch)
 
@@ -85,7 +103,7 @@ public enum Worker {
                     }
                 },
                 applied: { first, last, wallMs in recorder.record(first: first, last: last, wall: wallMs) })
-            let transport = HTTPTransport(postBase: spec.postBase, eventsBase: spec.eventsBase, doc: cfg.doc)
+            let transport = HTTPTransport(postBase: spec.postBase, eventsBase: spec.eventsBase, doc: cfg.doc, auth: auth)
             let storage: DurableStorage? = cfg.persist ? FileDurableStorage(path: "\(cfg.dir)/\(spec.id).durable.json") : nil
             let driver = ClientDriver(id: spec.id, journaled: spec.journaled, transport: transport, storage: storage, hooks: hooks,
                                       config: clientConfig,

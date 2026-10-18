@@ -201,7 +201,8 @@ public enum StormWorkflow {
             switch type {
             case "code":
                 cfg["code"] = .string("def main(x):\n    return {'result': x}")
-                cfg["outputs"] = .items((0..<3).map { Item(id: "o\(i)-\($0)", value: .map(["name": .string("out\($0)"), "type": .string("string")])) })
+                // Declared outputs (protocol 1.4): `text` is among them, since the next nodes reference `text`.
+                cfg["outputs"] = .items((0..<3).map { Item(id: "o\(i)-\($0)", value: .map(["name": .string($0 == 0 ? "text" : "out\($0)"), "type": .string("string")])) })
             case "if-else":
                 cfg["cases"] = .items((0..<2).map { Item(id: "c\(i)-\($0)", value: .map(["operator": .string("contains"), "value": .string("v\($0)")])) })
             case "http-request":

@@ -5,17 +5,19 @@ import HTTPTypes
 import Vapor
 
 /// Canvas comments (docs/protocol.md, "Comments"): Dify 1.17.1's workflow comments as a resource beside the document.
-/// Not part of the collaborative document, the op log, snapshots, the export or undo. Authors are client ids; only the
-/// author edits, moves or deletes a comment or reply (`403 not_author`), anyone resolves (idempotent) and replies.
+/// Not part of the collaborative document, the op log, snapshots, the export or undo. Authors are accounts (protocol 1.8):
+/// any member reads; writing needs the edit role (Dify's `edit_permission_required`); only the author edits, moves or
+/// deletes a comment or reply (`403 not_author`), any editor resolves (idempotent) and replies.
 extension Routes {
     /// Dify's `_validate_content`: not blank, at most 1000 characters (Unicode scalars, as Python's `len`).
     static let maxCommentChars = 1000
 
     func registerComments(on r: any RoutesBuilder) {
-        r.get("v1", "docs", ":doc", "comments") { req in await handle(req) { try await listComments(try docId(req)) } }
+        r.get("v1", "docs", ":doc", "comments") { req in await handle(req) { try await listComments(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "comments") { req in await handle(req) { try await createComment(req, try docId(req)) } }
+        r.get("v1", "docs", ":doc", "comments", "mention-users") { req in await handle(req) { try await mentionUsers(req, try docId(req)) } }
         r.get("v1", "docs", ":doc", "comments", ":comment") { req in
-            await handle(req) { try await getComment(try docId(req), try commentId(req)) }
+            await handle(req) { try await getComment(req, try docId(req), try commentId(req)) }
         }
         r.put("v1", "docs", ":doc", "comments", ":comment") { req in
             await handle(req) { try await updateComment(req, try docId(req), try commentId(req)) }
@@ -39,9 +41,11 @@ extension Routes {
 
     // MARK: - Wire shapes
 
+    /// A mentioned account (`{"account", "name"?, "avatar_url"?}`; name and avatar when the account exists).
     struct MentionJSON: Encodable {
-        var client: String
+        var account: String
         var name: String?
+        var avatar_url: String?
     }
 
     struct ReplyJSON: Encodable {
@@ -49,6 +53,7 @@ extension Routes {
         var content: String
         var created_by: String
         var created_by_name: String?
+        var created_by_avatar_url: String?
         var created_at: String
         var updated_at: String
         var mentions: [MentionJSON]
@@ -61,33 +66,43 @@ extension Routes {
         var content: String
         var created_by: String
         var created_by_name: String?
+        var created_by_avatar_url: String?
         var created_at: String
         var updated_at: String
         var resolved: Bool
         var resolved_by: String?
         var resolved_by_name: String?
+        var resolved_by_avatar_url: String?
         var resolved_at: String?
         var mentions: [MentionJSON]
         var replies: [ReplyJSON]
         var reply_count: Int
     }
 
+    typealias Names = [String: (name: String, avatarUrl: String?)]
+
     static func timestamp(_ d: Date) -> String {
         d.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: TimeZone(identifier: "UTC")!))
     }
 
-    static func wire(_ r: StoredReply, names: [ClientID: String]) -> ReplyJSON {
-        ReplyJSON(id: r.id, content: r.content, created_by: r.createdBy, created_by_name: names[r.createdBy],
-                  created_at: timestamp(r.createdAt), updated_at: timestamp(r.updatedAt),
-                  mentions: r.mentions.map { MentionJSON(client: $0, name: names[$0]) })
+    static func mention(_ id: String, _ names: Names) -> MentionJSON {
+        MentionJSON(account: id, name: names[id]?.name, avatar_url: names[id]?.avatarUrl)
     }
 
-    static func wire(_ c: StoredComment, names: [ClientID: String]) -> CommentJSON {
+    static func wire(_ r: StoredReply, names: Names) -> ReplyJSON {
+        ReplyJSON(id: r.id, content: r.content, created_by: r.createdBy, created_by_name: names[r.createdBy]?.name,
+                  created_by_avatar_url: names[r.createdBy]?.avatarUrl, created_at: timestamp(r.createdAt),
+                  updated_at: timestamp(r.updatedAt), mentions: r.mentions.map { mention($0, names) })
+    }
+
+    static func wire(_ c: StoredComment, names: Names) -> CommentJSON {
         CommentJSON(id: c.id, position_x: c.positionX, position_y: c.positionY, content: c.content, created_by: c.createdBy,
-                    created_by_name: names[c.createdBy], created_at: timestamp(c.createdAt), updated_at: timestamp(c.updatedAt),
-                    resolved: c.resolved, resolved_by: c.resolvedBy, resolved_by_name: c.resolvedBy.flatMap { names[$0] },
-                    resolved_at: c.resolvedAt.map(timestamp), mentions: c.mentions.map { MentionJSON(client: $0, name: names[$0]) },
-                    replies: c.replies.map { wire($0, names: names) }, reply_count: c.replies.count)
+                    created_by_name: names[c.createdBy]?.name, created_by_avatar_url: names[c.createdBy]?.avatarUrl,
+                    created_at: timestamp(c.createdAt), updated_at: timestamp(c.updatedAt), resolved: c.resolved,
+                    resolved_by: c.resolvedBy, resolved_by_name: c.resolvedBy.flatMap { names[$0]?.name },
+                    resolved_by_avatar_url: c.resolvedBy.flatMap { names[$0]?.avatarUrl }, resolved_at: c.resolvedAt.map(timestamp),
+                    mentions: c.mentions.map { mention($0, names) }, replies: c.replies.map { wire($0, names: names) },
+                    reply_count: c.replies.count)
     }
 
     // MARK: - Validation
@@ -102,11 +117,6 @@ extension Routes {
         return id
     }
 
-    private func author(_ client: String?) throws -> String {
-        guard let client, Self.validClientId(client) else { throw ServerError.badRequest("invalid or missing client id") }
-        return client
-    }
-
     static func validateContent(_ content: String) throws {
         if content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw ServerError.badRequest("Comment content cannot be empty")
@@ -116,10 +126,12 @@ extension Routes {
         }
     }
 
-    /// Dify's `_filter_valid_mentioned_user_ids`: drops ids that are not valid client ids and duplicates, keeps the order.
-    static func mentions(_ ids: [String]) -> [String] {
+    /// Dify's `_filter_valid_mentioned_user_ids`: keeps the ids of workspace members, once each, in the order given.
+    func mentions(_ ids: [String]?) async throws -> [String] {
+        guard let ids, !ids.isEmpty else { return [] }
+        let members = Set(try await storeCall { try await store.members() }.map(\.id))
         var seen = Set<String>()
-        return ids.filter { validClientId($0) && seen.insert($0).inserted }
+        return ids.filter { members.contains($0) && seen.insert($0).inserted }
     }
 
     private func decodeBody<T: Decodable>(_ req: Request, _ t: T.Type, _ shape: String) async throws -> T {
@@ -144,8 +156,9 @@ extension Routes {
         }
     }
 
-    private func names(_ doc: String) async -> [ClientID: String] {
-        (try? await registry.sequencer(doc).clientNames()) ?? [:]
+    /// Account names and avatars, looked up when a comment is read (so a rename shows everywhere).
+    private func names() async -> Names {
+        (try? await store.accountNames()) ?? [:]
     }
 
     private func announce(_ doc: String, _ comment: String, _ action: CommentsEvent.Action) async {
@@ -154,69 +167,79 @@ extension Routes {
 
     // MARK: - Handlers
 
-    private func listComments(_ doc: String) async throws -> Response {
+    /// Dify's `/comments/mention-users`: every workspace member, `{"users": [{id, name, email, avatar_url?, role}]}`.
+    private func mentionUsers(_ req: Request, _ doc: String) async throws -> Response {
+        _ = try await authenticate(req)
+        try await requireDoc(doc)
+        let all = try await storeCall { try await store.members() }
+        struct User: Encodable { var id: String; var name: String; var email: String; var avatar_url: String?; var role: String }
+        struct Users: Encodable { var users: [User] }
+        return try json(Users(users: all.map { User(id: $0.id, name: $0.name, email: $0.email, avatar_url: $0.avatarUrl, role: $0.role ?? "") }))
+    }
+
+    private func listComments(_ req: Request, _ doc: String) async throws -> Response {
+        _ = try await authenticate(req)
         try await requireDoc(doc)
         let all = try await mapped("comment") { try await store.comments(doc) }
-        let n = await names(doc)
+        let n = await names()
         struct List: Encodable { var comments: [CommentJSON] }
         return try json(List(comments: all.map { Self.wire($0, names: n) }))
     }
 
-    private func getComment(_ doc: String, _ id: String) async throws -> Response {
+    private func getComment(_ req: Request, _ doc: String, _ id: String) async throws -> Response {
+        _ = try await authenticate(req)
         try await requireDoc(doc)
         guard let c = try await mapped("comment", { try await store.comment(doc, id: id) }) else { throw ServerError.missing("unknown comment") }
-        return try json(Self.wire(c, names: await names(doc)))
+        return try json(Self.wire(c, names: await names()))
     }
 
     private func createComment(_ req: Request, _ doc: String) async throws -> Response {
+        let by = try await authenticate(req, .edit).id
         struct Body: Decodable {
-            var client: String?
             var position_x: Double
             var position_y: Double
             var content: String
-            var mentioned_client_ids: [String]?
+            var mentioned_user_ids: [String]?
         }
-        let b = try await decodeBody(req, Body.self, #"{"client","position_x","position_y","content","mentioned_client_ids"?}"#)
-        let by = try author(b.client)
+        let b = try await decodeBody(req, Body.self, #"{"position_x","position_y","content","mentioned_user_ids"?}"#)
         try finite(b.position_x)
         try finite(b.position_y)
         try Self.validateContent(b.content)
         try await requireDoc(doc)
+        let m = try await mentions(b.mentioned_user_ids)
         let id = PostgresStore.newCommentId()
         let c = try await mapped("comment") {
-            try await store.createComment(doc, id: id, x: b.position_x, y: b.position_y, content: b.content, by: by,
-                                          mentions: Self.mentions(b.mentioned_client_ids ?? []))
+            try await store.createComment(doc, id: id, x: b.position_x, y: b.position_y, content: b.content, by: by, mentions: m)
         }
         await announce(doc, id, .created)
-        return try json(Self.wire(c, names: await names(doc)), status: .created)
+        return try json(Self.wire(c, names: await names()), status: .created)
     }
 
     /// Author only, also for a move (Dify lets only the creator drag a pin). Omitted fields stay; `content`, which Dify
     /// always requires, may be omitted here (a move).
     private func updateComment(_ req: Request, _ doc: String, _ id: String) async throws -> Response {
+        let by = try await authenticate(req, .edit).id
         struct Body: Decodable {
-            var client: String?
             var content: String?
             var position_x: Double?
             var position_y: Double?
-            var mentioned_client_ids: [String]?
+            var mentioned_user_ids: [String]?
         }
-        let b = try await decodeBody(req, Body.self, #"{"client","content"?,"position_x"?,"position_y"?,"mentioned_client_ids"?}"#)
-        let by = try author(b.client)
+        let b = try await decodeBody(req, Body.self, #"{"content"?,"position_x"?,"position_y"?,"mentioned_user_ids"?}"#)
         try finite(b.position_x)
         try finite(b.position_y)
         if let content = b.content { try Self.validateContent(content) }
         try await requireDoc(doc)
+        let m: [String]? = b.mentioned_user_ids == nil ? nil : try await mentions(b.mentioned_user_ids)
         let c = try await mapped("comment") {
-            try await store.updateComment(doc, id: id, by: by, content: b.content, x: b.position_x, y: b.position_y,
-                                          mentions: b.mentioned_client_ids.map(Self.mentions))
+            try await store.updateComment(doc, id: id, by: by, content: b.content, x: b.position_x, y: b.position_y, mentions: m)
         }
         await announce(doc, id, .updated)
-        return try json(Self.wire(c, names: await names(doc)))
+        return try json(Self.wire(c, names: await names()))
     }
 
     private func deleteComment(_ req: Request, _ doc: String, _ id: String) async throws -> Response {
-        let by = try author(query(req)["client"])
+        let by = try await authenticate(req, .edit).id
         try await requireDoc(doc)
         try await mapped("comment") { try await store.deleteComment(doc, id: id, by: by) }
         await announce(doc, id, .deleted)
@@ -224,51 +247,48 @@ extension Routes {
     }
 
     private func resolveComment(_ req: Request, _ doc: String, _ id: String) async throws -> Response {
-        struct Body: Decodable { var client: String? }
-        let b = try await decodeBody(req, Body.self, #"{"client"}"#)
-        let by = try author(b.client)
+        let by = try await authenticate(req, .edit).id
         try await requireDoc(doc)
         let (c, changed) = try await mapped("comment") { try await store.resolveComment(doc, id: id, by: by) }
         if changed { await announce(doc, id, .resolved) }
-        return try json(Self.wire(c, names: await names(doc)))
+        return try json(Self.wire(c, names: await names()))
     }
 
     private struct ReplyBody: Decodable {
-        var client: String?
         var content: String
-        var mentioned_client_ids: [String]?
+        var mentioned_user_ids: [String]?
     }
 
     private func createReply(_ req: Request, _ doc: String, _ comment: String) async throws -> Response {
-        let b = try await decodeBody(req, ReplyBody.self, #"{"client","content","mentioned_client_ids"?}"#)
-        let by = try author(b.client)
+        let by = try await authenticate(req, .edit).id
+        let b = try await decodeBody(req, ReplyBody.self, #"{"content","mentioned_user_ids"?}"#)
         try Self.validateContent(b.content)
         try await requireDoc(doc)
+        let m = try await mentions(b.mentioned_user_ids)
         let id = PostgresStore.newCommentId()
         let r = try await mapped("comment") {
-            try await store.createReply(doc, comment: comment, id: id, content: b.content, by: by,
-                                        mentions: Self.mentions(b.mentioned_client_ids ?? []))
+            try await store.createReply(doc, comment: comment, id: id, content: b.content, by: by, mentions: m)
         }
         await announce(doc, comment, .reply)
-        return try json(Self.wire(r, names: await names(doc)), status: .created)
+        return try json(Self.wire(r, names: await names()), status: .created)
     }
 
     /// Author only. As Dify, the mentions are replaced (an omitted list clears them).
     private func updateReply(_ req: Request, _ doc: String, _ comment: String, _ id: String) async throws -> Response {
-        let b = try await decodeBody(req, ReplyBody.self, #"{"client","content","mentioned_client_ids"?}"#)
-        let by = try author(b.client)
+        let by = try await authenticate(req, .edit).id
+        let b = try await decodeBody(req, ReplyBody.self, #"{"content","mentioned_user_ids"?}"#)
         try Self.validateContent(b.content)
         try await requireDoc(doc)
+        let m = try await mentions(b.mentioned_user_ids)
         let r = try await mapped("reply") {
-            try await store.updateReply(doc, comment: comment, id: id, by: by, content: b.content,
-                                        mentions: Self.mentions(b.mentioned_client_ids ?? []))
+            try await store.updateReply(doc, comment: comment, id: id, by: by, content: b.content, mentions: m)
         }
         await announce(doc, comment, .reply)
-        return try json(Self.wire(r, names: await names(doc)))
+        return try json(Self.wire(r, names: await names()))
     }
 
     private func deleteReply(_ req: Request, _ doc: String, _ comment: String, _ id: String) async throws -> Response {
-        let by = try author(query(req)["client"])
+        let by = try await authenticate(req, .edit).id
         try await requireDoc(doc)
         try await mapped("reply") { try await store.deleteReply(doc, comment: comment, id: id, by: by) }
         await announce(doc, comment, .reply)

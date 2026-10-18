@@ -157,7 +157,7 @@ public struct StreamOpen: Hashable, Sendable {
 }
 
 /// The protocol version this code implements (docs/protocol.md).
-public let protocolVersion = "1.7"
+public let protocolVersion = "1.8"
 
 /// Keeping event streams of older clients free of ops they cannot decode. A stream opened without `proto`, or with
 /// `proto` < 1.6, never carries a `restoreNode` commit; one with `proto` < 1.7 never carries a commit that writes a

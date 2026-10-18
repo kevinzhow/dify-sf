@@ -1,3 +1,4 @@
+import CollabClientKit
 import CollabCore
 import CollabInvariants
 import CollabStore
@@ -150,6 +151,9 @@ public final class RoundRunner: @unchecked Sendable {
         liveServer = server
         try server.start()
         try await server.waitHealthy()
+        // Protocol 1.8: every client signs in. One account for the whole run (installed on a fresh database).
+        let account = HarnessAccount.standard(base: server.baseURL)
+        _ = try await ServerAuth.ensureWorkspace(base: account.base, email: account.email, password: account.password, name: "Harness")
 
         // --- proxies per client
         var pairs: [NetworkControl.ProxyPair] = []
@@ -184,7 +188,7 @@ public final class RoundRunner: @unchecked Sendable {
         var workers: [WorkerHandle] = []
         let perWorker = max(1, spec.clientsPerWorker)
         for (w, chunk) in stride(from: 0, to: specs.count, by: perWorker).map({ Array(specs[$0..<min($0 + perWorker, specs.count)]) }).enumerated() {
-            let h = WorkerHandle(id: "w\(w)", clients: chunk, spec: spec, doc: docId, dir: dir, env: env)
+            let h = WorkerHandle(id: "w\(w)", clients: chunk, spec: spec, doc: docId, dir: dir, env: env, account: account)
             try h.spawn()
             workers.append(h)
             liveWorkers.append(h)
@@ -231,8 +235,9 @@ public final class RoundRunner: @unchecked Sendable {
 
         // --- verification against the database and every client
         let clientIds = specs.map(\.id)
+        let bearer = try await ServerAuth.login(base: account.base, email: account.email, password: account.password).access
         var report = try await Checker.check(doc: docId, dir: dir, clientIds: clientIds, plan: spec.plan, initial: initial,
-                                             store: store, serverURL: server.baseURL)
+                                             store: store, serverURL: server.baseURL, bearer: bearer)
         if let again = try await store.documentHead(docId), again != head { report.violations.append("LOG: head moved from \(head) to \(again) after the clients went idle") }
 
         for w in workers { w.send("exit") }
@@ -385,7 +390,10 @@ final class WorkerHandle: @unchecked Sendable {
     private var reader: Task<Void, Never>?
     private var paused = false
 
-    init(id: String, clients: [WorkerClientSpec], spec: RoundSpec, doc: String, dir: String, env: HarnessEnv) {
+    let account: HarnessAccount?
+
+    init(id: String, clients: [WorkerClientSpec], spec: RoundSpec, doc: String, dir: String, env: HarnessEnv, account: HarnessAccount? = nil) {
+        self.account = account
         self.id = id
         self.clients = clients
         self.spec = spec
@@ -402,6 +410,7 @@ final class WorkerHandle: @unchecked Sendable {
         cfg.timings = spec.timings
         cfg.duplicatePostRate = spec.faults.duplicatePostRate
         cfg.replayOldRate = spec.faults.replayOldRate
+        cfg.auth = account
         let path = "\(dir)/\(id).\(incarnation).config.json"
         FileManager.default.createFile(atPath: path, contents: try JSONEncoder().encode(cfg))
         let p = try ManagedProcess(name: id, executable: env.benchBinary, arguments: ["worker", path], logPath: "\(dir)/\(id).\(incarnation).log", pipes: true)
