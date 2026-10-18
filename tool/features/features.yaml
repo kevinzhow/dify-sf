@@ -154,10 +154,9 @@ features:
   area: canvas
   title: 'Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges'
   dify: [web/app/components/workflow/shortcuts/use-workflow-hotkeys.ts, web/app/components/workflow/hooks/use-nodes-interactions.ts]
-  status: not_ported
-  reason: Not implemented yet (the use-shortcuts dim cases are still to do in the spec ledger).
-  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-shortcuts.spec.ts']
-  ours: []
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-shortcuts.spec.ts', app/test/workflow_editor/shift_dim_test.dart]
+  ours: [app/lib/src/canvas/run_view.dart, app/lib/src/workflow_editor/context_menu/workflow_actions.dart, app/lib/src/workflow_editor/context_menu/workflow_shortcuts.dart]
 - id: canvas.a11y
   area: canvas
   title: 'Canvas: accessibility (focusable nodes, semantics)'

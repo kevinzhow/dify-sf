@@ -10,6 +10,12 @@ import 'live_card.dart';
 
 /// What the editor around the canvas (Dify's header, toolbars, minimap, menus) sees of the canvas and can do to it:
 /// the view, the selection, the control mode, and React Flow's viewport helpers with React Flow's numbers.
+class CanvasDimming {
+  const CanvasDimming({required this.nodes, required this.dependencies});
+  final Set<String> nodes;
+  final List<(String, String)> dependencies;
+}
+
 class CanvasController {
   CanvasController({ControlMode mode = ControlMode.pointer}) : controlMode = ValueNotifier(mode);
 
@@ -18,6 +24,7 @@ class CanvasController {
 
   /// Iteration warnings already shown in this editor, never part of the shared document.
   final parallelWarnings = <String>{};
+  final dimming = ValueNotifier<CanvasDimming?>(null);
   final selection = CanvasSelection();
   final ValueNotifier<ControlMode> controlMode;
 
@@ -96,6 +103,7 @@ class CanvasController {
   void dispose() {
     view.dispose();
     visualChanges.dispose();
+    dimming.dispose();
     selection.dispose();
     controlMode.dispose();
     liveCard.dispose();

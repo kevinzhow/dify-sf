@@ -12,9 +12,9 @@ branch.
 
 | Status | Features |
 |---|---|
-| ported | 145 |
+| ported | 146 |
 | partial | 41 |
-| not ported | 40 |
+| not ported | 39 |
 | n/a | 11 |
 | dify-sf only | 10 |
 

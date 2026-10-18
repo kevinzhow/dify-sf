@@ -85,7 +85,13 @@ class _WorkflowShortcutsState extends State<WorkflowShortcuts> {
   }
 
   KeyEventResult _onKey(KeyEvent e) {
-    if (e is! KeyDownEvent || !mounted || !(ModalRoute.isCurrentOf(context) ?? true)) return KeyEventResult.ignored;
+    if (!mounted) return KeyEventResult.ignored;
+    if (e.logicalKey == LogicalKeyboardKey.shiftLeft || e.logicalKey == LogicalKeyboardKey.shiftRight) {
+      if (e is KeyUpEvent && !HardwareKeyboard.instance.isShiftPressed) _actions.undimAllNodes();
+      if (e is KeyDownEvent && !_typing() && (ModalRoute.isCurrentOf(context) ?? true)) _actions.dimOtherNodes();
+      return KeyEventResult.ignored;
+    }
+    if (e is! KeyDownEvent || !(ModalRoute.isCurrentOf(context) ?? true)) return KeyEventResult.ignored;
     final keys = HardwareKeyboard.instance;
     final mac = DifyPlatform.current == DifyPlatform.mac;
     // index.tsx's keydown guard: the browser's own Mod+S (save page) and Mod+D (bookmark) never run in the editor,

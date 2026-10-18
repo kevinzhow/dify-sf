@@ -193,7 +193,7 @@ class WidgetRenderer extends CanvasRenderer {
           final status = selected ? null : statusBorderColor(run.status);
           // node.tsx: `_waitingRun && 'opacity-70'` on the node element (card, frames and handles).
           return Opacity(
-            opacity: run.waiting ? 0.7 : 1,
+            opacity: run.opacity,
             child: Stack(
               clipBehavior: Clip.none,
               children: [

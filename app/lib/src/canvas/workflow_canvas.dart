@@ -173,6 +173,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     c.addListener(_documentChanged);
     canvas.nodeRun.addListener(_runStatusChanged);
     canvas.edgeRun.addListener(_edgeRunChanged);
+    canvas.dimming.addListener(_dimChanged);
     _documentChanged();
     if (canvas.edgeRun.value.isNotEmpty) _edgeRunChanged();
   }
@@ -192,6 +193,31 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
   /// Shows [CanvasController.edgeRun] on the edges.
   void _edgeRunChanged() {
     graph.edgeRun = canvas.edgeRun.value;
+    renderer.edgeRunChanged();
+  }
+
+  void _dimChanged() {
+    final dim = canvas.dimming.value;
+    for (final n in graph.nodes) {
+      final next = n.run.value.copyWith(dimmed: dim?.nodes.contains(n.id) ?? false);
+      if (next != n.run.value) {
+        n.run.value = next;
+        renderer.statusChanged(n.slot);
+      }
+    }
+    graph.dimming = dim != null;
+    graph.temporaryEdges = [
+      for (final (a, b) in dim?.dependencies ?? const <(String, String)>[])
+        if (graph[a] != null && graph[b] != null)
+          CanvasEdge(
+            'tmp_$a-$b',
+            graph[a]!.slot,
+            graph[b]!.slot,
+            sourceHandle: 'source_tmp',
+            targetHandle: 'target_tmp',
+          ),
+    ];
+    renderer.apply(CanvasChange()..edgesChanged = true);
     renderer.edgeRunChanged();
   }
 
@@ -292,6 +318,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       a11y.changed();
       if (change.added.isNotEmpty && canvas.nodeRun.value.isNotEmpty) _runStatusChanged(all: true);
     }
+    if (canvas.dimming.value != null) _dimChanged();
     // The panel (or a test) selected a node or an edge: show it.
     final id = c.selectedNodeId;
     final slot = id == null ? null : graph[id]?.slot;
@@ -309,6 +336,8 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     if (selection.hovered != _hovered) {
       if (_hovered != null) graph.slots[_hovered!]?.hovered.value = false;
       _hovered = selection.hovered;
+      graph.hoveredNode = _hovered;
+      renderer.edgeRunChanged();
       if (_hovered != null) graph.slots[_hovered!]?.hovered.value = true;
     }
     final resized = CanvasChange();
@@ -343,6 +372,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
 
   /// Sets a node's run view (from a run, or a simulation of one); a card whose size depends on it is laid out again.
   void setRun(String id, NodeRunView run) {
+    run = run.copyWith(dimmed: canvas.dimming.value?.nodes.contains(id) ?? false);
     final n = graph[id];
     if (n == null || n.run.value == run) return;
     final statusChanged = n.run.value.status != run.status;
@@ -366,6 +396,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     c.removeListener(_documentChanged);
     canvas.nodeRun.removeListener(_runStatusChanged);
     canvas.edgeRun.removeListener(_edgeRunChanged);
+    canvas.dimming.removeListener(_dimChanged);
     selection.removeListener(_selectionChanged);
     view.removeListener(a11y.viewMoved);
     view.removeListener(_viewMoved);

@@ -18,7 +18,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Area | ported | partial | not ported | n/a | dify-sf only | total |
 |---|---|---|---|---|---|---|
-| [Canvas & interactions](#canvas) | 14 | 3 | 3 | 3 | 1 | 24 |
+| [Canvas & interactions](#canvas) | 15 | 3 | 2 | 3 | 1 | 24 |
 | [Node cards (shared chrome)](#node-chrome) | 11 |  | 3 |  |  | 14 |
 | [Edges & connections](#edges) | 5 | 1 |  |  | 1 | 7 |
 | [Block selector & node insertion](#block-selector) | 6 | 4 | 1 | 1 |  | 12 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **145** | **41** | **40** | **11** | **10** | **247** |
+| **Total** | **146** | **41** | **39** | **11** | **10** | **247** |
 
 <a id="canvas"></a>
 
@@ -85,7 +85,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Canvas: drag nodes (container children clamped inside the container) | ported | Deviation: A drag is a moveNode op; concurrent moves of the same node are last-writer-wins (dify-sf's conflict policy for layout). | spec `workflow/hooks/use-nodes-interactions-without-sync.spec.ts` |
 | Canvas: alignment help lines with magnetic snap while dragging | ported |  | spec `workflow/help-line`, spec `workflow/hooks/use-helpline.spec.ts` |
 | Canvas: arrow keys move the focused node / selection (5 px, 20 px with Shift); Enter/Space select, Escape deselects | ported |  | spec `workflow/hooks/use-node-keyboard-interactions.spec.tsx`, spec `workflow/keyboard-node-movement.browser.spec.tsx` |
-| Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges | not ported | Not implemented yet (the use-shortcuts dim cases are still to do in the spec ledger). | spec `workflow/hooks/use-shortcuts.spec.ts` |
+| Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges | ported |  | spec `workflow/hooks/use-shortcuts.spec.ts`, `app/test/workflow_editor/shift_dim_test.dart` |
 | Canvas: accessibility (focusable nodes, semantics) | ported | Deviation: Semantics per on-screen card while the view rests, a summary otherwise (a GPU canvas has no DOM). |  |
 | Canvas: open the editor at a node (?node_id=) | ported |  | spec `workflow/hooks/use-locate-node.spec.tsx` |
 | Canvas: confirm dialogs (delete container with children, remove used variable) | ported |  | spec `workflow/index.spec.tsx` |

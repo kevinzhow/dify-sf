@@ -16,6 +16,7 @@ class NodeRunView {
   const NodeRunView({
     this.runningStatus,
     this.waiting = false,
+    this.dimmed = false,
     this.singleRunningStatus,
     this.hasVarValue = false,
     this.iterationIndex,
@@ -53,9 +54,14 @@ class NodeRunView {
 
   /// `data._waitingRun`: the node is drawn at 70 % opacity (`opacity-70`).
   final bool waiting;
+  final bool dimmed;
 
   /// The whole node, including live layers, frames and handle markers.
-  double get opacity => waiting ? 0.7 : 1.0;
+  double get opacity => dimmed
+      ? 0.3
+      : waiting
+      ? 0.7
+      : 1.0;
 
   Color tint(Color color) => color.withValues(alpha: color.a * opacity);
 
@@ -81,11 +87,12 @@ class NodeRunView {
   bool get isLoading => runningStatus == 'running' || singleRunningStatus == 'running';
 
   /// What the card itself draws (everything but the dimming, which the renderer applies to the whole node).
-  NodeRunView get forCard => waiting ? copyWith(waiting: false) : this;
+  NodeRunView get forCard => waiting || dimmed ? copyWith(waiting: false, dimmed: false) : this;
 
-  NodeRunView copyWith({bool? waiting}) => NodeRunView(
+  NodeRunView copyWith({bool? waiting, bool? dimmed}) => NodeRunView(
     runningStatus: runningStatus,
     waiting: waiting ?? this.waiting,
+    dimmed: dimmed ?? this.dimmed,
     singleRunningStatus: singleRunningStatus,
     hasVarValue: hasVarValue,
     iterationIndex: iterationIndex,
@@ -99,6 +106,7 @@ class NodeRunView {
       other is NodeRunView &&
       other.runningStatus == runningStatus &&
       other.waiting == waiting &&
+      other.dimmed == dimmed &&
       other.singleRunningStatus == singleRunningStatus &&
       other.hasVarValue == hasVarValue &&
       other.iterationIndex == iterationIndex &&
@@ -110,6 +118,7 @@ class NodeRunView {
   int get hashCode => Object.hash(
     runningStatus,
     waiting,
+    dimmed,
     singleRunningStatus,
     hasVarValue,
     iterationIndex,

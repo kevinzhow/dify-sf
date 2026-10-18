@@ -10,6 +10,7 @@ import '../../editor/editor_controller.dart';
 import '../../editor/undo_manager.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../ids.dart';
+import '../../workflow/node_used_vars.dart';
 import '../store/workflow_store.dart';
 import '../organize/workflow_organize.dart' show reactFlowSizeOf;
 import 'clipboard.dart';
@@ -199,6 +200,44 @@ class WorkflowActions {
   final WorkflowMenuOptions options;
 
   Document get doc => controller.doc;
+
+  /// Dify's Shift inspection: keep direct variable suppliers and downstream consumers bright; real edges dim,
+  /// temporary dashed edges show the data dependencies. No shared-document operations.
+  void dimOtherNodes() {
+    if (canvas.dimming.value != null) return;
+    final selected = doc.nodes[controller.selectedNodeId];
+    if (selected == null) return;
+    final upstream = {
+      for (final ref in getNodeUsedVars(selected))
+        if (ref.isNotEmpty && doc.nodes.containsKey(ref.first)) ref.first,
+    };
+    final reachable = <String>{selected.id};
+    final todo = [selected.id];
+    while (todo.isNotEmpty) {
+      final from = todo.removeLast();
+      for (final e in doc.edges.values) {
+        if (e.source == from && reachable.add(e.target)) todo.add(e.target);
+      }
+    }
+    final downstream = {
+      for (final n in doc.nodes.values)
+        if (n.id != selected.id &&
+            reachable.contains(n.id) &&
+            getNodeUsedVars(n).any((v) => v.isNotEmpty && v.first == selected.id))
+          n.id,
+    };
+    final bright = {...upstream, ...downstream, selected.id};
+    canvas.dimming.value = CanvasDimming(
+      nodes: {
+        for (final id in doc.nodes.keys)
+          if (!bright.contains(id)) id,
+      },
+      dependencies: [for (final id in upstream) (id, selected.id), for (final id in downstream) (selected.id, id)],
+    );
+  }
+
+  void undimAllNodes() => canvas.dimming.value = null;
+
   bool get chatMode => options.isChatMode;
   NodeMeta? metaOf(Node n) => nodeMetaOf(n.type, chatMode: chatMode);
 

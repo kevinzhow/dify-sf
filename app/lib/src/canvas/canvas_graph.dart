@@ -164,6 +164,9 @@ class CanvasGraph {
   EdgeStroke strokeOf(CanvasEdge e, {bool selected = false}) => customEdgeStroke(
     edgeRun[e.id] ?? EdgeRunView.idle,
     selected: selected,
+    dimmed: dimming && !e.id.startsWith('tmp_'),
+    isTemp: e.id.startsWith('tmp_'),
+    connectedNodeIsHovering: e.id.startsWith('tmp_') || hoveredNode == e.source || hoveredNode == e.target,
     isFailBranch: e.sourceHandle == 'fail-branch',
   );
 
@@ -174,7 +177,11 @@ class CanvasGraph {
   final _byId = <String, CanvasNode>{};
   final _free = <int>[];
   int _nextOrder = 0;
-  List<CanvasEdge> edges = const [];
+  List<CanvasEdge> _edges = const [];
+  List<CanvasEdge> temporaryEdges = const [];
+  List<CanvasEdge> get edges => temporaryEdges.isEmpty ? _edges : [..._edges, ...temporaryEdges];
+  bool dimming = false;
+  int? hoveredNode;
 
   /// Node ids being dragged locally: the document does not move them until the drag ends.
   final dragging = <String>{};
@@ -324,8 +331,8 @@ class CanvasGraph {
     List<Object> key(List<CanvasEdge> es) => [
       for (final e in es) (e.id, e.source, e.target, e.sourceHandle, e.targetHandle),
     ];
-    if (!listEquals(key(edges), key(this.edges))) {
-      this.edges = edges;
+    if (!listEquals(key(edges), key(_edges))) {
+      _edges = edges;
       change.edgesChanged = true;
     }
     if (change.added.isNotEmpty || change.removed.isNotEmpty || change.moved.isNotEmpty || change.resized.isNotEmpty) {
