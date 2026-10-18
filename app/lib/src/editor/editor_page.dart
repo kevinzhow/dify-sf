@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../auth/auth_api.dart';
 import '../auth/auth_controller.dart';
+import '../design/widgets/toast.dart';
 import '../online_events.dart';
 import '../session_factory.dart';
 import '../workflow_editor/dify_editor.dart';
@@ -232,7 +233,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     try {
       yaml = await widget.backend.exportDifyDsl(widget.docId, includeSecret: includeSecret);
     } on Object catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      if (context.mounted) toast.error('Export failed: $e');
       return;
     }
     if (!context.mounted) return;
@@ -258,7 +259,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
               await Clipboard.setData(ClipboardData(text: yaml));
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied the workflow file')));
+                toast.success('Copied the workflow file');
               }
             },
             child: const Text('Copy'),
