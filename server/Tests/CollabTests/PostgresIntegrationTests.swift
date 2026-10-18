@@ -303,6 +303,148 @@ struct PostgresIntegrationTests {
         }
     }
 
+    @Test func commentRoutesAuthorsRepliesResolveAndTheStreamNotification() async throws {
+        try await withStore { store, logger in
+            let registry = DocumentRegistry(store: store, config: ServerConfig.defaults, logger: logger)
+            try await withApp(configure: { app in
+                Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
+            }) { app in
+                try await app.testing { client in
+                    func json(_ text: String) throws -> [String: Value] {
+                        guard case .map(let m) = try WireJSON.decode(Value.self, from: Data(text.utf8)) else { return [:] }
+                        return m
+                    }
+                    func send(_ method: String, _ path: String, _ body: String? = nil) async throws -> (Int, [String: Value]) {
+                        func read(_ status: Int, _ text: String?) throws -> (Int, [String: Value]) {
+                            (status, status == 204 ? [:] : try json(text ?? ""))
+                        }
+                        switch method {
+                        case "GET":
+                            let res = try await client.get(.init(stringLiteral: path))
+                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
+                        case "DELETE":
+                            let res = try await client.delete(.init(stringLiteral: path))
+                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
+                        case "PUT":
+                            let res = try await client.put(.init(stringLiteral: path)) { if let body { $0.body = .init(string: body) } }
+                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
+                        default:
+                            let res = try await client.post(.init(stringLiteral: path)) { if let body { $0.body = .init(string: body) } }
+                            return try read(res.status.code, res.status.code == 204 ? nil : try await res.body.requireString())
+                        }
+                    }
+                    func errorCode(_ m: [String: Value]) -> Value? { if case .map(let e)? = m["error"] { return e["code"] }; return nil }
+                    func str(_ v: Value?) -> String { if case .string(let s)? = v { return s }; return "" }
+                    func list(_ v: Value?) -> [Value] { if case .list(let xs)? = v { return xs }; return [] }
+                    func obj(_ v: Value) -> [String: Value] { if case .map(let m) = v { return m }; return [:] }
+
+                    let doc = try await freshDoc(store)
+                    let base = "/v1/docs/\(doc)/comments"
+                    #expect(try await client.put("/v1/docs/\(doc)/clients/alice") { $0.body = .init(string: #"{"name":"Alice"}"#) }.status.code == 200)
+                    let seqr = await registry.sequencer(doc)
+                    let sub = try await seqr.subscribe(lastEventId: 0, maxReplay: 100)
+                    #expect(sub.head == 0)
+
+                    // Create: 201, server id, author and name, mentions filtered and deduplicated.
+                    let (s1, c1) = try await send("POST", base,
+                        #"{"client":"alice","position_x":120.5,"position_y":-40,"content":"check this","mentioned_client_ids":["bob","bob","bad id"]}"#)
+                    #expect(s1 == 201)
+                    let id1 = str(c1["id"])
+                    #expect(id1.count == 36 && c1["created_by"] == .string("alice") && c1["created_by_name"] == .string("Alice"))
+                    #expect(c1["position_x"] == .double(120.5) && c1["position_y"] == .int(-40))
+                    #expect(c1["resolved"] == .bool(false) && c1["reply_count"] == .int(0) && list(c1["replies"]).isEmpty)
+                    #expect(list(c1["mentions"]).map { obj($0)["client"] } == [.string("bob")])
+                    #expect(str(c1["created_at"]).hasSuffix("Z") && c1["resolved_by"] == nil)
+
+                    // A doc op in between: the comment did not take a seq.
+                    let op = try await seqr.submit(req("alice", [(1, 0, prompt("a", "edited"))]))
+                    #expect(op.results == [.ack(cseq: 1, seq: 1)])
+
+                    let (s2, c2) = try await send("POST", base, #"{"client":"bob","position_x":1,"position_y":2,"content":"second"}"#)
+                    #expect(s2 == 201)
+                    let id2 = str(c2["id"])
+
+                    // Validation (Dify's rules) and unknowns.
+                    #expect(try await send("POST", base, #"{"client":"bob","position_x":1,"position_y":2,"content":"   "}"#).0 == 400)
+                    let long = String(repeating: "x", count: 1001)
+                    #expect(try await send("POST", base, #"{"client":"bob","position_x":1,"position_y":2,"content":"\#(long)"}"#).0 == 400)
+                    #expect(try await send("POST", base, #"{"position_x":1,"position_y":2,"content":"no author"}"#).0 == 400)
+                    #expect(try await send("POST", base, #"{"client":"bob","content":"no position"}"#).0 == 400)
+                    #expect(try await send("GET", "/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/comments").0 == 404)
+                    let (s404, e404) = try await send("GET", "\(base)/no-such-comment")
+                    #expect(s404 == 404 && errorCode(e404) == .string("not_found"))
+
+                    // List: newest first, all of them.
+                    let (sl, l1) = try await send("GET", base)
+                    #expect(sl == 200 && list(l1["comments"]).map { str(obj($0)["id"]) } == [id2, id1])
+
+                    // Only the author edits or moves (Dify: only the creator may drag a pin).
+                    let (s403, e403) = try await send("PUT", "\(base)/\(id1)", #"{"client":"bob","content":"hijack"}"#)
+                    #expect(s403 == 403 && errorCode(e403) == .string("not_author"))
+                    #expect(try await send("PUT", "\(base)/\(id1)", #"{"client":"bob","position_x":0,"position_y":0}"#).0 == 403)
+                    #expect(try await send("DELETE", "\(base)/\(id1)?client=bob").0 == 403)
+                    #expect(try await send("PUT", "\(base)/no-such", #"{"client":"bob","content":"x"}"#).0 == 404)
+                    // A move without content keeps content and mentions; an explicit list replaces the mentions.
+                    let (sm, moved) = try await send("PUT", "\(base)/\(id1)", #"{"client":"alice","position_x":300,"position_y":400}"#)
+                    #expect(sm == 200 && moved["position_x"] == .int(300) && moved["content"] == .string("check this"))
+                    #expect(list(moved["mentions"]).count == 1)
+                    let (_, edited) = try await send("PUT", "\(base)/\(id1)", #"{"client":"alice","content":"check that","mentioned_client_ids":[]}"#)
+                    #expect(edited["content"] == .string("check that") && list(edited["mentions"]).isEmpty && edited["position_y"] == .int(400))
+
+                    // Replies: anyone; only the author edits/deletes; an omitted mention list clears (Dify).
+                    let (sr, r1) = try await send("POST", "\(base)/\(id1)/replies", #"{"client":"bob","content":"on it","mentioned_client_ids":["alice"]}"#)
+                    #expect(sr == 201 && r1["created_by"] == .string("bob") && list(r1["mentions"]).map { obj($0)["name"] } == [.string("Alice")])
+                    let rid = str(r1["id"])
+                    #expect(try await send("POST", "\(base)/\(id1)/replies", #"{"client":"alice","content":"thanks"}"#).0 == 201)
+                    #expect(try await send("POST", "\(base)/no-such/replies", #"{"client":"bob","content":"x"}"#).0 == 404)
+                    #expect(try await send("PUT", "\(base)/\(id1)/replies/\(rid)", #"{"client":"alice","content":"not yours"}"#).0 == 403)
+                    #expect(try await send("DELETE", "\(base)/\(id1)/replies/\(rid)?client=alice").0 == 403)
+                    let (su, r1b) = try await send("PUT", "\(base)/\(id1)/replies/\(rid)", #"{"client":"bob","content":"done"}"#)
+                    #expect(su == 200 && r1b["content"] == .string("done") && list(r1b["mentions"]).isEmpty)
+                    let (_, withReplies) = try await send("GET", "\(base)/\(id1)")
+                    #expect(withReplies["reply_count"] == .int(2) && list(withReplies["replies"]).map { obj($0)["content"] } == [.string("done"), .string("thanks")])
+                    #expect(try await send("DELETE", "\(base)/\(id1)/replies/\(rid)?client=bob").0 == 204)
+                    #expect(try await send("DELETE", "\(base)/\(id1)/replies/\(rid)?client=bob").0 == 404)
+
+                    // Resolve: anyone, idempotent (the first resolver and time stay).
+                    let (sv, res1) = try await send("POST", "\(base)/\(id1)/resolve", #"{"client":"bob"}"#)
+                    #expect(sv == 200 && res1["resolved"] == .bool(true) && res1["resolved_by"] == .string("bob") && res1["resolved_at"] != nil)
+                    let (sv2, res2) = try await send("POST", "\(base)/\(id1)/resolve", #"{"client":"alice"}"#)
+                    #expect(sv2 == 200 && res2["resolved_by"] == .string("bob") && res2["resolved_at"] == res1["resolved_at"])
+                    #expect(try await send("POST", "\(base)/no-such/resolve", #"{"client":"bob"}"#).0 == 404)
+                    // Resolved comments stay in the list.
+                    #expect(list(try await send("GET", base).1["comments"]).count == 2)
+
+                    // Comments are not part of the document: not in the snapshot nor the export.
+                    let snapText = try await client.get("/v1/docs/\(doc)/snapshot").body.requireString()
+                    let exportText = try await client.get("/v1/docs/\(doc)/export?format=json").body.requireString()
+                    #expect(!snapText.contains("check that") && !exportText.contains("check that"))
+
+                    // Delete (author): replies go with it.
+                    #expect(try await send("DELETE", "\(base)/\(id1)").0 == 400)  // no client
+                    #expect(try await send("DELETE", "\(base)/\(id1)?client=alice").0 == 204)
+                    #expect(try await send("GET", "\(base)/\(id1)").0 == 404)
+                    #expect(try await store.comment(doc, id: id1) == nil)
+                    #expect(list(try await send("GET", base).1["comments"]).map { str(obj($0)["id"]) } == [id2])
+
+                    // The stream: one `comments` frame per change (none for the no-op resolve), never with an id; the
+                    // commit in between kept its seq and is the only frame with an id.
+                    await seqr.unsubscribe(sub.id)
+                    var frames: [String] = []
+                    for await f in sub.live { frames.append(f) }
+                    func c(_ id: String, _ a: String) -> String { "event: comments\ndata: {\"action\":\"\(a)\",\"comment\":\"\(id)\"}\n\n" }
+                    let expected = [c(id1, "created")] + [try StreamEvent.commit(LogEntry(seq: 1, client: "alice", cseq: 1, base: 0,
+                                                                                          op: prompt("a", "edited"))).sseFrame()]
+                        + [c(id2, "created"), c(id1, "updated"), c(id1, "updated"), c(id1, "reply"), c(id1, "reply"), c(id1, "reply"),
+                           c(id1, "reply"), c(id1, "resolved"), c(id1, "deleted")]
+                    #expect(frames == expected)
+                    #expect(frames.filter { $0.contains("id: ") }.count == 1)
+                    #expect(try await store.documentHead(doc) == 1)
+                }
+            }
+        }
+    }
+
     @Test func staleRevisionWritesNothing() async throws {
         try await withStore { store, _ in
             let doc = try await freshDoc(store)

@@ -9,6 +9,9 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* Additive, no version change: **canvas comments** (Dify's workflow comments): `/v1/docs/{doc}/comments` endpoints beside
+  the document (section 2, "Comments") and a best-effort stream event `comments` without an `id:` (section 5). Clients that do
+  not use comments are unaffected (they ignore the unknown event). CORS now also allows `DELETE`.
 * 1.7 (additive; clients older than 1.7 are unaffected): **document-level registers** (`app`): Dify's environment
   variables, conversation variables and features live in the collaborative document instead of read-only import metadata.
   * The document gains a map `app` of registers (snapshot key `"app"`, omitted when empty). Ops address it through the
@@ -136,6 +139,11 @@ Transport conventions:
 | PUT | `/v1/docs/{doc}/clients/{client}` | Name (or rename) a client id: body `{"name":"Bo"}` (1.3). |
 | GET | `/v1/docs/{doc}/clients` | Name directory: `{"clients":{"<id>":"<name>"}}` (1.3). |
 | GET | `/v1/docs/{doc}/meta` | Dify app metadata (mode, name, variables, features): `200 {...}` (below), `404` if unknown. Optional, additive. |
+| GET, POST | `/v1/docs/{doc}/comments` | Canvas comments: list (`200 {"comments":[Comment...]}`), create (`201 Comment`). Additive (below). |
+| GET, PUT, DELETE | `/v1/docs/{doc}/comments/{id}` | One comment: read, edit/move (author only), delete (author only, `204`). |
+| POST | `/v1/docs/{doc}/comments/{id}/resolve` | Resolve (anyone, idempotent): `200 Comment`. |
+| POST | `/v1/docs/{doc}/comments/{id}/replies` | Reply (anyone): `201 Reply`. |
+| PUT, DELETE | `/v1/docs/{doc}/comments/{id}/replies/{rid}` | Edit (author only, `200 Reply`) or delete (author only, `204`) a reply. |
 | POST | `/v1/docs/{doc}/secrets` | 1.7. Store the plaintext of a secret environment variable: body `{"value":"..."}` -> `201 {"ref":"sec-<32 hex>","masked":"..."}` (below); `400` without a string `value`, `404` if the document is unknown. |
 | POST, PUT | `/v1/docs/import`, `/v1/docs/{doc}/import` | Create a document from a Dify workflow file (1.5). |
 | GET | `/v1/docs/{doc}/export` | The document as a Dify workflow file (YAML, or `?format=json`); secret environment variables are `""` unless `?include_secret=true` (1.7). |
@@ -189,11 +197,69 @@ secret stays `""` without a reference. `GET /v1/docs/{doc}/export` never writes 
 (Dify's default) unless `?include_secret=true` (Dify's option of the same name), which writes the stored plaintext (`""` for an
 unknown or missing reference). Stored secrets are never deleted, also not when the variable is removed.
 
+### Comments: `/v1/docs/{doc}/comments`
+
+Additive and optional (no protocol version change; clients that do not use it are unaffected). Canvas comments mirror Dify
+1.17.1's workflow comments (pins on the canvas with a thread of replies and @-mentions). They are a server resource **beside**
+the document: not part of it, not in the op log, snapshots, the stream's commits or the export (`GET /export`), and not undoable.
+
+Identity: there are no accounts. The **author** of a comment or reply is the client id that created it (`client` in the
+body, or `?client=` for `DELETE`); its name is the client's registered display name (1.3, `GET /clients`), looked up when the
+comment is read (so a rename shows everywhere). "Only the creator may edit or delete" means: the same client id. Mentions are
+client ids; the candidates are the name directory (`GET /clients`).
+
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| GET | `/comments` | - | `200 {"comments":[Comment...]}`: all of them, resolved ones included, newest first (Dify's order) |
+| GET | `/comments/{id}` | - | `200 Comment` |
+| POST | `/comments` | `{"client","position_x","position_y","content","mentioned_client_ids"?:[...]}` | `201 Comment` |
+| PUT | `/comments/{id}` | `{"client","content"?,"position_x"?,"position_y"?,"mentioned_client_ids"?}` | `200 Comment`; author only |
+| DELETE | `/comments/{id}?client=...` | - | `204`; author only; its replies go with it |
+| POST | `/comments/{id}/resolve` | `{"client"}` | `200 Comment`; anyone |
+| POST | `/comments/{id}/replies` | `{"client","content","mentioned_client_ids"?:[...]}` | `201 Reply`; anyone, also on a resolved comment |
+| PUT | `/comments/{id}/replies/{rid}` | `{"client","content","mentioned_client_ids"?}` | `200 Reply`; author only |
+| DELETE | `/comments/{id}/replies/{rid}?client=...` | - | `204`; author only |
+
+```json
+{"id": "0192f3a1-...", "position_x": 412.5, "position_y": 180, "content": "Should this be gpt-4o?",
+ "created_by": "s-3f9a...", "created_by_name": "Alice", "created_at": "2026-10-18T09:12:03.512Z", "updated_at": "2026-10-18T09:12:03.512Z",
+ "resolved": true, "resolved_by": "s-77c1...", "resolved_by_name": "Bo", "resolved_at": "2026-10-18T09:20:44.020Z",
+ "mentions": [{"client": "s-77c1...", "name": "Bo"}],
+ "replies": [{"id": "0192f3a4-...", "content": "Yes", "created_by": "s-77c1...", "created_by_name": "Bo",
+              "created_at": "...", "updated_at": "...", "mentions": []}],
+ "reply_count": 1}
+```
+
+* Field names follow Dify's `WorkflowCommentDetail` (`position_x`, `position_y`, `created_by`, `resolved_by`, ...). Positions are
+  canvas (flow) coordinates, JSON numbers (fractions allowed; this is not a document value). Times are ISO-8601 UTC with
+  milliseconds. Members ending in `_name` and `name` are present only when the client registered a display name; `resolved_by`,
+  `resolved_by_name` and `resolved_at` only on a resolved comment. Replies are oldest first.
+* Ids are server-generated UUIDs (version 7, as Dify).
+* `content`: Dify's rule: not blank (after trimming whitespace) and at most 1000 characters (Unicode scalars). Otherwise
+  `400 bad_request`; so is a missing or invalid `client`, a missing position on create, or a body of the wrong shape.
+* `mentioned_client_ids`: entries that are not valid client ids and duplicates are dropped (Dify keeps only valid ids, once,
+  in order); ids need not be in the directory (`name` is then absent).
+* `PUT /comments/{id}`: omitted fields stay as they are. Only the author may change anything, **also the position** (Dify lets
+  only the creator drag a pin); `content` may be omitted for a move (Dify always sends it). `mentioned_client_ids` omitted keeps
+  the mentions, a list (also `[]`) replaces them (Dify). `updated_at` changes.
+* `PUT /replies/{rid}`: `content` is required; the mentions are replaced by the list given, **an omitted list clears them**
+  (Dify's behaviour).
+* Resolve is idempotent as Dify's: resolving a resolved comment answers `200` with the comment unchanged (the first resolver
+  and time stay). There is no "unresolve" (Dify has none). Resolving changes `updated_at`.
+* Errors: `404 not_found` for an unknown document, comment or reply (a reply id is looked up within its comment); `403` with
+  code **`not_author`** when someone other than the author edits, moves or deletes a comment or reply:
+  `{"error":{"code":"not_author","message":"only the author may change or delete this comment"}}`.
+
+**Live updates.** After every change (create, edit/move, delete, resolve that changed something, reply created, edited or
+deleted) the server sends an `event: comments` on the document's event stream (section 5) to every stream of the document
+connected to the same server process. It is a notification only: clients refetch `GET /comments` (or the one comment). The
+REST list is the truth; clients must also refetch after every (re)connect of the stream, since notifications are not replayed.
+
 ### CORS
 
 Browser clients on another origin are supported. The server answers `OPTIONS` preflights itself and adds
 `Access-Control-Allow-Origin: <origin>` (never `*` unless configured so) and `Vary: Origin` to every response for an allowed origin.
-Allowed methods: `GET, POST, PUT, OPTIONS`; allowed request headers: `Content-Type, Accept, Last-Event-ID, Cache-Control`
+Allowed methods: `GET, POST, PUT, DELETE, OPTIONS`; allowed request headers: `Content-Type, Accept, Last-Event-ID, Cache-Control`
 (so `fetch`-based SSE with `Last-Event-ID` works; the native `EventSource` cannot send custom headers, use `?lastEventId=`);
 exposed response headers: `Content-Type`; preflight cache `Access-Control-Max-Age: 600`. Allowed origins are configured with
 `COLLAB_CORS_ALLOWED_ORIGINS` (comma separated; entries are exact origins, `scheme://host:*` for any port, or `*`). The default is
@@ -206,8 +272,9 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 
 | HTTP | code | Meaning | Client action |
 |---|---|---|---|
-| 400 | `bad_request` | Malformed JSON, bad ids, `ops` not strictly increasing in `cseq`, more than 100 ops, bad `Last-Event-ID`. | Bug in the client; do not retry the same body. |
-| 404 | `not_found` | Unknown document. | `PUT` it (if creation is intended) or give up. |
+| 400 | `bad_request` | Malformed JSON, bad ids, `ops` not strictly increasing in `cseq`, more than 100 ops, bad `Last-Event-ID`, invalid comment content. | Bug in the client; do not retry the same body. |
+| 403 | `not_author` | A comment or reply edited, moved or deleted by someone other than its author (comments). | Tell the user; do not retry. |
+| 404 | `not_found` | Unknown document (or comment, reply). | `PUT` it (if creation is intended) or give up. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |
 | 503 | `unavailable` | Database unavailable, or the commit outcome was uncertain. | Retry the identical request with backoff. **Safe**: ops are idempotent. |
 | 500 | `internal` | Server bug. | Retry with backoff. |
@@ -416,6 +483,9 @@ data: {"seq":400,"doc":Document,"committed":{"12":341}}
 event: ready
 data: {"head":400}
 
+event: comments
+data: {"action":"created","comment":"0192f3a1-..."}
+
 : ping
 ```
 
@@ -425,6 +495,11 @@ data: {"head":400}
   `cseq` (>= `from`) -> `seq` for ops committed at or before the snapshot.
 * `ready`: no `id`. Sent once after the catch-up part (snapshot or replay) has been delivered. `head` is the server head at
   subscription time. Everything after it is live.
+* `comments` (additive, no version change): no `id`. A canvas comment changed (section 2, "Comments"); `comment` is its id,
+  `action` one of `created`, `updated` (edited or moved), `deleted`, `resolved`, `reply` (a reply was created, edited or
+  deleted). It can arrive at any point, also before `ready`, and does not move the resume point: `Last-Event-ID` and `seq` are
+  unaffected, and hole detection ignores it. Best-effort: notifications are not stored or replayed, and reach only streams on
+  the server process that handled the change. Clients that do not use comments ignore it, as any unknown event name (SSE).
 * `: ping`: an SSE comment line, sent every **10 s** of silence (and regardless of traffic every 10 s). It keeps NATs and
   proxies open and lets the client detect dead connections (below). Clients ignore its content.
 

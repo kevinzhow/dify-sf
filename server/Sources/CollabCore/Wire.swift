@@ -492,3 +492,22 @@ extension StreamEvent {
         }
     }
 }
+
+// MARK: - Comments notification (additive, no version change)
+
+/// `event: comments` on the document stream: a canvas comment changed (docs/protocol.md, "Comments"). Best-effort: the
+/// frame has no `id:` line, so it never moves a client's resume point, and clients that do not know it ignore it
+/// (`StreamEvent.parse` returns nil). Receivers refetch `GET /comments` (or the one comment).
+public struct CommentsEvent: Hashable, Codable, Sendable {
+    public enum Action: String, Codable, Sendable { case created, updated, deleted, resolved, reply }
+    public var comment: String
+    public var action: Action
+    public init(comment: String, action: Action) {
+        self.comment = comment
+        self.action = action
+    }
+
+    public static let eventName = "comments"
+
+    public func sseFrame() throws -> String { "event: \(Self.eventName)\ndata: \(try WireJSON.encodeString(self))\n\n" }
+}

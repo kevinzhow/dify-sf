@@ -7,6 +7,10 @@ import Logging
 public enum ServerError: Error, Sendable {
     case badRequest(String)
     case notFound
+    /// 404 for something inside a known document (a comment, a reply); the message names it.
+    case missing(String)
+    /// 403 with a specific error code (`not_author`).
+    case forbidden(code: String, message: String)
     case payloadTooLarge
     /// Database unavailable or the commit outcome is uncertain: the client retries the identical request.
     case unavailable(String)
@@ -359,6 +363,20 @@ actor DocumentSequencer {
         subs[id]?.finish()
         subs[id] = nil
         legacySubs[id] = nil
+    }
+
+    /// Tells every stream of this process that a canvas comment changed (`event: comments`, no `id:`). Best-effort: it
+    /// neither loads the document nor touches `published`, so the commit stream and every resume point are unaffected.
+    /// Streams of every protocol version get it (clients that do not know the event ignore it).
+    func announceComment(_ event: CommentsEvent) {
+        guard !subs.isEmpty, let frame = try? event.sseFrame() else { return }
+        for (id, c) in subs {
+            if case .dropped = c.yield(frame) {
+                c.finish()
+                subs[id] = nil
+                legacySubs[id] = nil
+            }
+        }
     }
 
     func ping() {

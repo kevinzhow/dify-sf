@@ -9,6 +9,8 @@
 ///   a rejected op gets the original reason, also after a restart.
 /// * `snapshots` are checkpoints of the materialised document; recovery = latest snapshot + replay of `ops`.
 /// * `secrets` holds the plaintext of secret environment variables (protocol 1.7), never part of a document.
+/// * `comments` and `comment_replies` are canvas comments (additive, Dify's workflow comments): a resource beside the
+///   document, not part of it (no ops, no log, no snapshots, no export, no undo).
 public enum Schema {
     public static let statements: [String] = [
         """
@@ -88,6 +90,40 @@ public enum Schema {
             PRIMARY KEY (doc_id, ref)
         )
         """,
+        // Canvas comments (Dify's workflow_comments / workflow_comment_replies / workflow_comment_mentions). Mentions are client
+        // ids in order (Dify's mention rows). Authors are client ids; display names are looked up in `clients` when read.
+        """
+        CREATE TABLE IF NOT EXISTS comments (
+            doc_id      text             NOT NULL REFERENCES documents(id),
+            id          text             NOT NULL,
+            position_x  double precision NOT NULL,
+            position_y  double precision NOT NULL,
+            content     text             NOT NULL,
+            created_by  text             NOT NULL,
+            created_at  timestamptz      NOT NULL DEFAULT now(),
+            updated_at  timestamptz      NOT NULL DEFAULT now(),
+            resolved    boolean          NOT NULL DEFAULT false,
+            resolved_by text,
+            resolved_at timestamptz,
+            mentions    text[]           NOT NULL DEFAULT '{}',
+            PRIMARY KEY (doc_id, id)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS comment_replies (
+            doc_id     text        NOT NULL,
+            comment_id text        NOT NULL,
+            id         text        NOT NULL,
+            content    text        NOT NULL,
+            created_by text        NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            updated_at timestamptz NOT NULL DEFAULT now(),
+            mentions   text[]      NOT NULL DEFAULT '{}',
+            PRIMARY KEY (doc_id, id),
+            FOREIGN KEY (doc_id, comment_id) REFERENCES comments (doc_id, id) ON DELETE CASCADE
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS comment_replies_by_comment ON comment_replies (doc_id, comment_id, created_at)",
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",

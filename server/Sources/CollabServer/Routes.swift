@@ -36,19 +36,22 @@ struct Routes: Sendable {
         r.put("v1", "docs", ":doc", "clients", ":client") { req in await handle(req) { try await nameClient(req, try docId(req)) } }
         r.post("v1", "docs", ":doc", "ops") { req in await handle(req) { try await submit(req, doc: try docId(req)) } }
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
+        registerComments(on: r)
     }
 
     // MARK: - Plumbing
 
     /// Runs the handler in its own unstructured task: a client that hangs up (timeout, reset, retry) must not
     /// cancel work that is half-way through the database (a cancelled COMMIT is an uncertain commit).
-    private func handle(_ req: Request, _ body: @escaping @Sendable () async throws -> Response) async -> Response {
+    func handle(_ req: Request, _ body: @escaping @Sendable () async throws -> Response) async -> Response {
         do {
             return try await Task { try await body() }.value
         } catch let e as ServerError {
             switch e {
             case .badRequest(let m): return error(.badRequest, "bad_request", m)
             case .notFound: return error(.notFound, "not_found", "unknown document")
+            case .missing(let m): return error(.notFound, "not_found", m)
+            case .forbidden(let code, let m): return error(.forbidden, code, m)
             case .payloadTooLarge: return error(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes")
             case .unavailable(let m):
                 logger.warning("503: \(m)")
@@ -63,7 +66,7 @@ struct Routes: Sendable {
         }
     }
 
-    private func json<T: Encodable>(_ value: T, status: HTTPResponse.Status = .ok) throws -> Response {
+    func json<T: Encodable>(_ value: T, status: HTTPResponse.Status = .ok) throws -> Response {
         let data = try WireJSON.encode(value)
         var headers = HTTPFields()
         headers[.contentType] = "application/json"
@@ -78,7 +81,7 @@ struct Routes: Sendable {
         return Response(status: status, headers: headers, body: .init(data: data))
     }
 
-    private func docId(_ req: Request) throws -> String {
+    func docId(_ req: Request) throws -> String {
         guard let id = req.parameters.get("doc"), Self.validDocId(id) else { throw ServerError.badRequest("invalid document id") }
         return id
     }
@@ -93,7 +96,7 @@ struct Routes: Sendable {
         }
     }
 
-    private func query(_ req: Request) -> [String: String] {
+    func query(_ req: Request) -> [String: String] {
         var out: [String: String] = [:]
         guard let q = req.url.query else { return out }
         for pair in q.split(separator: "&") {
@@ -105,7 +108,7 @@ struct Routes: Sendable {
         return out
     }
 
-    private func body(_ req: Request) async throws -> Data {
+    func body(_ req: Request) async throws -> Data {
         try await req.body.collect(max: .specified(ByteCount(value: Self.maxBodyBytes))) ?? Data()
     }
 
@@ -233,7 +236,7 @@ struct Routes: Sendable {
         return name
     }
 
-    private func requireDoc(_ doc: String) async throws {
+    func requireDoc(_ doc: String) async throws {
         let head: Int?
         do { head = try await store.documentHead(doc) } catch { throw ServerError.unavailable("\(error)") }
         guard head != nil else { throw ServerError.notFound }

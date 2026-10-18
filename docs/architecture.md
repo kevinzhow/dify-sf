@@ -77,6 +77,8 @@ no-ops that succeed; layout is last-writer-wins; list items have stable ids so d
 rewrites references into explicit `$broken` markers; restoring it (1.6, undo) turns them back and counts as a write of the whole
 node, so writes based on a version before the restore are stale. Dify's environment variables, conversation variables and
 features are document-level registers (1.7, node id `$app`) under the same rules; secret values stay in a server-side table.
+Canvas comments (Dify's workflow comments) are not part of the document at all: plain REST resources in their own tables
+(author = client id, only the author edits), announced on the document's stream by an `event: comments` without an `id`.
 
 ## Testing strategy
 
