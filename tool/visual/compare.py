@@ -1,6 +1,7 @@
 """Visual comparison: the same Dify workflow file in Dify Web (the specification) and in our web build.
 
   tool/visual/.venv/bin/python tool/visual/compare.py [--cases tool/visual/cases.json] [--only ID,...] [--out DIR]
+                                                     [--theme light|dark]
 
 Needs, while it runs (start them only for the run):
   * a local Dify 1.17.1 at $DIFY_URL (default http://localhost) and an account: $DIFY_EMAIL, $DIFY_PASSWORD
@@ -17,6 +18,11 @@ the canvas's top-left corner) is captured. Results go to DIR/visual-testing-resu
 layout alignment_audit.py reads; react = Dify, android = ours) plus a pixel-difference summary in DIR/report.md.
 --reuse-dify keeps the Dify captures of an earlier run in DIR (with the viewport Dify showed) and re-shoots ours
 only: Dify need not run.
+
+--theme dark: the cases marked "dark": true only, both sides in the dark theme: both browsers prefer a dark colour
+scheme (prefers-color-scheme), Dify is told so as its theme switch stores it (localStorage `theme`, next-themes) and
+ours by `&theme=dark` on its URL; the results go to build/visual-dark unless --out says otherwise (so light and dark
+captures never mix). The default, light, is the browsers' default scheme and Dify's default theme (system).
 
 Cases beyond the canvas (cases.json):
   * "steps": what a user does after the editor opened, done in Dify by element (Playwright locators) and replayed in
@@ -49,6 +55,8 @@ SF = os.environ.get('DIFYSF_URL', 'http://127.0.0.1:18080')
 EXTRA = os.environ.get('OURS_QUERY', '')
 # Device pixel ratio of both browsers: 2, the acceptance screen's (mibook).
 DSF = float(os.environ.get('VISUAL_DSF', '2'))
+# The theme of both sides (--theme): 'light' (the browsers' default colour scheme) or 'dark'.
+THEME = 'light'
 
 
 class Browsers:
@@ -64,6 +72,8 @@ class Browsers:
         if size not in self.browsers:
             self.browsers[size] = self.playwright.chromium.launch(
                 args=[f'--force-device-scale-factor={DSF:g}', f'--window-size={size[0]},{size[1]}'])
+        if THEME == 'dark':
+            return self.browsers[size].new_context(no_viewport=True, color_scheme='dark')
         return self.browsers[size].new_context(no_viewport=True)
 
     def close(self):
@@ -295,6 +305,9 @@ def fill(text, invite):
 
 def capture_dify(browsers, s, app_id, case, out, invite=None):
     ctx = browsers.context(*case['window'])
+    if THEME == 'dark':
+        # Dify's theme switch (next-themes: localStorage `theme`, light | dark | system), set before the app starts.
+        ctx.add_init_script("localStorage.setItem('theme', 'dark')")
     pg_case = case.get('page')
     if not pg_case or pg_case.get('signedIn', True):
         ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies])
@@ -406,9 +419,11 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
     page.on('console', lambda m: bars.append(m.text) if m.text.startswith('NODE_CONTROL ') else None)
     log = []
     page.on('console', lambda m: log.append(m.text) if m.text.startswith('VISUAL_') else None)
+    theme = '&theme=dark' if THEME == 'dark' else ''
     if pg_case:
         query = fill(pg_case.get('ours', ''), invite)
-        page.goto(f'{base}/?server={SF}&visual=1' + (f'&{query}' if query else '') + (f'&{EXTRA}' if EXTRA else ''))
+        page.goto(f'{base}/?server={SF}&visual=1' + (f'&{query}' if query else '') + (f'&{EXTRA}' if EXTRA else '')
+                  + theme)
         page.wait_for_selector('flutter-view', timeout=60000)
         page.wait_for_load_state('networkidle')
         page.wait_for_timeout(3000)  # the first frames, fonts, the page's own requests
@@ -416,7 +431,8 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
     else:
         x, y, z = viewport
         select = f'&select={case["select"]}' if case.get('select') else ''
-        page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else ''))
+        page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else '')
+                  + theme)
         t0 = time.time()
         while not rect and time.time() - t0 < 60:
             page.wait_for_timeout(200)
@@ -495,17 +511,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--cases', default=str(ROOT / 'tool/visual/cases.json'))
     ap.add_argument('--only')
-    ap.add_argument('--out', default=str(ROOT / 'build/visual'))
+    ap.add_argument('--out', help='default build/visual (light) or build/visual-dark (dark)')
+    ap.add_argument('--theme', choices=('light', 'dark'), default='light',
+                    help='dark: the cases marked "dark" only, both sides in the dark theme')
     ap.add_argument('--reuse-dify', action='store_true',
                     help="reuse the Dify captures already in --out (no Dify needed): re-shoot ours only")
     ap.add_argument('--reuse-dify-from', metavar='DIR',
                     help='--reuse-dify with the Dify captures of DIR (copied into --out), e.g. the widget renderer '
                          'against the captures the scene renderer was compared with')
     a = ap.parse_args()
+    global THEME
+    THEME = a.theme
     cases = json.loads(pathlib.Path(a.cases).read_text())
+    if THEME == 'dark':
+        cases = [c for c in cases if c.get('dark')]
     if a.only:
         cases = [c for c in cases if c['id'] in a.only.split(',')]
-    out = pathlib.Path(a.out)
+    out = pathlib.Path(a.out or ROOT / ('build/visual-dark' if THEME == 'dark' else 'build/visual'))
     (out / 'visual-testing-results/react').mkdir(parents=True, exist_ok=True)
     (out / 'visual-testing-results/android').mkdir(parents=True, exist_ok=True)
     (out / 'diff').mkdir(exist_ok=True)
@@ -570,6 +592,7 @@ def main():
         browsers.close()
     server.shutdown()
     (out / 'report.md').write_text(
+        f'Theme: {THEME}\n\n'
         '| case | non-text pixels within 16/255 (pass: 99.5%) | all pixels |\n|---|---|---|\n'
         + ''.join(f'| {i} | {n * 100:.2f}% | {v * 100:.2f}% |\n' for i, n, v in rows))
 
