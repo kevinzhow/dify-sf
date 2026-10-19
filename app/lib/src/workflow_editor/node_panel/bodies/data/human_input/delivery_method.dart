@@ -530,7 +530,7 @@ class _MethodItemState extends State<MethodItem> {
                       size: DifyButtonSize.small,
                       disabled: w.readonly,
                       onPressed: _configure,
-                      trailing: const HiStatusDot(),
+                      trailing: const DifyStatusDot(status: DifyStatusDotStatus.warning),
                       child: Text(hi('deliveryMethod.notConfigured')),
                     ),
                   ),

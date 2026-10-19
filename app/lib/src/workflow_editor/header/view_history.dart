@@ -203,7 +203,7 @@ class _HistoryPanel extends StatelessWidget {
               ),
             ),
             if (loading)
-              const SizedBox(height: 40, child: Center(child: HeaderLoading()))
+              const SizedBox(height: 40, child: DifyLoading())
             else
               Flexible(
                 child: SingleChildScrollView(

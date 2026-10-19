@@ -328,20 +328,23 @@ class _ParameterItemState extends State<ParameterItem> {
           ],
         );
       case 'boolean':
+        // RadioGroup `w-37.5 gap-3` of Radios in `flex w-17.5 items-center gap-1.5` FieldLabels.
         return SizedBox(
           width: 150,
-          child: Semantics(
+          child: DifyRadioGroup<bool>(
             label: label,
-            container: true,
-            child: Row(
-              spacing: 12,
-              children: [
-                for (final (v, text) in const [(true, 'True'), (false, 'False')])
-                  Flexible(
-                    child: _Radio(label: text, checked: value == v, onTap: () => _input(v)),
+            value: value is bool ? value : null,
+            spacing: 12,
+            onValueChange: _input,
+            children: [
+              for (final (v, text) in const [(true, 'True'), (false, 'False')])
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 70),
+                    child: DifyRadio<bool>(value: v, label: text),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         );
       case 'string' when r.options.isEmpty:
@@ -547,47 +550,6 @@ class _EditorBox extends StatelessWidget {
       onChange: onChange,
       semanticLabel: label,
       workflowVariableBlock: WorkflowVariableBlockConfig(show: true, variables: vars, workflowNodesMap: nodes),
-    ),
-  );
-}
-
-/// A dify-ui Radio with its label (`flex w-17.5 items-center gap-1.5 system-sm-regular text-text-secondary`).
-class _Radio extends StatelessWidget {
-  const _Radio({required this.label, required this.checked, required this.onTap});
-  final String label;
-  final bool checked;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => DifyPressable(
-    semanticLabel: label,
-    onPressed: onTap,
-    builder: (context, hovered, focused) => Semantics(
-      checked: checked,
-      inMutuallyExclusiveGroup: true,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 70),
-        child: Row(
-          spacing: 6,
-          children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: DifyColors.componentsCheckboxBgUnchecked,
-                border: Border.all(
-                  color: checked
-                      ? DifyColors.componentsCheckboxBg
-                      : (hovered ? DifyColors.componentsCheckboxBorderHover : DifyColors.componentsCheckboxBorder),
-                  width: checked ? 5 : 1,
-                ),
-              ),
-            ),
-            Flexible(child: DifyText(label, DifyType.systemSmRegular, color: DifyColors.textSecondary)),
-          ],
-        ),
-      ),
     ),
   );
 }

@@ -212,7 +212,7 @@ class _KbOptionCardState extends State<KbOptionCard> {
                               ],
                             ),
                           ),
-                          if (w.enableRadio) ...[const SizedBox(width: 8), KbRadio(checked: active)],
+                          if (w.enableRadio) ...[const SizedBox(width: 8), DifyRadioControl(checked: active)],
                         ],
                       ),
                       if (w.description != null && w.description!.isNotEmpty)
@@ -275,29 +275,6 @@ class _KbOptionCardState extends State<KbOptionCard> {
       ),
     );
   }
-}
-
-/// dify-ui's RadioControl: a 16 px circle, `border-[5px] border-components-radio-border-checked` when [checked].
-class KbRadio extends StatelessWidget {
-  const KbRadio({super.key, required this.checked, this.disabled = false});
-  final bool checked, disabled;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 16,
-    height: 16,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: disabled ? DifyColors.componentsRadioBgDisabled : DifyColors.componentsRadioBg,
-      border: Border.all(
-        color: checked
-            ? (disabled ? DifyColors.componentsRadioBorderCheckedDisabled : DifyColors.componentsRadioBorderChecked)
-            : (disabled ? DifyColors.componentsRadioBorderDisabled : DifyColors.componentsRadioBorder),
-        width: checked ? 5 : 1,
-      ),
-      boxShadow: [BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: DifyColors.shadowShadow3)],
-    ),
-  );
 }
 
 // ---- NumberField with controls -----------------------------------------------------------------------------------

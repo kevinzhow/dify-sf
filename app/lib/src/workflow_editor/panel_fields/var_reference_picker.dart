@@ -529,7 +529,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spinner = _Spin(child: RemixIcon('loader-4-line', size: 14, color: DifyColors.textSecondary));
+    final spinner = DifySpinnerIcon(child: RemixIcon('loader-4-line', size: 14, color: DifyColors.textSecondary));
     if (!hasValue) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -621,28 +621,6 @@ class _Pill extends StatelessWidget {
       ),
     );
   }
-}
-
-/// `animate-spin`.
-class _Spin extends StatefulWidget {
-  const _Spin({required this.child});
-  final Widget child;
-
-  @override
-  State<_Spin> createState() => _SpinState();
-}
-
-class _SpinState extends State<_Spin> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
 }
 
 /// PreviewCard: [card] shown below [child] while the mouse rests on it (300 ms in, 200 ms out) or after a long

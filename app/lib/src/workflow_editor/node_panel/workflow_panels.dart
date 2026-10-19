@@ -265,87 +265,37 @@ Future<bool> confirmNodeDelete(
   List<({String node, FieldKey field, OutputRef ref, bool broken})> refs,
 ) async {
   final n = refs.length;
-  final ok = await showGeneralDialog<bool>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: DifyColors.backgroundOverlay,
-    transitionDuration: difyTransitionDuration,
-    transitionBuilder: (context, animation, _, child) {
-      final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-      return FadeTransition(
-        opacity: a,
-        child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-      );
-    },
-    pageBuilder: (context, _, _) => Center(
-      child: Container(
-        key: const Key('delete-dialog'),
-        width: 480,
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.xxl),
-          boxShadow: DifyShadows.xl,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 8,
-                  children: [
-                    DifyText(
-                      'Delete ${controller.titleOf(nodeId)}?',
-                      DifyType.title2xlSemiBold,
-                      maxLines: null,
-                    ),
-                    DifyText(
-                      'Its connections will be removed, and $n reference${n == 1 ? '' : 's'} to it will be marked '
-                      'as broken:',
-                      DifyType.systemMdRegular,
-                      color: DifyColors.textSecondary,
-                      maxLines: null,
-                    ),
-                    for (final r in refs)
-                      DifyText(
-                        '• ${controller.titleOf(r.node)} › ${fieldLabel(r.field)}  (${r.ref.node}.${r.ref.output})',
-                        DifyType.systemSmRegular,
-                        color: DifyColors.textSecondary,
-                        maxLines: null,
-                      ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  spacing: 8,
-                  children: [
-                    DifyButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(DifyI18n.tr('common', 'operation.cancel')),
-                    ),
-                    DifyButton(
-                      key: const Key('confirm-delete'),
-                      variant: DifyButtonVariant.primary,
-                      tone: DifyButtonTone.destructive,
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(DifyI18n.tr('common', 'operation.delete')),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+  final ok = await showDifyAlertDialog<bool>(
+    context,
+    dismissible: true,
+    builder: (context) => DifyAlertDialog(
+      surfaceKey: const Key('delete-dialog'),
+      bordered: false,
+      shadow: DifyShadows.xl,
+      title: 'Delete ${controller.titleOf(nodeId)}?',
+      titleMaxLines: null,
+      description:
+          'Its connections will be removed, and $n reference${n == 1 ? '' : 's'} to it will be marked as broken:',
+      descriptionColor: DifyColors.textSecondary,
+      extra: refs.isEmpty
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                for (final r in refs)
+                  DifyText(
+                    '• ${controller.titleOf(r.node)} › ${fieldLabel(r.field)}  (${r.ref.node}.${r.ref.output})',
+                    DifyType.systemSmRegular,
+                    color: DifyColors.textSecondary,
+                    maxLines: null,
+                  ),
+              ],
+            ),
+      confirmKey: const Key('confirm-delete'),
+      confirmLabel: DifyI18n.tr('common', 'operation.delete'),
+      onCancel: () => Navigator.pop(context, false),
+      onConfirm: () => Navigator.pop(context, true),
     ),
   );
   return ok ?? false;

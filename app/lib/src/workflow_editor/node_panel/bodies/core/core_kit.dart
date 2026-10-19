@@ -3,8 +3,6 @@
 /// scope (`NodeVars`) are the shared `node_panel/panel_edit.dart`'s.
 library;
 
-import 'dart:async';
-
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
@@ -248,87 +246,10 @@ Future<void> showRemoveEffectVarConfirm(
   final ok = await showDifyConfirm(
     context,
     title: tw('common.effectVarConfirm.title'),
-    content: tw('common.effectVarConfirm.content'),
+    description: tw('common.effectVarConfirm.content'),
+    dismissible: true,
   );
   (ok ? onConfirm : onCancel)?.call();
-}
-
-/// dify-ui's AlertDialog with Cancel / Confirm (`w-120 rounded-2xl p-6`, title `title-2xl-semi-bold`, content
-/// `system-md-regular text-text-tertiary`, actions right aligned): true when confirmed.
-Future<bool> showDifyConfirm(BuildContext context, {required String title, String? content}) async {
-  final overlay = Overlay.of(context, rootOverlay: true);
-  final done = Completer<bool>();
-  late final OverlayEntry entry;
-  void close(bool v) {
-    entry.remove();
-    done.complete(v);
-  }
-
-  entry = OverlayEntry(
-    builder: (context) => _ConfirmDialog(title: title, content: content, onClose: close),
-  );
-  overlay.insert(entry);
-  return done.future;
-}
-
-class _ConfirmDialog extends StatelessWidget {
-  const _ConfirmDialog({required this.title, required this.content, required this.onClose});
-  final String title;
-  final String? content;
-  final ValueChanged<bool> onClose;
-
-  @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      Positioned.fill(
-        child: GestureDetector(
-          onTap: () => onClose(false),
-          child: ColoredBox(color: DifyColors.backgroundOverlay),
-        ),
-      ),
-      Center(
-        child: Container(
-          width: 480,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: DifyColors.componentsPanelBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-            boxShadow: DifyShadows.xl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
-              if (content != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(content!, style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary)),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(top: 24),
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    DifyButton(onPressed: () => onClose(false), child: Text(tc('operation.cancel'))),
-                    DifyButton(
-                      variant: DifyButtonVariant.primary,
-                      tone: DifyButtonTone.destructive,
-                      onPressed: () => onClose(true),
-                      child: Text(tc('operation.confirm')),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ],
-  );
 }
 
 // ---- variable lists (Dify's `Variable[]`) ------------------------------------------------------------------------

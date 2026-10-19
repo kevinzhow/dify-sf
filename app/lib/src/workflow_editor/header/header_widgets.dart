@@ -40,37 +40,8 @@ class HeaderPressable extends StatelessWidget {
   );
 }
 
-/// `animate-spin` (1 s per turn) on [child].
-class Spinning extends StatefulWidget {
-  const Spinning({super.key, required this.child});
-  final Widget child;
-
-  @override
-  State<Spinning> createState() => _SpinningState();
-}
-
-class _SpinningState extends State<Spinning> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
-}
-
-/// Dify's base Loading in a popup: a spinning `i-ri-loader-2-line`.
-class HeaderLoading extends StatelessWidget {
-  const HeaderLoading({super.key});
-
-  @override
-  Widget build(BuildContext context) => Spinning(
-    child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
-  );
-}
+/// The old name of [DifySpinnerIcon], kept for workflow_editor/run/ (owned by the runtime work; switch it there).
+typedef Spinning = DifySpinnerIcon;
 
 /// The workflow chrome's vertical divider (`Divider type="vertical" className="h-3.5"`, `mx-2` from the Divider's
 /// own `mx-2`, overridden to `mx-auto` in the header row, i.e. no margin there).

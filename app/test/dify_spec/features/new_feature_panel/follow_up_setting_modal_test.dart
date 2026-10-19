@@ -1,6 +1,5 @@
 // dify-spec: web/app/components/base/features/new-feature-panel/__tests__/follow-up-setting-modal.spec.tsx
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/knowledge_base/kb_widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +28,7 @@ ModelParameterModal parameters(WidgetTester t) => t.widget<ModelParameterModal>(
 
 /// The option card holding [pattern]'s text, and whether its radio is checked (`data-checked`).
 bool checked(WidgetTester t, String pattern) => t
-    .widget<KbRadio>(
+    .widget<DifyRadioControl>(
       find.descendant(
         of: find
             .ancestor(
@@ -37,10 +36,10 @@ bool checked(WidgetTester t, String pattern) => t
               matching: find.byWidgetPredicate((w) => w is Semantics && w.properties.checked != null),
             )
             .first,
-        matching: find.byType(KbRadio),
+        matching: find.byType(DifyRadioControl),
       ),
     )
-    .checked;
+    .checked!;
 
 const defaultOption = r'modal\.defaultPromptOption$';
 const customOption = r'modal\.customPromptOption$';

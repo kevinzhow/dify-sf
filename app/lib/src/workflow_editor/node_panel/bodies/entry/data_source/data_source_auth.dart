@@ -74,19 +74,7 @@ class AuthorizedInDataSourceNode extends StatelessWidget {
   Widget build(BuildContext context) => DifyButton(
     size: DifyButtonSize.small,
     onPressed: onJumpToDataSourcePage,
-    leading: Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: DifyColors.componentsBadgeStatusLightSuccessBg,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: DifyColors.componentsBadgeStatusLightSuccessBorderInner),
-        boxShadow: [
-          BoxShadow(color: DifyColors.componentsBadgeStatusLightSuccessHalo, offset: Offset(0, 2), blurRadius: 6),
-          BoxShadow(color: DifyColors.componentsBadgeStatusLightBorderOuter, spreadRadius: 1),
-        ],
-      ),
-    ),
+    leading: const DifyStatusDot(),
     trailing: RemixIcon('equalizer-2-line', size: 14, color: DifyColors.componentsButtonGhostText),
     child: Text(DifyI18n.tr('plugin', authorizationsNum > 1 ? 'auth.authorizations' : 'auth.authorization')),
   );

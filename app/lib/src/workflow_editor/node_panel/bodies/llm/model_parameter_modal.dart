@@ -394,7 +394,7 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
                                 ],
                               ),
                               if (loading)
-                                const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: ModelLoading())
+                                const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: DifyLoading())
                               else
                                 for (final r in [...rules, if (w.isAdvancedMode) stopParameterRule])
                                   ParameterItem(
@@ -413,7 +413,7 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
                       if (rules.isEmpty && loading)
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                          child: ModelLoading(),
+                          child: DifyLoading(),
                         ),
                     ],
                   ),
@@ -502,34 +502,4 @@ class ModelSettingsTrigger extends StatelessWidget {
     );
     return DifyTooltip(disabled: disabled, content: Text(label), child: button);
   }
-}
-
-/// Loading (base/loading): the spinner Dify shows while the rules load, announced as a status.
-class ModelLoading extends StatefulWidget {
-  const ModelLoading({super.key});
-
-  @override
-  State<ModelLoading> createState() => _ModelLoadingState();
-}
-
-class _ModelLoadingState extends State<ModelLoading> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    liveRegion: true,
-    label: DifyI18n.tr('common', 'loading'),
-    child: Center(
-      child: RotationTransition(
-        turns: _c,
-        child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
-      ),
-    ),
-  );
 }

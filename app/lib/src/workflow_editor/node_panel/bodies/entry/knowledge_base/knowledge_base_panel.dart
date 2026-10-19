@@ -1232,7 +1232,7 @@ class _HybridModeCard extends StatelessWidget {
               const SizedBox(width: 8),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: KbRadio(checked: checked, disabled: readonly),
+                child: DifyRadioControl(checked: checked, disabled: readonly),
               ),
             ],
           ),

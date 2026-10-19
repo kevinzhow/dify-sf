@@ -4,7 +4,6 @@ import '../../design/css_metrics.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../design/dify_icon.dart';
-import '../header/header_widgets.dart' show Spinning;
 import '../operator/actions.dart' show OperatorReadOnly;
 import 'inspect_vars.dart';
 import '../../design/widgets/widgets.dart';
@@ -42,7 +41,7 @@ class VariableInspectTrigger extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 4,
                   children: [
-                    Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+                    DifySpinner(size: 16, color: DifyColors.textAccent),
                     DifyText(
                       DifyI18n.tr('workflow', 'debug.variableInspect.trigger.running'),
                       DifyType.systemXsMedium,

@@ -10,7 +10,7 @@ import '../../canvas/canvas_controller.dart';
 import '../../canvas/canvas_input.dart' show ControlMode;
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
-import '../node_panel/bodies/core/core_kit.dart' show showDifyConfirm;
+import '../../design/widgets/widgets.dart' show showDifyConfirm;
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
 import 'comment_icon.dart';
@@ -169,7 +169,7 @@ class _CommentLayerState extends State<CommentLayer> {
   }
 
   Future<void> _confirmDelete(String title, String desc, Future<void> Function() run) async {
-    if (await showDifyConfirm(context, title: tw(title), content: tw(desc))) await run();
+    if (await showDifyConfirm(context, title: tw(title), description: tw(desc), dismissible: true)) await run();
   }
 
   @override

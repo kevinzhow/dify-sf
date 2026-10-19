@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
-import '../node_panel/bodies/entry/knowledge_base/kb_widgets.dart' show KbRadio;
 import '../node_panel/bodies/llm/group_host.dart';
 import '../node_panel/bodies/llm/model_parameter_modal.dart';
 import 'features_services.dart';
@@ -185,7 +184,7 @@ class _FollowUpSettingModalState extends State<FollowUpSettingModal> {
                   ],
                 ),
               ),
-              KbRadio(checked: checked),
+              DifyRadioControl(checked: checked),
             ],
           ),
           if (checked) Padding(padding: const EdgeInsets.only(top: 12), child: body),

@@ -990,7 +990,7 @@ class FeaturedSection extends StatelessWidget {
               if (isLoading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(child: _Spinner()),
+                  child: DifyLoading(app: true),
                 ),
               if (!isLoading && totalVisible == 0)
                 Padding(
@@ -1016,13 +1016,6 @@ class FeaturedSection extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Spinner extends StatelessWidget {
-  const _Spinner();
-  @override
-  Widget build(BuildContext context) =>
-      SizedBox.square(dimension: 16, child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary));
 }
 
 class _ShowMoreButton extends StatelessWidget {

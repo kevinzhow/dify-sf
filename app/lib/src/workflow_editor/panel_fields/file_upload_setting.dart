@@ -3,10 +3,7 @@
 /// the human input form use it.
 library;
 
-import 'dart:ui' show SemanticsRole;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -174,10 +171,10 @@ class FileUploadSetting extends StatelessWidget {
   }
 }
 
-/// The upload methods (`RadioGroup` of `h-8 rounded-md border px-2 system-sm-regular` items, the checked one
-/// `border-[1.5px]` in the selected colours with `shadow-xs`): one tab stop (the checked item, else the first); the
-/// arrow keys move to the next or previous item and check it, wrapping around.
-class UploadMethodRadioGroup extends StatefulWidget {
+/// The upload methods: a [DifyRadioGroup] of RadioItems (`flex h-8 w-full items-center justify-center rounded-md border
+/// px-2 system-sm-regular` in the option-card colours, hover border, background and `shadow-xs`; checked
+/// `border-[1.5px]` in the selected colours with `shadow-xs`; `focus-visible:ring-2`).
+class UploadMethodRadioGroup extends StatelessWidget {
   const UploadMethodRadioGroup({
     super.key,
     required this.label,
@@ -192,131 +189,52 @@ class UploadMethodRadioGroup extends StatefulWidget {
   final ValueChanged<String> onChange;
 
   @override
-  State<UploadMethodRadioGroup> createState() => _UploadMethodRadioGroupState();
-}
-
-class _UploadMethodRadioGroupState extends State<UploadMethodRadioGroup> {
-  late List<FocusNode> _nodes = _make();
-  final _hovered = <int>{};
-
-  List<FocusNode> _make() => [
-    for (final (i, _) in widget.options.indexed)
-      FocusNode(debugLabel: 'upload method $i', onKeyEvent: (_, e) => _onKey(i, e)),
-  ];
-
-  @override
-  void didUpdateWidget(UploadMethodRadioGroup old) {
-    super.didUpdateWidget(old);
-    if (old.options.length != widget.options.length) {
-      for (final n in _nodes) {
-        n.dispose();
-      }
-      _nodes = _make();
-    }
-  }
-
-  @override
-  void dispose() {
-    for (final n in _nodes) {
-      n.dispose();
-    }
-    super.dispose();
-  }
-
-  int get _tabStop {
-    final i = widget.options.indexWhere((o) => o.$1 == widget.value);
-    return i < 0 ? 0 : i;
-  }
-
-  KeyEventResult _onKey(int i, KeyEvent e) {
-    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
-    final k = e.logicalKey;
-    final n = widget.options.length;
-    int? next;
-    if (k == LogicalKeyboardKey.arrowRight || k == LogicalKeyboardKey.arrowDown) next = (i + 1) % n;
-    if (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowUp) next = (i - 1 + n) % n;
-    if (k == LogicalKeyboardKey.space || k == LogicalKeyboardKey.enter) next = i;
-    if (next == null) return KeyEventResult.ignored;
-    _nodes[next].requestFocus();
-    widget.onChange(widget.options[next].$1);
-    return KeyEventResult.handled;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final w = widget;
-    final tabStop = _tabStop;
-    return Semantics(
-      role: SemanticsRole.radioGroup,
-      label: w.label,
-      container: true,
-      child: Row(
-        spacing: 8,
-        children: [
-          for (final (i, (value, label)) in w.options.indexed)
-            Expanded(
-              child: ListenableBuilder(
-                listenable: _nodes[i],
-                builder: (context, _) {
-                  final checked = value == w.value;
-                  final hovered = _hovered.contains(i) && !checked;
-                  final focused = _nodes[i].hasFocus;
-                  return Semantics(
-                    inMutuallyExclusiveGroup: true,
-                    checked: checked,
-                    label: label,
-                    child: Focus(
-                      focusNode: _nodes[i],
-                      skipTraversal: i != tabStop,
-                      child: MouseRegion(
-                        cursor: checked ? SystemMouseCursors.basic : SystemMouseCursors.click,
-                        onEnter: (_) => setState(() => _hovered.add(i)),
-                        onExit: (_) => setState(() => _hovered.remove(i)),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            _nodes[i].requestFocus();
-                            if (!checked) w.onChange(value);
-                          },
-                          child: Container(
-                            height: 32,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: checked
-                                  ? DifyColors.componentsOptionCardOptionSelectedBg
-                                  : hovered
-                                  ? DifyColors.componentsOptionCardOptionBgHover
-                                  : DifyColors.componentsOptionCardOptionBg,
-                              borderRadius: BorderRadius.circular(DifyRadius.md),
-                              border: Border.all(
-                                color: checked
-                                    ? DifyColors.componentsOptionCardOptionSelectedBorder
-                                    : hovered
-                                    ? DifyColors.componentsOptionCardOptionBorderHover
-                                    : DifyColors.componentsOptionCardOptionBorder,
-                                width: checked ? 1.5 : 1,
-                              ),
-                              boxShadow: [
-                                if (checked || hovered) ...DifyShadows.xs,
-                                if (focused) difyFocusRingShadow(),
-                              ],
-                            ),
-                            child: ExcludeSemantics(
-                              child: DifyText(label, DifyType.systemSmRegular, color: DifyColors.textSecondary),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DifyRadioGroup<String>(
+    label: label,
+    value: value,
+    onValueChange: onChange,
+    mainAxisSize: MainAxisSize.max,
+    children: [
+      for (final (v, text) in options)
+        Expanded(
+          child: DifyRadioItem<String>(
+            value: v,
+            semanticLabel: text,
+            excludeChildSemantics: true,
+            mouseCursor: v == value ? SystemMouseCursors.basic : SystemMouseCursors.click,
+            builder: (context, s) {
+              final hovered = s.hovered && !s.checked;
+              return Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: s.checked
+                      ? DifyColors.componentsOptionCardOptionSelectedBg
+                      : hovered
+                      ? DifyColors.componentsOptionCardOptionBgHover
+                      : DifyColors.componentsOptionCardOptionBg,
+                  borderRadius: BorderRadius.circular(DifyRadius.md),
+                  border: Border.all(
+                    color: s.checked
+                        ? DifyColors.componentsOptionCardOptionSelectedBorder
+                        : hovered
+                        ? DifyColors.componentsOptionCardOptionBorderHover
+                        : DifyColors.componentsOptionCardOptionBorder,
+                    width: s.checked ? 1.5 : 1,
+                  ),
+                  boxShadow: [
+                    if (s.checked || hovered) ...DifyShadows.xs,
+                    if (s.focused) difyFocusRingShadow(),
+                  ],
+                ),
+                child: DifyText(text, DifyType.systemSmRegular, color: DifyColors.textSecondary),
+              );
+            },
+          ),
+        ),
+    ],
+  );
 }
 
 /// file-type-item.tsx: an option card with the file type's icon, name, extensions and checkbox; the custom type,

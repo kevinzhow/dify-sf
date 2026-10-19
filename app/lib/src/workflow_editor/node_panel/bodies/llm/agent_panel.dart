@@ -836,50 +836,14 @@ class _TrueFalse extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      spacing: 12,
-      children: [
-        for (final v in const [true, false])
-          _Radio(label: v ? 'True' : 'False', checked: value == v, disabled: disabled, onTap: () => onChange(v)),
-      ],
-    ),
-  );
-}
-
-class _Radio extends StatelessWidget {
-  const _Radio({required this.label, required this.checked, required this.onTap, this.disabled = false});
-  final String label;
-  final bool checked, disabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    checked: checked,
-    inMutuallyExclusiveGroup: true,
-    child: DifyPressable(
-      semanticLabel: label,
+    child: DifyRadioGroup<bool>(
+      value: value,
       disabled: disabled,
-      onPressed: onTap,
-      builder: (context, hovered, focused) => Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 6,
-        children: [
-          Container(
-            width: 16,
-            height: 16,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: DifyColors.componentsRadioBg,
-              border: Border.all(
-                color: checked ? DifyColors.componentsRadioBorderChecked : DifyColors.componentsRadioBorder,
-                width: checked ? 5 : 1,
-              ),
-            ),
-          ),
-          DifyText(label, DifyType.systemSmRegular, color: DifyColors.textSecondary),
-        ],
-      ),
+      spacing: 12,
+      onValueChange: onChange,
+      children: [
+        for (final v in const [true, false]) DifyRadio<bool>(value: v, label: v ? 'True' : 'False'),
+      ],
     ),
   );
 }

@@ -339,7 +339,7 @@ class _SelectDatasetState extends State<SelectDataset> {
           ],
         ),
         if (_loading && _datasets.isEmpty)
-          const SizedBox(height: 200, child: Center(child: _Spinner()))
+          const SizedBox(height: 200, child: DifyLoading())
         else if (hasNoData)
           Container(
             margin: const EdgeInsets.only(top: 24),
@@ -392,7 +392,7 @@ class _SelectDatasetState extends State<SelectDataset> {
                           onTap: () => _toggle(d),
                         ),
                       ),
-                    if (_fetchingNext) const Center(child: _Spinner()),
+                    if (_fetchingNext) const DifyLoading(),
                   ],
                 ),
               ),
@@ -531,27 +531,4 @@ class _DatasetOption extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Spinner extends StatefulWidget {
-  const _Spinner();
-
-  @override
-  State<_Spinner> createState() => _SpinnerState();
-}
-
-class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(
-    turns: _c,
-    child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
-  );
 }

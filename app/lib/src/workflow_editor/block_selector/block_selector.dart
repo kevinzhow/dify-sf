@@ -766,43 +766,36 @@ class _TabBarState extends State<_TabBar> {
 
   Widget _tab(BlockSelectorTabConfig t) {
     final selected = t.tab == widget.active;
-    Widget tab = MergeSemantics(
-      child: Semantics(
-        role: SemanticsRole.tab,
-        selected: selected,
-        enabled: !t.disabled,
-        child: Focus(
-          canRequestFocus: false,
-          skipTraversal: true,
-          onKeyEvent: (_, e) => widget.onKey(t, e),
-          child: DifyPressable(
-            focusNode: widget.focusNodes[t.tab],
-            semanticLabel: t.name,
-            focusableWhenDisabled: true,
-            onPressed: () => widget.onActivate(t),
-            builder: (context, hovered, focused) => Opacity(
-              opacity: t.disabled ? 0.6 : 1,
-              child: Container(
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.center,
-                foregroundDecoration: focused
-                    ? BoxDecoration(
-                        border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(DifyRadius.lg)),
-                      )
-                    : null,
-                child: DifyText(
-                  t.name,
-                  DifyType.systemSmMedium,
-                  color: t.disabled
-                      ? DifyColors.textDisabled
-                      : selected
-                      ? DifyColors.textAccent
-                      : DifyColors.textTertiary,
-                ),
-              ),
-            ),
+    Widget tab = DifyTab(
+      active: selected,
+      disabled: t.disabled,
+      focusableWhenDisabled: true,
+      focusNode: widget.focusNodes[t.tab],
+      semanticLabel: t.name,
+      onKeyEvent: (e) => widget.onKey(t, e),
+      onPressed: () => widget.onActivate(t),
+      // block-selector/tabs.tsx restyles TabsTab: `h-8 rounded-t-lg px-3 system-sm-medium`, active
+      // `text-text-accent` over the sliding TabsIndicator, disabled `opacity-60 text-text-disabled`.
+      builder: (context, hovered, focused) => Opacity(
+        opacity: t.disabled ? 0.6 : 1,
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          foregroundDecoration: focused
+              ? BoxDecoration(
+                  border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(DifyRadius.lg)),
+                )
+              : null,
+          child: DifyText(
+            t.name,
+            DifyType.systemSmMedium,
+            color: t.disabled
+                ? DifyColors.textDisabled
+                : selected
+                ? DifyColors.textAccent
+                : DifyColors.textTertiary,
           ),
         ),
       ),

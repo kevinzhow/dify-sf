@@ -348,14 +348,14 @@ void main() {
       final model = makeModel();
       await render(t, model, providers: [summaryOf(model, credentialName: 'my-api-key')]);
       expect(find.text('my-api-key'), findsOneWidget);
-      expect(t.widget<StatusDot>(find.byType(StatusDot)).status, StatusDotKind.success);
+      expect(t.widget<DifyStatusDot>(find.byType(DifyStatusDot)).status, DifyStatusDotStatus.success);
     });
 
     testWidgets('should render the inactive credential badge when the api key is not active', (t) async {
       final model = makeModel();
       await render(t, model, providers: [summaryOf(model, credentialName: 'stale-key', usable: false)]);
       expect(find.text('stale-key'), findsOneWidget);
-      expect(t.widget<StatusDot>(find.byType(StatusDot)).status, StatusDotKind.error);
+      expect(t.widget<DifyStatusDot>(find.byType(DifyStatusDot)).status, DifyStatusDotStatus.error);
     });
 
     testWidgets('should show configure required when no credential name', (t) async {

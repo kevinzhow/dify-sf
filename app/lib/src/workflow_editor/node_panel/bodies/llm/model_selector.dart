@@ -1028,9 +1028,16 @@ class _CredentialStatus extends StatelessWidget {
                   DifyColors.textWarning,
                 )
         : name != null && name.isNotEmpty
-        ? (StatusDot(status: apiActive ? StatusDotKind.success : StatusDotKind.error), name, DifyColors.textTertiary)
+        ? (
+            DifyStatusDot(
+              size: DifyStatusDotSize.small,
+              status: apiActive ? DifyStatusDotStatus.success : DifyStatusDotStatus.error,
+            ),
+            name,
+            DifyColors.textTertiary,
+          )
         : (
-            const StatusDot(status: StatusDotKind.disabled),
+            const DifyStatusDot(size: DifyStatusDotSize.small, status: DifyStatusDotStatus.disabled),
             _c('modelProvider.selector.configureRequired'),
             DifyColors.textTertiary,
           );
@@ -1056,46 +1063,10 @@ class _CredentialStatus extends StatelessWidget {
   }
 }
 
-/// dify-ui StatusDot kinds.
-enum StatusDotKind { success, error, warning, normal, disabled }
-
-/// dify-ui's StatusDot, small (`size-1.5` with a 0.5 px inner border).
-class StatusDot extends StatelessWidget {
-  const StatusDot({super.key, required this.status});
-  final StatusDotKind status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (bg, border) = switch (status) {
-      StatusDotKind.success => (
-        DifyColors.componentsBadgeStatusLightSuccessBg,
-        DifyColors.componentsBadgeStatusLightSuccessBorderInner,
-      ),
-      StatusDotKind.error => (
-        DifyColors.componentsBadgeStatusLightErrorBg,
-        DifyColors.componentsBadgeStatusLightErrorBorderInner,
-      ),
-      StatusDotKind.warning => (
-        DifyColors.componentsBadgeStatusLightWarningBg,
-        DifyColors.componentsBadgeStatusLightWarningBorderInner,
-      ),
-      StatusDotKind.normal => (
-        DifyColors.componentsBadgeStatusLightNormalBg,
-        DifyColors.componentsBadgeStatusLightNormalBorderInner,
-      ),
-      StatusDotKind.disabled => (DifyColors.textQuaternary, DifyColors.textQuaternary),
-    };
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(2),
-        border: Border.all(color: border, width: Css.hairline),
-      ),
-    );
-  }
-}
+/// The old names of [DifyStatusDotStatus] and [DifyStatusDot], kept for workflow_editor/run/ui/status.dart (owned by
+/// the runtime work; switch it there).
+typedef StatusDotKind = DifyStatusDotStatus;
+typedef StatusDot = DifyStatusDot;
 
 /// A model row: `mx-1 h-8 rounded-lg px-3 py-1.5`, the icon, the name (`system-sm-medium text-text-secondary`;
 /// quaternary when incompatible, faded when not selectable, struck through when deprecated), the recommendation

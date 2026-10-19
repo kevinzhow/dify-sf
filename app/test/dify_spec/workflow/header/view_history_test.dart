@@ -1,8 +1,8 @@
 // dify-spec: web/app/components/workflow/header/__tests__/view-history.spec.tsx
 import 'package:dify_sf_app/src/canvas/canvas_input.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyLoading;
 import 'package:dify_sf_app/src/workflow_editor/header/format.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/header_data.dart';
-import 'package:dify_sf_app/src/workflow_editor/header/header_widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/view_history.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,7 +66,7 @@ void main() {
       await t.tap(find.bySemanticsLabel('workflow.common.viewRunHistory'));
       await settle(t);
       expect(cleared, 1);
-      expect(find.byType(HeaderLoading), findsOneWidget);
+      expect(find.byType(DifyLoading), findsOneWidget);
     });
 
     testWidgets('renders workflow run history items and updates the workflow store when one is selected', (t) async {

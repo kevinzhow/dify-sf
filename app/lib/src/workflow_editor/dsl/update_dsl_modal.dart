@@ -160,42 +160,11 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
       final yes = await showDifyDialog<bool>(
         context,
         builder: (context) => DifyDialogSurface(
+          label: _a('newApp.appCreateDSLErrorTitle'),
           width: 480,
           padding: const EdgeInsets.all(24),
           scrollable: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _a('newApp.appCreateDSLErrorTitle'),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${_a('newApp.appCreateDSLErrorPart1')}${_a('newApp.appCreateDSLErrorPart2')}\n\n${_a('newApp.appCreateDSLErrorPart3')}${e.importedVersion}\n${_a('newApp.appCreateDSLErrorPart4')}${e.currentVersion}',
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  DifyButton(
-                    key: const Key('cancel-dsl-version'),
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(_a('newApp.Cancel')),
-                  ),
-                  const SizedBox(width: 8),
-                  DifyButton(
-                    key: const Key('confirm-dsl-version'),
-                    variant: DifyButtonVariant.primary,
-                    tone: DifyButtonTone.destructive,
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text(_a('newApp.Confirm')),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          child: _DslVersionConfirm(importedVersion: e.importedVersion, systemVersion: e.currentVersion),
         ),
       );
       if (yes == true && mounted) await _import(confirm: true);
@@ -284,4 +253,80 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
       ],
     ),
   );
+}
+
+/// update-dsl-modal's version error Dialog (`max-w-120 border-none p-6`): the title and the explanation with both
+/// versions (`flex flex-col gap-2 pb-4`), then Cancel / Confirm (destructive) in `pt-6`.
+class _DslVersionConfirm extends StatelessWidget {
+  const _DslVersionConfirm({required this.importedVersion, required this.systemVersion});
+
+  final String importedVersion, systemVersion;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary);
+    final medium = difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 8,
+            children: [
+              Text(
+                _a('newApp.appCreateDSLErrorTitle'),
+                style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_a('newApp.appCreateDSLErrorPart1'), style: body),
+                  Text(_a('newApp.appCreateDSLErrorPart2'), style: body),
+                  const SizedBox(height: 20),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: _a('newApp.appCreateDSLErrorPart3')),
+                        TextSpan(text: importedVersion, style: medium),
+                      ],
+                    ),
+                    style: body,
+                  ),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: _a('newApp.appCreateDSLErrorPart4')),
+                        TextSpan(text: systemVersion, style: medium),
+                      ],
+                    ),
+                    style: body,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        DifyAlertDialogActions(
+          padding: const EdgeInsets.only(top: 24),
+          children: [
+            DifyButton(
+              key: const Key('cancel-dsl-version'),
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(_a('newApp.Cancel')),
+            ),
+            DifyButton(
+              key: const Key('confirm-dsl-version'),
+              variant: DifyButtonVariant.primary,
+              tone: DifyButtonTone.destructive,
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(_a('newApp.Confirm')),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

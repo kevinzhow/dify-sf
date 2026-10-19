@@ -118,14 +118,8 @@ class _CardBox extends StatelessWidget {
   );
 }
 
-Widget _bar(double width, double height, double k) => Container(
-  width: width,
-  height: height,
-  decoration: BoxDecoration(
-    color: DifyColors.textQuaternary.withValues(alpha: DifyColors.textQuaternary.a * k),
-    borderRadius: BorderRadius.circular(DifyRadius.xs),
-  ),
-);
+Widget _bar(double width, double height, double k) =>
+    DifySkeletonRectangle(width: width, height: height, opacity: k, margin: EdgeInsets.zero);
 
 /// The loading card's content: a `size-8 rounded-lg` square and two bars.
 Widget _loadingContent() => Semantics(
@@ -134,14 +128,7 @@ Widget _loadingContent() => Semantics(
     key: const ValueKey('agent-roster-loading'),
     spacing: 8,
     children: [
-      Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: DifyColors.textQuaternary.withValues(alpha: DifyColors.textQuaternary.a * 0.2),
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-        ),
-      ),
+      const DifySkeletonRectangle(width: 32, height: 32, radius: DifyRadius.lg, margin: EdgeInsets.zero),
       Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,158 +534,148 @@ class AgentRosterDrawer extends StatelessWidget {
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): onClose},
       child: FocusScope(
         autofocus: true,
-        child: Semantics(
-          container: true,
-          role: SemanticsRole.dialog,
+        child: DifyDrawerPopup(
           label: title,
-          explicitChildNodes: true,
-          child: Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: DifyColors.componentsPanelBg,
-              borderRadius: BorderRadius.circular(DifyRadius.xxl),
-              border: Border.all(color: DifyColors.dividerSubtle, width: 0.5),
-              boxShadow: DifyShadows.n2xl,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: isSetup
-                      ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-                      : const EdgeInsets.fromLTRB(12, 12, 16, 12),
-                  decoration: BoxDecoration(
-                    color: DifyColors.componentsPanelBg,
-                    border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 12,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              spacing: 8,
-                              children: [
-                                if (isInlineSetup)
-                                  const InlineSetupAvatar(size: 36)
-                                else
-                                  AgentAvatar(agent: agent, size: 36),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    spacing: isSetup ? 0 : 2,
-                                    children: [
-                                      Row(
-                                        spacing: 4,
-                                        children: [
-                                          Flexible(
-                                            child: DifyText(
-                                              title,
-                                              isSetup ? DifyType.systemXlSemibold : DifyType.systemSmMedium,
-                                              color: isSetup ? DifyColors.textPrimary : DifyColors.textSecondary,
-                                            ),
+          borderRadius: BorderRadius.circular(DifyRadius.xxl),
+          border: Border.all(color: DifyColors.dividerSubtle, width: 0.5),
+          boxShadow: DifyShadows.n2xl,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: isSetup
+                    ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+                    : const EdgeInsets.fromLTRB(12, 12, 16, 12),
+                decoration: BoxDecoration(
+                  color: DifyColors.componentsPanelBg,
+                  border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 12,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            spacing: 8,
+                            children: [
+                              if (isInlineSetup)
+                                const InlineSetupAvatar(size: 36)
+                              else
+                                AgentAvatar(agent: agent, size: 36),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: isSetup ? 0 : 2,
+                                  children: [
+                                    Row(
+                                      spacing: 4,
+                                      children: [
+                                        Flexible(
+                                          child: DifyText(
+                                            title,
+                                            isSetup ? DifyType.systemXlSemibold : DifyType.systemSmMedium,
+                                            color: isSetup ? DifyColors.textPrimary : DifyColors.textSecondary,
                                           ),
-                                          if (!isSetup)
-                                            RemixIcon('lock-line', size: 12, color: DifyColors.textTertiary),
-                                        ],
-                                      ),
-                                      if (description != null && description.isNotEmpty)
-                                        DifyText(
-                                          description,
-                                          DifyType.systemXsRegular,
-                                          color: DifyColors.textTertiary,
-                                          maxLines: isSetup ? null : 1,
                                         ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              spacing: 4,
-                              children: [
-                                if (showInlineActions) ...[
-                                  DifyDropdownMenu(
-                                    placement: DifyPlacement.bottomEnd,
-                                    semanticLabel: _w('nodes.agent.roster.more'),
-                                    builder: (context, c) => DifyIconButton(
-                                      label: _w('nodes.agent.roster.more'),
-                                      icon: const RemixIcon('more-fill', size: 16),
-                                      onPressed: c.toggle,
+                                        if (!isSetup) RemixIcon('lock-line', size: 12, color: DifyColors.textTertiary),
+                                      ],
                                     ),
-                                    children: [
-                                      DifyMenuItem(
-                                        leading: RemixIcon(
-                                          'inbox-archive-line',
-                                          size: 16,
-                                          color: DifyColors.textTertiary,
-                                        ),
-                                        onSelect: onSaveInlineToRoster,
-                                        child: Text(_a('roster.saveToRoster')),
+                                    if (description != null && description.isNotEmpty)
+                                      DifyText(
+                                        description,
+                                        DifyType.systemXsRegular,
+                                        color: DifyColors.textTertiary,
+                                        maxLines: isSetup ? null : 1,
                                       ),
-                                    ],
-                                  ),
-                                  Container(width: 1, height: 14, color: DifyColors.dividerRegular),
-                                ],
-                                DifyIconButton(
-                                  label: _c('operation.close'),
-                                  icon: const RemixIcon('close-line', size: 16),
-                                  onPressed: onClose,
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (showActions)
-                        SizedBox(
-                          height: 32,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Row(
-                              spacing: 8,
-                              children: [
-                                if (canConfigureAgent(agent['permission_keys']))
-                                  Expanded(
-                                    child: EditInConsoleLink(
-                                      agentId: jsKey(agent['id']),
-                                      onOpenUrl: onOpenUrl ?? (_) {},
-                                    ),
-                                  ),
-                                Expanded(
-                                  child: DifyButton(
-                                    loading: isCopyPending,
-                                    onPressed: onMakeCopy,
-                                    leading: const RemixIcon('file-copy-2-line', size: 16),
-                                    child: Text(_w('nodes.agent.roster.makeCopy'), overflow: TextOverflow.ellipsis),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            spacing: 4,
+                            children: [
+                              if (showInlineActions) ...[
+                                DifyDropdownMenu(
+                                  placement: DifyPlacement.bottomEnd,
+                                  semanticLabel: _w('nodes.agent.roster.more'),
+                                  builder: (context, c) => DifyIconButton(
+                                    label: _w('nodes.agent.roster.more'),
+                                    icon: const RemixIcon('more-fill', size: 16),
+                                    onPressed: c.toggle,
+                                  ),
+                                  children: [
+                                    DifyMenuItem(
+                                      leading: RemixIcon(
+                                        'inbox-archive-line',
+                                        size: 16,
+                                        color: DifyColors.textTertiary,
+                                      ),
+                                      onSelect: onSaveInlineToRoster,
+                                      child: Text(_a('roster.saveToRoster')),
+                                    ),
+                                  ],
+                                ),
+                                Container(width: 1, height: 14, color: DifyColors.dividerRegular),
+                              ],
+                              DifyIconButton(
+                                label: _c('operation.close'),
+                                icon: const RemixIcon('close-line', size: 16),
+                                onPressed: onClose,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (showActions)
+                      SizedBox(
+                        height: 32,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Row(
+                            spacing: 8,
+                            children: [
+                              if (canConfigureAgent(agent['permission_keys']))
+                                Expanded(
+                                  child: EditInConsoleLink(
+                                    agentId: jsKey(agent['id']),
+                                    onOpenUrl: onOpenUrl ?? (_) {},
+                                  ),
+                                ),
+                              Expanded(
+                                child: DifyButton(
+                                  loading: isCopyPending,
+                                  onPressed: onMakeCopy,
+                                  leading: const RemixIcon('file-copy-2-line', size: 16),
+                                  child: Text(_w('nodes.agent.roster.makeCopy'), overflow: TextOverflow.ellipsis),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                Expanded(
-                  child: Semantics(
-                    container: true,
-                    label: _w('nodes.agent.roster.panelLabel', {'name': jsKey(agent['name'])}),
-                    child:
-                        body?.call(context) ??
-                        (services.rosterAgentContentBuilder?.call(context, jsKey(agent['id'])) ??
-                            ColoredBox(color: DifyColors.componentsPanelBg, child: SizedBox.expand())),
-                  ),
+              ),
+              Expanded(
+                child: Semantics(
+                  container: true,
+                  label: _w('nodes.agent.roster.panelLabel', {'name': jsKey(agent['name'])}),
+                  child:
+                      body?.call(context) ??
+                      (services.rosterAgentContentBuilder?.call(context, jsKey(agent['id'])) ??
+                          ColoredBox(color: DifyColors.componentsPanelBg, child: SizedBox.expand())),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1030,26 +1007,19 @@ class _SelectorSkeleton extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (var i = 0; i < 4; i++)
-            Opacity(
-              opacity: i == 3 ? 0.1 : 0.2,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
-                child: Row(
-                  spacing: 8,
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: DifyColors.textQuaternary),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 6,
-                      children: [_bar(80, 8, 1), _bar(112, 8, 1)],
-                    ),
-                  ],
-                ),
+          for (final o in const [0.2, 0.2, 0.2, 0.1])
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+              child: Row(
+                spacing: 8,
+                children: [
+                  DifySkeletonRectangle(width: 32, height: 32, radius: 16, opacity: o, margin: EdgeInsets.zero),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 6,
+                    children: [_bar(80, 8, o), _bar(112, 8, o)],
+                  ),
+                ],
               ),
             ),
         ],

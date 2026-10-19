@@ -410,10 +410,10 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                   (NodePanelTab.lastRun, 'debug.lastRunTab'),
                 ])
                   Flexible(
-                    child: _Tab(
+                    child: DifyTab(
                       label: _tw(key).toUpperCase(),
                       active: _tab == tab,
-                      onTap: () => _selectTab(tab, clicked: true),
+                      onPressed: () => _selectTab(tab, clicked: true),
                     ),
                   ),
               ],
@@ -564,37 +564,6 @@ class _HeaderButton extends StatelessWidget {
         border: focused ? Border.all(color: DifyColors.componentsInputBorderHover) : null,
       ),
       child: icon,
-    ),
-  );
-}
-
-/// dify-ui's TabsTab: `border-b-2 border-transparent pt-2.5 pb-2 system-md-semibold text-text-tertiary`; active:
-/// `border-components-tab-active text-text-primary`.
-class _Tab extends StatelessWidget {
-  const _Tab({required this.label, required this.active, required this.onTap});
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    selected: active,
-    child: DifyPressable(
-      semanticLabel: label,
-      onPressed: onTap,
-      builder: (context, hovered, focused) => Container(
-        padding: const EdgeInsets.only(top: 10, bottom: 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: active ? DifyColors.componentsTabActive : const Color(0x00000000), width: 2),
-          ),
-        ),
-        child: DifyText(
-          label,
-          DifyType.systemMdSemibold,
-          color: active ? DifyColors.textPrimary : DifyColors.textTertiary,
-        ),
-      ),
     ),
   );
 }

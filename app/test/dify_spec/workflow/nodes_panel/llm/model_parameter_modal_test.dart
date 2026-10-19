@@ -229,7 +229,7 @@ void main() {
       pendingRules = Completer<List<Map<String, Object?>>>().future;
       await render(t);
       await openSettings(t);
-      expect(find.byType(ModelLoading), findsOneWidget);
+      expect(find.byType(DifyLoading), findsOneWidget);
     });
 
     testWidgets(
@@ -240,7 +240,7 @@ void main() {
         await render(t, provider: '', modelId: '', trigger: _customTrigger);
         await t.tap(find.text('Custom Trigger'));
         await settle(t);
-        expect(find.byType(ModelLoading), findsNothing);
+        expect(find.byType(DifyLoading), findsNothing);
         expect(find.byType(ModelSelector), findsOneWidget);
       },
     );
@@ -307,7 +307,7 @@ void main() {
       pendingRules = Completer<List<Map<String, Object?>>>().future;
       await render(t);
       await openSettings(t);
-      expect(find.byType(ModelLoading), findsOneWidget);
+      expect(find.byType(DifyLoading), findsOneWidget);
       expect(find.text('Temperature'), findsNothing);
     });
 

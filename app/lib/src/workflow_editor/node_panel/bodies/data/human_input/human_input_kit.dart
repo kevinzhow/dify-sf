@@ -217,22 +217,6 @@ class HiBadge extends StatelessWidget {
   );
 }
 
-/// dify-ui's StatusDot `warning`: a 6 px dot in the warning colour with its soft ring.
-class HiStatusDot extends StatelessWidget {
-  const HiStatusDot({super.key});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 6,
-    height: 6,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: DifyColors.componentsBadgeStatusLightWarningBg,
-      border: Border.all(color: DifyColors.componentsBadgeStatusLightWarningBorderInner),
-    ),
-  );
-}
-
 /// A dialog's button row on the right (`flex justify-end gap-2`); long translations shrink it rather than overflow.
 class HiFooter extends StatelessWidget {
   const HiFooter({super.key, required this.children});

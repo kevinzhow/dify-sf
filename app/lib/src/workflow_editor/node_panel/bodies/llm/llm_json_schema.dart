@@ -1762,55 +1762,48 @@ class _SchemaViewTabsState extends State<SchemaViewTabs> {
         spacing: 1,
         children: [
           for (final (i, t) in _tabs.indexed)
-            Semantics(
-              role: SemanticsRole.tab,
-              selected: t.view == widget.value,
-              onTap: () => widget.onChange(t.view),
-              child: Focus(
-                skipTraversal: true,
-                onKeyEvent: (_, e) => _onKey(i, e),
-                child: DifyPressable(
-                  focusNode: _focus[t.view],
-                  semanticLabel: t.text,
-                  onPressed: () => widget.onChange(t.view),
-                  builder: (context, hovered, focused) {
-                    final active = t.view == widget.value;
-                    final color = active ? DifyColors.textAccentLightModeOnly : DifyColors.textSecondary;
-                    return Container(
-                      height: 28,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: active
-                            ? DifyColors.componentsSegmentedControlItemActiveBg
-                            : hovered
-                            ? DifyColors.stateBaseHover
-                            : null,
-                        borderRadius: BorderRadius.circular(DifyRadius.lg),
-                        border: Border.all(
-                          color: active
-                              ? DifyColors.componentsSegmentedControlItemActiveBorder
-                              : focused
-                              ? DifyColors.stateAccentSolid
-                              : const Color(0x00000000),
-                          width: focused && !active ? 2 : 0.5,
-                        ),
-                        boxShadow: active ? DifyShadows.xs : null,
+            DifyTab(
+              active: t.view == widget.value,
+              focusNode: _focus[t.view],
+              semanticLabel: t.text,
+              onKeyEvent: (e) => _onKey(i, e),
+              onPressed: () => widget.onChange(t.view),
+              builder: (context, hovered, focused) {
+                final active = t.view == widget.value;
+                final color = active ? DifyColors.textAccentLightModeOnly : DifyColors.textSecondary;
+                return Container(
+                  height: 28,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? DifyColors.componentsSegmentedControlItemActiveBg
+                        : hovered
+                        ? DifyColors.stateBaseHover
+                        : null,
+                    borderRadius: BorderRadius.circular(DifyRadius.lg),
+                    border: Border.all(
+                      color: active
+                          ? DifyColors.componentsSegmentedControlItemActiveBorder
+                          : focused
+                          ? DifyColors.stateAccentSolid
+                          : const Color(0x00000000),
+                      width: focused && !active ? 2 : 0.5,
+                    ),
+                    boxShadow: active ? DifyShadows.xs : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 2,
+                    children: [
+                      RemixIcon(t.icon, size: 16, color: color),
+                      Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: DifyText(t.text, DifyType.systemSmMedium, color: color),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: 2,
-                        children: [
-                          RemixIcon(t.icon, size: 16, color: color),
-                          Padding(
-                            padding: const EdgeInsets.all(2),
-                            child: DifyText(t.text, DifyType.systemSmMedium, color: color),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
+                    ],
+                  ),
+                );
+              },
             ),
         ],
       ),

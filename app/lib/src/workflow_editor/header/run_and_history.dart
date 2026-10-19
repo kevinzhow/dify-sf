@@ -160,7 +160,7 @@ class _RunModeState extends State<RunMode> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+                    DifySpinner(size: 16, color: DifyColors.textAccent),
                     const SizedBox(width: 8),
                     Text(
                       _tr(isListening ? 'common.listening' : 'common.running'),

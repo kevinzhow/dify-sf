@@ -6,7 +6,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../design/css_metrics.dart';
@@ -188,10 +187,10 @@ class _FeaturePanelDrawerState extends State<FeaturePanelDrawer> with SingleTick
           children: [
             FadeTransition(
               opacity: curve,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+              child: DifyDrawerBackdrop(
+                color: difyDrawerBlackBackdrop,
+                opacity: 1 - (_swipe / width).clamp(0.0, 1.0),
                 onTap: _close,
-                child: ColoredBox(color: Color.fromRGBO(0, 0, 0, 0.25 * (1 - (_swipe / width).clamp(0.0, 1.0)))),
               ),
             ),
             Positioned(
@@ -234,23 +233,10 @@ class _FeaturePanelDrawerState extends State<FeaturePanelDrawer> with SingleTick
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
       child: FocusScope(
         autofocus: true,
-        child: Semantics(
-          container: true,
-          role: SemanticsRole.dialog,
-          explicitChildNodes: true,
-          child: Material(
-            type: MaterialType.transparency,
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBgAlt,
-                border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(DifyRadius.xxl)),
-                boxShadow: DifyShadows.xl,
-              ),
-              child: widget.child,
-            ),
-          ),
+        child: DifyDrawerPopup(
+          color: DifyColors.componentsPanelBgAlt,
+          material: true,
+          child: widget.child,
         ),
       ),
     ),

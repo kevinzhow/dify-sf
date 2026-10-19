@@ -18,7 +18,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../block_selector/selector_widgets.dart' show SelectorBlockIcon, SelectorIconSize;
-import '../header/header_widgets.dart' show Spinning;
 import '../node_panel/resize_handle.dart';
 import '../panel_fields/var_reference_vars.dart' show CategoryVarIcon;
 import '../store/store.dart';
@@ -568,7 +567,7 @@ class _InspectGroupState extends State<InspectGroup> {
             SizedBox.square(
               dimension: 12,
               child: running
-                  ? Spinning(child: RemixIcon('loader-2-line', size: 12, color: DifyColors.textAccent))
+                  ? DifySpinner(size: 12, color: DifyColors.textAccent)
                   : visible.isNotEmpty
                   ? RotatedBox(
                       quarterTurns: _collapsed ? 0 : 1,
@@ -831,7 +830,7 @@ class InspectRight extends StatelessWidget {
       content = const InspectEmpty();
     } else if (isValueFetching) {
       content = Center(
-        child: Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
+        child: DifySpinner(size: 16, color: DifyColors.textTertiary),
       );
     } else {
       content = ValueContent(

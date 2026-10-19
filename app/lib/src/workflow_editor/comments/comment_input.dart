@@ -412,7 +412,7 @@ class _MentionInputState extends State<MentionInput> {
                       disabled: _text.text.trim().isEmpty || off,
                       onPressed: _submit,
                       icon: widget.loading
-                          ? const _Spin(child: RemixIcon('loader-2-line', size: 16))
+                          ? const DifySpinnerIcon(child: RemixIcon('loader-2-line', size: 16))
                           : const RemixIcon('arrow-up-line', size: 16),
                     ),
                   ],
@@ -534,28 +534,6 @@ class _MentionRowState extends State<_MentionRow> {
       ),
     ),
   );
-}
-
-/// `animate-spin`.
-class _Spin extends StatefulWidget {
-  const _Spin({required this.child});
-  final Widget child;
-
-  @override
-  State<_Spin> createState() => _SpinState();
-}
-
-class _SpinState extends State<_Spin> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
 }
 
 /// comment-input.tsx: a new comment's box at [position] (its top-left, in the canvas), 384 px wide: the drag handle

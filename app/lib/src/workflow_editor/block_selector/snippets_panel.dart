@@ -151,22 +151,10 @@ class _Skeleton extends StatelessWidget {
       child: Column(
         children: [
           for (final o in const [0.2, 0.2, 0.2, 0.1])
-            Opacity(
+            DifySkeletonRectangle(
+              width: 200,
               opacity: o,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 200,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: DifyColors.textQuaternary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
         ],
       ),

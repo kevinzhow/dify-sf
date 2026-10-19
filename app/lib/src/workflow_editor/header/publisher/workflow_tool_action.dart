@@ -47,7 +47,7 @@ class WorkflowToolAction extends StatelessWidget {
             disabled: disabled,
             description: _w('common.workflowAsToolDescription'),
             endIcon: isLoading
-                ? publisherStatus(DifyI18n.tr('common', 'loading'), const _Spinner())
+                ? publisherStatus(DifyI18n.tr('common', 'loading'), const DifySpinner(size: 16))
                 : _SetupStatus(_w('common.configureRequired')),
             icon: const RemixIcon('hammer-line'),
             onPressed: onConfigure,
@@ -233,31 +233,9 @@ class _StateLabel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
-        // StatusDot size small: `size-1.5 rounded-xs border`, with the indicator shadow (halo + 1 px outer ring).
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: outdated
-                ? DifyColors.componentsBadgeStatusLightWarningBg
-                : DifyColors.componentsBadgeStatusLightSuccessBg,
-            border: Border.all(
-              color: outdated
-                  ? DifyColors.componentsBadgeStatusLightWarningBorderInner
-                  : DifyColors.componentsBadgeStatusLightSuccessBorderInner,
-            ),
-            borderRadius: BorderRadius.circular(DifyRadius.xs),
-            boxShadow: [
-              BoxShadow(
-                offset: const Offset(0, 2),
-                blurRadius: 6,
-                color: outdated
-                    ? DifyColors.componentsBadgeStatusLightWarningHalo
-                    : DifyColors.componentsBadgeStatusLightSuccessHalo,
-              ),
-              BoxShadow(spreadRadius: 1, color: DifyColors.componentsBadgeStatusLightBorderOuter),
-            ],
-          ),
+        DifyStatusDot(
+          size: DifyStatusDotSize.small,
+          status: outdated ? DifyStatusDotStatus.warning : DifyStatusDotStatus.success,
         ),
         Text(
           difyTransform(DifyType.systemXsSemiboldUppercase, label),
@@ -269,35 +247,4 @@ class _StateLabel extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// loading-status.tsx: `i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none`.
-class _Spinner extends StatefulWidget {
-  const _Spinner();
-
-  @override
-  State<_Spinner> createState() => _SpinnerState();
-}
-
-class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _c.stop();
-    } else if (!_c.isAnimating) {
-      _c.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(turns: _c, child: const RemixIcon('loader-2-line'));
 }

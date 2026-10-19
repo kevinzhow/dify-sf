@@ -189,13 +189,9 @@ class _SchemaFieldState extends State<SchemaField> {
 /// SchemaModal: a dialog (`max-w-240 p-0`) titled "Parameter Schema" with a close button, the [schema] as a
 /// read-only tree under [rootName].
 Future<void> showToolSchemaModal(BuildContext context, {required String rootName, required Object? schema}) =>
-    showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: DifyColors.backgroundOverlay,
-      transitionDuration: difyTransitionDuration,
-      pageBuilder: (context, _, _) => ToolSchemaModal(rootName: rootName, schema: schema),
+    showDifyDialog<void>(
+      context,
+      builder: (context) => ToolSchemaModal(rootName: rootName, schema: schema),
     );
 
 class ToolSchemaModal extends StatelessWidget {

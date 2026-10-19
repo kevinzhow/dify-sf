@@ -612,57 +612,20 @@ class VersionConfirmDialog extends StatelessWidget {
   final VoidCallback onCancel, onConfirm;
   final bool destructive;
 
+  /// AlertDialogContent `border-none shadow-xl`, the title and description wrapping.
   @override
-  Widget build(BuildContext context) => Container(
-    width: 480,
-    margin: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: DifyColors.componentsPanelBg,
-      borderRadius: BorderRadius.circular(DifyRadius.xxl),
-      boxShadow: DifyShadows.xl,
-    ),
-    child: Material(
-      type: MaterialType.transparency,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 8,
-              children: [
-                DifyText(title, DifyType.title2xlSemiBold, color: DifyColors.textPrimary, maxLines: null),
-                DifyText(description, DifyType.systemMdRegular, color: DifyColors.textSecondary, maxLines: null),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 8,
-                  children: [
-                    DifyButton(onPressed: onCancel, child: Text(_c('operation.cancel'))),
-                    DifyButton(
-                      variant: DifyButtonVariant.primary,
-                      tone: destructive ? DifyButtonTone.destructive : DifyButtonTone.normal,
-                      onPressed: onConfirm,
-                      child: Text(confirmText),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => DifyAlertDialog(
+    bordered: false,
+    shadow: DifyShadows.xl,
+    title: title,
+    titleMaxLines: null,
+    description: description,
+    descriptionColor: DifyColors.textSecondary,
+    cancelLabel: _c('operation.cancel'),
+    confirmLabel: confirmText,
+    confirmTone: destructive ? DifyButtonTone.destructive : DifyButtonTone.normal,
+    onCancel: onCancel,
+    onConfirm: onConfirm,
   );
 }
 
@@ -701,21 +664,8 @@ class DeleteConfirmModal extends StatelessWidget {
   );
 }
 
-Future<void> _showDialog(BuildContext context, WidgetBuilder builder) => showGeneralDialog<void>(
-  context: context,
-  barrierDismissible: true,
-  barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-  barrierColor: DifyColors.backgroundOverlay,
-  transitionDuration: difyTransitionDuration,
-  transitionBuilder: (context, animation, _, child) {
-    final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-    return FadeTransition(
-      opacity: a,
-      child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-    );
-  },
-  pageBuilder: (context, _, _) => Center(child: Builder(builder: builder)),
-);
+Future<void> _showDialog(BuildContext context, WidgetBuilder builder) =>
+    showDifyAlertDialog<void>(context, dismissible: true, builder: builder);
 
 // ---- empty and loading -------------------------------------------------------------------------------------------
 
@@ -749,17 +699,9 @@ class VersionHistoryLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget bar(double width, double height) => FractionallySizedBox(
-      alignment: Alignment.centerLeft,
-      widthFactor: width,
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: DifyColors.textQuaternary.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
+    // `h-2 w-* rounded-xs bg-text-quaternary opacity-20` (SkeletonRectangle's look without its margin).
+    Widget bar(double width, double height) =>
+        DifySkeletonRectangle(widthFactor: width, height: height, margin: EdgeInsets.zero);
     return Column(
       key: const Key('version-history-loading'),
       children: [

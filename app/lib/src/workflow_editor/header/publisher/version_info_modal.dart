@@ -32,21 +32,10 @@ Future<void> showVersionInfoModal(
   VoidCallback? onClose,
   PublisherToast? onToast,
 }) async {
-  await showGeneralDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    // modalBackdropClassName: `bg-background-overlay`, modalPopupAnimationClassName: scale 0.95 and fade, 150 ms.
-    barrierColor: DifyColors.backgroundOverlay,
-    transitionDuration: difyTransitionDuration,
-    transitionBuilder: (context, animation, _, child) {
-      final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-      return FadeTransition(
-        opacity: a,
-        child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-      );
-    },
-    pageBuilder: (context, _, _) => VersionInfoModal(versionInfo: versionInfo, onPublish: onPublish, onToast: onToast),
+  // modalBackdropClassName: `bg-background-overlay`, modalPopupAnimationClassName: scale 0.95 and fade, 150 ms.
+  await showDifyDialog<void>(
+    context,
+    builder: (context) => VersionInfoModal(versionInfo: versionInfo, onPublish: onPublish, onToast: onToast),
   );
   onClose?.call();
 }
