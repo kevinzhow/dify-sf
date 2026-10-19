@@ -133,6 +133,44 @@ struct HumanInputFormStoreTests {
         }
     }
 
+    @Test func aSubmissionBeforeThePauseRowIsKeptAsTheResumeRequest() async throws {
+        try await withStore { store, _ in
+            let doc = try await doc(store)
+            let now = Date()
+            // The other ordering Winnie named: the form is durable first, answered, and only then the pause is written
+            // (the engine finishes draining in between). The submission must not be lost.
+            try await store.createPause(StoredWorkflowPause(workflowRunId: "run-1", executionId: "exec-1", docId: doc,
+                                                            nodeId: "human", snapshot: "{}", createdAt: now),
+                                       forms: [form(doc, now: now)])
+            let pause = try await store.pause(workflowRunId: "run-1", executionId: "exec-1")
+            #expect(pause?.resumeRequested == false)
+
+            // The ordering Winnie named: the form is written on its own (the engine is still draining), it is
+            // answered, and only afterwards is the pause written. The submission must survive that gap.
+            try await store.insertHumanInputForm(form(doc, run: "run-2", execution: "exec-3", token: "tok-3", now: now))
+            _ = try await store.submitHumanInputForm(token: "tok-3", inputs: #"{"ok":true}"#, action: "approve", userId: "u-1",
+                                                    at: now, now: Int(now.timeIntervalSince1970))
+            #expect(try await store.pause(workflowRunId: "run-2", executionId: "exec-3") == nil, "no pause row yet")
+            try await store.createPause(StoredWorkflowPause(workflowRunId: "run-2", executionId: "exec-3", docId: doc,
+                                                            nodeId: "human", snapshot: "{}", createdAt: now),
+                                       forms: [])
+            #expect(try await store.pause(workflowRunId: "run-2", executionId: "exec-3")?.resumeRequested == true,
+                    "the submission made before the pause row is the resume request")
+        }
+    }
+
+    @Test func submittingAfterThePauseMarksTheResumeRequest() async throws {
+        try await withStore { store, _ in
+            let doc = try await doc(store)
+            let now = Date()
+            try await store.createPause(pause(doc, now: now), forms: [form(doc, now: now)])
+            #expect(try await store.pause(workflowRunId: "run-1", executionId: "exec-1")?.resumeRequested == false)
+            _ = try await store.submitHumanInputForm(token: "tok-1", inputs: "{}", action: "approve", userId: "u-1",
+                                                    at: now, now: Int(now.timeIntervalSince1970))
+            #expect(try await store.pause(workflowRunId: "run-1", executionId: "exec-1")?.resumeRequested == true)
+        }
+    }
+
     @Test func consumingASubmittedFormIsIdempotent() async throws {
         try await withStore { store, _ in
             let doc = try await doc(store)

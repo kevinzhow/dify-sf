@@ -16,9 +16,12 @@ public struct StoredWorkflowPause: Sendable, Equatable {
     public var elapsedTime: Double
     public var createdAt: Date
     public var resumedAt: Date?
+    /// A submission that arrived before this row existed (a form persisted first): the pause is already answerable.
+    public var resumeRequested: Bool
 
     public init(workflowRunId: String, executionId: String, docId: String, nodeId: String, snapshot: String,
-                totalTokens: Int = 0, totalSteps: Int = 0, elapsedTime: Double = 0, createdAt: Date, resumedAt: Date? = nil) {
+                totalTokens: Int = 0, totalSteps: Int = 0, elapsedTime: Double = 0, createdAt: Date, resumedAt: Date? = nil,
+                resumeRequested: Bool = false) {
         self.workflowRunId = workflowRunId
         self.executionId = executionId
         self.docId = docId
@@ -29,6 +32,7 @@ public struct StoredWorkflowPause: Sendable, Equatable {
         self.elapsedTime = elapsedTime
         self.createdAt = createdAt
         self.resumedAt = resumedAt
+        self.resumeRequested = resumeRequested
     }
 }
 
@@ -139,11 +143,17 @@ extension PostgresStore {
     public func createPause(_ pause: StoredWorkflowPause, forms: [StoredHumanInputForm]) async throws {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
+                // A form may already be persisted and answered (the other ordering): that submission is the resume
+                // request, and it is folded in here rather than lost. `EXISTS` inside this transaction sees it.
                 _ = try await c.query("""
                     INSERT INTO workflow_pauses (workflow_run_id, execution_id, doc_id, node_id, snapshot, total_tokens,
-                        total_steps, elapsed_time, created_at, resumed_at)
+                        total_steps, elapsed_time, created_at, resumed_at, resume_requested)
                     VALUES (\(pause.workflowRunId), \(pause.executionId), \(pause.docId), \(pause.nodeId), \(pause.snapshot),
-                        \(pause.totalTokens), \(pause.totalSteps), \(pause.elapsedTime), \(pause.createdAt), \(pause.resumedAt))
+                        \(pause.totalTokens), \(pause.totalSteps), \(pause.elapsedTime), \(pause.createdAt), \(pause.resumedAt),
+                        \(pause.resumeRequested) OR EXISTS (
+                            SELECT 1 FROM human_input_forms f
+                            WHERE f.workflow_run_id = \(pause.workflowRunId) AND f.execution_id = \(pause.executionId)
+                              AND f.status = 'submitted'))
                     """, logger: self.logger)
                 for f in forms {
                     _ = try await c.query("""
@@ -160,12 +170,30 @@ extension PostgresStore {
         }
     }
 
+    /// Writes one form on its own: the ordering where the form is durable before the pause (the engine may still be
+    /// draining). A submission that arrives in between becomes the pause's `resume_requested` when `createPause` runs.
+    /// Idempotent for the same (run, execution): a retried insert leaves the existing row.
+    public func insertHumanInputForm(_ f: StoredHumanInputForm) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                INSERT INTO human_input_forms (id, workflow_run_id, execution_id, doc_id, node_id, node_title, token,
+                    form_content, inputs, user_actions, rendered_content, default_values, resolved_default_values, actions,
+                    display_in_ui, expiration_time, status, created_at)
+                VALUES (\(f.id), \(f.workflowRunId), \(f.executionId), \(f.docId), \(f.nodeId), \(f.nodeTitle), \(f.token),
+                    \(f.formContent), \(f.inputs), \(f.userActions), \(f.renderedContent), \(f.defaultValues),
+                    \(f.resolvedDefaultValues), \(f.actions), \(f.displayInUi), \(f.expirationTime.map { Int64($0) }),
+                    \(f.status.rawValue), \(f.createdAt))
+                ON CONFLICT (workflow_run_id, execution_id) DO NOTHING
+                """, logger: self.logger)
+        }
+    }
+
     /// The pauses of a run that were not resumed yet, oldest first: what a restarted server re-attaches to.
     public func openPauses(workflowRunId: String) async throws -> [StoredWorkflowPause] {
         try await bounded {
             let rows = try await self.client.query("""
                 SELECT workflow_run_id, execution_id, doc_id, node_id, snapshot, total_tokens, total_steps, elapsed_time,
-                    created_at, resumed_at
+                    created_at, resumed_at, resume_requested
                 FROM workflow_pauses WHERE workflow_run_id = \(workflowRunId) AND resumed_at IS NULL
                 ORDER BY created_at
                 """, logger: self.logger)
@@ -177,7 +205,8 @@ extension PostgresStore {
                     docId: try r[2].decode(String.self), nodeId: try r[3].decode(String.self),
                     snapshot: try r[4].decode(String.self), totalTokens: Int(try r[5].decode(Int64.self)),
                     totalSteps: Int(try r[6].decode(Int32.self)), elapsedTime: try r[7].decode(Double.self),
-                    createdAt: try r[8].decode(Date.self), resumedAt: try r[9].decode(Date?.self)))
+                    createdAt: try r[8].decode(Date.self), resumedAt: try r[9].decode(Date?.self),
+                    resumeRequested: try r[10].decode(Bool.self)))
             }
             return out
         }
@@ -188,7 +217,7 @@ extension PostgresStore {
         try await bounded {
             let rows = try await self.client.query("""
                 SELECT workflow_run_id, execution_id, doc_id, node_id, snapshot, total_tokens, total_steps, elapsed_time,
-                    created_at, resumed_at
+                    created_at, resumed_at, resume_requested
                 FROM workflow_pauses WHERE workflow_run_id = \(workflowRunId) AND execution_id = \(executionId)
                 """, logger: self.logger)
             for try await row in rows {
@@ -198,7 +227,8 @@ extension PostgresStore {
                     docId: try r[2].decode(String.self), nodeId: try r[3].decode(String.self),
                     snapshot: try r[4].decode(String.self), totalTokens: Int(try r[5].decode(Int64.self)),
                     totalSteps: Int(try r[6].decode(Int32.self)), elapsedTime: try r[7].decode(Double.self),
-                    createdAt: try r[8].decode(Date.self), resumedAt: try r[9].decode(Date?.self))
+                    createdAt: try r[8].decode(Date.self), resumedAt: try r[9].decode(Date?.self),
+                    resumeRequested: try r[10].decode(Bool.self))
             }
             return nil
         }
@@ -256,7 +286,17 @@ extension PostgresStore {
                       AND (expiration_time IS NULL OR expiration_time > \(Int64(now)))
                     RETURNING \(unescaped: Self.formColumns)
                     """, logger: self.logger)
-                for try await row in claimed { return .accepted(try Self.decodeForm(row)) }
+                for try await row in claimed {
+                    let form = try Self.decodeForm(row)
+                    // The pause may not exist yet (a form persisted first): 0 rows then, and `createPause` folds this
+                    // submission in. Either ordering leaves a durable resume request.
+                    _ = try await c.query("""
+                        UPDATE workflow_pauses SET resume_requested = true
+                        WHERE workflow_run_id = \(form.workflowRunId) AND execution_id = \(form.executionId)
+                          AND resumed_at IS NULL
+                        """, logger: self.logger)
+                    return .accepted(form)
+                }
 
                 // Nothing was claimed: say why. A form still `waiting` was inside its deadline at the update, so this
                 // is the expired case; recording it keeps the state the next caller reads the same as this answer.

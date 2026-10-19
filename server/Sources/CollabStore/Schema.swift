@@ -587,7 +587,8 @@ public enum Schema {
         """,
         // Protocol 1.16: a run waiting for human input. The snapshot is the JSON text the engine wrote (`graphon`
         // encoding: key order, number kinds and segment types kept), the same text a restart resumes from; the totals
-        // are the run's up to the pause. One row per execution; `resumed_at` marks the pause that was resumed.
+        // are the run's up to the pause. One row per execution; `resumed_at` marks the pause that was resumed, and
+        // `resume_requested` keeps a submission that arrived before the pause row existed (a form persisted first).
         """
         CREATE TABLE IF NOT EXISTS workflow_pauses (
             workflow_run_id text             NOT NULL,
@@ -600,6 +601,7 @@ public enum Schema {
             elapsed_time    double precision NOT NULL DEFAULT 0,
             created_at      timestamptz      NOT NULL,
             resumed_at      timestamptz,
+            resume_requested boolean         NOT NULL DEFAULT false,
             PRIMARY KEY (workflow_run_id, execution_id)
         )
         """,
