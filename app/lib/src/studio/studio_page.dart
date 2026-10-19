@@ -132,7 +132,7 @@ class StudioPageState extends State<StudioPage> {
     api: widget.api,
     canCreateApp: _canCreate,
     currentUserId: widget.currentUserId,
-    openApp: (app, {required readOnly}) => widget.openApp(app, readOnly: readOnly).whenComplete(() {
+    openApp: (app, {required path}) => widget.openApp(app, path: path).whenComplete(() {
       if (mounted) unawaited(list.refresh());
     }),
     refresh: list.refresh,

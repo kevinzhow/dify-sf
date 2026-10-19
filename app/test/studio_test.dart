@@ -1,4 +1,5 @@
-/// The Studio as the app's home (protocol 1.10, FakeAppsApi): listing, opening an app in the editor and coming back,
+/// The Studio as the app's home (protocol 1.10, FakeAppsApi): listing, opening an app (the app detail page, at the
+/// page its role leads to) and coming back,
 /// creating from blank, rights by role, stars, search, paging, and an app deleted while it is open.
 library;
 
@@ -69,12 +70,9 @@ Future<void> _hover(WidgetTester t, Finder f) async {
   await t.pump();
 }
 
+/// Back to the Studio from an opened app: the sidebar's "/ Studio" breadcrumb.
 Future<void> _leaveEditor(WidgetTester t) async {
-  if (find.byKey(const Key('back-to-documents')).evaluate().isEmpty) {
-    await t.tap(find.byKey(const Key('session-menu')));
-    await t.pump(const Duration(milliseconds: 300));
-  }
-  await t.tap(find.byKey(const Key('back-to-documents')));
+  await t.tap(find.byKey(const ValueKey('app-detail-studio')));
   await settle(t);
 }
 
@@ -129,7 +127,7 @@ void main() {
     await t.pump(const Duration(seconds: 20));
   });
 
-  testWidgets('a normal member sees every card and stars, but has no Create and no More menu; cards open read-only', (
+  testWidgets('a normal member sees every card and stars, but has no Create and no More menu; cards open the Overview', (
     t,
   ) async {
     final w = await _workspace(as: 'nia@example.com');
@@ -148,8 +146,11 @@ void main() {
 
     await t.tap(find.byKey(ValueKey('app-card-link-${a.id}')).last);
     await settle(t, 2500);
-    expect(find.byKey(const ValueKey('node-start')), findsOneWidget);
-    expect(find.byKey(const Key('add-node-menu')), findsNothing, reason: 'read-only');
+    // Dify's getRedirectionPath: no layout access, so the Overview (`app.acl.monitor`); no Orchestrate in the sidebar.
+    expect(find.byKey(const ValueKey('app-detail-page-overview')), findsOneWidget);
+    expect(find.byKey(const ValueKey('node-start')), findsNothing);
+    expect(find.byKey(const ValueKey('app-nav-workflow')), findsNothing);
+    expect(find.byKey(const ValueKey('app-nav-overview')), findsOneWidget);
     await _leaveEditor(t);
     await t.pumpWidget(const SizedBox());
     await t.pump(const Duration(seconds: 20));

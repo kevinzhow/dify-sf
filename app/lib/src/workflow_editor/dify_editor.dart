@@ -10,6 +10,7 @@ import '../cards/provider_icon_image.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/toast.dart';
 import '../editor/editor_controller.dart';
+import '../editor/editor_versions.dart';
 import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
 import '../workflow/workspace_models.dart';
@@ -19,7 +20,7 @@ import 'features/workflow_features.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
 import 'header/features_trigger.dart';
-import 'header/publisher/app_publisher.dart' show PublisherAppInfo;
+import 'header/publisher/app_publisher.dart' show PublisherAppInfo, PublisherCapabilities, PublisherLinkHandler;
 import 'header/titles.dart';
 import 'header/workflow_header.dart';
 import 'dsl/dsl_export_confirm_modal.dart';
@@ -87,6 +88,30 @@ class EditorUser {
   final String? avatarUrl;
 }
 
+/// The publisher's links and the app around the editor (Dify's `appDetail`, its ACL and router).
+class EditorPublisherHost {
+  const EditorPublisherHost({
+    this.appBaseUrl = '',
+    this.accessToken = '',
+    this.canViewAccessPoint = false,
+    this.onOpenLink,
+    this.onPublished,
+  });
+
+  /// The web app's address (`site.app_base_url`, `site.access_token`).
+  final String appBaseUrl;
+  final String accessToken;
+
+  /// The app ACL's `canViewAccessPoint`: the publisher's Access Point action.
+  final bool canViewAccessPoint;
+
+  /// Opens the web app (external) or a console page (`/app/<id>/access-point`); null: the links do nothing.
+  final PublisherLinkHandler? onOpenLink;
+
+  /// After a publish: refresh what depends on it (Dify reloads the app detail).
+  final VoidCallback? onPublished;
+}
+
 /// The editor as Dify lays it out: the canvas with Dify's header, control bar, operator bar, context menus and
 /// shortcuts. dify-sf's own collaboration controls (link state, reconnect, unsaved edits, the host's actions) sit in
 /// the header's left slot, where Dify puts its own extra controls.
@@ -109,7 +134,17 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.saveImage,
     this.models,
     this.openModelProviderSettings,
+    this.versions,
+    this.publisher = const EditorPublisherHost(),
   });
+
+  /// Publishing and the version history on the server (protocol 1.11); null (the demo, `--doc`, tests): the publisher
+  /// publishes nothing and the version history shows the current draft alone.
+  final VersionsApi? versions;
+
+  /// What the publisher needs from the page around the editor (the app detail shell): the web app's address, the
+  /// Access Point action, the links it opens, what to refresh after publishing.
+  final EditorPublisherHost publisher;
 
   /// The workspace's model providers and models (the model selector, parameter rules, default models, the checklist's
   /// "Configure a model", OpenAI moderation); null: an empty workspace (no server).
@@ -166,6 +201,17 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
 
   final _runHost = GlobalKey<WorkflowRunHostState>();
 
+  /// Publishing and versions over [DifyWorkflowEditor.versions], for this controller.
+  EditorVersions? _versions;
+
+  void _bindVersions() {
+    _versions?.dispose();
+    _versions = switch (widget.versions) {
+      final api? => EditorVersions(api: api, controller: controller, appName: meta.appName)..refreshPublished(),
+      null => null,
+    };
+  }
+
   /// The mock runtime when no run service was given (one per editor): it also serves the variable inspect panel the
   /// values of its runs, unless inspect services were given.
   MockWorkflowRunService? _mockRuns;
@@ -201,6 +247,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   @override
   void initState() {
     super.initState();
+    _bindVersions();
     // Dialog routes opened from the editor are outside its icon scope.
     if (widget.models case final models?) ProviderIconScope.fallback = models.icons;
   }
@@ -209,6 +256,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   void didUpdateWidget(DifyWorkflowEditor old) {
     super.didUpdateWidget(old);
     if (widget.models case final models? when old.models != models) ProviderIconScope.fallback = models.icons;
+    if (old.versions != widget.versions || old.controller != controller) _bindVersions();
+    _versions?.appName = meta.appName;
     if (old.controller.session != controller.session || widget.commentsStore != null) {
       _ownComments?.dispose();
       _ownComments = null;
@@ -218,6 +267,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   @override
   void dispose() {
     _ownComments?.dispose();
+    _versions?.dispose();
     super.dispose();
   }
 
@@ -414,6 +464,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                       meta: meta,
                       access: widget.access,
                       user: widget.user,
+                      versions: _versions,
+                      publisher: widget.publisher,
                       session: (anchor) => SessionBadge(
                         controller: controller,
                         serverLabel: serverLabel,
@@ -491,13 +543,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                         ),
                         // The comment list, in comment mode.
                         CommentsPanel(canvas: canvas),
-                        // While browsing versions (no version service yet: the current draft alone).
-                        VersionHistoryPanelHost(
-                          data: VersionHistoryPanelData(
-                            currentUserId: widget.user?.id ?? controller.session.clientId,
-                            canImportExportDsl: widget.access.canImportExportDsl,
-                          ),
-                        ),
+                        // While browsing versions (without a version service: the current draft alone).
+                        _versionHistoryPanel(),
                       ],
                     ),
                     // The Features drawer (chatflows open it from the header), over everything with its backdrop.
@@ -530,6 +577,30 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
           ),
         ),
       ),
+    );
+  }
+
+  /// The version history panel on [_versions] (rebuilt when the published version changes: its Latest badge).
+  Widget _versionHistoryPanel() {
+    final v = _versions;
+    VersionHistoryPanelData data() => VersionHistoryPanelData(
+      currentUserId: widget.user?.id ?? controller.session.clientId,
+      canImportExportDsl: widget.access.canImportExportDsl,
+      fetchVersions: v?.fetchVersions,
+      restoreVersion: v?.restore,
+      deleteVersion: v?.deleteVersion,
+      updateVersion: v?.updateVersion,
+      handleRestoreFromPublishedWorkflow: v == null ? null : (version) => unawaited(v.showVersion(version)),
+      exportDsl: v == null ? null : (id) => unawaited(v.exportVersion(id)),
+      handleLoadBackupDraft: v?.showDraft,
+      handleRefreshWorkflowDraft: v?.showDraft,
+      invalidateAppWorkflow: v == null ? null : () => unawaited(v.refreshPublished()),
+      latestVersionId: v?.published?.id,
+    );
+    if (v == null) return VersionHistoryPanelHost(data: data());
+    return ListenableBuilder(
+      listenable: v,
+      builder: (context, _) => VersionHistoryPanelHost(data: data()),
     );
   }
 
@@ -577,9 +648,13 @@ class _BoundHeader extends StatefulWidget {
     this.access = WorkflowAccessControl.full,
     this.user,
     this.models,
+    this.versions,
+    this.publisher = const EditorPublisherHost(),
   });
   final EditorController controller;
   final CanvasController canvas;
+  final EditorVersions? versions;
+  final EditorPublisherHost publisher;
   final WorkspaceModels? models;
   final DocMeta meta;
   final WorkflowAccessControl access;
@@ -610,6 +685,18 @@ class _BoundHeaderState extends State<_BoundHeader> {
   void initState() {
     super.initState();
     widget.models?.addListener(_modelsChanged);
+    widget.versions?.addListener(_versionsChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _versionsChanged());
+  }
+
+  /// use-workflow-init.ts: the published version's time and whether its Start node leads anywhere, into the store.
+  void _versionsChanged() {
+    final v = widget.versions;
+    if (v == null || !v.loaded || !mounted) return;
+    final published = v.published;
+    WorkflowStoreScope.of(context)
+      ..setPublishedAt(published?.createdAt ?? 0)
+      ..setLastPublishedHasUserInput(published != null && publishedGraphHasUserInput(published.graph));
   }
 
   void _modelsChanged() {
@@ -658,6 +745,11 @@ class _BoundHeaderState extends State<_BoundHeader> {
       old.models?.removeListener(_modelsChanged);
       widget.models?.addListener(_modelsChanged);
     }
+    if (old.versions != widget.versions) {
+      old.versions?.removeListener(_versionsChanged);
+      widget.versions?.addListener(_versionsChanged);
+      _versionsChanged();
+    }
     if (!identical(old.meta, widget.meta)) _storeVariables(refreshChecklist: true);
   }
 
@@ -676,6 +768,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   void dispose() {
     widget.models?.removeListener(_modelsChanged);
+    widget.versions?.removeListener(_versionsChanged);
     _variables?.dispose();
     _binding?.dispose();
     _users.dispose();
@@ -685,6 +778,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   Widget build(BuildContext context) {
     final b = _binding!;
+    final versions = widget.versions;
     final run = WorkflowRunScope.maybeOf(context)?.run;
     return WorkflowHeader(
       canvas: widget.canvas,
@@ -706,15 +800,57 @@ class _BoundHeaderState extends State<_BoundHeader> {
         handleNodesCancelSelected: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
         title: widget.session(const EditingTitle()),
         left: widget.left,
-        middle: FeaturesTrigger(
-          // The document as the publisher's app (its mode: a workflow or a chatflow, both Dify's workflow apps).
-          app: PublisherAppInfo(id: widget.controller.docId, name: widget.meta.appName, mode: widget.meta.appMode),
-          hooks: WorkflowPublishHooks(
-            checkBeforePublish: () => b.checkBeforePublish(difyToast),
-            syncWorkflowDraft: b.syncWorkflowDraft,
-          ),
-        ),
+        // Browsing versions: the version on the canvas, the draft again, the restore (protocol 1.11).
+        restoreWorkflow: versions?.restore,
+        handleLoadBackupDraft: versions?.showDraft,
+        handleRefreshWorkflowDraft: versions?.showDraft,
+        middle: versions == null
+            ? _featuresTrigger(b, null)
+            : ListenableBuilder(
+                listenable: versions,
+                builder: (context, _) => _featuresTrigger(b, versions),
+              ),
       ),
+    );
+  }
+
+  /// Publishes; a refusal is toasted with the server's message (Dify's request layer toasts failed calls), then
+  /// rethrown so the publisher stays unlocked.
+  static Future<DifyJson?> _publish(EditorVersions versions, String title, String releaseNotes) async {
+    try {
+      return await versions.publish(title: title, releaseNotes: releaseNotes);
+    } on TransportException catch (e) {
+      difyToast(DifyToastType.error, e.message);
+      rethrow;
+    }
+  }
+
+  /// The Features and Publish buttons, publishing through [versions] (null: publishing has no effect).
+  Widget _featuresTrigger(EditorHeaderBinding b, EditorVersions? versions) {
+    final host = widget.publisher;
+    return FeaturesTrigger(
+      // The document as the publisher's app (its mode: a workflow or a chatflow, both Dify's workflow apps).
+      app: PublisherAppInfo(
+        id: widget.controller.docId,
+        name: widget.meta.appName,
+        mode: widget.meta.appMode,
+        appBaseUrl: host.appBaseUrl,
+        accessToken: host.accessToken,
+      ),
+      hooks: WorkflowPublishHooks(
+        checkBeforePublish: () => b.checkBeforePublish(difyToast),
+        syncWorkflowDraft: b.syncWorkflowDraft,
+        publishWorkflow: versions == null
+            ? null
+            : ({title = '', releaseNotes = ''}) => _publish(versions, title, releaseNotes),
+        onPublished: host.onPublished,
+      ),
+      publishedWorkflow: versions?.publishedInfo,
+      capabilities: PublisherCapabilities(canViewAccessPoint: host.canViewAccessPoint),
+      onOpenLink: host.onOpenLink,
+      onUpdateVersionInfo: versions == null
+          ? null
+          : (u) => versions.updateVersion(u.id ?? '', title: u.title, releaseNotes: u.releaseNotes),
     );
   }
 }

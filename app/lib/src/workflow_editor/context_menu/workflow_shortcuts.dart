@@ -4,6 +4,7 @@ import 'dart:ui' show ViewFocusEvent, ViewFocusState;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../active_page.dart';
 import '../../canvas/canvas_controller.dart';
 import '../../design/widgets/widgets.dart';
 import '../../editor/editor_controller.dart';
@@ -99,7 +100,8 @@ class _WorkflowShortcutsState extends State<WorkflowShortcuts> with WidgetsBindi
   }
 
   KeyEventResult _onKey(KeyEvent e) {
-    if (!mounted) return KeyEventResult.ignored;
+    // An app detail page other than the editor is on screen (the editor stays alive behind it).
+    if (!mounted || !ActivePage.isActive(context)) return KeyEventResult.ignored;
     if (e.logicalKey == LogicalKeyboardKey.shiftLeft || e.logicalKey == LogicalKeyboardKey.shiftRight) {
       if (e is KeyUpEvent && !HardwareKeyboard.instance.isShiftPressed) _actions.undimAllNodes();
       if (e is KeyDownEvent && !_typing() && (ModalRoute.isCurrentOf(context) ?? true)) _actions.dimOtherNodes();

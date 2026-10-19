@@ -13,6 +13,8 @@ class LaunchOptions {
     this.lang,
     this.theme,
     this.nodeId,
+    this.app,
+    this.page,
   });
 
   /// The web build's URL query as options; [path] `/activate` (Dify's invitation link `/activate?token=…`) or `#/activate`
@@ -32,6 +34,8 @@ class LaunchOptions {
     lang: q['lang'],
     theme: q['theme'],
     nodeId: q['node_id'],
+    app: q['app'],
+    page: q['page'],
   );
 
   factory LaunchOptions.parse(List<String> args) {
@@ -45,6 +49,8 @@ class LaunchOptions {
     String? lang;
     String? theme;
     String? nodeId;
+    String? app;
+    String? page;
     for (var i = 0; i < args.length; i++) {
       String? value() => i + 1 < args.length ? args[++i] : null;
       switch (args[i]) {
@@ -68,6 +74,10 @@ class LaunchOptions {
           theme = value();
         case '--node-id':
           nodeId = value();
+        case '--app':
+          app = value();
+        case '--page':
+          page = value();
       }
     }
     return LaunchOptions(
@@ -81,6 +91,8 @@ class LaunchOptions {
       lang: lang,
       theme: theme,
       nodeId: nodeId,
+      app: app,
+      page: page,
     );
   }
 
@@ -116,6 +128,11 @@ class LaunchOptions {
 
   /// A node of [doc] to select and bring into view when it opens (Dify's `?node_id=`, use-locate-node.ts).
   final String? nodeId;
+
+  /// An app to open in its detail page (`--app` / `?app=`), at [page]: Dify's last path segment (`workflow`,
+  /// `access-point`, `logs`, `annotations`, `overview`); signed in on a server with the apps API.
+  final String? app;
+  final String? page;
 
   bool get autoOpen => demo || doc != null;
 

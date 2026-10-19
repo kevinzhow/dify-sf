@@ -37,6 +37,10 @@ Cases beyond the canvas (cases.json):
   * "page": {"dify": "/signin", "ours": "query", "signedIn": false, "routes": [...]}: a page outside the editor; the
     region is relative to the window. "routes": canned answers, [{"side": "dify"|"ours", "url": glob, "method",
     "json"}] (Dify's /install only renders before Dify's setup: its setup status is answered "not_started").
+  * "page" with a "fixture": a page of an app (`{app}` in "dify" / "ours" is each side's id of the fixture, imported on
+    both sides first, e.g. {"dify": "/app/{app}/access-point", "ours": "app={app}&page=access-point"}); its "setup"
+    requests ([{"method", "path", "json"?}], Dify's console paths with `{app}`) run on both sides after the import
+    (Dify: /console/api<path>, dify-sf: /v1<path>), e.g. API keys or annotations both apps should have.
   * "comments": [{"x", "y", "content", "replies": [...]}]: canvas comments created through each side's API first.
   * "members": true: dify-sf's workspace gets the members Dify's has (same roles, active), by invitation.
   * "invite": true: an invitation is created on both sides first; "{token}" and "{email}" in "page" paths and queries
@@ -303,6 +307,30 @@ def fill(text, invite):
     return text.format(**invite) if invite else text
 
 
+def is_app_page(case):
+    """A page of an imported app ("page" with a "fixture")."""
+    return bool(case.get('page') and case.get('fixture'))
+
+
+def with_app(case, side, app_id):
+    """[case] with `{app}` in its page path / query of [side] ('dify' or 'ours') replaced by that side's app id."""
+    if not is_app_page(case) or not app_id:
+        return case
+    page = dict(case['page'])
+    page[side] = page.get(side, '').replace('{app}', app_id)
+    return {**case, 'page': page}
+
+
+def app_setup(case, s, dify_app, sf_app):
+    """The case's "setup" requests on both sides (Dify's console paths; dify-sf serves them under /v1)."""
+    for r in (case.get('page') or {}).get('setup', []):
+        method, path, body = r.get('method', 'POST'), r['path'], r.get('json')
+        if s is not None and dify_app:
+            s.request(method, f'{DIFY}/console/api' + path.replace('{app}', dify_app), json=body).raise_for_status()
+        if sf_app:
+            sf_api(method, '/v1' + path.replace('{app}', sf_app), body)
+
+
 def capture_dify(browsers, s, app_id, case, out, invite=None):
     ctx = browsers.context(*case['window'])
     if THEME == 'dark':
@@ -552,7 +580,7 @@ def main():
             web = out / 'visual-testing-results/react' / f'{c["id"]}.png'
             ours = out / 'visual-testing-results/android' / f'{c["id"]}.png'
             view = web.with_suffix('.view.json')
-            doc = None if c.get('page') else sf_import(text)
+            doc = sf_import(text) if not c.get('page') or is_app_page(c) else None
             if c.get('members'):
                 mirror_members(s)
             invites = make_invites(s) if c.get('invite') else {}
@@ -563,16 +591,23 @@ def main():
                         add_comments(c, None, None, doc)
                     steps = json.loads(web.with_suffix('.steps.json').read_text()) \
                         if web.with_suffix('.steps.json').exists() else []
-                    obox = capture_ours(browsers, base, doc, c, ours, viewport, steps, invites.get('ours'))
+                    if is_app_page(c):
+                        app_setup(c, None, None, doc)
+                    obox = capture_ours(browsers, base, doc, with_app(c, 'ours', doc), ours, viewport, steps,
+                                        invites.get('ours'))
                 else:
-                    app_id = None if c.get('page') else dify_import(s, text)
+                    app_id = dify_import(s, text) if not c.get('page') or is_app_page(c) else None
                     try:
-                        if app_id:
+                        if app_id and not c.get('page'):
                             add_comments(c, s, app_id, doc)
-                        dbox, viewport = capture_dify(browsers, s, app_id, c, web, invites.get('dify'))
+                        if is_app_page(c):
+                            app_setup(c, s, app_id, doc)
+                        dbox, viewport = capture_dify(browsers, s, app_id, with_app(c, 'dify', app_id), web,
+                                                      invites.get('dify'))
                         view.write_text(json.dumps(viewport))
                         steps = json.loads(web.with_suffix('.steps.json').read_text())
-                        obox = capture_ours(browsers, base, doc, c, ours, viewport, steps, invites.get('ours'))
+                        obox = capture_ours(browsers, base, doc, with_app(c, 'ours', doc), ours, viewport, steps,
+                                            invites.get('ours'))
                         print(f'{c["id"]}: Dify viewport x={viewport[0]:.3f} y={viewport[1]:.3f} '
                               f'zoom={viewport[2]:.4f}; canvas at Dify {dbox["x"]:.2f},{dbox["y"]:.2f} '
                               f'ours {obox["x"]:.2f},{obox["y"]:.2f}')

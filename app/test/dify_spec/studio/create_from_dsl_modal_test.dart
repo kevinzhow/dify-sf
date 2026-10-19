@@ -186,7 +186,7 @@ void main() {
       final opened = calls.opened.single;
       expect(opened.app.mode, AppModes.workflow);
       expect(opened.app.permissionKeys, AppPermissionKeys.forRole(AccountRole.owner));
-      expect(opened.readOnly, isFalse);
+      expect(opened.path, endsWith('/workflow'));
     });
 
     testWidgets('should import from a file with the loaded file content', (t) async {

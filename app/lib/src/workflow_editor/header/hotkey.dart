@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../active_page.dart';
 import '../../design/widgets/widgets.dart';
 
 /// header/hotkeys.ts and app-publisher/hotkeys.ts.
@@ -70,6 +71,7 @@ class _PageHotkeyState extends State<PageHotkey> {
 
   bool _handle(KeyEvent e) {
     if (e is! KeyDownEvent || !widget.enabled || !matchesHotkey(widget.hotkey, e)) return false;
+    if (!ActivePage.isActive(context)) return false;
     if (widget.ignoreInputs && focusInTextInput()) return false;
     widget.onPressed();
     return true;

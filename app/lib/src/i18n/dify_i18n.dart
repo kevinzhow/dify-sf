@@ -55,6 +55,9 @@ class DifyI18n implements Translator {
       'app-api',
       'billing',
       'explore',
+      'app-annotation',
+      'deployments',
+      'layout',
     ],
   }) async {
     final b = bundle ?? rootBundle;

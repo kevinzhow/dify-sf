@@ -41,7 +41,7 @@ class StudioFixture {
 
 /// What the page asked to open, and the files it saved.
 class StudioCalls {
-  final opened = <({AppInfo app, bool readOnly})>[];
+  final opened = <({AppInfo app, String path})>[];
   final saved = <({String name, String yaml})>[];
   final envCalls = <String>[];
   List<Map<String, Object?>> env = const [];
@@ -74,7 +74,7 @@ Future<StudioCalls> renderStudio(
         currentUserId: f.members.auth.account!.id,
         pollInterval: null,
         debounce: debounce,
-        openApp: (app, {required readOnly}) async => c.opened.add((app: app, readOnly: readOnly)),
+        openApp: (app, {required path}) async => c.opened.add((app: app, path: path)),
         environmentVariables: (id) async {
           c.envCalls.add(id);
           if (c.envError != null) throw c.envError!;

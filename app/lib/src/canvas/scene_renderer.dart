@@ -503,7 +503,10 @@ class SceneRenderer extends CanvasRenderer {
             n.visible = true;
           }
         }
-        SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
+        // A second capture before the frame ends binds again: remove the host once.
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (host.parent != null) scene.remove(host);
+        });
       },
     );
     _watch(c);
@@ -964,7 +967,10 @@ class SceneRenderer extends CanvasRenderer {
               ..baseColorFactor = _textureFactor(n.slot);
           }
         }
-        SchedulerBinding.instance.addPostFrameCallback((_) => scene.remove(host));
+        // A second capture before the frame ends binds again: remove the host once.
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (host.parent != null) scene.remove(host);
+        });
       },
     );
     _watch(c);

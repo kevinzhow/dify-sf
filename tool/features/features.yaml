@@ -705,18 +705,18 @@ features:
   area: header
   title: 'Publish button and panel (publish / update, version name, Mod+Shift+P)'
   dify: [web/app/components/app/app-publisher, web/app/components/workflow-app/components/workflow-header/features-trigger.tsx]
-  status: partial
-  reason: The publisher UI and checks are ported, but dify-sf's server has no published versions yet (no publishWorkflow service), so publishing records nothing.
-  evidence: ['spec:web/app/components/app/app-publisher', visual:toast-publish]
-  ours: [app/lib/src/workflow_editor/header/publisher/app_publisher.dart, app/lib/src/workflow_editor/header/features_trigger.dart]
+  status: ported
+  deviation: "Publishing snapshots the shared document's head as a version (protocol 1.11 VersionsApi); the published time and version are fetched when the editor opens and refetched after publishing (a collaborator's publish shows on the next fetch, not live)."
+  evidence: ['spec:web/app/components/app/app-publisher', visual:toast-publish, app/test/editor_versions_test.dart]
+  ours: [app/lib/src/workflow_editor/header/publisher/app_publisher.dart, app/lib/src/workflow_editor/header/features_trigger.dart, app/lib/src/editor/editor_versions.dart]
 - id: header.publish-actions
   area: header
   title: 'Publish panel actions: Open web app, Access Point, Embed, API, Workflow as Tool, Publish to Marketplace'
   dify: [web/app/components/app/app-publisher]
-  status: not_ported
-  reason: outside current scope (owner to decide); dify-sf has no web apps, access points, service API, workflow tools or marketplace.
-  evidence: ['spec:web/app/components/app/app-publisher']
-  ours: [app/lib/src/workflow_editor/header/publisher/actions_section.dart]
+  status: partial
+  reason: Open web app and Access Point work (the Access Point action opens the app's Access Point page); Workflow as Tool and Publish to Marketplace are not part of dify-sf, and the web app has no runtime yet (its URL leads nowhere).
+  evidence: ['spec:web/app/components/app/app-publisher', app/test/editor_versions_test.dart]
+  ours: [app/lib/src/workflow_editor/header/publisher/actions_section.dart, app/lib/src/editor/editor_versions.dart]
 - id: header.multi-env
   area: header
   title: 'Publish: enterprise multi-environment deployment tabs'
@@ -1623,18 +1623,18 @@ features:
   area: versions
   title: 'Version history panel: list, filter (all / only yours), name / edit version, copy id, export, delete, restore'
   dify: [web/app/components/workflow/panel/version-history-panel, web/app/components/workflow/header/version-history-button.tsx]
-  status: partial
-  reason: The panel and its dialogs are ported, but dify-sf's server has no published versions yet (no version list / restore / delete service), so it shows the current draft alone.
-  evidence: ['spec:web/app/components/workflow/panel/version-history-panel', 'spec:web/app/components/workflow/panel/version-history-panel/action-menu', 'spec:web/app/components/workflow/panel/version-history-panel/filter', 'spec:web/app/components/workflow/store/__tests__/version-slice.spec.ts']
-  ours: [app/lib/src/workflow_editor/version_history/version_history_panel.dart]
+  status: ported
+  deviation: "The panel runs on the server's versions (protocol 1.11 VersionsApi); a clicked version is fetched (`GET .../workflows/{id}`) and shown read-only on the canvas while the collaboration session keeps syncing underneath."
+  evidence: ['spec:web/app/components/workflow/panel/version-history-panel', 'spec:web/app/components/workflow/panel/version-history-panel/action-menu', 'spec:web/app/components/workflow/panel/version-history-panel/filter', 'spec:web/app/components/workflow/store/__tests__/version-slice.spec.ts', app/test/editor_versions_test.dart]
+  ours: [app/lib/src/workflow_editor/version_history/version_history_panel.dart, app/lib/src/editor/editor_versions.dart]
 - id: versions.restore
   area: versions
   title: 'Restore a published version over the draft'
   dify: [web/app/components/workflow/header/header-in-restoring.tsx, web/app/components/workflow/hooks/use-workflow-update.ts]
-  status: not_ported
-  reason: Needs a version service on the server; in dify-sf a restore would have to change the shared document through ops.
-  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-workflow-update.spec.tsx']
-  ours: []
+  status: ported
+  deviation: "Restoring replaces the shared document with the version through the editor's replacement path (the server renders the version and commits ordinary ops from this client): collaborators see the change as edits, the undo history is cleared, secret values stay on the server."
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-workflow-update.spec.tsx', app/test/editor_versions_test.dart]
+  ours: [app/lib/src/editor/editor_versions.dart, app/lib/src/workflow_editor/header/workflow_header.dart]
 
 # ---------------------------------------------------------------- accounts
 - id: accounts.install
@@ -1916,8 +1916,8 @@ features:
   title: 'Studio rights: who creates, manages and opens apps'
   dify: [web/utils/permission.ts, web/utils/app-redirection.ts, api/services/enterprise/rbac_service.py]
   status: ported
-  deviation: 'Normal members and dataset operators see every card and star, but have no Create and no More menu; their card opens the editor read-only (Dify sends them to the overview page, which dify-sf does not have).'
-  evidence: [app/test/studio_test.dart]
+  deviation: 'Normal members and dataset operators see every card and star, but have no Create and no More menu; their card opens the app where Dify sends them (normal members: Monitoring; dataset operators: Access Point).'
+  evidence: [app/test/studio_test.dart, app/test/app_detail_test.dart]
   ours: [app/lib/src/studio/studio_scope.dart, app/lib/src/home_page.dart]
 - id: app-pages.studio-tags
   area: app-pages
@@ -1940,9 +1940,9 @@ features:
   title: 'An open editor of a deleted app returns to the Studio'
   dify: []
   status: dify_sf_only
-  reason: 'Collaboration: someone else deletes the app while it is open; the editor shows "App deleted" and closes instead of reconnecting forever.'
-  evidence: [app/test/studio_test.dart]
-  ours: [app/lib/src/editor/editor_page.dart]
+  reason: 'Collaboration: someone else deletes the app while it is open; the editor shows "App deleted" and the app closes (back to the Studio) instead of reconnecting forever.'
+  evidence: [app/test/studio_test.dart, app/test/app_detail_test.dart]
+  ours: [app/lib/src/editor/editor_page.dart, app/lib/src/app_detail/app_detail_page.dart]
 - id: app-pages.documents
   area: app-pages
   title: 'Developer start form: open or create a document by id, the demo'
@@ -1959,14 +1959,173 @@ features:
   reason: Logo, workspace card and account section are ported; Dify's search, navigation links, web apps and help menu are not part of dify-sf.
   evidence: [visual:nav-main]
   ours: [app/lib/src/home_page.dart]
-- id: app-pages.app-detail
+- id: app-pages.app-sidebar
   area: app-pages
-  title: 'App detail pages: overview, logs, annotations, access config, deploy, API access'
-  dify: [web/app/(commonLayout)/app]
+  title: 'App detail sidebar: home and Studio links, collapse (button, Mod+B, remembered), hover preview, page navigation by role and mode, account section'
+  dify: [web/app/components/app-sidebar, web/app/components/detail-sidebar]
+  status: ported
+  deviation: "Dify's Goto Anything button and help menu are not part of dify-sf (as in the main navigation); Deploy and Resource Access never show (enterprise / RBAC)."
+  evidence: ['spec:web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx', 'spec:web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx', 'spec:web/app/components/app-sidebar/nav-link', 'spec:web/app/components/detail-sidebar', app/test/app_detail_test.dart]
+  ours: [app/lib/src/app_detail/detail_sidebar.dart, app/lib/src/app_detail/app_sidebar.dart]
+- id: app-pages.app-detail-routing
+  area: app-pages
+  title: 'Opening an app: the page each role lands on, route guards, window title, pages kept alive (the editor keeps its session), a deleted app returns to the Studio'
+  dify: ['web/app/(commonLayout)/app/(appDetailLayout)', web/utils/permission.ts, web/utils/app-redirection.ts]
+  status: ported
+  deviation: "Pages switch in place (no URLs yet); a page that is not shown keeps its state but gets no ticks, focus or page-wide keys. Owners, admins and editors land on the editor, normal members on Monitoring, dataset operators on the Access Point (as Dify); `--doc` and the demo keep the bare editor."
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx', 'spec:web/utils/permission.spec.ts', 'spec:web/utils/app-redirection.spec.ts', app/test/app_detail_test.dart, app/test/studio_test.dart, app/integration_test/app_detail_flow_test.dart]
+  ours: [app/lib/src/app_detail/app_detail_page.dart, app/lib/src/app_detail/app_permission.dart, app/lib/src/app_detail/detail_page_slot.dart, app/lib/src/home_page.dart]
+- id: app-pages.app-info-menu
+  area: app-pages
+  title: 'App info in the sidebar: icon, name, mode; menu with Edit info, Duplicate, Export DSL (saved-version warning, secrets), Import DSL over the app, Delete'
+  dify: [web/app/components/app-sidebar/app-info]
+  status: ported
+  deviation: "No app_meta_update collaboration event yet: other members see a rename on their next app read. Switch to Workflow Orchestrate applies to chat / completion apps, which dify-sf does not have."
+  evidence: ['spec:web/app/components/app-sidebar/app-info', app/test/app_detail_test.dart]
+  ours: [app/lib/src/app_detail/app_info_actions.dart, app/lib/src/app_detail/app_sidebar.dart]
+- id: app-pages.overview-charts
+  area: app-pages
+  title: 'Monitoring (overview) page: time range, the workflow and chatflow statistics charts'
+  dify: ['web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview', web/app/components/app/overview/app-chart.tsx, web/app/components/app/overview/app-chart-utils.ts]
+  status: partial
+  reason: "The charts are complete, but dify-sf has no runtime yet: the statistics are empty (Dify's empty charts) until web-app or API traffic exists; demos and tests use mock data. Dify's Cloud custom date range is not part of the community edition."
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx', 'spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/chart-view.spec.tsx', 'spec:web/app/components/app/overview/__tests__/app-chart-utils.spec.ts', 'spec:web/app/components/app/overview/__tests__/app-chart.spec.tsx', app/test/app_detail_overview_test.dart, visual:app-overview]
+  ours: [app/lib/src/app_detail/overview/overview_page.dart, app/lib/src/app_detail/overview/app_chart.dart, app/lib/src/app_detail/overview/app_chart_canvas.dart, app/lib/src/app_detail/overview/app_chart_utils.dart, app/lib/src/app_detail/overview/time_range.dart]
+- id: app-pages.overview-apikey-panel
+  area: app-pages
+  title: "Monitoring: the 'set up a model provider' banner until an LLM provider is active"
+  dify: [web/app/components/app/overview/apikey-info-panel]
+  status: ported
+  evidence: ['spec:web/app/components/app/overview/apikey-info-panel']
+  ours: [app/lib/src/app_detail/overview/apikey_info_panel.dart]
+- id: app-pages.tracing-config
+  area: app-pages
+  title: 'Monitoring: tracing configuration (Langfuse, LangSmith, Opik and other providers)'
+  dify: ['web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing']
   status: not_ported
-  reason: outside current scope (owner to decide); dify-sf replicates the workflow editor only.
+  reason: Later phase by owner decision (2026-10-19); the Monitoring header leaves the tracing button out until per-app trace configuration exists on the server.
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing']
+  ours: []
+- id: app-pages.workflow-logs
+  area: app-pages
+  title: 'Workflow app logs: filters, table, pagination, run detail drawer (result, detail, tracing)'
+  dify: [web/app/components/app/workflow-log, web/app/components/app/log-annotation]
+  status: partial
+  reason: "The page is complete, but dify-sf has no runtime: editor debug runs are never logged (as in Dify), so the list stays empty (Dify's empty state) until web-app or API traffic exists; demos and tests use mock runs."
+  evidence: ['spec:web/app/components/app/workflow-log', 'spec:web/app/components/app/log-annotation', app/test/app_detail_logs_test.dart, visual:app-logs-workflow]
+  ours: [app/lib/src/app_detail/logs/logs_page.dart, app/lib/src/app_detail/logs/workflow_log.dart, app/lib/src/app_detail/logs/log_widgets.dart]
+- id: app-pages.chat-logs
+  area: app-pages
+  title: 'Chatflow logs: filters, conversation table, pagination, conversation drawer (transcript, variables, feedback)'
+  dify: [web/app/components/app/log]
+  status: partial
+  reason: "dify-sf has no runtime: no conversations exist until web-app or API traffic does, so the list shows Dify's empty state (demos and tests use mock conversations); admin feedback has no server endpoint yet (Dify's failure toast), the transcript has no add / edit annotation buttons and a dislike sends no comment."
+  evidence: ['spec:web/app/components/app/log', app/test/app_detail_logs_test.dart, visual:app-logs-empty]
+  ours: [app/lib/src/app_detail/logs/chat_log.dart, app/lib/src/app_detail/logs/list_utils.dart, app/lib/src/app_detail/logs/logs_data.dart, app/lib/src/app_detail/logs/log_widgets.dart]
+- id: app-pages.deploy
+  area: app-pages
+  title: 'Deploy page (deployment environments)'
+  dify: [web/app/components/app/deploy]
+  status: not_applicable
+  reason: Enterprise only (app.acl.deploy, which no community-edition role holds).
   evidence: []
   ours: []
+- id: app-pages.resource-access
+  area: app-pages
+  title: 'Resource Access page (per-app access configuration)'
+  dify: [web/app/components/app/access-config]
+  status: not_applicable
+  reason: Needs RBAC, an enterprise feature; the community edition never shows it.
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/access-config']
+  ours: []
+- id: app-pages.webapp-access-control
+  area: app-pages
+  title: 'Web app access control (who may use the web app)'
+  dify: [web/app/components/app/app-access-control]
+  status: not_applicable
+  reason: Enterprise web-app authentication (webapp_auth); the community edition's web apps are public.
+  evidence: []
+  ours: []
+- id: app-pages.log-retention
+  area: app-pages
+  title: 'Log retention and archive notices'
+  dify: [web/app/components/app/log/archived-logs-notice.tsx, web/app/components/app/log/retention-upgrade-notice.tsx]
+  status: not_applicable
+  reason: Dify Cloud plans only.
+  evidence: []
+  ours: []
+- id: app-pages.access-point
+  area: app-pages
+  title: 'Access Point page: Web App and Service API cards (switches, URL, copy, QR code with download, regenerate, open), the unpublished banner'
+  dify: [web/app/components/app/access-point, web/app/components/base/access-point, web/app/components/base/qrcode]
+  status: ported
+  deviation: "The built-in environment only (deployment environments are enterprise); the Web App URL and the service API lead nowhere until dify-sf has a runtime. Dify's community-edition role quirks are kept: an editor sees the API switch and Regenerate enabled, the server refuses them (403) and Dify's error toast shows."
+  evidence: ['spec:web/app/components/app/access-point', 'spec:web/app/components/base/qrcode', app/test/access_point_page_test.dart, app/test/access_point_app_test.dart, visual:app-access-point]
+  ours: [app/lib/src/app_detail/access/access_point_page.dart, app/lib/src/app_detail/access/web_app_card.dart, app/lib/src/app_detail/access/service_api_card.dart, app/lib/src/app_detail/access/access_point_card.dart]
+- id: app-pages.web-app-settings
+  area: app-pages
+  title: 'Web App settings (Branding): name, icon, description, answer icon, language, chat colour, workflow details, placeholder, copyright, privacy policy, disclaimer'
+  dify: [web/app/components/app/overview/settings]
+  status: ported
+  deviation: Community edition rules (as Dify self-hosted) - copyright locked, the input placeholder editable; image icons need file storage dify-sf does not have (emoji only).
+  evidence: ['spec:web/app/components/app/overview/settings', app/test/access_point_page_test.dart]
+  ours: [app/lib/src/app_detail/access/site_settings_modal.dart]
+- id: app-pages.embed-customize
+  area: app-pages
+  title: 'Embed on website (iframe, script, Chrome extension, hidden inputs), Customize, Launch with hidden inputs'
+  dify: [web/app/components/app/overview/embedded, web/app/components/app/overview/customize, web/app/components/app/overview/workflow-launch-dialog, web/app/components/app/overview/app-card-utils.ts]
+  status: ported
+  deviation: Hidden inputs are gzipped with package:archive on every platform (Dify falls back to plain base64 without CompressionStream); the snippets point at a web app runtime dify-sf does not have yet.
+  evidence: ['spec:web/app/components/app/overview/embedded', 'spec:web/app/components/app/overview/__tests__/app-card-utils.spec.ts', 'spec:web/app/components/app/overview/__tests__/workflow-launch-dialog.spec.tsx', 'spec:web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx']
+  ours: [app/lib/src/app_detail/access/embedded_modal.dart, app/lib/src/app_detail/access/customize_modal.dart, app/lib/src/app_detail/access/workflow_launch_dialog.dart, app/lib/src/app_detail/access/access_point_utils.dart]
+- id: app-pages.api-keys
+  area: app-pages
+  title: 'Service API secret keys: list (masked), copy, create (shown once), delete, the count badge'
+  dify: [web/app/components/api-key, web/app/components/app/access-point/shared/api-secret-key-button.tsx]
+  status: ported
+  deviation: Keys are stored encrypted with the server's secrets key plus a lookup hash (Dify stores them in plaintext); app keys only (no dataset or environment keys).
+  evidence: ['spec:web/app/components/api-key', app/test/access_point_page_test.dart, visual:app-api-keys]
+  ours: [app/lib/src/app_detail/access/api_key_modal.dart, app/lib/src/app_detail/access/service_api_card.dart]
+- id: app-pages.api-reference
+  area: app-pages
+  title: 'API Reference (the service API documentation of the app mode)'
+  dify: [web/app/components/app/access-point/shared/utils.ts, web/context/i18n.ts]
+  status: ported
+  deviation: Dify 1.17.1 has no in-app reference either; the button opens docs.dify.ai's reference for the app mode (useDocLink), as Dify does.
+  evidence: ['spec:web/app/components/app/access-point/__tests__/service-api-card.spec.tsx']
+  ours: [app/lib/src/app_detail/access/access_point_utils.dart]
+- id: app-pages.mcp-trigger-access-points
+  area: app-pages
+  title: 'MCP server and Trigger access points'
+  dify: [web/app/components/app/access-point/built-in-access-points/mcp-card.tsx, web/app/components/app/access-point/built-in-access-points/trigger-card.tsx]
+  status: partial
+  reason: dify-sf has no MCP server or trigger runtime - the MCP card is shown unavailable and the Trigger card with Dify's empty content (no triggers to switch).
+  evidence: ['spec:web/app/components/app/access-point/__tests__/mcp-card.spec.tsx', 'spec:web/app/components/app/access-point/__tests__/trigger-card.spec.tsx']
+  ours: [app/lib/src/app_detail/access/mcp_trigger_cards.dart]
+- id: app-pages.annotations
+  area: app-pages
+  title: 'Annotations page (chatflows): list, search, batch delete, add (create next), edit, view, remove, clear all, CSV import with template, CSV / JSONL export'
+  dify: [web/app/components/app/annotation]
+  status: ported
+  deviation: CSV import runs at once on the server (Dify runs a job; the job is polled the same way and is complete at the first poll).
+  evidence: ['spec:web/app/components/app/annotation', 'spec:web/app/components/app/annotation/add-annotation-modal', 'spec:web/app/components/app/annotation/add-annotation-modal/edit-item', 'spec:web/app/components/app/annotation/edit-annotation-modal', 'spec:web/app/components/app/annotation/edit-annotation-modal/edit-item', 'spec:web/app/components/app/annotation/view-annotation-modal', 'spec:web/app/components/app/annotation/remove-annotation-confirm-modal', 'spec:web/app/components/app/annotation/clear-all-annotations-confirm-modal', 'spec:web/app/components/app/annotation/header-opts', 'spec:web/app/components/app/annotation/batch-add-annotation-modal', app/test/annotations_page_test.dart, visual:app-annotations]
+  ours: [app/lib/src/app_detail/annotations/annotations_page.dart, app/lib/src/app_detail/annotations/annotation_list.dart, app/lib/src/app_detail/annotations/annotation_modals.dart, app/lib/src/app_detail/annotations/batch_add_modal.dart, app/lib/src/app_detail/annotations/header_opts.dart]
+- id: app-pages.annotation-reply-settings
+  area: app-pages
+  title: 'Annotation Reply: switch and settings (embedding model, score threshold)'
+  dify: [web/app/components/app/annotation/index.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/score-slider]
+  status: partial
+  reason: The setting is stored (the enable / disable jobs complete at once) but nothing matches replies yet - embedding and matching are runtime work dify-sf does not have.
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/config-param-modal.spec.tsx', 'spec:web/app/components/base/features/new-feature-panel/annotation-reply/score-slider', app/test/annotations_page_test.dart]
+  ours: [app/lib/src/app_detail/annotations/config_param_modal.dart, app/lib/src/app_detail/annotations/annotations_page.dart]
+- id: app-pages.annotation-hit-history
+  area: app-pages
+  title: 'Annotation hit history (the view dialog''s second tab)'
+  dify: [web/app/components/app/annotation/view-annotation-modal]
+  status: partial
+  reason: Hits are recorded by the runtime when a reply matches; dify-sf has none, so the history is always empty (the tab, table and paging are ported).
+  evidence: ['spec:web/app/components/app/annotation/view-annotation-modal']
+  ours: [app/lib/src/app_detail/annotations/annotation_modals.dart]
 - id: app-pages.knowledge
   area: app-pages
   title: 'Knowledge (datasets) pages'

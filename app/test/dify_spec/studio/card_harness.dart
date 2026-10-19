@@ -167,7 +167,7 @@ Future<StudioCalls> renderCard(
         api: api,
         canCreateApp: canCreateApp,
         currentUserId: 'user-1',
-        openApp: (app, {required readOnly}) async => c.opened.add((app: app, readOnly: readOnly)),
+        openApp: (app, {required path}) async => c.opened.add((app: app, path: path)),
         refresh: () async {},
         environmentVariables: (id) async {
           c.envCalls.add(id);

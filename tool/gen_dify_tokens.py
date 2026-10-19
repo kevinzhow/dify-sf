@@ -3,6 +3,7 @@
 Usage: python3 tool/gen_dify_tokens.py <dify source root> > app/lib/src/design/dify_tokens.g.dart
 
 Reads packages/dify-ui/src/themes/{light,dark}.css and web/themes/manual-{light,dark}.css (colour variables, gradients),
+the fixed palette of packages/dify-ui/src/styles/styles.css (`--color-primary-*`, `--color-gray-*`, ...),
 packages/dify-ui/src/styles/utilities.css (typography utilities) and packages/dify-ui/src/styles/styles.css (shadows).
 Re-run when the Dify baseline moves.
 
@@ -71,6 +72,11 @@ for text in manual('light'):
 for text in manual('dark'):
     for name, c in parse_colors(text)[0].items():
         dark_colors.setdefault(name, c)
+# The fixed Tailwind palette of packages/dify-ui/src/styles/styles.css (`--color-primary-600`, `--color-gray-*`: legacy
+# markup such as `bg-primary-600 text-white` or `border-[#2970FF]`), the same in both themes, after the themed ones.
+for name, c in parse_colors(re.sub(r'/\*.*?\*/', '', (ui / 'styles/styles.css').read_text(), flags=re.S))[0].items():
+    light_colors.setdefault(name, c)
+    dark_colors.setdefault(name, c)
 light_only = []
 out.append('/// Dify colours (`--color-*` in packages/dify-ui/src/themes/light.css and dark.css, web/themes/manual-*.css) for the')
 out.append('/// current theme.')

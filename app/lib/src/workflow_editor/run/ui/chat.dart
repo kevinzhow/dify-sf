@@ -44,6 +44,7 @@ class ChatContext extends InheritedWidget {
     this.onHumanInputFormSubmit,
     this.getHumanInputNodeData,
     this.pickFile,
+    this.onFeedback,
     required super.child,
   });
 
@@ -59,6 +60,11 @@ class ChatContext extends InheritedWidget {
   final HumanInputNodeData? getHumanInputNodeData;
   final RunFilePicker? pickFile;
 
+  /// The logs' admin feedback (`onFeedback` with `supportFeedback` + `supportAnnotation`): answers show the user's
+  /// rating and the admin's like / dislike (pressed: click again to clear). `{rating, content}`; resolves to whether it
+  /// was saved. Null (the debugger): no feedback bar.
+  final Future<bool> Function(String messageId, Map<String, Object?> feedback)? onFeedback;
+
   static ChatContext? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ChatContext>();
 
   @override
@@ -67,7 +73,8 @@ class ChatContext extends InheritedWidget {
       onRegenerate != old.onRegenerate ||
       readonly != old.readonly ||
       onHumanInputFormSubmit != old.onHumanInputFormSubmit ||
-      getHumanInputNodeData != old.getHumanInputNodeData;
+      getHumanInputNodeData != old.getHumanInputNodeData ||
+      onFeedback != old.onFeedback;
 }
 
 void _copy(BuildContext context, String text) {
@@ -499,6 +506,80 @@ class ChatAnswer extends StatefulWidget {
 class _ChatAnswerState extends State<ChatAnswer> {
   bool _hover = false;
 
+  /// The admin feedback set here until the item is rebuilt from the server (`adminFeedbackOverride`).
+  Map<String, Object?>? _adminOverride;
+
+  Future<void> _feedback(Future<bool> Function(String, Map<String, Object?>) onFeedback, String? rating) async {
+    final next = {'rating': rating, 'content': null};
+    if (await onFeedback('${widget.item['id']}', next) && mounted) setState(() => _adminOverride = next);
+  }
+
+  /// operation.tsx's admin feedback bar: the user's rating (read-only) and the admin's.
+  Widget? _feedbackBar(ChatContext? ctx, bool isOpening) {
+    final onFeedback = ctx?.onFeedback;
+    if (onFeedback == null || isOpening) return null;
+    final user = widget.item['feedback'] as Map?;
+    final admin = _adminOverride ?? (widget.item['adminFeedback'] as Map?)?.cast<String, Object?>();
+    final userRating = user?['rating'] as String?, adminRating = admin?['rating'] as String?;
+    if (!_hover && userRating == null && adminRating == null) return null;
+    final userLabel = DifyI18n.tr('app-log', 'table.header.userRate');
+    final adminLabel = DifyI18n.tr('app-log', 'table.header.adminRate');
+    final like = DifyI18n.tr('app-log', 'detail.operation.like'),
+        dislike = DifyI18n.tr('app-log', 'detail.operation.dislike');
+    Widget pressed(String rating, String label, {VoidCallback? onPressed}) {
+      final isLike = rating == 'like';
+      final icon = RemixIcon(
+        isLike ? 'thumb-up-line' : 'thumb-down-line',
+        size: 16,
+        color: isLike ? DifyColors.textAccent : DifyColors.textDestructive,
+      );
+      final box = Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: isLike ? DifyColors.stateAccentActive : DifyColors.stateDestructiveHover,
+          borderRadius: BorderRadius.circular(DifyRadius.lg),
+        ),
+        child: Center(child: icon),
+      );
+      return onPressed == null
+          ? Semantics(image: true, label: '$label: ${isLike ? like : dislike}', child: box)
+          : DifyPressable(
+              semanticLabel: '$label: ${isLike ? like : dislike}',
+              onPressed: onPressed,
+              builder: (context, h, f) => box,
+            );
+    }
+
+    return _ActionBar(
+      children: [
+        if (userRating != null) ...[
+          pressed(userRating, userLabel),
+          Container(
+            width: 0.5,
+            height: 12,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            color: DifyColors.componentsActionbarBorder,
+          ),
+        ],
+        if (adminRating != null)
+          pressed(adminRating, adminLabel, onPressed: () => _feedback(onFeedback, null))
+        else ...[
+          DifyIconButton(
+            label: '$adminLabel: $like',
+            icon: const RemixIcon('thumb-up-line', size: 16),
+            onPressed: () => _feedback(onFeedback, 'like'),
+          ),
+          DifyIconButton(
+            label: '$adminLabel: $dislike',
+            icon: const RemixIcon('thumb-down-line', size: 16),
+            onPressed: () => _feedback(onFeedback, 'dislike'),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -640,6 +721,7 @@ class _ChatAnswerState extends State<ChatAnswer> {
             clipBehavior: Clip.none,
             children: [
               Align(alignment: Alignment.centerLeft, child: bubble),
+              if (_feedbackBar(ctx, isOpening) case final bar?) Positioned(top: -14, right: -6, child: bar),
               if (showOps)
                 Positioned(
                   right: 8,

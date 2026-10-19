@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'app_detail/app_detail_page.dart';
+import 'app_detail/detail_page_slot.dart';
+import 'app_detail/detail_pages.dart';
 import 'app_root.dart';
 import 'auth/account_dropdown.dart';
 import 'auth/auth_api.dart';
@@ -40,9 +45,14 @@ class HomePage extends StatefulWidget {
     this.modelsApiFor,
     this.appsApiFor,
     this.studioPollInterval = const Duration(seconds: 10),
+    this.appDetailServicesFor,
   });
 
   final AppSettings settings;
+
+  /// The APIs of an opened app's pages (Access Point, Logs, Overview, ...) by type; by default the server's over HTTP
+  /// ([httpAppDetailServices]; none with a test [backendFor]).
+  final Map<Type, Object> Function(AuthController auth)? appDetailServicesFor;
 
   /// Command line options; with `--doc` / `--demo` the editor opens right away.
   final LaunchOptions? launch;
@@ -77,6 +87,21 @@ class _HomePageState extends State<HomePage> {
     final l = widget.launch;
     if (l != null && l.autoOpen) {
       WidgetsBinding.instance.addPostFrameCallback((_) => l.demo ? _demo() : _open(create: true));
+    } else if (l?.app case final app?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openLaunchedApp(app, l!.page));
+    }
+  }
+
+  /// `--app <id> [--page <page>]` (`?app=…&page=…`): opens the app's detail page at Dify's `/app/{id}/{page}` (the
+  /// visual tests open Dify and us on the same page); without [page] where the Studio card would open it.
+  Future<void> _openLaunchedApp(String id, String? page) async {
+    final apps = _apps;
+    if (apps == null) return;
+    try {
+      final app = await apps.get(id);
+      if (mounted) await _openApp(app, path: '/app/$id/${page ?? 'workflow'}');
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = '$e');
     }
   }
 
@@ -241,8 +266,60 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// Opens a Studio app in the editor (read-only for roles without `app.acl.edit`, which the account's role decides).
-  Future<void> _openApp(AppInfo app, {required bool readOnly}) => _launch(_backend(), app.id, create: false);
+  /// Opens a Studio app at [path] (Dify's `getRedirectionPath`: the editor, the Overview or the Access Point by role)
+  /// in the app detail page.
+  Future<void> _openApp(AppInfo app, {required String path}) async {
+    await _remember();
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _appDetail(app, path)));
+  }
+
+  Map<Type, Object> _appDetailServices(AuthController auth) {
+    if (widget.appDetailServicesFor case final f?) return f(auth);
+    if (widget.backendFor != null) return const {};
+    final uri = Uri.tryParse(auth.server);
+    if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) return const {};
+    return httpAppDetailServices(uri, auth.session);
+  }
+
+  Widget _appDetail(AppInfo app, String path) {
+    final apps = _apps!, auth = AuthScope.read(context)!, account = auth.account;
+    final backend = _backend();
+    return AppDetailPage(
+      key: ValueKey('app-detail-${app.id}'),
+      appId: app.id,
+      apps: apps,
+      initialApp: app,
+      initialPage: AppDetailPageId.fromPath(path),
+      account: account,
+      models: _models,
+      services: _appDetailServices(auth),
+      canCreateApp: AppPermissionKeys.canCreate(account?.role),
+      environmentVariables: _environmentVariables,
+      openApp: (copy, path) => unawaited(
+        Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => _appDetail(copy, path))),
+      ),
+      editor: (context, host) => ValueListenableBuilder(
+        valueListenable: host.app,
+        builder: (context, info, _) => EditorPage(
+          backend: backend,
+          docId: app.id,
+          account: account,
+          refreshAccount: auth.session.account,
+          displayName: account == null ? null : normalizeDisplayName(account.name),
+          journaled: _journaled,
+          create: false,
+          appName: info.name,
+          onImportAvailable: host.registerImport,
+          models: _models,
+          openModelProviderSettings: _models == null
+              ? null
+              : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
+          isAppDeleted: () => _appDeleted(apps, app.id),
+        ),
+      ),
+    );
+  }
 
   Future<List<Map<String, Object?>>> _environmentVariables(String id) async =>
       (await _backend().docMeta(id)).environmentVariables;
@@ -461,6 +538,7 @@ Widget buildApp(
   AppTheme? theme,
   AppsApi? Function(AuthController auth)? appsApiFor,
   Duration? studioPollInterval = const Duration(seconds: 10),
+  Map<Type, Object> Function(AuthController auth)? appDetailServicesFor,
 }) {
   final appLocale = locale ?? AppLocale(currentDifyLanguage());
   // Tests without a theme get one that stays in the current theme and remembers nothing.
@@ -499,6 +577,7 @@ Widget buildApp(
           launch: launch,
           appsApiFor: appsApiFor,
           studioPollInterval: studioPollInterval,
+          appDetailServicesFor: appDetailServicesFor,
         ),
       ),
       // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog. The UI language is above

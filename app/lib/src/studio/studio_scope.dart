@@ -9,42 +9,14 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 
+import '../app_detail/app_permission.dart';
 import '../design/widgets/app_icon_picker.dart' show UploadAppIcon;
 
-/// utils/permission.ts `getAppACLCapabilities` (RBAC off: no maintainer rule, no access config).
-typedef AppACLCapabilities = ({
-  bool canViewLayout,
-  bool canTestAndRun,
-  bool canEdit,
-  bool canAccessLayout,
-  bool canImportExportDSL,
-  bool canDelete,
-  bool canMonitor,
-  bool canAccessConfig,
-});
+export '../app_detail/app_permission.dart';
 
-AppACLCapabilities appACLCapabilities(List<String> keys, {bool rbacEnabled = false}) {
-  bool has(String k) => keys.contains(k);
-  final viewLayout = has(AppPermissionKeys.viewLayout), testAndRun = has(AppPermissionKeys.testAndRun);
-  final edit = has(AppPermissionKeys.edit);
-  return (
-    canViewLayout: viewLayout,
-    canTestAndRun: testAndRun,
-    canEdit: edit,
-    canAccessLayout: viewLayout || testAndRun || edit,
-    canImportExportDSL: has(AppPermissionKeys.importExportDsl),
-    canDelete: has(AppPermissionKeys.delete),
-    canMonitor: has(AppPermissionKeys.monitor),
-    canAccessConfig: rbacEnabled && has(AppPermissionKeys.accessConfig),
-  );
-}
-
-/// `hasOnlyAppPreviewPermission`: the card is a dimmed information-only card.
-bool hasOnlyAppPreviewPermission(List<String> keys) => keys.length == 1 && keys.first == AppPermissionKeys.preview;
-
-/// How the Studio opens an app: the editor, read-only without `app.acl.edit` (dify-sf has no overview page, so the
-/// roles Dify sends to the overview get the editor in view mode).
-typedef OpenStudioApp = Future<void> Function(AppInfo app, {required bool readOnly});
+/// How the Studio opens an app: at [path], Dify's `getRedirectionPath` (`/app/{id}/workflow` for roles that may see
+/// the editor, `/app/{id}/overview` for normal members, `/app/{id}/access-point` for dataset operators).
+typedef OpenStudioApp = Future<void> Function(AppInfo app, {required String path});
 
 /// Saves an exported DSL file (Dify's `downloadBlob`, `<app name>.yml`).
 typedef SaveDslFile = Future<void> Function(String fileName, String yaml);
@@ -85,8 +57,17 @@ class StudioServices {
   /// Image icons need file storage; null: the icon picker offers emoji only.
   final UploadAppIcon? uploadIcon;
 
-  /// Opens [app] as Dify's `getRedirection` would.
-  Future<void> open(AppInfo app) => openApp(app, readOnly: !appACLCapabilities(app.permissionKeys).canEdit);
+  /// Opens [app] as Dify's `getRedirection` would (nothing when no page of the app is allowed: Dify's `/apps`).
+  Future<void> open(AppInfo app) async {
+    final path = appRedirectionPath(
+      id: app.id,
+      mode: app.mode,
+      permissionKeys: app.permissionKeys,
+      currentUserId: currentUserId,
+      workspacePermissionKeys: canCreateApp ? const [AppPermissionKeys.createAndManagement] : const [],
+    );
+    if (path.startsWith('/app/')) await openApp(app, path: path);
+  }
 }
 
 class StudioScope extends InheritedWidget {

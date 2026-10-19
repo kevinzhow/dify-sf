@@ -1,17 +1,21 @@
 import 'dart:async';
 
-import 'package:collab_client/collab_client.dart' show DocMeta, LinkState, ReplaceResult, TransportException;
+import 'package:collab_client/collab_client.dart'
+    show AppInfoAccess, DocMeta, LinkState, ReplaceResult, TransportException, VersionsApi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_detail/detail_page_slot.dart';
 import '../auth/auth_api.dart';
 import '../auth/auth_controller.dart';
 import '../design/widgets/toast.dart';
 import '../i18n/dify_i18n.dart';
 import '../online_events.dart';
+import '../open_url.dart';
 import '../session_factory.dart';
 import '../workflow/workspace_models.dart';
 import '../workflow_editor/dify_editor.dart';
+import '../workflow_editor/dsl/update_dsl_modal.dart' show WorkflowImport;
 import 'notice_overlay.dart';
 import 'editor_controller.dart';
 
@@ -32,7 +36,21 @@ class EditorPage extends StatefulWidget {
     this.models,
     this.openModelProviderSettings,
     this.isAppDeleted,
+    this.versions,
+    this.appName,
+    this.onImportAvailable,
   });
+
+  /// The app's name as the app detail page shows it (it follows renames there); null: the document's.
+  final String? appName;
+
+  /// Hands the host the editor's "replace the workflow with a DSL file" once the session is up, and null when the
+  /// editor closes (the app detail sidebar's Import DSL runs through it).
+  final ValueChanged<WorkflowImport?>? onImportAvailable;
+
+  /// Publishing and versions (protocol 1.11); null: the app detail page's `VersionsApi` service when the editor is one
+  /// of its pages, else none (the publisher publishes nothing, the version history shows the draft alone).
+  final VersionsApi? versions;
 
   /// Protocol 1.10: whether the app (= this document) was deleted (`GET /v1/apps/{id}` answers 404). Asked when the
   /// document cannot be opened or its connection keeps failing (at most every 5 s); a deleted app closes the editor
@@ -188,6 +206,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         _opened = opened;
         _controller = controller;
       });
+      if (widget.backend.supportsDifyDsl) widget.onImportAvailable?.call(_importDifyDsl);
       unawaited(_loadMeta(gen));
     } on Object catch (e) {
       if (mounted && gen == _generation) setState(() => _error = e);
@@ -256,6 +275,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    widget.onImportAvailable?.call(null);
     WidgetsBinding.instance.removeObserver(this);
     _stopOnlineListener?.call();
     _rolePoll?.cancel();
@@ -423,7 +443,16 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       controller: c,
       serverLabel: widget.backend.label,
       actions: _actions(context, c),
-      meta: _meta,
+      meta: switch (widget.appName) {
+        final name? when name != _meta.appName => DocMeta(
+          appMode: _meta.appMode,
+          appName: name,
+          environmentVariables: _meta.environmentVariables,
+          conversationVariables: _meta.conversationVariables,
+          raw: _meta.raw,
+        ),
+        _ => _meta,
+      },
       access: _access,
       locateNodeId: widget.locateNodeId,
       onExportDsl: (includeSecret) => _exportDifyDsl(context, includeSecret: includeSecret),
@@ -437,6 +466,33 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         final a? => EditorUser(id: a.id, name: a.name, avatarUrl: a.avatarUrl),
         null => null,
       },
+      versions: widget.versions ?? AppDetailContext.maybeOf(context)?.service<VersionsApi>(),
+      publisher: _publisherHost(context),
     );
+  }
+
+  /// The publisher's view of the app detail page around the editor (none: no web app address, no Access Point).
+  EditorPublisherHost _publisherHost(BuildContext context) {
+    final detail = AppDetailContext.maybeOf(context);
+    if (detail == null) return const EditorPublisherHost(onOpenLink: _openExternalOnly);
+    final app = detail.app.value, site = app.site;
+    return EditorPublisherHost(
+      appBaseUrl: site?.appBaseUrl ?? '',
+      accessToken: site?.accessToken ?? '',
+      canViewAccessPoint: detail.capabilities.canViewAccessPoint,
+      onOpenLink: (link, {required external}) {
+        if (external) {
+          unawaited(openExternalUrl(link));
+        } else if (AppDetailPageId.fromPath(link) case final page?) {
+          detail.navigate(page);
+        }
+      },
+      // Dify reloads the app detail after publishing (the Access Point's availability follows the published version).
+      onPublished: () => unawaited(detail.refreshApp()),
+    );
+  }
+
+  static void _openExternalOnly(String link, {required bool external}) {
+    if (external) unawaited(openExternalUrl(link));
   }
 }

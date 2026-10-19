@@ -59,7 +59,25 @@ class EditorController extends ChangeNotifier {
   String? selectedNodeId;
   String? selectedEdgeId;
 
-  Document get doc => session.view;
+  /// The document the editor shows: the session's view, or a read-only [preview] (a published version being browsed).
+  Document get doc => _preview ?? session.view;
+
+  Document? _preview;
+
+  /// Whether the editor shows a [preview] instead of the live document.
+  bool get previewing => _preview != null;
+
+  /// Shows [document] instead of the live document (Dify's handleRestoreFromPublishedWorkflow while browsing
+  /// versions; the editor is read-only meanwhile), or the live document again with null (handleLoadBackupDraft). The
+  /// session keeps syncing underneath: leaving the preview shows whatever it holds by then.
+  void preview(Document? document) {
+    if (identical(document, _preview)) return;
+    _preview = document;
+    if (selectedNodeId != null && !doc.nodes.containsKey(selectedNodeId)) selectedNodeId = null;
+    if (selectedEdgeId != null && !doc.edges.containsKey(selectedEdgeId)) selectedEdgeId = null;
+    notifyListeners();
+  }
+
   SessionStatus get status => session.status;
   bool get ready => session.hasState;
 

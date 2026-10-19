@@ -10,7 +10,8 @@ from pathlib import Path
 
 NAMESPACES = ['workflow', 'common', 'plugin', 'plugin-trigger', 'tools', 'app', 'app-debug', 'run-log', 'app-log', 'time',
               'agent-v-2', 'dataset', 'dataset-settings', 'dataset-creation', 'dataset-documents', 'plugin-trigger', 'pipeline',
-              'share', 'explore', 'app-overview', 'login', 'permission', 'permission-keys', 'app-api', 'billing']
+              'share', 'explore', 'app-overview', 'login', 'permission', 'permission-keys', 'app-api', 'billing',
+              'app-annotation', 'deployments', 'layout']
 src, out = Path(sys.argv[1]) / 'web/i18n', Path(sys.argv[2])
 if out.exists():
     shutil.rmtree(out)

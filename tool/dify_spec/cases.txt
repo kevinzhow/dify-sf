@@ -6127,3 +6127,654 @@ web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: Inf
 web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > pauses load notifications while loading is disallowed and resumes when allowed again
 web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > uses the latest load callback after rerendering
 web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > disconnects the observer on unmount
+web/app/components/app/access-point/__tests__/access-point-card.spec.tsx :: AccessPointCard > marks the card when it is the highlighted access point
+web/app/components/app/access-point/__tests__/access-point-card.spec.tsx :: AccessPointCard > keeps an unavailable switch focusable and explains why it is disabled
+web/app/components/app/access-point/__tests__/access-point-url.spec.tsx :: AccessPointUrl > keeps a disabled endpoint visible without marking it unavailable
+web/app/components/app/access-point/__tests__/access-point-url.spec.tsx :: AccessPointUrl > exposes an available endpoint as an external link
+web/app/components/app/access-point/__tests__/access-point-url.spec.tsx :: AccessPointUrl > explains why the open action is disabled
+web/app/components/app/access-point/__tests__/access-point-url.spec.tsx :: AccessPointUrl > shows an unavailable endpoint without replacing it with a loading skeleton
+web/app/components/app/access-point/__tests__/access-point-url.spec.tsx :: AccessPointUrl > shows loading independently from the unavailable state
+web/app/components/app/access-point/__tests__/api-secret-key-button.spec.tsx :: ApiSecretKeyButton > shows the current API key count and opens key management
+web/app/components/app/access-point/__tests__/api-secret-key-button.spec.tsx :: ApiSecretKeyButton > uses the environment API key count and opens environment-scoped key management
+web/app/components/app/access-point/__tests__/api-secret-key-button.spec.tsx :: ApiSecretKeyButton > keeps the current count visible when service access is disabled
+web/app/components/app/access-point/__tests__/api-secret-key-button.spec.tsx :: ApiSecretKeyButton > does not request API keys without management permission
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > renders the unpublished state across all access point cards
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > keeps Trigger unavailable when no trigger node is published
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > uses Access Point management for every requested built-in operation
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > highlights only the targeted built-in access point card
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > enables Trigger and disables the other access points in trigger mode
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > keeps all cards visible while the published workflow is loading
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > does not show the unpublished card when loading the published workflow fails
+web/app/components/app/access-point/__tests__/built-in-access-points.spec.tsx :: BuiltInAccessPoints > does not retry forbidden published workflow requests
+web/app/components/app/access-point/__tests__/deployed-environment-access-points.spec.tsx :: DeployedEnvironmentAccessPoints > renders MCP and Trigger as unsupported without a permanent loading state
+web/app/components/app/access-point/__tests__/deployed-environment-access-points.spec.tsx :: DeployedEnvironmentAccessPoints > passes the Built-in permission split to deployed environment cards
+web/app/components/app/access-point/__tests__/environment-access-control.spec.tsx :: EnvironmentAccessControl > should submit only subjects loaded from the environment endpoint
+web/app/components/app/access-point/__tests__/environment-access-control.spec.tsx :: EnvironmentAccessControl > should allow authenticated external users to access the environment Web app
+web/app/components/app/access-point/__tests__/environment-access-control.spec.tsx :: EnvironmentAccessControl > should keep confirmation disabled when the environment subjects query fails
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > keeps the saved %s status when reopening an environment without changing another environment
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > sends a chatflow app to the chat web app shell
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > renders the real environment Web app URL and workflow actions without Embed
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > renders authenticated external users as the environment Web app access mode
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > shows loading until the environment Web app becomes available
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > does not announce the access control placeholder as loading after the Site query fails
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > uses environment Site mutations for status and URL reset, and opens its access container
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > optimistically serializes environment Web app changes without a success toast
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > opens Customize and Settings with environment endpoint data
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > keeps view actions available while disabling deployed Web App management
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > uses Access Point management for deployed Web App operations without access management
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > uses Web App access management independently from Access Point management
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > renders the real Service API endpoint, environment keys entry, docs entry, and API toggle
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > rolls back a failed environment Service API change and shows only an error toast
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > keeps environment API keys and external documentation available when the API is stopped
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > distinguishes the Service API loading and failed query states
+web/app/components/app/access-point/__tests__/environment-access-point-cards.spec.tsx :: environment access point cards > disables deployed Service API management without Access Point management
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > renders Built-in and only in-use environments from the API
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > persists the selected environment in the URL
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > selects the target environment and highlights its access point from the URL
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > highlights a built-in access point from the URL
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > clears the access point highlight when switching environment tabs
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > shows the selected deployed environment with Access Point view permission
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > falls back to Built-in when the URL targets an unused environment
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > hides environment tabs for app types without multi-environment support
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > hides environment tabs without Access Point view permission
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > opens deployed environments with Access Point management independently from deploy
+web/app/components/app/access-point/__tests__/index.spec.tsx :: AccessPoint > passes Web App access management independently from Access Point management
+web/app/components/app/access-point/__tests__/mcp-card.spec.tsx :: MCPAccessPointCard > uses the provided basic app model config without refetching app detail
+web/app/components/app/access-point/__tests__/mcp-card.spec.tsx :: MCPAccessPointCard > uses workflow inputs when the app model config is null
+web/app/components/app/access-point/__tests__/mcp-card.spec.tsx :: MCPAccessPointCard > shows loading without reporting an environment failure
+web/app/components/app/access-point/__tests__/mcp-card.spec.tsx :: MCPAccessPointCard > rolls back a failed status change and shows only an error toast
+web/app/components/app/access-point/__tests__/mcp-card.spec.tsx :: MCPAccessPointCard > optimistically serializes rapid status changes without a busy switch
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > links %s apps to the matching external API reference
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > updates API status through the generated contract
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > shows loading without reporting an environment failure
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > keeps API keys and external documentation available when the API is stopped
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > disables API management without Access Point management permission
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > disables API keys and external documentation when the access point is unavailable
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > rolls back a failed status change and shows only an error toast
+web/app/components/app/access-point/__tests__/service-api-card.spec.tsx :: ServiceApiAccessPointCard > keeps successful status changes silent
+web/app/components/app/access-point/__tests__/trigger-card.spec.tsx :: TriggerAccessPointCard > shows loading without reporting an environment failure
+web/app/components/app/access-point/__tests__/trigger-card.spec.tsx :: TriggerAccessPointCard > shows every non-enabled trigger as disabled with its switch off
+web/app/components/app/access-point/__tests__/trigger-card.spec.tsx :: TriggerAccessPointCard > uses the overview empty-state copy and documentation interaction
+web/app/components/app/access-point/__tests__/trigger-card.spec.tsx :: TriggerAccessPointCard > keeps successful trigger changes silent
+web/app/components/app/access-point/__tests__/trigger-card.spec.tsx :: TriggerAccessPointCard > shows an error toast when a trigger change fails
+web/app/components/app/access-point/__tests__/trigger-card.spec.tsx :: TriggerAccessPointCard > optimistically serializes rapid changes for each trigger without disabling its switch
+web/app/components/app/access-point/__tests__/use-access-point-actions.spec.ts :: useAccessPointActions > refreshes after a successful access point result
+web/app/components/app/access-point/__tests__/use-access-point-actions.spec.ts :: useAccessPointActions > reports a failed result without refreshing stale state
+web/app/components/app/access-point/__tests__/use-access-point-actions.spec.ts :: useAccessPointActions > invalidates app detail and lists after saving legacy site configuration
+web/app/components/app/access-point/__tests__/use-access-point-actions.spec.ts :: useAccessPointActions > keeps site configuration behind Access Point management permission
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > shows the current access mode without a redundant section label
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > does not offer Embed into site for %s apps
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > keeps Embed into site for non-workflow Web apps
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > updates site status through the generated contract
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > keeps site status changes behind Access Point management permission
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > resets the site access token through the generated contract
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > keeps generated mutation failures inside the card owner
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > passes hidden Chatflow inputs to the embed dialog
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > configures hidden workflow inputs before opening the Web App
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > shows loading without reporting an environment failure
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > does not announce an unavailable access control entry as loading
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > optimistically serializes status changes without a success toast
+web/app/components/app/access-point/__tests__/web-app-card.spec.tsx :: WebAppAccessPointCard > disables Web App management actions without Access Point management
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > loads and renders app API keys through the generated query input
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > loads and renders workspace dataset API keys
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > creates an app API key through the generated mutation input
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > creates a workspace dataset API key scoped to all knowledge bases
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > deletes an app API key through the generated mutation input
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > deletes a dataset API key through the generated mutation input
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > loads environment-scoped keys without requesting built-in app keys
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > creates an environment-scoped API key
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > deletes an environment-scoped API key
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > disables creation when the caller cannot manage keys
+web/app/components/api-key/__tests__/api-key-modal.spec.tsx :: ApiKeyModal > exposes an accessible close button
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should create initial values from workflow launch defaults
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should build a workflow launch URL with serialized parameters
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should serialize checkbox false and empty string values in launch URL
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should generate an iframe snippet with the provided URL
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should generate an embedded script snippet with inputs
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should generate an embedded script snippet with empty inputs comment
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should generate an agent embedded script route when requested
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should compress and encode base64 using CompressionStream when available
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should fallback to plain base64 when CompressionStream is unavailable
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should identify supported workflow launch input types
+web/app/components/app/overview/__tests__/app-card-utils.spec.ts :: app-card-utils > should coerce numeric defaults to string in createWorkflowLaunchInitialValues
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > getDefaultChartData > should build fallback rows for the requested date window
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > hasNonZeroChartData > should detect whether rows contain a non-zero chart value
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > getSummaryValue > should average values when the chart is configured as an average
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > getSummaryValue > should compress large cost totals with a k suffix
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > getSummaryValue > should keep small cost totals in their raw form
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > getChartValueField > should prefer the explicit value key and otherwise fall back to the count-like field
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > getTokenSummary > should sum token costs using currency formatting
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > buildChartOptions > should build line chart options with dataset and y-axis max
+web/app/components/app/overview/__tests__/app-chart-utils.spec.ts :: app-chart-utils > buildChartOptions > should build token-aware tooltip content and split-line intervals for cost charts
+web/app/components/app/overview/__tests__/app-chart.spec.tsx :: app-chart > Chart > should render cost summaries with token pricing details
+web/app/components/app/overview/__tests__/app-chart.spec.tsx :: app-chart > MessagesChart > should render fallback chart data when the API returns no rows
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a text input with label and placeholder
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a number input for number-typed variables
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a checkbox input without a separate label element above
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a select dropdown for select-typed variables
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a textarea for paragraph-typed variables
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a textarea for json-typed variables
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render a textarea for jsonObject-typed variables
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should use the variable key as label when label is not a string
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should use the custom fieldIdPrefix for element ids
+web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx :: WorkflowHiddenInputFields > should render empty string for non-string fieldValue in text inputs
+web/app/components/app/overview/__tests__/workflow-launch-dialog.spec.tsx :: WorkflowLaunchDialog > opens the workflow with entered hidden values and closes the dialog
+web/app/components/app/overview/__tests__/workflow-launch-dialog.spec.tsx :: WorkflowLaunchDialog > resets hidden values when the controlled dialog is reopened
+web/app/components/app/overview/__tests__/workflow-launch-dialog.spec.tsx :: WorkflowLaunchDialog > renders nothing when there are no hidden variables
+web/app/components/app/overview/apikey-info-panel/__tests__/cloud.spec.tsx :: APIKeyInfoPanel - Cloud Edition > hides the panel when an API key already exists
+web/app/components/app/overview/apikey-info-panel/__tests__/cloud.spec.tsx :: APIKeyInfoPanel - Cloud Edition > opens provider settings from the primary action
+web/app/components/app/overview/apikey-info-panel/__tests__/cloud.spec.tsx :: APIKeyInfoPanel - Cloud Edition > does not show the self-hosted Cloud link
+web/app/components/app/overview/apikey-info-panel/__tests__/cloud.spec.tsx :: APIKeyInfoPanel - Cloud Edition > dismisses the panel from the close action
+web/app/components/app/overview/apikey-info-panel/__tests__/index.spec.tsx :: APIKeyInfoPanel - Community Edition > hides the panel when an API key already exists
+web/app/components/app/overview/apikey-info-panel/__tests__/index.spec.tsx :: APIKeyInfoPanel - Community Edition > opens provider settings from the primary action
+web/app/components/app/overview/apikey-info-panel/__tests__/index.spec.tsx :: APIKeyInfoPanel - Community Edition > links self-hosted users to Dify Cloud safely
+web/app/components/app/overview/apikey-info-panel/__tests__/index.spec.tsx :: APIKeyInfoPanel - Community Edition > dismisses the panel from the close action
+web/app/components/app/overview/embedded/__tests__/index.spec.tsx :: Embedded > copies iframe snippet
+web/app/components/app/overview/embedded/__tests__/index.spec.tsx :: Embedded > opens chrome plugin store link when chrome option selected
+web/app/components/app/overview/embedded/__tests__/index.spec.tsx :: Embedded > calls onClose when the close button is clicked
+web/app/components/app/overview/embedded/__tests__/index.spec.tsx :: Embedded > keeps hidden inputs collapsed by default and updates iframe and script content when values change
+web/app/components/app/overview/embedded/__tests__/index.spec.tsx :: Embedded > copies script content when scripts option is selected
+web/app/components/app/overview/embedded/__tests__/index.spec.tsx :: Embedded > copies chrome plugin URL (without prefix) when chromePlugin option is selected
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should render the modal with all settings exposed by default
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should explain that Web app settings apply to every environment when ACL allows deploy
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should notify the user when the name is empty
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should validate the theme color and show an error when the hex is invalid
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should validate the privacy policy URL
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should save valid settings and close the modal
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should not render a show-more trigger
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should reset local form state when the controlled dialog reopens
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should reset the input placeholder when app info changes while open
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should preserve restricted settings when saving other Cloud settings
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should keep the input placeholder editable when billing is disabled
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should open the pricing modal from the copyright upgrade badge for sandbox plans
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should hide the upgrade badge for non-sandbox plans
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: SettingsModal > should preserve image icons and apply textarea or switch changes when saving image-based settings
+web/app/components/app/overview/settings/__tests__/index.spec.tsx :: saves unrelated settings while entitlements are pending without clearing protected fields
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > uses caller-provided labels instead of App-specific defaults
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Rendering > renders correctly
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Interaction > toggles QR code panel when clicking the icon
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Interaction > closes panel when clicking outside
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Interaction > does not close panel when clicking inside the panel
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Interaction > lets panel interactions bubble without closing the panel
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Interaction > calls downloadUrl when clicking download
+web/app/components/base/qrcode/__tests__/index.spec.tsx :: ShareQRCode > Interaction > does not call downloadUrl when canvas is not found
+web/app/components/app/annotation/__tests__/batch-action.spec.tsx :: BatchAction > should show the selected count and clear selection through selection change
+web/app/components/app/annotation/__tests__/batch-action.spec.tsx :: BatchAction > should confirm before running batch delete
+web/app/components/app/annotation/__tests__/batch-action.spec.tsx :: BatchAction > should hide delete confirmation when cancel is clicked
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Rendering > should render nothing when data is loading
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Rendering > should render nothing when data is undefined
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Rendering > should render filter and children when data is available
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Props > should call useAnnotationsCount with appId
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Props > should display keyword value in input
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > User Interactions > should call setQueryParams when typing in search input
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > User Interactions > should call setQueryParams with empty keyword when clearing input
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Edge Cases > should handle empty keyword in queryParams
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Edge Cases > should handle undefined keyword in queryParams
+web/app/components/app/annotation/__tests__/filter.spec.tsx :: Filter > Edge Cases > should handle zero count
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should render empty element when no annotations are returned
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should handle annotation creation and refresh list data
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should support viewing items and running batch deletion success flow
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should show an error notification when batch deletion fails
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should show the annotation-full modal when enabling annotations exceeds the plan quota
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should disable annotations and refetch config after the async job completes
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should save annotation config changes and update the score when the modal confirms
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should refresh the list from the header shortcut and allow saving or closing the view modal
+web/app/components/app/annotation/__tests__/index.spec.tsx :: Annotation > should clear selections on cancel and hide the config modal when requested
+web/app/components/app/annotation/__tests__/list.spec.tsx :: List > should render annotation rows and call onView when clicking a row
+web/app/components/app/annotation/__tests__/list.spec.tsx :: List > should toggle single and bulk selection states
+web/app/components/app/annotation/__tests__/list.spec.tsx :: List > should confirm before removing an annotation and expose batch actions
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should render modal title when drawer is visible
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should capture query input text when typing
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should capture answer input text when typing
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should show annotation full notice and disable submit when quota exceeded
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should call onAdd with form values when create next enabled
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should reset fields after saving when create next enabled
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should show toast when validation fails for missing question
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should show toast when validation fails for missing answer
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should close modal when save completes and create next unchecked
+web/app/components/app/annotation/add-annotation-modal/__tests__/index.spec.tsx :: AddAnnotationModal > should allow cancel button to close the drawer
+web/app/components/app/annotation/add-annotation-modal/edit-item/__tests__/index.spec.tsx :: AddAnnotationModal/EditItem > should render query inputs with user avatar and placeholder strings
+web/app/components/app/annotation/add-annotation-modal/edit-item/__tests__/index.spec.tsx :: AddAnnotationModal/EditItem > should render answer name and placeholder text
+web/app/components/app/annotation/add-annotation-modal/edit-item/__tests__/index.spec.tsx :: AddAnnotationModal/EditItem > should propagate changes when answer content updates
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-downloader.spec.tsx :: CSVDownload > should render the structure preview and pass English template data by default
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-downloader.spec.tsx :: CSVDownload > should switch to the Chinese template when locale matches the secondary language
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should open the file picker when clicking browse
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should upload the dropped file
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should handle drag over and clear dragging state when leaving through the overlay
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should ignore drop events without dataTransfer
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should show an error when multiple files are dropped
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should propagate file selection changes through input change event
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/csv-uploader.spec.tsx :: CSVUploader > should render selected file details and allow change/removal
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/index.spec.tsx :: BatchModal > should disable run action and show billing hint when annotation quota is full
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/index.spec.tsx :: BatchModal > should reset uploader state when modal closes and allow manual cancellation
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/index.spec.tsx :: BatchModal > should call onCancel when close button is clicked
+web/app/components/app/annotation/batch-add-annotation-modal/__tests__/index.spec.tsx :: BatchModal > should submit the csv file, poll status, and notify when import completes
+web/app/components/app/annotation/clear-all-annotations-confirm-modal/__tests__/index.spec.tsx :: ClearAllAnnotationsConfirmModal > Rendering > should show confirmation dialog when isShow is true
+web/app/components/app/annotation/clear-all-annotations-confirm-modal/__tests__/index.spec.tsx :: ClearAllAnnotationsConfirmModal > Rendering > should not render anything when isShow is false
+web/app/components/app/annotation/clear-all-annotations-confirm-modal/__tests__/index.spec.tsx :: ClearAllAnnotationsConfirmModal > Interactions > should trigger onHide when cancel is clicked
+web/app/components/app/annotation/clear-all-annotations-confirm-modal/__tests__/index.spec.tsx :: ClearAllAnnotationsConfirmModal > Interactions > should trigger onConfirm when confirm is clicked
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Rendering > should render modal when isShow is true
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Rendering > should not render modal when isShow is false
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Rendering > should display query and answer sections
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Props > should handle different query and answer content
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Props > should show remove option when annotationId is provided
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > User Interactions > should enable editing for query and answer sections
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > User Interactions > should show remove option when annotationId is provided
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > API Calls > should call editAnnotation when updating existing annotation
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > State Management > should initialize with closed confirm modal
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > State Management > should show confirm modal when remove is clicked
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > State Management > should call onRemove when removal is confirmed
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > State Management > should hide confirm modal when removal is cancelled
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Edge Cases > should handle empty query and answer
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Edge Cases > should handle very long content
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Edge Cases > should handle special characters in content
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Edge Cases > should handle onlyEditResponse prop
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Error Handling > should show error toast and skip callbacks when editAnnotation fails
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Error Handling > should show fallback error message when editAnnotation error is not an Error instance
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Billing & Plan Features > should show createdAt time when provided
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Billing & Plan Features > should not show createdAt when not provided
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Billing & Plan Features > should display remove section when annotationId exists
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > Toast Notifications > should show success notification when save operation completes
+web/app/components/app/annotation/edit-annotation-modal/__tests__/index.spec.tsx :: EditAnnotationModal > React.memo Performance > should re-render when props change
+web/app/components/app/annotation/edit-annotation-modal/edit-item/__tests__/index.spec.tsx :: EditTitle > shows the field title
+web/app/components/app/annotation/edit-annotation-modal/edit-item/__tests__/index.spec.tsx :: EditItem > does not offer editing in readonly mode
+web/app/components/app/annotation/edit-annotation-modal/edit-item/__tests__/index.spec.tsx :: EditItem > saves updated content
+web/app/components/app/annotation/edit-annotation-modal/edit-item/__tests__/index.spec.tsx :: EditItem > cancels editing without saving
+web/app/components/app/annotation/edit-annotation-modal/edit-item/__tests__/index.spec.tsx :: EditItem > can restore the original content after saving an edit
+web/app/components/app/annotation/edit-annotation-modal/edit-item/__tests__/index.spec.tsx :: EditItem > keeps editing available when saving fails
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should fetch annotations on mount and render enabled export actions when data exist
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should trigger CSV download with locale-specific filename
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should disable export actions when there are no annotations
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should open the add annotation modal and forward the onAdd callback
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should allow bulk import through the batch modal
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should trigger JSONL download with locale-specific filename
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should clear all annotations when confirmation succeeds
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should handle clear all failures gracefully
+web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx :: HeaderOptions > should refetch annotations when controlUpdateList changes
+web/app/components/app/annotation/remove-annotation-confirm-modal/__tests__/index.spec.tsx :: RemoveAnnotationConfirmModal > Rendering > should display the confirm modal when visible
+web/app/components/app/annotation/remove-annotation-confirm-modal/__tests__/index.spec.tsx :: RemoveAnnotationConfirmModal > Rendering > should not render modal content when hidden
+web/app/components/app/annotation/remove-annotation-confirm-modal/__tests__/index.spec.tsx :: RemoveAnnotationConfirmModal > Interactions > should call onHide when cancel button is clicked
+web/app/components/app/annotation/remove-annotation-confirm-modal/__tests__/index.spec.tsx :: RemoveAnnotationConfirmModal > Interactions > should call onRemove when confirm button is clicked
+web/app/components/app/annotation/view-annotation-modal/__tests__/index.spec.tsx :: ViewAnnotationModal > should render annotation tab and allow saving updated query
+web/app/components/app/annotation/view-annotation-modal/__tests__/index.spec.tsx :: ViewAnnotationModal > should render annotation tab and allow saving updated answer
+web/app/components/app/annotation/view-annotation-modal/__tests__/index.spec.tsx :: ViewAnnotationModal > should switch to hit history tab and show no data message
+web/app/components/app/annotation/view-annotation-modal/__tests__/index.spec.tsx :: ViewAnnotationModal > should render hit history entries with pagination badge when data exists
+web/app/components/app/annotation/view-annotation-modal/__tests__/index.spec.tsx :: ViewAnnotationModal > should confirm before removing the annotation and hide on success
+web/app/components/app/annotation/view-annotation-modal/__tests__/index.spec.tsx :: ViewAnnotationModal > should close the remove confirmation when cancelled
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should render only overview for chat apps with app monitor permission
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should render logs and annotations for chat apps with app log and annotation permission
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should only render logs navigation for workflow apps
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should only render logs navigation for completion apps
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should render the layout navigation for users with view layout permission
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should hide the layout navigation when layout access is missing
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should render access point navigation using its app route
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should hide access point navigation without view permission
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should render deploy navigation for a %s app with app deploy ACL regardless of the legacy workspace role
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should hide deploy navigation when $label
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should render resource access navigation for %s apps when app access config permission is granted
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should hide resource access navigation for Agent apps
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should hide resource access navigation when app access config permission is missing
+web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx :: AppDetailSection > Rendering > should hide resource access navigation when RBAC is disabled
+web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx :: AppDetailTop > links the combined home control to home
+web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx :: AppDetailTop > links the Studio breadcrumb to the Studio page
+web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx :: AppDetailTop > keeps the quick search action
+web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx :: AppDetailTop > renders the sidebar toggle action in the top right
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render nothing when activeModal is null
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render SwitchAppModal when activeModal is switch
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render CreateAppModal in edit mode when activeModal is edit
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render DuplicateAppModal when activeModal is duplicate
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render delete alert dialog when activeModal is delete
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should name the delete confirmation input with its visible label
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render UpdateDSLModal when activeModal is importDSL
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render export warning alert dialog when activeModal is exportWarning
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should render DSLExportConfirmModal when secretEnvList is not empty
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should not render DSLExportConfirmModal when secretEnvList is empty
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should call closeModal when cancel on delete modal
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should clear the delete confirmation input when delete modal is cancelled
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should not confirm delete when the form is submitted with unmatched input
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should call onConfirmDelete when confirm on delete modal
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should call handleConfirmExport when confirm on export warning
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should show the export warning confirmation as pending during export
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should call exportCheck when backup on importDSL modal
+web/app/components/app-sidebar/app-info/__tests__/app-info-modals.spec.tsx :: AppInfoModals > should call setSecretEnvList with empty array when closing DSLExportConfirmModal
+web/app/components/app-sidebar/app-info/__tests__/app-info-trigger.spec.tsx :: AppInfoTrigger > renders expanded app metadata without making the app info clickable
+web/app/components/app-sidebar/app-info/__tests__/app-info-trigger.spec.tsx :: AppInfoTrigger > renders only the medium app icon when collapsed
+web/app/components/app-sidebar/app-info/__tests__/app-info-trigger.spec.tsx :: AppInfoTrigger > shows every available chat app operation and keeps workflow conversion last
+web/app/components/app-sidebar/app-info/__tests__/app-info-trigger.spec.tsx :: AppInfoTrigger > shows import DSL for workflow apps without a workflow conversion operation
+web/app/components/app-sidebar/app-info/__tests__/app-info-trigger.spec.tsx :: AppInfoTrigger > runs export from the menu and disables it while an export is pending
+web/app/components/app-sidebar/app-info/__tests__/app-info-trigger.spec.tsx :: AppInfoTrigger > hides the operations trigger when no operation is permitted
+web/app/components/app-sidebar/app-info/__tests__/app-mode-labels.spec.ts :: getAppModeLabel > should return advanced chat label
+web/app/components/app-sidebar/app-info/__tests__/app-mode-labels.spec.ts :: getAppModeLabel > should return agent chat label
+web/app/components/app-sidebar/app-info/__tests__/app-mode-labels.spec.ts :: getAppModeLabel > should return chatbot label
+web/app/components/app-sidebar/app-info/__tests__/app-mode-labels.spec.ts :: getAppModeLabel > should return completion label
+web/app/components/app-sidebar/app-info/__tests__/app-mode-labels.spec.ts :: getAppModeLabel > should return workflow label for unknown mode
+web/app/components/app-sidebar/app-info/__tests__/app-mode-labels.spec.ts :: getAppModeLabel > should return workflow label for workflow mode
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > Initial state > should return initial state correctly
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > App-scoped state > should reset app-scoped state when resetKey changes
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > Modal management > should open modal
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > Modal management > should close modal
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onEdit > should update app info and close modal on success
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onEdit > should emit app_meta_update after successful edit when collaboration socket exists
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onEdit > should notify error on edit failure
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onEdit > should not call updateAppInfo when appDetail is undefined
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onCopy > should redirect only when the copy is completed (%s)
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onCopy > should notify error on copy failure
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onCopy - early return > should not call copyApp when appDetail is undefined
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onExport > should export the app DSL
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onExport - early return > should not export when appDetail is undefined
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > exportCheck > should call onExport directly for non-workflow modes
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > exportCheck > should open export warning modal for workflow mode
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > exportCheck > should open export warning modal for advanced_chat mode
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > exportCheck - early return > should not do anything when appDetail is undefined
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > handleConfirmExport > should export directly when no secret env variables
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > handleConfirmExport > should set secret env list when secret variables exist
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > handleConfirmExport - early return > should not do anything when appDetail is undefined
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onConfirmDelete > should delete app and redirect on success
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onConfirmDelete > should not delete when appDetail is undefined
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > onConfirmDelete > should notify error on delete failure
+web/app/components/app-sidebar/app-info/__tests__/use-app-info-actions.spec.ts :: useAppInfoActions > collaboration app meta updates > should refresh app detail when receiving app_meta_update
+web/app/components/app-sidebar/nav-link/__tests__/index.spec.tsx :: NavLink > Active State Handling > should use the selected icon when the link matches the current route
+web/app/components/app-sidebar/nav-link/__tests__/index.spec.tsx :: NavLink > Active State Handling > should not mark logs active on the annotations pathname
+web/app/components/app-sidebar/nav-link/__tests__/index.spec.tsx :: NavLink > Active State Handling > should use pathname to mark annotations active when rendered outside the app detail route segment
+web/app/components/app-sidebar/nav-link/__tests__/index.spec.tsx :: NavLink > Disabled State > should render as button when disabled
+web/app/components/app-sidebar/nav-link/__tests__/index.spec.tsx :: NavLink > Button Mode > should render as an interactive button when href is omitted
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > renders expanded detail content by default
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > %s shortcut > toggles detail content outside editing fields
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > %s shortcut > leaves the shortcut to the %s editor
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > collapses detail content from the top toggle and hides environment metadata
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > shows a floating preview on collapsed hover without changing persisted state
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > keeps collapsed bottom actions in place when they are hovered
+web/app/components/detail-sidebar/__tests__/index.spec.tsx :: DetailSidebarFrame > persists expansion when the hovered preview toggle is clicked
+web/app/components/detail-sidebar/__tests__/toggle-button.spec.tsx :: DetailSidebarToggleButton > labels the expanded sidebar action
+web/app/components/detail-sidebar/__tests__/toggle-button.spec.tsx :: DetailSidebarToggleButton > labels the collapsed sidebar action
+web/app/components/detail-sidebar/__tests__/toggle-button.spec.tsx :: DetailSidebarToggleButton > toggles the sidebar when activated
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > Document title > identifies the current detail page for %s
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > Document title > updates after a directly loaded app is renamed in the store
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should keep app detail data when navigating between pages in the same app
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should render app detail content without owning the main skip target
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect restricted app pages before exposing app detail content
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect logs pages when log and annotation access is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with log and annotation access to open logs directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with Access Point view permission to open the page directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect access point pages when view permission is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should keep cached Access Point content hidden while redirecting without view permission
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect deploy pages when app deploy ACL permission is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with app deploy ACL permission to open deploy directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with layout access to open workflow pages directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect workflow pages when layout access is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect overview pages when monitor access is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should wait for workspace permission keys before redirecting restricted pages
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with monitor access to open overview directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect access config pages when access config access is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with access config access to open access config directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect Agent app access config URLs to the Agent configure page
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should keep Agent app access config content hidden while redirecting cached app data
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect access config pages when RBAC is disabled
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should redirect annotation pages when log and annotation access is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx :: AppDetailLayout > should allow users with log and annotation access to open annotations directly
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/access-config/__tests__/page.spec.tsx :: App access config route > Rendering > should pass app id from route params
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/chart-view.spec.tsx :: ChartView monitor permission > Permissions > should not render monitoring charts when app monitor permission is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/chart-view.spec.tsx :: ChartView monitor permission > Permissions > should render monitoring charts when app monitor permission is granted
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx :: OverviewView monitor permission > Permissions > should not render overview page content when app monitor permission is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx :: OverviewView monitor permission > Permissions > should render overview page content without tracing entry when only app monitor permission is granted
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx :: OverviewView monitor permission > Permissions > should render tracing entry when app tracing config permission is granted with monitor access
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx :: OverviewView monitor permission > Permissions > should not render overview page content when only app tracing config permission is granted
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/panel.spec.tsx :: Tracing overview panel permissions > marks tracing config as read-only without app monitor or workspace tracking permissions
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/panel.spec.tsx :: Tracing overview panel permissions > marks tracing config as read-only with app monitor permission only
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/panel.spec.tsx :: Tracing overview panel permissions > allows tracing config when app ACL includes tracing config permission
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Nested Overlay Behavior > should keep the provider config modal open when clicking inside it
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Rendering > should render %s fields when adding a provider
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Saving > should add and choose the provider when saving a new config
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Saving > should update valid %s config in edit mode
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Saving > should reject $provider config when $missingField is missing
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Closing And Removing > should cancel when the cancel button is clicked
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Closing And Removing > should cancel when the dialog is closed with Escape
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Closing And Removing > should remove an existing provider after confirmation
+web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/provider-config-modal.spec.tsx :: ProviderConfigModal > Closing And Removing > should return to the edit dialog when remove confirmation is canceled
+web/app/components/app/log/__tests__/archived-logs-notice.spec.tsx :: ArchivedLogsNotice > should show an accessible notice for paid workspace managers
+web/app/components/app/log/__tests__/archived-logs-notice.spec.tsx :: ArchivedLogsNotice > should not show notice for sandbox workspaces
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > Rendering > should render empty element with title
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > Rendering > should render Trans component with i18n key
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > App Mode Handling > should use CHAT mode for chat apps
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > App Mode Handling > should use COMPLETION mode for completion apps
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > App Mode Handling > should use WORKFLOW mode for workflow apps
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > App Mode Handling > should use CHAT mode for advanced-chat apps
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > App Mode Handling > should use CHAT mode for agent-chat apps
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > Links > should render share link with correct attributes
+web/app/components/app/log/__tests__/empty-element.spec.tsx :: EmptyElement > Links > should render test link with redirection path
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Rendering > should render filter components
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Rendering > should return null when loading
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Rendering > should render sort component in chat mode
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Rendering > should not render sort component when not in chat mode
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have correct period keys
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have today period with value 0
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have last7days period with value 7
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have last4weeks period with value 28
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have allTime period with value -1
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should only show supported periods for Cloud sandbox workspaces
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should keep periods restricted until the Cloud plan resolves, then follow cache updates
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should keep all periods for sandbox workspaces in %s
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should reset the Cloud sandbox period to today when cleared
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should update keyword when typing in search input
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should clear keyword when clear button is clicked
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > User Interactions > should update and clear period, annotation, and sort filters
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should display "today" when period is set to 1
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should display "last7days" when period is set to 2
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should display "allTime" when period is set to 9
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should display annotated status with count when annotation_status is annotated
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should display not_annotated status when annotation_status is not_annotated
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should display all annotation status when annotation_status is all
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Query Params > should return null when annotation count data is unavailable
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Chat Mode > should display sort component with sort_by parameter
+web/app/components/app/log/__tests__/filter.spec.tsx :: Filter > Chat Mode > should handle descending sort order
+web/app/components/app/log/__tests__/index.spec.tsx :: Logs > should request chat conversations and show a loading state before data arrives
+web/app/components/app/log/__tests__/index.spec.tsx :: Logs > should render the empty state for completion apps without logs
+web/app/components/app/log/__tests__/index.spec.tsx :: Logs > should update the page query parameter when pagination changes
+web/app/components/app/log/__tests__/index.spec.tsx :: Logs > should query the last 30 days when a Sandbox user selects the longest period
+web/app/components/app/log/__tests__/index.spec.tsx :: Logs > should use today when a cached period is unavailable to a Sandbox workspace
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should format chat messages into paired question and answer items
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should preserve feedback and annotation hit history when formatting chat items
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should merge unique chat items and handle pagination retries
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should build thread state and support switching siblings
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should return an empty thread state when there are no chat items
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should update annotation state helpers
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should derive urls, scroll thresholds, row values, and detail metadata
+web/app/components/app/log/__tests__/list-utils.spec.ts :: log list utils > should handle default inputs
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should render chat rows and push the conversation id into the url when a row is clicked
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > restores focus to the conversation entry after %s opening
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should close the drawer, refresh, and clear modal flags
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should render chat conversation details and submit feedback from the chat panel
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should expose run details only for %s conversation answers
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should mount agent log modals from the detail panel instead of the nested chat layout
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should render completion details and refetch after feedback updates
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should render chatflow status cells and feedback counters for advanced chat logs
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should support annotation changes, modal closing, and paginated scroll loading in the detail drawer
+web/app/components/app/log/__tests__/list.spec.tsx :: ConversationList > should close the prompt log modal from completion detail drawers
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Rendering > should render model icon
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Rendering > should render model name
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Rendering > should render info icon button
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Rendering > should show model name with showMode prop
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Info Panel Toggle > should be closed by default
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Info Panel Toggle > should open when info button is clicked
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Info Panel Toggle > should close when info button is clicked again
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model Parameters Display > should render model params header
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model Parameters Display > should render temperature parameter
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model Parameters Display > should render top_p parameter
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model Parameters Display > should render presence_penalty parameter
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model Parameters Display > should render max_tokens parameter
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model Parameters Display > should render stop parameter as comma-separated values
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Missing Parameters > should show dash for missing parameters
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Missing Parameters > should show dash for non-array stop values
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Missing Parameters > should join array stop values with comma
+web/app/components/app/log/__tests__/model-info.spec.tsx :: ModelInfo > Model without completion_params > should handle undefined completion_params
+web/app/components/app/log/__tests__/retention-upgrade-notice.spec.tsx :: RetentionUpgradeNotice > should show accessible upgrade guidance for Cloud sandbox workspaces
+web/app/components/app/log/__tests__/retention-upgrade-notice.spec.tsx :: RetentionUpgradeNotice > should not show guidance for $name
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Rendering > should render variables section header
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Rendering > should render variable labels with braces
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Rendering > should render variable values
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Rendering > should render opening and closing braces
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Rendering > should render Variable02 icon
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Collapse/Expand > should show expanded state by default
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Collapse/Expand > should collapse when header is clicked
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Collapse/Expand > should expand when clicked again
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Collapse/Expand > should show arrow icon when collapsed
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Collapse/Expand > should show arrow icon when expanded
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Message Files > should not render images section when message_files is empty
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Message Files > should render images section when message_files has items
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Message Files > should render image thumbnails with correct background
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Message Files > should open image preview when thumbnail is clicked
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Message Files > should close image preview when close button is clicked
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Empty State > should render with empty varList
+web/app/components/app/log/__tests__/var-panel.spec.tsx :: VarPanel > Multiple Images > should render multiple image thumbnails
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Rendering > should render workflow title
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Rendering > should render close button
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Rendering > should render Run component with correct URLs
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Rendering > should render WorkflowContextProvider wrapper
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Props > should not render replay button when canReplay is false (default)
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Props > should render replay button when canReplay is true
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Props > should use empty URL when runID is empty
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > User Interactions > should call onClose when close button is clicked
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > User Interactions > should navigate to workflow page with replayRunId when replay button is clicked
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > User Interactions > should not navigate when replay clicked but appDetail is missing
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > URL Generation > should generate correct run detail URL
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > URL Generation > should generate correct tracing list URL
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > URL Generation > should handle special characters in runID
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Store Integration > should read appDetail from store
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Store Integration > should handle undefined appDetail from store gracefully
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Edge Cases > should handle empty runID
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Edge Cases > should handle very long runID
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Edge Cases > should render replay button with correct aria-label
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Edge Cases > should maintain proper component structure
+web/app/components/app/workflow-log/__tests__/detail.spec.tsx :: DetailPanel > Tooltip > should have tooltip on replay button
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Rendering > should render all filter components
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Status Filter > should display current status value
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Status Filter > should open status dropdown when clicked
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Status Filter > should call setQueryParams when status is selected
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Status Filter > should track status selection event
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Status Filter > should reset to all when status is cleared
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Status Filter > should display correct label for %s status
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should only show supported periods for Cloud sandbox workspaces
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should keep all periods for sandbox workspaces outside Cloud
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should reset the Cloud sandbox period to today when cleared
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should display current period value
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should open period dropdown when clicked
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should call setQueryParams when period is selected
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Time Period Filter > should reset period to allTime when cleared
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Keyword Search > should display current keyword value
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Keyword Search > should call setQueryParams when typing in search
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Keyword Search > should clear keyword when clear button is clicked
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Keyword Search > should update on direct input change
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have correct mapping for today
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have correct mapping for last 7 days
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have correct mapping for last 4 weeks
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have correct mapping for all time
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > should have all 9 predefined time periods
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > TIME_PERIOD_MAPPING > TIME_PERIOD_MAPPING[%s] should have name=%s and correct value
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Edge Cases > should handle undefined keyword gracefully
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Edge Cases > should handle empty string keyword
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Edge Cases > should preserve other query params when updating status
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Edge Cases > should preserve other query params when updating period
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Edge Cases > should preserve other query params when updating keyword
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Integration > should render with all filters visible simultaneously
+web/app/components/app/workflow-log/__tests__/filter.spec.tsx :: Filter > Integration > should have proper layout with flex and gap
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Rendering > should render title and subtitle
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Rendering > should render Filter component
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Loading State > should show loading spinner when data is undefined
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Loading State > should not show loading spinner when data is available
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Empty State > should render empty element when total is 0
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Data Fetching > should call useWorkflowLogs with correct appId and default params
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Data Fetching > should include date filters for non-allTime periods
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Data Fetching > should not include status param when status is all
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Filter Integration > should update query when selecting status filter
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Filter Integration > should update query when selecting period filter
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Filter Integration > should query the last 30 days when a Sandbox user selects the longest period
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Filter Integration > should update query when typing keyword
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Pagination > should not render pagination when total is less than limit
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Pagination > should render pagination when total exceeds limit
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > List Rendering > should render List component when data is available
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > List Rendering > should display log data in table
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > TIME_PERIOD_MAPPING > should export TIME_PERIOD_MAPPING with correct values
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Edge Cases > should handle different app modes
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Edge Cases > should handle error state from useWorkflowLogs
+web/app/components/app/workflow-log/__tests__/index.spec.tsx :: Logs Container > Edge Cases > should handle app with different ID
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Rendering > should render loading state when logs are undefined
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Rendering > should render loading state when appDetail is undefined
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Rendering > should render table when data is available
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Rendering > should render all table headers
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Rendering > should render trigger column for workflow apps
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Rendering > should not render trigger column for non-workflow apps
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Status Display > should render success status correctly
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Status Display > should render failure status correctly
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Status Display > should render stopped status correctly
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Status Display > should render running status correctly
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Status Display > should render partial-succeeded status correctly
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > User Info Display > should display account name when created by account
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > User Info Display > should display end user session id when created by end user
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > User Info Display > should display N/A when no user info
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Sorting > should sort logs in descending order by default
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Sorting > should toggle sort order when clicking on start time header
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Sorting > should render sort arrow icon
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Drawer > should open drawer when clicking on a log row
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Drawer > restores focus to the selected log after %s opening and refresh
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Drawer > should close drawer and call onRefresh when closing
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Drawer > should highlight selected row
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Replay Functionality > should allow replay when triggered from app-run
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Replay Functionality > should allow replay when triggered from debugging
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Replay Functionality > should not show replay for webhook triggers
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Unread Indicator > should show unread indicator for unread logs
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Unread Indicator > should not show unread indicator for read logs
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Runtime Display > should display elapsed time with 3 decimal places
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Runtime Display > should display 0 elapsed time with special styling
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Token Display > should display total tokens
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Empty State > should render empty table when logs data is empty
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Edge Cases > should handle multiple logs correctly
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Edge Cases > should handle logs with missing workflow_run data gracefully
+web/app/components/app/workflow-log/__tests__/list.spec.tsx :: WorkflowAppLogList > Edge Cases > should handle null workflow_run.triggered_from for non-workflow apps
+web/app/components/app/workflow-log/__tests__/trigger-by-display.spec.tsx :: TriggerByDisplay > labels the %s trigger source
+web/app/components/app/workflow-log/__tests__/trigger-by-display.spec.tsx :: TriggerByDisplay > uses plugin event metadata as the visible trigger name
+web/app/components/app/workflow-log/__tests__/trigger-by-display.spec.tsx :: TriggerByDisplay > uses the theme-specific plugin icon when available
+web/app/components/app/workflow-log/__tests__/trigger-by-display.spec.tsx :: TriggerByDisplay > can render an icon-only trigger label
+web/app/components/app/log-annotation/__tests__/index.spec.tsx :: LogAnnotation > Rendering > should render loading state when app detail is missing
+web/app/components/app/log-annotation/__tests__/index.spec.tsx :: LogAnnotation > Rendering > should render log content without the old page tabs
+web/app/components/app/log-annotation/__tests__/index.spec.tsx :: LogAnnotation > Rendering > should render completion logs without the old page tabs
+web/app/components/app/log-annotation/__tests__/index.spec.tsx :: LogAnnotation > Rendering > should hide tabs and render workflow log in workflow mode
+web/app/components/app/log-annotation/__tests__/index.spec.tsx :: LogAnnotation > Props > should render log content when page type is log
+web/app/components/app/log-annotation/__tests__/index.spec.tsx :: LogAnnotation > Props > should render annotation content when page type is annotation
+web/utils/permission.spec.ts :: permission > hasPermissionKey > returns true when the permission key exists
+web/utils/permission.spec.ts :: permission > hasPermissionKey > returns false when the permission key does not exist
+web/utils/permission.spec.ts :: permission > getAppACLCapabilities > allows test-and-run users to access layout without edit
+web/utils/permission.spec.ts :: permission > getAppACLCapabilities > allows view-layout users to preview the app but not run/debug
+web/utils/permission.spec.ts :: permission > getAppACLCapabilities > keeps deployment permission independent from app publishing and version management
+web/utils/permission.spec.ts :: permission > getAppACLCapabilities > allows Access Point managers to view the page without granting management to viewers
+web/utils/permission.spec.ts :: permission > getAppACLCapabilities > keeps monitor, tracing config, and log/annotation permissions independent
+web/utils/permission.spec.ts :: permission > hasOnlyAppPreviewPermission > should return true when app ACL contains only preview permission
+web/utils/permission.spec.ts :: permission > hasOnlyAppPreviewPermission > should return false when app ACL contains preview permission and another permission
+web/utils/permission.spec.ts :: permission > hasOnlyDatasetPreviewPermission > should return true when dataset ACL contains only preview permission
+web/utils/permission.spec.ts :: permission > hasOnlyDatasetPreviewPermission > should return false when dataset ACL contains preview permission and another permission
+web/utils/permission.spec.ts :: permission > app maintainer capabilities > grants all app ACL capabilities without injecting app ACL permission keys
+web/utils/permission.spec.ts :: permission > app maintainer capabilities > keeps app ACL capabilities unchanged when the maintainer lacks app.create_and_management permission
+web/utils/permission.spec.ts :: permission > app maintainer capabilities > does not grant app access config when RBAC is disabled
+web/utils/permission.spec.ts :: permission > dataset maintainer capabilities > grants all dataset ACL capabilities without injecting dataset ACL permission keys
+web/utils/permission.spec.ts :: permission > dataset maintainer capabilities > keeps dataset ACL capabilities unchanged when the current user is not the maintainer
+web/utils/permission.spec.ts :: permission > dataset maintainer capabilities > does not grant dataset access config when RBAC is disabled
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns access point path when it is the only accessible app page
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns the app list when no app page is accessible
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns the access point path for Access Point managers
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns workflow path for workflow mode when app ACL can access layout
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns workflow path for advanced-chat mode when app ACL can access layout
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns configuration path for chat mode when app ACL can access layout
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns configuration path for completion mode when app ACL can access layout
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns configuration path for agent-chat mode when app ACL can access layout
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns the Agent configure path when the backing Agent ID is available
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > falls back to the Agent roster when the backing Agent ID is unavailable
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > handles different app IDs
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns layout path when the app maintainer has app.create_and_management permission without app ACL keys
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns access config path when app ACL can only configure access
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns access point path when RBAC is disabled and Access Point remains accessible
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns overview path when app ACL can only monitor the app
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns logs path when app ACL can only access logs and annotations
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirectionPath > returns deploy path when a workflow app ACL can only deploy
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > calls redirection function with access point path when it is accessible
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > calls redirection function with workflow path when app ACL can access layout
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > calls redirection function with configuration path for chat mode with layout access
+web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > works with different redirection functions

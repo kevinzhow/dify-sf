@@ -443,7 +443,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
           view.viewport = size;
           // Like React Flow, a resize keeps the top-left corner of the view where it is (not the middle).
           if (!old.isEmpty) {
-            view.center += Offset(size.width - old.width, size.height - old.height) / (2 * view.scale);
+            view.shiftCenterDuringLayout(Offset(size.width - old.width, size.height - old.height) / (2 * view.scale));
           }
           if (CanvasDefaults.reportRect) {
             WidgetsBinding.instance.addPostFrameCallback((_) {

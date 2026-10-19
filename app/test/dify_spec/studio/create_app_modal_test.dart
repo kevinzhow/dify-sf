@@ -58,7 +58,7 @@ void main() {
       expect(find.byType(CreateAppModal), findsNothing, reason: 'closed');
       // `getRedirection`: the new app opens in the editor, editable for its creator.
       expect(calls.opened.single.app.id, app.id);
-      expect(calls.opened.single.readOnly, isFalse);
+      expect(calls.opened.single.path, endsWith('/workflow'));
     });
 
     testWidgets('shows error toast when creation fails', (t) async {

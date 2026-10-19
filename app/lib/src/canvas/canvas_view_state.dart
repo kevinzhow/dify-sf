@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 /// What the canvas shows: the canvas point at the middle of the viewport, and screen pixels per canvas pixel.
@@ -23,6 +24,15 @@ class CanvasViewState extends ChangeNotifier {
     if (value == _center) return;
     _center = value;
     notifyListeners();
+  }
+
+  /// Moves the centre during layout (the viewport was resized): listeners hear of it after the frame, since widgets
+  /// outside the resized subtree cannot be rebuilt mid-layout (the app detail sidebar animating its width, a window
+  /// resize).
+  void shiftCenterDuringLayout(Offset delta) {
+    if (delta == Offset.zero) return;
+    _center += delta;
+    SchedulerBinding.instance.addPostFrameCallback((_) => notifyListeners());
   }
 
   set scale(double value) {

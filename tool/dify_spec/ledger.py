@@ -33,7 +33,17 @@ ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setti
          'web/app/components/app/create-from-dsl-modal', 'web/app/components/app/duplicate-modal',
          'web/app/components/explore/create-app-modal', 'web/app/components/app/__tests__',
          'web/app/components/app/type-selector', 'web/app/components/base/search-input',
-         'web/app/components/base/infinite-scroll-sentinel']
+         'web/app/components/base/infinite-scroll-sentinel',
+         # App detail pages: Access Point (with the overview's Web App modals), API keys, annotations.
+         'web/app/components/app/access-point', 'web/app/components/api-key', 'web/app/components/app/overview',
+         'web/app/components/base/qrcode', 'web/app/components/app/annotation',
+         # App detail shell (sidebar, routing, guards), Overview charts and Logs.
+         'web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx',
+         'web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx',
+         'web/app/components/app-sidebar/app-info', 'web/app/components/app-sidebar/nav-link',
+         'web/app/components/detail-sidebar', 'web/app/(commonLayout)/app/(appDetailLayout)',
+         'web/app/components/app/log', 'web/app/components/app/workflow-log', 'web/app/components/app/log-annotation',
+         'web/utils/permission.spec.ts', 'web/utils/app-redirection.spec.ts']
 CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|concurrent|todo))*\(\s*(['"`])(.*?)\3''')
 
 

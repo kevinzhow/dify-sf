@@ -29,6 +29,11 @@ dependencies:
   # Import DSL from a URL: the client fetches the file (the server takes file content only).
   http: ^1.2.0
   image: ^4.12.0
+  # The Access Point's Web App QR code (base/qrcode: qrcode.react's QRCodeCanvas, level L, no margin), downloadable as PNG.
+  qr_flutter: ^4.1.0
+  # Gzip for the embed snippet's hidden inputs on every platform (app-card-utils compressAndEncodeBase64); already
+  # pulled in by `image`.
+  archive: ^4.5.2
 
 dev_dependencies:
   flutter_test:
@@ -89,6 +94,8 @@ flutter:
     - assets/heroicons/
     # The members page's copy icons (members-page/invited-modal/assets).
     - assets/members/
+    # The Access Point's embed option tiles and the Customize dialog's GitHub mark (app/overview/assets).
+    - assets/embedded/
     # The create-app dialog's previews (web/public/screenshots, 1x with 2.0x / 3.0x variants).
     - assets/screenshots/light/
     - assets/screenshots/dark/

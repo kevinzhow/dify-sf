@@ -2432,6 +2432,117 @@ abstract final class DifyColors {
 
   /// `background-gradient-bg-fill-chat-bubble-bg-3`
   static Color get backgroundGradientBgFillChatBubbleBg3 => _dark ? const Color(0xFF27314D) : const Color(0xFFE1EFFE);
+
+  /// `gray-25`
+  static Color get gray25 => const Color(0xFFFCFCFD);
+
+  /// `gray-50`
+  static Color get gray50 => const Color(0xFFF9FAFB);
+
+  /// `gray-100`
+  static Color get gray100 => const Color(0xFFF2F4F7);
+
+  /// `gray-200`
+  static Color get gray200 => const Color(0xFFEAECF0);
+
+  /// `gray-300`
+  static Color get gray300 => const Color(0xFFD0D5DD);
+
+  /// `gray-400`
+  static Color get gray400 => const Color(0xFF98A2B3);
+
+  /// `gray-500`
+  static Color get gray500 => const Color(0xFF667085);
+
+  /// `gray-600`
+  static Color get gray600 => const Color(0xFF344054);
+
+  /// `gray-700`
+  static Color get gray700 => const Color(0xFF475467);
+
+  /// `gray-800`
+  static Color get gray800 => const Color(0xFF1D2939);
+
+  /// `gray-900`
+  static Color get gray900 => const Color(0xFF101828);
+
+  /// `primary-25`
+  static Color get primary25 => const Color(0xFFF5F8FF);
+
+  /// `primary-50`
+  static Color get primary50 => const Color(0xFFEFF4FF);
+
+  /// `primary-100`
+  static Color get primary100 => const Color(0xFFD1E0FF);
+
+  /// `primary-200`
+  static Color get primary200 => const Color(0xFFB2CCFF);
+
+  /// `primary-300`
+  static Color get primary300 => const Color(0xFF84ADFF);
+
+  /// `primary-400`
+  static Color get primary400 => const Color(0xFF528BFF);
+
+  /// `primary-500`
+  static Color get primary500 => const Color(0xFF2970FF);
+
+  /// `primary-600`
+  static Color get primary600 => const Color(0xFF155EEF);
+
+  /// `primary-700`
+  static Color get primary700 => const Color(0xFF004EEB);
+
+  /// `primary-800`
+  static Color get primary800 => const Color(0xFF0040C1);
+
+  /// `primary-900`
+  static Color get primary900 => const Color(0xFF00359E);
+
+  /// `blue-500`
+  static Color get blue500 => const Color(0xFFE1EFFE);
+
+  /// `green-50`
+  static Color get green50 => const Color(0xFFF3FAF7);
+
+  /// `green-100`
+  static Color get green100 => const Color(0xFFDEF7EC);
+
+  /// `green-800`
+  static Color get green800 => const Color(0xFF03543F);
+
+  /// `yellow-100`
+  static Color get yellow100 => const Color(0xFFFDF6B2);
+
+  /// `yellow-800`
+  static Color get yellow800 => const Color(0xFF723B13);
+
+  /// `purple-50`
+  static Color get purple50 => const Color(0xFFF6F5FF);
+
+  /// `purple-200`
+  static Color get purple200 => const Color(0xFFDCD7FE);
+
+  /// `indigo-25`
+  static Color get indigo25 => const Color(0xFFF5F8FF);
+
+  /// `indigo-50`
+  static Color get indigo50 => const Color(0xFFEEF4FF);
+
+  /// `indigo-100`
+  static Color get indigo100 => const Color(0xFFE0EAFF);
+
+  /// `indigo-300`
+  static Color get indigo300 => const Color(0xFFA4BCFD);
+
+  /// `indigo-400`
+  static Color get indigo400 => const Color(0xFF8098F9);
+
+  /// `indigo-600`
+  static Color get indigo600 => const Color(0xFF444CE7);
+
+  /// `indigo-800`
+  static Color get indigo800 => const Color(0xFF2D31A6);
 }
 
 /// Dify typography utilities (packages/dify-ui/src/styles/utilities.css). Dify uses the system font stack;
