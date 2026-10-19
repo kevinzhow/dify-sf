@@ -18,9 +18,9 @@ This repository currently contains step 1: the server-side collaboration kernel 
 
 | Status | Features |
 |---|---|
-| ported | 152 |
+| ported | 153 |
 | partial | 41 |
-| not ported | 38 |
+| not ported | 37 |
 | n/a | 12 |
 | dify-sf only | 11 |
 
