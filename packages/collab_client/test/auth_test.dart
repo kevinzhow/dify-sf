@@ -375,6 +375,55 @@ void main() {
         throwsA(_status(401, 'invalid_credentials')),
       );
     });
+
+    test('password reset over HTTP: code by mail, reset, reset links', () async {
+      final api = HttpAuthApi(srv.url);
+      addTearDown(api.close);
+      final owner = AuthSession(api: api);
+      await owner.setup(email: 'o@example.com', name: 'Olivia', password: 'owner-pass-1');
+      expect((await api.systemFeatures()).isEmailSetup, isFalse);
+      await expectLater(api.sendResetCode(email: 'o@example.com'), throwsA(_status(400, 'mail_not_configured')));
+
+      accounts.emailSetup = true;
+      expect((await api.systemFeatures()).isEmailSetup, isTrue);
+      final token = await api.sendResetCode(email: 'O@example.com', language: 'zh-Hans');
+      expect((accounts.sentMails.single.to, accounts.sentMails.single.language), ('o@example.com', 'zh-Hans'));
+      // Unknown addresses get the same answer (and no code).
+      expect(await api.sendResetCode(email: 'nobody@example.com'), isNotEmpty);
+      expect(accounts.sentMails.last.code, isNull);
+      await expectLater(
+        api.checkResetCode(email: 'o@example.com', code: 'nope', token: token),
+        throwsA(_status(400, 'email_code_error')),
+      );
+      final check = await api.checkResetCode(email: 'o@example.com', code: accounts.sentMails.first.code!, token: token);
+      expect((check.isValid, check.email), (true, 'o@example.com'));
+      await expectLater(
+        api.resetPassword(token: check.token, newPassword: 'owner-new-1', passwordConfirm: 'owner-new-2'),
+        throwsA(_status(400, 'password_mismatch')),
+      );
+      await api.resetPassword(token: check.token, newPassword: 'owner-new-1', passwordConfirm: 'owner-new-1');
+      await expectLater(owner.members(), throwsA(_status(401)), reason: 'the reset ended the session');
+
+      // An owner's reset link for a member.
+      await owner.login(email: 'o@example.com', password: 'owner-new-1');
+      final link = (await owner.invite(emails: ['cy@example.com'], role: AccountRole.normal)).single;
+      final cy = AuthSession(api: api);
+      await cy.activate(token: link.token!, name: 'Cy', password: 'cy-pass-123');
+      final reset = await owner.resetPasswordLink(cy.currentAccount!.id);
+      expect(reset.url, startsWith('/reset-password/set-password?email=cy%40example.com&token='));
+      expect(reset.expiresAt, isNotNull);
+      await api.resetPassword(token: reset.token, newPassword: 'cy-new-123', passwordConfirm: 'cy-new-123');
+      expect((await cy.login(email: 'cy@example.com', password: 'cy-new-123')).name, 'Cy');
+      await expectLater(cy.resetPasswordLink(owner.currentAccount!.id), throwsA(_status(403, 'forbidden')));
+    });
+
+    test('a server without system features has no mail', () async {
+      final plain = await HttpFakeServer.start();
+      addTearDown(plain.close);
+      final api = HttpAuthApi(plain.url);
+      addTearDown(api.close);
+      expect((await api.systemFeatures()).isEmailSetup, isFalse);
+    });
   });
 
   group('in-memory transport with accounts', () {

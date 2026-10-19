@@ -5,6 +5,10 @@
 /// Each test creates its own document, so it is safe to run against a shared server. Protocol 1.8: it signs in as
 /// `DIFYSF_EMAIL` / `DIFYSF_PASSWORD` (default: a test account, installed as the owner on a fresh server; on a server
 /// set up by someone else, pass the owner's or an admin's credentials) and invites an editor and a read-only member.
+///
+/// Model providers (protocol 1.9): credential checks go to a stub provider this test serves on `DIFYSF_STUB_HOST`
+/// (default 127.0.0.1; the server must reach it, e.g. a server on the host network), never to a real provider. Set
+/// `DIFYSF_MODELS_VALIDATE=false` for a server running with `COLLAB_MODELS_VALIDATE=false`.
 @TestOn('vm')
 @Timeout(Duration(minutes: 3))
 library;
@@ -19,6 +23,7 @@ import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
 import 'support/helpers.dart';
+import 'support/model_providers_scenario.dart';
 
 final String? _url = Platform.environment['DIFYSF_URL'];
 
@@ -1169,6 +1174,53 @@ workflow:
       await Future<void>.delayed(const Duration(seconds: 11));
       await sub.cancel();
       expect(pinged, isTrue, reason: 'the server sends bytes at least every ~10 s');
+    });
+  });
+
+  group('model providers (1.9)', () {
+    late HttpServer stub;
+    setUpAll(() async {
+      stub = await HttpServer.bind(InternetAddress.anyIPv4, 0);
+      stub.listen((req) async {
+        final key =
+            req.headers.value('x-api-key') ??
+            (req.headers.value('authorization')?.startsWith('Bearer ') == true
+                ? req.headers.value('authorization')!.substring(7)
+                : null);
+        await req.drain<void>();
+        final path = req.uri.path;
+        final ok = key != null && key.startsWith('sk-good');
+        req.response.headers.contentType = ContentType.json;
+        if (path == '/oaic/models') {
+          req.response.statusCode = 404;
+          req.response.write('{"detail":"Not Found"}');
+        } else if (path == '/v1/models' || path == '/oaic/chat/completions') {
+          req.response.statusCode = ok ? 200 : 401;
+          req.response.write(ok ? '{"data":[]}' : '{"error":{"message":"Incorrect API key provided"}}');
+        } else {
+          req.response.statusCode = 404;
+        }
+        await req.response.close();
+      });
+    });
+    tearDownAll(() => stub.close(force: true));
+
+    test('the editor\'s and the settings page\'s calls against the server', () async {
+      final host = Platform.environment['DIFYSF_STUB_HOST'] ?? '127.0.0.1';
+      final ownerApi = HttpModelProvidersApi(base, auth: owner);
+      final viewerApi = HttpModelProvidersApi(base, auth: viewer);
+      try {
+        await modelProvidersScenario(
+          ownerApi,
+          viewerApi,
+          unique: _docId(),
+          stubBase: 'http://$host:${stub.port}',
+          validates: Platform.environment['DIFYSF_MODELS_VALIDATE'] != 'false',
+        );
+      } finally {
+        ownerApi.close();
+        viewerApi.close();
+      }
     });
   });
 

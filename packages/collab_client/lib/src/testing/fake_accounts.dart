@@ -72,6 +72,25 @@ class _Token {
   final DateTime expires;
 }
 
+/// A mail the fake server "sent" (forgot password): the code, or null for the "no account" notice.
+class FakeMail {
+  const FakeMail({required this.to, required this.code, required this.language});
+  final String to;
+  final String? code;
+  final String language;
+}
+
+class _Reset {
+  _Reset(this.account, this.email, this.code, this.phase, this.expires);
+  final String? account;
+  final String email;
+  final String? code;
+
+  /// `verify`, `reset` or `link`.
+  final String phase;
+  final DateTime expires;
+}
+
 class _Invitation {
   _Invitation(this.account, this.email, this.expires);
   final String account;
@@ -89,12 +108,22 @@ class _Invitation {
 /// Give it to a `FakeServer` / `HttpFakeServer` (`accounts:`) and every request needs a token; talk to it through
 /// [FakeAuthApi] (or HTTP). Test helpers: [addMember] (an activated account), [signIn] (tokens without a password),
 /// [expireAccessTokens] (to exercise refreshes).
+///
+/// Forgot password (docs/protocol.md "Password reset"): with [emailSetup] the codes "sent" are in [sentMails]; the send
+/// interval, code expiry and wrong-code lockout are the server's (the per-IP mail limit is not modelled). Admins' reset
+/// links work with or without mail.
 class FakeAccounts {
   FakeAccounts({
     this.accessTtl = const Duration(minutes: 60),
     this.refreshTtl = const Duration(days: 30),
     this.maxLoginFailures = 5,
     this.lockout = const Duration(hours: 24),
+    this.emailSetup = false,
+    this.resetTokenTtl = const Duration(minutes: 5),
+    this.resetSendInterval = const Duration(seconds: 60),
+    this.maxResetCodeFailures = 5,
+    this.resetLockout = const Duration(hours: 24),
+    this.resetLinkTtl = const Duration(hours: 24),
     Random? random,
   }) : _random = random ?? Random(11);
 
@@ -103,6 +132,20 @@ class FakeAccounts {
   final int maxLoginFailures;
   final Duration lockout;
   final Random _random;
+
+  /// The server sends mail (`is_email_setup`).
+  bool emailSetup;
+  final Duration resetTokenTtl;
+  final Duration resetSendInterval;
+  final int maxResetCodeFailures;
+  final Duration resetLockout;
+  final Duration resetLinkTtl;
+
+  /// Every forgot-password mail, in order.
+  final List<FakeMail> sentMails = [];
+  final Map<String, _Reset> _resets = {};
+  final Map<String, DateTime> _lastResetMail = {};
+  final Map<String, ({int count, DateTime until})> _codeFailures = {};
 
   final Map<String, FakeAccount> byId = {};
   final Map<String, _Token> _access = {};
@@ -404,6 +447,112 @@ class FakeAccounts {
     return _signedIn(a);
   }
 
+  // ---- forgot password and reset links -----------------------------------------------------------
+
+  Map<String, Object?> systemFeatures() => {
+    'enable_email_code_login': false,
+    'enable_email_password_login': true,
+    'is_allow_register': false,
+    'is_email_setup': emailSetup,
+  };
+
+  Map<String, Object?> sendResetCode({Object? email, Object? language}) {
+    final e = _email(email);
+    final lang = language == 'zh-Hans' ? 'zh-Hans' : 'en-US';
+    if (!emailSetup) {
+      throw const FakeAuthError(
+        400,
+        'mail_not_configured',
+        'Mail is not configured on this server: ask the workspace owner or an admin for a reset link.',
+      );
+    }
+    final a = byEmail(e);
+    final destination = a?.email ?? e.toLowerCase();
+    final key = destination.toLowerCase(), now = clock.now();
+    final last = _lastResetMail[key];
+    if (last != null && now.isBefore(last.add(resetSendInterval))) {
+      final minutes = (resetSendInterval.inSeconds + 59) ~/ 60;
+      throw FakeAuthError(
+        429,
+        'password_reset_rate_limit_exceeded',
+        'Too many password reset emails have been sent. Please try again in ${minutes < 1 ? 1 : minutes} minutes.',
+      );
+    }
+    final code = List.generate(6, (_) => _random.nextInt(10)).join(), token = _newToken();
+    _resets.removeWhere((_, r) => r.email.toLowerCase() == key && r.phase != 'link');
+    _resets[token] = _Reset(a?.id, destination, code, 'verify', now.add(resetTokenTtl));
+    sentMails.add(FakeMail(to: destination, code: a == null ? null : code, language: lang));
+    _lastResetMail[key] = now;
+    return {'result': 'success', 'data': token};
+  }
+
+  Map<String, Object?> checkResetCode({Object? email, Object? code, Object? token}) {
+    final key = _email(email).toLowerCase(), now = clock.now();
+    if (token is! String || token.isEmpty) throw const FakeAuthError(400, 'bad_request', 'token is required');
+    final f = _codeFailures[key];
+    if (f != null && f.until.isAfter(now) && f.count > maxResetCodeFailures) {
+      throw const FakeAuthError(
+        429,
+        'email_password_reset_limit',
+        'Too many failed password reset attempts. Please try again in 24 hours.',
+      );
+    }
+    final r = _resets[token];
+    if (r == null || r.phase != 'verify' || !r.expires.isAfter(now)) {
+      throw const FakeAuthError(400, 'invalid_token', 'The token is invalid or has expired.');
+    }
+    if (r.email.toLowerCase() != key) {
+      throw const FakeAuthError(400, 'invalid_email', 'The email address is not valid.');
+    }
+    if (code != r.code) {
+      final count = f != null && f.until.isAfter(now) ? f.count : 0;
+      _codeFailures[key] = (count: count + 1, until: now.add(resetLockout));
+      throw const FakeAuthError(400, 'email_code_error', 'Email code is invalid or expired.');
+    }
+    _resets.remove(token);
+    final next = _newToken();
+    _resets[next] = _Reset(r.account, r.email, null, 'reset', now.add(resetTokenTtl));
+    _codeFailures.remove(key);
+    return {'is_valid': true, 'email': key, 'token': next};
+  }
+
+  Map<String, Object?> resetPassword({Object? token, Object? newPassword, Object? passwordConfirm}) {
+    if (token is! String || token.isEmpty) throw const FakeAuthError(400, 'bad_request', 'token is required');
+    final p = _password(newPassword);
+    _password(passwordConfirm);
+    if (p != passwordConfirm) throw const FakeAuthError(400, 'password_mismatch', 'The passwords do not match.');
+    final r = _resets.remove(token);
+    if (r == null || r.phase == 'verify' || !r.expires.isAfter(clock.now())) {
+      throw const FakeAuthError(400, 'invalid_token', 'The token is invalid or has expired.');
+    }
+    final a = r.account != null ? byId[r.account] : byEmail(r.email);
+    if (a == null || a.email.toLowerCase() != r.email.toLowerCase()) {
+      throw const FakeAuthError(400, 'account_not_found', 'Account not found.');
+    }
+    a.password = p;
+    if (a.status == 'pending') a.status = 'active';
+    _access.removeWhere((_, t) => t.account == a.id);
+    _refresh.removeWhere((_, t) => t.account == a.id);
+    _resets.removeWhere((_, x) => x.account == a.id);
+    return {'result': 'success'};
+  }
+
+  Map<String, Object?> resetPasswordLink(String? accessToken, String memberId) {
+    final me = principal(accessToken, privileged: true);
+    final a = byId[memberId];
+    if (a == null || a.role == null) throw const FakeAuthError(404, 'not_found', 'unknown member');
+    if (a.role == AccountRole.owner && a.id != me.id) {
+      throw const FakeAuthError(403, 'forbidden', "only the owner may reset the owner's password");
+    }
+    final token = _newToken(), expires = clock.now().add(resetLinkTtl);
+    _resets.removeWhere((_, r) => r.account == a.id && r.phase == 'link');
+    _resets[token] = _Reset(a.id, a.email, null, 'link', expires);
+    return {
+      'url': '/reset-password/set-password?email=${Uri.encodeQueryComponent(a.email)}&token=$token',
+      'expires_at': expires.toUtc().toIso8601String(),
+    };
+  }
+
   /// `GET /comments/mention-users`.
   List<Map<String, Object?>> mentionUsers(String? accessToken) {
     principal(accessToken);
@@ -608,4 +757,23 @@ class FakeAuthApi implements AuthApi {
       ),
     ),
   );
+
+  @override
+  Future<SystemFeatures> systemFeatures() => _call((a) => SystemFeatures.fromJson(a.systemFeatures()));
+
+  @override
+  Future<String> sendResetCode({required String email, String? language}) =>
+      _call((a) => a.sendResetCode(email: email, language: language)['data']! as String);
+
+  @override
+  Future<ResetCodeCheck> checkResetCode({required String email, required String code, required String token}) =>
+      _call((a) => ResetCodeCheck.fromJson(a.checkResetCode(email: email, code: code, token: token)));
+
+  @override
+  Future<void> resetPassword({required String token, required String newPassword, required String passwordConfirm}) =>
+      _call((a) => a.resetPassword(token: token, newPassword: newPassword, passwordConfirm: passwordConfirm));
+
+  @override
+  Future<PasswordResetLink> resetPasswordLink(String accessToken, String memberId) =>
+      _call((a) => PasswordResetLink.fromJson(a.resetPasswordLink(accessToken, memberId)));
 }

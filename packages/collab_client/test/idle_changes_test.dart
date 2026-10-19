@@ -31,7 +31,7 @@ void main() {
       session.edit(setPrompt('a', 'x'));
       async.elapse(const Duration(seconds: 2));
       expect(changes, greaterThan(0));
-      expect(session.view.nodes['a']!.config['prompt'], VString('x'));
+      expect(session.view.nodes['a']!.config['prompt'], const VString('x'));
 
       changes = 0;
       async.elapse(const Duration(seconds: 10));

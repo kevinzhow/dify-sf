@@ -6,6 +6,7 @@
 /// * [AuthTokens]: an access token (60 minutes, sent as `Authorization: Bearer`) and a refresh token (30 days, rotates).
 /// * [AuthResult]: what `setup`, `login` and `activate` answer: tokens plus the account.
 /// * [InvitationResult], [InvitationCheck], [SetupStatus]: the invitation flow and the install state.
+/// * [SystemFeatures], [ResetCodeCheck], [PasswordResetLink]: mail, forgot password and the admins' reset links.
 /// * [MentionUser], [ClientIdentity]: the comments' mention candidates and the client directory (client id -> account).
 library;
 
@@ -262,6 +263,66 @@ final class InvitationCheck {
 
   /// Dify's invite-settings rule: `requires_setup ?? account_status == 'pending'`.
   bool get needsSetup => requiresSetup ?? (accountStatus == null || accountStatus == 'pending');
+}
+
+/// The members of Dify's system features (`GET /v1/system-features`) the sign-in pages read. A server that does not know
+/// the endpoint (older than the password reset) is [SystemFeatures.none]: no mail.
+final class SystemFeatures {
+  const SystemFeatures({
+    this.isEmailSetup = false,
+    this.enableEmailPasswordLogin = true,
+    this.enableEmailCodeLogin = false,
+    this.isAllowRegister = false,
+  });
+
+  factory SystemFeatures.fromJson(Object? json) {
+    final m = _map(json, 'system features');
+    return SystemFeatures(
+      isEmailSetup: m['is_email_setup'] == true,
+      enableEmailPasswordLogin: m['enable_email_password_login'] != false,
+      enableEmailCodeLogin: m['enable_email_code_login'] == true,
+      isAllowRegister: m['is_allow_register'] == true,
+    );
+  }
+
+  static const none = SystemFeatures();
+
+  /// Dify's `is_email_setup`: the server sends mail, so "Forgot your password?" works.
+  final bool isEmailSetup;
+  final bool enableEmailPasswordLogin;
+  final bool enableEmailCodeLogin;
+  final bool isAllowRegister;
+}
+
+/// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password.
+final class ResetCodeCheck {
+  const ResetCodeCheck({required this.isValid, required this.email, required this.token});
+
+  factory ResetCodeCheck.fromJson(Object? json) {
+    final m = _map(json, 'code check');
+    return ResetCodeCheck(isValid: m['is_valid'] == true, email: _str(m, 'email'), token: _str(m, 'token'));
+  }
+
+  final bool isValid;
+  final String email;
+  final String token;
+}
+
+/// An admin's one-time reset link for a member (dify-sf only): [url] is relative to the web app
+/// (`/reset-password/set-password?email=...&token=...`).
+final class PasswordResetLink {
+  const PasswordResetLink({required this.url, this.expiresAt});
+
+  factory PasswordResetLink.fromJson(Object? json) {
+    final m = _map(json, 'reset link');
+    return PasswordResetLink(url: _str(m, 'url'), expiresAt: _time(m['expires_at']));
+  }
+
+  final String url;
+  final DateTime? expiresAt;
+
+  /// The link's token.
+  String get token => Uri.parse(url).queryParameters['token'] ?? '';
 }
 
 /// A mention candidate (`GET /v1/docs/{doc}/comments/mention-users`): a workspace member.

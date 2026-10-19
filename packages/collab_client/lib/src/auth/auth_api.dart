@@ -8,14 +8,16 @@ import 'account.dart';
 
 /// The account endpoints of a dify-sf server (docs/protocol.md section 2 "Accounts", protocol 1.8), one request per call.
 ///
-/// Public calls ([setupStatus], [setup], [login], [refresh], [checkInvitation], [activate]) need no token; the others take
-/// the caller's access token as their first argument. Apps normally use [AuthSession] instead, which keeps the tokens,
+/// Public calls ([setupStatus], [setup], [login], [refresh], [checkInvitation], [activate], [systemFeatures] and the forgot
+/// password calls) need no token; the others take the caller's access token as their first argument. Apps normally use [AuthSession] instead, which keeps the tokens,
 /// refreshes them and offers the same calls without token arguments.
 ///
 /// Failures throw a `TransportException` with the HTTP status and the server's error code: `invalid_credentials` (401,
 /// login: unknown email or wrong password, one answer for both), `login_rate_limited` (429), `account_banned` (403),
 /// `setup_done` (409), `invalid_password` / `invalid_token` / `invalid_role` / `cannot_operate_self` (400), `forbidden`
-/// (403: the role does not allow it), `unauthorized` (401: the access or refresh token is not valid).
+/// (403: the role does not allow it), `unauthorized` (401: the access or refresh token is not valid). Forgot password
+/// (docs/protocol.md "Password reset"): `mail_not_configured`, `invalid_email`, `email_code_error`, `password_mismatch`,
+/// `account_not_found` (400), `email_send_ip_limit`, `password_reset_rate_limit_exceeded`, `email_password_reset_limit` (429).
 ///
 /// Implementations: [HttpAuthApi] (a real server) and `FakeAuthApi` (`package:collab_client/testing.dart`, in memory).
 abstract interface class AuthApi {
@@ -86,6 +88,25 @@ abstract interface class AuthApi {
     String? interfaceLanguage,
     String? timezone,
   });
+
+  /// `GET /v1/system-features`: whether the server sends mail ([SystemFeatures.isEmailSetup]). A server without the
+  /// endpoint answers [SystemFeatures.none].
+  Future<SystemFeatures> systemFeatures();
+
+  /// `POST /v1/forgot-password`: mails a six-digit code to [email] and answers the token for [checkResetCode]. The answer
+  /// is the same for an email without an account. [language]: `zh-Hans` mails in Chinese, anything else in English.
+  Future<String> sendResetCode({required String email, String? language});
+
+  /// `POST /v1/forgot-password/validity`: a right [code] spends [token] and answers the token for [resetPassword].
+  Future<ResetCodeCheck> checkResetCode({required String email, required String code, required String token});
+
+  /// `POST /v1/forgot-password/resets`: sets the new password with a reset token (from [checkResetCode] or an admin's
+  /// [PasswordResetLink]); the account's sessions end.
+  Future<void> resetPassword({required String token, required String newPassword, required String passwordConfirm});
+
+  /// `POST /v1/workspace/members/{id}/reset-password-link` (owner and admins; the owner only for itself; dify-sf only):
+  /// a one-time link for the member to set a new password.
+  Future<PasswordResetLink> resetPasswordLink(String accessToken, String memberId);
 }
 
 /// [AuthApi] against a real server at [baseUrl].
@@ -238,6 +259,59 @@ class HttpAuthApi implements AuthApi {
         'interface_language': ?interfaceLanguage,
         'timezone': ?timezone,
       },
+    ),
+  );
+
+  @override
+  Future<SystemFeatures> systemFeatures() async {
+    try {
+      return SystemFeatures.fromJson(await _send('GET', '/v1/system-features', ok: 200));
+    } on TransportException catch (e) {
+      if (e.statusCode == 404) return SystemFeatures.none;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<String> sendResetCode({required String email, String? language}) async {
+    final json = await _send(
+      'POST',
+      '/v1/forgot-password',
+      ok: 200,
+      body: {'email': email, 'language': ?language},
+    ) as Map<String, Object?>;
+    final token = json['data'];
+    if (token is! String) throw const TransportException('malformed forgot-password answer');
+    return token;
+  }
+
+  @override
+  Future<ResetCodeCheck> checkResetCode({required String email, required String code, required String token}) async =>
+      ResetCodeCheck.fromJson(
+        await _send(
+          'POST',
+          '/v1/forgot-password/validity',
+          ok: 200,
+          body: {'email': email, 'code': code, 'token': token},
+        ),
+      );
+
+  @override
+  Future<void> resetPassword({required String token, required String newPassword, required String passwordConfirm}) =>
+      _send(
+        'POST',
+        '/v1/forgot-password/resets',
+        ok: 200,
+        body: {'token': token, 'new_password': newPassword, 'password_confirm': passwordConfirm},
+      );
+
+  @override
+  Future<PasswordResetLink> resetPasswordLink(String accessToken, String memberId) async => PasswordResetLink.fromJson(
+    await _send(
+      'POST',
+      '/v1/workspace/members/${Uri.encodeComponent(memberId)}/reset-password-link',
+      ok: 201,
+      token: accessToken,
     ),
   );
 

@@ -19,9 +19,9 @@ import 'fake_server.dart';
 /// streams that go silent without closing (half-open), swallowed responses, 5xx answers, chunked writes.
 ///
 /// Accounts (protocol 1.8): with [accounts] it serves the account endpoints (`/v1/setup`, `/v1/auth/...`,
-/// `/v1/account...`, `/v1/workspace/members...`, `/v1/activate...`) and every document endpoint requires
-/// `Authorization: Bearer` (the event stream also `?access_token=`), with the reference server's roles and client-id
-/// binding. Without [accounts] nothing is checked (pre-1.8 behaviour).
+/// `/v1/account...`, `/v1/workspace/members...`, `/v1/activate...`, `/v1/system-features`, `/v1/forgot-password...`) and
+/// every document endpoint requires `Authorization: Bearer` (the event stream also `?access_token=`), with the reference
+/// server's roles and client-id binding. Without [accounts] nothing is checked (pre-1.8 behaviour).
 class HttpFakeServer {
   HttpFakeServer._(this._http, this.pingInterval, this.accounts);
 
@@ -627,6 +627,26 @@ class HttpFakeServer {
           return await _json(req, 200, a.checkInvitation(body['token']));
         case ('GET', 'activate/check'):
           return await _json(req, 200, a.checkInvitation(req.uri.queryParameters['token']));
+        case ('GET', 'system-features'):
+          return await _json(req, 200, a.systemFeatures());
+        case ('POST', 'forgot-password'):
+          return await _json(req, 200, a.sendResetCode(email: body['email'], language: body['language']));
+        case ('POST', 'forgot-password/validity'):
+          return await _json(
+            req,
+            200,
+            a.checkResetCode(email: body['email'], code: body['code'], token: body['token']),
+          );
+        case ('POST', 'forgot-password/resets'):
+          return await _json(
+            req,
+            200,
+            a.resetPassword(
+              token: body['token'],
+              newPassword: body['new_password'],
+              passwordConfirm: body['password_confirm'],
+            ),
+          );
         case ('POST', 'activate'):
           return await _json(
             req,
@@ -643,6 +663,13 @@ class HttpFakeServer {
       if (seg.length == 5 && seg[1] == 'workspace' && seg[2] == 'members' && seg[4] == 'update-role' && m == 'PUT') {
         a.updateRole(token, seg[3], body['role']);
         return await _json(req, 200, {'result': 'success'});
+      }
+      if (seg.length == 5 &&
+          seg[1] == 'workspace' &&
+          seg[2] == 'members' &&
+          seg[4] == 'reset-password-link' &&
+          m == 'POST') {
+        return await _json(req, 201, a.resetPasswordLink(token, seg[3]));
       }
       if (seg.length == 4 && seg[1] == 'workspace' && seg[2] == 'members' && m == 'DELETE') {
         a.removeMember(token, seg[3]);

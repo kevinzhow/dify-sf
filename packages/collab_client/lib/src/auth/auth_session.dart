@@ -232,6 +232,9 @@ class AuthSession implements TokenProvider {
   /// `DELETE /v1/workspace/members/{id}` (owner and admins).
   Future<void> removeMember(String memberId) => authorized((t) => api.removeMember(t, memberId));
 
+  /// `POST /v1/workspace/members/{id}/reset-password-link` (owner and admins; dify-sf only).
+  Future<PasswordResetLink> resetPasswordLink(String memberId) => authorized((t) => api.resetPasswordLink(t, memberId));
+
   // ---- internals -------------------------------------------------------------------------------
 
   void _setAccount(Account? a) {
