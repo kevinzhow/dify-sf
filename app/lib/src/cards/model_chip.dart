@@ -500,7 +500,7 @@ class ModelSelectorTrigger extends StatelessWidget {
       ),
     );
     if (triggerTooltip != null && !disabled) {
-      trigger = Tooltip(message: triggerTooltip, preferBelow: false, child: trigger);
+      trigger = DifyTooltip(content: Text(triggerTooltip), child: trigger);
     }
     return trigger;
   }

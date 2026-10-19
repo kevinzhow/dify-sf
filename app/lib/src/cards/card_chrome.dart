@@ -173,8 +173,8 @@ class _Header extends StatelessWidget {
         ),
         // dify-sf: references broken by a delete are shown, never dropped silently.
         if ([for (final v in node.config.values) ...v.brokenRefs].isNotEmpty)
-          Tooltip(
-            message: 'Broken references',
+          DifyTooltip(
+            content: const Text('Broken references'),
             child: RemixIcon(
               'link-unlink-m',
               size: 14,

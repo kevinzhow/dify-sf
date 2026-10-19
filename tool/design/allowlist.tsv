@@ -101,9 +101,6 @@ component-token	workflow_editor/variable_panels/chat_variable_modal.dart	1	todo:
 component-token	workflow_editor/variable_panels/chat_variable_values.dart	2	todo:step3
 component-token	workflow_editor/variable_panels/panel_kit.dart	7	todo:step3
 dify-class	workflow_editor/header/publisher/version_info_modal.dart	1	todo:step2
-material-widget	cards/card_chrome.dart	1	todo:step3
-material-widget	cards/model_chip.dart	1	todo:step3
-material-widget	cards/variable_label.dart	3	todo:step3
 material-widget	demo/demo_backend.dart	1	todo:step3
 material-widget	editor/config_editor.dart	13	dev-shell
 material-widget	editor/editor_page.dart	8	dev-shell
@@ -114,7 +111,6 @@ material-widget	editor/variable_picker.dart	1	dev-shell
 material-widget	home_page.dart	8	dev-shell
 material-widget	settings/members/email_recipients_field.dart	1	todo:step3
 material-widget	workflow_editor/comments/comment_input.dart	1	todo:step3
-material-widget	workflow_editor/dify_editor.dart	2	todo:step3
 material-widget	workflow_editor/features/conversation_opener.dart	1	todo:step3
 material-widget	workflow_editor/node_panel/bodies/core/if_else_panel.dart	1	todo:step3
 material-widget	workflow_editor/node_panel/bodies/data/http/http_dialogs.dart	1	todo:step3
@@ -140,7 +136,6 @@ raw-text-style	editor/variable_picker.dart	1	dev-shell
 raw-text-style	home_page.dart	2	dev-shell
 raw-text-style	workflow_editor/code_editor/editor_view.dart	2	third-party:monaco editor settings and syntax theme token font weights/styles
 raw-text-style	workflow_editor/comments/comment_icon.dart	1	legit:avatar initials use a font size derived from the avatar box, matching base/user-avatar-list
-raw-text-style	workflow_editor/dify_editor.dart	2	dev-shell
 raw-text-style	workflow_editor/note_node/note_toolbar.dart	1	legit:font-size picker previews the user-selected Lexical note sizes
 raw-text-style	workflow_editor/prompt_editor/prompt_editor.dart	1	legit:controlled editor font and CSS line-box metrics are derived from its supplied size/line-height/mode
 raw-text-style	workflow_editor/prompt_editor/prompt_editor_controller.dart	3	legit:inline chip edge spacing and copying arbitrary editor styles while removing height to avoid doubled leading

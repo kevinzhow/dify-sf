@@ -939,11 +939,12 @@ class SessionBadge extends StatelessWidget {
             Icon(Icons.circle, size: 8, color: color),
             const SizedBox(width: 4),
             Text(label, style: _small),
-            TextButton(
+            DifyButton(
               key: const Key('reconnect-now'),
-              style: TextButton.styleFrom(minimumSize: const Size(0, 24), padding: const EdgeInsets.all(4)),
+              variant: DifyButtonVariant.ghostAccent,
+              size: DifyButtonSize.small,
               onPressed: controller.reconnectNow,
-              child: const Text('Reconnect now', style: TextStyle(fontSize: 12)),
+              child: const Text('Reconnect now'),
             ),
           ],
           if (menu)
@@ -984,11 +985,13 @@ class SessionBadge extends StatelessWidget {
                         if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
                         // Back to the document list (Dify leaves this to its app sidebar, which the editor does not have).
                         if (ModalRoute.of(context)?.canPop ?? false)
-                          TextButton.icon(
+                          DifyButton(
                             key: const Key('back-to-documents'),
-                            icon: const Icon(Icons.arrow_back, size: 16),
-                            label: const Text('Documents', style: TextStyle(fontSize: 12)),
+                            variant: DifyButtonVariant.ghost,
+                            size: DifyButtonSize.small,
+                            leading: const Icon(Icons.arrow_back, size: 16),
                             onPressed: () => Navigator.of(context).maybePop(),
+                            child: const Text('Documents'),
                           ),
                       ],
                     ),
@@ -1001,16 +1004,19 @@ class SessionBadge extends StatelessWidget {
                         onTap: () => menu.isOpen ? menu.close() : menu.open(),
                         child: MouseRegion(cursor: SystemMouseCursors.click, child: anchor),
                       )
-                    : IconButton(
-                        key: const Key('session-menu'),
-                        tooltip: 'Collaboration session',
-                        iconSize: 16,
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          Icons.cloud_done_outlined,
-                          color: s.link == LinkState.live ? DifyColors.textTertiary : color,
+                    : DifyTooltip(
+                        content: const Text('Collaboration session'),
+                        child: DifyIconButton(
+                          key: const Key('session-menu'),
+                          label: 'Collaboration session',
+                          size: DifyIconButtonSize.sm,
+                          icon: Icon(
+                            Icons.cloud_done_outlined,
+                            size: 16,
+                            color: s.link == LinkState.live ? DifyColors.textTertiary : color,
+                          ),
+                          onPressed: () => menu.isOpen ? menu.close() : menu.open(),
                         ),
-                        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
                       ),
               ),
             ),

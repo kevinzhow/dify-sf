@@ -136,9 +136,8 @@ class VariableName extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = varName(variables, notShowFullPath: notShowFullPath);
-    return Tooltip(
-      message: name,
-      waitDuration: const Duration(milliseconds: 600),
+    return DifyTooltip(
+      content: Text(name),
       child: DifyText(name, DifyType.systemXsMedium, color: color ?? DifyColors.textPrimary),
     );
   }
@@ -162,9 +161,8 @@ class VariableNodeLabel extends StatelessWidget {
           SizedBox(width: gap),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 60),
-            child: Tooltip(
-              message: nodeTitle,
-              waitDuration: const Duration(milliseconds: 600),
+            child: DifyTooltip(
+              content: Text(nodeTitle!),
               child: DifyText(nodeTitle!, DifyType.systemXsMedium, color: DifyColors.textSecondary),
             ),
           ),
@@ -343,8 +341,8 @@ class _VariableLabelState extends State<VariableLabel> {
       if (w.variableType != null)
         DifyText(VariableLabel.capitalize(w.variableType!), DifyType.systemXsRegular, color: DifyColors.textTertiary),
       if (w.errorMsg != null)
-        Tooltip(
-          message: w.errorMsg,
+        DifyTooltip(
+          content: Text(w.errorMsg!),
           child: DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
         ),
     ];
