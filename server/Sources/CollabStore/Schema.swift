@@ -21,6 +21,10 @@
 ///   members and their roles), `sessions` (opaque bearer tokens, stored only as SHA-256), `invitations` (activation links)
 ///   and `client_accounts` (which account a client id belongs to); `password_resets` and, protocol 1.12, `email_changes`
 ///   (forgot-password and change-email tokens).
+/// * Human input (protocol 1.16): `workflow_pauses` (the engine snapshot that resumes a paused run) and
+///   `human_input_forms` (Dify's FormDefinition as rendered, its token, deadline and submission). `(workflow_run_id,
+///   execution_id)` is the key of both: a loop's second round through the same node is another execution, so one form
+///   belongs to exactly one execution and a re-pause cannot fork it.
 /// * Runs (protocol 1.13): `workflow_node_executions` (Dify's table of the same name: node runs, single-step ones too, with
 ///   the document seq they ran at) and, protocol 1.14, `workflow_runs` (whole draft runs). Never ops: runs do not change
 ///   the document.
@@ -581,5 +585,58 @@ public enum Schema {
             UNIQUE (doc_id, user_id, node_id, name)
         )
         """,
+        // Protocol 1.16: a run waiting for human input. The snapshot is the JSON text the engine wrote (`graphon`
+        // encoding: key order, number kinds and segment types kept), the same text a restart resumes from; the totals
+        // are the run's up to the pause. One row per execution; `resumed_at` marks the pause that was resumed.
+        """
+        CREATE TABLE IF NOT EXISTS workflow_pauses (
+            workflow_run_id text             NOT NULL,
+            execution_id    text             NOT NULL,
+            doc_id          text             NOT NULL REFERENCES documents(id),
+            node_id         text             NOT NULL,
+            snapshot        text             NOT NULL,
+            total_tokens    bigint           NOT NULL DEFAULT 0,
+            total_steps     integer          NOT NULL DEFAULT 0,
+            elapsed_time    double precision NOT NULL DEFAULT 0,
+            created_at      timestamptz      NOT NULL,
+            resumed_at      timestamptz,
+            PRIMARY KEY (workflow_run_id, execution_id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS workflow_pauses_open ON workflow_pauses (workflow_run_id) WHERE resumed_at IS NULL",
+        // Protocol 1.16: the form a human answers. `form_content`, `inputs`, `user_actions`, `actions`,
+        // `default_values` and `resolved_default_values` are Dify's FormDefinition members as JSON text (order kept);
+        // `rendered_content` is the rendered markdown. `expiration_time` is Dify's Unix seconds. A submission is a
+        // conditional update from `waiting`, so a form is answered at most once; `consumed_at` is when the resumed run
+        // read it back, which keeps a completed form from waking the run again.
+        """
+        CREATE TABLE IF NOT EXISTS human_input_forms (
+            id                      text        PRIMARY KEY,
+            workflow_run_id         text        NOT NULL,
+            execution_id            text        NOT NULL,
+            doc_id                  text        NOT NULL REFERENCES documents(id),
+            node_id                 text        NOT NULL,
+            node_title              text        NOT NULL DEFAULT '',
+            token                   text        NOT NULL UNIQUE,
+            form_content            text        NOT NULL,
+            inputs                  text        NOT NULL,
+            user_actions            text        NOT NULL,
+            rendered_content        text        NOT NULL,
+            default_values          text,
+            resolved_default_values text,
+            actions                 text        NOT NULL,
+            display_in_ui           boolean     NOT NULL,
+            expiration_time         bigint,
+            status                  text        NOT NULL,
+            submitted_inputs        text,
+            submitted_action        text,
+            submitted_by            text,
+            submitted_at            timestamptz,
+            consumed_at             timestamptz,
+            created_at              timestamptz NOT NULL,
+            UNIQUE (workflow_run_id, execution_id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS human_input_forms_run ON human_input_forms (workflow_run_id, created_at)",
     ]
 }
