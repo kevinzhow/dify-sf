@@ -239,7 +239,7 @@ features:
   title: 'Workflow generator (generate a graph from a prompt)'
   dify: [web/app/components/workflow/workflow-generator]
   status: not_ported
-  reason: "Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
+  reason: "LLM invocation is available to workflow nodes, but the prompt-to-workflow generation service is not implemented."
   evidence: ['spec:web/app/components/workflow/workflow-generator']
   ours: []
 - id: canvas.performance
@@ -762,8 +762,8 @@ features:
   title: 'Node panel: single-run input form (Run this step)'
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: partial
-  reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
-  deviation: Single runs of the node types the server runs go to it (protocol 1.13 LLM, 1.14 every ported type, with missing values read from the draft variables); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
+  reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms are ported with typed instruction references and inspected-value filtering; supported node types use the server and the others use the mock runtime. DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
+  deviation: Single runs of the node types the server runs go to it (protocol 1.13 LLM, 1.14 core node types and 1.15 dedicated iteration/loop streams, with missing values read from the draft variables); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
 - id: node-panel.retry
@@ -855,7 +855,7 @@ features:
   title: 'Prompt / code / JSON schema generator (AI generate)'
   dify: [web/app/components/workflow/nodes/llm/components/prompt-generator-btn.tsx, web/app/components/workflow/nodes/_base/components/code-generator-button.tsx]
   status: not_ported
-  reason: "Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon). The generator buttons are drawn but disabled because no generator service is passed."
+  reason: "LLM invocation is available to workflow nodes, but the prompt/code/schema generation service is not implemented. The generator buttons are drawn but disabled because no generator service is passed."
   evidence: []
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart]
 - id: editors.code-editor
@@ -1350,7 +1350,7 @@ features:
   title: 'Text to speech: language, voice, autoplay, audition'
   dify: [web/app/components/base/features/new-feature-panel/text-to-speech]
   status: partial
-  reason: "Settings are ported; the voices and the audition call the app's TTS model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
+  reason: "Settings are ported; the voices and the audition call the app's TTS model (TTS invocation is not implemented; LLM invocation is separate): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
   evidence: ['spec:web/app/components/base/features/new-feature-panel/text-to-speech']
   ours: [app/lib/src/workflow_editor/features/text_to_speech.dart]
 - id: features.moderation
@@ -1393,9 +1393,9 @@ features:
   title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
   dify: [api/core/workflow, web/service/workflow.ts]
   status: partial
-  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13, 1.14): whole draft runs (Dify''s SSE events, stop, run history and records) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor and question classifier run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 13/13 workflow samples equal). Not yet: iteration and loop (P3), human input (P4), files (P5), chatflow debug runs, tools, knowledge and published runs (P6); graphs with those, and chat, are served by the deterministic MockWorkflowRunService.'
+  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13–1.15): whole draft runs (Dify''s SSE events, stop, run history and records) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor, question classifier, iteration (sequential/parallel, flattening and error modes) and loop (variables and break conditions) run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 23 supported workflow cases equal, with nested iteration and container single-run outcomes also compared). Iteration/loop single runs use their dedicated SSE endpoints; Dify''s existing nested-container filtering and nested-selector restrictions are preserved. Not yet: human input (P4), files (P5), chatflow debug runs, tools and published runs (P6); knowledge retrieval is deferred separately. Graphs with unsupported node types, and chat, are served by the deterministic MockWorkflowRunService.'
   deviation: A graph runs on the server only when the server runs every node type in it (system-features workflow_runtime.draft_run); otherwise the whole run stays on the mock runtime.
-  evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
+  evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, app/test/workflow_editor/run/server_runtime_e2e_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
   ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
 - id: run.test-run-panel
   area: run
@@ -1460,7 +1460,7 @@ features:
   title: 'Single node run (Run this step) and its result'
   dify: [web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: ported
-  deviation: Served by the server runtime for the node types it runs (protocol 1.14), else by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint.
+  deviation: Served by the server runtime for the node types it runs (protocol 1.15 includes dedicated iteration and loop streams), else by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint.
   evidence: [visual:run-single, visual:run-last-run]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart]
 - id: run.trigger-debug
@@ -2028,7 +2028,7 @@ features:
   title: 'Monitoring (overview) page: time range, the workflow and chatflow statistics charts'
   dify: ['web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview', web/app/components/app/overview/app-chart.tsx, web/app/components/app/overview/app-chart-utils.ts]
   status: partial
-  reason: "The charts are complete, but dify-sf has no runtime yet: the statistics are empty (Dify's empty charts) until web-app or API traffic exists; demos and tests use mock data. Dify's Cloud custom date range is not part of the community edition."
+  reason: "The charts are complete, but published web-app and service-API execution is not implemented: editor draft debug runs do not produce these statistics, so the charts stay empty until published traffic exists; demos and tests use mock data. Dify's Cloud custom date range is not part of the community edition."
   evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx', 'spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/chart-view.spec.tsx', 'spec:web/app/components/app/overview/__tests__/app-chart-utils.spec.ts', 'spec:web/app/components/app/overview/__tests__/app-chart.spec.tsx', app/test/app_detail_overview_test.dart, visual:app-overview]
   ours: [app/lib/src/app_detail/overview/overview_page.dart, app/lib/src/app_detail/overview/app_chart.dart, app/lib/src/app_detail/overview/app_chart_canvas.dart, app/lib/src/app_detail/overview/app_chart_utils.dart, app/lib/src/app_detail/overview/time_range.dart]
 - id: app-pages.overview-apikey-panel
@@ -2051,7 +2051,7 @@ features:
   title: 'Workflow app logs: filters, table, pagination, run detail drawer (result, detail, tracing)'
   dify: [web/app/components/app/workflow-log, web/app/components/app/log-annotation]
   status: partial
-  reason: "The page is complete, but dify-sf has no runtime: editor debug runs are never logged (as in Dify), so the list stays empty (Dify's empty state) until web-app or API traffic exists; demos and tests use mock runs."
+  reason: "The page is complete, but published web-app and service-API execution is not implemented: editor debug runs are excluded from this log (as in Dify), so the list stays empty (Dify's empty state) until web-app or API traffic exists; demos and tests use mock runs."
   evidence: ['spec:web/app/components/app/workflow-log', 'spec:web/app/components/app/log-annotation', app/test/app_detail_logs_test.dart, visual:app-logs-workflow]
   ours: [app/lib/src/app_detail/logs/logs_page.dart, app/lib/src/app_detail/logs/workflow_log.dart, app/lib/src/app_detail/logs/log_widgets.dart]
 - id: app-pages.chat-logs
@@ -2059,7 +2059,7 @@ features:
   title: 'Chatflow logs: filters, conversation table, pagination, conversation drawer (transcript, variables, feedback)'
   dify: [web/app/components/app/log]
   status: partial
-  reason: "dify-sf has no runtime: no conversations exist until web-app or API traffic does, so the list shows Dify's empty state (demos and tests use mock conversations); admin feedback is real (POST /feedbacks, a dislike asks for a comment first, as Dify) but has no messages to rate until a runtime exists; the transcript has no add / edit annotation buttons."
+  reason: "Published web-app and service-API execution is not implemented: no conversations exist until that traffic does, so the list shows Dify's empty state (demos and tests use mock conversations); admin feedback is real (POST /feedbacks, a dislike asks for a comment first, as Dify) but has no messages to rate until a runtime exists; the transcript has no add / edit annotation buttons."
   evidence: ['spec:web/app/components/app/log', app/test/app_detail_logs_test.dart, visual:app-logs-empty]
   ours: [app/lib/src/app_detail/logs/chat_log.dart, app/lib/src/app_detail/logs/list_utils.dart, app/lib/src/app_detail/logs/logs_data.dart, app/lib/src/app_detail/logs/log_widgets.dart]
 - id: app-pages.deploy
@@ -2099,7 +2099,7 @@ features:
   title: 'Access Point page: Web App and Service API cards (switches, URL, copy, QR code with download, regenerate, open), the unpublished banner'
   dify: [web/app/components/app/access-point, web/app/components/base/access-point, web/app/components/base/qrcode]
   status: ported
-  deviation: "The built-in environment only (deployment environments are enterprise); the Web App URL and the service API lead nowhere until dify-sf has a runtime. Dify's community-edition role quirks are kept: an editor sees the API switch and Regenerate enabled, the server refuses them (403) and Dify's error toast shows."
+  deviation: "The built-in environment only (deployment environments are enterprise); the Web App URL and the service API lead nowhere until dify-sf implements published web-app and service-API execution. Dify's community-edition role quirks are kept: an editor sees the API switch and Regenerate enabled, the server refuses them (403) and Dify's error toast shows."
   evidence: ['spec:web/app/components/app/access-point', 'spec:web/app/components/base/qrcode', app/test/access_point_page_test.dart, app/test/access_point_app_test.dart, visual:app-access-point]
   ours: [app/lib/src/app_detail/access/access_point_page.dart, app/lib/src/app_detail/access/web_app_card.dart, app/lib/src/app_detail/access/service_api_card.dart, app/lib/src/app_detail/access/access_point_card.dart]
 - id: app-pages.web-app-settings
@@ -2115,7 +2115,7 @@ features:
   title: 'Embed on website (iframe, script, Chrome extension, hidden inputs), Customize, Launch with hidden inputs'
   dify: [web/app/components/app/overview/embedded, web/app/components/app/overview/customize, web/app/components/app/overview/workflow-launch-dialog, web/app/components/app/overview/app-card-utils.ts]
   status: ported
-  deviation: Hidden inputs are gzipped with package:archive on every platform (Dify falls back to plain base64 without CompressionStream); the snippets point at a web app runtime dify-sf does not have yet.
+  deviation: Hidden inputs are gzipped with package:archive on every platform (Dify falls back to plain base64 without CompressionStream); the snippets point at published web-app execution that dify-sf does not implement yet.
   evidence: ['spec:web/app/components/app/overview/embedded', 'spec:web/app/components/app/overview/__tests__/app-card-utils.spec.ts', 'spec:web/app/components/app/overview/__tests__/workflow-launch-dialog.spec.tsx', 'spec:web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx']
   ours: [app/lib/src/app_detail/access/embedded_modal.dart, app/lib/src/app_detail/access/customize_modal.dart, app/lib/src/app_detail/access/workflow_launch_dialog.dart, app/lib/src/app_detail/access/access_point_utils.dart]
 - id: app-pages.api-keys
@@ -2155,7 +2155,7 @@ features:
   title: 'Annotation Reply: switch and settings (embedding model, score threshold)'
   dify: [web/app/components/app/annotation/index.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/score-slider]
   status: partial
-  reason: The setting is stored (the enable / disable jobs complete at once) but nothing matches replies yet - embedding and matching are runtime work dify-sf does not have.
+  reason: The setting is stored (the enable / disable jobs complete at once), but annotation embedding, matching and automatic replies are not implemented.
   evidence: ['spec:web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/config-param-modal.spec.tsx', 'spec:web/app/components/base/features/new-feature-panel/annotation-reply/score-slider', app/test/annotations_page_test.dart]
   ours: [app/lib/src/app_detail/annotations/config_param_modal.dart, app/lib/src/app_detail/annotations/annotations_page.dart]
 - id: app-pages.annotation-hit-history
@@ -2163,7 +2163,7 @@ features:
   title: 'Annotation hit history (the view dialog''s second tab)'
   dify: [web/app/components/app/annotation/view-annotation-modal]
   status: partial
-  reason: Hits are recorded by the runtime when a reply matches; dify-sf has none, so the history is always empty (the tab, table and paging are ported).
+  reason: Annotation reply matching is not implemented, so hit history stays empty; the tab, table and paging are ported.
   evidence: ['spec:web/app/components/app/annotation/view-annotation-modal']
   ours: [app/lib/src/app_detail/annotations/annotation_modals.dart]
 - id: app-pages.knowledge
@@ -2187,7 +2187,7 @@ features:
   title: 'Published web app (share pages, chat / workflow runner, human input form pages)'
   dify: [web/app/(shareLayout), web/app/(humanInputLayout), web/app/components/share]
   status: not_ported
-  reason: outside current scope (owner to decide); needs a runtime and published versions.
+  reason: Planned in runtime P6; public web-app execution and end-user sessions are not implemented.
   evidence: []
   ours: []
 
@@ -2297,7 +2297,7 @@ features:
   dify: [packages/dify-ui/src/themes/light.css, packages/dify-ui/src/styles/styles.css, packages/dify-ui/src/styles/utilities.css]
   status: ported
   evidence: [visual:canvas-basic-llm]
-  ours: [app/lib/src/design/dify_tokens.g.dart, app/lib/src/design/dify_icon.dart, tool/gen_dify_tokens.py, tool/gen_dify_icons.py]
+  ours: [app/lib/src/design/dify_tokens.g.dart, app/lib/src/design/dify_palette.dart, app/lib/src/design/dify_type_tw.dart, app/lib/src/design/dify_run_status.dart, app/lib/src/design/dify_icon.dart, tool/gen_dify_tokens.py, tool/gen_dify_icons.py]
 - id: design.dark-theme
   area: design
   title: 'Dark theme: light / dark / system (remembered, system follows the OS), Appearance submenu in the account menu, theme selector on the sign-in pages, ?theme= / --theme'
@@ -2325,6 +2325,7 @@ features:
   dify: [packages/dify-ui/src/select, packages/dify-ui/src/number-field, packages/dify-ui/src/switch, packages/dify-ui/src/slider, packages/dify-ui/src/textarea, packages/dify-ui/src/checkbox, packages/dify-ui/src/input, packages/dify-ui/src/segmented-control, packages/dify-ui/src/dialog, packages/dify-ui/src/avatar]
   status: partial
   reason: Flutter counterparts exist where ported features use them (DifySelect, DifyNumberField, DifySwitch, DifySlider, DifyTextarea, DifyCheckbox, DifyInput, DifySegmentedControl, DifyDialogSurface, DifyAvatar), but their own dify-ui spec cases are still to do in the ledger.
+  deviation: Some feature pages still construct controls directly from component tokens; the remaining reuse work is tracked by tool/design/allowlist.tsv.
   evidence: ['spec:packages/dify-ui/src/select', 'spec:packages/dify-ui/src/number-field', 'spec:packages/dify-ui/src/switch', 'spec:packages/dify-ui/src/slider', 'spec:packages/dify-ui/src/textarea', 'spec:packages/dify-ui/src/checkbox', 'spec:packages/dify-ui/src/input', 'spec:packages/dify-ui/src/input-group', 'spec:packages/dify-ui/src/segmented-control', 'spec:packages/dify-ui/src/dialog', 'spec:packages/dify-ui/src/alert-dialog', 'spec:packages/dify-ui/src/drawer', 'spec:packages/dify-ui/src/avatar', 'spec:packages/dify-ui/src/radio-group', 'spec:packages/dify-ui/src/field', 'spec:packages/dify-ui/src/fieldset', 'spec:packages/dify-ui/src/form', 'spec:packages/dify-ui/src/scroll-area', 'spec:packages/dify-ui/src/collapsible', 'spec:packages/dify-ui/src/tabs', 'spec:packages/dify-ui/src/toggle', 'spec:packages/dify-ui/src/status-dot', 'spec:packages/dify-ui/src/progress', 'spec:packages/dify-ui/src/preview-card', 'spec:packages/dify-ui/src/combobox', 'spec:packages/dify-ui/src/file-tree']
   ours: [app/lib/src/design/widgets/select.dart, app/lib/src/design/widgets/number_field.dart, app/lib/src/design/widgets/switch.dart, app/lib/src/design/widgets/slider.dart, app/lib/src/design/widgets/textarea.dart, app/lib/src/design/widgets/checkbox.dart, app/lib/src/design/widgets/input.dart, app/lib/src/design/widgets/segmented_control.dart, app/lib/src/design/widgets/dialog.dart, app/lib/src/design/widgets/avatar.dart]
 - id: design.primitives-unused

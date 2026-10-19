@@ -546,6 +546,8 @@ def main():
     ap.add_argument('--cases', default=str(ROOT / 'tool/visual/cases.json'))
     ap.add_argument('--only')
     ap.add_argument('--out', help='default build/visual (light) or build/visual-dark (dark)')
+    ap.add_argument('--ours-build', default=str(ROOT / 'app/build/web'),
+                    help='web build to serve; use a fixed copy when another job may rebuild the app')
     ap.add_argument('--theme', choices=('light', 'dark'), default='light',
                     help='dark: the cases marked "dark" only, both sides in the dark theme')
     ap.add_argument('--reuse-dify', action='store_true',
@@ -574,7 +576,7 @@ def main():
                 shutil.copy(f, out / 'visual-testing-results/react' / f.name)
         a.reuse_dify = True
     s = None if a.reuse_dify else dify_session()
-    server, base = serve(str(ROOT / 'app/build/web'))
+    server, base = serve(a.ours_build)
     rows = []
     with sync_playwright() as p:
         browsers = Browsers(p)
