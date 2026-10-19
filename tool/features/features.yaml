@@ -763,7 +763,7 @@ features:
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: partial
   reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
-  deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
+  deviation: LLM single runs go to the server runtime when it offers one (protocol 1.13); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
 - id: node-panel.retry
@@ -1392,10 +1392,10 @@ features:
   area: run
   title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
   dify: [api/core/workflow, web/service/workflow.ts]
-  status: not_ported
-  reason: dify-sf has no workflow runtime yet; every run below is served by the deterministic MockWorkflowRunService (plausible events built from the current graph), behind the same WorkflowRunService interface a runtime would implement.
-  evidence: [app/test/workflow_editor/run]
-  ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
+  status: partial
+  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocol 1.13): the LLM node''s single run and last run go to the server, which calls models through Dify''s plugin daemon (verified against Dify with a stub model). Full draft runs, the other node types, tools, files and published runs are later runtime phases; until then they are served by the deterministic MockWorkflowRunService.'
+  evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
+  ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
 - id: run.test-run-panel
   area: run
   title: 'Test Run panel: INPUT / RESULT / DETAIL / TRACING tabs, input form, Start Run'

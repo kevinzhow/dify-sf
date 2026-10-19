@@ -53,7 +53,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Variables (environment, conversation, system) & variable picker](#variables) | 5 |  |  |  |  | 5 |
 | [Features panel](#features) | 4 | 3 |  | 1 |  | 8 |
 | [Variable inspect](#variable-inspect) | 2 |  |  |  |  | 2 |
-| [Run & debug](#run) | 9 | 1 | 2 |  |  | 12 |
+| [Run & debug](#run) | 9 | 2 | 1 |  |  | 12 |
 | [Chatflow Debug & Preview](#chat-preview) | 2 |  |  |  |  | 2 |
 | [Comments](#comments) | 7 |  |  |  |  | 7 |
 | [Note node](#notes) | 3 |  |  |  |  | 3 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 1 | 1 | 1 |  | 8 |
-| **Total** | **176** | **46** | **37** | **17** | **13** | **289** |
+| **Total** | **176** | **47** | **36** | **17** | **13** | **289** |
 
 <a id="canvas"></a>
 
@@ -220,7 +220,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Node panel: Dify BasePanel (resize, title and description, close, docs link) | ported |  | spec `workflow/nodes/_base/components/workflow-panel`, spec `workflow/panel/panel-width.spec.ts`, spec `workflow/panel/panel-width-integration.spec.tsx`, visual `panel-llm` |
 | Right panel host: node panel, variable panels, run panels, panel exclusivity | ported |  | spec `workflow/panel`, spec `workflow/hooks/use-workflow-panel-interactions.spec.tsx` |
 | Node panel: SETTINGS / LAST RUN tabs, Last Run result | ported | Deviation: Last runs come from the mock runtime (no run storage on the server). | spec `workflow/nodes/_base/components/workflow-panel/last-run`, visual `run-last-run`, `app/test/dify_spec/workflow/node_panel/workflow_panel_test.dart` |
-| Node panel: single-run input form (Run this step) | partial | Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired. Deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired. | spec `workflow/nodes/_base/components/before-run-form`, spec `workflow/nodes/_base/hooks`, visual `run-single` |
+| Node panel: single-run input form (Run this step) | partial | Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired. Deviation: LLM single runs go to the server runtime when it offers one (protocol 1.13); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired. | spec `workflow/nodes/_base/components/before-run-form`, spec `workflow/nodes/_base/hooks`, visual `run-single` |
 | Node panel: retry on failure settings | ported |  | spec `workflow/nodes/_base/components/retry` |
 | Node panel: error handling (none, default value, fail branch) | ported |  | spec `workflow/nodes/_base/components/error-handle` |
 | Node panel: Next step section (branches, add / change / delete next node) | ported |  | spec `workflow/nodes/_base/components/next-step` |
@@ -489,7 +489,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution) | not ported | dify-sf has no workflow runtime yet; every run below is served by the deterministic MockWorkflowRunService (plausible events built from the current graph), behind the same WorkflowRunService interface a runtime would implement. | `app/test/workflow_editor/run` |
+| Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution) | partial | Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocol 1.13): the LLM node's single run and last run go to the server, which calls models through Dify's plugin daemon (verified against Dify with a stub model). Full draft runs, the other node types, tools, files and published runs are later runtime phases; until then they are served by the deterministic MockWorkflowRunService. | `app/test/workflow_editor/run`, `app/test/workflow_editor/run/server_run_service_test.dart`, `packages/collab_client/test/runtime_e2e_test.dart` |
 | Test Run panel: INPUT / RESULT / DETAIL / TRACING tabs, input form, Start Run | ported | Deviation: Driven by the mock runtime. | spec `workflow/panel/workflow-preview.spec.tsx`, spec `workflow/panel/inputs-panel.spec.tsx`, visual `run-input`, visual `run-result`, visual `run-detail`, visual `run-tracing` |
 | Run control: start, stop, run events (started, node started / finished, text chunks, paused, failed) | ported |  | spec `workflow-app/hooks`, spec `workflow/hooks/use-workflow-run-event` |
 | Run result: status panel, metadata, output panel (markdown, files, JSON), result text | ported |  | spec `workflow/run`, visual `run-result`, visual `run-detail` |
