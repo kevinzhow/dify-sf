@@ -9,6 +9,7 @@ import '../dify_icon.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
 import 'icon_button.dart';
+import 'loading.dart' show DifySpinnerIcon;
 import 'surface.dart';
 import 'text.dart';
 
@@ -649,7 +650,7 @@ class _ToastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _tone(data);
     Widget? icon = tone == null ? null : RemixIcon(tone.$1, size: 20, color: tone.$2);
-    if (data.loading) icon = _Spin(child: icon!);
+    if (data.loading) icon = DifySpinnerIcon(child: icon!);
     final text = Padding(
       padding: const EdgeInsets.all(4),
       child: Column(
@@ -741,28 +742,6 @@ class _ToastCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// `animate-spin`: one turn a second.
-class _Spin extends StatefulWidget {
-  const _Spin({required this.child});
-  final Widget child;
-
-  @override
-  State<_Spin> createState() => _SpinState();
-}
-
-class _SpinState extends State<_Spin> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
 }
 
 /// The toast's action: a secondary button (`px-3 py-2 system-sm-medium`, 0.5 px border, shadow-xs).

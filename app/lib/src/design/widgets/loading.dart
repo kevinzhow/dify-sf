@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../i18n/dify_i18n.dart';
+import '../dify_icon.dart';
 
 /// base/loading (`type="area"`): four squares fading in turn (2 s each, 0.5 s apart), centred; `role="status"`.
 class DifyLoading extends StatefulWidget {
@@ -72,9 +73,10 @@ class _LoadingPainter extends CustomPainter {
   bool shouldRepaint(_LoadingPainter old) => old.elapsed != elapsed;
 }
 
-// ---- locale menu --------------------------------------------------------------------------------------------------
+// ---- spinner ------------------------------------------------------------------------------------------------------
 
-/// Spins its child (`animate-spin`, 1 s per turn).
+/// `animate-spin motion-reduce:animate-none` on [child]: one linear turn a second; still when the platform asks for
+/// reduced motion.
 class DifySpinnerIcon extends StatefulWidget {
   const DifySpinnerIcon({super.key, required this.child});
   final Widget child;
@@ -84,7 +86,17 @@ class DifySpinnerIcon extends StatefulWidget {
 }
 
 class _DifySpinnerIconState extends State<DifySpinnerIcon> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat();
+    }
+  }
 
   @override
   void dispose() {
@@ -94,4 +106,19 @@ class _DifySpinnerIconState extends State<DifySpinnerIcon> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
+}
+
+/// The loader Dify spins everywhere (`i-ri-loader-2-line animate-spin`), [size] px in [color] (the icon's inherited
+/// colour when null); decorative (no semantics).
+class DifySpinner extends StatelessWidget {
+  const DifySpinner({super.key, this.color, this.size = 12});
+  final Color? color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: DifySpinnerIcon(
+      child: RemixIcon('loader-2-line', size: size, color: color),
+    ),
+  );
 }

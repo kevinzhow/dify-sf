@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../dify_icon.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
+import 'loading.dart' show DifySpinner;
 
 /// Button sizes (button/index.tsx): height, gap, radius, horizontal padding, text.
 enum DifyButtonSize {
@@ -110,43 +110,4 @@ class DifyButton extends StatelessWidget {
       },
     );
   }
-}
-
-/// `animate-spin` (1 s linear, infinite).
-class DifySpinner extends StatefulWidget {
-  const DifySpinner({super.key, required this.color, this.size = 12});
-  final Color color;
-  final double size;
-
-  @override
-  State<DifySpinner> createState() => _DifySpinnerState();
-}
-
-class _DifySpinnerState extends State<DifySpinner> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // motion-reduce:animate-none
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _c.stop();
-    } else if (!_c.isAnimating) {
-      _c.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: RotationTransition(
-      turns: _c,
-      child: RemixIcon('loader-2-line', size: widget.size, color: widget.color),
-    ),
-  );
 }

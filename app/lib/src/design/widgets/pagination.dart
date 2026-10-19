@@ -64,6 +64,9 @@ class DifyPagination extends StatefulWidget {
     this.pageSize,
     this.pageSizeOptions = const [10, 25, 50],
     this.onPageSizeChange,
+    this.siblingCount = 1,
+    this.boundaryCount = 1,
+    this.editPageNumberLabel,
   });
 
   /// One-based.
@@ -74,12 +77,25 @@ class DifyPagination extends StatefulWidget {
   final List<int> pageSizeOptions;
   final ValueChanged<int>? onPageSizeChange;
 
+  /// The page range contract (`siblingCount`, `boundaryCount`) of [paginationPageItems].
+  final int siblingCount, boundaryCount;
+
+  /// `labels.editPageNumber`: the page summary button's name ("Edit page number, current page 2 of 10" by default).
+  final String Function(int page, int totalPages)? editPageNumberLabel;
+
   @override
   State<DifyPagination> createState() => _DifyPaginationState();
 }
 
 class _DifyPaginationState extends State<DifyPagination> {
   bool _editing = false, _sizeHover = false;
+  final _summaryFocus = FocusNode(debugLabel: 'pagination page summary');
+
+  @override
+  void dispose() {
+    _summaryFocus.dispose();
+    super.dispose();
+  }
 
   void _go(int page) {
     final next = _clampPage(page, widget.totalPages);
@@ -127,7 +143,12 @@ class _DifyPaginationState extends State<DifyPagination> {
     final total = widget.totalPages < 0 ? 0 : widget.totalPages;
     if (total <= 0) return const SizedBox.shrink();
     final page = _clampPage(widget.page, total);
-    final items = paginationPageItems(page: page, totalPages: total);
+    final items = paginationPageItems(
+      page: page,
+      totalPages: total,
+      siblingCount: widget.siblingCount,
+      boundaryCount: widget.boundaryCount,
+    );
     final summary = Container(
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -148,14 +169,19 @@ class _DifyPaginationState extends State<DifyPagination> {
             child: _PageInput(
               initial: page,
               label: _c('pagination.pageNumber'),
-              onCommit: (v) {
+              onCommit: (v, {required refocus}) {
                 setState(() => _editing = false);
+                // Enter and Escape hand the focus back to the summary button; a blur leaves it where it went.
+                if (refocus) WidgetsBinding.instance.addPostFrameCallback((_) => _summaryFocus.requestFocus());
                 if (v != null) _go(v);
               },
             ),
           )
         : DifyPressable(
-            semanticLabel: _c('pagination.editPageNumber', {'page': page, 'totalPages': total}),
+            focusNode: _summaryFocus,
+            semanticLabel:
+                widget.editPageNumberLabel?.call(page, total) ??
+                _c('pagination.editPageNumber', {'page': page, 'totalPages': total}),
             onPressed: () => setState(() => _editing = true),
             builder: (context, hovered, focused) => DecoratedBox(
               decoration: BoxDecoration(
@@ -168,6 +194,7 @@ class _DifyPaginationState extends State<DifyPagination> {
           );
     return Semantics(
       container: true,
+      explicitChildNodes: true,
       label: 'Pagination',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -265,34 +292,37 @@ class _PageButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    selected: current,
-    child: DifyPressable(
-      semanticLabel: current ? 'Page $page, current page' : 'Go to page $page',
-      onPressed: onPressed,
-      builder: (context, hovered, focused) => Container(
-        height: 32,
-        constraints: const BoxConstraints(minWidth: 32),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        decoration: BoxDecoration(
-          color: hovered
-              ? DifyColors.componentsButtonGhostBgHover
-              : current
-              ? DifyColors.componentsButtonTertiaryBg
-              : null,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
-        ),
-        child: Center(
-          child: Text(
-            '$page',
-            style: difyTextStyle(
-              DifyType.systemSmMedium,
-              current
-                  ? DifyColors.componentsButtonTertiaryText
-                  : hovered
-                  ? DifyColors.textSecondary
-                  : DifyColors.textTertiary,
+  // aria-current="page": the button itself is the current page.
+  Widget build(BuildContext context) => MergeSemantics(
+    child: Semantics(
+      selected: current,
+      child: DifyPressable(
+        semanticLabel: current ? 'Page $page, current page' : 'Go to page $page',
+        onPressed: onPressed,
+        builder: (context, hovered, focused) => Container(
+          height: 32,
+          constraints: const BoxConstraints(minWidth: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          decoration: BoxDecoration(
+            color: hovered
+                ? DifyColors.componentsButtonGhostBgHover
+                : current
+                ? DifyColors.componentsButtonTertiaryBg
+                : null,
+            borderRadius: BorderRadius.circular(DifyRadius.lg),
+            border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+          ),
+          child: Center(
+            child: Text(
+              '$page',
+              style: difyTextStyle(
+                DifyType.systemSmMedium,
+                current
+                    ? DifyColors.componentsButtonTertiaryText
+                    : hovered
+                    ? DifyColors.textSecondary
+                    : DifyColors.textTertiary,
+              ),
             ),
           ),
         ),
@@ -305,7 +335,7 @@ class _PageInput extends StatefulWidget {
   const _PageInput({required this.initial, required this.label, required this.onCommit});
   final int initial;
   final String label;
-  final ValueChanged<int?> onCommit;
+  final void Function(int? page, {required bool refocus}) onCommit;
 
   @override
   State<_PageInput> createState() => _PageInputState();
@@ -322,7 +352,12 @@ class _PageInputState extends State<_PageInput> {
     _focus.addListener(() {
       if (!_focus.hasFocus) _commit();
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _focus.requestFocus() : null);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focus.requestFocus();
+      // The page number starts selected (the number field selects its value when it opens).
+      WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _selectAll() : null);
+    });
   }
 
   @override
@@ -331,10 +366,30 @@ class _PageInputState extends State<_PageInput> {
     super.dispose();
   }
 
-  void _commit({bool cancel = false}) {
+  void _selectAll() {
+    EditableTextState? editable;
+    void visit(Element e) {
+      if (editable != null) return;
+      if (e is StatefulElement && e.state is EditableTextState) {
+        editable = e.state as EditableTextState;
+        return;
+      }
+      e.visitChildElements(visit);
+    }
+
+    context.visitChildElements(visit);
+    final v = editable?.textEditingValue;
+    if (v == null) return;
+    editable!.userUpdateTextEditingValue(
+      v.copyWith(selection: TextSelection(baseOffset: 0, extentOffset: v.text.length)),
+      SelectionChangedCause.keyboard,
+    );
+  }
+
+  void _commit({bool cancel = false, bool refocus = false}) {
     if (_done) return;
     _done = true;
-    widget.onCommit(cancel ? null : int.tryParse(_text.trim()));
+    widget.onCommit(cancel ? null : int.tryParse(_text.trim()), refocus: refocus);
   }
 
   @override
@@ -346,10 +401,10 @@ class _PageInputState extends State<_PageInput> {
     keyboardType: TextInputType.number,
     formatters: [FilteringTextInputFormatter.digitsOnly],
     onChanged: (v) => _text = v,
-    onSubmitted: (_) => _commit(),
+    onSubmitted: (_) => _commit(refocus: true),
     onKeyEvent: (_, e) {
       if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.escape) {
-        _commit(cancel: true);
+        _commit(cancel: true, refocus: true);
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;

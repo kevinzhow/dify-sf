@@ -1,6 +1,7 @@
 /// Ports of Dify's shared UI primitives (packages/dify-ui and the workflow chrome's helpers).
 library;
 
+export 'alert_dialog.dart';
 export 'app_icon.dart';
 export 'avatar.dart';
 export 'badge.dart';
@@ -14,6 +15,7 @@ export 'copy_feedback.dart';
 export 'date_and_time_picker.dart';
 export 'dialog.dart';
 export 'divider.dart';
+export 'drawer.dart';
 export 'floating.dart';
 export 'form_control_shared.dart';
 export 'icon_button.dart';
@@ -29,14 +31,19 @@ export 'pagination.dart';
 export 'placement.dart';
 export 'popover.dart';
 export 'qrcode.dart';
+export 'radio_group.dart';
 export 'search_input.dart';
 export 'segmented_control.dart';
 export 'select.dart';
 export 'shortcut_kbd.dart';
+export 'skeleton.dart';
 export 'slider.dart';
+export 'status_dot.dart';
 export 'surface.dart';
 export 'switch.dart';
 export 'tab_slider_plain.dart';
+export 'table.dart';
+export 'tabs.dart';
 export 'tag_input.dart';
 export 'text.dart';
 export 'textarea.dart';
