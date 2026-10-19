@@ -343,8 +343,21 @@ struct AppDetailRouteTests {
             #expect(v1["version"]?.string?.wholeMatch(of: #/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{6})?/#) != nil)
             #expect(v1["hash"]?.string?.count == 64)
             let v1id = v1["id"]?.string ?? ""
+            let exportAtV1 = try await api.get("/v1/apps/\(id)/export?include_secret=true", token: owner).j["data"]
 
             try await edit(api, id, "two", token: editor)
+            // Dify's export of one version (`workflow_id`), and the version's detail with the document (dify-sf).
+            #expect(try await api.get("/v1/apps/\(id)/export?include_secret=true&workflow_id=\(v1id)", token: owner).j["data"] == exportAtV1)
+            #expect(try await api.get("/v1/apps/\(id)/export?workflow_id=\(v1id)", token: editor).j["data"]?.string?.contains("sk-original-secret") == false)
+            #expect(try await api.get("/v1/apps/\(id)/export?include_secret=true&workflow_id=\(v1id)", token: editor).status == 403)
+            #expect(try await api.get("/v1/apps/\(id)/export?workflow_id=unknown", token: owner).status == 404)
+            let detail = try await api.get("/v1/apps/\(id)/workflows/\(v1id)", token: editor).j
+            #expect(detail["graph"] == v1["graph"] && detail["version_number"] == 1)
+            #expect(detail["doc"]?["nodes"]?.array?.contains(where: { $0["id"] == "start" }) == true)
+            let draftDetail = try await api.get("/v1/apps/\(id)/workflows/\(id)", token: editor).j
+            #expect(draftDetail["version"] == "draft" && startDesc(draftDetail["graph"]) == "two" && draftDetail["doc"]?["nodes"] != nil)
+            #expect(try await api.get("/v1/apps/\(id)/workflows/unknown", token: owner).status == 404)
+            #expect(try await api.get("/v1/apps/\(id)/workflows/\(v1id)", token: try await api.member("n@example.com", role: "normal", inviter: owner).token).status == 403)
             #expect(try await api.post("/v1/apps/\(id)/workflows/publish", "", token: editor).status == 200)
             let v2 = try await api.get("/v1/apps/\(id)/workflows/publish", token: owner).j
             let v2id = v2["id"]?.string ?? ""

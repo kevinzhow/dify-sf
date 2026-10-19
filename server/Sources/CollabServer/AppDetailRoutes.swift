@@ -43,6 +43,7 @@ extension Routes {
         apps.get(":app", "workflows", "publish") { req in await handle(req) { try await publishedVersion(req) } }
         apps.post(":app", "workflows", "publish") { req in await handle(req) { try await publish(req) } }
         apps.get(":app", "workflows") { req in await handle(req) { try await listVersions(req) } }
+        apps.get(":app", "workflows", ":version") { req in await handle(req) { try await getVersion(req) } }
         apps.patch(":app", "workflows", ":version") { req in await handle(req) { try await updateVersion(req) } }
         apps.delete(":app", "workflows", ":version") { req in await handle(req) { try await deleteVersion(req) } }
         apps.post(":app", "workflows", ":version", "restore") { req in await handle(req) { try await restoreVersion(req) } }
@@ -628,6 +629,40 @@ extension Routes {
         if withDraft && start == 0 { items.append(try await draftJSON(a)) }
         for v in rows.prefix(count) { items.append(try versionJSON(v)) }
         return try answer(items, rows.count > count)
+    }
+
+    /// `GET /v1/apps/{app}/workflows/{version}` (edit; dify-sf only, Dify has no such read): the version (or, with the app id,
+    /// the draft) as Dify's `WorkflowResponse` plus `doc`, the document in the snapshot format (section 3), so a client can
+    /// render it without reading Dify files.
+    private func getVersion(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req, .edit)
+        let a = try await appOfMode(req, p, Self.workflowModes)
+        let id = try pathId(req, "version", "Workflow")
+        if id == a.id {
+            let s = try await registry.sequencer(a.id).currentSnapshot()
+            guard var out = try await draftJSON(a).object else { throw ServerError.internalError("draft") }
+            out["doc"] = try JSONCoding.decode(try WireJSON.encode(s.doc))
+            return try json(JSON.object(out))
+        }
+        let v: StoredVersion?
+        do { v = try await store.version(a.id, id: id) } catch { throw ServerError.unavailable("\(error)") }
+        guard let v, var out = try versionJSON(v).object else { throw ServerError.missing("Workflow not found") }
+        out["doc"] = try JSONCoding.decode(Data(v.state.utf8))
+        return try json(JSON.object(out))
+    }
+
+    /// The Dify file of version `versionId` of app `a` (Dify's `export_dsl(workflow_id=...)`): the version's graph, features
+    /// and variables under the app's current `app` section. nil for an unknown version.
+    func versionExportYAML(_ a: StoredApp, versionId: String, includeSecret: Bool) async throws -> String? {
+        let v: StoredVersion?
+        do { v = try await store.version(a.id, id: versionId) } catch { throw ServerError.unavailable("\(error)") }
+        guard let v else { return nil }
+        var secrets: [String: String]?
+        if includeSecret {
+            do { secrets = try await store.secrets(a.id) } catch { throw ServerError.unavailable("\(error)") }
+        }
+        let metadata = Self.overlayingAppRow(try WireJSON.decode(Value.self, from: v.dsl), a, fallbackName: a.id)
+        return try DifyDSL.exportYAML(try WireJSON.decode(Document.self, from: v.state), metadata: metadata, secrets: secrets)
     }
 
     /// `PATCH /v1/apps/{app}/workflows/{version}` `{marked_name?, marked_comment?}` -> the version.

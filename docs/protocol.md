@@ -21,7 +21,8 @@ section 9 describes the same algorithm in prose.
     polling, the Annotation Reply setting and its enable / disable jobs, hit histories. dify-sf stores the setting; nothing
     is embedded or matched (no runtime), and the jobs complete at once.
   * **Publish and versions**: `GET`/`POST .../workflows/publish`, the version list `GET .../workflows` (Dify's draft first,
-    pages, `named_only`, `user_id`), rename (`PATCH .../workflows/{id}`), delete, and **restore**
+    pages, `named_only`, `user_id`), one version with its document (`GET .../workflows/{id}`, dify-sf only), one version's
+    file (`GET .../export?workflow_id=`, Dify's), rename (`PATCH .../workflows/{id}`), delete, and **restore**
     (`POST .../workflows/{id}/restore` with the caller's `client` and `cseq`): the version replaces the document exactly like
     `POST /replace`, as ordinary ops of the caller's client. A version is a snapshot of the document at head; the newest is
     the published one.
@@ -283,7 +284,7 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | GET, POST | `/v1/apps/{app}/api-keys` | edit | 1.11: list / create Service API keys. |
 | DELETE | `/v1/apps/{app}/api-keys/{key}` | privileged | 1.11: delete a key (the app is looked up first: `404` before `403`). |
 | GET, POST, DELETE | `/v1/apps/{app}/annotations...`, `/v1/apps/{app}/annotation-setting`, `.../annotation-reply/...`, `.../annotation-settings/{id}` | edit | 1.11: annotations (chatflows) and the Annotation Reply setting; `GET .../annotations/count` is **member**. |
-| GET, POST, PATCH, DELETE | `/v1/apps/{app}/workflows`, `.../workflows/publish`, `.../workflows/{id}`, `.../workflows/{id}/restore` | edit | 1.11: publish, versions, restore. |
+| GET, POST, PATCH, DELETE | `/v1/apps/{app}/workflows`, `.../workflows/publish`, `.../workflows/{id}`, `.../workflows/{id}/restore` | edit | 1.11: publish, versions (one version with its document: dify-sf only), restore; `GET /v1/apps/{app}/export?workflow_id=` exports one version. |
 | GET | `/v1/apps/{app}/statistics/...`, `/v1/apps/{app}/workflow/statistics/...`, `/v1/apps/{app}/workflow-app-logs`, `/v1/apps/{app}/workflow-runs/{run}...` | member | 1.11: Overview statistics, workflow logs and runs (empty until a runtime exists). |
 | GET | `/v1/apps/{app}/chat-conversations...`, `/v1/apps/{app}/chat-messages` | edit | 1.11: chat logs (empty until a runtime exists). |
 
@@ -845,6 +846,12 @@ creator and creation time, and the last change as `updated_at`.
   1-99999, `limit` 1-100 (default 10). Dify's order: **the draft first**, then the versions newest first; filters apply to the
   draft too (`named_only=true` drops it; `user_id` keeps it only if the app's creator is that account). `user_id` must be the
   caller's own id (else `403`). An app that was never published lists nothing, not even the draft (Dify).
+* **`GET .../workflows/{id}`** (edit; **dify-sf only**, Dify has no such read): the version (the app id: the draft) as
+  above plus **`doc`**, the document in the snapshot format (section 3, "Document"), so a client can preview a version on its
+  canvas without reading a Dify file; `404` for an unknown version.
+* **`GET /v1/apps/{app}/export?workflow_id={id}`** (edit; `include_secret=true` privileged): Dify's export of one version,
+  `{"data": "<yaml>"}`: the version's graph, features and variables (its own secret values with `include_secret`) under the
+  app's current name and icon; the app id exports the draft; an unknown version is `404`.
 * **`PATCH .../workflows/{id}`** `{"marked_name"?, "marked_comment"?}` (edit): the version; neither member: `400` "No valid
   fields to update"; unknown (or the draft): `404`.
 * **`DELETE .../workflows/{id}`** (edit): `204`; the draft: `400` "Cannot delete draft workflow versions"; the published

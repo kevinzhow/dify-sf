@@ -94,10 +94,15 @@ extension Routes {
         } catch { throw ServerError.unavailable("\(error)") }
         let metadata = meta ?? DifyDSL.defaultMetadata(name: id)
         guard let app else { return metadata }
+        return Self.overlayingAppRow(metadata, app, fallbackName: id)
+    }
+
+    /// `metadata` with the app row's name, description and icon. Only members where the row differs from what the file
+    /// implies are written, so that an untouched imported app still exports to the file it came from (members it lacked stay
+    /// absent, its own spelling of a default stays).
+    static func overlayingAppRow(_ metadata: Value, _ app: StoredApp, fallbackName: String) -> Value {
         func opt(_ s: String?) -> Value { s.map { .string($0) } ?? .null }
-        // Only members where the row differs from what the file implies are written, so that an untouched imported app
-        // still exports to the file it came from (members it lacked stay absent, its own spelling of a default stays).
-        let implied = NewApp.from(metadata: metadata, fallbackName: id, createdBy: nil)
+        let implied = NewApp.from(metadata: metadata, fallbackName: fallbackName, createdBy: nil)
         var fields: [String: Value] = [:]
         func put(_ key: String, _ value: Value, _ impliedValue: Value) {
             if value != impliedValue { fields[key] = value }
@@ -356,7 +361,14 @@ extension Routes {
         let flag = queryAll(req)["include_secret"]?.last?.lowercased()
         let includeSecret = flag == "true" || flag == "1"
         if includeSecret { try authorize(p, .privileged) }
-        _ = try await liveApp(id, viewer: p.id)
+        let app = try await liveApp(id, viewer: p.id)
+        // Protocol 1.11: `workflow_id` exports a published version (Dify's `export_dsl(workflow_id=...)`); the app id = the draft.
+        if let w = queryAll(req)["workflow_id"]?.last, !w.isEmpty, w != id {
+            guard Self.validDocId(w), let yaml = try await versionExportYAML(app, versionId: w, includeSecret: includeSecret) else {
+                throw ServerError.missing("Workflow not found")
+            }
+            return try json(JSON.object(["data": .string(yaml)]))
+        }
         let (s, metadata, secrets) = try await exportParts(id, viewer: p.id, includeSecret: includeSecret)
         let yaml = try DifyDSL.exportYAML(s.doc, metadata: metadata, secrets: secrets)
         return try json(JSON.object(["data": .string(yaml)]))
