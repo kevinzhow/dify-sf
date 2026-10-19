@@ -139,7 +139,7 @@ extension Routes {
     static func seconds(_ d: Date) -> Int { Int(d.timeIntervalSince1970.rounded(.down)) }
 
     /// Dify's `AppPartial` and `AppDetailWithSite` members in one object (see the protocol for what dify-sf fills).
-    func appJSON(_ a: StoredApp, role: Role) -> JSON {
+    func appJSON(_ a: StoredApp, role: Role, req: Request) -> JSON {
         func opt(_ s: String?) -> JSON { s.map { .string($0) } ?? .null }
         let created = Self.seconds(a.createdAt), updated = Self.seconds(a.updatedAt)
         return .object([
@@ -153,13 +153,14 @@ extension Routes {
             "tags": .array([]), "access_mode": .null, "create_user_name": opt(a.authorName), "author_name": opt(a.authorName),
             "has_draft_trigger": .bool(false), "permission_keys": .array(Self.appPermissionKeys(role).map { .string($0) }),
             "is_starred": .bool(a.isStarred), "maintainer": .null, "bound_agent_id": .null,
-            "enable_site": .bool(false), "enable_api": .bool(false), "site": .null, "api_base_url": .null, "deleted_tools": .array([]),
+            "enable_site": .bool(a.enableSite), "enable_api": .bool(a.enableApi), "site": siteJSON(a, req: req),
+            "api_base_url": .string(apiBaseURL(req)), "deleted_tools": .array([]),
             "tracing": .null,
         ])
     }
 
-    func appDetail(_ id: String, _ p: Principal, status: HTTPResponse.Status = .ok) async throws -> Response {
-        try json(appJSON(try await liveApp(id, viewer: p.id), role: p.role), status: status)
+    func appDetail(_ id: String, _ p: Principal, _ req: Request, status: HTTPResponse.Status = .ok) async throws -> Response {
+        try json(appJSON(try await liveApp(id, viewer: p.id), role: p.role, req: req), status: status)
     }
 
     /// An optional string member: absent or null = nil; anything else but a string = `400`.
@@ -228,13 +229,13 @@ extension Routes {
         do { result = try await store.listApps(query, viewer: p.id) } catch { throw ServerError.unavailable("\(error)") }
         return try json(JSON.object([
             "page": .int(page), "limit": .int(limit), "total": .int(result.total), "has_more": .bool(page * limit < result.total),
-            "data": .array(result.apps.map { appJSON($0, role: p.role) }),
+            "data": .array(result.apps.map { appJSON($0, role: p.role, req: req) }),
         ]))
     }
 
     private func getApp(_ req: Request) async throws -> Response {
         let p = try await authenticate(req)
-        return try await appDetail(try appId(req), p)
+        return try await appDetail(try appId(req), p, req)
     }
 
     private func starApp(_ req: Request, _ star: Bool) async throws -> Response {
@@ -273,7 +274,7 @@ extension Routes {
             _ = try await store.createDocument(id: id, initial: imported.document, metadata: imported.metadata, app: NewApp(
                 name: name, description: description, mode: mode, iconType: iconType, icon: icon, iconBackground: background, createdBy: p.id))
         } catch { throw ServerError.unavailable("\(error)") }
-        return try await appDetail(id, p, status: .created)
+        return try await appDetail(id, p, req, status: .created)
     }
 
     private func updateApp(_ req: Request) async throws -> Response {
@@ -300,7 +301,7 @@ extension Routes {
                                            maxActiveRequests: maxActive, by: p.id)
         } catch let e as ServerError { throw e } catch { throw ServerError.unavailable("\(error)") }
         if !ok { _ = try await liveApp(id, viewer: p.id) }
-        return try await appDetail(id, p)
+        return try await appDetail(id, p, req)
     }
 
     /// Dify's copy: the app exported with its secrets and imported as a new app (so the copy's secrets get new references,
@@ -336,7 +337,7 @@ extension Routes {
                                                            iconBackground: background, useIconAsAnswerIcon: src.useIconAsAnswerIcon,
                                                            maxActiveRequests: src.maxActiveRequests, createdBy: p.id))
         } catch is SecretsKeyMissing { throw Self.secretsKeyMissing } catch { throw ServerError.unavailable("\(error)") }
-        return try await appDetail(id, p, status: .created)
+        return try await appDetail(id, p, req, status: .created)
     }
 
     private func deleteApp(_ req: Request) async throws -> Response {

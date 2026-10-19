@@ -56,6 +56,11 @@ public struct ServerConfig: Sendable {
     public var modelsValidate: Bool
     /// Timeout of that request.
     public var modelsValidateTimeoutSeconds: Int
+    /// Protocol 1.11: where the Web App of an app is served (Dify's `APP_WEB_URL`; the site's `app_base_url`), e.g.
+    /// `https://apps.example.com`. Empty = the request's origin (`X-Forwarded-Host` / `-Proto`), else this server's address.
+    public var webAppBaseURL: String
+    /// Protocol 1.11: the Service API base (Dify's `SERVICE_API_URL`; `api_base_url` is it with `/v1`). Empty = as above.
+    public var serviceAPIURL: String
 
     public init(reader: ConfigReader) {
         httpHost = reader.string(forKey: "collab.http.host", default: "127.0.0.1")
@@ -88,6 +93,8 @@ public struct ServerConfig: Sendable {
         secretsKey = reader.string(forKey: "collab.secrets.key", isSecret: true, default: "")
         modelsValidate = reader.bool(forKey: "collab.models.validate", default: true)
         modelsValidateTimeoutSeconds = reader.int(forKey: "collab.models.validateTimeoutSeconds", default: 10)
+        webAppBaseURL = reader.string(forKey: "collab.webapp.baseUrl", default: "").trimmingCharacters(in: .whitespaces)
+        serviceAPIURL = reader.string(forKey: "collab.serviceApi.url", default: "").trimmingCharacters(in: .whitespaces)
     }
 }
 

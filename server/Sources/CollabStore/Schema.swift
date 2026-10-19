@@ -14,6 +14,9 @@
 /// * `comments` and `comment_replies` are canvas comments (additive, Dify's workflow comments): a resource beside the
 ///   document, not part of it (no ops, no log, no snapshots, no export, no undo).
 /// * Apps (protocol 1.10, Dify's Studio): `apps` (one row per document; soft delete), `app_stars`, `app_imports`.
+/// * App detail pages (protocol 1.11): `app_sites` (the Web App site, one per app), `apps.enable_site` / `enable_api`,
+///   `app_api_keys` (Service API keys, sealed + SHA-256), `app_annotations`, `app_annotation_settings`, `app_jobs` (Dify's
+///   annotation job states), `app_versions` (published versions: snapshots of the document).
 /// * Accounts (protocol 1.8, Dify's community edition: one workspace per server): `accounts`, `members` (the workspace's
 ///   members and their roles), `sessions` (opaque bearer tokens, stored only as SHA-256), `invitations` (activation links)
 ///   and `client_accounts` (which account a client id belongs to).
@@ -326,6 +329,120 @@ public enum Schema {
             created_at timestamptz NOT NULL DEFAULT now()
         )
         """,
+        // Protocol 1.11: the Web App site of an app (Dify's `sites`), one row per app, written with the app row (older apps get
+        // theirs from `PostgresStore.backfillSites` at startup). `code` is the Web App URL's last segment (16 letters and
+        // digits, Dify's `Site.generate_code(16)`); the access-token reset draws a new one.
+        """
+        CREATE TABLE IF NOT EXISTS app_sites (
+            doc_id                    text        PRIMARY KEY REFERENCES documents(id),
+            code                      text        NOT NULL UNIQUE,
+            title                     text        NOT NULL,
+            icon_type                 text,
+            icon                      text,
+            icon_background           text,
+            description               text,
+            default_language          text        NOT NULL,
+            chat_color_theme          text,
+            chat_color_theme_inverted boolean     NOT NULL DEFAULT false,
+            customize_domain          text,
+            copyright                 text,
+            privacy_policy            text,
+            input_placeholder         text,
+            custom_disclaimer         text        NOT NULL DEFAULT '',
+            customize_token_strategy  text        NOT NULL DEFAULT 'not_allow',
+            prompt_public             boolean     NOT NULL DEFAULT false,
+            show_workflow_steps       boolean     NOT NULL DEFAULT true,
+            use_icon_as_answer_icon   boolean     NOT NULL DEFAULT false,
+            created_by                text,
+            created_at                timestamptz NOT NULL DEFAULT now(),
+            updated_by                text,
+            updated_at                timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        // The Web App and Service API switches (Dify's `apps.enable_site` / `enable_api`; on for workflow and chatflow apps,
+        // as Dify's templates and DSL import). `last_version_number`: the per-app version counter (Dify's
+        // `workflow_version_counters`; numbers are never reused).
+        "ALTER TABLE apps ADD COLUMN IF NOT EXISTS enable_site boolean NOT NULL DEFAULT true",
+        "ALTER TABLE apps ADD COLUMN IF NOT EXISTS enable_api boolean NOT NULL DEFAULT true",
+        "ALTER TABLE apps ADD COLUMN IF NOT EXISTS last_version_number integer NOT NULL DEFAULT 0",
+        // Service API keys (Dify's `api_tokens` of type `app`). Dify stores the token in plaintext; dify-sf stores it sealed
+        // with the server's secrets key (`sealed_token`, context `app_api_key:<doc>:<id>`) and its SHA-256 (`token_hash`, hex)
+        // for the runtime's lookup.
+        """
+        CREATE TABLE IF NOT EXISTS app_api_keys (
+            id           text        PRIMARY KEY,
+            doc_id       text        NOT NULL REFERENCES documents(id),
+            token_hash   text        NOT NULL UNIQUE,
+            sealed_token text        NOT NULL,
+            last_used_at timestamptz,
+            created_by   text,
+            created_at   timestamptz NOT NULL DEFAULT clock_timestamp()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS app_api_keys_by_doc ON app_api_keys (doc_id, created_at)",
+        // Annotations (Dify's `message_annotations`; `content` is the answer) and the Annotation Reply setting (Dify's
+        // `app_annotation_settings` with the embedding model inline instead of a collection binding).
+        """
+        CREATE TABLE IF NOT EXISTS app_annotations (
+            id         text        PRIMARY KEY,
+            doc_id     text        NOT NULL REFERENCES documents(id),
+            question   text        NOT NULL,
+            content    text        NOT NULL,
+            message_id text,
+            hit_count  integer     NOT NULL DEFAULT 0,
+            account_id text,
+            created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+            updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS app_annotations_by_doc ON app_annotations (doc_id, created_at DESC, id DESC)",
+        """
+        CREATE TABLE IF NOT EXISTS app_annotation_settings (
+            doc_id                  text             PRIMARY KEY REFERENCES documents(id),
+            id                      text             NOT NULL,
+            score_threshold         double precision NOT NULL,
+            embedding_provider_name text             NOT NULL,
+            embedding_model_name    text             NOT NULL,
+            created_by              text,
+            updated_by              text,
+            updated_at              timestamptz      NOT NULL DEFAULT now()
+        )
+        """,
+        // Dify's annotation job states (Redis keys with a 10-minute expiry): the batch import and the reply enable / disable
+        // jobs. dify-sf runs them synchronously, so they are `completed` when created.
+        """
+        CREATE TABLE IF NOT EXISTS app_jobs (
+            id         text        PRIMARY KEY,
+            doc_id     text        NOT NULL,
+            kind       text        NOT NULL,
+            status     text        NOT NULL,
+            error      text        NOT NULL DEFAULT '',
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        // Published versions (Dify's `workflows` rows with a version other than `draft`): the document at `seq` (`state`, as
+        // `snapshots.state`) and its Dify metadata with the app row (`dsl`, as `doc_meta.dsl`). Secret variables keep their
+        // references (their `secrets` rows are never deleted). The newest is the app's published version.
+        """
+        CREATE TABLE IF NOT EXISTS app_versions (
+            id             text        PRIMARY KEY,
+            doc_id         text        NOT NULL REFERENCES documents(id),
+            version_number integer     NOT NULL,
+            version        text        NOT NULL,
+            seq            bigint      NOT NULL,
+            state          jsonb       NOT NULL,
+            dsl            jsonb       NOT NULL,
+            hash           text        NOT NULL,
+            marked_name    text        NOT NULL DEFAULT '',
+            marked_comment text        NOT NULL DEFAULT '',
+            created_by     text,
+            created_at     timestamptz NOT NULL DEFAULT clock_timestamp(),
+            updated_by     text,
+            updated_at     timestamptz NOT NULL DEFAULT clock_timestamp(),
+            UNIQUE (doc_id, version_number)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS app_versions_by_doc ON app_versions (doc_id, created_at DESC, id DESC)",
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",

@@ -60,6 +60,7 @@ struct Routes: Sendable {
         registerComments(on: r)
         registerModels(on: r)
         registerApps(on: r)
+        registerAppDetail(on: r)
     }
 
     // MARK: - Plumbing
@@ -219,6 +220,30 @@ struct Routes: Sendable {
         do { root = try DifyDSL.parseYAML(text) } catch {
             throw ServerError.badRequest("Invalid YAML format: \(error)")
         }
+        switch try await replaceDocument(doc, with: root, principal: principal, client: client, cseq: cseq, confirm: confirm, adoptApp: true) {
+        case .pending(let response): return response
+        case .replaced(let answer): return try json(answer)
+        }
+    }
+
+    /// The answer of a replacement (`POST /replace`, and protocol 1.11's version restore).
+    struct ReplaceAnswer: Encodable {
+        struct RenamedIds: Encodable { var nodes: [String: String]; var edges: [String: String] }
+        var head: Int; var ops: Int; var nodes: Int; var edges: Int; var next_cseq: Int; var replayed: Bool
+        var status: String; var imported_dsl_version: String; var current_dsl_version: String; var renamed: RenamedIds
+    }
+
+    enum ReplaceOutcome {
+        /// The file's DSL version needs confirmation: the `400 version_unconfirmed` answer.
+        case pending(Response)
+        case replaced(ReplaceAnswer)
+    }
+
+    /// Replaces document `doc` (live, `client` already checked to be the caller's) by the Dify file `root` with ops of
+    /// `client` from `cseq` (docs/protocol.md, "Replacing a document"). With `adoptApp` the app takes the file's name,
+    /// description and icon (Dify's overwrite import); a version restore keeps them (Dify's restore touches the draft only).
+    func replaceDocument(_ doc: String, with root: Value, principal: Principal, client: String, cseq: Int, confirm: Bool,
+                         adoptApp: Bool) async throws -> ReplaceOutcome {
         let meta: Value?
         do { meta = try await store.documentMetadata(doc) } catch { throw ServerError.unavailable("\(error)") }
         let checked: (version: String, status: DifyDSL.VersionStatus)
@@ -228,8 +253,8 @@ struct Routes: Sendable {
                     struct E: Encodable { var code: String; var message: String; var imported_dsl_version: String; var current_dsl_version: String }
                     var error: E
                 }
-                return try json(Pending(error: .init(code: "version_unconfirmed", message: error.message, imported_dsl_version: v,
-                                                     current_dsl_version: DifyDSL.currentDSLVersion)), status: .badRequest)
+                return .pending(try json(Pending(error: .init(code: "version_unconfirmed", message: error.message, imported_dsl_version: v,
+                                                              current_dsl_version: DifyDSL.currentDSLVersion)), status: .badRequest))
             }
             throw ServerError.badRequest(error.message)
         }
@@ -254,16 +279,11 @@ struct Routes: Sendable {
                     (plan.renamedNodes, plan.renamedEdges))
         }
         // Protocol 1.10: as Dify's overwrite import, the app takes the file's name, description and icon.
-        if !outcome.replayed { try await adoptAppSection(doc, of: root, by: principal.id) }
-        struct RenamedIds: Encodable { var nodes: [String: String]; var edges: [String: String] }
-        struct Replaced: Encodable {
-            var head: Int; var ops: Int; var nodes: Int; var edges: Int; var next_cseq: Int; var replayed: Bool
-            var status: String; var imported_dsl_version: String; var current_dsl_version: String; var renamed: RenamedIds
-        }
-        return try json(Replaced(head: outcome.head, ops: outcome.ops, nodes: outcome.doc.nodes.count, edges: outcome.doc.edges.count,
-                                 next_cseq: outcome.nextCseq, replayed: outcome.replayed, status: checked.status.rawValue,
-                                 imported_dsl_version: checked.version, current_dsl_version: DifyDSL.currentDSLVersion,
-                                 renamed: RenamedIds(nodes: renamed?.nodes ?? [:], edges: renamed?.edges ?? [:])))
+        if adoptApp, !outcome.replayed { try await adoptAppSection(doc, of: root, by: principal.id) }
+        return .replaced(ReplaceAnswer(head: outcome.head, ops: outcome.ops, nodes: outcome.doc.nodes.count, edges: outcome.doc.edges.count,
+                                       next_cseq: outcome.nextCseq, replayed: outcome.replayed, status: checked.status.rawValue,
+                                       imported_dsl_version: checked.version, current_dsl_version: DifyDSL.currentDSLVersion,
+                                       renamed: .init(nodes: renamed?.nodes ?? [:], edges: renamed?.edges ?? [:])))
     }
 
     /// The current state as a Dify workflow file: YAML, or `?format=json`. Documents that were not imported get a

@@ -95,6 +95,9 @@ struct Migrator: Service {
                 // Protocol 1.10: documents of older servers get their app row (Studio).
                 let apps = try await store.backfillApps()
                 if apps > 0 { logger.info("created the app rows of \(apps) documents of an older server") }
+                // Protocol 1.11: apps of older servers get their Web App site.
+                let sites = try await store.backfillSites()
+                if sites > 0 { logger.info("created the Web App sites of \(sites) apps of an older server") }
                 // Protocol 1.9: secrets that older servers stored in plaintext are encrypted once a key is configured.
                 let sealed = try await store.sealLegacySecrets()
                 if sealed.sealed > 0 { logger.info("encrypted \(sealed.sealed) secrets stored in plaintext by an older server") }

@@ -96,6 +96,22 @@ fails its next commit's revision check, reloads and finds the document gone; in 
 sequencer at once, which ends its streams. Loads and `documentHead` treat a deleted app's document as absent; the routes tell
 `app_deleted` from `not_found`.
 
+## App detail pages (protocol 1.11)
+
+Dify's pages inside an app (Access Point, Annotations, publish and versions, Overview, Logs), in `CollabStore/AppDetail.swift`
+and `CollabServer/AppDetailRoutes.swift`. Every app gets an `app_sites` row (its Web App site) in the transaction that creates
+it (`insertApp` -> `insertSite`; older apps from `backfillSites` at startup); `apps.enable_site` / `enable_api` are the
+switches. Service API keys (`app_api_keys`) are sealed with the secrets key (context `app_api_key:<doc>:<id>`) and stored with
+their SHA-256 for a future runtime's lookup (`apiKey(byHash:)`); Dify keeps them in plaintext. Annotations and the reply
+setting are plain rows; Dify's Celery jobs (import, reply enable/disable) run synchronously and leave a `completed` row in
+`app_jobs` for the status polls. A **version** (`app_versions`) is the document at head (`snapshots.state` form) plus its
+metadata with the app row (`doc_meta.dsl` form): rendering it with `DifyDSL.exportValue` gives exactly the export at publish
+time; secret variables keep their references (secret rows are never deleted), so a version renders its own secrets. The
+newest version is the published one; `apps.last_version_number` numbers them (never reused). **Restore** builds the version's
+Dify file on the server (with its secrets) and runs it through the same replacement as `POST /replace`
+(`Routes.replaceDocument`: one sequencer transaction of ordinary ops of the caller's client), without adopting the file's app
+section. Statistics and logs have no storage: they answer Dify's empty shapes until a runtime exists.
+
 ## Accounts (protocol 1.8)
 
 Dify's community edition model: one workspace per server, created by `POST /v1/setup`; members join by invitation; roles

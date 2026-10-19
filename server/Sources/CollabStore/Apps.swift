@@ -71,6 +71,11 @@ public struct StoredApp: Sendable, Equatable {
     /// Starred by the account the read was made for.
     public var isStarred: Bool
     public var deleted: Bool
+    /// Protocol 1.11: the Web App and Service API switches.
+    public var enableSite: Bool = true
+    public var enableApi: Bool = true
+    /// Protocol 1.11: the Web App site as JSON text (`PostgresStore.siteJSONSQL`), nil if the app has none.
+    public var siteJSON: String?
 }
 
 /// `GET /v1/apps` and `/v1/apps/starred` filters (Dify's `AppListParams`).
@@ -208,16 +213,18 @@ extension PostgresStore {
         a.doc_id, a.name, a.description, a.mode, a.icon_type, a.icon, a.icon_background, a.use_icon_as_answer_icon,
         a.max_active_requests::bigint, \(creatorSQL), a.created_at, a.updated_by,
         (SELECT acc.name FROM accounts acc WHERE acc.id = \(creatorSQL)),
-        a.deleted_at IS NOT NULL, GREATEST(a.updated_at, d.updated_at) AS modified
+        a.deleted_at IS NOT NULL, GREATEST(a.updated_at, d.updated_at) AS modified, a.enable_site, a.enable_api,
+        \(siteJSONSQL)
         """
 
     func decodeApps(_ rows: PostgresRowSequence) async throws -> [StoredApp] {
         var out: [StoredApp] = []
         for try await r in rows.decode((String, String, String, String, String?, String?, String?, Bool, Int?, String?, Date, String?,
-                                        String?, Bool, Date, Bool).self) {
+                                        String?, Bool, Date, Bool, Bool, String?, Bool).self) {
             out.append(StoredApp(id: r.0, name: r.1, description: r.2, mode: r.3, iconType: r.4, icon: r.5, iconBackground: r.6,
                                  useIconAsAnswerIcon: r.7, maxActiveRequests: r.8, createdBy: r.9, createdAt: r.10, updatedBy: r.11,
-                                 updatedAt: r.14, authorName: r.12, isStarred: r.15, deleted: r.13))
+                                 updatedAt: r.14, authorName: r.12, isStarred: r.18, deleted: r.13, enableSite: r.15, enableApi: r.16,
+                                 siteJSON: r.17))
         }
         return out
     }
@@ -369,5 +376,8 @@ extension PostgresStore {
             VALUES (\(id), \(a.name), \(a.description), \(a.mode), \(a.iconType), \(a.icon), \(a.iconBackground), \(a.useIconAsAnswerIcon),
                     \(mar)::bigint::integer, \(a.createdBy), \(a.createdBy))
             """, logger: logger)
+        // Protocol 1.11: every app has a Web App site from its creation (Dify's `app_was_created` handler).
+        try await insertSite(tx, id: id, name: a.name, iconType: a.iconType, icon: a.icon, iconBackground: a.iconBackground,
+                             createdBy: a.createdBy)
     }
 }

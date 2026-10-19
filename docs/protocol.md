@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.10
+# dify-sf collaboration protocol, version 1.11
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,30 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.11 (additive; clients older than 1.11 are unaffected): **app detail pages** (section 2, "App detail pages (1.11)"):
+  Dify 1.17.1's console API for the pages inside an app, under `/v1/apps/{app}`, with Dify's paths and shapes.
+  * **Access Point**: every app has a Web App **site** (created with the app; apps of older servers get theirs at the first
+    1.11 start) and the Web App / Service API switches; the app object now carries real `enable_site`, `enable_api`,
+    `api_base_url` and `site` (Dify's `AppDetailWithSite`). New: site settings (`POST .../site`), a new site code
+    (`POST .../site/access-token-reset`), the switches (`POST .../site-enable`, `.../api-enable`) and **Service API keys**
+    (`GET`/`POST .../api-keys`, `DELETE .../api-keys/{key}`; at most 10). Keys are **encrypted at rest** with the secrets key
+    and stored with their SHA-256 (Dify stores them in plaintext); the list answers the full key, as Dify's app-key list.
+  * **Annotations** (chatflows): list, count, export, create, edit, delete, batch delete, clear, CSV batch import with status
+    polling, the Annotation Reply setting and its enable / disable jobs, hit histories. dify-sf stores the setting; nothing
+    is embedded or matched (no runtime), and the jobs complete at once.
+  * **Publish and versions**: `GET`/`POST .../workflows/publish`, the version list `GET .../workflows` (Dify's draft first,
+    pages, `named_only`, `user_id`), rename (`PATCH .../workflows/{id}`), delete, and **restore**
+    (`POST .../workflows/{id}/restore` with the caller's `client` and `cseq`): the version replaces the document exactly like
+    `POST /replace`, as ordinary ops of the caller's client. A version is a snapshot of the document at head; the newest is
+    the published one.
+  * **Overview statistics and logs**: Dify's statistic, workflow-log, run, conversation and message endpoints, answering
+    Dify's empty shapes (dify-sf has no runtime yet, and Dify never logs debugger runs).
+  * Roles are Dify's community-edition decorators, **quirks included**: an editor may change the site and the site switch
+    and create keys, but not regenerate the site code, switch the API or delete keys (`403`, while Dify's UI shows those
+    controls enabled to editors). Reading the published version and the version list needs edit, as in Dify.
+  * New error codes: `max_keys_exceeded` (400), `app_not_found` (404: an endpoint of another app mode, Dify's wrong-mode
+    error), `no_file_uploaded`, `too_many_files` (400). New configuration: `COLLAB_WEBAPP_BASE_URL`,
+    `COLLAB_SERVICE_API_URL`. Streams are unchanged.
 * 1.10 (additive; clients older than 1.10 are unaffected, except that a deleted app's document is gone): **apps** (section 2,
   "Apps (1.10)"): Dify 1.17.1's Studio console API under `/v1/apps`. An **app is a document** (app id = document id); every
   document has exactly one app row with Dify's `name`, `description`, `mode`, icon, `use_icon_as_answer_icon`,
@@ -254,6 +278,14 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | POST, DELETE | `/v1/apps/{app}/star` | member | 1.10: star / unstar for the caller (idempotent). |
 | POST, PUT, DELETE | `/v1/apps`, `/v1/apps/imports`, `/v1/apps/imports/{import}/confirm`, `/v1/apps/{app}`, `/v1/apps/{app}/copy` | edit | 1.10: create, import, confirm an import, edit info, delete, duplicate ("Apps"). |
 | GET | `/v1/apps/{app}/export` | edit | 1.10: the app as a Dify file, `{"data":"<yaml>"}`; `?include_secret=true` needs **privileged**. |
+| POST | `/v1/apps/{app}/site`, `/v1/apps/{app}/site-enable` | edit | 1.11: Web App settings; the Web App switch ("App detail pages"). |
+| POST | `/v1/apps/{app}/site/access-token-reset`, `/v1/apps/{app}/api-enable` | privileged | 1.11: a new site code; the Service API switch. |
+| GET, POST | `/v1/apps/{app}/api-keys` | edit | 1.11: list / create Service API keys. |
+| DELETE | `/v1/apps/{app}/api-keys/{key}` | privileged | 1.11: delete a key (the app is looked up first: `404` before `403`). |
+| GET, POST, DELETE | `/v1/apps/{app}/annotations...`, `/v1/apps/{app}/annotation-setting`, `.../annotation-reply/...`, `.../annotation-settings/{id}` | edit | 1.11: annotations (chatflows) and the Annotation Reply setting; `GET .../annotations/count` is **member**. |
+| GET, POST, PATCH, DELETE | `/v1/apps/{app}/workflows`, `.../workflows/publish`, `.../workflows/{id}`, `.../workflows/{id}/restore` | edit | 1.11: publish, versions, restore. |
+| GET | `/v1/apps/{app}/statistics/...`, `/v1/apps/{app}/workflow/statistics/...`, `/v1/apps/{app}/workflow-app-logs`, `/v1/apps/{app}/workflow-runs/{run}...` | member | 1.11: Overview statistics, workflow logs and runs (empty until a runtime exists). |
+| GET | `/v1/apps/{app}/chat-conversations...`, `/v1/apps/{app}/chat-messages` | edit | 1.11: chat logs (empty until a runtime exists). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
@@ -589,8 +621,8 @@ importing, editing info, duplicating, exporting and deleting need **edit** (`own
 `_LEGACY_APP_*_KEYS`): owner and admin `app.acl.preview`, `view_layout`, `test_and_run`, `edit`, `import_export_dsl`, `delete`,
 `release_and_version`, `monitor`, `access_config`, `tracing_config`, `log_and_annotation`, `access_point_manage`,
 `access_point_view`; editor the same without `tracing_config`; `normal` `app.acl.monitor`, `app.acl.access_point_view`;
-`dataset_operator` `app.acl.access_point_view`. (Dify sends `normal` members to an app's overview page; dify-sf has none, so
-clients open the editor read-only, as for every read-only role since 1.8.)
+`dataset_operator` `app.acl.access_point_view`. (As Dify's `getRedirectionPath`, a client opens an app on its Overview page
+for `normal` members and on its Access Point for `dataset_operator`s: the app detail pages, 1.11.)
 
 **The app object** (Dify's `AppPartial` and `AppDetailWithSite` in one; every answer below that returns an app):
 
@@ -601,7 +633,7 @@ clients open the editor read-only, as for every read-only role since 1.8.)
  "updated_at": 1760000500, "author_name": "Olivia", "create_user_name": "Olivia", "tags": [], "permission_keys": ["..."],
  "is_starred": false, "workflow": {"id": "<doc id>", "created_by": "...", "created_at": 1760000000, "updated_by": "...",
  "updated_at": 1760000500}, "model_config": null, "access_mode": null, "maintainer": null, "bound_agent_id": null,
- "has_draft_trigger": false, "enable_site": false, "enable_api": false, "site": null, "api_base_url": null,
+ "has_draft_trigger": false, "enable_site": true, "enable_api": true, "site": {...}, "api_base_url": "https://host/v1",
  "deleted_tools": [], "tracing": null}
 ```
 
@@ -610,7 +642,9 @@ existed or by a harness, counts as the workspace owner's). **`updated_at` is "la
 change (create, edit info) and the document's last committed op. This is a deviation from Dify, where draft saves only touch
 the workflow row and the Studio's "Edited" time would never move without publishing. `updated_by` is the account of the last
 app-row change. `tags` is always empty (dify-sf has no tags yet), `icon_url` always null (no file storage), and the members
-of features dify-sf does not have (web apps, API access, tracing, agents, triggers) have their empty values.
+of features dify-sf does not have (tracing, agents, triggers) have their empty values. `enable_site`, `enable_api`,
+`api_base_url` and `site` are real since 1.11 ("App detail pages (1.11)"; a 1.10 server sends `false`, `false`, `null`,
+`null`).
 
 **`GET /v1/apps`** (member): query `page` (1-99999, default 1), `limit` (1-100, default 20), `mode` (`all`, default, or one of
 Dify's `completion`, `chat`, `advanced-chat`, `workflow`, `agent-chat`, `agent`, `channel`: modes dify-sf cannot have match
@@ -677,6 +711,175 @@ Import, copy and blank create are the same import underneath: identical document
 mode, description and icon from the imported file's `app` section, else the document id, `workflow` and Dify's defaults;
 the creator is the account of the document's earliest client id (none: the workspace owner); created at the document's
 creation; last modified at its last commit.
+
+### App detail pages (1.11)
+
+Dify 1.17.1's pages inside an app, under **`/v1/apps/{app}`** with Dify's console paths and shapes
+(`api/controllers/console/app/site.py`, `app.py`, `apikey.py`, `annotation.py`, `message.py`, `workflow.py`, `statistic.py`,
+`workflow_statistic.py`, `workflow_app_log.py`, `conversation.py`, `workflow_run.py`). Unknown apps answer `404 not_found`,
+deleted ones `404 app_deleted`; an endpoint of another app mode answers Dify's wrong-mode error, **`404 app_not_found`**
+"App mode is not in the supported list: {...}". The role column is checked first (as Dify's decorators run before the app is
+looked up), except for key deletes.
+
+**Roles** (Dify's community-edition decorators, RBAC off, **quirks kept**):
+
+| | owner, admin | editor | normal, dataset_operator |
+|---|---|---|---|
+| site settings, Web App switch, list / create keys | yes | yes | `403` |
+| site code reset, Service API switch, delete keys | yes | **`403`** | `403` |
+| annotations, reply setting, publish, versions, restore, chat logs | yes | yes | `403` |
+| annotation count, statistics, workflow logs and runs, reading the app (with its site) | yes | yes | yes |
+
+Dify's UI shows the API switch, regenerate and key delete enabled to editors; the server refuses them and the UI shows its
+error toast. Reading the published version (`GET .../workflows/publish`) needs edit, as in Dify.
+
+#### Access Point: the site, the switches, Service API keys
+
+Every app has a **site** (Dify's `sites` row), created with the app (title and icon from the app, the creator's interface
+language if Dify knows it, else `en-US`; `customize_token_strategy` `not_allow`; `show_workflow_steps` true) and a **code**:
+16 letters and digits (Dify's `Site.generate_code(16)`), the last segment of the Web App URL
+`{app_base_url}/{chat|workflow}/{code}` (`chat` for chatflows). A copy gets a new site (the copy's name, a new code) and no
+keys; a deleted app keeps its rows. The app object (any app answer, 1.10) carries:
+
+```json
+{"enable_site": true, "enable_api": true, "api_base_url": "https://host/v1",
+ "site": {"app_id": "<app>", "access_token": "<code>", "code": "<code>", "title": "Support bot", "icon_type": "emoji",
+          "icon": "🤖", "icon_background": "#FFEAD5", "description": null, "default_language": "en-US",
+          "chat_color_theme": null, "chat_color_theme_inverted": false, "customize_domain": null, "copyright": null,
+          "privacy_policy": null, "input_placeholder": null, "custom_disclaimer": "", "customize_token_strategy": "not_allow",
+          "prompt_public": false, "show_workflow_steps": true, "use_icon_as_answer_icon": false, "app_base_url": "https://host",
+          "created_by": "<account>", "updated_by": "<account>", "created_at": 1760000000, "updated_at": 1760000000}}
+```
+
+`app_base_url` is `COLLAB_WEBAPP_BASE_URL` (Dify's `APP_WEB_URL`), else the request's origin (`X-Forwarded-Proto` /
+`X-Forwarded-Host` of a proxy in front), else the server's own address; `api_base_url` is `COLLAB_SERVICE_API_URL` (Dify's
+`SERVICE_API_URL`) or the same origin, ending in `/v1`. **The URLs lead nowhere yet**: dify-sf has no web-app or service-API
+runtime; 1.11 stores what a runtime will use.
+
+* **`POST .../site`** (edit): Dify's `AppSiteUpdatePayload`, every member optional, nulls and absent members keep their value:
+  `title`, `icon_type` (`emoji`, `image`, `link`), `icon`, `icon_background`, `description`, `default_language` (Dify's 24
+  languages, else `400` "xx is not a valid language."), `chat_color_theme` (`#RGB` / `#RRGGBB` or `""`),
+  `chat_color_theme_inverted`, `customize_domain`, `copyright`, `privacy_policy` (an `http://` / `https://` URL or `""`),
+  `input_placeholder` (at most 64 characters), `custom_disclaimer` (at most 512), `customize_token_strategy` (`must`,
+  `allow`, `not_allow`), `prompt_public`, `show_workflow_steps`, `use_icon_as_answer_icon`. Answer: the site (dify-sf answers
+  every member of the site object; Dify's `AppSiteResponse` has a subset). The colour, URL and placeholder checks are the
+  web's own rules applied on the server too.
+* **`POST .../site/access-token-reset`** (privileged): a new code; the old URL stops working. Answer: the site.
+* **`POST .../site-enable`** `{"enable_site": bool}` (edit), **`POST .../api-enable`** `{"enable_api": bool}` (privileged):
+  answer the app. A change sets the app's `updated_by` / `updated_at` (Dify); the same value changes nothing.
+* **`GET .../api-keys`** (edit): Dify's `{"data": [{"id", "type": "app", "token", "dataset_ids": [], "last_used_at",
+  "created_at"}]}`, oldest first, with the **full** token (Dify does not mask app keys; its modal shows `first 3...last 20`).
+  `last_used_at` stays null until a runtime uses keys.
+* **`POST .../api-keys`** (edit): `201` with a new key, `app-` + 24 letters and digits. At most **10** per app:
+  `400 max_keys_exceeded` "Cannot create more than 10 API keys for this resource type.".
+* **`DELETE .../api-keys/{key}`** -> `204`: as Dify, the app is looked up first (`404`), then the role (owner or admin, else
+  `403`, also for editors); an unknown key is `404` "API key not found".
+
+**Keys at rest (deviation, hardening).** Dify stores app keys in plaintext. dify-sf stores each key **encrypted** with the
+server's secrets key (AES-256-GCM, context `app_api_key:<app>:<key id>`, the 1.9 `v1:` format) plus its **SHA-256** (hex),
+which is how a future service-API runtime finds the key of a request without decrypting anything. Without a secrets key
+`POST .../api-keys` answers `503 secrets_key_missing`; with another key than the one they were sealed with, stored keys are
+listed with `token` `""` (and still found by their hash). Deleting a key or the app makes the hash lookup fail.
+
+#### Annotations (chatflows)
+
+Dify's `annotation.py`. Dify's server accepts these calls for any app and its web app offers them for chat apps only; dify-sf
+answers them for chatflows (`advanced-chat`) only: a workflow app gets Dify's wrong-mode error (`404 app_not_found`). An
+annotation is `{"id", "question", "answer", "hit_count": 0, "created_at"}`.
+
+* **`GET .../annotations?page&limit&keyword`** (edit): Dify's `{"data", "has_more", "limit", "total", "page"}`, newest first;
+  `keyword` matches question or answer (case-insensitive substring); at most 100 rows per page; `has_more` is Dify's
+  `len(data) == limit` (a full last page says `true`).
+* **`GET .../annotations/count`** (member): `{"count"}`. **`GET .../annotations/export`** (edit): `{"data": [...]}`, every
+  annotation, newest first; Dify's web writes the CSV (with a BOM) or the JSONL file from it.
+* **`POST .../annotations`** `{"question", "answer"}` (or `content` for the answer) (edit): `201` the annotation. A missing
+  answer is `400` "Either 'answer' or 'content' must be provided", a missing question `400` "'question' is required when
+  'message_id' is not provided"; a `message_id` is `404` "Message Not Exists." (no messages without a runtime).
+* **`POST .../annotations/{id}`** `{"question", "answer"}` (edit): both required (Dify's messages); `404` "Annotation not
+  found". **`DELETE .../annotations/{id}`**: `204` / `404`. **`DELETE .../annotations?annotation_id=a&annotation_id=b`**:
+  `204`, deletes those (unknown ids ignored; an empty id is `400`); **without ids it clears every annotation** (Dify).
+* **`POST .../annotations/batch-import`** (edit): `multipart/form-data` with one file part `file` whose name ends in `.csv`
+  (else `400 no_file_uploaded` "Please upload your file.", `400 too_many_files`, `400` "Invalid file type. Only CSV files are
+  allowed", `400` "The uploaded file is empty", `413` over 2 MB). The CSV is read as Dify's pandas `read_csv`: the first row
+  is the header, the first two columns are question and answer (stripped; rows with an empty or `nan` value skipped; rows
+  with more fields than the header skipped), 1-10000 usable rows, question at most 2000 and answer at most 10000 characters.
+  A refused file is **`200 {"error_msg": "<Dify's message>"}`** (no `job_id`), as in Dify. Otherwise the annotations are
+  stored at once and the answer is Dify's `{"job_id", "job_status": "waiting", "record_count"}`;
+  **`GET .../annotations/batch-import-status/{job}`** then answers `{"job_id", "job_status": "completed", "error_msg": ""}`
+  (`400` "The job does not exist." for an unknown or expired job; jobs are kept 10 minutes, as Dify's Redis keys). Dify's
+  per-workspace import rate limits are not applied.
+* **`GET .../annotation-setting`** (edit): `{"enabled": false}` or `{"id", "enabled": true, "score_threshold",
+  "embedding_model": {"embedding_provider_name", "embedding_model_name"}}`.
+* **`POST .../annotation-reply/enable`** `{"score_threshold", "embedding_provider_name", "embedding_model_name"}` (all
+  required) and **`POST .../annotation-reply/disable`** (edit): Dify's `{"job_id", "job_status": "waiting"}`; the setting is
+  created or updated (its id kept) / removed **at once**; **`GET .../annotation-reply/{action}/status/{job}`** answers
+  `completed`. dify-sf **stores the setting only**: nothing is embedded and no reply is ever matched until a runtime exists.
+* **`POST .../annotation-settings/{id}`** `{"score_threshold"}` (edit): the setting; `404` "App annotation not found".
+* **`GET .../annotations/{id}/hit-histories`** (edit): always an empty page (hits come from a runtime).
+
+#### Publish and versions
+
+The **draft** is the document itself (its `WorkflowResponse` id is the app id). **`POST .../workflows/publish`**
+`{"marked_name"?, "marked_comment"?}` (edit; at most 20 and 100 characters) stores a **version**: the document at head and
+its Dify metadata with the app row, i.e. exactly what the export renders at that moment (graph, features, environment and
+conversation variables; secret variables keep their references, so the version renders its own secret values on the
+server). Answer: Dify's `{"result": "success", "created_at"}`. The **newest version is the published one** (Dify's
+`app.workflow_id`); publishing also bumps the app's `updated_at`. Version numbers count per app from 1 and are never reused
+(Dify's `version_number`). A version is Dify's `WorkflowResponse`:
+
+```json
+{"id": "<version id>", "graph": {"nodes": [...], "edges": [...], "viewport": {...}}, "features": {...},
+ "hash": "<sha-256 of graph and features>", "version": "2026-10-19 08:12:03.123456", "version_number": 3,
+ "marked_name": "v3", "marked_comment": "", "created_by": {"id", "name", "email"}, "created_at": 1760000000,
+ "updated_by": {"id", "name", "email"}, "updated_at": 1760000000, "tool_published": false,
+ "environment_variables": [...], "conversation_variables": [...], "rag_pipeline_variables": []}
+```
+
+`graph`, `features` and the variables are the export's (`GET /export?format=json`), secret values `""`; `version` is the
+publish time in UTC as Dify's `str(datetime)`. The draft has `"version": "draft"`, `version_number` null, no name, the app's
+creator and creation time, and the last change as `updated_at`.
+
+* **`GET .../workflows/publish`** (edit): the published version, or **`null`** (the JSON literal) if the app was never
+  published: Dify's "unpublished" state (the Access Point's "Go to publish" banner for workflow apps).
+* **`GET .../workflows?page&limit&user_id&named_only`** (edit): Dify's `{"items", "page", "limit", "has_more"}`; `page`
+  1-99999, `limit` 1-100 (default 10). Dify's order: **the draft first**, then the versions newest first; filters apply to the
+  draft too (`named_only=true` drops it; `user_id` keeps it only if the app's creator is that account). `user_id` must be the
+  caller's own id (else `403`). An app that was never published lists nothing, not even the draft (Dify).
+* **`PATCH .../workflows/{id}`** `{"marked_name"?, "marked_comment"?}` (edit): the version; neither member: `400` "No valid
+  fields to update"; unknown (or the draft): `404`.
+* **`DELETE .../workflows/{id}`** (edit): `204`; the draft: `400` "Cannot delete draft workflow versions"; the published
+  version: `400` "Cannot delete workflow that is currently in use by app '<app>'"; unknown: `404`.
+* **`POST .../workflows/{id}/restore`** `{"client", "cseq", "confirm"?}` (edit): **restores the version into the draft
+  through the replacement path**: the server renders the version as a Dify file (with its secret values, which never leave
+  the server) and replaces the document with it exactly as `POST /v1/docs/{doc}/replace` does ("Replacing a document": the
+  same ops of the caller's `client` from `cseq`, the same `409 outstanding_ops` / `cseq_used` / `conflict`, the same
+  **replayed** answer to a retry, secrets whose plaintext is unchanged keep their references). Unlike `/replace` the app row
+  (name, description, icon) is not changed, and the published version stays (Dify's restore writes the draft only). Answer:
+  the replacement's answer plus Dify's `"result": "success"`, `"hash"` (the version's) and `"updated_at"`. The draft's id is
+  refused with `400` "source workflow must be published"; an unknown version is `404`. A live editor calls it through its
+  replacement procedure (section 9, "Replacing the document"), with its own client id and next cseq.
+
+#### Overview statistics and logs (empty until a runtime exists)
+
+dify-sf runs workflows only in the editor's debugger, and Dify never logs debugger runs: there is nothing to count or list.
+These endpoints answer Dify's shapes for an app nobody has used, so clients call the real paths now:
+
+* Statistics (member; query `start`, `end` as `YYYY-MM-DD HH:MM`, else `400`; `start` after `end`: `400`): `{"data": []}`
+  for `.../statistics/daily-messages`, `daily-conversations`, `daily-end-users`, `token-costs`, `user-satisfaction-rate`,
+  `tokens-per-second`, `average-session-interactions` (chat modes only), `average-response-time` (completion apps only: always
+  `404 app_not_found` here), `.../workflow/statistics/daily-conversations` (runs), `daily-terminals`, `token-costs`,
+  `average-app-interactions` (workflow apps only). Dify's charts fill the days without a row with zeros.
+* **`GET .../workflow-app-logs`** (member; workflow apps; `page` 1-99999, `limit` 1-100, `status`, `keyword`,
+  `created_at__before` / `__after` ISO times, `detail`): `{"page", "limit", "total": 0, "has_more": false, "data": []}`.
+  **`GET .../workflow-runs/{run}`** (member): `404` "Workflow run not found"; **`.../workflow-runs/{run}/node-executions`**:
+  `{"data": []}` (Dify answers an unknown run so).
+* **`GET .../chat-conversations`** (edit; chat modes; `page`, `limit`, `keyword`, `start`, `end`, `annotation_status`
+  `annotated` / `not_annotated` / `all`, `sort_by` `created_at` / `-created_at` / `updated_at` / `-updated_at`): an empty
+  page. **`GET .../chat-conversations/{id}`** and **`GET .../chat-messages?conversation_id=`** (edit): `404` "Conversation Not
+  Exists." (`conversation_id` is required: `400`).
+
+**Migration.** At its first start a 1.11 server gives every app without a site one (deleted apps included; idempotent), and
+the new `apps` columns start as Dify's defaults (`enable_site`, `enable_api` true).
 
 ### Model providers (1.9)
 
@@ -836,6 +1039,9 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 404 | `not_found` | Unknown document (or comment, reply). | `PUT` it (if creation is intended) or give up. |
 | 404 | `app_deleted` | 1.10: the document's app was deleted (every document call, the app endpoints). | Tell the user, leave the editor, drop the journal; do not retry. |
 | 400 | `unsupported_app_mode` | 1.10, `POST /v1/apps`: a Dify mode dify-sf does not have (`chat`, `agent-chat`, `completion`). | Offer workflow or chatflow. |
+| 404 | `app_not_found` | 1.11: an app endpoint of another app mode (Dify's wrong-mode error: annotations of a workflow app, workflow logs of a chatflow, ...). | Do not offer the page for that mode. |
+| 400 | `max_keys_exceeded` | 1.11, `POST .../api-keys`: the app has 10 Service API keys. | Delete one first. |
+| 400 | `no_file_uploaded`, `too_many_files` | 1.11, annotation import: no `file` part; more than one file. | Send one CSV file. |
 | 409 | `setup_done`, `email_taken` | 1.8: `POST /setup` after the install; an email in use. | Sign in instead. |
 | 409 | `outstanding_ops`, `cseq_used`, `conflict` | `POST /replace`: the client has unresolved ops; the `cseq` is used; an op of the replacement was refused (nothing committed). | Resolve the ops, then retry with the next cseq. |
 | 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |
