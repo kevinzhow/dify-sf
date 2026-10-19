@@ -1933,7 +1933,7 @@ features:
   dify: [web/app/components/app/create-app-modal, web/app/components/app/create-app-dropdown.tsx, web/app/components/app/create-app-dialog-shell.tsx, web/app/components/app/type-selector]
   status: ported
   deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Image icons need file storage, so the icon picker offers emoji only.
-  evidence: ['spec:web/app/components/app/create-app-modal', 'spec:web/app/components/app/type-selector', app/test/studio_test.dart]
+  evidence: ['spec:web/app/components/app/create-app-modal', 'spec:web/app/components/app/type-selector', visual:studio-create-blank-types, visual:studio-create-blank-types-light, visual:studio-create-blank-preview, visual:studio-create-blank-preview-dark, app/test/studio_test.dart]
   ours: [app/lib/src/studio/create_app_modal.dart, app/lib/src/studio/app_icons.dart, app/lib/src/design/widgets/app_icon.dart, app/lib/src/studio/filters.dart]
 - id: app-pages.studio-import
   area: app-pages
@@ -1941,7 +1941,7 @@ features:
   dify: [web/app/components/app/create-from-dsl-modal, web/app/components/apps/hooks/use-dsl-drag-drop.ts]
   status: ported
   deviation: A URL is fetched by the client (dify-sf's import takes file content), so on the web it is subject to the site's CORS rules.
-  evidence: ['spec:web/app/components/app/create-from-dsl-modal', 'spec:web/app/components/apps/hooks', app/test/studio_test.dart]
+  evidence: ['spec:web/app/components/app/create-from-dsl-modal', 'spec:web/app/components/apps/hooks', visual:studio-import-dsl, visual:studio-import-dsl-dark, visual:studio-import-dsl-dialog, visual:studio-import-dsl-dialog-dark, app/test/studio_test.dart]
   ours: [app/lib/src/studio/create_from_dsl_modal.dart, app/lib/src/studio/dsl_drop.dart]
 - id: app-pages.studio-card-actions
   area: app-pages

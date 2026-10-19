@@ -529,6 +529,8 @@ class DslUploaderState extends State<DslUploader> {
               Flexible(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  // `ml-1` on Browse: 4 px between the label and the button, before the button's own `px-1`.
+                  spacing: 4,
                   children: [
                     Flexible(
                       child: Text(

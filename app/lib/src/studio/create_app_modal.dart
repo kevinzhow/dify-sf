@@ -221,7 +221,12 @@ class _CreateAppModalState extends State<CreateAppModal> {
                               padding: const EdgeInsets.only(top: 4, bottom: 24),
                               child: Text(
                                 _a('newApp.startFromBlank'),
-                                style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
+                                // The page's strut is 16/24, so the 18/1.2 span sits in a 24 px line box, not 21.6.
+                                // Dify's own box is `pt-1 pb-6` at 52 px high; this keeps ours the same height.
+                                style: difyTextStyle(
+                                  DifyType.title2xlSemiBold,
+                                  DifyColors.textPrimary,
+                                ).copyWith(height: 24 / 18),
                               ),
                             ),
                             // `mb-2 leading-6`: the heading's line box is 24 px, not the 16 px the type alone gives.
