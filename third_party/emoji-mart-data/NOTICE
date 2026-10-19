@@ -1,0 +1,5 @@
+@emoji-mart/data 1.2.1 (MIT). Unicode 15 native catalog, unmodified.
+Source: https://github.com/missive/emoji-mart/tree/main/packages/emoji-mart-data
+Archive: https://registry.npmjs.org/@emoji-mart/data/-/data-1.2.1.tgz
+Version pinned to Dify 1.17.1 pnpm-workspace.yaml.
+Regenerate with python3 tool/icons/update_emoji_catalog.py
