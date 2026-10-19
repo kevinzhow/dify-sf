@@ -21,26 +21,6 @@ const featureIcons = {
 /// OpenaiYellow is drawn in its own colours; this is the colour it is decoded with (see [IconCache]).
 Color get openaiYellowColor => DifyColors.componentsInputTextFilled;
 
-/// StatusDot error, medium (dify-ui status-dot): `size-2 rounded-[3px] border`, red halo shadow.
-class ErrorStatusDot extends StatelessWidget {
-  const ErrorStatusDot({super.key});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 8,
-    height: 8,
-    decoration: BoxDecoration(
-      color: DifyColors.componentsBadgeStatusLightErrorBg,
-      borderRadius: BorderRadius.circular(3),
-      border: Border.all(color: DifyColors.componentsBadgeStatusLightErrorBorderInner),
-      boxShadow: [
-        BoxShadow(color: DifyColors.componentsBadgeStatusLightErrorHalo, offset: Offset(0, 2), blurRadius: 6),
-        BoxShadow(color: DifyColors.componentsBadgeStatusLightBorderOuter, spreadRadius: 1),
-      ],
-    ),
-  );
-}
-
 /// ModelBadge (model-badge/index.tsx): `inline-flex h-4.5 shrink-0 items-center justify-center rounded-[5px] border
 /// border-divider-deep bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-tertiary`.
 /// [width] with no padding: FeatureIcon's `w-4.5 justify-center px-0!`.
@@ -610,7 +590,8 @@ class ModelBar extends StatelessWidget {
             surface: ModelSelectorSurface.workflow,
             showDeprecatedWarnIcon: false,
           ),
-          if (warn != null) const Positioned(top: -2, right: -2, child: ErrorStatusDot()),
+          if (warn != null)
+            const Positioned(top: -2, right: -2, child: DifyStatusDot(status: DifyStatusDotStatus.error)),
         ],
       ),
     );

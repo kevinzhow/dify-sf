@@ -8,6 +8,7 @@ import 'package:dify_sf_app/src/cards/provider_icon_image.dart';
 import 'package:dify_sf_app/src/cards/node_body.dart';
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot;
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -271,14 +272,14 @@ void main() {
       expect(find.byType(ModelStatusBadge), findsNothing);
       expect(_lineThrough(t, 'gpt-4o'), isTrue);
       expect(t.widget<Opacity>(find.ancestor(of: find.text('gpt-4o'), matching: find.byType(Opacity))).opacity, 0.5);
-      expect(find.byType(ErrorStatusDot), findsOneWidget);
+      expect(find.byType(DifyStatusDot), findsOneWidget);
       expect(t.getSize(find.byType(ModelBar)).height, 24);
     });
 
     testWidgets('installed: no dot, no dimming', (t) async {
       final c = _catalog([_gpt]);
       await _pump(t, ModelBar(value: _value, catalog: c));
-      expect(find.byType(ErrorStatusDot), findsNothing);
+      expect(find.byType(DifyStatusDot), findsNothing);
       expect(find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0.5), findsNothing);
       expect(find.text('CHAT'), findsOneWidget);
       expect(_bg(t), DifyColors.workflowBlockParmaBg);
@@ -287,7 +288,7 @@ void main() {
     testWidgets('not selected: empty selector with the dot', (t) async {
       await _pump(t, const ModelBar());
       expect(find.text('Configure model'), findsOneWidget);
-      expect(find.byType(ErrorStatusDot), findsOneWidget);
+      expect(find.byType(DifyStatusDot), findsOneWidget);
       expect(_bg(t), DifyColors.workflowBlockParmaBg);
     });
   });

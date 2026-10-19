@@ -75,7 +75,7 @@ class _SettingItem extends StatelessWidget {
           ],
         ),
       ),
-      if (error) const Positioned(top: -2, right: -2, child: ErrorStatusDot()),
+      if (error) const Positioned(top: -2, right: -2, child: DifyStatusDot(status: DifyStatusDotStatus.error)),
     ],
   );
 }
