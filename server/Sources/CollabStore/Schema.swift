@@ -21,6 +21,8 @@
 ///   members and their roles), `sessions` (opaque bearer tokens, stored only as SHA-256), `invitations` (activation links)
 ///   and `client_accounts` (which account a client id belongs to); `password_resets` and, protocol 1.12, `email_changes`
 ///   (forgot-password and change-email tokens).
+/// * Runs (protocol 1.13): `workflow_node_executions` (Dify's table of the same name: node runs, single-step ones too, with
+///   the document seq they ran at). Never ops: runs do not change the document.
 public enum Schema {
     public static let statements: [String] = [
         """
@@ -498,6 +500,33 @@ public enum Schema {
         CREATE INDEX IF NOT EXISTS app_message_feedbacks_by_conversation
             ON app_message_feedbacks (conversation_id, from_source, rating)
         """,
+        // Protocol 1.13: node executions (Dify's `workflow_node_executions`). `doc_seq` = the document seq the run read (one
+        // consistent snapshot). JSON members are text, not jsonb, so their key order (Python's dict order) survives.
+        """
+        CREATE TABLE IF NOT EXISTS workflow_node_executions (
+            id                  text             PRIMARY KEY,
+            doc_id              text             NOT NULL REFERENCES documents(id),
+            workflow_run_id     text,
+            triggered_from      text             NOT NULL,
+            doc_seq             bigint           NOT NULL,
+            run_index           integer          NOT NULL,
+            predecessor_node_id text,
+            node_id             text             NOT NULL,
+            node_type           text             NOT NULL,
+            title               text             NOT NULL,
+            inputs              text,
+            process_data        text,
+            outputs             text,
+            status              text             NOT NULL,
+            error               text,
+            elapsed_time        double precision NOT NULL,
+            execution_metadata  text,
+            created_by          text,
+            created_at          timestamptz      NOT NULL,
+            finished_at         timestamptz
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS workflow_node_executions_last ON workflow_node_executions (doc_id, node_id, created_at DESC)",
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",

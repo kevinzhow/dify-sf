@@ -63,6 +63,7 @@ struct Routes: Sendable {
         registerModels(on: r)
         registerApps(on: r)
         registerAppDetail(on: r)
+        registerRuntime(on: r)
     }
 
     // MARK: - Plumbing

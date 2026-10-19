@@ -139,9 +139,17 @@ extension Routes {
             var is_email_setup: Bool
             /// 1.12: the account page offers changing the email (Dify's `ENABLE_CHANGE_EMAIL`; dify-sf needs mail for it).
             var enable_change_email: Bool
+            /// 1.13 (dify-sf only): what the workflow runtime can run; absent without a model runtime (plugin daemon).
+            var workflow_runtime: WorkflowRuntime?
+        }
+        struct WorkflowRuntime: Encodable {
+            var protocol_version = "1.13"
+            /// The node types `POST .../workflows/draft/nodes/{node}/run` runs.
+            var single_node_run: [String]
         }
         let mail = config.mail.isConfigured
-        return try json(Features(is_email_setup: mail, enable_change_email: mail))
+        let runtime = runtimeConfigured ? WorkflowRuntime(single_node_run: Self.singleRunNodeTypes) : nil
+        return try json(Features(is_email_setup: mail, enable_change_email: mail, workflow_runtime: runtime))
     }
 
     // MARK: - Forgot password (Dify's /forgot-password, /forgot-password/validity, /forgot-password/resets)

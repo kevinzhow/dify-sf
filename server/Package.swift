@@ -45,6 +45,10 @@ let package = Package(
         // its resources.
         .target(name: "CollabModels", dependencies: [.product(name: "Yams", package: "Yams")],
                 resources: [.copy("Resources/dify-official-plugins")]),
+        // The workflow runtime (a Swift port of graphon 0.7.0, Dify's engine; see Sources/CollabRuntime/NOTICE.md): values,
+        // variable pool, nodes, single-step runs, the plugin daemon's wire format. Pure: no I/O (models come through a
+        // protocol the server implements).
+        .target(name: "CollabRuntime", exclude: ["NOTICE.md", "LICENSE-graphon.txt"]),
         // Postgres persistence (plain SQL via postgres-nio).
         .target(name: "CollabStore", dependencies: [
             "CollabCore",
@@ -52,7 +56,7 @@ let package = Package(
         ]),
         // The Vapor application: HTTP routes, per-document sequencer actors, SSE hub, configuration.
         .target(name: "CollabServer", dependencies: [
-            "CollabCore", "CollabStore", "CollabDSL", "CollabModels",
+            "CollabCore", "CollabStore", "CollabDSL", "CollabModels", "CollabRuntime",
             .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Vapor", package: "vapor"),
             .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
@@ -75,7 +79,7 @@ let package = Package(
         ]),
         .executableTarget(name: "collab-bench", dependencies: ["CollabHarness"]),
         .testTarget(name: "CollabTests", dependencies: [
-            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL", "CollabModels",
+            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL", "CollabModels", "CollabRuntime",
             .product(name: "PostgresNIO", package: "postgres-nio"),
             .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Configuration", package: "swift-configuration"),

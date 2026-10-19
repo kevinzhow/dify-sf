@@ -63,6 +63,18 @@ public struct ServerConfig: Sendable {
     public var webAppBaseURL: String
     /// Protocol 1.11: the Service API base (Dify's `SERVICE_API_URL`; `api_base_url` is it with `/v1`). Empty = as above.
     public var serviceAPIURL: String
+    /// Protocol 1.13: Dify's plugin daemon (models), e.g. `http://plugin_daemon:5002` (`COLLAB_PLUGIN_DAEMON_URL`; Dify's
+    /// `PLUGIN_DAEMON_URL`). Empty = no model runtime: LLM nodes cannot run and `system-features` does not offer runs.
+    public var pluginDaemonURL: String
+    /// Its `SERVER_KEY` (`COLLAB_PLUGIN_DAEMON_KEY`; Dify's `PLUGIN_DAEMON_KEY`), sent as `X-Api-Key`.
+    public var pluginDaemonKey: String
+    /// The tenant dify-sf's workspace is in the daemon (`COLLAB_PLUGIN_DAEMON_TENANT`): plugins are installed per tenant.
+    public var pluginDaemonTenant: String
+    /// Bound on one daemon request, streaming included (`COLLAB_PLUGIN_DAEMON_TIMEOUT_SECONDS`; Dify's 600).
+    public var pluginDaemonTimeoutSeconds: Int
+
+    /// The tenant id when `COLLAB_PLUGIN_DAEMON_TENANT` is unset (one workspace per server).
+    public static let defaultPluginDaemonTenant = "00000000-0000-0000-0000-000000000001"
 
     public init(reader: ConfigReader) {
         httpHost = reader.string(forKey: "collab.http.host", default: "127.0.0.1")
@@ -98,6 +110,11 @@ public struct ServerConfig: Sendable {
         modelsValidateTimeoutSeconds = reader.int(forKey: "collab.models.validateTimeoutSeconds", default: 10)
         webAppBaseURL = reader.string(forKey: "collab.webapp.baseUrl", default: "").trimmingCharacters(in: .whitespaces)
         serviceAPIURL = reader.string(forKey: "collab.serviceApi.url", default: "").trimmingCharacters(in: .whitespaces)
+        pluginDaemonURL = reader.string(forKey: "collab.pluginDaemon.url", default: "").trimmingCharacters(in: .whitespaces)
+        pluginDaemonKey = reader.string(forKey: "collab.pluginDaemon.key", isSecret: true, default: "")
+        pluginDaemonTenant = reader.string(forKey: "collab.pluginDaemon.tenant", default: Self.defaultPluginDaemonTenant)
+            .trimmingCharacters(in: .whitespaces)
+        pluginDaemonTimeoutSeconds = reader.int(forKey: "collab.pluginDaemon.timeoutSeconds", default: 600)
     }
 }
 

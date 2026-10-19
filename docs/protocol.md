@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.12
+# dify-sf collaboration protocol, version 1.13
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,21 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.13 (additive; clients older than 1.13 are unaffected): **workflow runtime, single node run** (section 2, "Runtime
+  (1.13)"): the first part of the Swift workflow runtime (a port of graphon 0.7.0, Dify 1.17.1's engine), with models
+  invoked through Dify's plugin daemon.
+  * `POST /v1/apps/{app}/workflows/draft/nodes/{node}/run` (edit) `{"inputs": {...}}`: Dify's single node run ("run this
+    step") of the draft, answering Dify's `WorkflowRunNodeExecutionResponse` (`200` also when the node failed). The run
+    reads the document at its current seq in one consistent read and **writes no ops**: its record goes to
+    `workflow_node_executions`, beside the document. In 1.13 only `llm` nodes run.
+  * `GET /v1/apps/{app}/workflows/draft/nodes/{node}/last-run` (member): the node's newest execution (Dify's "Last run"),
+    `404` without one.
+  * `GET /v1/system-features` gains `workflow_runtime` `{"protocol_version": "1.13", "single_node_run": ["llm"]}` (dify-sf
+    only) when the server has a model runtime; absent otherwise. Clients run the listed node types on the server and keep
+    their local stand-in for the rest.
+  * New configuration: `COLLAB_PLUGIN_DAEMON_URL`, `COLLAB_PLUGIN_DAEMON_KEY`, `COLLAB_PLUGIN_DAEMON_TENANT`,
+    `COLLAB_PLUGIN_DAEMON_TIMEOUT_SECONDS`. New error codes: `invalid_param`, `unsupported_node_type`,
+    `model_runtime_not_configured` (400). Streams are unchanged.
 * 1.12 (additive; clients older than 1.12 are unaffected): **account settings** (section 2, "Account settings (1.12)"):
   Dify 1.17.1's account page and Preferences.
   * `PATCH /v1/account/profile` (member, one's own account): `name`, `interface_language` (Dify's 24 languages) and
@@ -313,6 +328,8 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | GET | `/v1/apps/{app}/statistics/...`, `/v1/apps/{app}/workflow/statistics/...`, `/v1/apps/{app}/workflow-app-logs`, `/v1/apps/{app}/workflow-runs/{run}...` | member | 1.11: Overview statistics, workflow logs and runs (empty until a runtime exists). |
 | GET | `/v1/apps/{app}/chat-conversations...`, `/v1/apps/{app}/chat-messages` | edit | 1.11: chat logs (empty until a runtime exists). |
 | POST | `/v1/apps/{app}/feedbacks` | member | 1.11: a member's like / dislike of a message in the logs ("Overview statistics and logs"). |
+| POST | `/v1/apps/{app}/workflows/draft/nodes/{node}/run` | edit | 1.13: run one node of the draft ("Runtime"). |
+| GET | `/v1/apps/{app}/workflows/draft/nodes/{node}/last-run` | member | 1.13: the node's last run ("Runtime"). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
@@ -963,6 +980,61 @@ a notification only (Dify's peer-to-peer `app_meta_update`): clients refetch `GE
 **Migration.** At its first start a 1.11 server gives every app without a site one (deleted apps included; idempotent), and
 the new `apps` columns start as Dify's defaults (`enable_site`, `enable_api` true).
 
+### Runtime (1.13)
+
+The workflow runtime runs Dify workflows in the server: a Swift port of graphon 0.7.0 (Dify 1.17.1's engine, Apache-2.0;
+`server/Sources/CollabRuntime`, attribution in its `NOTICE.md`), with Dify's paths and shapes. Models are not called by
+dify-sf itself: every model invocation goes through **Dify's plugin daemon** (0.6.10), which runs the provider plugins,
+exactly as Dify's api calls it (`POST /plugin/{tenant}/dispatch/llm/invoke`, `.../model/schema`), with the workspace's
+credentials (protocol 1.9, decrypted per call). 1.13 has the **single node run of `llm` nodes**; whole runs, the other node
+types, streaming and history follow in later versions.
+
+**Configuration.** `COLLAB_PLUGIN_DAEMON_URL` (e.g. `http://plugin_daemon:5002`; empty = no model runtime),
+`COLLAB_PLUGIN_DAEMON_KEY` (the daemon's `SERVER_KEY`), `COLLAB_PLUGIN_DAEMON_TENANT` (the workspace's tenant in the daemon,
+under which plugins are installed; default `00000000-0000-0000-0000-000000000001`), `COLLAB_PLUGIN_DAEMON_TIMEOUT_SECONDS`
+(600). The daemon needs the providers' plugins installed for that tenant (for example `langgenius/openai_api_compatible`).
+
+**Discovery.** `GET /v1/system-features` carries `"workflow_runtime": {"protocol_version": "1.13", "single_node_run":
+["llm"]}` when `COLLAB_PLUGIN_DAEMON_URL` is set, else no `workflow_runtime` member. A client runs the node types listed in
+`single_node_run` with the endpoints below and keeps whatever it did before (Dify's UI over a local stand-in) for the others.
+
+**`POST /v1/apps/{app}/workflows/draft/nodes/{node}/run`** (edit; workflow and chatflow apps, else `404 app_not_found`).
+Body: Dify's `DraftWorkflowNodeRunPayload`, `{"inputs": {...}}` (`query` and `files` are for start nodes, which do not run
+in 1.13). `inputs` holds the values the node reads that are not in the run, keyed as Dify's single-run form sends them:
+`"#node.var#"` (or `"<this node>.#node.var#"`), `"#context#"` for the LLM's context variable. A value the node needs that
+is missing is `400 invalid_param` "Variable key {node}.#x.y# not found in user inputs.".
+
+* **Consistency.** The server reads the document at its current seq N (the committed state, in one read), renders it as
+  Dify's graph (as the export does, secret environment variables with their values) and runs the node on that. Edits that
+  arrive during the run do not affect it. The run writes **no ops**: its record is a row of `workflow_node_executions`
+  (Dify's columns plus `doc_seq` = N), beside the document, never in its log, snapshots or export.
+* **Answer** `200`: Dify's `WorkflowRunNodeExecutionResponse`, member order as Dify: `id`, `index` (1),
+  `predecessor_node_id` (null), `node_id`, `node_type`, `title`, `inputs`, `process_data`, `outputs`, `status`
+  (`succeeded`, `failed`, or `exception` when an error strategy turned a failure into outputs), `error`, `elapsed_time`
+  (seconds), `execution_metadata` (`total_tokens`, `total_price`, `currency`), `extras` (`{}`), `created_at`,
+  `created_by_role` (`account`), `created_by_account` (`{id, name, email}`), `created_by_end_user` (null), `finished_at`,
+  `inputs_truncated`, `outputs_truncated`, `process_data_truncated` (false). A node that **failed** is also `200`, with
+  `status: "failed"`, `error` and null `inputs`, `process_data`, `outputs` (as Dify stores it).
+* **LLM node** (graphon's `LLMNode`): the prompt is built from the node's templates (chat messages or the completion
+  prompt, `{{#node.var#}}` references and `{{#context#}}`) and sent to the model as one streaming invocation; outputs
+  `text`, `reasoning_content` (`reasoning_format: separated` splits `<think>` blocks off), `usage` (Dify's `LLMUsage`,
+  prices as decimal strings) and `finish_reason`; `process_data` has `model_mode`, `prompts` (`[{role, text, files}]`),
+  `usage`, `finish_reason`, `model_provider`, `model_name`; `inputs` has `model_provider`, `model_name` and `#context#`.
+  Not yet in 1.13: structured output and Jinja2 prompts (the node fails with a message saying so; Jinja2 needs the code
+  sandbox), and files (vision reads none: there are no file values before file storage). Single runs have no conversation
+  memory (as in Dify).
+* **Errors before the run** (Dify raises these out of the request): `400 invalid_param` for missing inputs, invalid node
+  data, and a model that cannot be prepared, with Dify's message (`Provider X does not exist.`, `Model X not exist.`, `Model
+  is not configured`, `Model is disabled`, `Model X credentials is not initialized.`, or the daemon's error when it cannot
+  give the model's schema); `400 unsupported_node_type` for a node type the server does not run yet; `400
+  model_runtime_not_configured` without `COLLAB_PLUGIN_DAEMON_URL`; `404 not_found` for an unknown node.
+
+**`GET /v1/apps/{app}/workflows/draft/nodes/{node}/last-run`** (member): the node's newest execution in this app (single
+runs now, runs of the whole draft later), in the shape above; `404 not_found` "last run not found" without one.
+
+**Deviations from Dify.** Single runs do not fill Dify's draft-variable cache yet (the variable inspect panel's values;
+values a node reads come from `inputs` only). Large values are never offloaded (`*_truncated` are always false).
+
 ### Model providers (1.9)
 
 Dify 1.17.1's model provider settings (`/console/api/workspaces/current/...`, `api/controllers/console/workspace/
@@ -1128,6 +1200,7 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 409 | `outstanding_ops`, `cseq_used`, `conflict` | `POST /replace`: the client has unresolved ops; the `cseq` is used; an op of the replacement was refused (nothing committed). | Resolve the ops, then retry with the next cseq. |
 | 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |
 | 400 | `credential_validation_failed` | 1.9: the model provider refused the credentials (or could not be reached) when saving them; the message is the short reason. | Tell the user; fix the credentials. |
+| 400 | `invalid_param`, `unsupported_node_type`, `model_runtime_not_configured` | 1.13, single node run: missing inputs or a model that cannot be prepared (Dify's message); a node type the server does not run yet; no plugin daemon configured. | Tell the user. |
 | 409 | `credential_name_exists` | 1.9: a credential name in use for this provider (or custom model). | Pick another name. |
 | 503 | `secrets_key_missing` | 1.9: the server has no secrets key, so it refuses to store secrets (credentials, secret environment variables). | Tell the operator (set `COLLAB_SECRETS_KEY`); do not retry. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |

@@ -38,7 +38,7 @@ E2E = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(E2E)
 sys.path.insert(0, os.path.join(E2E, "lib"))
 import runtrace as tr  # noqa: E402
-from dify import STUB_MODEL, STUB_PROVIDER, DifyConsole  # noqa: E402
+from dify import STUB_MODEL, STUB_PROVIDER, DifyConsole, stub_credentials  # noqa: E402
 from e2ehttp import HTTPError, Session  # noqa: E402
 
 FIXTURES = os.path.join(REPO, "server", "Tests", "CollabTests", "Fixtures", "dify")
@@ -88,6 +88,13 @@ class DifySF:
         r = self.s.post("/v1/auth/login", {"email": email, "password": password})
         tok = r.get("access_token") or (r.get("data") or {}).get("access_token")
         self.s.headers["Authorization"] = f"Bearer {tok}"
+        # The stub model on dify-sf's side too (protocol 1.9 credentials; the server reaches llmstub through its daemon).
+        try:
+            self.s.call("POST", f"/v1/workspace/model-providers/{STUB_PROVIDER}/models/credentials",
+                        {"model": STUB_MODEL, "model_type": "llm", "credentials": stub_credentials()}, ok=(200, 201))
+        except HTTPError as e:
+            if e.status != 409:
+                raise
 
     def import_dsl(self, dsl):
         body = self.s.call("POST", "/v1/apps/imports", {"mode": "yaml-content", "yaml_content": json.dumps(dsl, ensure_ascii=False)},
