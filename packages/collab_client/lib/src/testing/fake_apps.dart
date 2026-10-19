@@ -1,14 +1,22 @@
 import 'dart:convert';
+import 'dart:math';
 
+import '../access_api.dart';
+import '../annotations_api.dart';
 import '../apps_api.dart';
 import '../auth/account.dart';
+import '../client/replace.dart';
 import '../client/transport.dart';
 import '../model/app_registers.dart';
 import '../model/document.dart';
 import '../model/value.dart';
+import '../versions_api.dart';
 import '../wire/messages.dart';
 import 'fake_dsl.dart';
+import 'fake_accounts.dart';
 import 'fake_server.dart';
+
+part 'fake_app_detail.dart';
 
 /// An in-memory [AppsApi] with the server's rules (protocol 1.10), for tests and demo mode. Each app has its own
 /// [FakeServer] ([server]) for the editor; a commit on it bumps the app's `updated_at` (the server's deviation from
@@ -34,8 +42,10 @@ class FakeAppsApi implements AppsApi {
     this.role = AccountRole.owner,
     DateTime Function()? clock,
     this.secretsKeyMissing = false,
+    String origin = 'http://localhost:8080',
   }) : _s = _State(clock ?? DateTime.now) {
     _s.names[accountId] = accountName;
+    _s.origin = origin;
   }
 
   FakeAppsApi._shared(this._s, this.accountId, this.accountName, this.role, this.secretsKeyMissing);
@@ -52,6 +62,11 @@ class FakeAppsApi implements AppsApi {
   String role;
   bool secretsKeyMissing;
   final _State _s;
+
+  /// The server's origin (protocol 1.11): the Web App base URL (`site.app_base_url`) and, with `/v1`, the Service API
+  /// base URL (`api_base_url`). Shared by every view.
+  String get origin => _s.origin;
+  set origin(String o) => _s.origin = o;
 
   /// Calls so far (of every account's view), by method name (`list`, `create`, ...).
   Map<String, int> get requests => _s.requests;
@@ -424,6 +439,74 @@ class FakeAppsApi implements AppsApi {
     if (!AccountRole.canEdit(role)) _fail(403, 'forbidden', 'the $role role cannot edit');
   }
 
+  void _privileged() {
+    if (!AccountRole.isPrivileged(role)) _fail(403, 'forbidden', 'only the workspace owner or an admin may do this');
+  }
+
+  AppSite _siteOf(_App a) => AppSite.fromJson({
+    'app_id': a.id,
+    'access_token': a.site.code,
+    'code': a.site.code,
+    ...a.site.json,
+    'app_base_url': origin,
+  });
+
+  VersionAccount? _accountOf(String? id) =>
+      id == null ? null : VersionAccount(id: id, name: _s.names[id] ?? id, email: _s.emails[id] ?? '$id@example.com');
+
+  WorkflowVersion _workflowOf(_App a, Map<String, Object?> dsl, Map<String, Object?> fields) {
+    final w = dsl['workflow'] is Map<String, Object?> ? dsl['workflow']! as Map<String, Object?> : const {};
+    List<Object?> masked(Object? vars) => [
+      if (vars is List<Object?>)
+        for (final v in vars)
+          if (v is Map<String, Object?> && v['value_type'] == 'secret') {...v, 'value': ''} else v,
+    ];
+    return WorkflowVersion.fromJson({
+      ...fields,
+      'graph': w['graph'],
+      'features': w['features'],
+      'hash': _hash(dsl),
+      'tool_published': false,
+      'environment_variables': masked(w['environment_variables']),
+      'conversation_variables': w['conversation_variables'] ?? const <Object?>[],
+      'rag_pipeline_variables': const <Object?>[],
+    });
+  }
+
+  WorkflowVersion _versionOf(_App a, _Version v) => _workflowOf(a, v.dsl, {
+    'id': v.id,
+    'version': _versionString(v.createdAt),
+    'version_number': v.number,
+    'marked_name': v.markedName,
+    'marked_comment': v.markedComment,
+    'created_by': _accountOf(v.createdBy)?.toJson(),
+    'created_at': _seconds(v.createdAt),
+    'updated_by': _accountOf(v.updatedBy)?.toJson(),
+    'updated_at': _seconds(v.updatedAt),
+  });
+
+  WorkflowVersion _draftOf(_App a) => _workflowOf(a, _exportValue(a), {
+    'id': a.id,
+    'version': 'draft',
+    'version_number': null,
+    'marked_name': '',
+    'marked_comment': '',
+    'created_by': _accountOf(a.createdBy)?.toJson(),
+    'created_at': _seconds(a.createdAt),
+    'updated_by': _accountOf(a.updatedBy)?.toJson(),
+    'updated_at': _seconds(a.updatedAt),
+  });
+
+  /// Dify's `str(datetime)` of a UTC time: `YYYY-MM-DD HH:MM:SS[.ffffff]`.
+  static String _versionString(DateTime t) {
+    final u = t.toUtc();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final base =
+        '${u.year.toString().padLeft(4, '0')}-${two(u.month)}-${two(u.day)} ${two(u.hour)}:${two(u.minute)}:${two(u.second)}';
+    final micros = u.millisecond * 1000 + u.microsecond;
+    return micros == 0 ? base : '$base.${micros.toString().padLeft(6, '0')}';
+  }
+
   _App _live(String id) {
     final a = _s.apps[id];
     if (a == null) _fail(404, 'not_found', 'no app $id');
@@ -448,6 +531,30 @@ class FakeAppsApi implements AppsApi {
   }
 
   void _add(_App a) {
+    // Dify's `create_site_record_when_app_created`: title and icon from the app, the creator's language, a new code.
+    a.site = _Site(
+      code: _s.newSiteCode(),
+      json: {
+        'title': a.name,
+        'icon_type': a.iconType,
+        'icon': a.icon,
+        'icon_background': a.iconBackground,
+        'description': null,
+        'default_language': 'en-US',
+        'chat_color_theme': null,
+        'chat_color_theme_inverted': false,
+        'customize_domain': null,
+        'copyright': null,
+        'privacy_policy': null,
+        'input_placeholder': null,
+        'custom_disclaimer': '',
+        'customize_token_strategy': CustomizeTokenStrategy.notAllow,
+        'prompt_public': false,
+        'show_workflow_steps': true,
+        'use_icon_as_answer_icon': false,
+      },
+      updatedBy: a.createdBy,
+    );
     _s.apps[a.id] = a;
     // A commit bumps "last modified" (not `updated_by`, which is the last app-row change), as the server's.
     a.server.addListener((LogEntry _) {
@@ -537,10 +644,10 @@ class FakeAppsApi implements AppsApi {
       'is_starred': _s.stars[accountId]?.contains(a.id) ?? false,
       'maintainer': null,
       'bound_agent_id': null,
-      'enable_site': false,
-      'enable_api': false,
-      'site': null,
-      'api_base_url': null,
+      'enable_site': a.enableSite,
+      'enable_api': a.enableApi,
+      'site': _siteOf(a).toJson(),
+      'api_base_url': '$origin/v1',
       'deleted_tools': const <Object?>[],
     };
     return AppInfo.fromJson(json);
@@ -770,20 +877,54 @@ class _App {
   DateTime updatedAt;
   final FakeServer server;
   bool deleted = false;
+
+  // Protocol 1.11 (FakeAccessApi, FakeAnnotationsApi, FakeVersionsApi).
+  bool enableSite = true;
+  bool enableApi = true;
+  late _Site site;
+  final List<_Key> keys = [];
+  final List<_Annotation> annotations = [];
+  AnnotationSetting? annotationSetting;
+  final List<_Version> versions = [];
+  int lastVersionNumber = 0;
 }
 
 class _State {
   _State(this.clock);
 
   DateTime Function() clock;
+  String origin = 'http://localhost:8080';
   final Map<String, _App> apps = {};
   final Map<String, Set<String>> stars = {};
   final Map<String, String> names = {};
+  final Map<String, String> emails = {};
   final Map<String, ({String account, String yaml, _Overrides overrides, DateTime at})> pending = {};
   final Map<String, int> requests = {};
   int _apps = 0, _imports = 0, _variables = 0;
 
   String newId() => 'app-${(++_apps).toString().padLeft(4, '0')}';
+
+  // Protocol 1.11.
+  final Random _random = Random(1711);
+  final Map<String, String> jobs = {};
+  int _keys = 0, _annotations = 0, _jobs = 0, _settings = 0, _versions = 0;
+  static const _letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+  /// Dify's `generate_string(n)`: letters and digits (seeded: the fake is deterministic).
+  String randomString(int n) =>
+      String.fromCharCodes([for (var i = 0; i < n; i++) _letters.codeUnitAt(_random.nextInt(62))]);
+  String newSiteCode() {
+    while (true) {
+      final c = randomString(16);
+      if (!apps.values.any((a) => a.site.code == c)) return c;
+    }
+  }
+
+  String newKeyId() => 'key-${++_keys}';
+  String newAnnotationId() => 'ann-${(++_annotations).toString().padLeft(5, '0')}';
+  String newJobId() => 'job-${++_jobs}';
+  String newSettingId() => 'setting-${++_settings}';
+  String newVersionId() => 'version-${(++_versions).toString().padLeft(4, '0')}';
   String newImportId() => 'import-${++_imports}';
   String newVariableId() => 'var-${++_variables}';
 

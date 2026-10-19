@@ -26,6 +26,7 @@ import 'package:collab_client/storm.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
+import 'support/app_detail_scenario.dart';
 import 'support/apps_scenario.dart';
 import 'support/helpers.dart';
 import 'support/model_providers_scenario.dart';
@@ -1299,6 +1300,59 @@ workflow:
         stream.close();
         apps.close();
         docs.close();
+      }
+    });
+  });
+
+  group('app detail pages (1.11)', () {
+    test('the Access Point, Annotations, publish / versions, Overview and Logs calls against the server', () async {
+      final closers = <void Function()>[];
+      DetailApis apis(AuthSession auth) {
+        final a = HttpAppsApi(base, auth: auth),
+            access = HttpAccessApi(base, auth: auth),
+            annotations = HttpAnnotationsApi(base, auth: auth),
+            versions = HttpVersionsApi(base, auth: auth),
+            stats = HttpStatsApi(base, auth: auth),
+            logs = HttpLogsApi(base, auth: auth);
+        closers.addAll([a.close, access.close, annotations.close, versions.close, stats.close, logs.close]);
+        return (apps: a, access: access, annotations: annotations, versions: versions, stats: stats, logs: logs);
+      }
+
+      final docs = DocsApi(base, auth: owner);
+      try {
+        await appDetailScenario(
+          owner: apis(owner),
+          editor: apis(editor),
+          viewer: apis(viewer),
+          ownerId: owner.currentAccount!.id,
+          editorId: editor.currentAccount!.id,
+          unique: 'detail-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}',
+          commitEdit: (id, value) async {
+            final edit = HttpTransport(baseUrl: base, docId: id, auth: owner);
+            try {
+              final client = await edit.issueClientId();
+              final head = (await docs.snapshot(id)).seq;
+              final r = await edit.submit(
+                SubmitRequest(
+                  client: client,
+                  ops: [
+                    OutgoingOp(cseq: 1, base: head, op: SetField('start', const ConfigKey(['desc']), VString(value))),
+                  ],
+                ),
+                timeout: const Duration(seconds: 10),
+              );
+              expect(r.results.single, isA<AckResult>());
+            } finally {
+              edit.close();
+            }
+          },
+          newClient: (id) => docs.issueClientId(id),
+        );
+      } finally {
+        docs.close();
+        for (final c in closers) {
+          c();
+        }
       }
     });
   });

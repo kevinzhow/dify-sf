@@ -37,9 +37,9 @@
 /// else. Times are Dify's epoch **seconds**. dify-sf differences: `tags` is always `[]` (no tags yet), `icon_url` is
 /// always null (no file storage: image icons are not supported), `access_mode`, `maintainer`, `bound_agent_id` are
 /// null, `has_draft_trigger` false, `model_config` null, `workflow` is the app's one draft (`id` = the app id,
-/// `created_by`, `created_at`, `updated_by`, `updated_at`), `enable_site` / `enable_api` false, `site` null,
-/// `max_active_requests`
-/// is stored but unused.
+/// `created_by`, `created_at`, `updated_by`, `updated_at`), `max_active_requests` is stored but unused. Since protocol
+/// 1.11 `enable_site`, `enable_api`, `api_base_url` and `site` are real: read them with `AppInfoAccess`
+/// (`access_api.dart`); servers older than 1.11 send `false` / `null`.
 ///
 /// **Last modified** (`updated_at`, sort `last_modified`) is a documented deviation: Dify bumps it on app-row changes
 /// only (draft saves touch the workflow row); dify-sf also bumps it on every committed graph edit (op), so "Edited
@@ -52,8 +52,8 @@
 /// `edit_permission_required`): others get `403 forbidden`; `includeSecret` additionally needs `owner` or `admin`
 /// (protocol 1.8). [AppInfo.permissionKeys] are Dify's legacy per-app keys of the caller's role
 /// ([AppPermissionKeys.forRole]): Dify's `getAppACLCapabilities` runs on them unchanged; `normal` and
-/// `dataset_operator` get no `app.acl.view_layout` (dify-sf opens the editor read-only for them; there is no overview
-/// page). The workspace key `app.create_and_management` (Create button, More menu) follows the role:
+/// `dataset_operator` get no `app.acl.view_layout`, so (as Dify's `getRedirectionPath`) a `normal` member lands on the
+/// app's Overview and a `dataset_operator` on its Access Point (the app detail pages, protocol 1.11). The workspace key `app.create_and_management` (Create button, More menu) follows the role:
 /// [AppPermissionKeys.canCreate].
 ///
 /// ## Delete

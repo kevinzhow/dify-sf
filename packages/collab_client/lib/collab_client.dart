@@ -1,6 +1,8 @@
 /// Pure-Dart client for the dify-sf collaboration protocol (docs/protocol.md).
 library;
 
+export 'src/access_api.dart';
+export 'src/annotations_api.dart';
 export 'src/apps_api.dart';
 export 'src/auth/account.dart';
 export 'src/auth/auth_api.dart';
@@ -24,12 +26,15 @@ export 'src/model/document.dart';
 export 'src/model/ops.dart';
 export 'src/model/templates.dart';
 export 'src/model/value.dart';
+export 'src/monitor_api.dart';
 export 'src/providers/model_providers_api.dart';
 export 'src/wire/messages.dart';
 export 'src/transport/docs_api.dart';
+export 'src/transport/http_app_detail_api.dart';
 export 'src/transport/http_apps_api.dart';
 export 'src/transport/http_comments_api.dart';
 export 'src/transport/http_model_providers_api.dart';
 export 'src/transport/http_transport.dart';
 export 'src/transport/sse_parser.dart';
 export 'src/store/platform_store.dart';
+export 'src/versions_api.dart';

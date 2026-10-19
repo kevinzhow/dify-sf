@@ -5,6 +5,7 @@ export 'src/testing/fake_accounts.dart';
 export 'src/testing/fake_apps.dart';
 export 'src/testing/fake_comments.dart';
 export 'src/testing/fake_dsl.dart';
+export 'src/testing/fake_monitor.dart';
 export 'src/testing/fake_model_providers.dart';
 export 'src/testing/fake_server.dart';
 export 'src/testing/fake_transport.dart';
