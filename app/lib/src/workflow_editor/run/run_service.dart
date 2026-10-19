@@ -1,8 +1,9 @@
 /// The editor's run/debug backend: the operations Dify 1.17.1's web app calls to run and debug a draft
 /// (service/workflow.ts, service/base.ts `ssePost`/`sseGet`, service/use-workflow.ts, service/log.ts,
-/// service/debug.ts), as one injectable [WorkflowRunService]. dify-sf has no workflow runtime yet: the default is
-/// [MockWorkflowRunService] (mock_run_service.dart), which replays plausible event streams built from the current
-/// graph, so every run UI works; a real runtime replaces it without UI changes.
+/// service/debug.ts), as one injectable [WorkflowRunService]. With a server runtime (protocols 1.13, 1.14) it is
+/// `ServerRunService` (server_run_service.dart: whole draft runs, single runs, history and records of what the server
+/// runs); everything else, and servers without a runtime, use [MockWorkflowRunService] (mock_run_service.dart), which
+/// replays plausible event streams built from the current graph, so every run UI works the same either way.
 ///
 /// ## API (for the run UI)
 ///
@@ -38,7 +39,8 @@
 ///   `getFormInputVars(texts)`, `varSelectorsToVarInputs`) and the Last Run tab's data (`fetchLastRun()`, `lastRun`,
 ///   `isLastRunLoading`; refetched when runs invalidate it).
 /// - `scope.service` — the [WorkflowRunService] (run history, run detail, tracing list, conversation variables,
-///   chat messages). The mock's `inspectServices` feed the variable inspect panel with the runs' values.
+///   chat messages). The variable inspect panel's values come from the server's draft variables (1.14,
+///   `ServerInspectServices`) or the mock's `inspectServices`.
 /// - Stopping from the variable inspect panel (EVENT_WORKFLOW_STOP) is `WorkflowRunHostState.emitWorkflowStop`.
 /// - Events: [RunEvent] and subclasses (run_events.dart), one per SSE `event` Dify handles; streams are fed to
 ///   Dify-style callbacks with `listenRunEvents(stream, RunCallbacks(...))` (run_stream.dart).

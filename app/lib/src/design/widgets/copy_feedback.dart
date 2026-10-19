@@ -10,9 +10,6 @@ import '../../i18n/dify_i18n.dart';
 import '../dify_icon.dart';
 import 'widgets.dart';
 
-/// The old name, kept for workflow_editor/run/ui/status.dart (owned by the runtime work; switch it there).
-typedef CopyFeedback = DifyCopyFeedback;
-
 /// DifyCopyFeedback: an IconButton copying [content], "Copy" / "Copied" (2 s) as its name and tooltip.
 class DifyCopyFeedback extends StatefulWidget {
   const DifyCopyFeedback({super.key, required this.content});

@@ -20,7 +20,7 @@ const Map<AppDetailPageId, AppDetailPageBuilder> registeredAppDetailPages = {
 
 /// The APIs of a signed-in session on a real server, by type ([AppDetailContext.service]): one entry per API, for
 /// example `AccessApi: HttpAccessApi(server, auth: auth)`. Tests and the demo pass their own map (fakes). The editor's
-/// [ServerWorkflowRuntime] only when the server's [features] announce a workflow runtime (protocol 1.13).
+/// [ServerWorkflowRuntime] only when the server's [features] announce a workflow runtime (protocols 1.13, 1.14).
 Map<Type, Object> httpAppDetailServices(
   Uri server,
   TokenProvider auth, {
@@ -35,5 +35,6 @@ Map<Type, Object> httpAppDetailServices(
     ServerWorkflowRuntime: ServerWorkflowRuntime(
       api: HttpWorkflowRunApi(server, auth: auth),
       singleNodeRun: runtime.singleNodeRun,
+      draftRun: runtime.draftRun,
     ),
 };

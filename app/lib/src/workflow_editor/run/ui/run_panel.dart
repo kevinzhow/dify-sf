@@ -16,7 +16,7 @@ import 'result_panel.dart';
 import 'run_widgets.dart';
 import 'status.dart';
 import 'tracing_panel.dart';
-import 'workflow_preview.dart' show RunLoading, RunPanelTab, RunTabBar;
+import 'workflow_preview.dart' show RunLoading, runPanelTab, runPanelTabs;
 
 String _tr(String key) => DifyI18n.tr('run-log', key);
 
@@ -150,22 +150,22 @@ class _RunPanelState extends State<RunPanel> {
               bottom: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
             ),
           ),
-          child: RunTabBar(
-            children: [
+          child: runPanelTabs(
+            [
               if (!widget.hideResult)
-                RunPanelTab(
+                runPanelTab(
                   uppercaseStyle: true,
                   label: _tr('result'),
                   active: _tab == RunPanelTabType.result,
                   onTap: () => _switchTab(RunPanelTabType.result),
                 ),
-              RunPanelTab(
+              runPanelTab(
                 uppercaseStyle: true,
                 label: _tr('detail'),
                 active: _tab == RunPanelTabType.detail,
                 onTap: () => _switchTab(RunPanelTabType.detail),
               ),
-              RunPanelTab(
+              runPanelTab(
                 uppercaseStyle: true,
                 label: _tr('tracing'),
                 active: _tab == RunPanelTabType.tracing,

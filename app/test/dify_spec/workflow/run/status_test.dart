@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifySkeletonRectangle;
 import 'package:dify_sf_app/src/workflow_editor/run/ui/status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'run_harness.dart';
 
-int skeletons(WidgetTester t) => find.byType(SkeletonBar).evaluate().length;
+int skeletons(WidgetTester t) => find.byType(DifySkeletonRectangle).evaluate().length;
 
 void main() {
   group('Status', () {

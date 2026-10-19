@@ -10,11 +10,10 @@ library;
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../design/dify_icon.dart';
 import '../../../design/dify_tokens.g.dart';
+import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../../workflow/dify_json.dart' show difyDataOf;
-import '../../header/header_widgets.dart' show Spinning;
 import '../../node_panel/last_run.dart' as no_data;
 import '../../node_panel/bodies/llm/group_host.dart';
 import '../../node_panel/bodies/llm/model_common.dart' as models;
@@ -490,7 +489,7 @@ class _LastRunViewState extends State<LastRunView> with WidgetsBindingObserver {
     }
     if (w.isFetching && !w.isRunAfterSingleRun) {
       return Center(
-        child: Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
+        child: DifySpinner(size: 16, color: DifyColors.textTertiary),
       );
     }
     if (isRunning) return const SingleChildScrollView(child: ResultPanel(status: 'running', showSteps: false));

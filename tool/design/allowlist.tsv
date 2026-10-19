@@ -7,7 +7,6 @@ box-shadow	workflow_editor/comments/comment_icon.dart	2	legit:panel-bg ring arou
 box-shadow	workflow_editor/features/conversation_opener.dart	2	todo:step3
 box-shadow	workflow_editor/header/online_users.dart	2	legit:panel-bg ring around avatars
 box-shadow	workflow_editor/prompt_editor/prompt_editor_panel.dart	2	todo:step3
-box-shadow	workflow_editor/run/ui/log_widgets.dart	2	todo:step3
 box-shadow	workflow_editor/run/ui/status.dart	4	todo:step3
 color-literal	app_detail/overview/app_chart.dart	2	todo:step4
 color-literal	app_detail/overview/app_chart_utils.dart	18	dify-hardcoded:web/app/components/app/overview/app-chart-utils.ts
@@ -93,13 +92,13 @@ color-literal	workflow_editor/prompt_editor/prompt_editor_panel.dart	3	todo:step
 color-literal	workflow_editor/run/ui/before_run_form.dart	1	todo:step4
 color-literal	workflow_editor/run/ui/chat.dart	3	todo:step4
 color-literal	workflow_editor/run/ui/debug_and_preview.dart	4	todo:step4
-color-literal	workflow_editor/run/ui/log_widgets.dart	3	todo:step4
+color-literal	workflow_editor/run/ui/log_widgets.dart	2	todo:step4
 color-literal	workflow_editor/run/ui/markdown.dart	1	third-party:github-markdown-css
 color-literal	workflow_editor/run/ui/run_panels.dart	3	todo:step4
-color-literal	workflow_editor/run/ui/run_widgets.dart	6	todo:step4
+color-literal	workflow_editor/run/ui/run_widgets.dart	4	todo:step4
 color-literal	workflow_editor/run/ui/status.dart	24	todo:step4
 color-literal	workflow_editor/run/ui/tracing_panel.dart	2	todo:step4
-color-literal	workflow_editor/run/ui/workflow_preview.dart	2	todo:step4
+color-literal	workflow_editor/run/ui/workflow_preview.dart	1	todo:step4
 color-literal	workflow_editor/variable_inspect/panel.dart	2	todo:step4
 color-literal	workflow_editor/variable_inspect/value_content.dart	14	todo:step4
 color-literal	workflow_editor/variable_panels/chat_variable_values.dart	3	todo:step4

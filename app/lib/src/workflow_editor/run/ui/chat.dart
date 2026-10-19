@@ -17,7 +17,6 @@ import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../features/features_store.dart' show buildInitialFeatures, featureEnabled;
-import '../../header/header_widgets.dart' show Spinning;
 import '../../store/workflow_store.dart' show DifyJson;
 import '../run_types.dart' show WorkflowRunningStatus;
 import '../../node_panel/bodies/data/human_input/human_input_kit.dart' show HumanInputHost;
@@ -380,7 +379,7 @@ class _WorkflowProcessItemState extends State<WorkflowProcessItem> {
         ? DifyGradients.workflowProcessPausedBg
         : DifyGradients.workflowProcessBg;
     final icon = running
-        ? Spinning(child: RemixIcon('loader-2-line', size: 14, color: DifyColors.textTertiary))
+        ? DifySpinner(size: 14, color: DifyColors.textTertiary)
         : succeeded
         ? DifyIcon('vender/solid/general/check-circle', size: 14, color: DifyColors.textSuccess)
         : failed
@@ -650,7 +649,7 @@ class _ChatAnswerState extends State<ChatAnswer> {
     final responseParts = <Widget>[
       if (hasReasoning) ReasoningPanel(content: reasoning, done: reasoningDone),
       if (responding && contentIsEmpty && !hasReasoning)
-        const SizedBox(width: 24, height: 20, child: Center(child: LoadingAnim())),
+        const SizedBox(width: 24, height: 20, child: Center(child: DifyLoadingAnim())),
       if (!contentIsEmpty)
         DifyMarkdown(
           content: RegExp(r'^\\\\\S').hasMatch(content) && !RegExp(r'^`.*`$').hasMatch(content)

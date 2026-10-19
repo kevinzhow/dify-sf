@@ -189,9 +189,10 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// The run/debug backend; null: the mock runtime over the document (dify-sf has no runtime yet).
   final WorkflowRunService? runService;
 
-  /// The server's workflow runtime (protocol 1.13); null: none (older servers, the demo, tests). With [runService]
-  /// null, single runs (and last runs) of the node types it runs go to the server for the app
-  /// [EditorController.docId]; the mock runtime keeps everything else, the variable inspect panel included.
+  /// The server's workflow runtime (protocols 1.13, 1.14); null: none (older servers, the demo, tests). With
+  /// [runService] null, single runs (and last runs) of the node types it runs go to the server for the app
+  /// [EditorController.docId]; with 1.14 also whole draft runs of graphs it runs, the run history and records, and the
+  /// variable inspect panel (its draft variables). The mock runtime keeps everything else (ServerRunService).
   final ServerWorkflowRuntime? serverRuntime;
 
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
@@ -228,6 +229,9 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   /// The mock with the server's single runs ([DifyWorkflowEditor.serverRuntime]), for that runtime.
   ServerRunService? _serverRuns;
 
+  /// The server's draft variables for the variable inspect panel (1.14).
+  ServerInspectServices? _serverInspect;
+
   WorkflowRunService _runService(BuildContext context, CanvasController canvas) {
     if (widget.runService case final s?) return s;
     final mock = _mockService(context, canvas);
@@ -239,6 +243,10 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       appId: controller.docId,
       fallback: mock,
       nodeTypeOf: (id) => controller.doc.nodes[id]?.type,
+      graphNodeTypes: () => [
+        for (final n in controller.doc.nodes.values)
+          if (!isNoteNode(n)) n.type,
+      ],
     );
   }
 
@@ -260,6 +268,11 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   VariableInspectServices _inspectServices(BuildContext context, CanvasController canvas) {
     final given = widget.variableInspectServices;
     if (!identical(given, VariableInspectServices.none) || widget.runService != null) return given;
+    // 1.14: the server's draft variables (its runs' values) when it runs drafts.
+    if (widget.serverRuntime case final runtime? when runtime.runsDrafts) {
+      if (_serverInspect case final s? when identical(s.api, runtime.api) && s.appId == controller.docId) return s;
+      return _serverInspect = ServerInspectServices(api: runtime.api, appId: controller.docId);
+    }
     return _mockService(context, canvas).inspectServices;
   }
 

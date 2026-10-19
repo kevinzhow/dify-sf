@@ -17,64 +17,6 @@ import 'markdown.dart';
 import 'status.dart';
 import '../../../design/widgets/widgets.dart';
 
-/// LoadingAnim: three dots flashing in turn (`dot-flashing`, 1 s alternate): `text` 4 px grey dots 7 px apart,
-/// `avatar` 2 px blue dots 5 px apart.
-class LoadingAnim extends StatefulWidget {
-  const LoadingAnim({super.key, this.avatar = false});
-  final bool avatar;
-
-  @override
-  State<LoadingAnim> createState() => _LoadingAnimState();
-}
-
-class _LoadingAnimState extends State<LoadingAnim> with SingleTickerProviderStateMixin {
-  // One 2 s cycle covers `1s infinite alternate` with the dots' 0 / 0.5 / 1 s delays.
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  /// The keyframes (`0%` solid, `50%`–`100%` at 30 %) of a dot delayed by [delay] seconds, at cycle time [t].
-  double _alpha(double t, double delay) {
-    var x = (t * 2 - delay) % 2; // seconds into its own alternate cycle
-    if (x > 1) x = 2 - x; // alternate direction
-    return x < 0.5 ? 1 - 0.7 * (x / 0.5) : 0.3;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = widget.avatar ? 2.0 : 4.0, gap = widget.avatar ? 5.0 : 7.0;
-    final color = widget.avatar ? const Color(0xFF155EEF) : const Color(0xFF667085);
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) => SizedBox(
-        width: size + gap * 2,
-        height: size,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            for (final (i, delay) in const [(0, 0.0), (1, 0.5), (2, 1.0)])
-              Positioned(
-                left: gap * i,
-                child: Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: _alpha(_c.value, delay)),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// getProcessedFilesFromResponse: Dify's file JSON (`related_id`, `filename`, `mime_type`, ...) as FileEntity.
 List<DifyJson> getProcessedFilesFromResponse(List<DifyJson> files) => [
   for (final f in files)
@@ -209,7 +151,7 @@ class OutputPanel extends StatelessWidget {
           if (isRunning)
             const Padding(
               padding: EdgeInsets.only(top: 16, left: 26),
-              child: Align(alignment: Alignment.centerLeft, child: LoadingAnim()),
+              child: Align(alignment: Alignment.centerLeft, child: DifyLoadingAnim()),
             ),
           if (!isRunning && (error ?? '').isNotEmpty)
             Padding(
@@ -282,7 +224,7 @@ class ResultText extends StatelessWidget {
           if (isRunning && !has)
             const Padding(
               padding: EdgeInsets.only(top: 16, left: 26),
-              child: Align(alignment: Alignment.centerLeft, child: LoadingAnim()),
+              child: Align(alignment: Alignment.centerLeft, child: DifyLoadingAnim()),
             ),
           if (!isRunning && (error ?? '').isNotEmpty)
             Padding(

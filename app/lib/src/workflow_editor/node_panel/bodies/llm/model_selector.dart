@@ -1063,11 +1063,6 @@ class _CredentialStatus extends StatelessWidget {
   }
 }
 
-/// The old names of [DifyStatusDotStatus] and [DifyStatusDot], kept for workflow_editor/run/ui/status.dart (owned by
-/// the runtime work; switch it there).
-typedef StatusDotKind = DifyStatusDotStatus;
-typedef StatusDot = DifyStatusDot;
-
 /// A model row: `mx-1 h-8 rounded-lg px-3 py-1.5`, the icon, the name (`system-sm-medium text-text-secondary`;
 /// quaternary when incompatible, faded when not selectable, struck through when deprecated), the recommendation
 /// mark, and the check on the selected one. Only active models can be picked.

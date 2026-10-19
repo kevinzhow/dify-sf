@@ -10,13 +10,15 @@ import 'package:dify_sf_app/src/workflow_editor/run/run_graph.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_service.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/server_run_service.dart';
+import 'package:dify_sf_app/src/workflow_editor/variable_inspect/inspect_vars.dart' show VariableInspectServices;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_fonts.dart';
 
 /// Protocol 1.13: with a server runtime, single runs (and last runs) of the node types it runs go to the server; the
-/// mock runtime keeps everything else. Without one, the mock alone (as before).
+/// mock runtime keeps everything else. Without one, the mock alone (as before). Protocol 1.14: whole draft runs of
+/// graphs the server runs, their stop, history and records, and the variable inspect panel's draft variables.
 
 const _graph = StaticRunGraph(
   nodes: [
@@ -62,7 +64,10 @@ FakeServer _server() => FakeServer(
         config: {'language': VString('python3'), 'code': VString('def main():\n    return {}')},
       ),
     ],
-    edges: const [Edge(id: 'e1', source: 'start', target: 'llm'), Edge(id: 'e2', source: 'llm', target: 'code')],
+    edges: const [
+      Edge(id: 'e1', source: 'start', target: 'llm'),
+      Edge(id: 'e2', source: 'llm', target: 'code'),
+    ],
   ),
 );
 
@@ -79,7 +84,10 @@ void main() {
     late ServerRunService service;
     setUp(() {
       api = FakeWorkflowRunApi();
-      mock = MockWorkflowRunService(graph: () => _graph, scenario: const MockRunScenario(stepDelay: Duration.zero));
+      mock = MockWorkflowRunService(
+        graph: () => _graph,
+        scenario: const MockRunScenario(stepDelay: Duration.zero),
+      );
       service = ServerRunService(
         runtime: ServerWorkflowRuntime(api: api, singleNodeRun: const {'llm'}),
         appId: 'app-1',
@@ -107,7 +115,8 @@ void main() {
     });
 
     test('the server\'s refusals are run errors with its message', () async {
-      api.run = (_, _, _) => FakeWorkflowRunApi.refuse('invalid_param', 'Variable key llm.#start.q# not found in user inputs.');
+      api.run = (_, _, _) =>
+          FakeWorkflowRunApi.refuse('invalid_param', 'Variable key llm.#start.q# not found in user inputs.');
       await expectLater(
         service.singleNodeRun('llm', {'inputs': <String, Object?>{}}),
         throwsA(
@@ -119,18 +128,127 @@ void main() {
     });
   });
 
+  group('ServerRunService, protocol 1.14', () {
+    late FakeWorkflowRunApi api;
+    late MockWorkflowRunService mock;
+    var types = <String>['start', 'llm', 'code'];
+    ServerRunService make({Set<String> draftRun = const {'start', 'llm', 'code', 'end'}}) => ServerRunService(
+      runtime: ServerWorkflowRuntime(api: api, singleNodeRun: const {'llm', 'code'}, draftRun: draftRun),
+      appId: 'app-1',
+      fallback: mock,
+      nodeTypeOf: (id) => _graph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => types,
+    );
+    setUp(() {
+      api = FakeWorkflowRunApi();
+      mock = MockWorkflowRunService(
+        graph: () => _graph,
+        scenario: const MockRunScenario(stepDelay: Duration.zero),
+      );
+      types = ['start', 'llm', 'code'];
+    });
+
+    test('a graph the server runs is run there: Dify\'s events, stop, history and records', () async {
+      final service = make();
+      expect(service.draftRunsOnServer, isTrue);
+      final events = await service
+          .runWorkflowDraft(
+            const WorkflowDraftRunRequest(
+              body: {
+                'inputs': {'query': 'hi'},
+                'files': <Object?>[],
+              },
+            ),
+          )
+          .toList();
+      expect(events.first, isA<WorkflowStartedEvent>());
+      expect(events.last, isA<WorkflowFinishedEvent>());
+      expect((events.last as WorkflowFinishedEvent).status, 'succeeded');
+      expect(api.calls.single.op, 'draft-run');
+      expect(api.calls.single.body, {
+        'inputs': {'query': 'hi'},
+        'files': <Object?>[],
+      });
+      final runId = events.first.workflowRunId!;
+      await service.stopWorkflowRun(runId);
+      expect(api.stopped, [runId]);
+      final history = await service.fetchWorkflowRunHistory();
+      expect(history.first['id'], runId);
+      expect((await service.fetchRunDetail(runId))['status'], 'succeeded');
+    });
+
+    test('a graph with a node type the server does not run stays on the stand-in', () async {
+      types = ['start', 'iteration', 'code'];
+      final service = make();
+      expect(service.draftRunsOnServer, isFalse);
+      final events = await service
+          .runWorkflowDraft(const WorkflowDraftRunRequest(body: {'inputs': <String, Object?>{}}))
+          .toList();
+      expect(events.whereType<WorkflowFinishedEvent>(), isNotEmpty);
+      expect(api.calls, isEmpty);
+      // A 1.13 server runs no drafts.
+      types = ['start', 'llm'];
+      expect(make(draftRun: const {}).draftRunsOnServer, isFalse);
+    });
+
+    test('the server\'s refusal of a draft run is a run error', () async {
+      api.draftRunEvents = (_, _, _) =>
+          FakeWorkflowRunApi.refuse('unsupported_node_type', 'Node type tool is not supported');
+      await expectLater(
+        make().runWorkflowDraft(const WorkflowDraftRunRequest(body: {'inputs': <String, Object?>{}})).toList(),
+        throwsA(isA<RunServiceException>().having((e) => e.code, 'code', 'unsupported_node_type')),
+      );
+    });
+
+    test('the variable inspect panel reads and edits the server\'s draft variables', () async {
+      api.variables['v1'] = {
+        'id': 'v1',
+        'type': 'node',
+        'name': 'text',
+        'selector': ['llm', 'text'],
+        'node_id': 'llm',
+        'value_type': 'string',
+        'value': 'hello',
+        'edited': false,
+      };
+      api.variables['s1'] = {
+        'id': 's1',
+        'type': 'sys',
+        'name': 'query',
+        'selector': ['sys', 'query'],
+        'value': 'q',
+      };
+      final VariableInspectServices inspect = ServerInspectServices(api: api, appId: 'app-1');
+      expect((await inspect.fetchAllInspectVars()).map((v) => v['id']), ['v1']);
+      expect((await inspect.fetchNodeInspectVars('llm'))!.single['value'], 'hello');
+      expect((await inspect.fetchSystemVars()).single['name'], 'query');
+      await inspect.editInspectVar('v1', 'changed');
+      expect(api.variables['v1']!['value'], 'changed');
+      expect(api.variables['v1']!['edited'], isTrue);
+      expect((await inspect.resetToLastRunValue('v1'))!['edited'], isFalse);
+      await inspect.deleteNodeInspectVars('llm');
+      expect(api.variables.containsKey('v1'), isFalse);
+      await inspect.deleteAllInspectVars();
+      expect(api.variables, isEmpty);
+    });
+  });
+
   test('the app detail services offer the runtime only when the server announces one', () {
     final server = Uri.parse('http://localhost:8080');
     final auth = _Token();
     expect(httpAppDetailServices(server, auth).containsKey(ServerWorkflowRuntime), isFalse);
     final features = SystemFeatures.fromJson({
       'workflow_runtime': {
-        'protocol_version': '1.13',
+        'protocol_version': '1.14',
         'single_node_run': ['llm'],
+        'draft_run': ['start', 'llm', 'end'],
       },
     });
-    final runtime = httpAppDetailServices(server, auth, features: features)[ServerWorkflowRuntime]! as ServerWorkflowRuntime;
+    final runtime =
+        httpAppDetailServices(server, auth, features: features)[ServerWorkflowRuntime]! as ServerWorkflowRuntime;
     expect(runtime.singleNodeRun, {'llm'});
+    expect(runtime.runsDrafts, isTrue);
+    expect(runtime.draftRun, {'start', 'llm', 'end'});
     expect(runtime.api, isA<HttpWorkflowRunApi>());
   });
 
@@ -142,7 +260,13 @@ void main() {
     final backend = _Backend(server: _server());
     await t.pumpWidget(
       MaterialApp(
-        home: EditorPage(backend: backend, docId: 'app-1', clientId: 'me-abc123', journaled: false, serverRuntime: runtime),
+        home: EditorPage(
+          backend: backend,
+          docId: 'app-1',
+          clientId: 'me-abc123',
+          journaled: false,
+          serverRuntime: runtime,
+        ),
       ),
     );
     await _settle(t);
@@ -157,7 +281,10 @@ void main() {
 
   testWidgets('in the editor: the LLM node runs on the server, the code node on the mock', (t) async {
     final api = FakeWorkflowRunApi();
-    final (backend, scope) = await open(t, runtime: ServerWorkflowRuntime(api: api, singleNodeRun: const {'llm'}));
+    final (backend, scope) = await open(
+      t,
+      runtime: ServerWorkflowRuntime(api: api, singleNodeRun: const {'llm'}),
+    );
     expect(scope.service, isA<ServerRunService>());
     ((scope.service as ServerRunService).fallback as MockWorkflowRunService).scenario = const MockRunScenario(
       stepDelay: Duration.zero,

@@ -4,6 +4,7 @@
 // dify-spec: web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx
 // dify-spec: web/app/components/workflow/run/__tests__/index.spec.tsx
 import 'package:dify_sf_app/src/design/widgets/toast.dart';
+import 'package:dify_sf_app/src/design/widgets/loading.dart' show DifyLoadingAnim;
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/node_config.dart' show ErrorHandleTip, ErrorHandleType;
 import 'package:dify_sf_app/src/workflow_editor/run/ui/log_widgets.dart';
@@ -196,7 +197,7 @@ void main() {
   group('ResultText', () {
     testWidgets('renders the loading animation while waiting for a text result', (t) async {
       await renderRun(t, const ResultText(isRunning: true));
-      expect(find.byType(LoadingAnim), findsOneWidget);
+      expect(find.byType(DifyLoadingAnim), findsOneWidget);
     });
 
     testWidgets('renders the error state when the run fails', (t) async {
@@ -268,7 +269,7 @@ void main() {
 
     testWidgets('renders the loading animation while the workflow is running', (t) async {
       await renderRun(t, const OutputPanel(isRunning: true));
-      expect(find.byType(LoadingAnim), findsOneWidget);
+      expect(find.byType(DifyLoadingAnim), findsOneWidget);
     });
 
     testWidgets('renders the failed status container when there is an error', (t) async {

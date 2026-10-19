@@ -11,7 +11,6 @@ import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../code_editor/code_editor.dart';
-import '../../header/header_widgets.dart' show Spinning;
 import '../../store/workflow_store.dart' show DifyJson;
 import 'run_logs.dart';
 import 'tracing_node.dart';
@@ -41,7 +40,7 @@ class _ContainerLogButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: DifyColors.componentsButtonTertiaryBgHover,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
-        boxShadow: focused ? [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)] : null,
+        boxShadow: difyFocusRing(focused),
       ),
       child: Row(
         spacing: 4,
@@ -310,7 +309,7 @@ class AgentLogTrigger extends StatelessWidget {
         decoration: BoxDecoration(
           color: DifyColors.componentsButtonTertiaryBg,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: focused ? [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)] : null,
+          boxShadow: difyFocusRing(focused),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -427,7 +426,7 @@ class _ContainerResultPanelState extends State<ContainerResultPanel> {
       return RemixIcon('error-warning-line', size: 16, color: DifyColors.textDestructive);
     }
     if (run.any((i) => i['status'] == 'running')) {
-      return const Spinning(child: RemixIcon('loader-2-line', size: 14, color: Color(0xFF155EEF)));
+      return DifySpinner(size: 14, color: DifyColors.primary600);
     }
     final map = widget.durationMap;
     return Row(
@@ -573,7 +572,7 @@ class NodeStatusIcon extends StatelessWidget {
     'succeeded' => RemixIcon('checkbox-circle-fill', size: 16, color: DifyColors.textSuccess),
     'failed' => RemixIcon('error-warning-line', size: 16, color: DifyColors.textWarning),
     'stopped' || 'exception' => RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
-    'running' => Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+    'running' => DifySpinner(size: 16, color: DifyColors.textAccent),
     _ => const SizedBox.shrink(),
   };
 }

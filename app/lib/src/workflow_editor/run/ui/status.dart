@@ -9,7 +9,6 @@ import '../../../design/css_metrics.dart';
 import '../../../design/dify_tokens.g.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../header/format.dart' as fmt;
-import '../../node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
 import '../../../design/widgets/widgets.dart';
 
 String _tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
@@ -106,7 +105,7 @@ class _StatusContainerState extends State<StatusContainer> {
         child: Stack(
           children: [
             body,
-            if (copyable && _hover) Positioned(top: 6, right: 6, child: CopyFeedback(content: widget.copyContent!)),
+            if (copyable && _hover) Positioned(top: 6, right: 6, child: DifyCopyFeedback(content: widget.copyContent!)),
           ],
         ),
       ),
@@ -181,60 +180,6 @@ class _StatusBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_StatusBackgroundPainter old) => old.line != line || old.glow != glow || old.dark != dark;
-}
-
-/// `animate-pulse` (opacity 1 → 0.5 → 1, 2 s) around [child].
-class Pulse extends StatefulWidget {
-  const Pulse({super.key, required this.child});
-  final Widget child;
-
-  @override
-  State<Pulse> createState() => _PulseState();
-}
-
-class _PulseState extends State<Pulse> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
-  late final _opacity = TweenSequence([
-    TweenSequenceItem(
-      tween: Tween(begin: 1.0, end: 0.5).chain(CurveTween(curve: const Cubic(0.4, 0, 0.6, 1))),
-      weight: 1,
-    ),
-    TweenSequenceItem(
-      tween: Tween(begin: 0.5, end: 1.0).chain(CurveTween(curve: const Cubic(0.4, 0, 0.6, 1))),
-      weight: 1,
-    ),
-  ]).animate(_c);
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => FadeTransition(opacity: _opacity, child: widget.child);
-}
-
-/// A skeleton bar: `h-2 rounded-xs bg-text-quaternary` [width] wide, pulsing unless [still].
-class SkeletonBar extends StatelessWidget {
-  const SkeletonBar({super.key, required this.width, this.still = false, this.margin = EdgeInsets.zero});
-  final double width;
-  final bool still;
-  final EdgeInsets margin;
-
-  @override
-  Widget build(BuildContext context) {
-    final bar = Container(
-      width: width,
-      height: 8,
-      margin: margin,
-      decoration: BoxDecoration(
-        color: DifyColors.textQuaternary,
-        borderRadius: BorderRadius.circular(DifyRadius.xs),
-      ),
-    );
-    return still ? bar : Pulse(child: bar);
-  }
 }
 
 /// The paused run's details (`useWorkflowPausedDetails`): the paused nodes' `pause_type`s.
@@ -342,14 +287,14 @@ class _StatusPanelState extends State<StatusPanel> {
   Widget build(BuildContext context) {
     final s = widget.status;
     final running = s == 'running' || s == 'paused';
-    final (Color statusColor, StatusDotKind? dot, String? label) = switch (s) {
+    final (Color statusColor, DifyStatusDotStatus? dot, String? label) = switch (s) {
       'running' => (DifyColors.utilColorsBlueLightBlueLight600, null, widget.isListening ? 'Listening' : 'Running'),
-      'succeeded' => (DifyColors.utilColorsGreenGreen600, StatusDotKind.success, 'SUCCESS'),
-      'partial-succeeded' => (DifyColors.utilColorsGreenGreen600, StatusDotKind.success, 'PARTIAL SUCCESS'),
-      'exception' => (DifyColors.textSecondary, StatusDotKind.warning, 'EXCEPTION'),
-      'failed' => (DifyColors.utilColorsRedRed600, StatusDotKind.error, 'FAIL'),
-      'stopped' => (DifyColors.utilColorsWarningWarning600, StatusDotKind.warning, 'STOP'),
-      'paused' => (DifyColors.utilColorsWarningWarning600, StatusDotKind.warning, 'PENDING'),
+      'succeeded' => (DifyColors.utilColorsGreenGreen600, DifyStatusDotStatus.success, 'SUCCESS'),
+      'partial-succeeded' => (DifyColors.utilColorsGreenGreen600, DifyStatusDotStatus.success, 'PARTIAL SUCCESS'),
+      'exception' => (DifyColors.textSecondary, DifyStatusDotStatus.warning, 'EXCEPTION'),
+      'failed' => (DifyColors.utilColorsRedRed600, DifyStatusDotStatus.error, 'FAIL'),
+      'stopped' => (DifyColors.utilColorsWarningWarning600, DifyStatusDotStatus.warning, 'STOP'),
+      'paused' => (DifyColors.utilColorsWarningWarning600, DifyStatusDotStatus.warning, 'PENDING'),
       _ => (DifyColors.textSecondary, null, null),
     };
     final valueStyle = difyStyle(DifyType.systemSmMedium, DifyColors.textSecondary);
@@ -378,9 +323,9 @@ class _StatusPanelState extends State<StatusPanel> {
                           spacing: 4,
                           children: [
                             if (s == 'running')
-                              const StatusDot(status: StatusDotKind.normal)
+                              const DifyStatusDot(status: DifyStatusDotStatus.normal)
                             else if (dot != null)
-                              StatusDot(status: dot),
+                              DifyStatusDot(status: dot),
                             Flexible(
                               child: DifyText(
                                 label,
@@ -408,7 +353,7 @@ class _StatusPanelState extends State<StatusPanel> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: running
-                              ? const SkeletonBar(width: 64)
+                              ? const DifySkeletonRectangle(width: 64, opacity: 1, margin: EdgeInsets.zero, pulse: true)
                               : Text(
                                   (widget.time ?? 0) != 0 ? '${widget.time!.toStringAsFixed(3)}s' : '-',
                                   style: valueStyle,
@@ -429,7 +374,7 @@ class _StatusPanelState extends State<StatusPanel> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: running
-                            ? const SkeletonBar(width: 80)
+                            ? const DifySkeletonRectangle(width: 80, opacity: 1, margin: EdgeInsets.zero, pulse: true)
                             : Text('${(widget.tokens ?? 0) == 0 ? 0 : widget.tokens} Tokens', style: valueStyle),
                       ),
                     ),
@@ -487,7 +432,7 @@ class _StatusPanelState extends State<StatusPanel> {
                     if (reasons.isNotEmpty)
                       for (final r in reasons) DifyText(r, DifyType.systemXsMedium, color: DifyColors.textSecondary)
                     else
-                      const SkeletonBar(width: 80),
+                      const DifySkeletonRectangle(width: 80, opacity: 1, margin: EdgeInsets.zero, pulse: true),
                   ],
                 ),
                 if (urls.isNotEmpty)
@@ -566,7 +511,7 @@ class RunMetaData extends StatelessWidget {
     Widget text(String s) => Text(s, style: valueStyle, strutStyle: Css.lineStrut(valueStyle));
     Widget bar(double w, {bool pulse = false}) => Align(
       alignment: Alignment.centerLeft,
-      child: SkeletonBar(width: w, still: !pulse, margin: const EdgeInsets.symmetric(vertical: 4)),
+      child: DifySkeletonRectangle(width: w, opacity: 1, pulse: pulse),
     );
     final statusText = switch (status) {
       'succeeded' => 'SUCCESS',

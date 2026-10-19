@@ -40,9 +40,6 @@ class HeaderPressable extends StatelessWidget {
   );
 }
 
-/// The old name of [DifySpinnerIcon], kept for workflow_editor/run/ (owned by the runtime work; switch it there).
-typedef Spinning = DifySpinnerIcon;
-
 /// The workflow chrome's vertical divider (`Divider type="vertical" className="h-3.5"`, `mx-2` from the Divider's
 /// own `mx-2`, overridden to `mx-auto` in the header row, i.e. no margin there).
 class HeaderDivider extends StatelessWidget {

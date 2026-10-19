@@ -683,7 +683,7 @@ features:
   title: 'Header: run history popover'
   dify: [web/app/components/workflow/header/view-history.tsx]
   status: ported
-  deviation: Lists the runs of the mock runtime in this session (no run storage on the server).
+  deviation: Lists the server's draft runs (protocol 1.14) and the mock runtime's runs of this session (graphs the server does not run yet).
   evidence: [visual:run-history]
   ours: [app/lib/src/workflow_editor/header/view_history.dart]
 - id: header.variable-buttons
@@ -754,7 +754,7 @@ features:
   title: 'Node panel: SETTINGS / LAST RUN tabs, Last Run result'
   dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/last-run]
   status: ported
-  deviation: Last runs come from the mock runtime (no run storage on the server).
+  deviation: Last runs come from the server for the node types it runs (single runs and whole runs, protocol 1.14), else from the mock runtime.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel/last-run', visual:run-last-run, app/test/dify_spec/workflow/node_panel/workflow_panel_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/last_run.dart, app/lib/src/workflow_editor/node_panel/workflow_node_panel.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart, app/lib/src/workflow_editor/run/forms/node_panel_run_state.dart]
 - id: node-panel.single-run-form
@@ -763,7 +763,7 @@ features:
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: partial
   reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
-  deviation: LLM single runs go to the server runtime when it offers one (protocol 1.13); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
+  deviation: Single runs of the node types the server runs go to it (protocol 1.13 LLM, 1.14 every ported type, with missing values read from the draft variables); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
 - id: node-panel.retry
@@ -1376,7 +1376,7 @@ features:
   title: 'Variable inspect: trigger chip, resizable bottom panel, groups, empty / listening states'
   dify: [web/app/components/workflow/variable-inspect]
   status: ported
-  deviation: Values come from the mock runtime's runs (no draft variable service on the server).
+  deviation: Values are the server's draft variables (protocol 1.14) when it runs drafts, else the mock runtime's runs.
   evidence: ['spec:web/app/components/workflow/variable-inspect', visual:inspect, visual:inspect-run, app/test/variable_inspect_test.dart]
   ours: [app/lib/src/workflow_editor/variable_inspect/panel.dart, app/lib/src/workflow_editor/variable_inspect/trigger.dart]
 - id: variable-inspect.values
@@ -1393,7 +1393,8 @@ features:
   title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
   dify: [api/core/workflow, web/service/workflow.ts]
   status: partial
-  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocol 1.13): the LLM node''s single run and last run go to the server, which calls models through Dify''s plugin daemon (verified against Dify with a stub model). Full draft runs, the other node types, tools, files and published runs are later runtime phases; until then they are served by the deterministic MockWorkflowRunService.'
+  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13, 1.14): whole draft runs (Dify''s SSE events, stop, run history and records) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor and question classifier run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 13/13 workflow samples equal). Not yet: iteration and loop (P3), human input (P4), files (P5), chatflow debug runs, tools, knowledge and published runs (P6); graphs with those, and chat, are served by the deterministic MockWorkflowRunService.'
+  deviation: A graph runs on the server only when the server runs every node type in it (system-features workflow_runtime.draft_run); otherwise the whole run stays on the mock runtime.
   evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
   ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
 - id: run.test-run-panel
@@ -1401,7 +1402,7 @@ features:
   title: 'Test Run panel: INPUT / RESULT / DETAIL / TRACING tabs, input form, Start Run'
   dify: [web/app/components/workflow/panel/workflow-preview.tsx, web/app/components/workflow/panel/inputs-panel.tsx]
   status: ported
-  deviation: Driven by the mock runtime.
+  deviation: Driven by the server's draft runs (protocol 1.14) for graphs it runs, else by the mock runtime.
   evidence: ['spec:web/app/components/workflow/panel/__tests__/workflow-preview.spec.tsx', 'spec:web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx', visual:run-input, visual:run-result, visual:run-detail, visual:run-tracing]
   ours: [app/lib/src/workflow_editor/run/ui/run_panel.dart, app/lib/src/workflow_editor/run/ui/run_panels.dart]
 - id: run.run-hooks
@@ -1451,7 +1452,7 @@ features:
   title: 'Run history: view a past run (record panels)'
   dify: [web/app/components/workflow/panel/record.tsx, web/app/components/workflow/panel/chat-record]
   status: ported
-  deviation: A past run's graph is not swapped into the shared canvas (that would be document ops); the record shows the run detail. Runs only exist in the session (mock runtime).
+  deviation: A past run's graph is not swapped into the shared canvas (that would be document ops); the record shows the run detail. Server runs (protocol 1.14) are stored; mock runs only exist in the session.
   evidence: ['spec:web/app/components/workflow/panel/chat-record', 'spec:web/app/components/workflow/panel/__tests__/record.spec.tsx', visual:run-history]
   ours: [app/lib/src/workflow_editor/run/ui/run_panels.dart]
 - id: run.single-run
@@ -1459,7 +1460,7 @@ features:
   title: 'Single node run (Run this step) and its result'
   dify: [web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: ported
-  deviation: Served by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint.
+  deviation: Served by the server runtime for the node types it runs (protocol 1.14), else by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint.
   evidence: [visual:run-single, visual:run-last-run]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart]
 - id: run.trigger-debug

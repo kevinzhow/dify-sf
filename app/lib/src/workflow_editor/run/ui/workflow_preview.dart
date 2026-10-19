@@ -11,7 +11,6 @@ import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../header/format.dart' as fmt;
-import '../../header/header_widgets.dart' show Spinning;
 import '../../node_panel/resize_handle.dart';
 import '../../store/panel_width.dart' show getPreviewPanelMaxWidth;
 import '../../store/workflow_store.dart';
@@ -60,92 +59,68 @@ class RunPanelContext {
   final HumanInputFormSubmit? onHumanInputFormSubmit;
 }
 
-/// The left-edge tab of the run panels: `mr-6 border-b-2 py-3`, active `border-[rgb(21,94,239)]`.
-class RunPanelTab extends StatelessWidget {
-  const RunPanelTab({
-    super.key,
-    required this.label,
-    required this.active,
-    required this.onTap,
-    this.disabled = false,
-    this.uppercaseStyle = false,
-  });
-
-  final String label;
-  final bool active;
-  final bool disabled;
-  final VoidCallback onTap;
-
-  /// run/index.tsx's tabs (`system-sm-semibold-uppercase`, active `text-text-primary` on blue-brand-600) instead of
-  /// the preview's (`text-[13px] leading-4.5 font-semibold`, active `text-text-secondary`).
-  final bool uppercaseStyle;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = uppercaseStyle
-        ? DifyType.systemSmSemiboldUppercase.style
-        : const TextStyle(fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w600);
-    final color = active
-        ? (uppercaseStyle ? DifyColors.textPrimary : DifyColors.textSecondary)
-        : DifyColors.textTertiary;
-    return Semantics(
-      selected: active,
-      child: DifyPressable(
-        semanticLabel: label,
-        disabled: disabled,
-        onPressed: onTap,
-        builder: (context, hovered, focused) => Opacity(
-          opacity: disabled ? 0.3 : 1,
-          child: Container(
-            margin: const EdgeInsets.only(right: 24),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  width: 2,
-                  color: active
-                      ? (uppercaseStyle ? DifyColors.utilColorsBlueBrandBlueBrand600 : const Color(0xFF155EEF))
-                      : const Color(0x00000000),
-                ),
-              ),
-            ),
-            child: Text(
-              uppercaseStyle ? label.toUpperCase() : label,
-              style: style.copyWith(color: color),
-              strutStyle: Css.lineStrut(style),
+/// A run panel's tab as a [DifyTab] with the run panels' className: `mr-6 border-b-2 py-3`, active
+/// `border-[rgb(21,94,239)]`, the preview's `text-[13px] leading-4.5 font-semibold` (active `text-text-secondary`) or,
+/// with [uppercaseStyle], run/index.tsx's `system-sm-semibold-uppercase` (active `text-text-primary` on
+/// blue-brand-600). Disabled tabs are `opacity-30`.
+DifyTab runPanelTab({
+  required String label,
+  required bool active,
+  required VoidCallback onTap,
+  bool disabled = false,
+  bool uppercaseStyle = false,
+}) {
+  final style = uppercaseStyle
+      ? DifyType.systemSmSemiboldUppercase.style
+      : const TextStyle(fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w600);
+  final color = active ? (uppercaseStyle ? DifyColors.textPrimary : DifyColors.textSecondary) : DifyColors.textTertiary;
+  return DifyTab(
+    active: active,
+    disabled: disabled,
+    semanticLabel: label,
+    onPressed: onTap,
+    builder: (context, hovered, focused) => Opacity(
+      opacity: disabled ? 0.3 : 1,
+      child: Container(
+        margin: const EdgeInsets.only(right: 24),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              width: 2,
+              color: active
+                  ? (uppercaseStyle ? DifyColors.utilColorsBlueBrandBlueBrand600 : DifyColors.primary600)
+                  : const Color(0x00000000),
             ),
           ),
+          boxShadow: difyFocusRing(focused),
+        ),
+        child: Text(
+          uppercaseStyle ? label.toUpperCase() : label,
+          style: style.copyWith(color: color),
+          strutStyle: Css.lineStrut(style),
         ),
       ),
-    );
-  }
-}
-
-/// The tabs' row; tabs past the panel's edge are clipped (the browser lets them overflow).
-class RunTabBar extends StatelessWidget {
-  const RunTabBar({super.key, required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    physics: const NeverScrollableScrollPhysics(),
-    child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    ),
   );
 }
 
-/// Base Loading (`flex h-full items-center justify-center`): the spinner.
+/// The run panels' [DifyTabsList] (the tabs carry their own `mr-6`); tabs past the panel's edge are clipped (the
+/// browser lets them overflow).
+Widget runPanelTabs(List<Widget> tabs) => SingleChildScrollView(
+  scrollDirection: Axis.horizontal,
+  physics: const NeverScrollableScrollPhysics(),
+  child: DifyTabsList(gap: 0, children: tabs),
+);
+
+/// Base Loading (`<Loading />`, [DifyLoading]) on the panel's background ([color]).
 class RunLoading extends StatelessWidget {
   const RunLoading({super.key, this.color});
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: color ?? DifyColors.componentsPanelBg,
-    child: Center(
-      child: Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      ColoredBox(color: color ?? DifyColors.componentsPanelBg, child: const DifyLoading());
 }
 
 /// InputsPanel: one FormItem per Start variable (plus `__image` files when image upload is on), Start Run.
@@ -343,12 +318,12 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
         bottom: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
       ),
     ),
-    child: RunTabBar(
-      children: [
+    child: runPanelTabs(
+      [
         if (store.showInputsPanel.value)
-          RunPanelTab(label: _tr('input'), active: _tab == _Tab.input, onTap: () => _switch(_Tab.input)),
+          runPanelTab(label: _tr('input'), active: _tab == _Tab.input, onTap: () => _switch(_Tab.input)),
         for (final (tab, key) in const [(_Tab.result, 'result'), (_Tab.detail, 'detail'), (_Tab.tracing, 'tracing')])
-          RunPanelTab(
+          runPanelTab(
             label: _tr(key),
             active: _tab == tab,
             disabled: data == null,

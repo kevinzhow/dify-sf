@@ -1,5 +1,5 @@
 // dify-spec: web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/__tests__/index.spec.tsx
-import 'package:dify_sf_app/src/workflow_editor/header/header_widgets.dart' show Spinning;
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifySpinner;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/last_run.dart' as no_data;
 import 'package:dify_sf_app/src/workflow_editor/run/run_types.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/node_run_ui.dart';
@@ -45,7 +45,7 @@ void main() {
 
     testWidgets('should show a loader while fetching the last run before any single run starts', (t) async {
       await renderRun(t, view(isFetching: true), size: _size);
-      expect(find.byType(Spinning), findsOneWidget);
+      expect(find.byType(DifySpinner), findsOneWidget);
       expect(find.byType(ResultPanel), findsNothing);
     });
 

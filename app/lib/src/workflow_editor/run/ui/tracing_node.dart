@@ -11,7 +11,6 @@ import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../code_editor/code_editor.dart';
-import '../../header/header_widgets.dart' show Spinning;
 import '../../node_panel/workflow_node_panel.dart' show hasRetryNode;
 import '../../panel_fields/node_config.dart' show ErrorHandleTip, ErrorHandleType;
 import '../../store/workflow_store.dart' show DifyJson;
@@ -194,7 +193,7 @@ class _RunNodePanelState extends State<RunNodePanel> {
                     ).copyWith(fontSize: 12, fontWeight: FontWeight.w400),
                   ),
                   const SizedBox(width: 8),
-                  Spinning(child: RemixIcon('loader-2-line', size: 14, color: DifyColors.textAccent)),
+                  DifySpinner(size: 14, color: DifyColors.textAccent),
                 ],
                 _ => const <Widget>[],
               },
