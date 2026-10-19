@@ -442,7 +442,8 @@ class DifyTable extends StatelessWidget {
               ],
             )
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_header(), ...rows]);
-      if (decoration case final d?) body = DecoratedBox(decoration: d, child: body);
+      // A Container insets the body by the border (CSS: the border is outside the rows).
+      if (decoration case final d?) body = Container(decoration: d, child: body);
       final table = DifyAutoTableScope(
         fixed: [for (final c in columns) c.width],
         fixedLayout: layout == DifyTableLayout.fixed,
