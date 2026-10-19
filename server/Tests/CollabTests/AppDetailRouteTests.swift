@@ -485,4 +485,127 @@ struct AppDetailRouteTests {
             #expect(try await api.get("/v1/apps/\(a)", token: owner).j["site"]?["access_token"] == app["site"]?["access_token"])
         }
     }
+
+    /// A message of app `doc` as a future runtime writes it (nothing writes `app_messages` yet).
+    private func seedMessage(_ store: PostgresStore, _ doc: String) async throws -> (message: UUID, conversation: UUID) {
+        let m = UUID(), c = UUID()
+        _ = try await store.client.query("INSERT INTO app_messages (id, doc_id, conversation_id) VALUES (\(m), \(doc), \(c))", logger: store.logger)
+        return (m, c)
+    }
+
+    /// The admin feedback rows of message `m`: (rating, content, from_account_id, conversation_id).
+    private func adminFeedbacks(_ store: PostgresStore, _ m: UUID) async throws -> [(String, String?, String?, UUID)] {
+        var out: [(String, String?, String?, UUID)] = []
+        for try await r in try await store.client.query("""
+            SELECT rating, content, from_account_id, conversation_id FROM app_message_feedbacks WHERE message_id = \(m) AND from_source = 'admin'
+            """, logger: store.logger).decode((String, String?, String?, UUID).self) { out.append(r) }
+        return out
+    }
+
+    @Test func messageFeedbackIsDifysAdminLikeAndDislike() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let ownerId = try await api.get("/v1/account", token: owner).str("id")
+            let (normalId, normal) = try await api.member("normal@example.com", role: "normal", inviter: owner)
+            let chat = try await create(api, owner, name: "Chat", mode: "advanced-chat")
+            let other = try await create(api, owner, name: "Other")
+            let (m, conversation) = try await seedMessage(store, chat)
+            let (otherMessage, _) = try await seedMessage(store, other)
+            let path = "/v1/apps/\(chat)/feedbacks"
+            let success: JSON = .object(["result": "success"])
+
+            // Like (by any member: Dify has no edit check here), then dislike with a comment, which updates the one row.
+            let like = try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"like"}"#, token: normal)
+            #expect(like.status == 200 && like.j == success, "\(like.text)")
+            var rows = try await adminFeedbacks(store, m)
+            #expect(rows.count == 1 && rows[0].0 == "like" && rows[0].1 == nil && rows[0].2 == normalId && rows[0].3 == conversation)
+            let dislike = try await api.post(path, #"{"message_id":"\#(m.uuidString.lowercased())","rating":"dislike","content":"wrong answer"}"#,
+                                             token: owner)
+            #expect(dislike.status == 200 && dislike.j == success)
+            rows = try await adminFeedbacks(store, m)
+            #expect(rows.count == 1 && rows[0].0 == "dislike" && rows[0].1 == "wrong answer" && rows[0].2 == normalId,
+                    "an update keeps the first author, as Dify")
+            // An update replaces the content (absent = null).
+            #expect(try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"like"}"#, token: owner).status == 200)
+            rows = try await adminFeedbacks(store, m)
+            #expect(rows.count == 1 && rows[0].0 == "like" && rows[0].1 == nil)
+
+            // Clearing removes it; clearing again is Dify's ValueError.
+            let clear = try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":null}"#, token: owner)
+            #expect(clear.status == 200 && clear.j == success)
+            #expect(try await adminFeedbacks(store, m).isEmpty)
+            let again = try await api.post(path, #"{"message_id":"\#(m.uuidString)"}"#, token: owner)
+            #expect(again.status == 400 && again.errorCode == "bad_request")
+            #expect(again.j["error"]?["message"] == "rating cannot be None when feedback not exists")
+            // A new one after the clear (created by the caller).
+            #expect(try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"dislike","content":"x"}"#, token: owner).status == 200)
+            rows = try await adminFeedbacks(store, m)
+            #expect(rows.count == 1 && rows[0].2 == ownerId)
+
+            // Unknown message, a message of another app: Dify's 404. A bad id, a bad rating: 400.
+            for id in [UUID().uuidString, otherMessage.uuidString] {
+                let r = try await api.post(path, #"{"message_id":"\#(id)","rating":"like"}"#, token: owner)
+                #expect(r.status == 404 && r.errorCode == "not_found" && r.j["error"]?["message"] == "Message Not Exists.")
+            }
+            #expect(try await adminFeedbacks(store, otherMessage).isEmpty)
+            let badId = try await api.post(path, #"{"message_id":"not-a-uuid","rating":"like"}"#, token: owner)
+            #expect(badId.status == 400 && badId.j["error"]?["message"] == "not-a-uuid is not a valid uuid.")
+            #expect(try await api.post(path, #"{"rating":"like"}"#, token: owner).status == 400)
+            #expect(try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"love"}"#, token: owner).status == 400)
+            #expect(try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"like","content":3}"#, token: owner).status == 400)
+            // 32 hex digits are a uuid too (Python's uuid.UUID).
+            let compact = m.uuidString.replacingOccurrences(of: "-", with: "")
+            #expect(try await api.post(path, #"{"message_id":"\#(compact)","rating":"like"}"#, token: owner).status == 200)
+
+            // Signed out, unknown and deleted apps.
+            #expect(try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"like"}"#).status == 401)
+            #expect(try await api.post("/v1/apps/no-such-app/feedbacks", #"{"message_id":"\#(m.uuidString)","rating":"like"}"#,
+                                       token: owner).errorCode == "not_found")
+            #expect(try await api.delete("/v1/apps/\(chat)", token: owner).status == 204)
+            let deleted = try await api.post(path, #"{"message_id":"\#(m.uuidString)","rating":"like"}"#, token: owner)
+            #expect(deleted.status == 404 && deleted.errorCode == "app_deleted")
+            // Deleting a message takes its feedback with it.
+            _ = try await store.client.query("DELETE FROM app_messages WHERE id = \(m)", logger: store.logger)
+            #expect(try await adminFeedbacks(store, m).isEmpty)
+        }
+    }
+
+    @Test func appChangesAreAnnouncedOnTheDocumentStream() async throws {
+        try await withServer { api, _, registry in
+            let owner = try await api.setupOwner()
+            let editor = try await api.member("editor@example.com", role: "editor", inviter: owner).token
+            let normal = try await api.member("normal@example.com", role: "normal", inviter: owner).token
+            let id = try await create(api, owner, name: "Live")
+            // Nobody streams the document: a change does not load it.
+            #expect(try await api.put("/v1/apps/\(id)", #"{"name":"Live 0"}"#, token: owner).status == 200)
+            #expect(await registry.existing(id) == nil)
+
+            let seqr = await registry.sequencer(id)
+            let sub = try await seqr.subscribe(lastEventId: 0, maxReplay: 100)
+            let head = sub.head
+            // Changes: edit info, site settings, site code reset, both switches (only real changes), publish.
+            #expect(try await api.put("/v1/apps/\(id)", #"{"name":"Live 1","description":"d"}"#, token: editor).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/site", #"{"title":"Web"}"#, token: editor).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/site/access-token-reset", token: owner).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/site-enable", #"{"enable_site":true}"#, token: owner).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/site-enable", #"{"enable_site":false}"#, token: owner).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/api-enable", #"{"enable_api":false}"#, token: owner).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/api-enable", #"{"enable_api":false}"#, token: owner).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/workflows/publish", token: owner).status == 200)
+            // Refused or failed requests and reads announce nothing.
+            #expect(try await api.put("/v1/apps/\(id)", #"{"name":"nope"}"#, token: normal).status == 403)
+            #expect(try await api.put("/v1/apps/\(id)", #"{"name":""}"#, token: owner).status == 400)
+            #expect(try await api.post("/v1/apps/\(id)/site", #"{"default_language":"xx"}"#, token: owner).status == 400)
+            #expect(try await api.post("/v1/apps/\(id)/api-enable", #"{"enable_api":true}"#, token: editor).status == 403)
+            #expect(try await api.get("/v1/apps/\(id)", token: owner).status == 200)
+            #expect(try await api.post("/v1/apps/\(id)/star", token: owner).status == 200)
+
+            await seqr.unsubscribe(sub.id)
+            var frames: [String] = []
+            for await f in sub.live { frames.append(f) }
+            let app = "event: app\ndata: {\"action\":\"updated\"}\n\n"
+            #expect(frames == Array(repeating: app, count: 6), "\(frames)")
+            #expect(try await seqr.head() == head, "the resume point did not move")
+        }
+    }
 }

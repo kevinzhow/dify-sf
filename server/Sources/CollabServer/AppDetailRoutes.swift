@@ -63,6 +63,7 @@ extension Routes {
         apps.get(":app", "chat-conversations") { req in await handle(req) { try await chatConversations(req) } }
         apps.get(":app", "chat-conversations", ":conversation") { req in await handle(req) { try await chatConversation(req) } }
         apps.get(":app", "chat-messages") { req in await handle(req) { try await chatMessages(req) } }
+        apps.post(":app", "feedbacks") { req in await handle(req) { try await messageFeedback(req) } }
     }
 
     // MARK: - Plumbing
@@ -195,6 +196,7 @@ extension Routes {
         do { ok = try await store.updateSite(id, c, by: p.id) } catch { throw ServerError.unavailable("\(error)") }
         let a = try await liveApp(id, viewer: p.id)
         if !ok { throw ServerError.missing("Site not found") }
+        await announceAppChanged(id)
         return try json(siteJSON(a, req: req))
     }
 
@@ -206,6 +208,7 @@ extension Routes {
         do { ok = try await store.resetSiteCode(id, by: p.id) } catch { throw ServerError.unavailable("\(error)") }
         let a = try await liveApp(id, viewer: p.id)
         if !ok { throw ServerError.missing("Site not found") }
+        await announceAppChanged(id)
         return try json(siteJSON(a, req: req))
     }
 
@@ -216,9 +219,13 @@ extension Routes {
         let key = api ? "enable_api" : "enable_site"
         let b = try await jsonBody(req)
         guard let enabled = b[key]?.bool else { throw ServerError.badRequest("\(key) is required (a boolean)") }
-        let ok: Bool
-        do { ok = try await store.setAppSwitch(id, api: api, enabled: enabled, by: p.id) } catch { throw ServerError.unavailable("\(error)") }
-        if !ok { _ = try await liveApp(id, viewer: p.id) }
+        let outcome: SwitchOutcome
+        do { outcome = try await store.setAppSwitch(id, api: api, enabled: enabled, by: p.id) } catch { throw ServerError.unavailable("\(error)") }
+        switch outcome {
+        case .missing: _ = try await liveApp(id, viewer: p.id)
+        case .changed: await announceAppChanged(id)
+        case .unchanged: break
+        }
         return try await appDetail(id, p, req)
     }
 
@@ -597,6 +604,8 @@ extension Routes {
                                                markedComment: comment ?? "", by: p.id)
         } catch { throw ServerError.unavailable("\(error)") }
         guard let v else { _ = try await liveApp(a.id, viewer: p.id); throw ServerError.missing("App not found") }
+        // The app's `updated_by` / `updated_at` changed.
+        await announceAppChanged(a.id)
         return try json(JSON.object(["result": "success", "created_at": .int(Self.seconds(v.createdAt))]))
     }
 
@@ -847,6 +856,37 @@ extension Routes {
         _ = try await appOfMode(req, p, Self.chatModes)
         guard let c = queryAll(req)["conversation_id"]?.last, !c.isEmpty else { throw ServerError.badRequest("conversation_id is required") }
         throw ServerError.missing("Conversation Not Exists.")
+    }
+
+    /// Python's `uuid.UUID(s)` for the usual spellings (hyphenated or 32 hex digits, any case); nil otherwise.
+    static func parseUUID(_ s: String) -> UUID? {
+        if let u = UUID(uuidString: s) { return u }
+        guard s.count == 32, s.allSatisfy(\.isHexDigit) else { return nil }
+        let h = Array(s)
+        return UUID(uuidString: String(h[0..<8]) + "-" + String(h[8..<12]) + "-" + String(h[12..<16]) + "-" + String(h[16..<20]) + "-"
+                    + String(h[20...]))
+    }
+
+    /// `POST /v1/apps/{app}/feedbacks` `{message_id, rating: "like"|"dislike"|null, content?}` (any member, every mode; Dify's
+    /// `MessageFeedbackApi`): the member's (admin) like or dislike of a message in the logs -> `{result: "success"}`.
+    private func messageFeedback(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req)
+        let a = try await liveApp(try appId(req), viewer: p.id)
+        let b = try await jsonBody(req)
+        guard let raw = b["message_id"]?.string else { throw ServerError.badRequest("message_id is required") }
+        guard let message = Self.parseUUID(raw) else { throw ServerError.badRequest("\(raw) is not a valid uuid.") }
+        let rating = try optionalString(b, "rating")
+        if let rating, rating != "like" && rating != "dislike" { throw ServerError.badRequest("rating must be one of like, dislike or null") }
+        let content = try optionalString(b, "content")
+        let outcome: AdminFeedbackOutcome
+        do { outcome = try await store.setAdminFeedback(a.id, message: message, rating: rating, content: content, account: p.id) } catch {
+            throw ServerError.unavailable("\(error)")
+        }
+        switch outcome {
+        case .noMessage: throw ServerError.missing("Message Not Exists.")
+        case .nothingToClear: throw ServerError.badRequest("rating cannot be None when feedback not exists")
+        case .created, .updated, .deleted: return try json(JSON.object(["result": "success"]))
+        }
     }
 }
 

@@ -523,6 +523,17 @@ actor DocumentSequencer {
     /// Streams of every protocol version get it (clients that do not know the event ignore it).
     func announceComment(_ event: CommentsEvent) {
         guard !subs.isEmpty, let frame = try? event.sseFrame() else { return }
+        announce(frame)
+    }
+
+    /// Tells every stream of this process that the document's app changed (`event: app`, no `id:`), with the same
+    /// best-effort rules as `announceComment`.
+    func announceApp(_ event: AppEvent) {
+        guard !subs.isEmpty, let frame = try? event.sseFrame() else { return }
+        announce(frame)
+    }
+
+    private func announce(_ frame: String) {
         for (id, c) in subs {
             if case .dropped = c.yield(frame) {
                 c.finish()
@@ -577,6 +588,9 @@ actor DocumentRegistry {
         docs[id] = s
         return s
     }
+
+    /// The sequencer of document `id` if this process has one (never creates one).
+    func existing(_ id: String) -> DocumentSequencer? { docs[id] }
 
     /// Protocol 1.10: document `id`'s app was deleted: its sequencer ends its streams, refuses everything and is dropped.
     func evict(_ id: String) async {

@@ -443,6 +443,43 @@ public enum Schema {
         )
         """,
         "CREATE INDEX IF NOT EXISTS app_versions_by_doc ON app_versions (doc_id, created_at DESC, id DESC)",
+        // Messages of an app's conversations (the minimal part of Dify's `messages` the console needs to address one). Filled
+        // by a future runtime; nothing writes it yet (tests seed it directly).
+        """
+        CREATE TABLE IF NOT EXISTS app_messages (
+            id              uuid        PRIMARY KEY,
+            doc_id          text        NOT NULL REFERENCES documents(id),
+            conversation_id uuid        NOT NULL,
+            created_at      timestamptz NOT NULL DEFAULT clock_timestamp()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS app_messages_by_doc ON app_messages (doc_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS app_messages_by_conversation ON app_messages (conversation_id, created_at)",
+        // Likes and dislikes of messages (Dify's `message_feedbacks`): `from_source` `user` (an end user of the Web App or
+        // Service API, `from_end_user_id`) or `admin` (a member in the console's logs, `from_account_id`; at most one per
+        // message). The runtime's feedback statistics and a message's `feedbacks` read it.
+        """
+        CREATE TABLE IF NOT EXISTS app_message_feedbacks (
+            id               uuid        PRIMARY KEY,
+            doc_id           text        NOT NULL REFERENCES documents(id),
+            conversation_id  uuid        NOT NULL,
+            message_id       uuid        NOT NULL REFERENCES app_messages(id) ON DELETE CASCADE,
+            rating           text        NOT NULL CHECK (rating IN ('like', 'dislike')),
+            content          text,
+            from_source      text        NOT NULL CHECK (from_source IN ('user', 'admin')),
+            from_account_id  text,
+            from_end_user_id text,
+            created_at       timestamptz NOT NULL DEFAULT clock_timestamp(),
+            updated_at       timestamptz NOT NULL DEFAULT clock_timestamp()
+        )
+        """,
+        "CREATE UNIQUE INDEX IF NOT EXISTS app_message_feedbacks_one_admin ON app_message_feedbacks (message_id) WHERE from_source = 'admin'",
+        "CREATE INDEX IF NOT EXISTS app_message_feedbacks_by_doc ON app_message_feedbacks (doc_id)",
+        "CREATE INDEX IF NOT EXISTS app_message_feedbacks_by_message ON app_message_feedbacks (message_id, from_source)",
+        """
+        CREATE INDEX IF NOT EXISTS app_message_feedbacks_by_conversation
+            ON app_message_feedbacks (conversation_id, from_source, rating)
+        """,
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",

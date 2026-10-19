@@ -134,11 +134,20 @@ extension Routes {
         func str(_ k: String) -> String? { if case .string(let s)? = app[k] { return s }; return nil }
         let name = str("name").flatMap { $0.isEmpty ? nil : $0 }
         let iconType = str("icon_type").flatMap { Self.iconTypes.contains($0) ? $0 : nil }
+        let ok: Bool
         do {
-            _ = try await store.updateApp(doc, name: name, description: str("description"), iconType: iconType, icon: str("icon"),
-                                          iconBackground: str("icon_background"), useIconAsAnswerIcon: nil, maxActiveRequests: nil,
-                                          by: account)
+            ok = try await store.updateApp(doc, name: name, description: str("description"), iconType: iconType, icon: str("icon"),
+                                           iconBackground: str("icon_background"), useIconAsAnswerIcon: nil, maxActiveRequests: nil,
+                                           by: account)
         } catch { throw ServerError.unavailable("\(error)") }
+        if ok { await announceAppChanged(doc) }
+    }
+
+    /// `event: app` (section 5) to the streams of app `id`'s document on this process, after a change to what
+    /// `GET /v1/apps/{app}` answers. Best-effort; a document without a sequencer here is not loaded for it.
+    func announceAppChanged(_ id: String) async {
+        guard let s = await registry.existing(id) else { return }
+        await s.announceApp(AppEvent())
     }
 
     static func seconds(_ d: Date) -> Int { Int(d.timeIntervalSince1970.rounded(.down)) }
@@ -305,7 +314,7 @@ extension Routes {
                                            iconBackground: try optionalString(b, "icon_background"), useIconAsAnswerIcon: answerIcon,
                                            maxActiveRequests: maxActive, by: p.id)
         } catch let e as ServerError { throw e } catch { throw ServerError.unavailable("\(error)") }
-        if !ok { _ = try await liveApp(id, viewer: p.id) }
+        if !ok { _ = try await liveApp(id, viewer: p.id) } else { await announceAppChanged(id) }
         return try await appDetail(id, p, req)
     }
 

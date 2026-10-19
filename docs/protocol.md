@@ -28,12 +28,20 @@ section 9 describes the same algorithm in prose.
     the published one.
   * **Overview statistics and logs**: Dify's statistic, workflow-log, run, conversation and message endpoints, answering
     Dify's empty shapes (dify-sf has no runtime yet, and Dify never logs debugger runs).
+  * **Message feedback** (amendment, still 1.11): `POST .../feedbacks` `{"message_id", "rating": "like"|"dislike"|null,
+    "content"}` (member), Dify's like / dislike of a message in the logs: creates, updates or (with `null`) removes the
+    member's feedback on the message. The server stores messages and feedback in Dify's shape for a future runtime; until
+    one exists there are no messages, so the call answers `404` "Message Not Exists.".
+  * **`event: app`** (amendment, still 1.11): the document's event stream carries a best-effort `event: app`
+    `{"action":"updated"}` (no `id:`, like `comments`) after a change to what `GET /v1/apps/{app}` answers: edit info, site
+    settings, site code reset, a switch that changed, publish (section 5). Dify's editors send `app_meta_update` to their
+    peers after Edit Info; dify-sf's server announces it. Clients refetch the app.
   * Roles are Dify's community-edition decorators, **quirks included**: an editor may change the site and the site switch
     and create keys, but not regenerate the site code, switch the API or delete keys (`403`, while Dify's UI shows those
     controls enabled to editors). Reading the published version and the version list needs edit, as in Dify.
   * New error codes: `max_keys_exceeded` (400), `app_not_found` (404: an endpoint of another app mode, Dify's wrong-mode
     error), `no_file_uploaded`, `too_many_files` (400). New configuration: `COLLAB_WEBAPP_BASE_URL`,
-    `COLLAB_SERVICE_API_URL`. Streams are unchanged.
+    `COLLAB_SERVICE_API_URL`. Streams gain only the best-effort `event: app` (above).
 * 1.10 (additive; clients older than 1.10 are unaffected, except that a deleted app's document is gone): **apps** (section 2,
   "Apps (1.10)"): Dify 1.17.1's Studio console API under `/v1/apps`. An **app is a document** (app id = document id); every
   document has exactly one app row with Dify's `name`, `description`, `mode`, icon, `use_icon_as_answer_icon`,
@@ -287,6 +295,7 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | GET, POST, PATCH, DELETE | `/v1/apps/{app}/workflows`, `.../workflows/publish`, `.../workflows/{id}`, `.../workflows/{id}/restore` | edit | 1.11: publish, versions (one version with its document: dify-sf only), restore; `GET /v1/apps/{app}/export?workflow_id=` exports one version. |
 | GET | `/v1/apps/{app}/statistics/...`, `/v1/apps/{app}/workflow/statistics/...`, `/v1/apps/{app}/workflow-app-logs`, `/v1/apps/{app}/workflow-runs/{run}...` | member | 1.11: Overview statistics, workflow logs and runs (empty until a runtime exists). |
 | GET | `/v1/apps/{app}/chat-conversations...`, `/v1/apps/{app}/chat-messages` | edit | 1.11: chat logs (empty until a runtime exists). |
+| POST | `/v1/apps/{app}/feedbacks` | member | 1.11: a member's like / dislike of a message in the logs ("Overview statistics and logs"). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
@@ -729,7 +738,7 @@ looked up), except for key deletes.
 | site settings, Web App switch, list / create keys | yes | yes | `403` |
 | site code reset, Service API switch, delete keys | yes | **`403`** | `403` |
 | annotations, reply setting, publish, versions, restore, chat logs | yes | yes | `403` |
-| annotation count, statistics, workflow logs and runs, reading the app (with its site) | yes | yes | yes |
+| annotation count, statistics, workflow logs and runs, message feedback, reading the app (with its site) | yes | yes | yes |
 
 Dify's UI shows the API switch, regenerate and key delete enabled to editors; the server refuses them and the UI shows its
 error toast. Reading the published version (`GET .../workflows/publish`) needs edit, as in Dify.
@@ -884,6 +893,27 @@ These endpoints answer Dify's shapes for an app nobody has used, so clients call
   `annotated` / `not_annotated` / `all`, `sort_by` `created_at` / `-created_at` / `updated_at` / `-updated_at`): an empty
   page. **`GET .../chat-conversations/{id}`** and **`GET .../chat-messages?conversation_id=`** (edit): `404` "Conversation Not
   Exists." (`conversation_id` is required: `400`).
+* **`POST .../feedbacks`** (member, every app mode; Dify's `MessageFeedbackApi`): the member's ("admin") rating of a message
+  in the logs. Body `{"message_id": "<uuid>", "rating": "like" | "dislike" | null, "content": "<text>" | null}` (`rating`
+  and `content` may be absent = null). Answer `200 {"result": "success"}`. A message has at most one admin feedback, as in
+  Dify:
+  * a rating and no feedback yet: created (`from_source` `admin`, by the caller);
+  * a rating and a feedback: its rating and content are replaced (the content becomes null if absent; the author stays);
+  * `null` and a feedback: removed;
+  * `null` and no feedback: `400 bad_request` "rating cannot be None when feedback not exists" (Dify's `invalid_param`).
+
+  `message_id` must be a UUID (`400` "{value} is not a valid uuid."; absent: `400`); another `rating` or a non-string
+  `content`: `400`. A message that is not one of this app's: **`404 not_found` "Message Not Exists."** (until a runtime
+  exists, every message). Unknown app `404 not_found`, deleted app `404 app_deleted`. The server keeps Dify's
+  `message_feedbacks` shape (rating, content, `from_source` `user` / `admin`, the account or end user, times) so that a runtime
+  can answer the feedback statistics and a message's `feedbacks`.
+
+**Live updates.** After a successful change to what `GET /v1/apps/{app}` answers (`PUT /v1/apps/{app}` edit info, the
+app section an overwrite `POST /replace` adopts, `POST .../site`, `.../site/access-token-reset`, a `site-enable` /
+`api-enable` that changed the value, `POST .../workflows/publish`) the server sends `event: app` on the document's event stream
+(section 5) to the streams connected to the same server process. Nothing is sent for refused, failed or no-op requests. It is
+a notification only (Dify's peer-to-peer `app_meta_update`): clients refetch `GET /v1/apps/{app}`, and also after every
+(re)connect of the stream, since notifications are not replayed.
 
 **Migration.** At its first start a 1.11 server gives every app without a site one (deleted apps included; idempotent), and
 the new `apps` columns start as Dify's defaults (`enable_site`, `enable_api` true).
@@ -1272,6 +1302,9 @@ data: {"head":400}
 event: comments
 data: {"action":"created","comment":"0192f3a1-..."}
 
+event: app
+data: {"action":"updated"}
+
 : ping
 ```
 
@@ -1286,6 +1319,11 @@ data: {"action":"created","comment":"0192f3a1-..."}
   deleted). It can arrive at any point, also before `ready`, and does not move the resume point: `Last-Event-ID` and `seq` are
   unaffected, and hole detection ignores it. Best-effort: notifications are not stored or replayed, and reach only streams on
   the server process that handled the change. Clients that do not use comments ignore it, as any unknown event name (SSE).
+* `app` (1.11 amendment, no version change): no `id`. What `GET /v1/apps/{app}` answers for the document's app changed
+  (section 2, "App detail pages (1.11)", "Live updates"); `action` is `updated`. Same rules as `comments`: any point, also
+  before `ready`; does not move the resume point; best-effort (not stored or replayed, only streams on the server process that
+  handled the change). Clients refetch `GET /v1/apps/{app}`, and also after every (re)connect. Clients that do not show app
+  info ignore it.
 * `: ping`: an SSE comment line, sent every **10 s** of silence (and regardless of traffic every 10 s). It keeps NATs and
   proxies open and lets the client detect dead connections (below). Clients ignore its content.
 

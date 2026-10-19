@@ -512,3 +512,18 @@ public struct CommentsEvent: Hashable, Codable, Sendable {
 
     public func sseFrame() throws -> String { "event: \(Self.eventName)\ndata: \(try WireJSON.encodeString(self))\n\n" }
 }
+
+// MARK: - App notification (additive, no version change)
+
+/// `event: app` on the document stream: what `GET /v1/apps/{app}` answers for the document's app changed (edit info, site
+/// settings, switches, publish; docs/protocol.md section 5). The server's counterpart of Dify's peer-emitted
+/// `app_meta_update`. Best-effort like `CommentsEvent`: no `id:` line, not stored or replayed; receivers refetch the app.
+public struct AppEvent: Hashable, Codable, Sendable {
+    public enum Action: String, Codable, Sendable { case updated }
+    public var action: Action
+    public init(action: Action = .updated) { self.action = action }
+
+    public static let eventName = "app"
+
+    public func sseFrame() throws -> String { "event: \(Self.eventName)\ndata: \(try WireJSON.encodeString(self))\n\n" }
+}

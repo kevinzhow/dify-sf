@@ -92,6 +92,26 @@ public enum ApiKeyCreation: Sendable, Equatable {
     case missing
 }
 
+/// What a member's like / dislike did (Dify's `_update_message_feedback`).
+public enum AdminFeedbackOutcome: Sendable, Equatable {
+    case created
+    case updated
+    case deleted
+    /// No message of that id in this app.
+    case noMessage
+    /// No rating and no admin feedback to remove.
+    case nothingToClear
+}
+
+/// What setting a Web App / Service API switch did.
+public enum SwitchOutcome: Sendable, Equatable {
+    case changed
+    /// It had that value already.
+    case unchanged
+    /// Unknown or deleted app.
+    case missing
+}
+
 public enum VersionDeletion: Sendable, Equatable {
     case deleted
     case missing
@@ -228,27 +248,22 @@ extension PostgresStore {
     }
 
     /// Sets `enable_site` or `enable_api` (Dify's `update_app_site_status` / `update_app_api_status`: a change also sets
-    /// `updated_by` / `updated_at`; the same value changes nothing). False for an unknown or deleted app.
-    public func setAppSwitch(_ id: String, api: Bool, enabled: Bool, by: String) async throws -> Bool {
-        try await bounded {
-            let rows: PostgresRowSequence
-            if api {
-                rows = try await self.client.query("""
-                    UPDATE apps SET enable_api = \(enabled),
-                           updated_by = CASE WHEN enable_api = \(enabled) THEN updated_by ELSE \(by) END,
-                           updated_at = CASE WHEN enable_api = \(enabled) THEN updated_at ELSE now() END
-                    WHERE doc_id = \(id) AND deleted_at IS NULL RETURNING 1
+    /// `updated_by` / `updated_at`; the same value changes nothing).
+    public func setAppSwitch(_ id: String, api: Bool, enabled: Bool, by: String) async throws -> SwitchOutcome {
+        let column = api ? "enable_api" : "enable_site"
+        return try await bounded {
+            try await self.client.withTransaction(logger: self.logger) { tx in
+                var was: Bool?
+                for try await v in try await tx.query("""
+                    SELECT \(unescaped: column) FROM apps WHERE doc_id = \(id) AND deleted_at IS NULL FOR UPDATE
+                    """, logger: self.logger).decode(Bool.self) { was = v }
+                guard let was else { return .missing }
+                if was == enabled { return .unchanged }
+                _ = try await tx.query("""
+                    UPDATE apps SET \(unescaped: column) = \(enabled), updated_by = \(by), updated_at = now() WHERE doc_id = \(id)
                     """, logger: self.logger)
-            } else {
-                rows = try await self.client.query("""
-                    UPDATE apps SET enable_site = \(enabled),
-                           updated_by = CASE WHEN enable_site = \(enabled) THEN updated_by ELSE \(by) END,
-                           updated_at = CASE WHEN enable_site = \(enabled) THEN updated_at ELSE now() END
-                    WHERE doc_id = \(id) AND deleted_at IS NULL RETURNING 1
-                    """, logger: self.logger)
+                return .changed
             }
-            for try await _ in rows { return true }
-            return false
         }
     }
 
@@ -487,6 +502,45 @@ extension PostgresStore {
                   AND created_at >= now() - \(ttl)::interval
                 """, logger: self.logger).decode((String, String).self) { return (s, e) }
             return nil
+        }
+    }
+
+    // MARK: - Message feedback
+
+    /// A member's feedback on message `message` of app `doc` (Dify's `_update_message_feedback`): no rating removes the
+    /// admin feedback, a rating replaces its rating and content (or creates it, by `account`). One transaction; the message
+    /// row is locked, so concurrent calls on one message apply one after the other.
+    public func setAdminFeedback(_ doc: String, message: UUID, rating: String?, content: String?, account: String) async throws -> AdminFeedbackOutcome {
+        try await bounded {
+            try await self.client.withTransaction(logger: self.logger) { tx in
+                var conversation: UUID?
+                for try await c in try await tx.query("""
+                    SELECT conversation_id FROM app_messages WHERE id = \(message) AND doc_id = \(doc) FOR UPDATE
+                    """, logger: self.logger).decode(UUID.self) { conversation = c }
+                guard let conversation else { return .noMessage }
+                var existing: UUID?
+                for try await id in try await tx.query("""
+                    SELECT id FROM app_message_feedbacks WHERE message_id = \(message) AND from_source = 'admin'
+                    """, logger: self.logger).decode(UUID.self) { existing = id }
+                switch (rating, existing) {
+                case (nil, let id?):
+                    _ = try await tx.query("DELETE FROM app_message_feedbacks WHERE id = \(id)", logger: self.logger)
+                    return .deleted
+                case (let r?, let id?):
+                    _ = try await tx.query("""
+                        UPDATE app_message_feedbacks SET rating = \(r), content = \(content), updated_at = clock_timestamp() WHERE id = \(id)
+                        """, logger: self.logger)
+                    return .updated
+                case (nil, nil):
+                    return .nothingToClear
+                case (let r?, nil):
+                    _ = try await tx.query("""
+                        INSERT INTO app_message_feedbacks (id, doc_id, conversation_id, message_id, rating, content, from_source, from_account_id)
+                        VALUES (\(UUID()), \(doc), \(conversation), \(message), \(r), \(content), 'admin', \(account))
+                        """, logger: self.logger)
+                    return .created
+                }
+            }
         }
     }
 

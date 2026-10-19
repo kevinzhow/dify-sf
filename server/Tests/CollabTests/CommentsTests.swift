@@ -27,6 +27,17 @@ struct CommentsTests {
         }
     }
 
+    @Test func theAppNotificationFrameHasNoIdAndOldParsersIgnoreIt() throws {
+        let frame = try AppEvent().sseFrame()
+        #expect(frame == "event: app\ndata: {\"action\":\"updated\"}\n\n")
+        var parser = SSEParser()
+        let commit = try StreamEvent.commit(LogEntry(seq: 7, client: "c", cseq: 1, base: 6, op: .removeEdge("e"))).sseFrame()
+        let msgs = parser.feed(Array((commit + frame).utf8))
+        #expect(msgs.count == 2 && msgs[1].event == "app" && msgs[1].id == "7")
+        #expect(try StreamEvent.parse(event: msgs[1].event, data: msgs[1].data) == nil)
+        #expect(try WireJSON.decode(AppEvent.self, from: msgs[1].data) == AppEvent(action: .updated))
+    }
+
     @Test func contentRulesAreDifys() throws {
         try Routes.validateContent("ok")
         try Routes.validateContent(String(repeating: "字", count: 1000))  // characters, not bytes
