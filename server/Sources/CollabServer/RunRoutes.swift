@@ -523,11 +523,13 @@ struct RunStreamEncoder: Sendable {
 
     mutating func encode(_ event: GraphEngineEvent) -> [JSONValue] {
         switch event {
-        case .runStarted:
+        case .runStarted, .runResumed:
+            let reason = { if case .runResumed = event { return "resumption" }; return "initial" }()
             return [envelope("workflow_started", ["id": .string(runId), "workflow_id": .string(workflowId), "inputs": .object(inputs),
-                                                  "created_at": Self.ts(startedAt), "reason": "initial"])]
+                                                  "created_at": Self.ts(startedAt), "reason": .string(reason)])]
         case .node(let e):
             switch e {
+            case .pauseRequested: return [] // The async form adapter enriches these after a durable pause.
             case .started(let x, let nodeId, let type, let title, let startAt, let scope):
                 if isContainer(nodeId) { return [] }
                 snapshots[x] = Snapshot(title: title, startAt: startAt, scope: scope)
@@ -599,6 +601,7 @@ struct RunStreamEncoder: Sendable {
             }
         case .edgeTaken, .edgeSkipped:
             return []
+        case .runPaused: return [] // Forms and workflow_paused are emitted together by the async pause adapter.
         case .runSucceeded(let s): return [workflowFinished("succeeded", error: nil, stats: s, exceptions: 0)]
         case .runPartialSucceeded(let s): return [workflowFinished("partial-succeeded", error: nil, stats: s, exceptions: s.exceptionsCount)]
         case .runFailed(let error, let s): return [workflowFinished("failed", error: error, stats: s, exceptions: s.exceptionsCount)]

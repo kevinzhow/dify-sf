@@ -7,14 +7,16 @@ import Synchronization
 /// What a node may use while it runs. The pool is the run's values as the node sees them.
 public struct NodeRunContext: Sendable {
     public var pool: VariablePool
+    public var executionId: String?
     /// The account that runs it (Dify's `user_id`), sent to model invocations.
     public var userId: String?
     public var appId: String?
     /// Abort (Dify's stop command); checked between stream chunks.
     public var isAborted: @Sendable () -> Bool
 
-    public init(pool: VariablePool, userId: String? = nil, appId: String? = nil, isAborted: @escaping @Sendable () -> Bool = { false }) {
+    public init(pool: VariablePool, executionId: String? = nil, userId: String? = nil, appId: String? = nil, isAborted: @escaping @Sendable () -> Bool = { false }) {
         self.pool = pool
+        self.executionId = executionId
         self.userId = userId
         self.appId = appId
         self.isAborted = isAborted
@@ -115,13 +117,15 @@ public struct RuntimeServices: Sendable {
     public var codeExecutor: (any CodeExecutor)?
     /// HTTP for the HTTP request node (Dify: through `ssrf_proxy`).
     public var http: (any RuntimeHTTPClient)?
+    public var humanInput: (any HumanInputRuntime)?
 
     public init(models: (any ModelRuntime)? = nil, jinja2: (any Jinja2TemplateRenderer)? = nil, codeExecutor: (any CodeExecutor)? = nil,
-                http: (any RuntimeHTTPClient)? = nil) {
+                http: (any RuntimeHTTPClient)? = nil, humanInput: (any HumanInputRuntime)? = nil) {
         self.models = models
         self.jinja2 = jinja2
         self.codeExecutor = codeExecutor
         self.http = http
+        self.humanInput = humanInput
     }
 
     public func requireModels() throws -> any ModelRuntime {
@@ -132,7 +136,7 @@ public struct RuntimeServices: Sendable {
 
 /// A node needs a service the server was not configured with (creating the node fails).
 public struct ServiceNotConfigured: Error, CustomStringConvertible, Sendable {
-    public enum Service: String, Sendable { case models = "model runtime", codeSandbox = "code sandbox", http = "HTTP client" }
+    public enum Service: String, Sendable { case models = "model runtime", codeSandbox = "code sandbox", http = "HTTP client", humanInput = "human input" }
     public var service: Service
     public init(service: Service) { self.service = service }
     public var description: String { "This server has no \(service.rawValue) configured" }
@@ -163,6 +167,9 @@ public struct BuiltinNodeFactory: NodeFactory {
 
     public func createNode(_ config: NodeConfig, graph: GraphConfig) async throws -> any RuntimeNode {
         switch config.type {
+        case NodeType.humanInput:
+            guard let runtime = services.humanInput else { throw ServiceNotConfigured(service: .humanInput) }
+            return try HumanInputNode(id: config.id, data: config.data, runtime: runtime)
         case NodeType.start: return try StartNode(id: config.id, data: config.data)
         case NodeType.end: return try EndNode(id: config.id, data: config.data)
         case NodeType.answer: return try AnswerNode(id: config.id, data: config.data)
@@ -198,6 +205,8 @@ public enum NodeRunner {
 
     public static func run(_ node: any RuntimeNode, executionId: String, context: NodeRunContext,
                            emit: @escaping @Sendable (GraphNodeEvent) async -> Void, onAwait: AwaitHandler? = nil) async {
+        var context = context
+        context.executionId = executionId
         let startAt = Date()
         await emit(.started(executionId: executionId, nodeId: node.id, nodeType: node.nodeType, title: node.title, startAt: startAt, scope: .root))
         let state = SuspendState()
@@ -215,6 +224,8 @@ public enum NodeRunner {
     /// `resume_container(result, started_at)`: no started event; errors become a failed result.
     public static func resume(_ node: any RuntimeNode, executionId: String, startAt: Date, result: ContainerResult, context: NodeRunContext,
                               emit: @escaping @Sendable (GraphNodeEvent) async -> Void, onAwait: AwaitHandler? = nil) async {
+        var context = context
+        context.executionId = executionId
         let state = SuspendState()
         do {
             try await node.resume(result, startAt: startAt, context: context) { event in
@@ -264,6 +275,9 @@ public enum NodeRunner {
                                       errorType: "RuntimeError")
                 await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
             }
+        case .pauseRequested(let reason):
+            state.suspend()
+            await emit(.pauseRequested(executionId: executionId, nodeId: node.id, reason: reason))
         case .completed(let result):
             switch result.status {
             case .succeeded:

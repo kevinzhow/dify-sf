@@ -2,8 +2,8 @@
 // See ../NOTICE.md.
 
 /// The template a response node (answer, end) streams: text and variable references in order (graphon's `Template`).
-public struct ResponseTemplate: Sendable, Hashable {
-    public enum Segment: Sendable, Hashable {
+public struct ResponseTemplate: Sendable, Hashable, Codable {
+    public enum Segment: Sendable, Hashable, Codable {
         case text(String)
         case variable([String])
     }

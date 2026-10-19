@@ -2,7 +2,7 @@
 // graphon/graph_engine/filters/response_stream.py (ResponseStreamFilter, as Dify 1.17.1 applies it in
 // `iter_dify_graph_engine_events`). See ../NOTICE.md.
 //
-// Not ported: `dumps` / `loads` (pause and resume, P4).
+// Durable streaming state is encoded by Snapshot.swift.
 
 import Foundation
 
@@ -16,14 +16,14 @@ struct ResponseStreamFilter {
         var nodeStates: [String: NodeState]
     }
 
-    struct Session {
+    struct Session: Codable, Sendable {
         var nodeId: String
         var template: ResponseTemplate
         var index = 0
         var isComplete: Bool { index >= template.segments.count }
     }
 
-    struct Chunk {
+    struct Chunk: Codable, Sendable {
         var executionId: String
         var nodeId: String
         var selector: [String]

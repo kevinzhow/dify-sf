@@ -2,7 +2,7 @@
 // segments.py, factory.py (build_segment), segment_group.py. See ../NOTICE.md.
 
 /// graphon's `SegmentType` (the runtime type of a variable value).
-public enum SegmentType: String, Sendable, Hashable, CaseIterable {
+public enum SegmentType: String, Sendable, Hashable, Codable, CaseIterable {
     case number
     case integer
     case float
@@ -33,7 +33,7 @@ public enum SegmentType: String, Sendable, Hashable, CaseIterable {
 
 /// A runtime value with its type (graphon's `Segment` subclasses). Files are not modelled yet (protocol: no file storage
 /// before phase P5); a value is plain JSON.
-public struct Segment: Hashable, Sendable {
+public struct Segment: Hashable, Sendable, Codable {
     public var valueType: SegmentType
     public var value: JSONValue
 

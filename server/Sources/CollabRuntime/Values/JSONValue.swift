@@ -52,7 +52,7 @@ public indirect enum JSONValue: Hashable, Sendable {
 }
 
 /// An insertion-ordered string-keyed map (Python's `dict`). Replacing a key keeps its position; removing it drops it.
-public struct JSONObject: Hashable, Sendable, Sequence, ExpressibleByDictionaryLiteral {
+public struct JSONObject: Hashable, Sendable, Codable, Sequence, ExpressibleByDictionaryLiteral {
     public private(set) var keys: [String] = []
     private var storage: [String: JSONValue] = [:]
 
@@ -365,9 +365,19 @@ extension JSONValue {
     }
 }
 
+// Snapshot encoding opts into literal text: ordinary Codable JSON sorts object keys and may turn 1.0 into 1.
+// The default API encoding remains unchanged.
+extension CodingUserInfoKey {
+    static let runtimeSnapshot = CodingUserInfoKey(rawValue: "dify-sf.runtime-snapshot")!
+}
+
 extension JSONValue: Codable {
     public init(from decoder: any Decoder) throws {
         let c = try decoder.singleValueContainer()
+        if decoder.userInfo[.runtimeSnapshot] as? Bool == true {
+            self = try JSONValue.parse(c.decode(String.self))
+            return
+        }
         if c.decodeNil() { self = .null; return }
         if let b = try? c.decode(Bool.self) { self = .bool(b); return }
         if let i = try? c.decode(Int.self) { self = .int(i); return }
@@ -384,6 +394,10 @@ extension JSONValue: Codable {
 
     public func encode(to encoder: any Encoder) throws {
         var c = encoder.singleValueContainer()
+        if encoder.userInfo[.runtimeSnapshot] as? Bool == true {
+            try c.encode(compactJSON())
+            return
+        }
         switch self {
         case .null: try c.encodeNil()
         case .bool(let b): try c.encode(b)

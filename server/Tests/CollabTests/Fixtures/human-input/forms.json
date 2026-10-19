@@ -1,0 +1,375 @@
+[
+  {
+    "id": "text",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "paragraph",
+          "output_variable_name": "reply",
+          "default": {
+            "type": "variable",
+            "selector": [
+              "start",
+              "name"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {
+      "reply": "Yes"
+    },
+    "action": "approve",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {
+      "reply": "World"
+    },
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "expected_inputs": {
+      "reply": "Yes"
+    },
+    "expected_outputs": {
+      "reply": "Yes",
+      "__action_id": "approve",
+      "__action_value": "Approve it",
+      "__rendered_content": "Hello World: Yes"
+    }
+  },
+  {
+    "id": "paragraph-json",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "paragraph",
+          "output_variable_name": "reply",
+          "default": {
+            "type": "variable",
+            "selector": [
+              "start",
+              "name"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {
+      "reply": {
+        "b": true,
+        "a": null
+      },
+      "ignored": "unknown"
+    },
+    "action": "approve",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {
+      "reply": "World"
+    },
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "expected_inputs": {
+      "reply": {
+        "b": true,
+        "a": null
+      }
+    },
+    "expected_outputs": {
+      "reply": {
+        "b": true,
+        "a": null
+      },
+      "__action_id": "approve",
+      "__action_value": "Approve it",
+      "__rendered_content": "Hello World: {'b': True, 'a': None}"
+    }
+  },
+  {
+    "id": "paragraph-null",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "paragraph",
+          "output_variable_name": "reply",
+          "default": {
+            "type": "variable",
+            "selector": [
+              "start",
+              "name"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {
+      "reply": null
+    },
+    "action": "approve",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {
+      "reply": "World"
+    },
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "expected_inputs": {
+      "reply": null
+    },
+    "expected_outputs": {
+      "reply": null,
+      "__action_id": "approve",
+      "__action_value": "Approve it",
+      "__rendered_content": "Hello World: "
+    }
+  },
+  {
+    "id": "invalid-action",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "paragraph",
+          "output_variable_name": "reply",
+          "default": {
+            "type": "variable",
+            "selector": [
+              "start",
+              "name"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {},
+    "action": "invalid",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {
+      "reply": "World"
+    },
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "error": "Invalid action: invalid"
+  },
+  {
+    "id": "missing",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "paragraph",
+          "output_variable_name": "reply",
+          "default": {
+            "type": "variable",
+            "selector": [
+              "start",
+              "name"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {},
+    "action": "approve",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {
+      "reply": "World"
+    },
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "error": "Missing required inputs: reply"
+  },
+  {
+    "id": "select",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "select",
+          "output_variable_name": "reply",
+          "option_source": {
+            "type": "constant",
+            "value": [
+              "A",
+              "B"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {
+      "reply": "B"
+    },
+    "action": "approve",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {},
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "expected_inputs": {
+      "reply": "B"
+    },
+    "expected_outputs": {
+      "reply": "B",
+      "__action_id": "approve",
+      "__action_value": "Approve it",
+      "__rendered_content": "Hello World: B"
+    }
+  },
+  {
+    "id": "invalid-select",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "select",
+          "output_variable_name": "reply",
+          "option_source": {
+            "type": "constant",
+            "value": [
+              "A"
+            ]
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {
+      "reply": "X"
+    },
+    "action": "invalid",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ]
+    },
+    "defaults": {},
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "error": "Invalid value for select input 'reply': X"
+  },
+  {
+    "id": "select-variable-short",
+    "data": {
+      "type": "human-input",
+      "title": "Approval",
+      "form_content": "Hello {{#start.name#}}: {{#$output.reply#}}",
+      "inputs": [
+        {
+          "type": "select",
+          "output_variable_name": "reply",
+          "option_source": {
+            "type": "variable",
+            "selector": []
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "id": "approve",
+          "title": "Approve it"
+        }
+      ]
+    },
+    "values": {
+      "reply": "anything"
+    },
+    "action": "approve",
+    "mapping": {
+      "hi.#start.name#": [
+        "start",
+        "name"
+      ],
+      "hi.##": []
+    },
+    "defaults": {},
+    "rendered": "Hello World: {{#$output.reply#}}",
+    "expected_inputs": {
+      "reply": "anything"
+    },
+    "expected_outputs": {
+      "reply": "anything",
+      "__action_id": "approve",
+      "__action_value": "Approve it",
+      "__rendered_content": "Hello World: anything"
+    }
+  }
+]

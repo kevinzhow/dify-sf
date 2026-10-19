@@ -19,7 +19,7 @@
 // carry the container's id (`NodeScope`, `iteration_id` / `loop_id` + index in result metadata); the start nodes of
 // frames are not collected.
 //
-// Not ported yet: pause and resume (P4), layers other than the execution limits.
+// Paused runs drain active work before serializing frames and streaming state. Layers other than execution limits are not ported.
 
 import Foundation
 import Synchronization
@@ -44,6 +44,10 @@ public struct GraphEngineConfig: Sendable {
 public enum GraphEngineEvent: Sendable {
     /// `GraphRunStartedEvent`.
     case runStarted
+    /// `GraphRunStartedEvent(reason=RESUMPTION)`.
+    case runResumed
+    /// `GraphRunPausedEvent`: active work has drained; persist the snapshot before exposing the pause.
+    case runPaused(reasons: [PauseReason], snapshot: GraphEngineSnapshot, GraphRunStats)
     /// A node event (started, chunks, variable updates, container progress, succeeded / failed / exception, retry).
     case node(GraphNodeEvent)
     /// `GraphEdgeTakenEvent` / `GraphEdgeSkippedEvent` (consumed by the response stream filter; never on the stream).
@@ -60,7 +64,7 @@ public enum GraphEngineEvent: Sendable {
 
     public var isTerminal: Bool {
         switch self {
-        case .runSucceeded, .runPartialSucceeded, .runFailed, .runAborted: return true
+        case .runSucceeded, .runPartialSucceeded, .runFailed, .runAborted, .runPaused: return true
         default: return false
         }
     }
@@ -126,11 +130,21 @@ public struct GraphEngine: Sendable {
 
     /// Runs the graph over `pool` (the bootstrap values: `sys`, `env`, `conversation`, the start node's inputs). The stream
     /// ends after the terminal event. The run does not stop when the consumer goes away; use `commands.abort`.
-    public func run(pool: VariablePool) -> AsyncStream<GraphEngineEvent> {
+    public func run(pool: VariablePool) -> AsyncStream<GraphEngineEvent> { stream(pool: pool, snapshot: nil) }
+
+    /// Rebuild this engine from the run's saved graph, never the subsequently edited draft.
+    public func resume(_ snapshot: GraphEngineSnapshot) throws -> AsyncStream<GraphEngineEvent> {
+        guard snapshot.state.graph == graph.config.json, snapshot.state.rootId == graph.rootId else {
+            throw GraphEngineSnapshot.Invalid(description: "Runtime snapshot does not match this graph")
+        }
+        return stream(pool: VariablePool(), snapshot: snapshot)
+    }
+
+    private func stream(pool: VariablePool, snapshot: GraphEngineSnapshot?) -> AsyncStream<GraphEngineEvent> {
         let (stream, out) = AsyncStream<GraphEngineEvent>.makeStream(bufferingPolicy: .unbounded)
         let engine = self
         Task {
-            var dispatcher = Dispatcher(engine: engine, pool: pool, out: out)
+            var dispatcher = Dispatcher(engine: engine, pool: pool, out: out, snapshot: snapshot)
             await dispatcher.execute()
             out.finish()
         }
@@ -145,7 +159,7 @@ let rootFrameId = "root"
 
 /// `ExecutionFrame` + its `GraphStateManager` and `GraphRuntimeState` (outputs, usage, steps): one run of the graph from a
 /// root — the whole run, or one iteration / loop round.
-struct ExecutionFrame {
+struct ExecutionFrame: Codable, Sendable {
     let id: String
     var nodeStates: [String: NodeState]
     var edgeStates: [String: NodeState]
@@ -177,17 +191,17 @@ struct ExecutionFrame {
 }
 
 /// `IterationFrameState` / `LoopFrameState`.
-struct ContainerFrame {
+struct ContainerFrame: Codable, Sendable {
     var kind: ContainerKind
     var invocationId: String
     var index: Int
-    var startedAt: ContinuousClock.Instant
+    var startedAt: Date
     var errors: [String] = []
     var reachedBreak = false
 }
 
 /// `IterationRunState`.
-struct IterationRun {
+struct IterationRun: Codable, Sendable {
     let invocationId: String
     let frameId: String
     let nodeId: String
@@ -209,7 +223,7 @@ struct IterationRun {
 }
 
 /// `LoopRunState`.
-struct LoopRun {
+struct LoopRun: Sendable {
     let invocationId: String
     let frameId: String
     let nodeId: String
@@ -228,7 +242,7 @@ struct LoopRun {
 }
 
 /// `ContainerRunState`: one suspended container node.
-enum ContainerRun {
+enum ContainerRun: Codable, Sendable {
     case iteration(IterationRun)
     case loop(LoopRun)
 
@@ -255,13 +269,13 @@ enum ContainerRun {
 }
 
 /// `StartTask` / `ResumeTask`.
-enum ReadyTask {
+enum ReadyTask: Codable, Sendable {
     case start(frameId: String, nodeId: String)
     case resume(invocationId: String, result: ContainerResult)
 }
 
 /// `(frame_id, node_id)`: the key of a node execution (`GraphExecution.node_executions`).
-struct FrameNode: Hashable {
+struct FrameNode: Hashable, Codable, Sendable {
     var frameId: String
     var nodeId: String
 }
@@ -308,6 +322,9 @@ struct Dispatcher {
     var retryCounts: [FrameNode: Int] = [:]
     var exceptionsCount = 0
     var aborted = false
+    var pauseReasons: [PauseReason] = []
+    var pendingRetries = 0
+    var resuming = false
     var error: String?
 
     // ExecutionLimitsLayer
@@ -317,7 +334,7 @@ struct Dispatcher {
 
     var filter: ResponseStreamFilter
 
-    init(engine: GraphEngine, pool: VariablePool, out: AsyncStream<GraphEngineEvent>.Continuation) {
+    init(engine: GraphEngine, pool: VariablePool, out: AsyncStream<GraphEngineEvent>.Continuation, snapshot: GraphEngineSnapshot? = nil) {
         self.engine = RuntimeGraphEngineRef(engine)
         graph = engine.graph
         self.out = out
@@ -327,6 +344,18 @@ struct Dispatcher {
         frames[rootFrameId] = ExecutionFrame(id: rootFrameId, nodeStates: nodeStates, edgeStates: edgeStates, poolId: rootFrameId)
         pools[rootFrameId] = pool
         filter = ResponseStreamFilter(graph: graph)
+        if let snapshot {
+            let state = snapshot.state
+            frames = state.frames
+            pools = state.pools
+            readyQueue = state.ready
+            containerRuns = state.containers
+            executionIds = state.executionIds
+            retryCounts = state.retryCounts
+            exceptionsCount = state.exceptionsCount
+            filter.restore(state.filter)
+            resuming = true
+        }
     }
 
     var config: GraphEngineConfig { engine.value.config }
@@ -335,9 +364,9 @@ struct Dispatcher {
     mutating func execute() async {
         let (mailbox, post) = AsyncStream<DispatchMessage>.makeStream(bufferingPolicy: .unbounded)
         engine.value.commands.attach { post.yield(.wake) }
-        emit(.runStarted)
+        emit(resuming ? .runResumed : .runStarted)
         await withDiscardingTaskGroup { group in
-            enqueue(rootFrameId, graph.rootId)
+            if !resuming { enqueue(rootFrameId, graph.rootId) }
             processCommands()
             if !shouldExit {
                 launchReady(&group, post)
@@ -350,11 +379,19 @@ struct Dispatcher {
             group.cancelAll()
         }
         post.finish()
-        emitTerminal()
-        for e in filter.flush(state: filterState) { out.yield(e) }
+        if !pauseReasons.isEmpty, !aborted, error == nil {
+            // Flush first: the durable positions must include everything already delivered to the consumer.
+            for e in filter.flush(state: filterState) { out.yield(e) }
+            emit(.runPaused(reasons: pauseReasons, snapshot: GraphEngineSnapshot(self), stats))
+        } else {
+            emitTerminal()
+            for e in filter.flush(state: filterState) { out.yield(e) }
+        }
     }
 
-    var shouldExit: Bool { aborted || error != nil || root.unfinished.isEmpty }
+    var shouldExit: Bool {
+        aborted || error != nil || root.unfinished.isEmpty || (!pauseReasons.isEmpty && running == 0 && pendingRetries == 0)
+    }
 
     var filterState: ResponseStreamFilter.State { .init(pool: pools[rootFrameId]!, nodeStates: root.nodeStates) }
 
@@ -400,10 +437,12 @@ struct Dispatcher {
     }
 
     mutating func launchReady(_ group: inout DiscardingTaskGroup, _ post: AsyncStream<DispatchMessage>.Continuation) {
+        guard pauseReasons.isEmpty else { return }
         while running < config.maxWorkers, let task = popReady() {
             switch task {
             case .start(let frameId, let nodeId):
                 guard let node = graph.nodes[nodeId], let frame = frames[frameId] else { continue }
+                frames[frameId]!.nodeStates[nodeId] = .taken
                 let executionId = bindExecutionId(FrameNode(frameId: frameId, nodeId: nodeId))
                 running += 1
                 let context = nodeContext(pools[frame.poolId] ?? VariablePool())
@@ -485,6 +524,7 @@ struct Dispatcher {
             // The worker pops a resumed container's run once its node finished.
             if let invocationId, !suspended { containerRuns[invocationId] = nil }
         case .retryReady(let frameId, let failed, let retryIndex):
+            pendingRetries -= 1
             guard frames[frameId] != nil, case .failed(let x, let nodeId, let startAt, _, let result, let error) = failed else { return }
             dispatchEvent(frameId, .retry(executionId: x, nodeId: nodeId, startAt: startAt, result: result, error: error, retryIndex: retryIndex), post)
             completeFrameIfContainer(frameId)
@@ -569,6 +609,11 @@ struct Dispatcher {
     mutating func dispatch(_ frameId: String, _ event: GraphNodeEvent, _ post: AsyncStream<DispatchMessage>.Continuation) {
         let key = FrameNode(frameId: frameId, nodeId: event.nodeId)
         switch event {
+        case .pauseRequested(_, let nodeId, let reason):
+            pauseReasons.append(reason)
+            frames[frameId]!.nodeStates[nodeId] = .unknown
+            readyQueue.append(.start(frameId: frameId, nodeId: nodeId))
+            collect(frameId, event)
         case .started:
             // Retries run silently: only the first attempt's started event is collected.
             frames[frameId]!.nodeRunSteps += 1
@@ -592,6 +637,7 @@ struct Dispatcher {
                 // ErrorHandler._handle_retry: wait the interval, then a retry event (the node stays unfinished).
                 let interval = Double(node.base.retryConfig.retryInterval) / 1000
                 let retryIndex = retries + 1
+                pendingRetries += 1
                 Task {
                     if interval > 0 { try? await Task.sleep(for: .seconds(interval)) }
                     post.yield(.retryReady(frameId: frameId, event, retryIndex: retryIndex))
@@ -788,7 +834,7 @@ struct Dispatcher {
     mutating func completeIterationStep(_ frame: ExecutionFrame, _ container: ContainerFrame, _ run: IterationRun, output: JSONValue,
                                         store: Bool) -> IterationRun {
         var run = run
-        run.durationMap[String(container.index)] = .double(SingleStepRun.seconds(ContinuousClock.now - container.startedAt))
+        run.durationMap[String(container.index)] = .double(max(0, Date().timeIntervalSince(container.startedAt)))
         if store { run.outputs[container.index] = output }
         if container.errors.isEmpty, container.index == run.items.count - 1 {
             frames[run.frameId]?.mergeResponseOutputs(frame.outputs)
@@ -930,7 +976,7 @@ struct Dispatcher {
         var run = run
         run.completedCount += 1
         run.usage = run.usage.plus(frame.llmUsage)
-        run.durationMap[String(container.index)] = .double(SingleStepRun.seconds(ContinuousClock.now - container.startedAt))
+        run.durationMap[String(container.index)] = .double(max(0, Date().timeIntervalSince(container.startedAt)))
         run.variableMap[String(container.index)] = .object(values)
         if container.errors.isEmpty { frames[run.frameId]?.mergeResponseOutputs(frame.outputs) }
         for (k, v) in values { run.outputs[k] = v }

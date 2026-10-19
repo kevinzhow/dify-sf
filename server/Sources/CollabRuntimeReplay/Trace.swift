@@ -100,7 +100,7 @@ public enum RunTrace {
 
         public mutating func add(_ event: GraphEngineEvent) {
             switch event {
-            case .runStarted: add(["event": "workflow_started"])
+            case .runStarted, .runResumed: add(["event": "workflow_started"])
             case .node(let e):
                 switch e {
                 case .started(let x, let nodeId, let type, _, _, let scope):
@@ -125,8 +125,13 @@ public enum RunTrace {
                 case .variableUpdated(_, let nodeId, let selector, let value):
                     add(["event": "variable_updated", "node_id": .string(nodeId), "selector": .array(selector.map(JSONValue.string)),
                          "value": norm(value.value)])
+                case .pauseRequested(_, let nodeId, _):
+                    add(["event": "engine:NodeRunPauseRequestedEvent", "node_id": .string(nodeId)])
                 case .reasoningChunk, .retrieverResource: break
                 }
+            case .runPaused(_, _, let stats):
+                add(["event": "workflow_paused", "status": "paused", "outputs": norm(.object(stats.outputs)),
+                     "error": .null, "exceptions_count": 0])
             case .edgeTaken, .edgeSkipped: break
             case .runSucceeded(let s):
                 add(["event": "workflow_finished", "status": "succeeded", "outputs": norm(.object(s.outputs)), "error": .null, "exceptions_count": 0])

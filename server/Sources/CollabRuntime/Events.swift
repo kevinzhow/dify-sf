@@ -35,7 +35,7 @@ public enum NodeType {
 }
 
 /// `WorkflowNodeExecutionStatus`.
-public enum NodeExecutionStatus: String, Sendable, Hashable {
+public enum NodeExecutionStatus: String, Sendable, Hashable, Codable {
     case pending, running, succeeded, failed, exception, stopped, paused, retry
 }
 
@@ -62,7 +62,7 @@ public enum MetadataKey {
 }
 
 /// The two container kinds (iteration and loop nodes run their inner nodes in child frames).
-public enum ContainerKind: String, Sendable, Hashable {
+public enum ContainerKind: String, Sendable, Hashable, Codable {
     case iteration, loop
 }
 
@@ -104,12 +104,12 @@ public enum NodeExecutionType: String, Sendable, Hashable {
 }
 
 /// `NodeState`: of a node or an edge during a run.
-public enum NodeState: String, Sendable, Hashable {
+public enum NodeState: String, Sendable, Hashable, Codable {
     case unknown, taken, skipped
 }
 
 /// `NodeRunResult`: what a node produced. Mappings keep Python's dict order.
-public struct NodeRunResult: Sendable {
+public struct NodeRunResult: Sendable, Codable {
     public var status: NodeExecutionStatus = .pending
     public var inputs = JSONObject()
     public var processData = JSONObject()
@@ -162,17 +162,19 @@ public enum NodeEvent: Sendable {
     case awaitContainer(ContainerRequest)
     /// `StreamCompletedEvent`: the node's result.
     case completed(NodeRunResult)
+    /// `PauseRequestedEvent`: no completed result; resume reruns this node with the same execution id.
+    case pauseRequested(PauseReason)
 }
 
 /// `IterationNode.error_handle_mode` (`ErrorHandleMode`).
-public enum ErrorHandleMode: String, Sendable, Hashable {
+public enum ErrorHandleMode: String, Sendable, Hashable, Codable {
     case terminated
     case continueOnError = "continue-on-error"
     case removeAbnormalOutput = "remove-abnormal-output"
 }
 
 /// `IterationFrameRequest`: run the iteration rounds `indexes` (each in a child frame from `rootNodeId`).
-public struct IterationFrameRequest: Sendable {
+public struct IterationFrameRequest: Sendable, Codable {
     public var items: [JSONValue]
     public var rootNodeId: String
     public var indexes: [Int]
@@ -223,7 +225,7 @@ public struct LoopFrameRequest: Sendable {
 }
 
 /// `ContainerAwaitRequest`.
-public enum ContainerRequest: Sendable {
+public enum ContainerRequest: Sendable, Codable {
     case iteration(IterationFrameRequest)
     case loop(LoopFrameRequest)
 
@@ -236,7 +238,7 @@ public enum ContainerRequest: Sendable {
 }
 
 /// `ContainerExecutionResult`: a container's outcome (`metadata`: the completed event's, `result`: the node's result).
-public struct ContainerExecutionResult: Sendable {
+public struct ContainerExecutionResult: Sendable, Codable {
     public var metadata: JSONObject
     public var steps: Int
     public var result: NodeRunResult
@@ -249,13 +251,14 @@ public struct ContainerExecutionResult: Sendable {
 }
 
 /// `ContainerRunResult`: what a suspended container node is resumed with: more rounds to run, or its outcome.
-public enum ContainerResult: Sendable {
+public enum ContainerResult: Sendable, Codable {
     case request(ContainerRequest)
     case finished(ContainerExecutionResult)
 }
 
 /// What the engine sees of a running node (`graphon/graph_events/node.py`), with the node execution id.
 public enum GraphNodeEvent: Sendable {
+    case pauseRequested(executionId: String, nodeId: String, reason: PauseReason)
     /// `scope`: the iteration / loop the node runs in (set by the engine).
     case started(executionId: String, nodeId: String, nodeType: String, title: String, startAt: Date, scope: NodeScope)
     case streamChunk(executionId: String, nodeId: String, selector: [String], chunk: String, isFinal: Bool)
@@ -287,7 +290,7 @@ public enum GraphNodeEvent: Sendable {
 
     public var nodeId: String {
         switch self {
-        case .started(_, let n, _, _, _, _), .streamChunk(_, let n, _, _, _), .reasoningChunk(_, let n, _, _, _),
+        case .pauseRequested(_, let n, _), .started(_, let n, _, _, _, _), .streamChunk(_, let n, _, _, _), .reasoningChunk(_, let n, _, _, _),
              .retrieverResource(_, let n, _, _), .variableUpdated(_, let n, _, _), .succeeded(_, let n, _, _, _),
              .failed(_, let n, _, _, _, _), .exception(_, let n, _, _, _, _), .retry(_, let n, _, _, _, _),
              .containerStarted(_, let n, _, _, _, _), .containerNext(_, let n, _, _, _), .containerCompleted(_, let n, _, _, _, _, _, _, _):
@@ -297,7 +300,7 @@ public enum GraphNodeEvent: Sendable {
 
     public var executionId: String {
         switch self {
-        case .started(let x, _, _, _, _, _), .streamChunk(let x, _, _, _, _), .reasoningChunk(let x, _, _, _, _),
+        case .pauseRequested(let x, _, _), .started(let x, _, _, _, _, _), .streamChunk(let x, _, _, _, _), .reasoningChunk(let x, _, _, _, _),
              .retrieverResource(let x, _, _, _), .variableUpdated(let x, _, _, _), .succeeded(let x, _, _, _, _),
              .failed(let x, _, _, _, _, _), .exception(let x, _, _, _, _, _), .retry(let x, _, _, _, _, _),
              .containerStarted(let x, _, _, _, _, _), .containerNext(let x, _, _, _, _), .containerCompleted(let x, _, _, _, _, _, _, _, _):

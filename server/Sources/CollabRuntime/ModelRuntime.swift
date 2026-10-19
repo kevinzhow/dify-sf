@@ -129,7 +129,7 @@ public struct PromptMessage: Sendable, Hashable {
 }
 
 /// A `Decimal` field as Python prints it (`str(Decimal)`, which is how pydantic's JSON mode writes it): kept as text.
-public struct DecimalText: Sendable, Hashable, CustomStringConvertible {
+public struct DecimalText: Sendable, Hashable, Codable, CustomStringConvertible {
     public var text: String
     public init(_ text: String) { self.text = text }
     public static let zero = DecimalText("0.0")
@@ -203,7 +203,7 @@ public struct DecimalText: Sendable, Hashable, CustomStringConvertible {
 }
 
 /// `LLMUsage`.
-public struct LLMUsage: Sendable, Hashable {
+public struct LLMUsage: Sendable, Hashable, Codable {
     public var promptTokens = 0
     public var promptUnitPrice = DecimalText.zero
     public var promptPriceUnit = DecimalText.zero
