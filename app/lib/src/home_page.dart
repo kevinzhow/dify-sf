@@ -196,7 +196,12 @@ class _HomePageState extends State<HomePage> {
   /// Paste a Dify workflow file (YAML); the server converts it into a new document, which is then opened.
   Future<void> _importDifyDsl() async {
     final backend = _backend();
-    final yaml = await showDialog<String>(context: context, builder: (_) => const _ImportDslDialog());
+    final yaml = await showDifyDialog<String>(
+      context,
+      barrierColor: materialDialogBarrierColor,
+      transition: DifyDialogTransition.fade,
+      builder: (_) => const _ImportDslDialog(),
+    );
     if (yaml == null || yaml.trim().isEmpty || !mounted) return;
     setState(() {
       _busy = true;

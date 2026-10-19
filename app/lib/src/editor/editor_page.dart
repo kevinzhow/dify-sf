@@ -9,6 +9,7 @@ import '../app_detail/detail_page_slot.dart';
 import '../auth/auth_api.dart';
 import '../settings/model_provider/model_provider_env.dart';
 import '../auth/auth_controller.dart';
+import '../design/widgets/dialog.dart' show DifyDialogTransition, materialDialogBarrierColor, showDifyDialog;
 import '../design/widgets/toast.dart';
 import '../i18n/dify_i18n.dart';
 import '../online_events.dart';
@@ -321,8 +322,10 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       return;
     }
     if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
+    await showDifyDialog<void>(
+      context,
+      barrierColor: materialDialogBarrierColor,
+      transition: DifyDialogTransition.fade,
       builder: (ctx) => AlertDialog(
         title: const Text('Dify workflow file'),
         content: SizedBox(

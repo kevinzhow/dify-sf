@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../design/widgets/dialog.dart' show DifyDialogTransition, materialDialogBarrierColor, showDifyDialog;
 import 'editor_controller.dart';
 import 'graph_info.dart';
 import 'synced_text_field.dart';
@@ -47,8 +48,10 @@ class ConfigEditor extends StatelessWidget {
 
   Future<void> _addField(BuildContext context) async {
     final seen = controller.seenVersion;
-    final name = await showDialog<String>(
-      context: context,
+    final name = await showDifyDialog<String>(
+      context,
+      barrierColor: materialDialogBarrierColor,
+      transition: DifyDialogTransition.fade,
       builder: (_) => const _NameDialog(title: 'New field', hint: 'field name, e.g. temperature'),
     );
     if (name == null || name.trim().isEmpty || name.startsWith(r'$')) return;
