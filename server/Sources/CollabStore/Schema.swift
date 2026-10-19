@@ -13,6 +13,7 @@
 ///   `provider_models`, `provider_model_settings`, `default_models`.
 /// * `comments` and `comment_replies` are canvas comments (additive, Dify's workflow comments): a resource beside the
 ///   document, not part of it (no ops, no log, no snapshots, no export, no undo).
+/// * Apps (protocol 1.10, Dify's Studio): `apps` (one row per document; soft delete), `app_stars`, `app_imports`.
 /// * Accounts (protocol 1.8, Dify's community edition: one workspace per server): `accounts`, `members` (the workspace's
 ///   members and their roles), `sessions` (opaque bearer tokens, stored only as SHA-256), `invitations` (activation links)
 ///   and `client_accounts` (which account a client id belongs to).
@@ -279,6 +280,50 @@ public enum Schema {
             provider   text        NOT NULL,
             model      text        NOT NULL,
             updated_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        // Protocol 1.10: apps (Dify's `apps`, Studio). One row per document, created with it (documents of older servers get
+        // theirs from `PostgresStore.backfillApps` at startup). The source of truth for the app's name, description and
+        // icon. `deleted_at`: soft delete (the document then answers `404 app_deleted`). "Last modified" is
+        // GREATEST(apps.updated_at, documents.updated_at): commits bump the document's (the deviation from Dify's rule).
+        "ALTER TABLE documents ADD COLUMN IF NOT EXISTS updated_at timestamptz",
+        """
+        CREATE TABLE IF NOT EXISTS apps (
+            doc_id                  text        PRIMARY KEY REFERENCES documents(id),
+            name                    text        NOT NULL,
+            description             text        NOT NULL DEFAULT '',
+            mode                    text        NOT NULL,
+            icon_type               text,
+            icon                    text,
+            icon_background         text,
+            use_icon_as_answer_icon boolean     NOT NULL DEFAULT false,
+            max_active_requests     integer,
+            created_by              text,
+            created_at              timestamptz NOT NULL DEFAULT now(),
+            updated_by              text,
+            updated_at              timestamptz NOT NULL DEFAULT now(),
+            deleted_at              timestamptz
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS apps_live_by_created ON apps (created_at) WHERE deleted_at IS NULL",
+        "CREATE INDEX IF NOT EXISTS apps_by_creator ON apps (created_by)",
+        // Stars per account (Dify's `app_stars`, without the tenant).
+        """
+        CREATE TABLE IF NOT EXISTS app_stars (
+            account_id text        NOT NULL,
+            doc_id     text        NOT NULL REFERENCES documents(id),
+            created_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (account_id, doc_id)
+        )
+        """,
+        // DSL imports waiting for the confirmation of their version (Dify keeps them 10 minutes in Redis).
+        """
+        CREATE TABLE IF NOT EXISTS app_imports (
+            id         text        PRIMARY KEY,
+            account_id text        NOT NULL,
+            yaml       text        NOT NULL,
+            overrides  jsonb       NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
         )
         """,
         // Databases created before the idempotency-key fingerprint existed.

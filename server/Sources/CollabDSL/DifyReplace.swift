@@ -71,7 +71,10 @@ extension DifyDSL {
     /// `validateDSLContent` for the app's mode), in Dify's order. `root` is the parsed file; `appMode` the open app's mode.
     /// Returns the file's version and its status (`completed` or `completed-with-warnings`). `pending` versions are
     /// refused unless `confirm` (Dify's confirmation step).
-    public static func checkReplacement(_ root: Value, appMode: String, confirm: Bool) throws(ReplaceRefusal)
+    ///
+    /// `newApp` (protocol 1.10, `POST /v1/apps/imports`): the file creates an app; `appMode` is then the file's own mode and a
+    /// mode dify-sf cannot run is refused as such.
+    public static func checkReplacement(_ root: Value, appMode: String, confirm: Bool, newApp: Bool = false) throws(ReplaceRefusal)
         -> (version: String, status: VersionStatus) {
         guard case .map(let top) = root else { throw ReplaceRefusal("Invalid YAML format: content must be a mapping") }
         var version = "0.1.0"
@@ -91,6 +94,7 @@ extension DifyDSL {
         let known = ["completion", "workflow", "chat", "advanced-chat", "agent-chat", "agent", "channel", "rag-pipeline"]
         guard known.contains(mode) else { throw ReplaceRefusal("'\(mode)' is not a valid AppMode") }
         guard mode == "workflow" || mode == "advanced-chat" else {
+            if newApp { throw ReplaceRefusal("dify-sf only has workflow and chatflow (advanced-chat) apps, the file is a \(mode) app") }
             throw ReplaceRefusal("Only workflow or advanced chat apps can be overwritten (the file is a \(mode) app)")
         }
         guard case .map(let workflow)? = top["workflow"] else { throw ReplaceRefusal("Missing workflow data for workflow/advanced chat app") }

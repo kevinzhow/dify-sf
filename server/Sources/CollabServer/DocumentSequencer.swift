@@ -19,6 +19,8 @@ public enum ServerError: Error, Sendable {
     case unauthorized(String)
     /// Any other status with its error code (`invalid_credentials`, `setup_done`, `forbidden`, ...).
     case http(status: Int, code: String, message: String)
+    /// 404 `app_deleted` (protocol 1.10): the document's app was deleted.
+    case appDeleted
 }
 
 /// One document's single writer.
@@ -61,6 +63,8 @@ actor DocumentSequencer {
     private var nextSub = 0
     private var busy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    /// The app was deleted (protocol 1.10): every call answers `appDeleted`, nothing is loaded again.
+    private var deleted = false
 
     init(docId: String, store: PostgresStore, config: ServerConfig, logger: Logger) {
         self.docId = docId
@@ -96,6 +100,7 @@ actor DocumentSequencer {
     // MARK: - Loading
 
     private func ensureLoaded() async throws -> Live {
+        if deleted { throw ServerError.appDeleted }
         if let state { return state }
         let loaded: LoadedDocument?
         do {
@@ -103,7 +108,16 @@ actor DocumentSequencer {
         } catch {
             throw ServerError.unavailable("load failed: \(error)")
         }
-        guard let loaded else { throw ServerError.notFound }
+        guard let loaded else {
+            // Unknown, or (protocol 1.10) its app was deleted, possibly by another process.
+            let status: DocumentStatus?
+            do { status = try await store.documentStatus(docId) } catch { throw ServerError.unavailable("\(error)") }
+            if status == .deleted {
+                markDeleted()
+                throw ServerError.appDeleted
+            }
+            throw ServerError.notFound
+        }
         let core: Sequencer
         do {
             core = try Sequencer(snapshot: loaded.snapshot, tail: loaded.tail,
@@ -186,6 +200,7 @@ actor DocumentSequencer {
     /// Binds `client` to `account` unless it is bound already (`404` for an unknown document); returns the account it is
     /// bound to.
     func bind(client: ClientID, to account: String) async throws -> String {
+        if deleted { throw ServerError.appDeleted }
         if let a = try await self.account(of: client) { return a }
         do {
             guard try await store.documentHead(docId) != nil else { throw ServerError.notFound }
@@ -526,6 +541,14 @@ actor DocumentSequencer {
         }
     }
 
+    /// Protocol 1.10: the app was deleted. Ends every stream (a reconnect gets `404 app_deleted`), forgets the state and
+    /// refuses everything from now on.
+    func markDeleted() {
+        deleted = true
+        state = nil
+        finishAllStreams()
+    }
+
     func finishAllStreams() {
         for (_, c) in subs { c.finish() }
         subs = [:]
@@ -553,6 +576,12 @@ actor DocumentRegistry {
         let s = DocumentSequencer(docId: id, store: store, config: config, logger: logger)
         docs[id] = s
         return s
+    }
+
+    /// Protocol 1.10: document `id`'s app was deleted: its sequencer ends its streams, refuses everything and is dropped.
+    func evict(_ id: String) async {
+        guard let s = docs.removeValue(forKey: id) else { return }
+        await s.markDeleted()
     }
 
     func pingAll() async {

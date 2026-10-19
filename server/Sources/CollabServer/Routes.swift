@@ -59,6 +59,7 @@ struct Routes: Sendable {
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
         registerComments(on: r)
         registerModels(on: r)
+        registerApps(on: r)
     }
 
     // MARK: - Plumbing
@@ -81,6 +82,7 @@ struct Routes: Sendable {
             case .internalError(let m): return error(.internalServerError, "internal", m)
             case .unauthorized(let m): return error(.unauthorized, "unauthorized", m)
             case .http(let status, let code, let m): return error(HTTPResponse.Status(code: status), code, m)
+            case .appDeleted: return error(.notFound, "app_deleted", "the app was deleted")
             }
         } catch is SecretsKeyMissing {
             return error(.serviceUnavailable, "secrets_key_missing", "the server has no secrets key (COLLAB_SECRETS_KEY), so it cannot store secrets")
@@ -151,16 +153,17 @@ struct Routes: Sendable {
     }
 
     private func createDoc(_ req: Request, id: String?) async throws -> Response {
-        _ = try await authenticate(req, .edit)
+        let principal = try await authenticate(req, .edit)
         struct CreateBody: Decodable { var template: String? }
         let data = try await body(req)
         let template = data.isEmpty ? nil : (try? WireJSON.decode(CreateBody.self, from: data))?.template
         guard let initial = Templates.named(template) else { throw ServerError.badRequest("unknown template") }
         let docId = id ?? UUID().uuidString.lowercased()
         let created: Bool
-        do { created = try await store.createDocument(id: docId, initial: initial) } catch { throw ServerError.unavailable("\(error)") }
-        let head: Int
-        do { head = try await store.documentHead(docId) ?? 0 } catch { throw ServerError.unavailable("\(error)") }
+        do {
+            created = try await store.createDocument(id: docId, initial: initial, app: NewApp(name: docId, createdBy: principal.id))
+        } catch { throw ServerError.unavailable("\(error)") }
+        let head = try await liveHead(docId)
         struct Created: Encodable { var id: String; var head: Int; var created: Bool }
         return try json(Created(id: docId, head: head, created: created), status: created ? .created : .ok)
     }
@@ -171,7 +174,7 @@ struct Routes: Sendable {
     /// Body: the Dify DSL as YAML (any content type), or JSON `{"yaml": "..."}`. Creates the document if absent
     /// (`201`); an existing document is left alone (`200`, `created: false`), so a retried import is harmless.
     private func importDSL(_ req: Request, id: String?) async throws -> Response {
-        _ = try await authenticate(req, .edit)
+        let principal = try await authenticate(req, .edit)
         let data = try await req.body.collect(max: .specified(ByteCount(value: Self.maxImportBytes))) ?? Data()
         struct Wrapped: Decodable { var yaml: String }
         let text = (try? WireJSON.decode(Wrapped.self, from: data))?.yaml ?? String(decoding: data, as: UTF8.self)
@@ -182,12 +185,12 @@ struct Routes: Sendable {
         let created: Bool
         do {
             created = try await store.createDocument(id: docId, initial: imported.document, metadata: imported.metadata,
-                                                     secrets: imported.secrets)
+                                                     secrets: imported.secrets,
+                                                     app: NewApp.from(metadata: imported.metadata, fallbackName: docId, createdBy: principal.id))
         } catch {
             throw ServerError.unavailable("\(error)")
         }
-        let head: Int
-        do { head = try await store.documentHead(docId) ?? 0 } catch { throw ServerError.unavailable("\(error)") }
+        let head = try await liveHead(docId)
         struct Created: Encodable { var id: String; var head: Int; var created: Bool; var nodes: Int; var edges: Int }
         return try json(Created(id: docId, head: head, created: created, nodes: imported.document.nodes.count,
                                 edges: imported.document.edges.count), status: created ? .created : .ok)
@@ -250,6 +253,8 @@ struct Routes: Sendable {
             return (.init(ops: plan.ops, metadata: plan.metadata == metadata ? nil : plan.metadata, secrets: plan.secrets),
                     (plan.renamedNodes, plan.renamedEdges))
         }
+        // Protocol 1.10: as Dify's overwrite import, the app takes the file's name, description and icon.
+        if !outcome.replayed { try await adoptAppSection(doc, of: root, by: principal.id) }
         struct RenamedIds: Encodable { var nodes: [String: String]; var edges: [String: String] }
         struct Replaced: Encodable {
             var head: Int; var ops: Int; var nodes: Int; var edges: Int; var next_cseq: Int; var replayed: Bool
@@ -266,16 +271,10 @@ struct Routes: Sendable {
     /// option of the same name): then with their stored plaintext (protocol 1.7), for the owner and admins only (1.8).
     private func exportDSL(_ req: Request, _ id: String) async throws -> Response {
         let p = try await authenticate(req)
-        if query(req)["include_secret"] == "true" { try authorize(p, .privileged) }
-        let meta: Value?
-        do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
-        let s = try await registry.sequencer(id).currentSnapshot()
-        let metadata = meta ?? DifyDSL.defaultMetadata(name: id)
         let q = query(req)
-        var secrets: [String: String]?
-        if q["include_secret"] == "true" {
-            do { secrets = try await store.secrets(id) } catch { throw ServerError.unavailable("\(error)") }
-        }
+        let includeSecret = q["include_secret"] == "true"
+        if includeSecret { try authorize(p, .privileged) }
+        let (s, metadata, secrets) = try await exportParts(id, viewer: p.id, includeSecret: includeSecret)
         var headers = HTTPFields()
         if q["format"] == "json" {
             let v = try DifyDSL.exportValue(s.doc, metadata: metadata, secrets: secrets)
@@ -291,12 +290,10 @@ struct Routes: Sendable {
     /// features come from the document at head (protocol 1.7). Documents that were not imported get the same defaults as
     /// their export.
     private func appMeta(_ req: Request, _ id: String) async throws -> Response {
-        _ = try await authenticate(req)
+        let p = try await authenticate(req)
         try await requireDoc(id)
-        let meta: Value?
-        do { meta = try await store.documentMetadata(id) } catch { throw ServerError.unavailable("\(error)") }
         let s = try await registry.sequencer(id).currentSnapshot()
-        return try json(DifyDSL.appMeta(meta ?? DifyDSL.defaultMetadata(name: id), document: s.doc))
+        return try json(DifyDSL.appMeta(try await currentMetadata(id, viewer: p.id), document: s.doc))
     }
 
     /// Protocol 1.7: `POST /secrets` `{"value": "..."}` stores the plaintext of a secret environment variable and answers
@@ -321,17 +318,22 @@ struct Routes: Sendable {
 
     private func docInfo(_ req: Request, _ id: String) async throws -> Response {
         _ = try await authenticate(req)
-        let head: Int?
-        do { head = try await store.documentHead(id) } catch { throw ServerError.unavailable("\(error)") }
-        guard let head else { throw ServerError.notFound }
+        let head = try await liveHead(id)
         struct Info: Encodable { var id: String; var head: Int }
         return try json(Info(id: id, head: head))
     }
 
-    func requireDoc(_ doc: String) async throws {
-        let head: Int?
-        do { head = try await store.documentHead(doc) } catch { throw ServerError.unavailable("\(error)") }
-        guard head != nil else { throw ServerError.notFound }
+    func requireDoc(_ doc: String) async throws { _ = try await liveHead(doc) }
+
+    /// The head of a document: `404 not_found` if unknown, `404 app_deleted` if its app was deleted (protocol 1.10).
+    func liveHead(_ doc: String) async throws -> Int {
+        let status: DocumentStatus?
+        do { status = try await store.documentStatus(doc) } catch { throw ServerError.unavailable("\(error)") }
+        switch status {
+        case .live(let head)?: return head
+        case .deleted?: throw ServerError.appDeleted
+        case nil: throw ServerError.notFound
+        }
     }
 
     /// Hands out a fresh, unique client id (a UUID): the safe way to avoid two tabs/processes sharing one cseq stream.

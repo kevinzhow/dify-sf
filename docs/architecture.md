@@ -82,6 +82,20 @@ features are document-level registers (1.7, node id `$app`) under the same rules
 Canvas comments (Dify's workflow comments) are not part of the document at all: plain REST resources in their own tables
 (author = account, only the author edits), announced on the document's stream by an `event: comments` without an `id`.
 
+## Apps (protocol 1.10)
+
+Dify's Studio: an app **is** a document (app id = document id). Table `apps` (one row per document, written in the transaction
+that creates the document; soft delete with `deleted_at`), `app_stars` (per account), `app_imports` (DSL imports waiting
+for a version confirmation), in `CollabStore/Apps.swift`; routes in `CollabServer/AppRoutes.swift`. Name, description and
+icon live in the row, not in the document (REST, last write wins, as in Dify); `GET /meta` and the export overlay them on the
+import metadata. "Last modified" is `GREATEST(apps.updated_at, documents.updated_at)`: the commit's existing
+`UPDATE documents SET rev, head` also sets `updated_at = now()` (no extra statement or round trip on the hot path; the list
+never joins `ops`). Copy, import and blank create all go through the DSL import (a copy is export-with-secrets + import, so its
+secrets are re-sealed for the new document id). A delete bumps `documents.rev` in its transaction, so a sequencer of any process
+fails its next commit's revision check, reloads and finds the document gone; in the deleting process the registry evicts the
+sequencer at once, which ends its streams. Loads and `documentHead` treat a deleted app's document as absent; the routes tell
+`app_deleted` from `not_found`.
+
 ## Accounts (protocol 1.8)
 
 Dify's community edition model: one workspace per server, created by `POST /v1/setup`; members join by invitation; roles

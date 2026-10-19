@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.9
+# dify-sf collaboration protocol, version 1.10
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,24 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.10 (additive; clients older than 1.10 are unaffected, except that a deleted app's document is gone): **apps** (section 2,
+  "Apps (1.10)"): Dify 1.17.1's Studio console API under `/v1/apps`. An **app is a document** (app id = document id); every
+  document has exactly one app row with Dify's `name`, `description`, `mode`, icon, `use_icon_as_answer_icon`,
+  `max_active_requests`, creator and times (documents of older servers get theirs at the first 1.10 start: name from the
+  imported file, else the document id). New endpoints: the app list (`GET /v1/apps`: Dify's pagination, `mode`, `name`,
+  `sort_by`, `creator_ids`, `is_created_by_me`; `tag_ids` accepted and ignored), one app (`GET /v1/apps/{app}`), create blank
+  (`POST /v1/apps`, workflow or chatflow, seeded like Dify's), import a Dify file as a new app (`POST /v1/apps/imports`,
+  `.../{import}/confirm`: Dify's `Import` answers and version confirmation), edit info (`PUT`), duplicate (`POST .../copy`,
+  secrets re-encrypted for the copy), delete (`DELETE`, soft), export (`GET .../export`, Dify's `{data}`), stars per account
+  (`POST`/`DELETE .../star`, `GET /v1/apps/starred`).
+  * The app row is the source of truth for name, description and icon: `GET /meta` and the export write the `app` section
+    from it, and an overwrite from a file (`POST /replace`) takes the file's name, description and icon, as Dify does.
+    These are plain REST writes (last write wins, as in Dify), not ops.
+  * **Deleting an app** makes its document answer `404 app_deleted` on every `/v1/docs/{doc}/...` call; its open event
+    streams end (the reconnect gets the 404). Clients that see `app_deleted` should stop retrying and drop their journal.
+  * "Last modified" (`updated_at`, the list's default sort) also moves with every committed op (a documented deviation from
+    Dify, whose draft saves do not touch the app row).
+  * New error codes: `app_deleted` (404), `unsupported_app_mode` (400). Streams accept `proto=1.10` (as 1.9).
 * 1.9 (additive; clients older than 1.9 are unaffected): **model providers** (section 2, "Model providers (1.9)"): Dify 1.17.1's
   console API for the workspace's LLM providers, under `/v1/workspace/`: the provider catalog (`GET model-providers/summary`,
   `GET model-providers`), the active models per type for the selectors (`GET models/model-types/{type}`), default models
@@ -232,6 +250,10 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | GET | `/v1/workspace/model-providers`, `.../summary`, `/v1/workspace/models/model-types/{type}`, `/v1/workspace/default-model`, `.../{provider}/models`, `.../{provider}/models/parameter-rules` | member | 1.9: providers, models, default models, parameter rules ("Model providers"). |
 | POST, PUT, PATCH, DELETE | `/v1/workspace/default-model`, `.../{provider}/credentials...`, `.../{provider}/models...` | privileged | 1.9: default models, credentials, custom models, enable/disable ("Model providers"); credential reads too. |
 | GET | `/v1/workspace/model-providers/{provider}/{icon_type}/{lang}` | public | 1.9: a provider icon (SVG/PNG). |
+| GET | `/v1/apps`, `/v1/apps/starred`, `/v1/apps/{app}` | member | 1.10: the app list, the caller's starred apps, one app ("Apps"). |
+| POST, DELETE | `/v1/apps/{app}/star` | member | 1.10: star / unstar for the caller (idempotent). |
+| POST, PUT, DELETE | `/v1/apps`, `/v1/apps/imports`, `/v1/apps/imports/{import}/confirm`, `/v1/apps/{app}`, `/v1/apps/{app}/copy` | edit | 1.10: create, import, confirm an import, edit info, delete, duplicate ("Apps"). |
+| GET | `/v1/apps/{app}/export` | edit | 1.10: the app as a Dify file, `{"data":"<yaml>"}`; `?include_secret=true` needs **privileged**. |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
@@ -372,7 +394,8 @@ Additive and optional (clients that do not use it are unaffected). A document im
 * A document that was not imported gets the defaults its export uses: `app` `{"name": "<doc id>", "mode": "workflow", ...}`, no
   variables, `features` `{}`.
 * The rest of the metadata (`app`, `kind`, `version`, `dependencies`) is fixed at import: ops do not change it. Variables and
-  features change with ops on `$app` (1.7).
+  features change with ops on `$app` (1.7). Since 1.10 the `app` section's `name`, `description`, `icon_type`, `icon`,
+  `icon_background` and `use_icon_as_answer_icon` are the app row's ("Apps (1.10)"), which `PUT /v1/apps/{app}` changes.
 
 ### Secrets: `POST /v1/docs/{doc}/secrets` (1.7)
 
@@ -550,6 +573,111 @@ deleted) the server sends an `event: comments` on the document's event stream (s
 connected to the same server process. It is a notification only: clients refetch `GET /comments` (or the one comment). The
 REST list is the truth; clients must also refetch after every (re)connect of the stream, since notifications are not replayed.
 
+### Apps (1.10)
+
+Dify 1.17.1's Studio (`api/controllers/console/app/app.py`, `app_import.py`) under **`/v1/apps`**, with Dify's paths and
+shapes, so a client that ports Dify's web code parses the answers unchanged. **An app is a document**: the app id is the
+document id, and the editor opens it with the document endpoints. Every document has exactly one app row, created in the same
+transaction as the document by every creating path (`POST /v1/docs`, `PUT /v1/docs/{doc}`, the imports, and the endpoints
+below): name, description, mode, icon, creator, times. dify-sf runs workflows and chatflows only (`workflow`,
+`advanced-chat`): those are the only modes an app can have.
+
+**Roles** (Dify's community edition with RBAC off): every member lists and reads every app and stars for themselves; creating,
+importing, editing info, duplicating, exporting and deleting need **edit** (`owner`, `admin`, `editor`; Dify's
+`edit_permission_required`): **any** editor may change **any** app, as in Dify; the export with secrets needs **privileged**
+(1.8). Each app carries `permission_keys`, Dify's legacy per-app keys of the **caller's** role (`rbac_service.py`
+`_LEGACY_APP_*_KEYS`): owner and admin `app.acl.preview`, `view_layout`, `test_and_run`, `edit`, `import_export_dsl`, `delete`,
+`release_and_version`, `monitor`, `access_config`, `tracing_config`, `log_and_annotation`, `access_point_manage`,
+`access_point_view`; editor the same without `tracing_config`; `normal` `app.acl.monitor`, `app.acl.access_point_view`;
+`dataset_operator` `app.acl.access_point_view`. (Dify sends `normal` members to an app's overview page; dify-sf has none, so
+clients open the editor read-only, as for every read-only role since 1.8.)
+
+**The app object** (Dify's `AppPartial` and `AppDetailWithSite` in one; every answer below that returns an app):
+
+```json
+{"id": "<doc id>", "name": "Support bot", "description": "", "mode": "advanced-chat",
+ "icon_type": "emoji", "icon": "🤖", "icon_background": "#FFEAD5", "icon_url": null, "use_icon_as_answer_icon": false,
+ "max_active_requests": null, "created_by": "<account id>", "created_at": 1760000000, "updated_by": "<account id>",
+ "updated_at": 1760000500, "author_name": "Olivia", "create_user_name": "Olivia", "tags": [], "permission_keys": ["..."],
+ "is_starred": false, "workflow": {"id": "<doc id>", "created_by": "...", "created_at": 1760000000, "updated_by": "...",
+ "updated_at": 1760000500}, "model_config": null, "access_mode": null, "maintainer": null, "bound_agent_id": null,
+ "has_draft_trigger": false, "enable_site": false, "enable_api": false, "site": null, "api_base_url": null,
+ "deleted_tools": [], "tracing": null}
+```
+
+Times are epoch **seconds**. `author_name` is the creator's account name (an app of unknown origin, created before accounts
+existed or by a harness, counts as the workspace owner's). **`updated_at` is "last modified"**: the later of the app row's last
+change (create, edit info) and the document's last committed op. This is a deviation from Dify, where draft saves only touch
+the workflow row and the Studio's "Edited" time would never move without publishing. `updated_by` is the account of the last
+app-row change. `tags` is always empty (dify-sf has no tags yet), `icon_url` always null (no file storage), and the members
+of features dify-sf does not have (web apps, API access, tracing, agents, triggers) have their empty values.
+
+**`GET /v1/apps`** (member): query `page` (1-99999, default 1), `limit` (1-100, default 20), `mode` (`all`, default, or one of
+Dify's `completion`, `chat`, `advanced-chat`, `workflow`, `agent-chat`, `agent`, `channel`: modes dify-sf cannot have match
+nothing), `name` (case-insensitive substring of the name; only its first 30 characters count, as in Dify), `sort_by`
+(`last_modified`, default: `updated_at` descending; `recently_created`; `earliest_created`; ties by id), `creator_ids`
+(repeated: `creator_ids=a&creator_ids=b`; apps created by any of them), `is_created_by_me` (boolean), `tag_ids` (accepted,
+ignored). Deleted apps are never listed. Answer: Dify's `AppPagination`
+`{"page", "limit", "total", "has_more", "data": [app, ...]}` (`has_more` = `page * limit < total`); a page past the end is
+`200` with `data: []`. Values outside the ranges, an unknown `mode` or `sort_by`: `400 bad_request`.
+
+**`GET /v1/apps/starred`** (member): the apps the caller starred, same query and answer (Dify's starred row asks for
+`limit=100`). **`POST /v1/apps/{app}/star`**, **`DELETE /v1/apps/{app}/star`** (member): `200 {"result":"success"}`, idempotent;
+stars are per account.
+
+**`GET /v1/apps/{app}`** (member): the app.
+
+**`POST /v1/apps`** (edit): Dify's `CreateAppPayload` `{"name", "description"?, "mode", "icon_type"?, "icon"?,
+"icon_background"?}`: `name` 1+ characters (trimmed), `description` at most 400 characters, `mode` one of Dify's `chat`,
+`agent-chat`, `advanced-chat`, `workflow`, `completion` (else `400 bad_request`) and one dify-sf has (`workflow`,
+`advanced-chat`; else `400 unsupported_app_mode`), `icon_type` `emoji` (default), `image` or `link`; icon defaults `🤖` on
+`#FFEAD5`. `201` with the app. The document is seeded as a Dify file would be imported: a **chatflow** gets Dify's chatflow
+template (User Input -> LLM `llm` -> Answer `answer` `{{#llm.text#}}`, features `retriever_resource` on); a **workflow** one
+User Input (`start`) node (Dify's blank workflow has no node and shows a local start placeholder instead).
+
+**`PUT /v1/apps/{app}`** (edit): Dify's `UpdateAppPayload` `{"name", "description"?, "icon_type"?, "icon"?, "icon_background"?,
+"use_icon_as_answer_icon"?, "max_active_requests"?}`: `name` is required (1+ characters); members left out (or null) keep
+their value (Dify resets them; its web app always sends them all). `max_active_requests` (a non-negative integer) is stored
+and unused. Answer: the app.
+
+**`POST /v1/apps/{app}/copy`** (edit): Dify's `CopyAppPayload` `{"name"?, "description"?, "icon_type"?, "icon"?,
+"icon_background"?}` (left out = the original's). As in Dify the app is exported with its secrets and imported as a new app:
+the copy has the original's document at head (graph, variables, features), mode and settings, new ids for its secret
+references, its secrets **encrypted for the new document**, the caller as creator, no stars. `201` with the new app. A server
+without a secrets key refuses to copy an app that has secrets (`503 secrets_key_missing`).
+
+**`DELETE /v1/apps/{app}`** (edit): `204`, a **soft delete**: the app leaves every list, and its document is gone for every
+client: every `/v1/docs/{doc}/...` call, `GET`/`PUT`/`copy`/`export`/`star`/`DELETE` of the app answer
+**`404 app_deleted`** (an unknown id stays `404 not_found`). The document's sequencer stops, and the event streams open on it
+end; a reconnect gets the `404`. A client should then tell the user, leave the editor and drop the document's journal: its
+ops can never be committed. (The rows stay in the database; there is no undelete endpoint.)
+
+**`GET /v1/apps/{app}/export`** (edit; `?include_secret=true` privileged): Dify's `{"data": "<yaml>"}`, the same file as
+`GET /v1/docs/{doc}/export` (secret values `""` without `include_secret`). Dify asks before exporting secrets: a client reads
+the app's environment variables (`GET /meta`) and, if one is `value_type: secret`, offers the choice.
+
+**`POST /v1/apps/imports`** (edit): Dify's `AppImportPayload` `{"mode": "yaml-content", "yaml_content", "name"?,
+"description"?, "icon_type"?, "icon"?, "icon_background"?}` creates a new app from a Dify file (the overrides replace the
+file's `app` values). The answer is always Dify's `Import` object `{"id", "status", "app_id", "app_mode",
+"current_dsl_version", "imported_dsl_version", "error", "warnings": []}`, with the HTTP status:
+
+* `200`, `status` `completed` (or `completed-with-warnings` for an older minor version): `app_id` is the new app;
+* `202`, `status` `pending`: the file's version is newer than the server's (`0.7.0`) or of an older major version and needs
+  the user's confirmation; nothing is created yet. **`POST /v1/apps/imports/{id}/confirm`** (same account, within 10 minutes,
+  once) creates the app (`200`, `completed`); afterwards, or for another account, `404 not_found`;
+* `400`, `status` `failed`, `error` Dify's message: not a mapping, a bad or missing version, no `app` section, a mode
+  dify-sf cannot run, nodes the mode cannot run (`answer` in a workflow; `end` or triggers in a chatflow), a file that does
+  not import, `yaml-url` (dify-sf does not fetch URLs: upload the content), an `app_id` (overwriting goes through the editor,
+  `POST /v1/docs/{doc}/replace`), content over 10 MB.
+
+Import, copy and blank create are the same import underneath: identical documents, metadata and secret handling as
+`POST /v1/docs/import` (1.5, 1.7, 1.9).
+
+**Migration.** At its first start a 1.10 server gives every document without an app row one (idempotent, every start): name,
+mode, description and icon from the imported file's `app` section, else the document id, `workflow` and Dify's defaults;
+the creator is the account of the document's earliest client id (none: the workspace owner); created at the document's
+creation; last modified at its last commit.
+
 ### Model providers (1.9)
 
 Dify 1.17.1's model provider settings (`/console/api/workspaces/current/...`, `api/controllers/console/workspace/
@@ -706,6 +834,8 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 403 | `account_banned` | 1.8, login: the account is banned. | Tell the user. |
 | 403 | `not_author` | A comment or reply edited, moved or deleted by someone other than its author (comments). | Tell the user; do not retry. |
 | 404 | `not_found` | Unknown document (or comment, reply). | `PUT` it (if creation is intended) or give up. |
+| 404 | `app_deleted` | 1.10: the document's app was deleted (every document call, the app endpoints). | Tell the user, leave the editor, drop the journal; do not retry. |
+| 400 | `unsupported_app_mode` | 1.10, `POST /v1/apps`: a Dify mode dify-sf does not have (`chat`, `agent-chat`, `completion`). | Offer workflow or chatflow. |
 | 409 | `setup_done`, `email_taken` | 1.8: `POST /setup` after the install; an email in use. | Sign in instead. |
 | 409 | `outstanding_ops`, `cseq_used`, `conflict` | `POST /replace`: the client has unresolved ops; the `cseq` is used; an op of the replacement was refused (nothing committed). | Resolve the ops, then retry with the next cseq. |
 | 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |

@@ -103,8 +103,12 @@ public struct PostgresStore: Sendable {
 
     /// Creates the document (seed state, optional Dify metadata, secrets of an imported file) in one transaction. Returns
     /// false, writing nothing, if it already existed.
-    public func createDocument(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Bool {
-        try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata, secrets: secrets) }
+    /// Protocol 1.10: the app row is inserted in the same transaction: `app`, or one derived from `metadata`
+    /// (`NewApp.from`, name = the file's or the document id, creator unknown).
+    public func createDocument(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:],
+                               app: NewApp? = nil) async throws -> Bool {
+        let row = app ?? NewApp.from(metadata: metadata, fallbackName: id, createdBy: nil)
+        return try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata, secrets: secrets, app: row) }
     }
 
     /// Stores a secret environment variable under `ref` (protocol 1.7), encrypted (1.9; `SecretsKeyMissing` without a key).
@@ -207,7 +211,8 @@ public struct PostgresStore: Sendable {
     // MARK: - Documents
 
     /// Creates the document with its seed state (snapshot at seq 0). Returns false if it already existed.
-    func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Bool {
+    func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:],
+                            app: NewApp) async throws -> Bool {
         var sealedSecrets: [String: String] = [:]
         for (ref, value) in secrets { sealedSecrets[ref] = try sealSecret(doc: id, ref: ref, value) }
         let state = try WireJSON.encodeString(initial)
@@ -218,6 +223,7 @@ public struct PostgresStore: Sendable {
             for try await _ in inserted { created = true }
             if created {
                 _ = try await c.query("INSERT INTO snapshots (doc_id, seq, state) VALUES (\(id), 0, \(state)::text::jsonb)", logger: logger)
+                try await self.insertApp(c, id: id, app)
                 if let meta {
                     _ = try await c.query("INSERT INTO doc_meta (doc_id, dsl) VALUES (\(id), \(meta)::text::jsonb)", logger: logger)
                 }
@@ -229,8 +235,12 @@ public struct PostgresStore: Sendable {
         }
     }
 
+    /// nil for an unknown document and for one whose app was deleted (protocol 1.10; `documentStatus` tells them apart).
     func documentHeadImpl(_ id: String) async throws -> Int? {
-        let rows = try await client.query("SELECT head FROM documents WHERE id = \(id)", logger: logger)
+        let rows = try await client.query("""
+            SELECT head FROM documents d WHERE id = \(id)
+              AND NOT EXISTS (SELECT 1 FROM apps a WHERE a.doc_id = d.id AND a.deleted_at IS NOT NULL)
+            """, logger: logger)
         for try await (head) in rows.decode(Int.self) { return head }
         return nil
     }
@@ -241,7 +251,11 @@ public struct PostgresStore: Sendable {
             _ = try await c.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ", logger: logger)
             var rev = -1
             var head = 0
-            for try await (r, h) in try await c.query("SELECT rev, head FROM documents WHERE id = \(id)", logger: logger).decode((Int, Int).self) {
+            // Protocol 1.10: a deleted app's document is not loaded (nil, as an unknown one).
+            for try await (r, h) in try await c.query("""
+                SELECT rev, head FROM documents d WHERE id = \(id)
+                  AND NOT EXISTS (SELECT 1 FROM apps a WHERE a.doc_id = d.id AND a.deleted_at IS NOT NULL)
+                """, logger: logger).decode((Int, Int).self) {
                 rev = r
                 head = h
             }
@@ -457,7 +471,8 @@ public struct PostgresStore: Sendable {
                         (SELECT min(seq) FROM (SELECT seq FROM snapshots WHERE doc_id = \(id) ORDER BY seq DESC LIMIT 2) keep), 0)
                     """, logger: logger)
             }
-            _ = try await tx.query("UPDATE documents SET rev = rev + 1, head = \(newHead) WHERE id = \(id)", logger: logger)
+            // Protocol 1.10: `updated_at` is the app's "last modified" (same statement, no extra round trip).
+            _ = try await tx.query("UPDATE documents SET rev = rev + 1, head = \(newHead), updated_at = now() WHERE id = \(id)", logger: logger)
             return expectedRev + 1
         }
     }
