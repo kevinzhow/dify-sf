@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:collab_client/collab_client.dart';
@@ -192,185 +193,206 @@ class _CreateAppModalState extends State<CreateAppModal> {
     final canSubmit = widget.canCreateApp && _name.isNotEmpty;
     return CallbackShortcuts(
       bindings: modEnter(widget.canCreateApp ? _handleCreate : null),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Align(
-                alignment: AlignmentDirectional.topEnd,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: SizedBox(
-                    width: 660,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(height: top),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4, bottom: 24),
-                          child: Text(
-                            _a('newApp.startFromBlank'),
-                            style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            _a('newApp.chooseAppType'),
-                            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
-                          ),
-                        ),
-                        Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // `flex flex-1 shrink-0 justify-end` on the form column: `shrink-0` keeps its content width (660 + px-10 on
+          // both sides) and it only grows past it; the preview column is `flex-1 shrink` with `max-w-190` (760). At
+          // 1440 the form is 740 and the preview 684, which is what the divider positions show.
+          const formMin = 740.0;
+          const previewMax = 760.0;
+          final formWidth = math.min(constraints.maxWidth, math.max(formMin, constraints.maxWidth - previewMax));
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: formWidth,
+                child: SingleChildScrollView(
+                  child: Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: SizedBox(
+                        width: 660,
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: 16,
                           children: [
-                            Row(
-                              spacing: 8,
-                              children: [
-                                _AppTypeCard(
-                                  key: const ValueKey('create-app-type-workflow'),
-                                  active: _mode == AppModes.workflow,
-                                  title: _a('types.workflow'),
-                                  description: _a('newApp.workflowShortDescription'),
-                                  color: DifyColors.componentsIconBgIndigoSolid,
-                                  icon: RemixIcon(
-                                    'exchange-2-fill',
-                                    size: 16,
-                                    color: DifyColors.componentsAvatarShapeFillStop100,
-                                  ),
-                                  onTap: () => setState(() => _mode = AppModes.workflow),
-                                ),
-                                _AppTypeCard(
-                                  key: const ValueKey('create-app-type-advanced-chat'),
-                                  active: _mode == AppModes.advancedChat,
-                                  title: _a('types.advanced'),
-                                  description: _a('newApp.advancedShortDescription'),
-                                  color: DifyColors.componentsIconBgBlueLightSolid,
-                                  icon: DifyIcon(
-                                    'vender/solid/communication/bubble-text-mod',
-                                    size: 16,
-                                    color: DifyColors.componentsAvatarShapeFillStop100,
-                                  ),
-                                  onTap: () => setState(() => _mode = AppModes.advancedChat),
-                                ),
-                              ],
+                            SizedBox(height: top),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, bottom: 24),
+                              child: Text(
+                                _a('newApp.startFromBlank'),
+                                style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
+                              ),
                             ),
-                            DifyDivider(margin: EdgeInsets.zero),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              spacing: 12,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      SizedBox(
-                                        height: 24,
-                                        child: Align(
-                                          alignment: AlignmentDirectional.centerStart,
-                                          child: Text(
-                                            _a('newApp.captionName'),
-                                            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      DifyInput(
-                                        key: const ValueKey('create-app-name'),
-                                        value: _name,
-                                        placeholder: _a('newApp.appNamePlaceholder'),
-                                        semanticLabel: _a('newApp.captionName'),
-                                        onChanged: (v) => setState(() => _name = v),
-                                      ),
-                                    ],
+                            // `mb-2 leading-6`: the heading's line box is 24 px, not the 16 px the type alone gives.
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: SizedBox(
+                                height: 24,
+                                child: Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Text(
+                                    _a('newApp.chooseAppType'),
+                                    style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                                   ),
                                 ),
-                                DifyAppIcon(
-                                  key: const ValueKey('create-app-icon'),
-                                  size: DifyAppIconSize.xxl,
-                                  radius: DifyRadius.xxl,
-                                  iconType: _icon.type,
-                                  icon: _icon.icon,
-                                  background: _icon.background,
-                                  imageUrl: _icon.url,
-                                  semanticLabel: _a('iconPicker.emoji'),
-                                  onTap: _pickIcon,
-                                ),
-                              ],
+                              ),
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
+                              spacing: 16,
                               children: [
-                                SizedBox(
-                                  height: 24,
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        _a('newApp.captionDescription'),
-                                        style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
+                                Row(
+                                  spacing: 8,
+                                  children: [
+                                    _AppTypeCard(
+                                      key: const ValueKey('create-app-type-workflow'),
+                                      active: _mode == AppModes.workflow,
+                                      title: _a('types.workflow'),
+                                      description: _a('newApp.workflowShortDescription'),
+                                      color: DifyColors.componentsIconBgIndigoSolid,
+                                      icon: RemixIcon(
+                                        'exchange-2-fill',
+                                        size: 16,
+                                        color: DifyColors.componentsAvatarShapeFillStop100,
                                       ),
-                                      Flexible(
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(left: 4),
-                                          child: Text(
-                                            '(${_a('newApp.optional')})',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
-                                          ),
-                                        ),
+                                      onTap: () => setState(() => _mode = AppModes.workflow),
+                                    ),
+                                    _AppTypeCard(
+                                      key: const ValueKey('create-app-type-advanced-chat'),
+                                      active: _mode == AppModes.advancedChat,
+                                      title: _a('types.advanced'),
+                                      description: _a('newApp.advancedShortDescription'),
+                                      color: DifyColors.componentsIconBgBlueLightSolid,
+                                      icon: DifyIcon(
+                                        'vender/solid/communication/bubble-text-mod',
+                                        size: 16,
+                                        color: DifyColors.componentsAvatarShapeFillStop100,
                                       ),
-                                    ],
-                                  ),
+                                      onTap: () => setState(() => _mode = AppModes.advancedChat),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 4),
-                                DifyTextarea(
-                                  key: const ValueKey('create-app-description'),
-                                  value: _description,
-                                  placeholder: _a('newApp.appDescriptionPlaceholder'),
-                                  semanticLabel: _a('newApp.captionDescription'),
-                                  onChanged: (v) => setState(() => _description = v),
+                                DifyDivider(margin: EdgeInsets.zero),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  spacing: 12,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          SizedBox(
+                                            height: 24,
+                                            child: Align(
+                                              alignment: AlignmentDirectional.centerStart,
+                                              child: Text(
+                                                _a('newApp.captionName'),
+                                                style: difyTextStyle(
+                                                  DifyType.systemSmSemibold,
+                                                  DifyColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          DifyInput(
+                                            key: const ValueKey('create-app-name'),
+                                            value: _name,
+                                            placeholder: _a('newApp.appNamePlaceholder'),
+                                            semanticLabel: _a('newApp.captionName'),
+                                            onChanged: (v) => setState(() => _name = v),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    DifyAppIcon(
+                                      key: const ValueKey('create-app-icon'),
+                                      size: DifyAppIconSize.xxl,
+                                      radius: DifyRadius.xxl,
+                                      iconType: _icon.type,
+                                      icon: _icon.icon,
+                                      background: _icon.background,
+                                      imageUrl: _icon.url,
+                                      semanticLabel: _a('iconPicker.emoji'),
+                                      onTap: _pickIcon,
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    SizedBox(
+                                      height: 24,
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            _a('newApp.captionDescription'),
+                                            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
+                                          ),
+                                          Flexible(
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left: 4),
+                                              child: Text(
+                                                '(${_a('newApp.optional')})',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    DifyTextarea(
+                                      key: const ValueKey('create-app-description'),
+                                      value: _description,
+                                      placeholder: _a('newApp.appDescriptionPlaceholder'),
+                                      semanticLabel: _a('newApp.captionDescription'),
+                                      onChanged: (v) => setState(() => _description = v),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 20, bottom: 40),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                spacing: 8,
+                                children: [
+                                  DifyButton(
+                                    key: const ValueKey('create-app-cancel'),
+                                    semanticLabel: _a('newApp.Cancel'),
+                                    onPressed: widget.onClose,
+                                    child: Text(_a('newApp.Cancel')),
+                                  ),
+                                  DifyButton(
+                                    key: const ValueKey('create-app-submit'),
+                                    variant: DifyButtonVariant.primary,
+                                    disabled: !canSubmit,
+                                    loading: _creating,
+                                    semanticLabel: _a('newApp.Create'),
+                                    onPressed: _handleCreate,
+                                    child: labelWithModEnter(_a('newApp.Create'), disabled: !canSubmit),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20, bottom: 40),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            spacing: 8,
-                            children: [
-                              DifyButton(
-                                key: const ValueKey('create-app-cancel'),
-                                semanticLabel: _a('newApp.Cancel'),
-                                onPressed: widget.onClose,
-                                child: Text(_a('newApp.Cancel')),
-                              ),
-                              DifyButton(
-                                key: const ValueKey('create-app-submit'),
-                                variant: DifyButtonVariant.primary,
-                                disabled: !canSubmit,
-                                loading: _creating,
-                                semanticLabel: _a('newApp.Create'),
-                                onPressed: _handleCreate,
-                                child: labelWithModEnter(_a('newApp.Create'), disabled: !canSubmit),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: _Preview(mode: _mode, top: top),
-          ),
-        ],
+              Expanded(
+                child: _Preview(mode: _mode, top: top),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

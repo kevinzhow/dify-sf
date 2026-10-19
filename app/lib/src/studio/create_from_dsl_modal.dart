@@ -432,12 +432,27 @@ class DslUploader extends StatefulWidget {
 class DslUploaderState extends State<DslUploader> {
   bool _dragging = false;
   bool _hovered = false;
+  // `focus-visible`: a ring only once the keyboard has been used. The dialog focuses Browse when it opens
+  // (`initialFocus`, with `focusVisible: false`), which a plain `hasFocus` check would draw a ring for.
+  bool _keyboardFocus = false;
   final _row = FocusNode(debugLabel: 'dsl file row');
   FocusNode? _ownBrowse;
   FocusNode get _browse => widget.browseFocusNode ?? (_ownBrowse ??= FocusNode(debugLabel: 'dsl browse'));
 
   @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  bool _onKey(KeyEvent event) {
+    if (!_keyboardFocus) setState(() => _keyboardFocus = true);
+    return false;
+  }
+
+  @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
     _row.dispose();
     _ownBrowse?.dispose();
     super.dispose();
@@ -496,64 +511,72 @@ class DslUploaderState extends State<DslUploader> {
     final file = widget.file;
     Widget body;
     if (file == null) {
-      body = Container(
-        key: const ValueKey('dsl-dropzone'),
+      // `flex h-12 items-center rounded-[10px] border border-dashed ...` with a centred `space-x-2` group and, inside
+      // it, the label followed by the Browse button (`ml-1 h-6 px-1`). Both are intrinsic: wrapping them in Flexible
+      // makes the button take the rest of the row, which moves the whole group left and draws a ring across it.
+      body = SizedBox(
         height: 48,
-        decoration: BoxDecoration(
-          color: _dragging ? DifyColors.componentsDropzoneBgAccent : DifyColors.componentsDropzoneBg,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: _dragging ? DifyColors.componentsDropzoneBorderAccent : DifyColors.componentsDropzoneBorder,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 8,
-          children: [
-            RemixIcon('upload-cloud-2-line', size: 24, color: DifyColors.textTertiary),
-            Flexible(
-              child: Text(
-                _a('dslUploader.button'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // inherited 14/20
-              ),
-            ),
-            Flexible(
-              child: DifyPressable(
-                key: const ValueKey('dsl-browse'),
-                focusNode: _browse,
-                disabled: widget.disabled,
-                semanticLabel: _a('dslUploader.browse'),
-                onPressed: () => unawaited(_select()),
-                builder: (context, hovered, focused) => Container(
-                  height: 24,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  alignment: Alignment.center,
-                  decoration: focused
-                      ? BoxDecoration(
-                          borderRadius: BorderRadius.circular(DifyRadius.md),
-                          border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
-                        )
-                      : null,
-                  child: Text(
-                    _a('dslUploader.browse'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    // `text-sm font-normal hover:underline`
-                    style:
-                        difyTextStyle(
-                          DifyType.systemMdRegular,
-                          widget.disabled ? DifyColors.textDisabled : DifyColors.textAccent,
-                        ).copyWith(
-                          decoration: hovered && !widget.disabled ? TextDecoration.underline : null,
-                          decorationColor: DifyColors.textAccent,
+        child: DashedBorderBox(
+          key: const ValueKey('dsl-dropzone'),
+          radius: 10,
+          fill: _dragging ? DifyColors.componentsDropzoneBgAccent : DifyColors.componentsDropzoneBg,
+          color: _dragging ? DifyColors.componentsDropzoneBorderAccent : DifyColors.componentsDropzoneBorder,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 8,
+            children: [
+              RemixIcon('upload-cloud-2-line', size: 24, color: DifyColors.textTertiary),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _a('dslUploader.button'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // inherited 14/20
+                      ),
+                    ),
+                    DifyPressable(
+                      key: const ValueKey('dsl-browse'),
+                      focusNode: _browse,
+                      disabled: widget.disabled,
+                      semanticLabel: _a('dslUploader.browse'),
+                      onPressed: () => unawaited(_select()),
+                      // `focus-visible:ring-2`: the dialog focuses Browse when it opens (`initialFocus`, with
+                      // `focusVisible: false`), so the ring waits for the keyboard the way the browser does.
+                      builder: (context, hovered, focused) => Container(
+                        height: 24,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        alignment: Alignment.center,
+                        decoration: focused && _keyboardFocus
+                            ? BoxDecoration(
+                                borderRadius: BorderRadius.circular(DifyRadius.md),
+                                border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
+                              )
+                            : null,
+                        child: Text(
+                          _a('dslUploader.browse'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          // `text-sm font-normal hover:underline`
+                          style:
+                              difyTextStyle(
+                                DifyType.systemMdRegular,
+                                widget.disabled ? DifyColors.textDisabled : DifyColors.textAccent,
+                              ).copyWith(
+                                decoration: hovered && !widget.disabled ? TextDecoration.underline : null,
+                                decorationColor: DifyColors.textAccent,
+                              ),
                         ),
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     } else {

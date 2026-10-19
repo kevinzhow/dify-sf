@@ -1,5 +1,6 @@
 // dify-spec: web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/studio/create_from_dsl_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -159,15 +160,18 @@ void main() {
 
     testWidgets('should toggle drag styles and clear them when leaving the overlay', (t) async {
       await renderMembers(t, const _Host(controlled: false));
-      BoxDecoration zone() =>
-          t.widget<Container>(find.byKey(const ValueKey('dsl-dropzone'))).decoration! as BoxDecoration;
-      expect(zone().color, DifyColors.componentsDropzoneBg);
+      DashedBorderBox zone() => t.widget<DashedBorderBox>(find.byKey(const ValueKey('dsl-dropzone')));
+      expect(zone().fill, DifyColors.componentsDropzoneBg);
+      expect(zone().color, DifyColors.componentsDropzoneBorder);
+      expect(zone().dashed, isTrue, reason: 'border-dashed');
+      expect(zone().radius, 10);
       _uploader(t).dragEnter();
       await t.pump();
-      expect(zone().color, DifyColors.componentsDropzoneBgAccent);
+      expect(zone().fill, DifyColors.componentsDropzoneBgAccent);
+      expect(zone().color, DifyColors.componentsDropzoneBorderAccent);
       _uploader(t).dragExit();
       await t.pump();
-      expect(zone().color, DifyColors.componentsDropzoneBg);
+      expect(zone().fill, DifyColors.componentsDropzoneBg);
     });
 
     testWidgets('should reopen the hidden input and restore the previous file when the picker is cancelled', (t) async {

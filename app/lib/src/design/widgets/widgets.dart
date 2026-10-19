@@ -13,6 +13,7 @@ export 'chip.dart';
 export 'collapse.dart';
 export 'copy_feedback.dart';
 export 'date_and_time_picker.dart';
+export 'dashed_border.dart';
 export 'dialog.dart';
 export 'divider.dart';
 export 'drawer.dart';
