@@ -1,6 +1,6 @@
 /// The editor's run/debug backend: the operations Dify 1.17.1's web app calls to run and debug a draft
 /// (service/workflow.ts, service/base.ts `ssePost`/`sseGet`, service/use-workflow.ts, service/log.ts,
-/// service/debug.ts), as one injectable [WorkflowRunService]. With a server runtime (protocols 1.13, 1.14) it is
+/// service/debug.ts), as one injectable [WorkflowRunService]. With a server runtime (protocols 1.13–1.15) it is
 /// `ServerRunService` (server_run_service.dart: whole draft runs, single runs, history and records of what the server
 /// runs); everything else, and servers without a runtime, use [MockWorkflowRunService] (mock_run_service.dart), which
 /// replays plausible event streams built from the current graph, so every run UI works the same either way.

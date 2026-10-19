@@ -1,11 +1,10 @@
-/// The server's workflow runtime in the editor (protocols 1.13, 1.14): [ServerRunService] runs on the server what it
+/// The server's workflow runtime in the editor (protocols 1.13–1.15): [ServerRunService] runs on the server what it
 /// runs and leaves the rest to the editor's local stand-in, [MockWorkflowRunService]:
 ///
 /// * **single runs and last runs** of the node types in `system-features`' `workflow_runtime.single_node_run`;
 /// * **whole draft runs** (1.14, `workflow_runtime.draft_run`): a workflow whose node types the server all runs is run
-///   there (Dify's SSE stream, stop, run history, run detail, tracing list); a graph with another node type (iteration,
-///   loop, tool, ... before their phases) stays on the stand-in, as do chatflow messages (P6), human input forms and
-///   the iteration / loop single runs;
+///   there (Dify's SSE stream, stop, run history, run detail, tracing list); a graph with another node type (tool, knowledge, ... before their phases) stays on the stand-in, as do chatflow messages (P6), human input forms;
+/// * **iteration / loop single runs** (1.15): containers listed in single_node_run use their dedicated SSE endpoints;
 /// * the **variable inspect panel** (1.14): [ServerInspectServices], the server's draft variables (what the runs and
 ///   single runs saved).
 ///
@@ -196,11 +195,31 @@ class ServerRunService extends WorkflowRunService {
   Future<void> submitHumanInputForm(String formToken, DifyJson data) => fallback.submitHumanInputForm(formToken, data);
 
   @override
-  Stream<RunEvent> iterationSingleNodeRun(String nodeId, DifyJson body) =>
-      fallback.iterationSingleNodeRun(nodeId, body);
+  Stream<RunEvent> iterationSingleNodeRun(String nodeId, DifyJson body) => _containerRun('iteration', nodeId, body);
 
   @override
-  Stream<RunEvent> loopSingleNodeRun(String nodeId, DifyJson body) => fallback.loopSingleNodeRun(nodeId, body);
+  Stream<RunEvent> loopSingleNodeRun(String nodeId, DifyJson body) => _containerRun('loop', nodeId, body);
+
+  Stream<RunEvent> _containerRun(String kind, String nodeId, DifyJson body) async* {
+    if (!_onServer(nodeId) || nodeTypeOf(nodeId) != kind) {
+      yield* kind == 'iteration'
+          ? fallback.iterationSingleNodeRun(nodeId, body)
+          : fallback.loopSingleNodeRun(nodeId, body);
+      return;
+    }
+    try {
+      final payloads = kind == 'iteration'
+          ? runtime.api.iterationSingleRun(appId, nodeId, body)
+          : runtime.api.loopSingleRun(appId, nodeId, body);
+      await for (final payload in payloads) {
+        final event = RunEvent.fromJson(payload);
+        if (event case WorkflowStartedEvent(:final taskId?)) _serverRuns.add(taskId);
+        yield event;
+      }
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 
   @override
   Future<List<DifyJson>> fetchConversationVariables(String conversationId) =>

@@ -83,9 +83,25 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   ];
 
   @override
-  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body) async* {
+  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body) =>
+      _streamRun(appId, body, op: 'draft-run');
+
+  @override
+  Stream<Map<String, Object?>> iterationSingleRun(String appId, String nodeId, Map<String, Object?> body) =>
+      _streamRun(appId, body, op: 'iteration-run', nodeId: nodeId);
+
+  @override
+  Stream<Map<String, Object?>> loopSingleRun(String appId, String nodeId, Map<String, Object?> body) =>
+      _streamRun(appId, body, op: 'loop-run', nodeId: nodeId);
+
+  Stream<Map<String, Object?>> _streamRun(
+    String appId,
+    Map<String, Object?> body, {
+    required String op,
+    String nodeId = '',
+  }) async* {
     final runId = 'run-${++_n}';
-    calls.add((op: 'draft-run', appId: appId, nodeId: '', body: body));
+    calls.add((op: op, appId: appId, nodeId: nodeId, body: body));
     final events = draftRunEvents(appId, runId, body);
     _runs.putIfAbsent(appId, () => []).insert(0, {'id': runId, 'version': 'draft', 'status': 'running'});
     for (final e in events) {

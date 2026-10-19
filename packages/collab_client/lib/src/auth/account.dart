@@ -335,7 +335,8 @@ final class WorkflowRuntimeFeatures {
   /// The runtime's protocol version (`1.13`).
   final String protocolVersion;
 
-  /// The node types `POST .../workflows/draft/nodes/{node}/run` runs on the server (`llm` in 1.13).
+  /// The node types the server runs individually (`llm` in 1.13). In 1.15, iteration/loop use their dedicated
+  /// SSE endpoints; the other types use `.../workflows/draft/nodes/{node}/run`.
   final Set<String> singleNodeRun;
 
   /// 1.14: the node types a whole draft run (`POST .../workflows/draft/run`) supports; empty before 1.14. A graph with

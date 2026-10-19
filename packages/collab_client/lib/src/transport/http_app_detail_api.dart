@@ -583,8 +583,18 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
 
   /// The SSE stream of a draft run: the response head within [timeout], then frames for as long as the run lasts.
   @override
-  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body) async* {
-    final path = '${_draft(appId)}/run';
+  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body) =>
+      _runStream('${_draft(appId)}/run', body);
+
+  @override
+  Stream<Map<String, Object?>> iterationSingleRun(String appId, String nodeId, Map<String, Object?> body) =>
+      _runStream('${_draft(appId)}/iteration/nodes/${HttpConsoleApi._seg(nodeId)}/run', body);
+
+  @override
+  Stream<Map<String, Object?>> loopSingleRun(String appId, String nodeId, Map<String, Object?> body) =>
+      _runStream('${_draft(appId)}/loop/nodes/${HttpConsoleApi._seg(nodeId)}/run', body);
+
+  Stream<Map<String, Object?>> _runStream(String path, Map<String, Object?> body) async* {
     final req = http.Request('POST', _url(path))
       ..headers['Content-Type'] = 'application/json'
       ..headers['Accept'] = 'text/event-stream'

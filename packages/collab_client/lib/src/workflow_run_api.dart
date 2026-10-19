@@ -40,7 +40,7 @@ library;
 ///   (Dify's `WorkflowRunPaginationResponse`, `WorkflowRunDetailResponse`, NodeTracing list).
 /// * **Variable inspect**: the draft variable endpoints ([WorkflowRunApi.draftVariables] and the rest), Dify's JSON.
 ///
-/// The run operations of the workflow runtime (protocol 1.13, 1.14).
+/// The run operations of the workflow runtime (protocols 1.13–1.15).
 abstract class WorkflowRunApi {
   /// `POST /v1/apps/{app}/workflows/draft/nodes/{node}/run` with Dify's body (`{"inputs": {...}}`): the execution
   /// (Dify's `WorkflowRunNodeExecutionResponse`).
@@ -51,6 +51,13 @@ abstract class WorkflowRunApi {
 
   /// 1.14: `POST /v1/apps/{app}/workflows/draft/run` (Dify's body `{"inputs": {...}, "files": []}`): the SSE payloads.
   Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body);
+
+  /// 1.15: `POST .../workflows/draft/iteration/nodes/{node}/run`, the same SSE payloads as a draft run.
+  Stream<Map<String, Object?>> iterationSingleRun(String appId, String nodeId, Map<String, Object?> body);
+
+  /// 1.15: `POST .../workflows/draft/loop/nodes/{node}/run`. Discovery lists `iteration` / `loop` in single_node_run;
+  /// these containers use their dedicated endpoints rather than the generic JSON single-node endpoint.
+  Stream<Map<String, Object?>> loopSingleRun(String appId, String nodeId, Map<String, Object?> body);
 
   /// 1.14: `POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop`.
   Future<void> stopRun(String appId, String taskId);

@@ -8,6 +8,49 @@ import 'package:test/test.dart';
 
 /// Protocol 1.13: the workflow runtime's single node run and last run, and its discovery in `system-features`.
 void main() {
+  test('1.15 container single runs stream dedicated encoded paths and preserve inputs/refusals', () async {
+    final paths = <String>[];
+    final bodies = <Map<String, Object?>>[];
+    final api = HttpWorkflowRunApi(
+      Uri.parse('http://h:1/'),
+      client: MockClient.streaming((req, body) async {
+        paths.add(req.url.toString());
+        bodies.add(jsonDecode(await utf8.decoder.bind(body).join()) as Map<String, Object?>);
+        if (req.url.path.contains('/refused/')) {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode('{"error":{"code":"invalid_param","message":"missing list"}}')),
+            400,
+          );
+        }
+        return http.StreamedResponse(
+          Stream.fromIterable([
+            utf8.encode('event: ping\n\ndata: {"event":"workflow_started","task_id":"r","data":{"id":"r"}}\n\n'),
+            utf8.encode('data: {"event":"workflow_finished","data":{"status":"succeeded"}}\n\n'),
+          ]),
+          200,
+        );
+      }),
+    );
+    final body = <String, Object?>{
+      'inputs': {
+        'it.input_selector': ['hé'],
+      },
+    };
+    expect((await api.iterationSingleRun('app x', 'node/x', body).toList()).map((e) => e['event']), [
+      'workflow_started',
+      'workflow_finished',
+    ]);
+    expect((await api.loopSingleRun('app x', 'node/x', body).toList()).last['event'], 'workflow_finished');
+    expect(paths, [
+      'http://h:1/v1/apps/app%20x/workflows/draft/iteration/nodes/node%2Fx/run',
+      'http://h:1/v1/apps/app%20x/workflows/draft/loop/nodes/node%2Fx/run',
+    ]);
+    expect(bodies, [body, body]);
+    await expectLater(
+      api.loopSingleRun('refused', 'node', body).toList(),
+      throwsA(isA<TransportException>().having((e) => e.code, 'code', 'invalid_param')),
+    );
+  });
   group('SystemFeatures.workflowRuntime', () {
     test('parsed when present, null when absent', () {
       final f = SystemFeatures.fromJson({

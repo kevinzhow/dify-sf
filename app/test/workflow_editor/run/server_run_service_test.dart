@@ -41,6 +41,22 @@ class _Backend extends DemoBackend {
   Future<DocMeta> docMeta(String docId) async => const DocMeta(appMode: 'workflow', appName: 'App');
 }
 
+class _ContainerFallback extends MockWorkflowRunService {
+  _ContainerFallback() : super(graph: () => _graph);
+  final containers = <String>[];
+  @override
+  Stream<RunEvent> iterationSingleNodeRun(String nodeId, Map<String, Object?> body) {
+    containers.add('iteration:$nodeId');
+    return const Stream.empty();
+  }
+
+  @override
+  Stream<RunEvent> loopSingleNodeRun(String nodeId, Map<String, Object?> body) {
+    containers.add('loop:$nodeId');
+    return const Stream.empty();
+  }
+}
+
 FakeServer _server() => FakeServer(
   initial: Document(
     nodes: [
@@ -78,6 +94,57 @@ Future<void> _settle(WidgetTester t, [Duration d = const Duration(seconds: 2)]) 
 }
 
 void main() {
+  group('ServerRunService, protocol 1.15 container single runs', () {
+    late FakeWorkflowRunApi api;
+    late _ContainerFallback fallback;
+    ServerRunService make(Set<String> supported) => ServerRunService(
+      runtime: ServerWorkflowRuntime(api: api, singleNodeRun: supported),
+      appId: 'app',
+      fallback: fallback,
+      nodeTypeOf: (id) => id,
+    );
+    setUp(() {
+      api = FakeWorkflowRunApi();
+      fallback = _ContainerFallback();
+    });
+    test('advertised containers go to their server endpoints and stop stays on the server', () async {
+      final service = make({'iteration', 'loop'});
+      final body = <String, Object?>{
+        'inputs': {
+          'iteration.input_selector': [1, 2],
+        },
+      };
+      final iteration = await service.iterationSingleNodeRun('iteration', body).toList();
+      final loop = await service.loopSingleNodeRun('loop', {'inputs': <String, Object?>{}}).toList();
+      expect(iteration.first, isA<WorkflowStartedEvent>());
+      expect(loop.last, isA<WorkflowFinishedEvent>());
+      expect(api.calls.map((c) => (c.op, c.nodeId)), [('iteration-run', 'iteration'), ('loop-run', 'loop')]);
+      expect(api.calls.first.body, body);
+      await service.stopWorkflowRun(iteration.first.taskId!);
+      await service.stopWorkflowRun(loop.first.taskId!);
+      expect(api.stopped, [iteration.first.taskId, loop.first.taskId]);
+      expect(fallback.containers, isEmpty);
+    });
+    test('older capability lists keep both container operations on the stand-in', () async {
+      final service = make({'llm'});
+      await service.iterationSingleNodeRun('iteration', {'inputs': <String, Object?>{}}).drain<void>();
+      await service.loopSingleNodeRun('loop', {'inputs': <String, Object?>{}}).drain<void>();
+      expect(api.calls, isEmpty);
+      expect(fallback.containers, ['iteration:iteration', 'loop:loop']);
+    });
+    test('container refusals retain the server message instead of falling back', () async {
+      api.draftRunEvents = (_, _, _) => FakeWorkflowRunApi.refuse('invalid_param', 'missing list');
+      await expectLater(
+        make({'iteration'}).iterationSingleNodeRun('iteration', {'inputs': <String, Object?>{}}).toList(),
+        throwsA(
+          isA<RunServiceException>()
+              .having((e) => e.code, 'code', 'invalid_param')
+              .having((e) => e.message, 'message', 'missing list'),
+        ),
+      );
+      expect(fallback.containers, isEmpty);
+    });
+  });
   group('ServerRunService', () {
     late FakeWorkflowRunApi api;
     late MockWorkflowRunService mock;
