@@ -3,13 +3,16 @@
 /// InputGroup as those forms use them (Base UI validation: errors after a submit, then live), and base/loading.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
+import '../../design/dify_theme_mode.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/app_locale.dart';
@@ -491,14 +494,15 @@ class _LocaleMenuState extends State<LocaleMenu> {
 
 // ---- frames -------------------------------------------------------------------------------------------------------
 
-/// signin/_header.tsx: `flex w-full items-center justify-between p-6`, the Dify logo (`large`) and the locale menu.
-/// (Dify adds a divider and its theme selector; dify-sf has no dark theme, so neither is shown.)
+/// signin/_header.tsx: `flex w-full items-center justify-between p-6`, the Dify logo (`large`), then (`gap-1`) the
+/// locale menu, a vertical divider (`mx-0 ml-2 h-4`) and the [ThemeSelector] (when the app provides a theme).
 class SignInHeader extends StatelessWidget {
   const SignInHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
     final locale = AppLocaleScope.read(context);
+    final theme = AppThemeScope.of(context);
     return Semantics(
       container: true,
       explicitChildNodes: true,
@@ -514,9 +518,70 @@ class SignInHeader extends StatelessWidget {
               value: AppLocaleScope.of(context),
               onChange: locale == null ? null : (v) => locale.set(v),
             ),
+            if (theme != null) ...[
+              const SizedBox(width: 4),
+              const DifyDivider.vertical(margin: EdgeInsets.only(left: 8), length: 16),
+              const SizedBox(width: 4),
+              ThemeSelector(theme: theme),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+/// base/theme-selector.tsx: an `IconButton size=lg` named "Theme" showing the current choice's icon (`size-4
+/// text-text-tertiary`: sun, moon, computer; `bg-state-base-hover` while open), opening `bottom-end` 6 px away a
+/// `w-36` radio group: light, dark, system (`theme.auto`), each closing the menu.
+class ThemeSelector extends StatelessWidget {
+  const ThemeSelector({super.key, required this.theme});
+
+  final AppTheme theme;
+
+  static String _icon(DifyThemeMode mode) => switch (mode) {
+    DifyThemeMode.light => 'sun-line',
+    DifyThemeMode.dark => 'moon-line',
+    DifyThemeMode.system => 'computer-line',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    AppLocaleScope.of(context);
+    String tr(String key) => DifyI18n.tr('common', key);
+    Widget item(DifyThemeMode mode, String key) => DifyMenuRadioItem<DifyThemeMode>(
+      key: ValueKey('theme-${mode.name}'),
+      value: mode,
+      closeOnClick: true,
+      leading: RemixIcon(_icon(mode), size: 16, color: DifyColors.textTertiary),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Text(tr(key), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
+      ),
+    );
+    return DifyDropdownMenu(
+      placement: DifyPlacement.bottomEnd,
+      sideOffset: 6,
+      width: 144 - 2 * Css.hairline,
+      builder: (context, controller) => DifyIconButton(
+        key: const ValueKey('theme-selector'),
+        label: tr('theme.theme'),
+        size: DifyIconButtonSize.lg,
+        onPressed: controller.toggle,
+        restyle: controller.isOpen ? (look, _) => look.copyWith(background: DifyColors.stateBaseHover) : null,
+        icon: RemixIcon(_icon(theme.mode), size: 16, color: DifyColors.textTertiary),
+      ),
+      children: [
+        DifyMenuRadioGroup<DifyThemeMode>(
+          value: theme.mode,
+          onValueChange: (mode) => unawaited(theme.set(mode)),
+          children: [
+            item(DifyThemeMode.light, 'theme.light'),
+            item(DifyThemeMode.dark, 'theme.dark'),
+            item(DifyThemeMode.system, 'theme.auto'),
+          ],
+        ),
+      ],
     );
   }
 }

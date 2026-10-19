@@ -5827,3 +5827,4 @@ web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > shou
 web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should disable submit while request is in flight
 web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should keep form state when request fails
 web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should redirect to init when status is not started
+web/app/components/base/__tests__/theme-selector.spec.tsx :: ThemeSelector > selects %s

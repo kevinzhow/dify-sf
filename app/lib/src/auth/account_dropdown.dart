@@ -5,7 +5,9 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
+import '../design/dify_theme_mode.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/app_locale.dart';
@@ -45,9 +47,9 @@ class AccountDropdown extends StatelessWidget {
   );
 }
 
-/// main-nav-menu-content.tsx: the account card (name, email, the `lg` avatar on a `rounded-xl` gradient), then
-/// "Log out". Dify's Account page link, Preferences and Appearance are not shown: dify-sf has no account page,
-/// preferences dialog or dark theme yet.
+/// main-nav-menu-content.tsx: the account card (name, email, the `lg` avatar on a `rounded-xl` gradient), the
+/// Appearance submenu (light / dark / system, [AppThemeScope]'s choice), then "Log out". Dify's Account page link and
+/// Preferences are not shown: dify-sf has no account page or preferences dialog yet.
 class MainNavMenuContent extends StatelessWidget {
   const MainNavMenuContent({super.key, required this.account, required this.onLogout});
 
@@ -100,6 +102,12 @@ class MainNavMenuContent extends StatelessWidget {
           ),
         ),
       ),
+      // DropdownMenuGroup `p-1` with the Appearance submenu.
+      if (AppThemeScope.of(context) case final theme?)
+        Padding(
+          padding: const EdgeInsets.all(4),
+          child: AppearanceSubmenu(theme: theme),
+        ),
       // DropdownMenuSeparator `my-0! bg-divider-subtle`.
       Container(height: 1, color: DifyColors.dividerSubtle),
       Padding(
@@ -123,6 +131,57 @@ class MainNavMenuContent extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// AppearanceSubmenu (main-nav-menu-content.tsx): the `mx-0 h-8 gap-1 px-3 py-1` trigger (`i-ri-sun-line`,
+/// "Appearance"), opening `right-start` 6 px away a `w-34.75` radio group (`mx-0 h-8 gap-1 px-2 py-1` items with
+/// `closeOnClick`): Light (`i-ri-sun-line`), Dark (`i-ri-moon-line`), System (`i-ri-computer-line`).
+class AppearanceSubmenu extends StatelessWidget {
+  const AppearanceSubmenu({super.key, required this.theme});
+
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget label(String key) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        _tc(context, key),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
+      ),
+    );
+    Widget item(DifyThemeMode mode, String icon, String key) => DifyMenuRadioItem<DifyThemeMode>(
+      key: ValueKey('appearance-${mode.name}'),
+      value: mode,
+      closeOnClick: true,
+      leading: RemixIcon(icon, size: 16, color: DifyColors.textTertiary),
+      child: label(key),
+    );
+    return DifyMenuSubmenu(
+      key: const ValueKey('account-appearance'),
+      placement: DifyPlacement.rightStart,
+      sideOffset: 6,
+      // `w-34.75`, border-box.
+      width: 139 - 2 * Css.hairline,
+      paddingX: 12,
+      leading: RemixIcon('sun-line', size: 16, color: DifyColors.textTertiary),
+      label: label('account.appearanceLabel'),
+      semanticLabel: _tc(context, 'account.appearanceLabel'),
+      children: [
+        DifyMenuRadioGroup<DifyThemeMode>(
+          value: theme.mode,
+          onValueChange: (mode) => unawaited(theme.set(mode)),
+          children: [
+            item(DifyThemeMode.light, 'sun-line', 'account.appearanceLight'),
+            item(DifyThemeMode.dark, 'moon-line', 'account.appearanceDark'),
+            item(DifyThemeMode.system, 'computer-line', 'account.appearanceSystem'),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 /// main-nav/components/account-section.tsx: the round trigger with the 28 px avatar and the name (`max-w-45 gap-3

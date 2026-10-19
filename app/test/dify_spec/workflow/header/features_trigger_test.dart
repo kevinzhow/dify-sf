@@ -1,12 +1,14 @@
 // dify-spec: web/app/components/workflow-app/components/workflow-header/__tests__/features-trigger.spec.tsx
 import 'dart:async';
 
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/checklist/checklist_item.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/features_trigger.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/header_data.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/publisher/app_publisher.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
@@ -77,6 +79,21 @@ void main() {
       testWidgets('should render the features button when in chat mode', (t) async {
         await render(t, data(chat: true));
         expect(find.text('workflow.common.features'), findsOneWidget);
+      });
+
+      testWidgets('should apply dark theme styling when theme is dark', (t) async {
+        DifyColors.useDark(true);
+        addTearDown(() => DifyColors.useDark(false));
+        await render(t, data(chat: true));
+        // `bg-white/10 inset-ring-black/5 backdrop-blur-xs` over the secondary button.
+        final look = t
+            .widget<DifyButtonSurface>(
+              find.ancestor(of: find.text('workflow.common.features'), matching: find.byType(DifyButtonSurface)),
+            )
+            .look;
+        expect(look.background, const Color(0x1AFFFFFF));
+        expect(look.ring, const Color(0x0D000000));
+        expect(look.blur, 4);
       });
     });
 

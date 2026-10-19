@@ -65,8 +65,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [App-level pages outside the editor](#app-pages) |  | 2 | 4 |  |  | 6 |
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
-| [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **152** | **41** | **38** | **12** | **11** | **254** |
+| [i18n, design tokens & UI primitives](#design) | 5 | 1 | 1 | 1 |  | 8 |
+| **Total** | **153** | **41** | **37** | **12** | **11** | **254** |
 
 <a id="canvas"></a>
 
@@ -240,7 +240,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Prompt editor blocks: human input field, agent output | ported |  | spec `base/prompt-editor/plugins/hitl-input-block`, spec `base/prompt-editor/plugins/agent-output-block` |
 | Prompt editor: roster references (skills, files, tools) of the agent console | not ported | Only used by Dify's Agent v2 console (orchestrate prompt), which dify-sf does not have (taken from the host). | spec `base/prompt-editor/plugins/roster-reference-block` |
 | Prompt / code / JSON schema generator (AI generate) | not ported | Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon). The generator buttons are drawn but disabled because no generator service is passed. |  |
-| Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome | ported | Deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs theme (identical token colours), not an embedded Monaco. | spec `workflow/nodes/_base/components/editor`, spec `workflow/nodes/_base/components/editor/code-editor`, `app/test/code_editor` |
+| Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome | ported | Deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs / vs-dark themes (identical token colours), not an embedded Monaco. | spec `workflow/nodes/_base/components/editor`, spec `workflow/nodes/_base/components/editor/code-editor`, `app/test/code_editor` |
 
 <a id="node-start"></a>
 
@@ -576,7 +576,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Members page: an owner's or admin's one-time password reset link for a member (servers without mail) | dify-sf only | Dify's community edition resets passwords from its command line (flask reset-password); dify-sf hands out a one-time link instead, like its invitation links (nobody sets or sees another member's password; the owner's only by the owner). | `app/test/members_reset_link_test.dart` |
 | Sign up | not ported | Accounts come from the install page and invitations (Dify's is_allow_register off). |  |
 | Invitation links: activate, invite sign-in, invite settings (name, password, language) | ported | Deviation: Invitations are links shown to the inviter (no mail server); only new accounts are invited. | spec `web/app/signin/invite-settings`, visual `page-activate-expired`, visual `page-signin-invite`, visual `page-invite-settings` |
-| Account menu: account card, log out | ported |  | spec `header/account-dropdown`, visual `nav-main` |
+| Account menu: account card, Appearance (light / dark / system), log out | ported |  | spec `header/account-dropdown`, visual `nav-main` |
 | Account menu: compliance downloads (SOC2 / ISO / GDPR) | n/a | Dify Cloud only. | spec `header/account-dropdown` |
 | Members page: list, invite (activation links), change role, remove, member details | ported |  | spec `header/account-setting/members-page`, spec `header/account-setting/members-page/invite-modal`, spec `header/account-setting/members-page/invited-modal`, spec `header/account-setting/members-page/member-details-modal`, spec `header/account-setting/members-page/assign-roles-modal`, visual `members`, visual `members-invite`, `app/test/members_settings_test.dart` |
 | Roles: owner, admin, editor, normal, dataset operator (read-only editor for normal / dataset operator) | ported | Deviation: A role downgrade while editing makes the server refuse further ops with 403; the editor turns read-only with one notice (no retry loop). | `app/test/read_only_editor_test.dart`, `app/test/role_downgrade_test.dart` |
@@ -651,7 +651,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | UI in Dify's 24 languages (Dify's own translation files), language chosen at sign-in or with ?lang= / --lang | ported |  | `app/test/i18n_test.dart` |
 | Design tokens: colours, typography, shadows, radii, gradients; Dify icons | ported |  | visual `canvas-basic-llm` |
-| Dark theme | not ported | outside current scope (owner to decide); only the light theme's tokens are generated. |  |
+| Dark theme: light / dark / system (remembered, system follows the OS), Appearance submenu in the account menu, theme selector on the sign-in pages, ?theme= / --theme | ported |  | spec `base/theme-selector.spec.tsx`, spec `header/account-dropdown`, `app/test/dark_theme_test.dart` |
 | Toasts | ported |  | spec `packages/dify-ui/src/toast`, visual `toast-publish`, `app/test/toast_wiring_test.dart` |
 | dify-ui primitives with ported specs: button, icon button, kbd, tooltip, popover, context menu, dropdown menu | ported |  | spec `packages/dify-ui/src/button`, spec `packages/dify-ui/src/icon-button`, spec `packages/dify-ui/src/kbd`, spec `packages/dify-ui/src/tooltip`, spec `packages/dify-ui/src/popover`, spec `packages/dify-ui/src/context-menu`, spec `packages/dify-ui/src/dropdown-menu`, `app/test/design_widgets_test.dart` |
 | dify-ui form and layout primitives: select, number field, switch, slider, textarea, checkbox, input, segmented control, dialog, avatar, ... | partial | Flutter counterparts exist where ported features use them (DifySelect, DifyNumberField, DifySwitch, DifySlider, DifyTextarea, DifyCheckbox, DifyInput, DifySegmentedControl, DifyDialogSurface, DifyAvatar), but their own dify-ui spec cases are still to do in the ledger. | spec `packages/dify-ui/src/select`, spec `packages/dify-ui/src/number-field`, spec `packages/dify-ui/src/switch`, spec `packages/dify-ui/src/slider`, spec `packages/dify-ui/src/textarea`, spec `packages/dify-ui/src/checkbox`, spec `packages/dify-ui/src/input`, spec `packages/dify-ui/src/input-group`, spec `packages/dify-ui/src/segmented-control`, spec `packages/dify-ui/src/dialog`, spec `packages/dify-ui/src/alert-dialog`, spec `packages/dify-ui/src/drawer`, spec `packages/dify-ui/src/avatar`, spec `packages/dify-ui/src/radio-group`, spec `packages/dify-ui/src/field`, spec `packages/dify-ui/src/fieldset`, spec `packages/dify-ui/src/form`, spec `packages/dify-ui/src/scroll-area`, spec `packages/dify-ui/src/collapsible`, spec `packages/dify-ui/src/tabs`, spec `packages/dify-ui/src/toggle`, spec `packages/dify-ui/src/status-dot`, spec `packages/dify-ui/src/progress`, spec `packages/dify-ui/src/preview-card`, spec `packages/dify-ui/src/combobox`, spec `packages/dify-ui/src/file-tree` |

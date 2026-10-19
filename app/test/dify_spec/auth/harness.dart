@@ -1,5 +1,6 @@
 import 'package:dify_sf_app/src/auth/auth_api.dart';
 import 'package:dify_sf_app/src/auth/auth_controller.dart';
+import 'package:dify_sf_app/src/design/dify_theme_mode.dart';
 import 'package:dify_sf_app/src/i18n/app_locale.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifyInput;
@@ -24,6 +25,7 @@ Future<void> renderAuth(
   Widget child, {
   AppLocale? locale,
   Translator? translator,
+  AppTheme? theme,
 }) async {
   useDifyTestTranslator();
   if (translator != null) DifyI18n.current = translator;
@@ -37,7 +39,9 @@ Future<void> renderAuth(
         locale: locale ?? AppLocale('en-US'),
         child: AuthScope(
           controller: auth,
-          child: Material(child: child),
+          child: Material(
+            child: theme == null ? child : AppThemeScope(theme: theme, child: child),
+          ),
         ),
       ),
     ),

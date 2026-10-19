@@ -864,7 +864,7 @@ features:
   title: 'Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome'
   dify: [web/app/components/workflow/nodes/_base/components/editor/code-editor]
   status: ported
-  deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs theme (identical token colours), not an embedded Monaco.
+  deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs / vs-dark themes (identical token colours), not an embedded Monaco.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/editor', 'spec:web/app/components/workflow/nodes/_base/components/editor/code-editor', app/test/code_editor]
   ours: [app/lib/src/workflow_editor/code_editor/code_editor.dart, app/lib/src/workflow_editor/code_editor/monarch/monarch.dart]
 
@@ -1694,7 +1694,7 @@ features:
   ours: [app/lib/src/auth/activate_page.dart, app/lib/src/auth/invite_settings_page.dart]
 - id: accounts.dropdown
   area: accounts
-  title: 'Account menu: account card, log out'
+  title: 'Account menu: account card, Appearance (light / dark / system), log out'
   dify: [web/app/components/header/account-dropdown, web/app/components/main-nav/components/account-section.tsx]
   status: ported
   evidence: ['spec:web/app/components/header/account-dropdown', visual:nav-main]
@@ -2020,12 +2020,11 @@ features:
   ours: [app/lib/src/design/dify_tokens.g.dart, app/lib/src/design/dify_icon.dart, tool/gen_dify_tokens.py, tool/gen_dify_icons.py]
 - id: design.dark-theme
   area: design
-  title: 'Dark theme'
-  dify: [packages/dify-ui/src/themes/dark.css]
-  status: not_ported
-  reason: outside current scope (owner to decide); only the light theme's tokens are generated.
-  evidence: []
-  ours: []
+  title: 'Dark theme: light / dark / system (remembered, system follows the OS), Appearance submenu in the account menu, theme selector on the sign-in pages, ?theme= / --theme'
+  dify: [packages/dify-ui/src/themes/dark.css, web/themes/manual-dark.css, web/app/layout.tsx, web/app/components/base/theme-selector.tsx, web/app/components/header/account-dropdown/main-nav-menu-content.tsx, web/app/components/workflow/run/status-container.tsx, web/app/components/base/logo/dify-logo.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/base/__tests__/theme-selector.spec.tsx', 'spec:web/app/components/header/account-dropdown', app/test/dark_theme_test.dart]
+  ours: [app/lib/src/design/dify_theme_mode.dart, app/lib/src/design/dify_tokens.g.dart, tool/gen_dify_tokens.py, app/lib/src/auth/account_dropdown.dart, app/lib/src/auth/widgets/auth_widgets.dart]
 - id: design.toast
   area: design
   title: 'Toasts'

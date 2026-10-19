@@ -20,6 +20,7 @@ class DifyMenuSubmenu extends StatefulWidget {
     this.width,
     this.semanticLabel,
     this.popupLabel,
+    this.paddingX = 8,
   });
 
   final Widget label;
@@ -39,6 +40,9 @@ class DifyMenuSubmenu extends StatefulWidget {
 
   /// The submenu's name; defaults to [semanticLabel] or the label's text (Base UI labels it by the trigger).
   final String? popupLabel;
+
+  /// A call site's `px-*` over the trigger row's `px-2`.
+  final double paddingX;
 
   @override
   State<DifyMenuSubmenu> createState() => _DifyMenuSubmenuState();
@@ -113,6 +117,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
       tapRegionGroup: root?.controller,
       builder: (context, controller) => _MenuRow(
         margin: false,
+        paddingX: widget.paddingX,
         focusNode: _triggerNode,
         leading: widget.leading,
         trailing: RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),

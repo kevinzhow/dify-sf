@@ -2,7 +2,9 @@
 import 'package:dify_sf_app/src/auth/account_dropdown.dart';
 import 'package:dify_sf_app/src/auth/auth_api.dart';
 import 'package:dify_sf_app/src/auth/auth_controller.dart';
-import 'package:flutter/widgets.dart';
+import 'package:dify_sf_app/src/design/dify_theme_mode.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/auth_fakes.dart';
@@ -52,6 +54,65 @@ void main() {
       await t.tap(find.byKey(const ValueKey('account-trigger')));
       await settleAuth(t, 3);
       expect(find.text('current@example.com'), findsOneWidget);
+    });
+
+    testWidgets('opens the main navigation account menu through the composed trigger', (t) async {
+      final theme = AppTheme(DifyThemeMode.system, remember: false);
+      addTearDown(theme.dispose);
+      await renderAuth(
+        t,
+        await authOn(RecordingAuthApi()),
+        _atBottom(const AccountSection(account: _profile)),
+        theme: theme,
+      );
+      final trigger = _button(_accessibleName);
+      expect(trigger, findsOne);
+      await t.tap(find.byKey(const ValueKey('account-trigger')));
+      await settleAuth(t, 3);
+      expect(find.text('current@example.com'), findsOneWidget);
+      // `data-popup-open`: the trigger shows its open state.
+      expect(
+        t
+            .widget<Container>(
+              find
+                  .descendant(of: find.byKey(const ValueKey('account-trigger')), matching: find.byType(Container))
+                  .first,
+            )
+            .decoration,
+        isA<BoxDecoration>().having((d) => d.color, 'color', DifyColors.stateBaseHover),
+      );
+      // Dify's Preferences entry is not shown (dify-sf has no preferences dialog); Appearance is.
+      expect(find.text('common.settings.preferences'), findsNothing);
+      expect(find.text('common.account.appearanceLabel'), findsOneWidget);
+    });
+
+    testWidgets('the Appearance submenu sets light, dark or system', (t) async {
+      addTearDown(() => DifyColors.useDark(false));
+      final theme = AppTheme(DifyThemeMode.system, remember: false);
+      addTearDown(theme.dispose);
+      await renderAuth(
+        t,
+        await authOn(RecordingAuthApi()),
+        _atBottom(const AccountSection(account: _profile)),
+        theme: theme,
+      );
+      for (final (label, mode, dark) in [
+        ('common.account.appearanceDark', DifyThemeMode.dark, true),
+        ('common.account.appearanceLight', DifyThemeMode.light, false),
+        ('common.account.appearanceSystem', DifyThemeMode.system, false),
+      ]) {
+        await t.tap(find.byKey(const ValueKey('account-trigger')));
+        await settleAuth(t, 3);
+        await t.tap(find.text('common.account.appearanceLabel'));
+        await settleAuth(t, 3);
+        expect(find.text('common.account.appearanceSystem'), findsOneWidget);
+        await t.tap(find.text(label));
+        await settleAuth(t, 3);
+        expect(theme.mode, mode);
+        expect(DifyColors.isDark, dark);
+        // closeOnClick: the whole menu closed.
+        expect(find.text('current@example.com'), findsNothing);
+      }
     });
 
     testWidgets('logs out and redirects to sign in', (t) async {
