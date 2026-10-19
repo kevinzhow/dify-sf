@@ -76,7 +76,7 @@ void main() {
     await t.enterText(find.byType(EditableText).at(1), 'brand-new-1');
     await t.tap(find.byKey(const ValueKey('signin-submit')));
     await settle(t);
-    expect(find.byKey(const Key('doc-field')), findsOneWidget, reason: 'the home page');
+    expect(find.byKey(const ValueKey('studio-page')), findsOneWidget, reason: 'the home page (the Studio)');
   });
 
   testWidgets('the resend countdown ends in Resend, which mails a new code', (t) async {

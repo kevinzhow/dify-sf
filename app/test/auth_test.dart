@@ -160,7 +160,7 @@ void main() {
     for (var i = 0; i < 5; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }
-    expect(find.byKey(const Key('doc-field')), findsOneWidget, reason: 'the home page');
+    expect(find.byKey(const ValueKey('studio-page')), findsOneWidget, reason: 'the home page (the Studio)');
     expect(find.text('Kim'), findsOneWidget, reason: 'the account section');
     expect(await store.read('http://fake'), isNotNull);
 

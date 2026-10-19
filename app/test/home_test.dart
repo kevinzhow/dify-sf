@@ -25,7 +25,10 @@ void main() {
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
     final settings = await AppSettings.load();
-    await t.pumpWidget(buildApp(settings, auth: await signedInAuth()));
+    // Without the apps API (protocol 1.10) home is the developer form.
+    final demo = DemoBackend(withBo: false);
+    addTearDown(demo.dispose);
+    await t.pumpWidget(buildApp(settings, backendFor: (_) => demo, auth: await signedInAuth()));
     await t.enterText(find.byKey(const Key('doc-field')), 'not a valid id!');
     await t.tap(find.byKey(const Key('open-button')));
     await t.pump();

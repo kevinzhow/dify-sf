@@ -25,12 +25,22 @@ import 'settings.dart';
 import 'settings/integrations_page.dart';
 import 'settings/workspace_card.dart';
 import 'settings/workspace_members.dart';
+import 'studio/studio_page.dart';
 import 'workflow/workspace_models.dart';
 
-/// Start screen (signed in): mode and the document to open or create, in Dify's main navigation frame (the logo at
-/// the top, the account menu at the bottom of the sidebar). The server is the one signed in to.
+/// Start screen (signed in), in Dify's main navigation frame (the logo at the top, the account menu at the bottom of
+/// the sidebar): the Studio (the workspace's apps, protocol 1.10) when the server has apps, else the developer form
+/// (a document id to open or create, the demo). The server is the one signed in to.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.settings, this.backendFor, this.launch, this.modelsApiFor});
+  const HomePage({
+    super.key,
+    required this.settings,
+    this.backendFor,
+    this.launch,
+    this.modelsApiFor,
+    this.appsApiFor,
+    this.studioPollInterval = const Duration(seconds: 10),
+  });
 
   final AppSettings settings;
 
@@ -43,6 +53,13 @@ class HomePage extends StatefulWidget {
   /// The model providers API of a session (protocol 1.9); by default the server's over HTTP (none for the demo, nor
   /// with a test [backendFor]).
   final ModelProvidersApi? Function(AuthController auth)? modelsApiFor;
+
+  /// The apps API of a session (protocol 1.10, the Studio); by default the server's over HTTP (none for the demo, nor
+  /// with a test [backendFor]: those get the developer form).
+  final AppsApi? Function(AuthController auth)? appsApiFor;
+
+  /// The Studio's refetch interval (Dify's 10 s with collaboration on); null: none.
+  final Duration? studioPollInterval;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -67,6 +84,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _doc.dispose();
     _models?.dispose();
+    _members?.dispose();
     super.dispose();
   }
 
@@ -77,15 +95,31 @@ class _HomePageState extends State<HomePage> {
   WorkspaceModels? _models;
   AuthController? _modelsAuth;
 
+  /// The workspace's members (the main navigation's workspace card, the Studio's Creators filter).
+  WorkspaceMembers? _members;
+
+  /// The session's apps (the Studio); null: the developer form.
+  AppsApi? _apps;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = AuthScope.of(context);
     if (_models == null || _modelsAuth != auth) {
       _models?.dispose();
+      _members?.dispose();
       _modelsAuth = auth;
       _models = WorkspaceModels((widget.modelsApiFor ?? _defaultModelsApi)(auth));
+      _members = WorkspaceMembers(auth);
+      _apps = (widget.appsApiFor ?? _defaultAppsApi)(auth);
     }
+  }
+
+  AppsApi? _defaultAppsApi(AuthController auth) {
+    if (widget.backendFor != null) return null;
+    final uri = Uri.tryParse(auth.server);
+    if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) return null;
+    return HttpAppsApi(uri, auth: auth.session);
   }
 
   ModelProvidersApi? _defaultModelsApi(AuthController auth) {
@@ -167,6 +201,7 @@ class _HomePageState extends State<HomePage> {
     List<Widget> Function(BuildContext, EditorController, VoidCallback)? extra,
     bool demo = false,
   }) async {
+    final apps = demo ? null : _apps;
     setState(() => _error = null);
     await _remember();
     if (!mounted) return;
@@ -190,21 +225,52 @@ class _HomePageState extends State<HomePage> {
           openModelProviderSettings: demo || _models == null
               ? null
               : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
+          // Protocol 1.10: a deleted app's document answers 404 `app_deleted`; the editor goes back to the Studio.
+          isAppDeleted: apps == null ? null : () => _appDeleted(apps, id),
         ),
       ),
     );
   }
 
+  static Future<bool> _appDeleted(AppsApi apps, String id) async {
+    try {
+      await apps.get(id);
+      return false;
+    } on TransportException catch (e) {
+      return e.appDeleted || e.statusCode == 404;
+    }
+  }
+
+  /// Opens a Studio app in the editor (read-only for roles without `app.acl.edit`, which the account's role decides).
+  Future<void> _openApp(AppInfo app, {required bool readOnly}) => _launch(_backend(), app.id, create: false);
+
+  Future<List<Map<String, Object?>>> _environmentVariables(String id) async =>
+      (await _backend().docMeta(id)).environmentVariables;
+
   @override
   Widget build(BuildContext context) {
     final account = AuthScope.of(context).account;
+    final apps = _apps;
     return Scaffold(
       backgroundColor: DifyColors.backgroundBody,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (account != null) MainNavFrame(account: account, models: _models),
-          Expanded(child: _form(context)),
+          if (account != null) MainNavFrame(account: account, models: _models, members: _members),
+          Expanded(
+            child: apps == null || account == null
+                ? _form(context)
+                : StudioPage(
+                    key: const ValueKey('studio-page'),
+                    api: apps,
+                    members: _members,
+                    role: account.role,
+                    currentUserId: account.id,
+                    pollInterval: widget.studioPollInterval,
+                    openApp: _openApp,
+                    environmentVariables: _environmentVariables,
+                  ),
+          ),
         ],
       ),
     );
@@ -297,8 +363,11 @@ class _HomePageState extends State<HomePage> {
 /// its menu opens the workspace settings), the Integrations link (the model providers) and the account section at the
 /// bottom (`py-3 pr-1 pl-3`). Dify's search, its other navigation links, web apps and help menu are not part of dify-sf.
 class MainNavFrame extends StatefulWidget {
-  const MainNavFrame({super.key, required this.account, this.models});
+  const MainNavFrame({super.key, required this.account, this.models, this.members});
   final Account account;
+
+  /// The workspace's members, when the page shares them (the Studio); else the frame keeps its own.
+  final WorkspaceMembers? members;
 
   /// The workspace's models: the Integrations link opens their settings (no link without them).
   final WorkspaceModels? models;
@@ -308,21 +377,29 @@ class MainNavFrame extends StatefulWidget {
 }
 
 class _MainNavFrameState extends State<MainNavFrame> {
-  WorkspaceMembers? _members;
+  WorkspaceMembers? _own;
+
+  WorkspaceMembers? get _members => widget.members ?? _own;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = AuthScope.of(context);
-    if (_members?.auth != auth) {
-      _members?.dispose();
-      _members = WorkspaceMembers(auth);
+    if (widget.members == null && _own?.auth != auth) {
+      _own?.dispose();
+      _own = WorkspaceMembers(auth);
     }
   }
 
   @override
+  void didUpdateWidget(MainNavFrame oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.members == null && _own == null) _own = WorkspaceMembers(AuthScope.read(context)!);
+  }
+
+  @override
   void dispose() {
-    _members?.dispose();
+    _own?.dispose();
     super.dispose();
   }
 
@@ -382,6 +459,8 @@ Widget buildApp(
   TokenStore? tokenStore,
   AppLocale? locale,
   AppTheme? theme,
+  AppsApi? Function(AuthController auth)? appsApiFor,
+  Duration? studioPollInterval = const Duration(seconds: 10),
 }) {
   final appLocale = locale ?? AppLocale(currentDifyLanguage());
   // Tests without a theme get one that stays in the current theme and remembers nothing.
@@ -414,7 +493,13 @@ Widget buildApp(
         auth: session,
         authApiFor: authApiFor,
         tokenStore: tokenStore,
-        home: (_) => HomePage(settings: settings, backendFor: backendFor, launch: launch),
+        home: (_) => HomePage(
+          settings: settings,
+          backendFor: backendFor,
+          launch: launch,
+          appsApiFor: appsApiFor,
+          studioPollInterval: studioPollInterval,
+        ),
       ),
       // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog. The UI language is above
       // the navigator, so every page follows a change.

@@ -62,11 +62,11 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Version history](#versions) |  | 1 | 1 |  |  | 2 |
 | [Accounts, sign-in & members](#accounts) | 7 |  | 7 | 1 | 1 | 16 |
 | [Settings tabs & workspace](#settings) | 2 | 3 | 5 | 3 |  | 13 |
-| [App-level pages outside the editor](#app-pages) |  | 2 | 4 |  |  | 6 |
+| [App-level pages outside the editor](#app-pages) | 5 | 2 | 6 |  | 2 | 15 |
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 1 | 1 | 1 |  | 8 |
-| **Total** | **155** | **40** | **37** | **12** | **11** | **255** |
+| **Total** | **160** | **40** | **39** | **12** | **13** | **264** |
 
 <a id="canvas"></a>
 
@@ -612,7 +612,16 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Studio app list: create / open apps | partial | dify-sf's start screen opens or creates a document by id and imports a Dify DSL; Dify's app list (cards, tags, search, create from blank / template) is not ported. | `app/test/home_test.dart` |
+| Studio app list: card grid, starred row, infinite scroll, skeletons, empty states | partial | Ported (30 per page, next page while has_more, starred row of 100, "All Apps", first empty state and "No apps here", the 10 s refetch of Dify's collaboration mode). Not part of dify-sf, by owner decision or because dify-sf has no such service: tags (filter, card strip, management), templates (Create from Template, the template empty-state card, Learn Dify, marketplace template import), the online editors' avatars on cards (Dify polls an endpoint dify-sf does not have), the step-by-step tour and the Snippets link. Deviation: "Edited <time>" (sort Last modified) also moves on every committed graph edit (the server bumps updated_at; Dify only on app-row changes). | spec `apps`, spec `base/infinite-scroll-sentinel`, `app/test/studio_test.dart` |
+| Studio filters: types, creators, sort, search | ported | Deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing. | spec `apps/creators-filter.spec.tsx`, spec `base/search-input`, spec `apps/list.spec.tsx` |
+| Create from Blank (Workflow / Chatflow) and the app type icons | ported | Deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Image icons need file storage, so the icon picker offers emoji only. | spec `app/create-app-modal`, spec `app/type-selector`, `app/test/studio_test.dart` |
+| Import DSL: file or URL, drag and drop onto the page, DSL version confirmation | ported | Deviation: A URL is fetched by the client (dify-sf's import takes file content), so on the web it is subject to the site's CORS rules. | spec `app/create-from-dsl-modal`, spec `apps/hooks`, `app/test/studio_test.dart` |
+| App card actions: star, Edit info, Duplicate, Export DSL (secrets confirmation), Delete (type the name) | ported | Deviation: Open in Explore, Access config and Switch are left out (no Explore, no web-app access control, and dify-sf holds no chat / completion apps). | spec `explore/create-app-modal`, spec `app/duplicate-modal`, spec `app`, spec `apps/app-card.spec.tsx` |
+| Studio rights: who creates, manages and opens apps | ported | Deviation: Normal members and dataset operators see every card and star, but have no Create and no More menu; their card opens the editor read-only (Dify sends them to the overview page, which dify-sf does not have). | `app/test/studio_test.dart` |
+| App tags: tag filter, tags on cards, tag management | not ported | Left out by owner decision (2026-10-19); dify-sf's apps have no tags (`tags` is always empty). |  |
+| Create from Template, Learn Dify, marketplace template import | not ported | Left out by owner decision (2026-10-19); dify-sf has no template gallery or marketplace. |  |
+| An open editor of a deleted app returns to the Studio | dify-sf only | Collaboration: someone else deletes the app while it is open; the editor shows "App deleted" and closes instead of reconnecting forever. | `app/test/studio_test.dart` |
+| Developer start form: open or create a document by id, the demo | dify-sf only | Shown when the server has no apps API (and for the in-memory demo); `--doc` opens a document directly. | `app/test/home_test.dart` |
 | Main navigation: logo, workspace card, account section | partial | Logo, workspace card and account section are ported; Dify's search, navigation links, web apps and help menu are not part of dify-sf. | visual `nav-main` |
 | App detail pages: overview, logs, annotations, access config, deploy, API access | not ported | outside current scope (owner to decide); dify-sf replicates the workflow editor only. |  |
 | Knowledge (datasets) pages | not ported | outside current scope (owner to decide). |  |

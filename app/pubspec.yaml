@@ -24,6 +24,10 @@ dependencies:
   flutter_markdown_plus: ^1.0.12
   markdown: ^7.3.1
   file_selector: ^1.1.0
+  # Dropping a DSL file on the Studio page (Dify's use-dsl-drag-drop) on desktop and the web.
+  desktop_drop: ^0.8.4
+  # Import DSL from a URL: the client fetches the file (the server takes file content only).
+  http: ^1.2.0
   image: ^4.12.0
 
 dev_dependencies:
@@ -85,6 +89,9 @@ flutter:
     - assets/heroicons/
     # The members page's copy icons (members-page/invited-modal/assets).
     - assets/members/
+    # The create-app dialog's previews (web/public/screenshots, 1x with 2.0x / 3.0x variants).
+    - assets/screenshots/light/
+    - assets/screenshots/dark/
     # Remix Icon as Dify uses it (tool/gen_remix_icons.py, Apache-2.0).
     - assets/remix_icons/
     # Dify's icons (tool/gen_dify_icons.py), one entry per directory.

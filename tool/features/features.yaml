@@ -1870,12 +1870,85 @@ features:
   ours: []
 
 # ---------------------------------------------------------------- app-level pages
+- id: app-pages.studio-list
+  area: app-pages
+  title: 'Studio app list: card grid, starred row, infinite scroll, skeletons, empty states'
+  dify: [web/app/components/apps/list.tsx, web/app/components/apps/app-list-catalog.tsx, web/app/components/apps/app-card, web/app/components/apps/starred-app-list.tsx, web/app/components/apps/first-empty-state, web/app/components/apps/empty.tsx, web/app/components/base/infinite-scroll-sentinel]
+  status: partial
+  reason: 'Ported (30 per page, next page while has_more, starred row of 100, "All Apps", first empty state and "No apps here", the 10 s refetch of Dify''s collaboration mode). Not part of dify-sf, by owner decision or because dify-sf has no such service: tags (filter, card strip, management), templates (Create from Template, the template empty-state card, Learn Dify, marketplace template import), the online editors'' avatars on cards (Dify polls an endpoint dify-sf does not have), the step-by-step tour and the Snippets link.'
+  deviation: '"Edited <time>" (sort Last modified) also moves on every committed graph edit (the server bumps updated_at; Dify only on app-row changes).'
+  evidence: ['spec:web/app/components/apps', 'spec:web/app/components/base/infinite-scroll-sentinel', app/test/studio_test.dart]
+  ours: [app/lib/src/studio/studio_page.dart, app/lib/src/studio/app_list_controller.dart, app/lib/src/studio/app_card.dart, app/lib/src/studio/infinite_scroll_sentinel.dart]
+- id: app-pages.studio-filters
+  area: app-pages
+  title: 'Studio filters: types, creators, sort, search'
+  dify: [web/app/components/apps/app-type-filter.tsx, web/app/components/apps/creators-filter.tsx, web/app/components/apps/app-sort-filter.tsx, web/app/components/base/search-input]
+  status: ported
+  deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing.
+  evidence: ['spec:web/app/components/apps/__tests__/creators-filter.spec.tsx', 'spec:web/app/components/base/search-input', 'spec:web/app/components/apps/__tests__/list.spec.tsx']
+  ours: [app/lib/src/studio/filters.dart, app/lib/src/studio/search_input.dart]
+- id: app-pages.studio-create
+  area: app-pages
+  title: 'Create from Blank (Workflow / Chatflow) and the app type icons'
+  dify: [web/app/components/app/create-app-modal, web/app/components/app/create-app-dropdown.tsx, web/app/components/app/create-app-dialog-shell.tsx, web/app/components/app/type-selector]
+  status: ported
+  deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Image icons need file storage, so the icon picker offers emoji only.
+  evidence: ['spec:web/app/components/app/create-app-modal', 'spec:web/app/components/app/type-selector', app/test/studio_test.dart]
+  ours: [app/lib/src/studio/create_app_modal.dart, app/lib/src/studio/app_icons.dart, app/lib/src/studio/filters.dart]
+- id: app-pages.studio-import
+  area: app-pages
+  title: 'Import DSL: file or URL, drag and drop onto the page, DSL version confirmation'
+  dify: [web/app/components/app/create-from-dsl-modal, web/app/components/apps/hooks/use-dsl-drag-drop.ts]
+  status: ported
+  deviation: A URL is fetched by the client (dify-sf's import takes file content), so on the web it is subject to the site's CORS rules.
+  evidence: ['spec:web/app/components/app/create-from-dsl-modal', 'spec:web/app/components/apps/hooks', app/test/studio_test.dart]
+  ours: [app/lib/src/studio/create_from_dsl_modal.dart, app/lib/src/studio/dsl_drop.dart]
+- id: app-pages.studio-card-actions
+  area: app-pages
+  title: 'App card actions: star, Edit info, Duplicate, Export DSL (secrets confirmation), Delete (type the name)'
+  dify: [web/app/components/apps/app-card/interactions.tsx, web/app/components/explore/create-app-modal, web/app/components/app/duplicate-modal, web/app/components/app/use-export-app-dsl.ts]
+  status: ported
+  deviation: Open in Explore, Access config and Switch are left out (no Explore, no web-app access control, and dify-sf holds no chat / completion apps).
+  evidence: ['spec:web/app/components/explore/create-app-modal', 'spec:web/app/components/app/duplicate-modal', 'spec:web/app/components/app', 'spec:web/app/components/apps/__tests__/app-card.spec.tsx']
+  ours: [app/lib/src/studio/app_card.dart, app/lib/src/studio/app_modals.dart]
+- id: app-pages.studio-roles
+  area: app-pages
+  title: 'Studio rights: who creates, manages and opens apps'
+  dify: [web/utils/permission.ts, web/utils/app-redirection.ts, api/services/enterprise/rbac_service.py]
+  status: ported
+  deviation: 'Normal members and dataset operators see every card and star, but have no Create and no More menu; their card opens the editor read-only (Dify sends them to the overview page, which dify-sf does not have).'
+  evidence: [app/test/studio_test.dart]
+  ours: [app/lib/src/studio/studio_scope.dart, app/lib/src/home_page.dart]
+- id: app-pages.studio-tags
+  area: app-pages
+  title: 'App tags: tag filter, tags on cards, tag management'
+  dify: [web/features/tag-management, web/app/components/apps/app-list-tag-management-modal.tsx]
+  status: not_ported
+  reason: Left out by owner decision (2026-10-19); dify-sf's apps have no tags (`tags` is always empty).
+  evidence: []
+  ours: []
+- id: app-pages.studio-templates
+  area: app-pages
+  title: 'Create from Template, Learn Dify, marketplace template import'
+  dify: [web/app/components/app/create-app-dialog, web/app/components/explore/learn-dify, web/app/components/apps/import-from-marketplace-template-modal.tsx]
+  status: not_ported
+  reason: Left out by owner decision (2026-10-19); dify-sf has no template gallery or marketplace.
+  evidence: []
+  ours: []
+- id: app-pages.deleted-app
+  area: app-pages
+  title: 'An open editor of a deleted app returns to the Studio'
+  dify: []
+  status: dify_sf_only
+  reason: 'Collaboration: someone else deletes the app while it is open; the editor shows "App deleted" and closes instead of reconnecting forever.'
+  evidence: [app/test/studio_test.dart]
+  ours: [app/lib/src/editor/editor_page.dart]
 - id: app-pages.documents
   area: app-pages
-  title: 'Studio app list: create / open apps'
-  dify: [web/app/components/apps, web/app/(commonLayout)/apps]
-  status: partial
-  reason: dify-sf's start screen opens or creates a document by id and imports a Dify DSL; Dify's app list (cards, tags, search, create from blank / template) is not ported.
+  title: 'Developer start form: open or create a document by id, the demo'
+  dify: []
+  status: dify_sf_only
+  reason: Shown when the server has no apps API (and for the in-memory demo); `--doc` opens a document directly.
   evidence: [app/test/home_test.dart]
   ours: [app/lib/src/home_page.dart]
 - id: app-pages.main-nav

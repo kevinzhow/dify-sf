@@ -5828,3 +5828,302 @@ web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > shou
 web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should keep form state when request fails
 web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should redirect to init when status is not started
 web/app/components/base/__tests__/theme-selector.spec.tsx :: ThemeSelector > selects %s
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should render preview-only app card as a dimmed information-only card
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should render preview-only starred app card as a dimmed information-only card
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should display app name
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should display app description
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should display author name
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should render app icon
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should treat a redundant image icon as decorative
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should render app type icon
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Rendering > should display formatted edit time
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Props > should handle different app modes
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Props > should handle app with tags
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Props > should display refreshed tag names from app props when tag ids stay the same
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Props > should allow app edit permission to bind tags without workspace tag management permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Props > should allow workspace app tag management permission to bind tags without app edit permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Props > should render existing app tags as readonly without app edit or workspace tag management permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Web app access control entry points > should not render the access mode icon or tooltip trigger
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Card Interaction > should render card navigation as a link
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Card Interaction > should keep card navigation and actions as sibling focus targets
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Card Interaction > should star the app from the card action without navigating
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Card Interaction > should unstar the app from the filled star action
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show edit option when dropdown menu is opened
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should expose the same operations from the card context menu
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should keep card actions outside the card context menu trigger
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show duplicate option when dropdown menu is opened
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show duplicate option when user can create apps without app import export permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show duplicate option on starred cards when user can create apps without app import export permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show export option when dropdown menu is opened
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show delete option when dropdown menu is opened
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show switch option for chat mode apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should hide duplicate but keep app-authorized switch without app creation permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should show switch option for completion mode apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations Menu > should not show switch option for workflow mode apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should open edit modal when edit button is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should open duplicate modal when duplicate button is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should open confirm dialog when delete button is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should autofill the app name for delete confirmation
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should close confirm dialog when cancel is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should not submit delete when confirmation text does not match
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should close edit modal when onHide is called
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should close duplicate modal when onHide is called
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Modal Interactions > should clear delete confirmation input after closing the dialog
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should call deleteApp API when confirming delete
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should handle delete failure
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should handle delete failure without an error message
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should update the app and close the edit modal
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should call copyApp API when duplicating app
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should handle copy failure
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should export the app DSL when exporting
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > API Callbacks > should prevent duplicate exports while an app DSL export is pending
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Switch Modal > should open switch modal when switch button is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Switch Modal > should close switch modal when close button is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Switch Modal > should open switch modal for completion mode apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Open in Explore > should show open in explore option when dropdown menu is opened
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Open in Explore > should hide open in explore for SSO-restricted apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Workflow Export with Environment Variables > should use the workflow export command for workflow apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Workflow Export with Environment Variables > should show DSL export modal when workflow has secret variables
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Workflow Export with Environment Variables > should not open a modal when the workflow command downloads directly
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Workflow Export with Environment Variables > should use the workflow export command for advanced chat apps
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Workflow Export with Environment Variables > should close DSL export modal when onClose is called
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Edit mutation > should handle edit failure
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Edit mutation > should fall back to the default edit failure message
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations behavior > should close operations menu after selecting an item
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations behavior > should handle open in explore via async window
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Operations behavior > should show string errors from open in explore onError callback
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Access Control > should render the tour-controlled operations menu as presentation only
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Open in Explore - No App Found > should tell workflow users to publish before opening in explore
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Open in Explore - No App Found > should handle case when installed_apps is empty array
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Open in Explore - No App Found > should handle case when API throws in callback
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > Draft Trigger Apps > should not show open in explore option for apps with has_draft_trigger
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should omit web app access control when webapp_auth is enabled
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should omit web app access control for release-and-version permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should show resource access option when user only has app access config permission
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should hide resource access option when RBAC is disabled
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should navigate to app access config when resource access is clicked
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should show open in explore when userCanAccessApp is true
+web/app/components/apps/__tests__/app-card.spec.tsx :: AppCard > WebApp Auth Enabled > should keep open in explore visible for unpublished workflow apps while access check is pending
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should sort the current user first and filter out pending members
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should search creators, clear keywords, and select a creator
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should clear only the search query from the input action
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should return focus to the trigger after clearing creators from the filter chip
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should preserve unavailable creator ids when removing an available creator
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should expose the selected creator count from the closed trigger
+web/app/components/apps/__tests__/creators-filter.spec.tsx :: CreatorsFilter > should expose the creator picker as a named combobox with keyboard-owned options
+web/app/components/apps/__tests__/import-from-marketplace-template-modal.spec.tsx :: ImportFromMarketplaceTemplateModal > renders marketplace emoji icons without exposing the emoji id as text
+web/app/components/apps/__tests__/import-from-marketplace-template-modal.spec.tsx :: ImportFromMarketplaceTemplateModal > exposes a named close control
+web/app/components/apps/__tests__/import-from-marketplace-template-modal.spec.tsx :: ImportFromMarketplaceTemplateModal > exposes loading progress and announces the error state
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should track template preview creation after a successful import
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should open the template preview from Learn Dify
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should close the template preview
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should open the create modal from Learn Dify
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should track template preview creation after confirming a pending import
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should close the dsl confirm modal when the pending import is canceled
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Integration > should hide the create modal without tracking when the modal closes
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should render the template modal when template-id is in search params
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should not render the template modal without app.create_and_management permission
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should not render the template modal when no template-id is present
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should close the template modal and remove template-id from URL
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should import DSL from marketplace template on confirm
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should not open create modal from template preview without app.create_and_management permission
+web/app/components/apps/__tests__/index.spec.tsx :: Apps > Marketplace Template > should track marketplace template creation after confirming a pending import
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should open the create menu before the Studio with-apps guide group is persisted
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should render filters and search before the right aligned actions
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should render app cards when apps exist
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should hide starred section when there are no starred apps
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should render starred apps before all app cards when starred apps exist
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should expose the first workspace app card and open its action menu for the Studio with-apps tour manage guide
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should highlight the first starred app row for the Studio no-create with-apps tour
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should highlight the first all-apps row for the Studio no-create with-apps tour when there are no starred apps
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should expose the regular empty state for the Studio no-create empty tour
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should not render new app card in the app grid
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should render drop DSL hint when app creation permission is available
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should render first empty state when there are no apps and no active filters
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should hide learn dify in first empty state when learn app is disabled
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should not render first empty state before the first app list page resolves
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should not render first empty state from placeholder data during a filter transition
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should keep the regular empty state for empty filtered results
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should keep the result status quiet while placeholder results are fetching
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should keep the settled empty status during a background refetch
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should leave the first empty state as soon as a filter changes
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should open create flows from first empty state actions
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should forward Learn Dify template interactions
+web/app/components/apps/__tests__/list.spec.tsx :: List > Rendering > should pass workflow app ids to online users hook
+web/app/components/apps/__tests__/list.spec.tsx :: List > App Type Select > should render selected category in the trigger
+web/app/components/apps/__tests__/list.spec.tsx :: List > App Type Select > should reject API modes that the Studio category control does not support
+web/app/components/apps/__tests__/list.spec.tsx :: List > App Type Select > should update category when workflow option is selected
+web/app/components/apps/__tests__/list.spec.tsx :: List > App Type Select > should update category when all option is selected
+web/app/components/apps/__tests__/list.spec.tsx :: List > Search Functionality > should clear the keywords URL state
+web/app/components/apps/__tests__/list.spec.tsx :: List > App List Query > resets the catalog scroll position before switching datasets
+web/app/components/apps/__tests__/list.spec.tsx :: List > App List Query > should build paged query input from active filters
+web/app/components/apps/__tests__/list.spec.tsx :: List > App List Query > should build starred query input from active filters with the starred limit
+web/app/components/apps/__tests__/list.spec.tsx :: List > App List Query > should keep previous main and starred data visible while filters refetch
+web/app/components/apps/__tests__/list.spec.tsx :: List > Creators Filter > should handle creator selection
+web/app/components/apps/__tests__/list.spec.tsx :: List > Create Menu > should open blank app modal from create menu
+web/app/components/apps/__tests__/list.spec.tsx :: List > Create Menu > should open template dialog from create menu
+web/app/components/apps/__tests__/list.spec.tsx :: List > Create Menu > should open DSL import modal from create menu
+web/app/components/apps/__tests__/list.spec.tsx :: List > Create Menu > should not render create button without app creation permission
+web/app/components/apps/__tests__/list.spec.tsx :: List > App Type Select Options > should update category for each app type option click
+web/app/components/apps/__tests__/list.spec.tsx :: List > App Type Select Options > should update app list query when sort option changes
+web/app/components/apps/__tests__/list.spec.tsx :: List > DSL File Drop > should handle DSL file drop and show modal
+web/app/components/apps/__tests__/list.spec.tsx :: List > DSL File Drop > should close DSL modal when onClose is called
+web/app/components/apps/__tests__/list.spec.tsx :: List > DSL File Drop > should close DSL modal when its mutation reports success
+web/app/components/apps/__tests__/list.spec.tsx :: List > Infinite Scroll > should call fetchNextPage when intersection observer triggers
+web/app/components/apps/__tests__/list.spec.tsx :: List > Infinite Scroll > should not call fetchNextPage when not intersecting
+web/app/components/apps/__tests__/list.spec.tsx :: List > Infinite Scroll > should show one catalog skeleton until both app queries have data
+web/app/components/apps/__tests__/list.spec.tsx :: List > Error State > should keep the main catalog available when the starred request fails
+web/app/components/apps/__tests__/list.spec.tsx :: List > Error State > should keep resolved data visible and retry a failed next page
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Basic functionality > should return dragging state
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Basic functionality > should initialize with dragging as false
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drag events > should set dragging to true on dragenter with files
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drag events > should not set dragging on dragenter without files
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drag events > should handle dragover event
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drag events > should set dragging to false on dragleave when leaving container
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drag events > should keep dragging while moving from the viewport to its sibling overlay
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should call onDSLFileDropped for .yaml file
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should call onDSLFileDropped for .yml file
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should call onDSLFileDropped for uppercase .YAML file
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should not call onDSLFileDropped for non-yaml file
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should set dragging to false on drop
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should handle drop with no dataTransfer
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should handle drop with empty files array
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Drop functionality > should only process the first file when multiple files are dropped
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Enabled prop > should not add event listeners when enabled is false
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Enabled prop > should return dragging as false when enabled is false even if state is true
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Enabled prop > should default enabled to true
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Cleanup > should remove event listeners on unmount
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Edge cases > should handle null dropZoneRef
+web/app/components/apps/hooks/__tests__/use-dsl-drag-drop.spec.ts :: useDSLDragDrop > Edge cases > should handle dropZoneRef changing to null
+web/app/components/apps/hooks/__tests__/use-workflow-online-users.spec.ts :: useWorkflowOnlineUsers > Query Options > should disable query with a valid empty input when app ids are empty
+web/app/components/apps/hooks/__tests__/use-workflow-online-users.spec.ts :: useWorkflowOnlineUsers > Query Options > should enable query and polling when collaboration is enabled with app ids
+web/app/components/apps/hooks/__tests__/use-workflow-online-users.spec.ts :: useWorkflowOnlineUsers > Query Options > should disable query while preserving valid input when collaboration is disabled
+web/app/components/apps/hooks/__tests__/use-workflow-online-users.spec.ts :: useWorkflowOnlineUsers > Response Mapping > should normalize array response data by app id
+web/app/components/apps/hooks/__tests__/use-workflow-online-users.spec.ts :: useWorkflowOnlineUsers > Response Mapping > should normalize record response data without changing user arrays
+web/app/components/apps/hooks/__tests__/use-workflow-online-users.spec.ts :: useWorkflowOnlineUsers > Return Value > should return an empty map when query data is unavailable
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > creates an app, notifies success, and fires callbacks
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > waits for create_app tracking before redirecting after blank app creation
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > shows error toast when creation fails
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > shows the apps-full notice and disables creation when the workspace quota is exhausted
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > forwards the create-from-template entry action
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > creates a beginner chat app with the keyboard shortcut and selected icon style
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > shows validation feedback when the keyboard shortcut runs without a name
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > should switch between app types before creating a completion app
+web/app/components/app/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > should ignore duplicate create clicks while a request is in flight
+web/app/components/app/create-from-dsl-modal/__tests__/dsl-confirm-modal.spec.tsx :: DSLConfirmModal > should render the version details
+web/app/components/app/create-from-dsl-modal/__tests__/dsl-confirm-modal.spec.tsx :: DSLConfirmModal > should call the cancel and confirm handlers
+web/app/components/app/create-from-dsl-modal/__tests__/dsl-import-warning-description.spec.tsx :: DSLImportWarningDescription > should render each distinct warning on its own row
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should render the file tab and show the dropped file
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should switch tabs, close from the header icon, and ignore shortcuts without valid input
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should expose the URL as a named form field
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should initially focus Browse when the file import dialog opens
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should move focus from each active tab directly to its first panel control
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should render the import shortcut with kbd primitives
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should import from a URL and redirect after a successful import
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should pass creator context when import response has no permission keys
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should import from a file with the loaded file content
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should lock the complete file import while reading its content
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should remove the current file and keep the create shortcut guarded
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should show the DSL mismatch modal and confirm a pending import
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should surface Agent warnings after confirming a pending import
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should close the DSL mismatch modal when dialog requests close
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should close the DSL mismatch modal when cancel is clicked
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should show import progress and lock dialog interactions while a request is in flight
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should show confirmation progress and prevent cancellation while confirming
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should handle keyboard shortcut and quota guard
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should show failure toasts for failed and rejected imports
+web/app/components/app/create-from-dsl-modal/__tests__/index.spec.tsx :: CreateFromDSLModal > should handle pending import confirmation failures and cancellation
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should upload a single dropped file
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should reject dropping multiple files
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should render the selected file and allow removing it
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should ignore drops without dataTransfer
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should update the file from the hidden uploader input
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should move keyboard focus to the selected file row before the remove action
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should preserve focus ownership after selecting a file with a pointer
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should not move focus when a file is dropped
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should restore keyboard focus to Browse after removing the file
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should toggle drag styles and clear them when leaving the overlay
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should reopen the hidden input and restore the previous file when the picker is cancelled
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should clear the hidden input and remove the selected file
+web/app/components/app/create-from-dsl-modal/__tests__/uploader.spec.tsx :: Uploader > should clear the current file when the hidden uploader change event has no files
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should render a named dialog
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should validate the name before duplicating and update the input value
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should update the selected icon before confirming the duplicate
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should call onHide when close button is clicked
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should call onHide when Escape is pressed
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should not submit with Enter when the app limit is reached
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: DuplicateAppModal > should preserve the current image icon when the picker closes without selecting
+web/app/components/app/duplicate-modal/__tests__/index.spec.tsx :: waits for the real Cloud quota and allows an unlimited quota without an upgrade notice
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Rendering > should render create title and actions when creating
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Rendering > should render the submit shortcut with kbd primitives
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Rendering > should render edit-only fields when editing a chat app
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Rendering > should render answer icon switch when editing %s app
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Rendering > should not render answer icon switch when editing a non-chat app
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Rendering > should not render modal content when hidden
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Props > should disable confirm action when confirmDisabled is true
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Props > should disable confirm action when appName is empty
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Edge Cases > should default description to empty string when appDescription is empty
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Edge Cases > should render i18n key placeholders when translations are available
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > User Interactions > should call onHide when cancel button is clicked
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Quota Gating > should show AppsFull and disable create when apps quota is reached
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Quota Gating > should allow saving when apps quota is reached in edit mode
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Keyboard Shortcuts > should submit when Mod+Enter is pressed while visible
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Keyboard Shortcuts > should not submit when modal is hidden
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Keyboard Shortcuts > should not submit when apps quota is reached in create mode
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Keyboard Shortcuts > should submit when apps quota is reached in edit mode
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Keyboard Shortcuts > should not submit when name is empty
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > App Icon Picker > should open and close the picker when cancel is clicked
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > App Icon Picker > should update icon payload when selecting emoji and confirming
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > App Icon Picker > should allow changing only the background for the current emoji icon
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should call onConfirm with emoji payload and hide when create is clicked
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should include updated description when textarea is changed before submitting
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should omit icon_background when submitting with image icon
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should include max_active_requests and updated answer icon when saving
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should omit max_active_requests when input is empty
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should omit max_active_requests when input is not a number
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: CreateAppModal > Submitting > should show toast error and not submit when name becomes empty before debounced submit runs
+web/app/components/explore/create-app-modal/__tests__/index.spec.tsx :: edits an existing app without waiting for application quota data
+web/app/components/app/__tests__/store.spec.ts :: app store > resets the active tab when the message log modal closes
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportAppDsl > exports through the generated client and hands the YAML file to the browser
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportAppDsl > exposes pending state until the export command settles
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportAppDsl > lets the promise toast own errors without triggering a download
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportWorkflowAppDsl > checks generated workflow environment variables before exporting
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportWorkflowAppDsl > returns generated secret variables without starting a download
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportWorkflowAppDsl > owns workflow preflight errors without starting a download
+web/app/components/app/__tests__/use-export-app-dsl.spec.tsx :: useExportWorkflowAppDsl > keeps one pending lifecycle across the draft check and export
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > Rendering > should render "all types" trigger when no types selected
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > Props > should render selected type label and clear button when a single type is selected
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > Props > should render icon-only trigger when multiple types are selected
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > User interactions > should close option list when clicking outside
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > User interactions > should call onChange with added type when selecting an unselected item
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > User interactions > should call onChange with removed type when selecting an already-selected item
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > User interactions > should call onChange with appended type when selecting an additional item
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeSelector > User interactions > should clear selection without opening the dropdown when clicking clear button
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeLabel > should render label %s for type %s
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeLabel > should render empty label for unknown type
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeIcon > should render icon for type %s
+web/app/components/app/type-selector/__tests__/index.spec.tsx :: AppTypeIcon > should render nothing for unknown type
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > renders correctly with default props
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > renders custom placeholder
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > uses custom aria label
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > uses a custom form name
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > exposes the input element through its ref
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > focuses the searchbox when autoFocus is enabled
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > shows clear button when value is present
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Render > keeps a disabled searchbox inert and exposes its description
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Interaction > calls onValueChange when typing
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Interaction > handles composition events
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Interaction > does not keep stale composition commits after the next distinct change
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Interaction > clears composition value without committing stale text
+web/app/components/base/search-input/__tests__/index.spec.tsx :: SearchInput > Interaction > clears the value and returns focus to the searchbox
+web/app/components/base/search-input/__tests__/search-state.spec.ts :: search-state > detects trimmed search text
+web/app/components/base/search-input/__tests__/search-state.spec.ts :: search-state > treats search empty as filtering existing source data to no results
+web/app/components/base/search-input/__tests__/search-state.spec.ts :: search-state > does not treat loading or true source empty as search empty
+web/app/components/base/search-input/__tests__/search-state.spec.ts :: search-state > supports non-text filters
+web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > observes the sentinel relative to the provided scroll container
+web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > resolves a business-owned preload distance from the scroll container
+web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > notifies whenever the sentinel enters the preload area while loading is allowed
+web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > pauses load notifications while loading is disallowed and resumes when allowed again
+web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > uses the latest load callback after rerendering
+web/app/components/base/infinite-scroll-sentinel/__tests__/index.spec.tsx :: InfiniteScrollSentinel > disconnects the observer on unmount

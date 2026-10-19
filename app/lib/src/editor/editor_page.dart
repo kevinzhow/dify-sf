@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:collab_client/collab_client.dart' show DocMeta, ReplaceResult;
+import 'package:collab_client/collab_client.dart' show DocMeta, LinkState, ReplaceResult, TransportException;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../auth/auth_api.dart';
 import '../auth/auth_controller.dart';
 import '../design/widgets/toast.dart';
+import '../i18n/dify_i18n.dart';
 import '../online_events.dart';
 import '../session_factory.dart';
 import '../workflow/workspace_models.dart';
@@ -30,7 +31,13 @@ class EditorPage extends StatefulWidget {
     this.locateNodeId,
     this.models,
     this.openModelProviderSettings,
+    this.isAppDeleted,
   });
+
+  /// Protocol 1.10: whether the app (= this document) was deleted (`GET /v1/apps/{id}` answers 404). Asked when the
+  /// document cannot be opened or its connection keeps failing (at most every 5 s); a deleted app closes the editor
+  /// with a toast (back to the Studio) instead of retrying. Null: never asked.
+  final Future<bool> Function()? isAppDeleted;
 
   /// The workspace's model providers and models (protocol 1.9), loaded when the editor opens; null: none (the demo).
   final WorkspaceModels? models;
@@ -184,6 +191,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       unawaited(_loadMeta(gen));
     } on Object catch (e) {
       if (mounted && gen == _generation) setState(() => _error = e);
+      if (e is TransportException && e.statusCode == 404) unawaited(_checkDeleted());
     }
   }
 
@@ -200,6 +208,32 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
 
   void _rebuild() {
     if (mounted) setState(() {});
+    // A failing connection may mean the app is gone (its document answers 404 `app_deleted`): ask the apps API.
+    final status = _controller?.status;
+    if (status != null && status.lastError != null && status.link != LinkState.live) unawaited(_checkDeleted());
+  }
+
+  bool _checkingDeleted = false, _deleted = false;
+  DateTime? _deletedCheckedAt;
+
+  /// Leaves the editor when the app was deleted (at most one check every 5 s while the stream keeps failing).
+  Future<void> _checkDeleted() async {
+    final check = widget.isAppDeleted;
+    final now = DateTime.now();
+    if (check == null || _checkingDeleted || _deleted) return;
+    if (_deletedCheckedAt != null && now.difference(_deletedCheckedAt!) < const Duration(seconds: 5)) return;
+    _checkingDeleted = true;
+    _deletedCheckedAt = now;
+    try {
+      if (!await check() || !mounted) return;
+      _deleted = true;
+      toast.warning(DifyI18n.tr('app', 'appDeleted'));
+      Navigator.of(context).maybePop();
+    } on Object {
+      // Unreachable server: the session keeps reconnecting; the next failure asks again.
+    } finally {
+      _checkingDeleted = false;
+    }
   }
 
   /// Closes the session without any goodbye (like a killed process) and boots a new one from whatever the
