@@ -10,6 +10,8 @@ import Vapor
 struct Routes: Sendable {
     /// Forgot password: Dify's mail and code limits (per process).
     let passwordResetLimits = PasswordResetLimits()
+    /// Changing the email (protocol 1.12): Dify's mail and code limits (per process).
+    let changeEmailLimits = ChangeEmailLimits()
     let registry: DocumentRegistry
     let store: PostgresStore
     let config: ServerConfig

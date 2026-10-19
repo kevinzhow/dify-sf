@@ -19,7 +19,8 @@
 ///   annotation job states), `app_versions` (published versions: snapshots of the document).
 /// * Accounts (protocol 1.8, Dify's community edition: one workspace per server): `accounts`, `members` (the workspace's
 ///   members and their roles), `sessions` (opaque bearer tokens, stored only as SHA-256), `invitations` (activation links)
-///   and `client_accounts` (which account a client id belongs to).
+///   and `client_accounts` (which account a client id belongs to); `password_resets` and, protocol 1.12, `email_changes`
+///   (forgot-password and change-email tokens).
 public enum Schema {
     public static let statements: [String] = [
         """
@@ -204,6 +205,23 @@ public enum Schema {
         """,
         "CREATE INDEX IF NOT EXISTS password_resets_by_email ON password_resets (lower(email))",
         "CREATE INDEX IF NOT EXISTS password_resets_by_account ON password_resets (account_id)",
+        // Protocol 1.12: changing the account's email (Dify's `change_email:token:*` in Redis), by SHA-256 of the token. One
+        // current token per account (a new one replaces the others). `phase`: `old_email` / `new_email` (a code went to that
+        // address; `code_hash` = SHA-256 of token and code) and `old_email_verified` / `new_email_verified` (its code was
+        // right). `email` is the address the code went to, `old_email` the account's address when the change began.
+        """
+        CREATE TABLE IF NOT EXISTS email_changes (
+            token_hash text        PRIMARY KEY,
+            account_id text        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            email      text        NOT NULL,
+            old_email  text        NOT NULL,
+            code_hash  text,
+            phase      text        NOT NULL,
+            expires_at timestamptz NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS email_changes_by_account ON email_changes (account_id)",
         // A client id belongs to the account that obtained it (POST /clients) or used it first; ops under it from any other
         // account are refused (protocol 1.8). Never changes once written.
         """

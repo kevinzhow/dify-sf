@@ -163,6 +163,59 @@ enum MailTemplates {
         return MailMessage(to: to, subject: subject, html: html)
     }
 
+    /// `CHANGE_EMAIL_OLD` / `CHANGE_EMAIL_NEW` (change_mail_confirm_old/new_template_*.html, protocol 1.12): the code that
+    /// confirms changing the account's email, sent to the current address, then to the new one ([newAddress]).
+    static func changeEmail(to: String, code: String, minutes: Int, newAddress: Bool, language: String) -> MailMessage {
+        let zh = isChinese(language)
+        let subject = newAddress ? (zh ? "确认您的邮箱地址变更" : "Confirm your new email address")
+            : (zh ? "检测您现在的邮箱" : "Check your current email")
+        let lines: [String]
+        if zh {
+            lines = newAddress
+                ? ["确认您的邮箱地址变更", "您正在更新与您的 \(applicationTitle) 账户关联的邮箱地址。", "为了确认此操作，请使用以下验证码。",
+                   "此验证码仅在接下来的\(minutes)分钟内有效：", "如果您没有请求变更邮箱地址，请忽略此邮件或立即联系支持。"]
+                : ["验证您的邮箱变更请求", "我们收到了一个变更您 \(applicationTitle) 账户关联邮箱地址的请求。",
+                   "此验证码仅在接下来的\(minutes)分钟内有效：", "如果您没有请求变更邮箱地址，请忽略此邮件或立即联系支持。"]
+        } else {
+            lines = [newAddress ? "Confirm Your New Email Address" : "Verify Your Request to Change Email",
+                     newAddress ? "You’re updating the email address linked to your \(applicationTitle) account."
+                         : "We received a request to change the email address associated with your \(applicationTitle) account.",
+                     "To confirm this action, please use the verification code below.",
+                     "This code will only be valid for the next \(minutes) minutes:",
+                     "If you didn’t make this request, please ignore this email or contact support immediately."]
+        }
+        let descriptions = lines.dropFirst().dropLast().map { "<p class=\"description\">\(escape($0))</p>" }
+            .joined(separator: "\n      ")
+        let html = page(body: """
+            <p class="title">\(escape(lines[0]))</p>
+                  \(descriptions)
+                  <div class="code-content">
+                    <span class="code">\(escape(code))</span>
+                  </div>
+                  <p class="tips">\(escape(lines[lines.count - 1]))</p>
+            """)
+        return MailMessage(to: to, subject: subject, html: html)
+    }
+
+    /// `CHANGE_EMAIL_COMPLETED` (change_mail_completed_template_*.html): the new address the account signs in with.
+    static func changeEmailCompleted(to: String, language: String) -> MailMessage {
+        let zh = isChinese(language)
+        let subject = zh ? "您的登录邮箱已更改" : "Your login email has been changed"
+        let lines = zh
+            ? ["您的登录邮箱已更改", "您现在可以使用新的电子邮件地址登录 \(applicationTitle)：", "如果您没有进行此更改，请发送电子邮件至 support@dify.ai 。"]
+            : ["Your login email has been changed", "You can now log into \(applicationTitle) with your new email address:",
+               "If you did not make this change, email support@dify.ai ."]
+        let html = page(body: """
+            <p class="title">\(escape(lines[0]))</p>
+                  <p class="description">\(escape(lines[1]))</p>
+                  <div class="code-content">
+                    <span class="email">\(escape(to))</span>
+                  </div>
+                  <p class="tips">\(escape(lines[2]))</p>
+            """)
+        return MailMessage(to: to, subject: subject, html: html)
+    }
+
     static func escape(_ s: String) -> String {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
@@ -184,6 +237,7 @@ enum MailTemplates {
               .description { font-size: 13px; line-height: 16px; color: #676f83; margin-top: 12px; }
               .code-content { padding: 16px 32px; text-align: center; border-radius: 16px; background-color: #f2f4f7; margin: 16px auto; }
               .code { line-height: 36px; font-weight: 700; font-size: 30px; }
+              .email { line-height: 36px; font-weight: 700; font-size: 20px; }
               .tips { line-height: 16px; color: #676f83; font-size: 13px; }
             </style>
           </head>

@@ -116,7 +116,7 @@ extension Routes {
         }
     }
 
-    private var outbox: MailOutbox { MailOutbox(sender: SMTPMailSender(config: config.mail), logger: logger) }
+    var outbox: MailOutbox { MailOutbox(sender: SMTPMailSender(config: config.mail), logger: logger) }
 
     /// SHA-256 of a token and its code: what a `verify` token stores instead of the code.
     static func codeHash(token: String, code: String) -> String { Tokens.sha256("\(token):\(code)") }
@@ -137,8 +137,11 @@ extension Routes {
             var enable_email_password_login = true
             var is_allow_register = false
             var is_email_setup: Bool
+            /// 1.12: the account page offers changing the email (Dify's `ENABLE_CHANGE_EMAIL`; dify-sf needs mail for it).
+            var enable_change_email: Bool
         }
-        return try json(Features(is_email_setup: config.mail.isConfigured))
+        let mail = config.mail.isConfigured
+        return try json(Features(is_email_setup: mail, enable_change_email: mail))
     }
 
     // MARK: - Forgot password (Dify's /forgot-password, /forgot-password/validity, /forgot-password/resets)

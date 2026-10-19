@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.11
+# dify-sf collaboration protocol, version 1.12
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,22 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.12 (additive; clients older than 1.12 are unaffected): **account settings** (section 2, "Account settings (1.12)"):
+  Dify 1.17.1's account page and Preferences.
+  * `PATCH /v1/account/profile` (member, one's own account): `name`, `interface_language` (Dify's 24 languages) and
+    `timezone` (an IANA name), Dify's `AccountProfilePatchPayload` (other members, nulls, `avatar` and `interface_theme`:
+    `400`). Answers the account.
+  * **Changing the email** with six-digit codes by mail, Dify's `/account/change-email` flow: a code to the current
+    address, then (with that token) to the new one, then the change: `POST /v1/account/change-email`,
+    `.../validity`, `.../reset`, and `.../check-email-unique` for the page's live check. Dify's 5-minute tokens (one
+    current token per account), its mail limit (1 per address per minute; the per-IP limit is shared with forgot password)
+    and its wrong-code lockout. Needs mail: `GET /v1/system-features` gains `enable_change_email` (true when mail is
+    configured).
+  * New error codes: `email_already_in_use` (400), `email_change_rate_limit_exceeded`, `email_change_limit` (429). New
+    configuration: `COLLAB_AUTH_CHANGE_EMAIL_TOKEN_MINUTES`, `..._SEND_INTERVAL_SECONDS`, `..._MAX_FAILURES`,
+    `..._LOCKOUT_SECONDS`. Streams are unchanged.
+  * Not part of 1.12: avatars (no file storage; `avatar_url` stays unset and clients show Dify's initial fallback) and
+    deleting the account (Dify Cloud only).
 * 1.11 (additive; clients older than 1.11 are unaffected): **app detail pages** (section 2, "App detail pages (1.11)"):
   Dify 1.17.1's console API for the pages inside an app, under `/v1/apps/{app}`, with Dify's paths and shapes.
   * **Access Point**: every app has a Web App **site** (created with the app; apps of older servers get theirs at the first
@@ -258,6 +274,7 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | POST | `/v1/auth/login`, `/v1/auth/refresh` | public | Sign in; new token pair (1.8). |
 | POST | `/v1/auth/logout` | member | Revoke the session's tokens (1.8). |
 | GET | `/v1/account` | member | The caller's account (1.8). `PUT /v1/account/name`, `PUT /v1/account/password` change it. |
+| PATCH, POST | `/v1/account/profile`, `/v1/account/change-email...` | member | 1.12: one's own name, language, time zone; changing one's email ("Account settings"). |
 | GET | `/v1/workspace/members` | member | The members (1.8). |
 | POST, PUT, DELETE | `/v1/workspace/members/...` | privileged | Invite, change a role, remove (1.8). |
 | POST | `/v1/activate/check`, `/v1/activate` | public | Accept an invitation (1.8). |
@@ -385,7 +402,7 @@ and admins hand out one-time reset links instead (dify-sf only; Dify's community
 
 | Method | Path | Body | Answer |
 |---|---|---|---|
-| GET | `/v1/system-features` | - | `200 {"enable_email_code_login":false,"enable_email_password_login":true,"is_allow_register":false,"is_email_setup":bool}` (the members of Dify's `/console/api/system-features` the sign-in page reads). `is_email_setup`: mail is configured |
+| GET | `/v1/system-features` | - | `200 {"enable_email_code_login":false,"enable_email_password_login":true,"is_allow_register":false,"is_email_setup":bool}` (the members of Dify's `/console/api/system-features` the sign-in page reads). `is_email_setup`: mail is configured; 1.12: `enable_change_email` (the account page offers changing the email: mail is configured) |
 | POST | `/v1/forgot-password` | `{"email","language"?}` | `200 {"result":"success","data":"<token>"}`: a code went to the email. **The same answer for an email without an account** (that address gets Dify's "not associated with any account" mail instead; no code). `language`: `zh-Hans` mails in Chinese, anything else in English. `400 bad_request` for an invalid email, `400 mail_not_configured` without mail, `429 email_send_ip_limit`, `429 password_reset_rate_limit_exceeded` (below) |
 | POST | `/v1/forgot-password/validity` | `{"email","code","token"}` | `200 {"is_valid":true,"email":"<lower-cased>","token":"<reset token>"}`: the code was right; `token` is spent and the answer's token resets the password. `400 invalid_token` (unknown, used, replaced by a newer code, or expired), `400 invalid_email` (not the token's email), `400 email_code_error` (wrong code; counts, below), `429 email_password_reset_limit` |
 | POST | `/v1/forgot-password/resets` | `{"token","new_password","password_confirm"}` | `200 {"result":"success"}`: the password is set, **every session of the account is revoked**, the token and every other reset token or link of the account are spent, and an invited account that had not activated yet becomes active (its invitation link is then spent). `400 invalid_password` (Dify's rule, both fields), `400 password_mismatch`, `400 invalid_token` (unknown, used or expired reset token or link), `400 account_not_found` |
@@ -410,6 +427,34 @@ and admins hand out one-time reset links instead (dify-sf only; Dify's community
 * **Configuration**: `COLLAB_AUTH_RESET_PASSWORD_TOKEN_MINUTES` (5), `COLLAB_AUTH_RESET_PASSWORD_SEND_INTERVAL_SECONDS` (60),
   `COLLAB_AUTH_FORGOT_PASSWORD_MAX_FAILURES` (5), `COLLAB_AUTH_FORGOT_PASSWORD_LOCKOUT_SECONDS` (86400),
   `COLLAB_AUTH_EMAIL_SEND_IP_LIMIT_PER_MINUTE` (50), `COLLAB_AUTH_RESET_LINK_HOURS` (24).
+
+### Account settings (1.12)
+
+Dify 1.17.1's account page (`/account`) and the settings' Preferences tab (api/controllers/console/workspace/account.py).
+Every call needs a signed-in member and works on the caller's own account, whatever its role. `Account` is the shape of
+section "Accounts".
+
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| PATCH | `/v1/account/profile` | `{"name"?,"interface_language"?,"timezone"?}` | `200 Account` with the members given set (none given: unchanged). `name`: 3-30 characters (trimmed); `interface_language`: one of Dify's languages (`en-US`, `zh-Hans`, `zh-Hant`, `pt-BR`, `es-ES`, `fr-FR`, `de-DE`, `ja-JP`, `ko-KR`, `lo-LA`, `ru-RU`, `it-IT`, `uk-UA`, `vi-VN`, `ro-RO`, `pl-PL`, `hi-IN`, `tr-TR`, `fa-IR`, `sl-SI`, `th-TH`, `id-ID`, `ar-TN`, `nl-NL`); `timezone`: `UTC` or an IANA `Area/Location` name (`Asia/Kolkata`, `Etc/GMT+5`, every value of Dify's time zone list). Otherwise `400 bad_request` (Dify's messages: "en is not a valid language.", "Mars/Olympus is not a valid timezone."). Like Dify's payload (`extra="forbid"`), a null or any other member is `400`; Dify's `avatar` and `interface_theme` are `400` too (dify-sf stores neither) |
+| POST | `/v1/account/change-email` | `{"email","language"?,"phase"?,"token"?}` | `200 {"result":"success","data":"<token>"}`: a code went out. Without `phase` (or any value but `new_email`) the code goes to the account's own address, which `email` must name (ignoring case; else `400 invalid_email`). With `"phase":"new_email"` and the `token` of a right code for the old address, it goes to the new address `email` (`400 invalid_token` otherwise). `language`: `zh-Hans` mails in Chinese, else English. `400 bad_request` (invalid email), `400 mail_not_configured`, `429 email_send_ip_limit`, `429 email_change_rate_limit_exceeded` ("Please try again in 1 minutes.") |
+| POST | `/v1/account/change-email/validity` | `{"email","code","token"}` | `200 {"is_valid":true,"email":"<lower-cased>","token":"<next token>"}`: the code was right; `token` is spent. `400 invalid_token` (unknown, another account's, spent, replaced, expired, or already a verified token), `400 invalid_email` (not the address the code went to), `400 email_code_error` (wrong code; counts), `429 email_change_limit` |
+| POST | `/v1/account/change-email/reset` | `{"new_email","token"}` | `200 Account` with the new email (stored lower-cased, as Dify): `token` must be the caller's token of a right code for `new_email`, else `400 invalid_token`. `400 email_already_in_use` if another account has the address by now (the token stays), `400 account_not_found` if the account's address changed meanwhile. The new address gets Dify's "Your login email has been changed" mail. Sessions stay (Dify's page signs out afterwards); reset codes and links of the account are spent |
+| POST | `/v1/account/change-email/check-email-unique` | `{"email"}` | `200 {"result":"success"}` when no account has the address (ignoring case), else `400 email_already_in_use`. Dify's needs no sign-in; dify-sf's does (strangers do not learn which addresses have accounts) |
+
+* **Tokens** (Dify's `CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES`, `COLLAB_AUTH_CHANGE_EMAIL_TOKEN_MINUTES`, 5): every step's token is
+  valid 5 minutes, and **one token per account is current**: each new token (a sent code or a right code) replaces the
+  account's earlier ones. Tokens are 32 random bytes (base64url); the server stores their SHA-256 and, for a code, the
+  SHA-256 of token and code. The steps are `old_email` -> `old_email_verified` -> `new_email` -> `new_email_verified`.
+* **Limits** (Dify's, per server process): one mail per address per 60 seconds
+  (`COLLAB_AUTH_CHANGE_EMAIL_SEND_INTERVAL_SECONDS`); the per-IP mail limit of "Password reset"; every wrong code for an
+  address counts and renews a 24-hour window, and with **more than 5** the address is locked (`429 email_change_limit`,
+  even with the right code; `COLLAB_AUTH_CHANGE_EMAIL_MAX_FAILURES`, `COLLAB_AUTH_CHANGE_EMAIL_LOCKOUT_SECONDS`); a right
+  code clears the count.
+* **Mails**: Dify's templates (`change_mail_confirm_old/new`, `change_mail_completed`), in the background like the reset
+  mails.
+* **Not offered**: avatars (Dify uploads a file; dify-sf has no file storage, so `avatar_url` stays unset and clients show
+  Dify's initial avatar), deleting the account (Dify Cloud only), the education programme (Dify Cloud only).
 
 ### Dify app metadata: `GET /v1/docs/{doc}/meta`
 

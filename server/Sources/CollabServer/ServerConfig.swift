@@ -34,6 +34,8 @@ public struct ServerConfig: Sendable {
     /// Forgot password (Dify's `RESET_PASSWORD_TOKEN_EXPIRY_MINUTES`, `FORGOT_PASSWORD_LOCKOUT_DURATION`,
     /// `EMAIL_SEND_IP_LIMIT_PER_MINUTE`) and the admins' reset links (`PasswordResetConfig`).
     public var passwordReset: PasswordResetConfig
+    /// Protocol 1.12: changing the account's email (Dify's `CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES`, `CHANGE_EMAIL_LOCKOUT_DURATION`).
+    public var changeEmail: ChangeEmailConfig
     /// Browser origins allowed to call the API (CORS). Entries: exact origin, `scheme://host:*` (any port), or `*`.
     public var corsAllowedOrigins: [String]
     /// TEST ONLY: deliberately break the server so that the harness can prove it notices
@@ -82,6 +84,7 @@ public struct ServerConfig: Sendable {
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
         mail = MailConfig(reader: reader)
         passwordReset = PasswordResetConfig(reader: reader)
+        changeEmail = ChangeEmailConfig(reader: reader)
         corsAllowedOrigins = reader.string(forKey: "collab.cors.allowedOrigins", default: "http://localhost:*,http://127.0.0.1:*,http://[::1]:*")
             .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         testDefect = reader.string(forKey: "collab.test.defect", default: "")

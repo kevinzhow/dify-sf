@@ -24,6 +24,7 @@ extension Routes {
         r.get("v1", "activate", "check") { req in await handle(req) { try await checkActivation(req, token: query(req)["token"] ?? "") } }
         r.post("v1", "activate") { req in await handle(req) { try await activate(req) } }
         registerPasswordReset(on: r)
+        registerAccountSettings(on: r)
     }
 
     // MARK: - Validation
