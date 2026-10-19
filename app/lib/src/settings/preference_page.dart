@@ -14,7 +14,6 @@ import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/app_locale.dart';
 import '../i18n/dify_locales.g.dart';
-import '../workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'members/member_menu.dart' show requestErrorMessage;
 import 'settings_kit.dart';
 

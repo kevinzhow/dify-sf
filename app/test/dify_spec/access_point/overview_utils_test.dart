@@ -6,7 +6,6 @@ import 'dart:io' show gzip;
 
 import 'package:dify_sf_app/src/app_detail/access/access_point_utils.dart';
 import 'package:dify_sf_app/src/app_detail/access/workflow_launch_dialog.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'package:flutter/material.dart';
 
 import 'dart:ui' show CheckedState;
@@ -14,6 +13,8 @@ import 'dart:ui' show CheckedState;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 Json _var(String variable, String label, String type, {Object? defaultValue}) => {
   'variable': variable,

@@ -1,7 +1,6 @@
 // dify-spec: web/app/components/base/features/new-feature-panel/text-to-speech/__tests__/param-config-content.spec.tsx
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/selectors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

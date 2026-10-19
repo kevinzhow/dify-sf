@@ -16,7 +16,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
-import '../../workflow_editor/panel_fields/dialog.dart';
 import 'access_point_utils.dart';
 import 'api_key_modal.dart' show monoFontFamily;
 import 'workflow_launch_dialog.dart';

@@ -3,12 +3,13 @@ import 'package:dify_sf_app/src/cards/model_chip.dart' show ModelIcon, ModelName
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/settings/model_provider/model_list.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySwitch;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/model_fakes.dart';
 import '../_settings_harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const mockProvider = <String, Object?>{'provider': 'test-provider'};
 final mockModel = ModelItem.fromJson(modelJson('gpt-4', fetchFrom: 'system'));

@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../cards/bodies/note_body.dart';
 import '../../cards/bodies/note_text.dart';
-import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/controls.dart' show DifySwitch, DifySwitchSize;
 import 'note_editor.dart';
 
 String _tw(String key) => DifyI18n.tr('workflow', key);

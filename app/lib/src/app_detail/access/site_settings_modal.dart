@@ -16,12 +16,7 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../i18n/dify_locales.g.dart';
 import '../../open_url.dart';
-import '../../studio/app_icons.dart';
 import '../../studio/app_modals.dart' show AppIconSelection, appIconSelectionOf, pickAppIcon;
-import '../../workflow_editor/panel_fields/controls.dart' show DifyInput, DifySwitch;
-import '../../workflow_editor/panel_fields/dialog.dart';
-import '../../workflow_editor/panel_fields/form_controls.dart' show DifyTextarea;
-import '../../workflow_editor/panel_fields/selectors.dart' show DifySelect;
 
 String _t(String key, [Map<String, Object?> params = const {}]) =>
     DifyI18n.tr('appOverview', 'overview.appInfo.settings.$key', params);

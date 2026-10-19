@@ -1,6 +1,6 @@
 /// The annotation drawers: add-annotation-modal (with its edit-item), edit-annotation-modal (with its edit-item and
 /// EditTitle) and view-annotation-modal (the annotation tab, the hit history tab with hit-history-no-data, the remove
-/// confirmation), and base/tab-slider-plain.
+/// confirmation).
 library;
 
 import 'dart:async';
@@ -13,9 +13,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../auth/account_time.dart';
-import '../../workflow_editor/panel_fields/controls.dart' show DifyBadge;
-import '../../workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox, DifyTextarea;
-import '../logs/log_widgets.dart' show LogPagination;
 import 'annotation_list.dart' show AnnotationTimeFormatter;
 import 'annotation_overlays.dart';
 import 'annotation_types.dart';
@@ -539,68 +536,6 @@ class _EditAnnotationModalState extends State<EditAnnotationModal> {
       ),
     );
   }
-}
-
-/// base/tab-slider-plain: the options side by side (`space-x-6`), each `pb-2.5 system-xl-semibold` (tertiary, the
-/// active one primary with a 2 px brand line under it).
-class TabSliderPlain extends StatelessWidget {
-  const TabSliderPlain({
-    super.key,
-    required this.value,
-    required this.onChange,
-    required this.options,
-    this.itemPaddingBottom = 10,
-  });
-
-  final String value;
-  final ValueChanged<String> onChange;
-  final List<({String value, Widget text})> options;
-
-  /// `pb-2.5`, or a call site's `pb-3.5!`.
-  final double itemPaddingBottom;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    spacing: 24,
-    children: [
-      for (final o in options)
-        Flexible(
-          child: GestureDetector(
-            key: ValueKey('tab-slider-item-${o.value}'),
-            behavior: HitTestBehavior.opaque,
-            onTap: o.value == value ? null : () => onChange(o.value),
-            child: MouseRegion(
-              cursor: o.value == value ? MouseCursor.defer : SystemMouseCursors.click,
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(bottom: itemPaddingBottom),
-                    child: DefaultTextStyle.merge(
-                      style: difyTextStyle(
-                        DifyType.systemXlSemibold,
-                        o.value == value ? DifyColors.textPrimary : DifyColors.textTertiary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      child: o.text,
-                    ),
-                  ),
-                  if (o.value == value)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 2,
-                      child: ColoredBox(color: DifyColors.utilColorsBlueBrandBlueBrand600),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-    ],
-  );
 }
 
 /// hit-history-no-data: `mx-auto mt-20 w-120 rounded-2xl bg-background-section-burn p-5` with the

@@ -6,12 +6,13 @@
 // dify-spec: web/app/components/workflow/nodes/trigger-schedule/components/__tests__/on-minute-selector.spec.tsx
 // dify-spec: web/app/components/workflow/nodes/trigger-schedule/components/__tests__/weekday-selector.spec.tsx
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/trigger_schedule/schedule_components.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'schedule_harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const _p = 'workflow.nodes.triggerSchedule';
 

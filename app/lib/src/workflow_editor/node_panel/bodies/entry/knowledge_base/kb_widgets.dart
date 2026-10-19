@@ -6,7 +6,6 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../cards/model_chip.dart';
 import '../../../../../design/css_metrics.dart';
 import '../../../../../design/dify_icon.dart';
@@ -14,7 +13,6 @@ import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../i18n/dify_i18n.dart';
 import '../../../../../workflow/model_catalog.dart';
-import '../../../../panel_fields/panel_fields.dart' hide Json;
 import 'knowledge_base_logic.dart';
 
 // ---- OptionCard --------------------------------------------------------------------------------------------------

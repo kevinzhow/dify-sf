@@ -6,11 +6,12 @@ import 'package:dify_sf_app/src/workflow/var_types.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/http/http_dialogs.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/http/http_model.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/http/http_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 Map<String, Object?> createPayload([Map<String, Object?> overrides = const {}]) => {
   'title': 'HTTP Request',

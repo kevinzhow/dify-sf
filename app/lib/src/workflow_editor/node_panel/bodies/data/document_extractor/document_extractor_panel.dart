@@ -4,13 +4,13 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
 import '../data_common.dart';
 import '../../../panel_edit.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// What the panel needs from the backend: `GET /files/support-type`'s `allowed_extensions`, the docs link of the
 /// node (`useNodeHelpLink`) and whether the UI language is Chinese (`LanguagesSupported[1]`, which joins with "、 ").

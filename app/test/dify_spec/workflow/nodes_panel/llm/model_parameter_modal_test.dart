@@ -9,7 +9,6 @@ import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySwitch;
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/var_picker_model.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor_types.dart';
 import 'package:flutter/material.dart';

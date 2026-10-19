@@ -11,11 +11,12 @@ import 'package:dify_sf_app/src/cards/dify_cards.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/code_parser.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/template_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'code_harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 Map<String, Object?> variable([Map<String, Object?> overrides = const {}]) => {
   'variable': 'input_text',

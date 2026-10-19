@@ -14,7 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../active_page.dart';
-import '../auth/widgets/auth_widgets.dart' show DifyAreaLoading, DifyDocumentTitle;
+import '../auth/widgets/auth_widgets.dart' show DifyDocumentTitle;
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/app_icon_picker.dart' show UploadAppIcon;
 import '../i18n/dify_i18n.dart';
@@ -27,6 +27,7 @@ import 'app_permission.dart';
 import 'app_sidebar.dart';
 import 'detail_page_slot.dart';
 import 'detail_sidebar.dart';
+import '../design/widgets/widgets.dart';
 
 String _c(String key) => DifyI18n.tr('common', key);
 

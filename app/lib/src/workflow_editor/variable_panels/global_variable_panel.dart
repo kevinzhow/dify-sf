@@ -3,11 +3,11 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../store/store.dart';
 import 'panel_kit.dart';
+import '../../design/widgets/widgets.dart';
 
 /// The system variables of a chatflow ([isChatMode]) or a workflow (`timestamp` only on the workflow page).
 List<({String name, String valueType, String description})> globalVariableList({

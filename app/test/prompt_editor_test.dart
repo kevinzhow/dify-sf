@@ -14,6 +14,8 @@ import 'dify_spec/prompt_editor/harness.dart';
 import 'dify_spec/workflow/nodes_panel/data/human_input_test_kit.dart' show pumpComponent;
 import 'support/app_fonts.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 void main() {
   group('PromptEditorController', () {
     test('keeps one character per block and the prompt as Dify stores it', () {

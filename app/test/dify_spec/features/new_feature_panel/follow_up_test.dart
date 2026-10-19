@@ -1,11 +1,12 @@
 // dify-spec: web/app/components/base/features/new-feature-panel/__tests__/follow-up.spec.tsx
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/form_controls.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const llm = LlmGroupServices(defaultModels: {'llm': (provider: 'openai', model: 'gpt-4o-mini', mode: 'chat')});
 

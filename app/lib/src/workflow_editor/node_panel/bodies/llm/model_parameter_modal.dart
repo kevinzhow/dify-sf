@@ -6,7 +6,6 @@ library;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../../cards/card_kit.dart';
 import '../../../../cards/model_chip.dart';
 import '../../../../design/css_metrics.dart';
 import '../../../../design/dify_icon.dart';

@@ -13,7 +13,6 @@ import '../i18n/app_locale.dart';
 import '../i18n/dify_i18n.dart';
 import '../i18n/dify_locales.g.dart';
 import '../local_timezone.dart';
-import '../workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'activate_page.dart' show InvalidInvitation;
 import 'auth_api.dart';
 import 'auth_controller.dart';

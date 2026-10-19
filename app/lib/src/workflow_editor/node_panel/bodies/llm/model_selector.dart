@@ -10,7 +10,6 @@ import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../../cards/card_kit.dart';
 import '../../../../cards/model_chip.dart';
 import '../../../../design/css_metrics.dart';
 import '../../../../design/dify_icon.dart';
@@ -20,7 +19,6 @@ import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/model_catalog.dart';
 import '../../../../settings/model_provider/model_provider_env.dart';
 import '../../../../settings/model_provider/provider_added_card.dart' show DropdownContent;
-import '../../../panel_fields/controls.dart' show DifyInput;
 import 'group_host.dart';
 import 'model_search.dart';
 

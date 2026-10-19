@@ -1,6 +1,5 @@
 import 'package:dify_sf_app/src/workflow_editor/block_selector/block_selector.dart';
 import 'package:dify_sf_app/src/workflow_editor/block_selector/selector_widgets.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifyInput;
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/app_fonts.dart';
 import '../../dify_test_i18n.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// Per-test setup: Dify's key-echo translations, empty localStorage, fresh stored flags.
 void setUpBlockSelectorTests() {

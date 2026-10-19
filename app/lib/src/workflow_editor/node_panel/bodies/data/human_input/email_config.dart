@@ -5,13 +5,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/css_metrics.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../workflow/dify_json.dart';
-import '../../../../panel_fields/panel_fields.dart';
 import '../../../../prompt_editor/prompt_editor.dart';
 import '../data_common.dart';
 import 'delivery_method.dart' show EmailContext;

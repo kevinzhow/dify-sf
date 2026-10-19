@@ -1,10 +1,10 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
-import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../workflow/model_catalog.dart';
+import '../design/widgets/widgets.dart';
 
 export 'variable_label.dart';
 
@@ -38,12 +38,6 @@ class BodyContext {
   Value? operator [](String key) => node.config[key];
 }
 
-/// The font cards render with (the app theme's family); measurement outside the widget tree needs it explicitly.
-String? cardFontFamily;
-
-/// A Dify text style in a colour (uppercase styles are applied by [DifyText]).
-TextStyle difyStyle(DifyTextStyle s, Color color) => s.style.copyWith(color: color, fontFamily: cardFontFamily);
-
 /// The height of [text] in [style] laid out at [width] (description, answer text).
 double textHeight(String text, TextStyle style, double width, {int? maxLines}) {
   if (text.isEmpty) return 0;
@@ -58,38 +52,6 @@ double textHeight(String text, TextStyle style, double width, {int? maxLines}) {
   final h = p.height;
   p.dispose();
   return h;
-}
-
-/// Text in a Dify typography utility (applies `uppercase`).
-class DifyText extends StatelessWidget {
-  const DifyText(
-    this.text,
-    this.style, {
-    super.key,
-    this._color,
-    this.align,
-    this.maxLines = 1,
-  });
-  final String text;
-  final DifyTextStyle style;
-  final Color? _color;
-  Color get color => _color ?? DifyColors.textPrimary;
-  final TextAlign? align;
-  final int? maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = difyStyle(style, color);
-    return Text(
-      style.uppercase ? text.toUpperCase() : text,
-      style: s,
-      // The baseline where Chrome puts it.
-      strutStyle: Css.lineStrut(s),
-      textAlign: align,
-      maxLines: maxLines,
-      overflow: maxLines == null ? null : TextOverflow.ellipsis,
-    );
-  }
 }
 
 /// A row on the card: `flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1`.

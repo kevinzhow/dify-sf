@@ -4,12 +4,13 @@
 // written to the document (`$app` config `features`), so the "sync" case checks that write.
 import 'package:dify_sf_app/src/workflow/dify_json.dart';
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'panel/harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 final startNode = difyNode('start-node', 'start', {
   'variables': [

@@ -4,7 +4,6 @@ import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/app_registers_sync.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
@@ -14,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/workflow/panel/harness.dart' show RecordingController, difyNode;
 import 'support/app_fonts.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// The features panel (protocol 1.7): the app's features live in the document under `$app` (config `features`,
 /// Dify's `workflow.features`); a change is the fewest nested `setConfig` ops there, so several people's changes to

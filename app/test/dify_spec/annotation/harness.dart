@@ -4,14 +4,14 @@ import 'dart:ui' show CheckedState, Tristate;
 
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/app_detail/annotations/annotation_types.dart';
-import 'package:dify_sf_app/src/design/widgets/toast.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox;
 import 'package:dify_sf_app/src/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../dify_test_i18n.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// Dify's render for the annotation specs: [child] with Dify's test translator (`<ns>.<key>`), the app's toast host
 /// and the [locale] (`useLocale`), on a 1440 x 900 page.

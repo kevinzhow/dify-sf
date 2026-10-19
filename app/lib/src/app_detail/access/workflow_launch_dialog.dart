@@ -11,10 +11,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
-import '../../workflow_editor/panel_fields/controls.dart' show DifyInput;
-import '../../workflow_editor/panel_fields/dialog.dart';
-import '../../workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox, DifyTextarea;
-import '../../workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'access_point_utils.dart';
 
 String _t(String ns, String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr(ns, key, params);

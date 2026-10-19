@@ -5,13 +5,11 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../cards/card_kit.dart' show DifyText;
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/controls.dart' show DifyBadge;
 import '../store/workflow_store.dart' show DifyJson;
 import 'block_defaults.dart';
 import 'block_selector.dart' show OnSelectBlock;

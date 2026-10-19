@@ -15,10 +15,8 @@ import '../../canvas/canvas_selection.dart';
 import '../../canvas/canvas_view_state.dart';
 import '../../canvas/widget_renderer.dart';
 import '../../cards/dify_cards.dart';
-import '../../cards/card_kit.dart' show cardFontFamily;
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/dialog.dart';
 import '../canvas_plus/iteration_add_block.dart';
 import 'actions.dart';
 

@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'variable_aggregator_helpers.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 typedef Json = Map<String, Object?>;
 
 Json createData([Json overrides = const {}]) => {

@@ -17,19 +17,17 @@ box-shadow	workflow_editor/node_panel/bodies/core/start_panel.dart	1	todo:step3
 box-shadow	workflow_editor/node_panel/bodies/data/tool/tool_date_pickers.dart	2	todo:step3
 box-shadow	workflow_editor/node_panel/bodies/entry/data_source/data_source_auth.dart	2	todo:step3
 box-shadow	workflow_editor/node_panel/bodies/entry/knowledge_base/kb_widgets.dart	1	todo:step3
-box-shadow	workflow_editor/panel_fields/controls.dart	1	todo:step3
 box-shadow	workflow_editor/panel_fields/file_upload_setting.dart	1	todo:step3
-box-shadow	workflow_editor/panel_fields/form_controls.dart	3	todo:step3
+box-shadow	workflow_editor/panel_fields/form_controls.dart	1	todo:step3
 box-shadow	workflow_editor/panel_fields/var_list.dart	1	todo:step3
 box-shadow	workflow_editor/prompt_editor/prompt_editor_panel.dart	2	todo:step3
 box-shadow	workflow_editor/run/ui/log_widgets.dart	2	todo:step3
 box-shadow	workflow_editor/run/ui/status.dart	4	todo:step3
 box-shadow	workflow_editor/version_history/version_history_panel.dart	2	todo:step3
-color-literal	app_detail/logs/log_widgets.dart	2	legit:transparent
+color-literal	app_detail/logs/log_widgets.dart	1	legit:transparent
 color-literal	app_detail/overview/app_chart.dart	2	todo:step4
 color-literal	app_detail/overview/app_chart_utils.dart	18	dify-hardcoded:web/app/components/app/overview/app-chart-utils.ts
 color-literal	auth/signin_page.dart	3	todo:step4
-color-literal	auth/widgets/auth_widgets.dart	1	dify-hardcoded:web/app/components/base/loading/index.tsx
 color-literal	canvas/canvas_a11y.dart	1	todo:step4
 color-literal	canvas/edge_curve.dart	2	todo:step4
 color-literal	canvas/node_card.dart	1	todo:step4
@@ -51,7 +49,6 @@ color-literal	settings/members/email_recipients_field.dart	2	todo:step4
 color-literal	settings/members/invited_modal.dart	4	todo:step4
 color-literal	settings/model_provider/model_provider_page.dart	2	todo:step4
 color-literal	settings/model_provider/provider_added_card.dart	4	todo:step4
-color-literal	studio/app_icons.dart	2	todo:step4
 color-literal	studio/create_app_modal.dart	6	todo:step4
 color-literal	studio/create_from_dsl_modal.dart	1	legit:transparent
 color-literal	studio/filters.dart	1	legit:transparent
@@ -106,9 +103,8 @@ color-literal	workflow_editor/note_node/note_toolbar.dart	3	todo:step4
 color-literal	workflow_editor/operator/image_export.dart	2	todo:step4
 color-literal	workflow_editor/operator/mini_map.dart	1	third-party:reactflow minimap
 color-literal	workflow_editor/operator/zoom_in_out.dart	1	todo:step4
-color-literal	workflow_editor/panel_fields/controls.dart	3	todo:step4
 color-literal	workflow_editor/panel_fields/file_upload_setting.dart	5	dify-hardcoded:web/app/components/base/file-uploader/file-type-icon.tsx
-color-literal	workflow_editor/panel_fields/form_controls.dart	7	todo:step4
+color-literal	workflow_editor/panel_fields/form_controls.dart	1	todo:step4
 color-literal	workflow_editor/panel_fields/node_config.dart	2	todo:step4
 color-literal	workflow_editor/panel_fields/var_reference_vars.dart	3	todo:step4
 color-literal	workflow_editor/prompt_editor/component_picker.dart	5	dify-hardcoded:web/app/components/base/prompt-editor/plugins
@@ -133,7 +129,7 @@ component-token	account/account_page.dart	2	todo:step3
 component-token	app_detail/access/access_point_card.dart	8	todo:step3
 component-token	app_detail/access/site_settings_modal.dart	4	todo:step3
 component-token	app_detail/access/workflow_launch_dialog.dart	1	todo:step3
-component-token	app_detail/logs/log_widgets.dart	12	todo:step3
+component-token	app_detail/logs/log_widgets.dart	11	todo:step3
 component-token	app_detail/overview/time_range.dart	1	todo:step3
 component-token	cards/bodies/note_body.dart	1	todo:step3
 component-token	cards/dify_cards.dart	1	todo:step3
@@ -145,7 +141,6 @@ component-token	settings/members/role_selector.dart	6	todo:step3
 component-token	settings/model_provider/model_auth.dart	5	todo:step3
 component-token	settings/settings_kit.dart	8	todo:step3
 component-token	studio/filters.dart	4	todo:step3
-component-token	studio/search_input.dart	1	todo:step3
 component-token	workflow_editor/block_selector/selector_widgets.dart	6	todo:step3
 component-token	workflow_editor/block_selector/snippets_panel.dart	1	todo:step3
 component-token	workflow_editor/block_selector/tools_panel.dart	2	todo:step3
@@ -199,9 +194,7 @@ component-token	workflow_editor/node_panel/bodies/llm/qc_class_list.dart	2	todo:
 component-token	workflow_editor/node_panel/title_description_input.dart	1	todo:step3
 component-token	workflow_editor/node_panel/workflow_node_panel.dart	1	todo:step3
 component-token	workflow_editor/note_node/note_editor.dart	2	todo:step3
-component-token	workflow_editor/panel_fields/controls.dart	30	todo:step1
-component-token	workflow_editor/panel_fields/form_controls.dart	30	todo:step1
-component-token	workflow_editor/panel_fields/selectors.dart	6	todo:step1
+component-token	workflow_editor/panel_fields/form_controls.dart	9	todo:step1
 component-token	workflow_editor/panel_fields/var_reference_picker.dart	8	todo:step3
 component-token	workflow_editor/panel_fields/var_reference_vars.dart	1	todo:step3
 component-token	workflow_editor/prompt_editor/prompt_editor.dart	1	todo:step3
@@ -214,7 +207,6 @@ component-token	workflow_editor/variable_inspect/value_content.dart	12	todo:step
 component-token	workflow_editor/variable_panels/chat_variable_modal.dart	1	todo:step3
 component-token	workflow_editor/variable_panels/chat_variable_values.dart	2	todo:step3
 component-token	workflow_editor/variable_panels/panel_kit.dart	7	todo:step3
-design-import	design/widgets/app_icon_picker.dart	2	todo:step1
 dialog-route	app_detail/logs/log_widgets.dart	2	todo:step3
 dialog-route	editor/config_editor.dart	1	dev-shell
 dialog-route	editor/editor_page.dart	1	dev-shell
@@ -227,19 +219,8 @@ dialog-route	workflow_editor/dsl/dsl_export_confirm_modal.dart	1	todo:step3
 dialog-route	workflow_editor/header/publisher/version_info_modal.dart	1	todo:step3
 dialog-route	workflow_editor/node_panel/bodies/data/tool/tool_schema_view.dart	1	todo:step3
 dialog-route	workflow_editor/node_panel/workflow_panels.dart	1	todo:step3
-dialog-route	workflow_editor/panel_fields/dialog.dart	1	todo:step3
 dialog-route	workflow_editor/version_history/version_history_panel.dart	1	todo:step3
-dify-class	app_detail/access/access_point_card.dart	2	todo:step2
-dify-class	auth/widgets/auth_widgets.dart	1	todo:step2
-dify-class	cards/card_kit.dart	1	todo:step1
-dify-class	studio/app_icons.dart	2	todo:step2
 dify-class	workflow_editor/header/publisher/version_info_modal.dart	1	todo:step2
-dify-class	workflow_editor/node_panel/bodies/entry/trigger_plugin/plugin_form.dart	1	todo:step2
-dify-class	workflow_editor/panel_fields/controls.dart	7	todo:step1
-dify-class	workflow_editor/panel_fields/date_picker.dart	1	todo:step1
-dify-class	workflow_editor/panel_fields/dialog.dart	1	todo:step1
-dify-class	workflow_editor/panel_fields/form_controls.dart	3	todo:step1
-dify-class	workflow_editor/panel_fields/selectors.dart	1	todo:step1
 material-widget	cards/card_chrome.dart	1	todo:step3
 material-widget	cards/model_chip.dart	1	todo:step3
 material-widget	cards/variable_label.dart	3	todo:step3
@@ -262,8 +243,7 @@ material-widget	workflow_editor/node_panel/bodies/data/list_operator/list_operat
 material-widget	workflow_editor/node_panel/bodies/data/loop/loop_conditions.dart	1	todo:step3
 material-widget	workflow_editor/node_panel/bodies/llm/agent_v2_outputs.dart	1	todo:step3
 material-widget	workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart	1	todo:step3
-material-widget	workflow_editor/panel_fields/controls.dart	1	todo:step3
-material-widget	workflow_editor/panel_fields/form_controls.dart	3	todo:step3
+material-widget	workflow_editor/panel_fields/form_controls.dart	2	todo:step3
 material-widget	workflow_editor/panel_fields/var_reference_picker.dart	1	todo:step3
 material-widget	workflow_editor/prompt_editor/component_picker.dart	1	todo:step3
 material-widget	workflow_editor/variable_inspect/panel.dart	1	todo:step3
@@ -298,10 +278,8 @@ raw-text-style	settings/members/invite_modal.dart	2	todo:step5
 raw-text-style	settings/members/invited_modal.dart	6	todo:step5
 raw-text-style	settings/members/reset_link_modal.dart	2	todo:step5
 raw-text-style	settings/members/role_selector.dart	2	todo:step5
-raw-text-style	settings/settings_kit.dart	1	todo:step5
 raw-text-style	settings/workspace_card.dart	1	todo:step5
 raw-text-style	studio/app_card.dart	1	todo:step5
-raw-text-style	studio/app_icons.dart	1	todo:step5
 raw-text-style	studio/app_modals.dart	3	todo:step5
 raw-text-style	studio/create_from_dsl_modal.dart	4	todo:step5
 raw-text-style	studio/filters.dart	5	todo:step5
@@ -357,7 +335,7 @@ raw-text-style	workflow_editor/note_node/note_editor.dart	1	todo:step5
 raw-text-style	workflow_editor/note_node/note_toolbar.dart	2	todo:step5
 raw-text-style	workflow_editor/operator/image_export.dart	1	todo:step5
 raw-text-style	workflow_editor/operator/view_workflow_history.dart	5	todo:step5
-raw-text-style	workflow_editor/panel_fields/form_controls.dart	4	todo:step5
+raw-text-style	workflow_editor/panel_fields/form_controls.dart	3	todo:step5
 raw-text-style	workflow_editor/panel_fields/next_step.dart	1	todo:step5
 raw-text-style	workflow_editor/panel_fields/node_config.dart	3	todo:step5
 raw-text-style	workflow_editor/panel_fields/selectors.dart	3	todo:step5

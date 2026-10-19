@@ -12,7 +12,6 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/form_controls.dart' show DifyCheckbox;
 
 String _tw(String key) => DifyI18n.tr('workflow', key);
 String _tc(String key) => DifyI18n.tr('common', key);

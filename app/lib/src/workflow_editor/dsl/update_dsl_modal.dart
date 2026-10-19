@@ -7,7 +7,6 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/dialog.dart';
 import '../operator/actions.dart' show OperatorReadOnly;
 import '../store/store.dart';
 

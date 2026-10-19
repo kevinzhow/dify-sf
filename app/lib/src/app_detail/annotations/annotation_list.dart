@@ -13,7 +13,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../auth/account_time.dart';
-import '../../workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox;
 import 'annotation_overlays.dart';
 import 'confirm_modals.dart';
 

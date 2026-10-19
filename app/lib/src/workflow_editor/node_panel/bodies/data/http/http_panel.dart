@@ -17,6 +17,7 @@ import 'http_model.dart';
 import 'key_value.dart';
 import 'timeout.dart';
 import '../../../panel_edit.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// What the HTTP panel gets from the host: the server's block default (`nodesDefaultConfigs['http-request']`, from
 /// `/workflows/default-workflow-block-configs`), merged under the node's data and read for the timeout maxima.

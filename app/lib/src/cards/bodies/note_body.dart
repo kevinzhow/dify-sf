@@ -7,6 +7,7 @@ import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
 import '../card_kit.dart';
 import 'note_text.dart';
+import '../../design/widgets/widgets.dart';
 
 /// note-node/constants.ts THEME_MAP: the colour picker's ring ([outer]), the title strip and swatch ([title]),
 /// the card ([bg]) and its border while selected ([border]).

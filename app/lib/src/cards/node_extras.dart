@@ -6,8 +6,8 @@ import '../i18n/dify_i18n.dart';
 import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
-import 'card_kit.dart';
 import 'card_spinner.dart';
+import '../design/widgets/widgets.dart';
 
 /// What retry-on-node.tsx shows for a run state: the "Retry n times" row ([idle]), the attempt while running, its
 /// outcome, or nothing (a run state without a retry index).

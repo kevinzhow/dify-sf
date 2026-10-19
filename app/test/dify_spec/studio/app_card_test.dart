@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'card_harness.dart';
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 const _id = 'test-app-id';
 
 /// Moves the mouse over the card (the action bar shows, as `group-hover`).

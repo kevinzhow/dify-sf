@@ -8,15 +8,15 @@ import 'package:dify_sf_app/src/app_detail/annotations/annotation_types.dart';
 import 'package:dify_sf_app/src/app_detail/annotations/annotations_page.dart';
 import 'package:dify_sf_app/src/app_detail/annotations/batch_add_modal.dart';
 import 'package:dify_sf_app/src/app_detail/annotations/header_opts.dart';
-import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart' show ModelTypeEnum;
 import 'package:dify_sf_app/src/workflow/workspace_models.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySlider, DifySwitch;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/annotation/harness.dart';
 import 'support/model_fakes.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const _openai = 'langgenius/openai/openai';
 

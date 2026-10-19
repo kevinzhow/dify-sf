@@ -9,7 +9,6 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
@@ -460,11 +459,6 @@ class FormInputItem extends StatelessWidget {
       ],
     );
   }
-}
-
-/// `DifyNumberField`'s number text (integers without `.0`).
-abstract final class DifyNumberFieldText {
-  static String format(num v) => v == v.roundToDouble() && v.abs() < 9e15 ? '${v.round()}' : '$v';
 }
 
 /// MixedVariableTextInput (nodes/tool/components/mixed-variable-text-input): the prompt editor in an input box

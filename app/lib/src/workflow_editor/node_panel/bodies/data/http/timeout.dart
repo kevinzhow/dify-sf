@@ -8,6 +8,7 @@ import '../../../../../design/dify_tokens.g.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../data_common.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// A number field's committed text (dify-ui NumberField with `maximumFractionDigits: 0`): an integer clamped to
 /// [min]..[max], null for an empty field; [fallback] when the text is no number.

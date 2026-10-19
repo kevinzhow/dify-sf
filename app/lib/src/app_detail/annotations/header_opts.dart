@@ -15,7 +15,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/app_locale.dart';
 import '../../i18n/dify_i18n.dart';
-import '../../studio/search_input.dart';
 import 'annotation_modals.dart';
 import 'annotation_types.dart';
 import 'batch_add_modal.dart';

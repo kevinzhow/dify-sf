@@ -4,12 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/css_metrics.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
-import '../../../../panel_fields/panel_fields.dart';
 import '../data_common.dart';
 import 'human_input_kit.dart';
 import 'human_input_model.dart';

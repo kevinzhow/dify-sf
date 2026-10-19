@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import '../../canvas/live_card.dart' show OverflowHitStack;
 import '../../cards/bodies/note_body.dart';
 import '../../cards/bodies/note_text.dart';
-import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';

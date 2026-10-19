@@ -10,7 +10,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../cards/card_kit.dart' show DifyText;
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -21,7 +20,6 @@ import '../header/publisher/summary_section.dart' show PublishedWorkflowInfo;
 import '../header/publisher/utils.dart' show getWorkflowVersionName;
 import '../header/publisher/version_info_modal.dart' show showVersionInfoModal, VersionInfoUpdate;
 import '../header/titles.dart' show workflowVersionDraft;
-import '../panel_fields/controls.dart' show DifySwitch;
 import '../store/store.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);

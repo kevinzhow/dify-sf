@@ -4,7 +4,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
@@ -12,7 +11,6 @@ import '../../i18n/dify_i18n.dart';
 import '../node_panel/bodies/llm/group_host.dart';
 import '../../workflow/model_catalog.dart';
 import '../node_panel/bodies/llm/model_parameter_modal.dart';
-import '../panel_fields/controls.dart';
 import '../panel_fields/var_list.dart' show varNameFormatter;
 import '../panel_fields/var_picker_model.dart' show checkKeys;
 import '../prompt_editor/config_prompt.dart' show uuid4;

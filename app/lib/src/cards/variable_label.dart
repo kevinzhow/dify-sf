@@ -8,6 +8,7 @@ import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import 'card_kit.dart';
+import '../design/widgets/widgets.dart';
 
 // Variable selectors (nodes/_base/components/variable/utils.ts).
 bool isSystemVar(List<String> v) => v.isNotEmpty && (v[0] == 'sys' || (v.length > 1 && v[1] == 'sys'));

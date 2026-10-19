@@ -11,9 +11,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
+import '../../design/widgets/widgets.dart';
 
 /// Commits [text], drafted on document version [base].
 typedef DraftCommit = void Function(String text, int base);

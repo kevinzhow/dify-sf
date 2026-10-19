@@ -14,7 +14,6 @@ import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../settings/settings_kit.dart';
 import '../workflow_editor/node_panel/bodies/data/human_input/human_input_kit.dart' show transSpans;
-import '../workflow_editor/panel_fields/controls.dart' show DifyInput;
 
 /// Shows the modal for the signed-in account of [auth]; closing it drops the flow (Dify mounts it afresh).
 Future<void> showEmailChangeModal(BuildContext context, AuthController auth) =>

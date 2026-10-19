@@ -21,6 +21,7 @@ import '../workflow_editor/canvas_plus/iteration_add_block.dart';
 import '../workflow_editor/canvas_plus/aggregator_controls.dart';
 import 'node_extras.dart';
 import 'node_helpers.dart';
+import '../design/widgets/widgets.dart';
 
 /// Dify's node cards: the shared chrome (nodes/_base/node.tsx) around a body per node type.
 class DifyCards extends CardSpec {

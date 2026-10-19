@@ -4,12 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../i18n/dify_i18n.dart';
-import '../../../../panel_fields/form_controls.dart' show DifyCheckbox;
 import '../../../../panel_fields/var_list.dart' show varNameFormatter;
 import 'webhook_config.dart' show Json;
 import 'webhook_default.dart';

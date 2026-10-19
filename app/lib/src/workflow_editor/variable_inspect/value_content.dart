@@ -9,7 +9,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
@@ -17,7 +16,6 @@ import '../../i18n/dify_i18n.dart';
 import '../code_editor/editor_view.dart';
 import '../code_editor/language.dart';
 import '../node_panel/bodies/llm/llm_json_schema.dart' show SchemaErrorMessage;
-import '../panel_fields/controls.dart' show DifySegmentedControl;
 import '../panel_fields/file_upload_setting.dart' show formatFileSize;
 import '../panel_fields/form_controls.dart' show BoolValue;
 import '../store/store.dart';

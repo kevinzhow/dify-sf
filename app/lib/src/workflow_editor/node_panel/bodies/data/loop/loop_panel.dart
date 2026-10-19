@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../workflow/dify_json.dart';
@@ -17,6 +16,7 @@ import 'loop_conditions.dart';
 import 'loop_config.dart';
 import 'loop_variables.dart';
 import '../../../panel_edit.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// The Loop node's body.
 Widget loopPanelBody(BuildContext context, NodePanelProps props) {

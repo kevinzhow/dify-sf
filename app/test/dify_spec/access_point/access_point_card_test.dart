@@ -1,13 +1,14 @@
 // dify-spec: web/app/components/app/access-point/__tests__/access-point-card.spec.tsx
 // dify-spec: web/app/components/app/access-point/__tests__/access-point-url.spec.tsx
 import 'package:dify_sf_app/src/app_detail/access/access_point_card.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySwitch;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 AccessPointCard _card(WidgetTester t) => t.widget<AccessPointCard>(find.byType(AccessPointCard));
 

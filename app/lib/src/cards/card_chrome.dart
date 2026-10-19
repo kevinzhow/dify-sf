@@ -11,13 +11,13 @@ import '../workflow_editor/node_panel/bodies/data/tool/copy_id.dart';
 import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
-import '../design/widgets/tooltip.dart' show DifyTooltip;
 import 'card_kit.dart';
 import 'card_spinner.dart';
 import 'dify_cards.dart';
 import 'node_helpers.dart';
 import 'node_body.dart';
 import 'node_extras.dart';
+import '../design/widgets/widgets.dart';
 
 /// The card as Dify draws it (nodes/_base/node.tsx): the chrome the body asks for ([CardChrome]), entry nodes inside
 /// their START/TRIGGER container, data sources on their tab.

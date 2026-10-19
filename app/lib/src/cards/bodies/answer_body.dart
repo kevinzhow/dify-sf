@@ -5,6 +5,7 @@ import '../../i18n/dify_i18n.dart';
 import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
 import '../node_body.dart';
+import '../../design/widgets/widgets.dart';
 
 /// Answer (nodes/answer/node.tsx): an InfoPanel titled "Answer" with the answer text and its variable chips.
 class AnswerBody extends NodeBody {

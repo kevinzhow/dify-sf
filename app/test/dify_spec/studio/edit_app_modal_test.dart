@@ -1,15 +1,14 @@
 // dify-spec: web/app/components/explore/create-app-modal/__tests__/index.spec.tsx
 import 'package:dify_sf_app/src/design/widgets/app_icon_picker.dart';
-import 'package:dify_sf_app/src/design/widgets/kbd.dart';
 import 'package:dify_sf_app/src/studio/app_modals.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifyInput, DifySwitch;
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/form_controls.dart' show DifyTextarea;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'card_harness.dart';
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 class _Rig {
   final confirmed = <AppInfoPayload>[];

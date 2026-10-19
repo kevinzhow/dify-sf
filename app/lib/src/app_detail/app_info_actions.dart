@@ -18,7 +18,6 @@ import '../studio/app_modals.dart';
 import '../studio/export_app_dsl.dart';
 import '../workflow_editor/dsl/dsl_export_confirm_modal.dart';
 import '../workflow_editor/dsl/update_dsl_modal.dart';
-import '../workflow_editor/panel_fields/dialog.dart' show showDifyDialog;
 import 'app_permission.dart';
 import 'app_sidebar.dart' show AppInfoOperation;
 

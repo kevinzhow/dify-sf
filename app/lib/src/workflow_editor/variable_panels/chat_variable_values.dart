@@ -5,14 +5,11 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../workflow/dify_json.dart';
-import '../panel_fields/controls.dart';
 import '../panel_fields/field.dart' show RemoveButton;
-import '../panel_fields/selectors.dart';
 import 'app_variables.dart';
 import 'chat_variable_state.dart';
 import 'panel_kit.dart';

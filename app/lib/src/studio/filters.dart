@@ -13,10 +13,7 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
-import '../workflow_editor/panel_fields/controls.dart' show DifyInput;
-import '../workflow_editor/panel_fields/form_controls.dart' show DifyCheckboxBox;
 import 'app_list_controller.dart';
-import 'search_input.dart';
 
 String _a(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('app', key, params);
 String _c(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);

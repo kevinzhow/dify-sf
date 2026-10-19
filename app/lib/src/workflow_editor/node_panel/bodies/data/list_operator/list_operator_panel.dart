@@ -11,6 +11,7 @@ import '../data_common.dart';
 import 'list_operator_model.dart';
 import 'list_operator_widgets.dart';
 import '../../../panel_edit.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// What the panel derives from the node (use-config.ts): the input's type, its item type and how that shows.
 typedef ListOperatorTypes = ({String? varType, String itemVarType, String itemVarTypeShowName, bool hasSubVariable});

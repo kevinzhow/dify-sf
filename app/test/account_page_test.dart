@@ -7,15 +7,15 @@ import 'package:dify_sf_app/src/auth/account_dropdown.dart';
 import 'package:dify_sf_app/src/auth/account_time.dart';
 import 'package:dify_sf_app/src/auth/auth_api.dart';
 import 'package:dify_sf_app/src/auth/auth_controller.dart';
-import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/i18n/app_locale.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifyInput;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/dify_test_i18n.dart';
 import 'dify_spec/members/harness.dart' show button, settle, tapButton;
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 class _Fixture {
   _Fixture(this.accounts, this.auth);

@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 /// MemorySettings: a MemoryConfig keeping its own memory.
 class MemorySettings extends StatefulWidget {
   const MemorySettings({super.key, this.readonly = false, this.onChange});

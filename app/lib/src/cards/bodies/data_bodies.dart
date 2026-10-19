@@ -9,6 +9,7 @@ import '../card_kit.dart';
 import '../node_body.dart';
 import '../../canvas/node_card.dart';
 import '../../i18n/dify_i18n.dart';
+import '../../design/widgets/widgets.dart';
 
 List<Value> _items(Value? v) => switch (v) {
   VItems(:final items) => [for (final i in items) i.value],

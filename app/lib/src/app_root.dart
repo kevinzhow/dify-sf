@@ -13,6 +13,7 @@ import 'auth/unreachable_page.dart';
 import 'auth/widgets/auth_widgets.dart';
 import 'launch_options.dart';
 import 'settings.dart';
+import 'design/widgets/widgets.dart';
 
 /// The app's pages by the signed-in state (Dify's routing around the console): the install page until the server
 /// has an owner, the sign-in, activation, invitation and password reset pages while signed out, and [home] (with the

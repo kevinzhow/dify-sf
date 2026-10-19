@@ -17,7 +17,6 @@ import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart';
 import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
-import '../../workflow_editor/panel_fields/controls.dart' show DifyBadge;
 import '../form/base_form.dart';
 import '../settings_kit.dart' show showSettingsAlert;
 import 'model_modal.dart';

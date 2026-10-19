@@ -12,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'panel_harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 String t(String ns, String key, [Map<String, Object?> params = const {}]) =>
     params.isEmpty ? key : '$key:${params['field']}';
 

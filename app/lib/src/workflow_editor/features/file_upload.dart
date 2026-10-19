@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
-import '../panel_fields/controls.dart' show DifyBadge;
 import '../panel_fields/file_upload_setting.dart';
 import '../prompt_editor/prompt_blocks.dart' show fileExts;
 import 'features_services.dart';

@@ -4,15 +4,12 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../node_panel/bodies/entry/knowledge_base/kb_widgets.dart' show KbRadio;
 import '../node_panel/bodies/llm/group_host.dart';
 import '../node_panel/bodies/llm/model_parameter_modal.dart';
-import '../panel_fields/dialog.dart';
-import '../panel_fields/form_controls.dart' show DifyTextarea;
 import 'features_services.dart';
 import 'features_store.dart';
 import 'new_feature_panel.dart';

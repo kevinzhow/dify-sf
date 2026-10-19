@@ -12,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 Map<String, Object?> _payload([Map<String, Object?> overrides = const {}]) => {
   'allowed_file_upload_methods': ['local_file'],
   'max_length': 2,

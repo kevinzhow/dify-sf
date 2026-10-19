@@ -6,15 +6,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
-import '../panel_fields/controls.dart' show DifyInput, DifySwitch;
-import '../panel_fields/dialog.dart';
-import '../panel_fields/form_controls.dart' show DifyTextarea;
-import '../panel_fields/selectors.dart' show DifySelect;
 import 'features_services.dart';
 import 'features_store.dart';
 import 'new_feature_panel.dart';

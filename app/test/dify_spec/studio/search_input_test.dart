@@ -1,12 +1,13 @@
 // dify-spec: web/app/components/base/search-input/__tests__/index.spec.tsx
 import 'dart:ui' show Tristate;
 
-import 'package:dify_sf_app/src/studio/search_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// The search box's semantics node (a text field named [label]).
 SemanticsNode _box(WidgetTester t, [String label = 'common.operation.search']) => t.getSemantics(

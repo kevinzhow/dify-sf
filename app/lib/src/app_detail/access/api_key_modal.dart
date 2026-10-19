@@ -15,9 +15,6 @@ import '../../i18n/dify_i18n.dart';
 import '../../settings/settings_kit.dart' show showSettingsAlert;
 import '../../workflow_editor/code_editor/editor_view.dart' show codeEditorFontFamily;
 import '../../auth/account_time.dart';
-import '../../workflow_editor/panel_fields/controls.dart' show DifyInput;
-import '../../workflow_editor/panel_fields/dialog.dart';
-import '../../workflow_editor/variable_inspect/panel.dart' show CopyFeedback;
 import 'access_point_utils.dart' show clearRequestErrors, notifyRequestError;
 
 String _t(String ns, String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr(ns, key, params);

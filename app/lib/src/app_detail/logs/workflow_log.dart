@@ -16,7 +16,6 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../../studio/search_input.dart';
 import '../../auth/account_time.dart';
 import '../../workflow_editor/run/ui/run_panel.dart';
 import '../../workflow_editor/store/workflow_store_scope.dart';

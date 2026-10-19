@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart' show CanvasDefaults;
-import '../cards/card_kit.dart';
 import '../cards/provider_icon_image.dart';
 import '../design/dify_tokens.g.dart';
-import '../design/widgets/toast.dart';
 import '../editor/editor_controller.dart';
 import '../editor/editor_versions.dart';
 import '../editor/undo_manager.dart';
@@ -56,6 +54,7 @@ import 'canvas_plus/container_child_size.dart';
 import 'canvas_plus/node_resizers.dart';
 import 'version_history/version_history_panel.dart';
 import 'workflow_editor.dart';
+import '../design/widgets/widgets.dart';
 
 /// hooks-store `WorkflowAccessControl`: what the user may do in the editor (Dify derives it from the app's permission
 /// keys; dify-sf from the account's role).

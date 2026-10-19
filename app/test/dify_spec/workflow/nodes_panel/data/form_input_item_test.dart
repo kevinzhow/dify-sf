@@ -19,6 +19,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 JsonMap _schema([JsonMap overrides = const {}]) => {
   'label': {'en_US': 'Field', 'zh_Hans': '字段'},
   'name': 'field',

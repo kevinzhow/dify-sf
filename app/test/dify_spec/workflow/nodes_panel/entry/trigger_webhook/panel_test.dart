@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 Json inputs([Json overrides = const {}]) => {
   'method': 'POST',
   'webhook_url': 'https://example.com/webhook',

@@ -6,13 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/controls.dart' show Infotip;
-import '../panel_fields/dialog.dart';
 import '../panel_fields/var_picker_model.dart' show checkKeys;
 import '../prompt_editor/prompt_editor.dart';
 import 'features_services.dart';

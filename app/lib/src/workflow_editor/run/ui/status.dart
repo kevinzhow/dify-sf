@@ -5,13 +5,12 @@ library;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../cards/card_kit.dart';
 import '../../../design/css_metrics.dart';
 import '../../../design/dify_tokens.g.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../header/format.dart' as fmt;
 import '../../node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
-import '../../variable_inspect/panel.dart' show CopyFeedback;
+import '../../../design/widgets/widgets.dart';
 
 String _tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String _tr(String key) => DifyI18n.tr('run-log', key);

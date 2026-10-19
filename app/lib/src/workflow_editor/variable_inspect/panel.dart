@@ -12,7 +12,6 @@ import 'package:flutter/services.dart';
 
 import '../../canvas/node_card.dart' show blockColor;
 import '../../cards/bodies/entry_bodies.dart' show TriggerScheduleBody;
-import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -892,48 +891,6 @@ class _EditedBadge extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// CopyFeedback: an IconButton copying [content], "Copy" / "Copied" (2 s) as its name and tooltip.
-class CopyFeedback extends StatefulWidget {
-  const CopyFeedback({super.key, required this.content});
-  final String content;
-
-  @override
-  State<CopyFeedback> createState() => _CopyFeedbackState();
-}
-
-class _CopyFeedbackState extends State<CopyFeedback> {
-  bool _copied = false;
-  Timer? _timer;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _copy() {
-    Clipboard.setData(ClipboardData(text: widget.content));
-    setState(() => _copied = true);
-    _timer?.cancel();
-    _timer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _copied = false);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final label = DifyI18n.tr('app-overview', 'overview.appInfo.embedded.${_copied ? 'copied' : 'copy'}');
-    return DifyTooltip(
-      content: Text(label),
-      child: DifyIconButton(
-        label: label,
-        icon: RemixIcon(_copied ? 'clipboard-fill' : 'clipboard-line', size: 16),
-        onPressed: _copy,
-      ),
-    );
-  }
 }
 
 /// listening.tsx: the trigger nodes being listened to (40 px icons), "Listening for events from triggers…", what

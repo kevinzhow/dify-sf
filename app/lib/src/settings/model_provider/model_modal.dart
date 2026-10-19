@@ -17,8 +17,6 @@ import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart' show Json;
-import '../../workflow_editor/panel_fields/controls.dart' show DifyBadge;
-import '../../workflow_editor/panel_fields/dialog.dart';
 import '../form/base_form.dart';
 import 'model_auth.dart';
 import 'model_provider_env.dart';

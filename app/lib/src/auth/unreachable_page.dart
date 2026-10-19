@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
-import '../workflow_editor/panel_fields/controls.dart' show DifyInput;
 import 'auth_api.dart' show TransportException;
 import 'widgets/auth_widgets.dart';
 

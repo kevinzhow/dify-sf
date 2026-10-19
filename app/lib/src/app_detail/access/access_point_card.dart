@@ -1,5 +1,5 @@
 /// The access point building blocks (Dify 1.17.1 web/app/components/base/access-point: card.tsx, url.tsx, status.ts;
-/// base/qrcode; app/access-point/shared/use-access-point-status-label.ts): the card with its status and switch, the
+/// app/access-point/shared/use-access-point-status-label.ts): the card with its status and switch, the
 /// endpoint row, the URL row with copy / QR code / regenerate / open, and the empty content.
 library;
 
@@ -11,7 +11,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
@@ -19,8 +18,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
-import '../../workflow_editor/panel_fields/controls.dart' show DifySwitch;
-import '../../workflow_editor/variable_inspect/panel.dart' show CopyFeedback;
 
 String _t(String ns, String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr(ns, key, params);
 
@@ -618,28 +615,6 @@ class AccessPointUrl extends StatelessWidget {
   }
 }
 
-/// Spins its child (`animate-spin`, 1 s per turn).
-class DifySpinnerIcon extends StatefulWidget {
-  const DifySpinnerIcon({super.key, required this.child});
-  final Widget child;
-
-  @override
-  State<DifySpinnerIcon> createState() => _DifySpinnerIconState();
-}
-
-class _DifySpinnerIconState extends State<DifySpinnerIcon> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
-}
-
 /// AccessPointEmptyContent: centred `min-h-36 px-6 py-8 system-xs-regular text-text-tertiary` text.
 class AccessPointEmptyContent extends StatelessWidget {
   const AccessPointEmptyContent({super.key, required this.child});
@@ -671,32 +646,6 @@ Future<void> saveDownload(String name, Uint8List bytes, String mimeType) async {
   final location = await getSaveLocation(suggestedName: name);
   if (location != null) await file.saveTo(location.path);
 }
-
-/// The QR code of [data] as qrcode.react's QRCodeCanvas draws it: error correction level L, no margin, black modules
-/// on white.
-class DifyQrCode extends StatelessWidget {
-  const DifyQrCode({super.key, required this.data, this.size = 160});
-  final String data;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-    // The code is an image, not themed: QRCodeCanvas's black modules (qr_flutter's default) on white
-    // (`effects-image-frame` is white in both themes), in the dark theme too.
-    color: DifyColors.effectsImageFrame,
-    child: Semantics(
-      image: true,
-      child: SizedBox.square(
-        dimension: size,
-        child: CustomPaint(painter: qrPainterOf(data)),
-      ),
-    ),
-  );
-}
-
-/// The painter behind [DifyQrCode] (also used for the PNG).
-QrPainter qrPainterOf(String data) =>
-    QrPainter(data: data, version: QrVersions.auto, errorCorrectionLevel: QrErrorCorrectLevel.L, gapless: true);
 
 /// `canvas.toDataURL()` of [DifyQrCode]: a [size] px PNG, black on white.
 Future<Uint8List> qrCodePng(String data, {double size = 160}) async {

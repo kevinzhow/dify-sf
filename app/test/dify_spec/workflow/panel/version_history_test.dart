@@ -19,7 +19,6 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySwitch;
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:dify_sf_app/src/workflow_editor/version_history/version_history_panel.dart';
 import 'package:flutter/material.dart';

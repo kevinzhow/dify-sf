@@ -4,13 +4,11 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../i18n/dify_i18n.dart';
 import '../../../../code_editor/editor_view.dart' show codeEditorFontFamily;
-import '../../../../panel_fields/panel_fields.dart';
 import 'execution_time_calculator.dart';
 
 String _t(String key) => DifyI18n.tr('workflow', 'nodes.triggerSchedule.$key');

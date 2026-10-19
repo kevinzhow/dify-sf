@@ -9,12 +9,12 @@ import 'package:flutter/widgets.dart';
 import '../../canvas/canvas_controller.dart';
 import '../../cards/bodies/entry_bodies.dart' show ContainerStartNodeDumb;
 import '../../cards/bodies/note_body.dart' show NoteCardView, NoteData, customNoteNode;
-import '../../cards/card_kit.dart' show DifyText;
 import '../../design/dify_tokens.g.dart';
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
 import 'block_defaults.dart';
 import 'selector_widgets.dart' show SelectorBlockIcon, SelectorIconSize;
+import '../../design/widgets/widgets.dart';
 
 /// The candidate a block chosen from the toolbar's Add Node becomes (operator/add-block.tsx handleSelect): a new
 /// node (generateNewNode, `custom-simple` for Exit Loop) whose data is [newNodeData] flagged `_isCandidate`. Put it

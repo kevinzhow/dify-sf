@@ -1,5 +1,4 @@
 // dify-spec: web/app/components/workflow/panel/chat-variable-panel/components/__tests__/object-value-list.spec.tsx
-import 'package:dify_sf_app/src/cards/card_kit.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_panels/chat_variable_state.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_panels/chat_variable_values.dart';
@@ -7,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// The DifyText showing [text] (CSS `uppercase` only changes how it is drawn).
 Finder difyText(String text) => find.byWidgetPredicate((w) => w is DifyText && w.text == text);

@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -17,7 +16,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart' show ModelTypeEnum;
 import '../node_panel/bodies/llm/group_host.dart';
-import '../panel_fields/controls.dart';
 import 'conversation_opener.dart';
 import 'features_services.dart';
 import 'features_store.dart';

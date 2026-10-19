@@ -2,11 +2,12 @@
 import 'dart:async';
 
 import 'package:dify_sf_app/src/workflow_editor/dsl/dsl_export_confirm_modal.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../dify_test_i18n.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const _envList = [
   {

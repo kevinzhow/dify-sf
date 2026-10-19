@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
-import '../../design/css_metrics.dart';
-import '../../design/dify_tokens.g.dart';
-import '../../design/widgets/widgets.dart';
+import '../css_metrics.dart';
+import '../dify_tokens.g.dart';
+import 'widgets.dart';
 
 /// Shows [builder]'s dialog (usually a [DifyDialogSurface]); resolves with what it pops. Escape closes it, and so does
 /// a backdrop click unless [dismissible] is false (Dify's `disablePointerDismissal`).

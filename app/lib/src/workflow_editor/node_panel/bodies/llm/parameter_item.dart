@@ -5,16 +5,12 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../../cards/card_kit.dart';
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
 import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart' show jsTruthy;
 import '../../../../workflow/model_catalog.dart' show renderI18nObject;
-import '../../../panel_fields/controls.dart' show DifyInput, DifySlider, DifySwitch, Infotip;
-import '../../../panel_fields/form_controls.dart' show TagInput;
-import '../../../panel_fields/selectors.dart' show DifySelect;
 import '../../../panel_fields/var_picker_model.dart' show VarGroup;
 import '../../../prompt_editor/prompt_editor.dart';
 import 'group_host.dart';

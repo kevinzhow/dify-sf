@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 const defaultQueryParams = ChatLogQuery(period: '9', annotationStatus: 'all', keyword: '');
 
 void main() {

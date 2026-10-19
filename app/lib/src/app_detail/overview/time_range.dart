@@ -8,10 +8,9 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../../design/dify_tokens.g.dart';
-import '../../design/widgets/widgets.dart' show difyTextStyle;
 import '../../i18n/dify_i18n.dart';
-import '../../workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'app_chart_utils.dart';
+import '../../design/widgets/widgets.dart';
 
 /// `PeriodParams`: the picker's label and the statistics query (`YYYY-MM-DD HH:mm`); no query: all time.
 typedef PeriodParams = ({String name, ({String start, String end})? query});

@@ -2,13 +2,14 @@
 import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/canvas_input.dart' show ControlMode;
 import 'package:dify_sf_app/src/workflow_editor/comments/comments_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySwitch;
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../dify_test_i18n.dart';
 import 'comment_harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 void main() {
   late WorkflowStore store;

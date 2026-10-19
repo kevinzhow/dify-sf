@@ -16,8 +16,6 @@ import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart';
 import '../../workflow_editor/node_panel/bodies/llm/group_host.dart';
 import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show ModelSelector;
-import '../../workflow_editor/panel_fields/controls.dart' show Infotip;
-import '../../workflow_editor/panel_fields/dialog.dart';
 import 'model_provider_env.dart';
 
 String _t(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);

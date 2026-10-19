@@ -12,6 +12,7 @@ import '../../../node_panel_bodies.dart';
 import '../data_common.dart' show childrenOf, wf;
 import '../../../panel_edit.dart' show NodeVars;
 import '../../../panel_edit.dart' as edit;
+import '../../../../../design/widgets/widgets.dart';
 
 /// `MIN_ITERATION_PARALLEL_NUM`.
 const minIterationParallelNum = 1;

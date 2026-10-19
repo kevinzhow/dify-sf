@@ -7,7 +7,6 @@ import 'dart:convert';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/widgets.dart';
 
-import '../../../cards/card_kit.dart';
 import '../../../design/dify_icon.dart';
 import '../../../design/dify_tokens.g.dart';
 import '../../../i18n/dify_i18n.dart';
@@ -16,6 +15,7 @@ import '../../panel_fields/file_upload_setting.dart' show formatFileSize;
 import '../../store/workflow_store.dart' show DifyJson;
 import 'markdown.dart';
 import 'status.dart';
+import '../../../design/widgets/widgets.dart';
 
 /// LoadingAnim: three dots flashing in turn (`dot-flashing`, 1 s alternate): `text` 4 px grey dots 7 px apart,
 /// `avatar` 2 px blue dots 5 px apart.

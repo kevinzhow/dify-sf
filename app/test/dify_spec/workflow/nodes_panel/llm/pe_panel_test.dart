@@ -25,6 +25,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'harness.dart';
 import 'qc_pe_test_kit.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 Map<String, Object?> param({
   String name = 'city',
   String type = 'string',

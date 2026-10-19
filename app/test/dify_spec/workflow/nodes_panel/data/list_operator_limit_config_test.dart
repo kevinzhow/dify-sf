@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'harness.dart';
 import 'list_operator_sub_variable_picker_test.dart' show pumpControl;
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 void main() {
   group('list-operator/limit-config', () {
     testWidgets('should enable limit mode from a disabled config', (t) async {

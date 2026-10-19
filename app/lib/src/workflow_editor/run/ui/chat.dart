@@ -11,7 +11,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../cards/card_kit.dart';
 import '../../../design/css_metrics.dart';
 import '../../../design/dify_icon.dart';
 import '../../../design/dify_tokens.g.dart';
@@ -19,8 +18,6 @@ import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../features/features_store.dart' show buildInitialFeatures, featureEnabled;
 import '../../header/header_widgets.dart' show Spinning;
-import '../../panel_fields/dialog.dart' show DifyDialogSurface, showDifyDialog;
-import '../../panel_fields/form_controls.dart' show DifyTextarea;
 import '../../store/workflow_store.dart' show DifyJson;
 import '../run_types.dart' show WorkflowRunningStatus;
 import '../../node_panel/bodies/data/human_input/human_input_kit.dart' show HumanInputHost;

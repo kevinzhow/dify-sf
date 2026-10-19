@@ -18,7 +18,6 @@ import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/knowledge_base/kb_widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/knowledge_base/knowledge_base_logic.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/knowledge_base/knowledge_base_panel.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart' hide Json;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

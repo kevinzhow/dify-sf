@@ -8,6 +8,7 @@ import '../../design/dify_tokens.g.dart';
 import '../card_kit.dart';
 import '../node_body.dart';
 import '../../workflow/var_types.dart';
+import '../../design/widgets/widgets.dart';
 
 List<Value> _items(Value? v) => switch (v) {
   VItems(:final items) => [for (final i in items) i.value],

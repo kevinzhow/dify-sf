@@ -1,16 +1,15 @@
 // Dify's panels call the app-wide `toast` directly; ours take toast callbacks from their hosts, which default to the
 // app's toast host, so the messages show without a host providing them.
 import 'package:dify_sf_app/src/design/dify_icon.dart';
-import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/header_data.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/core_kit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/data_common.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/data_source/data_source_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_panels/app_variables.dart' show toastError;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 void main() {
   test('the hosts toast through the app toast host by default', () {

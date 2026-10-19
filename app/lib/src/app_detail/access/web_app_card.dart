@@ -14,7 +14,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
 import '../../settings/settings_kit.dart' show showSettingsAlert;
-import '../../studio/app_icons.dart';
 import 'access_point_card.dart';
 import 'access_point_utils.dart';
 import 'customize_modal.dart';

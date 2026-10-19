@@ -1925,7 +1925,7 @@ features:
   status: ported
   deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing.
   evidence: ['spec:web/app/components/apps/__tests__/creators-filter.spec.tsx', 'spec:web/app/components/base/search-input', 'spec:web/app/components/apps/__tests__/list.spec.tsx']
-  ours: [app/lib/src/studio/filters.dart, app/lib/src/studio/search_input.dart]
+  ours: [app/lib/src/studio/filters.dart, app/lib/src/studio/search_input.dart, app/lib/src/design/widgets/search_input.dart]
 - id: app-pages.studio-create
   area: app-pages
   title: 'Create from Blank (Workflow / Chatflow) and the app type icons'
@@ -1933,7 +1933,7 @@ features:
   status: ported
   deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Image icons need file storage, so the icon picker offers emoji only.
   evidence: ['spec:web/app/components/app/create-app-modal', 'spec:web/app/components/app/type-selector', app/test/studio_test.dart]
-  ours: [app/lib/src/studio/create_app_modal.dart, app/lib/src/studio/app_icons.dart, app/lib/src/studio/filters.dart]
+  ours: [app/lib/src/studio/create_app_modal.dart, app/lib/src/studio/app_icons.dart, app/lib/src/design/widgets/app_icon.dart, app/lib/src/studio/filters.dart]
 - id: app-pages.studio-import
   area: app-pages
   title: 'Import DSL: file or URL, drag and drop onto the page, DSL version confirmation'
@@ -2325,7 +2325,7 @@ features:
   status: partial
   reason: Flutter counterparts exist where ported features use them (DifySelect, DifyNumberField, DifySwitch, DifySlider, DifyTextarea, DifyCheckbox, DifyInput, DifySegmentedControl, DifyDialogSurface, DifyAvatar), but their own dify-ui spec cases are still to do in the ledger.
   evidence: ['spec:packages/dify-ui/src/select', 'spec:packages/dify-ui/src/number-field', 'spec:packages/dify-ui/src/switch', 'spec:packages/dify-ui/src/slider', 'spec:packages/dify-ui/src/textarea', 'spec:packages/dify-ui/src/checkbox', 'spec:packages/dify-ui/src/input', 'spec:packages/dify-ui/src/input-group', 'spec:packages/dify-ui/src/segmented-control', 'spec:packages/dify-ui/src/dialog', 'spec:packages/dify-ui/src/alert-dialog', 'spec:packages/dify-ui/src/drawer', 'spec:packages/dify-ui/src/avatar', 'spec:packages/dify-ui/src/radio-group', 'spec:packages/dify-ui/src/field', 'spec:packages/dify-ui/src/fieldset', 'spec:packages/dify-ui/src/form', 'spec:packages/dify-ui/src/scroll-area', 'spec:packages/dify-ui/src/collapsible', 'spec:packages/dify-ui/src/tabs', 'spec:packages/dify-ui/src/toggle', 'spec:packages/dify-ui/src/status-dot', 'spec:packages/dify-ui/src/progress', 'spec:packages/dify-ui/src/preview-card', 'spec:packages/dify-ui/src/combobox', 'spec:packages/dify-ui/src/file-tree']
-  ours: [app/lib/src/workflow_editor/panel_fields/form_controls.dart, app/lib/src/design/widgets/avatar.dart]
+  ours: [app/lib/src/design/widgets/select.dart, app/lib/src/design/widgets/number_field.dart, app/lib/src/design/widgets/switch.dart, app/lib/src/design/widgets/slider.dart, app/lib/src/design/widgets/textarea.dart, app/lib/src/design/widgets/checkbox.dart, app/lib/src/design/widgets/input.dart, app/lib/src/design/widgets/segmented_control.dart, app/lib/src/design/widgets/dialog.dart, app/lib/src/design/widgets/avatar.dart]
 - id: design.primitives-unused
   area: design
   title: 'dify-ui primitives no ported feature uses yet: pagination, autocomplete, checkbox group, meter'

@@ -4,7 +4,6 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
@@ -12,6 +11,7 @@ import '../../workflow/dify_json.dart';
 import 'field.dart';
 import 'node_config.dart' show Json;
 import 'var_picker_model.dart' show fieldTypeOf;
+import '../../design/widgets/widgets.dart';
 
 /// ShowPanel over `payload.schema.properties` (`relative -left-1.75`); the root names in [rootStyle] (Dify's
 /// `rootClassName`, `code-sm-semibold text-text-secondary` at the call sites).

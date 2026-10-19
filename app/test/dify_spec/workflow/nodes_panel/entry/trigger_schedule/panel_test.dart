@@ -1,7 +1,6 @@
 // dify-spec: web/app/components/workflow/nodes/trigger-schedule/__tests__/panel.spec.tsx
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/trigger_schedule/schedule_components.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';

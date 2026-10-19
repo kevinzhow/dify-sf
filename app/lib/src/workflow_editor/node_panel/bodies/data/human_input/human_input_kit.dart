@@ -5,13 +5,13 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/css_metrics.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../data_common.dart';
 import 'human_input_model.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// `t(key)` under `nodes.humanInput.`.
 String hi(String key, [Map<String, Object?> params = const {}]) => wf('nodes.humanInput.$key', params);

@@ -3,13 +3,13 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../node_panel_bodies.dart';
 import '../data_common.dart';
 import 'iteration_config.dart';
 import '../../../panel_edit.dart';
+import '../../../../../design/widgets/widgets.dart';
 
 /// The Iteration node's body.
 Widget iterationPanelBody(BuildContext context, NodePanelProps props) => IterationPanel(

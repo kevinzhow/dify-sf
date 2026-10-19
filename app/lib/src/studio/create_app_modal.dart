@@ -17,9 +17,6 @@ import '../design/dify_tokens.g.dart';
 import '../design/widgets/app_icon_picker.dart' show UploadAppIcon;
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
-import '../workflow_editor/panel_fields/controls.dart' show DifyInput;
-import '../workflow_editor/panel_fields/form_controls.dart' show DifyTextarea;
-import 'app_icons.dart';
 import 'app_modals.dart';
 
 String _a(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('app', key, params);

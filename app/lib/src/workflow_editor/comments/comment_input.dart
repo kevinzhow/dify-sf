@@ -7,7 +7,6 @@ import 'package:flutter/material.dart' show InputBorder, InputDecoration, TextFi
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../cards/card_kit.dart' show cardFontFamily;
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';

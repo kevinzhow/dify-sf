@@ -7,8 +7,8 @@ import 'package:flutter/rendering.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../workflow/model_catalog.dart';
-import 'card_kit.dart';
 import 'provider_icon_image.dart';
+import '../design/widgets/widgets.dart';
 
 /// Remix icon per model feature (model-selector/feature-icon.tsx).
 const featureIcons = {

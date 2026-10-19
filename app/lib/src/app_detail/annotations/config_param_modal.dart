@@ -13,7 +13,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart';
-import '../../workflow_editor/panel_fields/controls.dart' show DifySlider, Infotip;
 import 'annotation_modals.dart' show AnnotationToast;
 import 'annotation_overlays.dart';
 import 'annotation_types.dart';

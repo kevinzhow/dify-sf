@@ -15,7 +15,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/var_types.dart';
-import 'controls.dart';
 import 'field.dart';
 import 'var_picker_model.dart';
 

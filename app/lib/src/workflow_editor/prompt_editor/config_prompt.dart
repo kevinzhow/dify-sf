@@ -13,7 +13,6 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/controls.dart' show Infotip;
 import '../panel_fields/field.dart' show AddButton;
 import '../panel_fields/selectors.dart' show TypeSelector;
 import '../panel_fields/var_picker_model.dart';

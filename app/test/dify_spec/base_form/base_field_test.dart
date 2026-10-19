@@ -2,14 +2,13 @@
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/settings/form/base_form.dart';
 import 'package:dify_sf_app/src/settings/settings_kit.dart' show SettingsRadioDot;
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show Infotip;
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/form_controls.dart' show CheckboxList;
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/selectors.dart' show DifySelect;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '_harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// `renderBaseField`: one field over a form with [defaultValues] (the field's name with '' by default).
 Future<FormController> renderBaseField(

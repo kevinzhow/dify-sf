@@ -16,14 +16,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
-import '../../cards/card_kit.dart' show cardFontFamily;
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
 import '../panel_fields/var_picker_model.dart';
 import '../panel_fields/var_reference_vars.dart' show VarReferenceVars;
 import '../../design/dify_icon.dart';
-import '../../design/widgets/widgets.dart'
-    show DifyFloating, DifyPlacement, DifyCollision, DifyFloatingController, CssInlineExtent;
 import '../node_panel/bodies/llm/agent_v2_logic.dart' show createAgentOutputConfig;
 import 'agent_output_block.dart';
 import 'component_picker.dart';
@@ -33,6 +30,7 @@ import 'prompt_chips.dart';
 import 'prompt_editor_controller.dart';
 import 'prompt_editor_types.dart';
 import 'shortcuts_popup.dart';
+import '../../design/widgets/widgets.dart';
 
 export 'prompt_blocks.dart';
 export 'prompt_editor_controller.dart';

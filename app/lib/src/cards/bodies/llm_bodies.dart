@@ -12,6 +12,7 @@ import '../../workflow/model_catalog.dart';
 import '../card_kit.dart';
 import '../model_chip.dart';
 import '../node_body.dart';
+import '../../design/widgets/widgets.dart';
 
 List<Value> _items(Value? v) => switch (v) {
   VItems(:final items) => [for (final i in items) i.value],

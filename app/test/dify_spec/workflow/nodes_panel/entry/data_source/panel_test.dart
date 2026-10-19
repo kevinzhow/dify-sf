@@ -12,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../trigger_plugin/panel_harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 Map<String, Object?> createData([Map<String, Object?> overrides = const {}]) => {
   'title': 'Datasource',
   'desc': '',

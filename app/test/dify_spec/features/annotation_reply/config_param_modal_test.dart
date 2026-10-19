@@ -5,13 +5,13 @@ import 'dart:async';
 import 'package:collab_client/collab_client.dart' show AnnotationSetting;
 import 'package:dify_sf_app/src/app_detail/annotations/annotation_types.dart';
 import 'package:dify_sf_app/src/app_detail/annotations/config_param_modal.dart';
-import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifySlider;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../annotation/harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const _defaultConfig = AnnotationSetting(
   enabled: false,

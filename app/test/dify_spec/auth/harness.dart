@@ -3,12 +3,13 @@ import 'package:dify_sf_app/src/auth/auth_controller.dart';
 import 'package:dify_sf_app/src/design/dify_theme_mode.dart';
 import 'package:dify_sf_app/src/i18n/app_locale.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/controls.dart' show DifyInput;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/auth_fakes.dart';
 import '../dify_test_i18n.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 /// A controller on [api] (signed out unless [signedInAs] names an account of it).
 Future<AuthController> authOn(RecordingAuthApi api, {String? signedInAs, String password = 'Password123'}) async {

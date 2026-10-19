@@ -7,14 +7,12 @@ import 'dart:async';
 import 'package:collab_client/collab_client.dart' show AppStatistic, StatsApi;
 import 'package:flutter/widgets.dart';
 
-import '../../auth/widgets/auth_widgets.dart' show DifyAreaLoading;
 import '../../design/dify_tokens.g.dart';
-import '../../design/widgets/widgets.dart' show difyTextStyle, difyTransform;
 import '../../i18n/dify_i18n.dart';
-import '../../workflow_editor/panel_fields/controls.dart' show Infotip;
 import 'app_chart_canvas.dart';
 import 'app_chart_utils.dart';
 import 'time_range.dart';
+import '../../design/widgets/widgets.dart';
 
 /// `Chart`: a `h-79 rounded-xl` card with the title (and its explanation infotip), the summary (grey when it is
 /// zero; token charts add the price) and the 240 px chart.

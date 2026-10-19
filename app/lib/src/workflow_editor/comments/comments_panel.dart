@@ -12,7 +12,6 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../header/format.dart' as fmt;
-import '../panel_fields/controls.dart' show DifySwitch;
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
 import 'comment_icon.dart' show UserAvatarList;

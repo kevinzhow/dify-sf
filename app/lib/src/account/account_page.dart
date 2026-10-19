@@ -19,7 +19,6 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../settings/settings_kit.dart';
-import '../studio/app_icons.dart';
 import 'account_dialogs.dart';
 import 'email_change_modal.dart';
 

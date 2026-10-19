@@ -5,7 +5,7 @@ export 'dart:ui' show CheckedState, Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/dialog.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 export 'package:flutter/material.dart';
 export 'package:flutter/semantics.dart';

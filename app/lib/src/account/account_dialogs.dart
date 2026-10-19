@@ -11,7 +11,6 @@ import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../settings/members/member_menu.dart' show requestErrorMessage;
 import '../settings/settings_kit.dart';
-import '../workflow_editor/panel_fields/controls.dart' show DifyInput;
 
 /// Shows Edit Name for the signed-in account of [auth].
 Future<void> showEditNameDialog(BuildContext context, AuthController auth) =>

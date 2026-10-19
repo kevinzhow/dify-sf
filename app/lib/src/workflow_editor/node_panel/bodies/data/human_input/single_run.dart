@@ -5,12 +5,10 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../workflow/dify_json.dart';
-import '../../../../panel_fields/panel_fields.dart' hide Json;
 import '../data_common.dart' show cm;
 import 'human_input_kit.dart';
 import 'human_input_model.dart';

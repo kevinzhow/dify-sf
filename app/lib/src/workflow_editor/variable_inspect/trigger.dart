@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/css_metrics.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../design/dify_icon.dart';
-import '../../design/widgets/tooltip.dart';
 import '../header/header_widgets.dart' show Spinning;
 import '../operator/actions.dart' show OperatorReadOnly;
 import 'inspect_vars.dart';
+import '../../design/widgets/widgets.dart';
 
 /// variable-inspect/trigger.tsx: "VARIABLE INSPECT" while there is nothing to inspect, "View cached variables" and
 /// "Clear" once there are variables (environment, conversation and system variables count, as in Dify's

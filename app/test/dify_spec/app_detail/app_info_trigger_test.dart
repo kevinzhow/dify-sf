@@ -6,13 +6,14 @@ import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/app_detail/app_info_actions.dart';
 import 'package:dify_sf_app/src/app_detail/app_permission.dart';
 import 'package:dify_sf_app/src/app_detail/app_sidebar.dart';
-import 'package:dify_sf_app/src/studio/app_icons.dart';
 import 'package:dify_sf_app/src/studio/export_app_dsl.dart';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
 const _defaultKeys = [AppPermissionKeys.edit, AppPermissionKeys.importExportDsl, AppPermissionKeys.delete];
 

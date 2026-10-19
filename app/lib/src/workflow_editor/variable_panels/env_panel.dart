@@ -11,7 +11,6 @@ library;
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
-import '../../cards/card_kit.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../editor/editor_controller.dart';
@@ -25,6 +24,7 @@ import '../store/store.dart';
 import 'app_variables.dart';
 import 'env_variable_modal.dart';
 import 'panel_kit.dart';
+import '../../design/widgets/widgets.dart';
 
 /// EnvPanel: the description, "Add Variable" (the modal opens beside the panel) and the variables of
 /// [WorkflowStore.environmentVariables], each with edit and delete. Deleting one that nodes use asks first, and

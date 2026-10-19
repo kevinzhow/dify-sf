@@ -14,7 +14,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart' show Json;
-import '../../workflow_editor/panel_fields/controls.dart' show DifySwitch, DifySwitchSize;
 import 'model_provider_env.dart';
 import 'provider_added_card.dart' show LazyCustomModelActions;
 import 'provider_data.dart';

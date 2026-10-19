@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 void main() {
   late RecordingLogsSource source;
   setUp(() => source = RecordingLogsSource());

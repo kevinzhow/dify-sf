@@ -3,7 +3,6 @@ import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/dsl/update_dsl_modal.dart';
-import 'package:dify_sf_app/src/workflow_editor/panel_fields/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

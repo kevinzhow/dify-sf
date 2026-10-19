@@ -9,7 +9,6 @@ library;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../../cards/card_kit.dart' show DifyText;
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';

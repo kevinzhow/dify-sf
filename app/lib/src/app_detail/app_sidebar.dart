@@ -10,7 +10,6 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
-import '../studio/app_icons.dart';
 import 'app_permission.dart';
 import 'detail_page_slot.dart';
 import 'detail_sidebar.dart';

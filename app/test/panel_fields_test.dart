@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/workflow/panel_fields/harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 Node node(String id, String type, {String title = '', int x = 0, Map<String, Object?> config = const {}}) => Node(
   id: id,
   type: type,

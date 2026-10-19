@@ -13,13 +13,11 @@ import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../canvas/node_card.dart' show blockColor;
-import '../../cards/card_kit.dart' show DifyText;
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../panel_fields/controls.dart' show DifyInput;
 import 'block_selector_data.dart';
 
 String wf(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);

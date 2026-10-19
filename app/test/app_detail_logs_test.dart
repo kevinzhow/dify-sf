@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/app_log/harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 void main() {
   late List<(AppDetailPageId, Map<String, String>)> navigations;
   setUp(() => navigations = []);

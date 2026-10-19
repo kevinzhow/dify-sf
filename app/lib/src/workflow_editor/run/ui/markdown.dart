@@ -9,9 +9,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import '../../../cards/card_kit.dart' show cardFontFamily;
 import '../../../design/dify_tokens.g.dart';
 import '../../code_editor/editor_view.dart' show codeEditorFontFamily;
+import '../../../design/widgets/widgets.dart';
 
 /// markdown-utils.ts preprocessThinkTag: `<think>…</think>` becomes a quoted block (Dify's ThinkBlock collapses it
 /// under "Thinking…"; the text stays visible here).

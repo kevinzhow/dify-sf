@@ -16,7 +16,6 @@ import '../../i18n/dify_i18n.dart';
 import '../../workflow/var_types.dart' show plainOf;
 import '../code_editor/code_editor.dart';
 import '../node_panel/bodies/llm/group_host.dart' show LlmGroupScope, modelPluginInstalledIn;
-import '../panel_fields/controls.dart' show DifySwitch, DifySwitchSize;
 import '../panel_fields/field.dart' show ToggleExpandBtn;
 import '../panel_fields/var_picker_model.dart';
 import 'prompt_editor.dart';

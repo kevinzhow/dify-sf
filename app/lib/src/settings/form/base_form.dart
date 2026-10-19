@@ -15,9 +15,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
 import '../../workflow/model_catalog.dart' show renderI18nObject;
-import '../../workflow_editor/panel_fields/controls.dart';
-import '../../workflow_editor/panel_fields/form_controls.dart';
-import '../../workflow_editor/panel_fields/selectors.dart';
 import '../settings_kit.dart' show SettingsRadioDot;
 
 // ---- types.ts -----------------------------------------------------------------------------------------------------

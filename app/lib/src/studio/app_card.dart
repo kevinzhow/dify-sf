@@ -19,7 +19,6 @@ import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
 import '../workflow_editor/dsl/dsl_export_confirm_modal.dart' show showDslExportConfirm;
 import '../workflow_editor/header/format.dart' show formatTime;
-import '../workflow_editor/panel_fields/dialog.dart';
 import 'app_icons.dart';
 import 'app_modals.dart';
 import 'export_app_dsl.dart';

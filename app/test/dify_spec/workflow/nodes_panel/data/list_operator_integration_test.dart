@@ -13,6 +13,8 @@ import 'list_operator_node_test.dart' as card;
 import 'list_operator_panel_test.dart' as panel;
 import 'list_operator_sub_variable_picker_test.dart' show pumpControl;
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 void main() {
   group('list-operator path', () {
     group('Path Integration', () {

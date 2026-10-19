@@ -23,6 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 Map<String, Object?> _param(
   String name, {
   String type = 'any',

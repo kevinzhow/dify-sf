@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 WorkflowLogFilterQuery q({String status = 'all', String period = '2', String? keyword}) =>
     WorkflowLogFilterQuery(status: status, period: period, keyword: keyword);
 
