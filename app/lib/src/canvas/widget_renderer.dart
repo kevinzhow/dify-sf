@@ -182,7 +182,7 @@ class WidgetRenderer extends CanvasRenderer {
       child: on
           ? Padding(
               padding: right ? const EdgeInsets.fromLTRB(8, 4, 6, 4) : const EdgeInsets.fromLTRB(6, 4, 8, 4),
-              child: const ColoredBox(color: DifyColors.workflowLinkLineHandle),
+              child: ColoredBox(color: DifyColors.workflowLinkLineHandle),
             )
           : null,
     );

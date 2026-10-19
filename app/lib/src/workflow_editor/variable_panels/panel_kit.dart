@@ -60,7 +60,7 @@ class PanelCloseButton extends StatelessWidget {
   Widget build(BuildContext context) => DifyPressable(
     semanticLabel: tc('operation.close'),
     onPressed: onPressed,
-    builder: (context, hovered, focused) => const SizedBox.square(
+    builder: (context, hovered, focused) => SizedBox.square(
       dimension: 24,
       child: Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
     ),

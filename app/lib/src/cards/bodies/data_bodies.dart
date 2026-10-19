@@ -112,7 +112,7 @@ class _InputVariable extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const DifyText('Input Variable', DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
+      DifyText('Input Variable', DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
       const SizedBox(height: 4),
       VariableLabel.of(ref, variant: VarLabelStyle.inNode),
     ],
@@ -326,7 +326,7 @@ class VariableAggregatorBody extends NodeBody {
                           dimension: 16,
                           child: CanvasCardControls.overlaid(context)
                               ? null
-                              : const Center(
+                              : Center(
                                   child: DifyIcon(
                                     'vender/line/general/plus-02',
                                     size: 10,
@@ -346,7 +346,7 @@ class VariableAggregatorBody extends NodeBody {
                         color: DifyColors.workflowBlockParmaBg,
                         borderRadius: BorderRadius.circular(DifyRadius.md),
                       ),
-                      child: const DifyText(
+                      child: DifyText(
                         'Variable not set',
                         DifyType.system2xsRegularUppercase,
                         color: DifyColors.textTertiary,
@@ -423,7 +423,7 @@ class AssignerBody extends NodeBody {
                 color: DifyColors.workflowBlockParmaBg,
                 borderRadius: BorderRadius.circular(DifyRadius.md),
               ),
-              child: const DifyText('Variable NOT Set', DifyType.systemXsMedium, color: DifyColors.textTertiary),
+              child: DifyText('Variable NOT Set', DifyType.systemXsMedium, color: DifyColors.textTertiary),
             ),
           for (final (i, (ref, op)) in rows.indexed) ...[
             if (i > 0) const SizedBox(height: 2),

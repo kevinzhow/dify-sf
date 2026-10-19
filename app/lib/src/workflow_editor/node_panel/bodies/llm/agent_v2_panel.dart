@@ -396,7 +396,7 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
           ),
           child: AgentTaskField(
@@ -434,7 +434,7 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
             overlayChildBuilder: _floatingOutputEditor,
           ),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
             ),
             child: AgentRosterField(
@@ -593,7 +593,7 @@ class _AgentTaskFieldState extends State<AgentTaskField> {
                                 ),
                               ),
                             ),
-                            const RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
+                            RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
                           ],
                         ),
                       ),
@@ -615,7 +615,7 @@ class _AgentTaskFieldState extends State<AgentTaskField> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(9),
                   gradient: _isFocus
-                      ? const LinearGradient(
+                      ? LinearGradient(
                           colors: [
                             DifyColors.componentsInputBorderActivePrompt1,
                             DifyColors.componentsInputBorderActivePrompt2,

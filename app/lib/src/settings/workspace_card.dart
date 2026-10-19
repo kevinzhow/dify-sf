@@ -145,7 +145,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
               decoration: BoxDecoration(
                 color: !_open && _hovered ? DifyColors.stateBaseHover : null,
                 gradient: _open
-                    ? const LinearGradient(
+                    ? LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [DifyColors.backgroundSectionBurn, DifyColors.backgroundSection],
@@ -174,7 +174,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
                       ),
                     ),
                   ),
-                  const RemixIcon('expand-up-down-line', size: 16, color: DifyColors.textTertiary),
+                  RemixIcon('expand-up-down-line', size: 16, color: DifyColors.textTertiary),
                 ],
               ),
             ),
@@ -290,7 +290,7 @@ class _WorkspaceMenuHeader extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(DifyRadius.xl),
         border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [DifyColors.backgroundSectionBurn, DifyColors.backgroundSection],
@@ -310,7 +310,7 @@ class _WorkspaceMenuHeader extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       height: 20 / 16,
                       fontWeight: FontWeight.w500,
@@ -324,14 +324,14 @@ class _WorkspaceMenuHeader extends StatelessWidget {
           ),
           WorkspaceMenuButton(
             key: const ValueKey('workspace-settings'),
-            icon: const DifyIcon('vender/main-nav/workspace-settings', size: 16, color: DifyColors.textTertiary),
+            icon: DifyIcon('vender/main-nav/workspace-settings', size: 16, color: DifyColors.textTertiary),
             label: stc(context, 'mainNav.workspace.settings'),
             onTap: onOpenSettings,
           ),
           if (showInviteMembers)
             WorkspaceMenuButton(
               key: const ValueKey('workspace-invite-members'),
-              icon: const RemixIcon('user-add-line', size: 16, color: DifyColors.textTertiary),
+              icon: RemixIcon('user-add-line', size: 16, color: DifyColors.textTertiary),
               label: stc(context, 'mainNav.workspace.inviteMembers'),
               onTap: onInviteMembers,
             ),
@@ -517,7 +517,7 @@ class _WorkspaceSwitcherState extends State<WorkspaceSwitcher> {
                   child: DifyIconButton(
                     key: const ValueKey('workspace-search-toggle'),
                     label: stc(context, 'operation.search'),
-                    icon: const SizedBox.square(
+                    icon: SizedBox.square(
                       dimension: 20,
                       child: Center(child: RemixIcon('search-line', size: 14, color: DifyColors.textSecondary)),
                     ),
@@ -572,7 +572,7 @@ class _WorkspaceSwitcherState extends State<WorkspaceSwitcher> {
                                 label: w.name.isEmpty ? w.id : w.name,
                                 current: w.current,
                                 trailing: w.current
-                                    ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
+                                    ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
                                     : null,
                                 onTap: () => widget.onSwitchWorkspace(w.id),
                               ),

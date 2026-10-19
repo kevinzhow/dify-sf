@@ -280,14 +280,14 @@ class RunFormItem extends StatelessWidget {
               child: DifyText('${label['nodeName'] ?? ''}', DifyType.systemXsMedium, color: DifyColors.textSecondary),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(right: 2),
             child: DifyIcon('public/common/line-3', size: 12, color: DifyColors.dividerDeep),
           ),
         ],
         isChatVar
-            ? const DifyIcon('vender/line/others/bubble-x', size: 14, color: DifyColors.utilColorsTealTeal700)
-            : const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+            ? DifyIcon('vender/line/others/bubble-x', size: 14, color: DifyColors.utilColorsTealTeal700)
+            : DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 150),
           child: Padding(
@@ -479,7 +479,7 @@ class RunFormItem extends StatelessWidget {
     padding: const EdgeInsets.only(right: 4),
     child: GestureDetector(
       onTap: () => onChange([..._list]..removeAt(i)),
-      child: const MouseRegion(
+      child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: RemixIcon('delete-bin-line', size: 14, color: DifyColors.textTertiary),
       ),
@@ -711,7 +711,7 @@ class _RunImageUploaderState extends State<RunImageUploader> {
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: DifyColors.textTertiary),
+                style: TextStyle(fontSize: 12, color: DifyColors.textTertiary),
               ),
             ),
           ],
@@ -893,7 +893,7 @@ class RunForm extends StatelessWidget {
                 if (isArrayLike && !isIteratorItemFile)
                   DifyIconButton(
                     label: '${DifyI18n.tr('common', 'operation.add')} $label',
-                    icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+                    icon: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
                     onPressed: () {
                       final key = '${first!['variable']}';
                       final list = [...(props.values[key] as List? ?? const [])];
@@ -973,7 +973,7 @@ class RunPanelWrap extends StatelessWidget {
                       '${_tw('singleRun.testRun')} $nodeName',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         height: 24 / 16,
                         fontWeight: FontWeight.w600,
@@ -985,7 +985,7 @@ class RunPanelWrap extends StatelessWidget {
                   DifyPressable(
                     semanticLabel: DifyI18n.tr('common', 'operation.close'),
                     onPressed: onHide,
-                    builder: (context, h, f) => const Padding(
+                    builder: (context, h, f) => Padding(
                       padding: EdgeInsets.all(4),
                       child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                     ),

@@ -233,7 +233,7 @@ class FieldAddButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(DifyRadius.md),
           border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
         ),
-        child: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+        child: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
       ),
     ),
   );
@@ -283,7 +283,7 @@ class _ConfirmDialog extends StatelessWidget {
       Positioned.fill(
         child: GestureDetector(
           onTap: () => onClose(false),
-          child: const ColoredBox(color: DifyColors.backgroundOverlay),
+          child: ColoredBox(color: DifyColors.backgroundOverlay),
         ),
       ),
       Center(

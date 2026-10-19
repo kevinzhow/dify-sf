@@ -176,7 +176,7 @@ class _MemberRowState extends State<MemberRow> {
     );
     return Container(
       key: ValueKey('member-row-${m.id}'),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
       ),
       child: Stack(

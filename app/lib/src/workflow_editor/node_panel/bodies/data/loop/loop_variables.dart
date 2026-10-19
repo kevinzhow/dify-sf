@@ -196,7 +196,7 @@ class _LoopVariableItemState extends State<LoopVariableItem> {
           label: cm('operation.remove'),
           size: DifyIconButtonSize.lg,
           onPressed: () => widget.onRemove(_id),
-          icon: const RemixIcon('delete-bin-line', size: 16, color: DifyColors.textTertiary),
+          icon: RemixIcon('delete-bin-line', size: 16, color: DifyColors.textTertiary),
         ),
       ],
     );

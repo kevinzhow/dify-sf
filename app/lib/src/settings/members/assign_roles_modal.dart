@@ -81,7 +81,7 @@ class _AssignRolesModalState extends State<AssignRolesModal> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
             ),
             child: Wrap(

@@ -149,9 +149,7 @@ class OperationSelector extends StatelessWidget {
           else
             DifyMenuItem(
               onSelect: () => onSelect(item),
-              trailing: item.value == value
-                  ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
-                  : null,
+              trailing: item.value == value ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent) : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
@@ -434,7 +432,7 @@ Widget assignerPanelBody(BuildContext context, NodePanelProps props) {
                 label: tc('operation.add'),
                 onPressed: () =>
                     config.handleOperationListChanges(handleAddOperationItem(config.inputs['items'] as List)),
-                icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+                icon: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
               ),
             ],
           ),

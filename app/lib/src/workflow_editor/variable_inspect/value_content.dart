@@ -47,7 +47,7 @@ class LargeDataAlert extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
+          RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
           const SizedBox(width: 4),
           Expanded(
             child: Tooltip(

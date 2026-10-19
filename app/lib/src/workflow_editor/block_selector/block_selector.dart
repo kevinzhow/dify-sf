@@ -553,7 +553,7 @@ class _BlockSelectorPanelsState extends State<BlockSelectorPanels> {
     final w = widget;
     Widget bordered(Widget child) => Flexible(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
         ),
         child: child,
@@ -734,7 +734,7 @@ class _TabBarState extends State<_TabBar> {
                 top: ind.top,
                 width: ind.width,
                 height: ind.height,
-                child: const DecoratedBox(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: DifyColors.componentsPanelBg,
                     borderRadius: BorderRadius.vertical(top: Radius.circular(DifyRadius.lg)),

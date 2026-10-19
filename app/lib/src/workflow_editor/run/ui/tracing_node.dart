@@ -165,11 +165,11 @@ class _RunNodePanelState extends State<RunNodePanel> {
                   color: DifyColors.textTertiary,
                 ),
               ...switch (status) {
-                'succeeded' => const [
+                'succeeded' => [
                   SizedBox(width: 8),
                   RemixIcon('checkbox-circle-fill', size: 14, color: DifyColors.textSuccess),
                 ],
-                'failed' => const [
+                'failed' => [
                   SizedBox(width: 8),
                   RemixIcon('error-warning-fill', size: 14, color: DifyColors.textDestructive),
                 ],
@@ -195,7 +195,7 @@ class _RunNodePanelState extends State<RunNodePanel> {
                     ).copyWith(fontSize: 12, fontWeight: FontWeight.w400),
                   ),
                   const SizedBox(width: 8),
-                  const Spinning(child: RemixIcon('loader-2-line', size: 14, color: DifyColors.textAccent)),
+                  Spinning(child: RemixIcon('loader-2-line', size: 14, color: DifyColors.textAccent)),
                 ],
                 _ => const <Widget>[],
               },
@@ -244,7 +244,7 @@ class _RunNodePanelState extends State<RunNodePanel> {
                       TextSpan(text: error),
                       TextSpan(
                         text: _tw('common.learnMore'),
-                        style: const TextStyle(color: DifyColors.textAccent),
+                        style: TextStyle(color: DifyColors.textAccent),
                         recognizer: widget.onOpenUrl == null
                             ? null
                             : (TapGestureRecognizer()

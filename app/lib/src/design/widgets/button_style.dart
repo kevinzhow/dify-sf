@@ -37,15 +37,15 @@ class DifyButtonLook {
 }
 
 // `shadow-xs shadow-shadow-shadow-3`: Tailwind's shadow colour utility replaces the colour of shadow-xs.
-final _xs3 = [for (final s in DifyShadows.xs) s.copyWith(color: DifyColors.shadowShadow3)];
+List<BoxShadow> get _xs3 => [for (final s in DifyShadows.xs) s.copyWith(color: DifyColors.shadowShadow3)];
 
 // `shadow-primary-button` (styles.css): the generated tokens hold the two plain parts; the 0.5 px ring in
 // shadow-10 and the three inset parts are added here.
-final _primaryShadows = [
+List<BoxShadow> get _primaryShadows => [
   ...DifyShadows.primaryButton,
-  const BoxShadow(spreadRadius: 0.5, color: DifyColors.shadowShadow10),
+  BoxShadow(spreadRadius: 0.5, color: DifyColors.shadowShadow10),
 ];
-const _primaryInset = [
+List<BoxShadow> get _primaryInset => [
   BoxShadow(offset: Offset(0, -6), blurRadius: 12, spreadRadius: -4, color: DifyColors.shadowShadow5),
   BoxShadow(blurRadius: 1, color: Color.fromRGBO(255, 255, 255, 0.16)),
   BoxShadow(offset: Offset(0, 0.5), color: Color.fromRGBO(255, 255, 255, 0.08)),
@@ -63,20 +63,20 @@ DifyButtonLook difyButtonLook(
   final h = hovered && !disabled;
   switch (variant) {
     case DifyButtonVariant.plain:
-      if (disabled) return const DifyButtonLook(foreground: DifyColors.textDisabled);
-      if (!h) return const DifyButtonLook(foreground: DifyColors.textTertiary);
+      if (disabled) return DifyButtonLook(foreground: DifyColors.textDisabled);
+      if (!h) return DifyButtonLook(foreground: DifyColors.textTertiary);
       return d
-          ? const DifyButtonLook(foreground: DifyColors.textDestructive, background: DifyColors.stateDestructiveHover)
-          : const DifyButtonLook(foreground: DifyColors.textSecondary, background: DifyColors.stateBaseHover);
+          ? DifyButtonLook(foreground: DifyColors.textDestructive, background: DifyColors.stateDestructiveHover)
+          : DifyButtonLook(foreground: DifyColors.textSecondary, background: DifyColors.stateBaseHover);
     case DifyButtonVariant.primary:
       if (disabled) {
         return d
-            ? const DifyButtonLook(
+            ? DifyButtonLook(
                 foreground: DifyColors.componentsButtonDestructivePrimaryTextDisabled,
                 background: DifyColors.componentsButtonDestructivePrimaryBgDisabled,
                 ring: DifyColors.componentsButtonDestructivePrimaryBgDisabled,
               )
-            : const DifyButtonLook(
+            : DifyButtonLook(
                 foreground: DifyColors.componentsButtonPrimaryTextDisabled,
                 background: DifyColors.componentsButtonPrimaryBgDisabled,
                 ring: DifyColors.componentsButtonPrimaryBorderDisabled,
@@ -139,11 +139,11 @@ DifyButtonLook difyButtonLook(
     case DifyButtonVariant.tertiary:
       if (disabled) {
         return d
-            ? const DifyButtonLook(
+            ? DifyButtonLook(
                 foreground: DifyColors.componentsButtonDestructiveTertiaryTextDisabled,
                 background: DifyColors.componentsButtonDestructiveTertiaryBgDisabled,
               )
-            : const DifyButtonLook(
+            : DifyButtonLook(
                 foreground: DifyColors.componentsButtonTertiaryTextDisabled,
                 background: DifyColors.componentsButtonTertiaryBgDisabled,
               );
@@ -174,7 +174,7 @@ DifyButtonLook difyButtonLook(
             : DifyColors.componentsButtonGhostBgHover,
       );
     case DifyButtonVariant.ghostAccent:
-      if (disabled) return const DifyButtonLook(foreground: DifyColors.componentsButtonSecondaryAccentTextDisabled);
+      if (disabled) return DifyButtonLook(foreground: DifyColors.componentsButtonSecondaryAccentTextDisabled);
       return DifyButtonLook(
         foreground: DifyColors.componentsButtonSecondaryAccentText,
         background: h ? DifyColors.stateAccentHover : null,
@@ -207,7 +207,7 @@ class DifyButtonSurface extends StatelessWidget {
         borderRadius: r,
         boxShadow: [
           ...look.shadows,
-          if (focused) const BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid),
+          if (focused) BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid),
         ],
       ),
       position: DecorationPosition.background,

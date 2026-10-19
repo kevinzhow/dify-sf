@@ -230,12 +230,12 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
                 mainAxisSize: MainAxisSize.min,
                 spacing: 2,
                 children: [
-                  const RemixIcon('history-line', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
+                  RemixIcon('history-line', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: Text(
                       _tr('common.exitVersions'),
-                      style: const TextStyle(color: DifyColors.componentsButtonSecondaryAccentText),
+                      style: TextStyle(color: DifyColors.componentsButtonSecondaryAccentText),
                     ),
                   ),
                 ],

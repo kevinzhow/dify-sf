@@ -118,7 +118,7 @@ class _HistoryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(DifyRadius.xl);
-    const rowText = TextStyle(
+    final rowText = TextStyle(
       fontSize: 13,
       height: 18 / 13,
       fontWeight: FontWeight.w500,
@@ -170,13 +170,13 @@ class _HistoryPanel extends StatelessWidget {
                         Expanded(
                           child: Text(
                             tw('changeHistory.title'),
-                            style: const TextStyle(fontSize: 16, height: 1.5, color: DifyColors.textSecondary),
+                            style: TextStyle(fontSize: 16, height: 1.5, color: DifyColors.textSecondary),
                           ),
                         ),
                         DifyIconButton(
                           label: DifyI18n.tr('common', 'operation.close'),
                           variant: DifyButtonVariant.ghost,
-                          icon: const RemixIcon('close-line', color: DifyColors.textSecondary),
+                          icon: RemixIcon('close-line', color: DifyColors.textSecondary),
                           onPressed: onClose,
                         ),
                       ],
@@ -194,12 +194,12 @@ class _HistoryPanel extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 48),
                               child: Column(
                                 children: [
-                                  const RemixIcon('history-line', size: 32, color: DifyColors.textTertiary),
+                                  RemixIcon('history-line', size: 32, color: DifyColors.textTertiary),
                                   const SizedBox(height: 8),
                                   Text(
                                     tw('changeHistory.placeholder'),
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 13, color: DifyColors.textTertiary),
+                                    style: TextStyle(fontSize: 13, color: DifyColors.textTertiary),
                                   ),
                                 ],
                               ),
@@ -242,7 +242,7 @@ class _HistoryPanel extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: Text(
                               tw('changeHistory.hint').toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 height: 16 / 12,
                                 fontWeight: FontWeight.w500,
@@ -254,7 +254,7 @@ class _HistoryPanel extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Text(
                               tw('changeHistory.hintText'),
-                              style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                              style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
                             ),
                           ),
                         ],

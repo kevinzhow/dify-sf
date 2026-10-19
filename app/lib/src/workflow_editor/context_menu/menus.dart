@@ -193,7 +193,7 @@ class NodeActionsMenuAbout extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     child: DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+      style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -208,7 +208,7 @@ class NodeActionsMenuAbout extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(description ?? '', style: const TextStyle(color: DifyColors.textSecondary)),
+          Text(description ?? '', style: TextStyle(color: DifyColors.textSecondary)),
           const SizedBox(height: 4),
           Text(author ?? ''),
         ],

@@ -268,7 +268,7 @@ class WorkspaceAvatar extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: r,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [DifyColors.componentsAvatarBgMaskStop0, DifyColors.componentsAvatarBgMaskStop100],

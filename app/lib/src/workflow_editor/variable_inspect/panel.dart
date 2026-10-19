@@ -255,7 +255,7 @@ class _InspectPanelState extends State<InspectPanel> {
             children: [
               Container(
                 width: 240,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(right: BorderSide(color: DifyColors.dividerBurn)),
                 ),
                 child: left,
@@ -328,7 +328,7 @@ class InspectEmpty extends StatelessWidget {
                 border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
                 boxShadow: DifyShadows.lg,
               ),
-              child: const SizedBox.square(
+              child: SizedBox.square(
                 dimension: 40,
                 child: Center(
                   child: DifyIcon('vender/solid/development/variable-02', size: 20, color: DifyColors.textAccent),
@@ -444,7 +444,7 @@ class InspectLeft extends StatelessWidget {
               if (conversation.isNotEmpty) group(VarInInspectType.conversation, conversation),
               if (system.isNotEmpty) group(VarInInspectType.system, system),
               if (env.isNotEmpty || conversation.isNotEmpty || system.isNotEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
                 ),
@@ -569,11 +569,11 @@ class _InspectGroupState extends State<InspectGroup> {
             SizedBox.square(
               dimension: 12,
               child: running
-                  ? const Spinning(child: RemixIcon('loader-2-line', size: 12, color: DifyColors.textAccent))
+                  ? Spinning(child: RemixIcon('loader-2-line', size: 12, color: DifyColors.textAccent))
                   : visible.isNotEmpty
                   ? RotatedBox(
                       quarterTurns: _collapsed ? 0 : 1,
-                      child: const RemixIcon('arrow-right-s-line', size: 12, color: DifyColors.textTertiary),
+                      child: RemixIcon('arrow-right-s-line', size: 12, color: DifyColors.textTertiary),
                     )
                   : null,
             ),
@@ -754,7 +754,7 @@ class InspectRight extends StatelessWidget {
                           toolIcon: current.nodeData?['provider_icon'],
                         ),
                         DifyText(current.title, DifyType.systemSmRegular, color: DifyColors.textSecondary),
-                        const DifyText('/', DifyType.systemSmRegular, color: DifyColors.textQuaternary),
+                        DifyText('/', DifyType.systemSmRegular, color: DifyColors.textQuaternary),
                       ],
                       Flexible(
                         child: Tooltip(
@@ -831,7 +831,7 @@ class InspectRight extends StatelessWidget {
     if (v == null) {
       content = const InspectEmpty();
     } else if (isValueFetching) {
-      content = const Center(
+      content = Center(
         child: Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
       );
     } else {
@@ -1088,7 +1088,7 @@ class _ListeningState extends State<Listening> {
                             debugUrl,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 13,
                               height: 18 / 13,

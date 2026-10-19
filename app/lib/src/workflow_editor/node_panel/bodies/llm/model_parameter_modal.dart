@@ -448,7 +448,7 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
                           color: DifyColors.textAccent,
                         ),
                       ),
-                      const RemixIcon('arrow-right-line', size: 12, color: DifyColors.textAccent),
+                      RemixIcon('arrow-right-line', size: 12, color: DifyColors.textAccent),
                     ],
                   ),
                 ),
@@ -529,7 +529,7 @@ class _ModelLoadingState extends State<ModelLoading> with SingleTickerProviderSt
     child: Center(
       child: RotationTransition(
         turns: _c,
-        child: const RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
+        child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
       ),
     ),
   );

@@ -105,7 +105,7 @@ class _SearchBox extends StatelessWidget {
       semanticLabel: label,
       focusNode: focusNode,
       onKeyEvent: onKey,
-      leading: const Padding(
+      leading: Padding(
         padding: EdgeInsets.only(left: 8, right: 4),
         child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
       ),
@@ -120,7 +120,7 @@ class _SearchBox extends StatelessWidget {
                   onChanged('');
                   focusNode.requestFocus();
                 },
-                icon: const RemixIcon('close-circle-fill', size: 14, color: DifyColors.textQuaternary),
+                icon: RemixIcon('close-circle-fill', size: 14, color: DifyColors.textQuaternary),
               ),
             ),
     );
@@ -380,7 +380,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
             padding: const EdgeInsets.only(top: 8, left: 12),
             child: Text(
               DifyI18n.tr('workflow', 'common.noVar').toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 18 / 12,
                 fontWeight: FontWeight.w500,
@@ -426,7 +426,7 @@ class ManageInputField extends StatelessWidget {
     Widget tap(Widget child) => GestureDetector(behavior: HitTestBehavior.opaque, onTap: onManage, child: child);
     return Container(
       padding: const EdgeInsets.only(top: 4),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
       ),
       child: Row(
@@ -438,7 +438,7 @@ class ManageInputField extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+                    RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
                     const SizedBox(width: 4),
                     Flexible(
                       child: DifyText(
@@ -582,12 +582,12 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
         size: 14,
         color: DifyColors.utilColorsVioletViolet600,
       ),
-      'error_message' => const DifyIcon(
+      'error_message' => DifyIcon(
         'vender/solid/development/variable-02',
         size: 14,
         color: DifyColors.utilColorsOrangeDarkOrangeDark600,
       ),
-      _ => const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+      _ => DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
     };
   }
 
@@ -632,7 +632,7 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
               const SizedBox(width: 4),
               Text(
                 cssCapitalize(type ?? ''),
-                style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
               ),
               if (_hasPanel)
                 GestureDetector(
@@ -731,7 +731,7 @@ class PickerStructurePanel extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 100),
                   child: DifyText(nodeName!, DifyType.systemSmMedium, color: DifyColors.textTertiary),
                 ),
-                const DifyText('.', DifyType.systemSmMedium, color: DifyColors.textTertiary),
+                DifyText('.', DifyType.systemSmMedium, color: DifyColors.textTertiary),
               ],
               DifyText(attrName, DifyType.systemSmMedium, color: DifyColors.textSecondary),
               const SizedBox(width: 8),
@@ -817,7 +817,7 @@ class _StructFieldState extends State<_StructField> {
         children: [
           TreeIndentLine(depth: w.depth),
           if (more)
-            const Center(child: RemixIcon('more-fill', size: 12, color: DifyColors.textTertiary))
+            Center(child: RemixIcon('more-fill', size: 12, color: DifyColors.textTertiary))
           else
             Expanded(
               child: Align(
@@ -905,7 +905,7 @@ class VarFullPathPanel extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle, width: 0.5)),
               ),
               child: Row(
@@ -1029,7 +1029,7 @@ class _ListEmpty extends StatelessWidget {
             border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
             boxShadow: DifyShadows.lg,
           ),
-          child: const Center(
+          child: Center(
             child: DifyIcon('vender/solid/development/variable-02', size: 20, color: DifyColors.textAccent),
           ),
         ),

@@ -193,7 +193,7 @@ class _ToolBrowserState extends State<ToolBrowser> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
             ),
             child: Row(
@@ -262,7 +262,7 @@ class _ToolBrowserState extends State<ToolBrowser> {
                               selectedTools: w.selectedTools,
                               isLoading: w.featuredLoading,
                             ),
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerRegular)),
                             ),
@@ -332,7 +332,7 @@ class _CategoryEmptyState extends StatelessWidget {
                 spacing: 2,
                 children: [
                   DifyText(tip, DifyType.systemXsRegular, color: DifyColors.textTertiary),
-                  const RemixIcon('arrow-right-up-line', size: 12, color: DifyColors.textTertiary),
+                  RemixIcon('arrow-right-up-line', size: 12, color: DifyColors.textTertiary),
                 ],
               ),
             ),
@@ -446,7 +446,7 @@ class _NoTools extends StatelessWidget {
   const _NoTools();
 
   @override
-  Widget build(BuildContext context) => const Column(
+  Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
       DifyIcon('vender/other/no-tool-placeholder', size: 64),
@@ -706,7 +706,7 @@ class _ToolProviderRowState extends State<ToolProviderRow> {
           ],
           if (mcp) ...[
             const SizedBox(width: 8),
-            const DifyIcon('vender/other/mcp', size: 14, color: DifyColors.textQuaternary),
+            DifyIcon('vender/other/mcp', size: 14, color: DifyColors.textQuaternary),
           ],
         ],
       ),
@@ -765,7 +765,7 @@ class _ToolProviderRowState extends State<ToolProviderRow> {
                               child: AnimatedRotation(
                                 turns: _open ? 0.25 : 0,
                                 duration: difyTransitionDuration,
-                                child: const RemixIcon(
+                                child: RemixIcon(
                                   'arrow-right-s-line',
                                   size: 16,
                                   color: DifyColors.textQuaternary,
@@ -866,7 +866,7 @@ class ToolActionItem extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.only(left: 16),
                       alignment: Alignment.centerLeft,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(left: BorderSide(color: DifyColors.dividerSubtle, width: 2)),
                       ),
                       height: 36,
@@ -1023,7 +1023,7 @@ class _Spinner extends StatelessWidget {
   const _Spinner();
   @override
   Widget build(BuildContext context) =>
-      const SizedBox.square(dimension: 16, child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary));
+      SizedBox.square(dimension: 16, child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary));
 }
 
 class _ShowMoreButton extends StatelessWidget {
@@ -1290,7 +1290,7 @@ class _MarketplacePluginActionState extends State<MarketplacePluginAction> {
         label: common('common', 'operation.more'),
         variant: DifyButtonVariant.ghost,
         onPressed: c.toggle,
-        icon: const RemixIcon('more-fill', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
+        icon: RemixIcon('more-fill', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
       ),
       children: [
         DifyMenuItem(
@@ -1407,7 +1407,7 @@ class MarketplaceStickyBar extends StatelessWidget {
       height: position == StickyScrollPosition.aboveTheWrap ? 36 : 32,
       padding: EdgeInsets.fromLTRB(16, position == StickyScrollPosition.belowTheWrap ? 4 : 12, 16, 4),
       decoration: switch (position) {
-        StickyScrollPosition.belowTheWrap => const BoxDecoration(
+        StickyScrollPosition.belowTheWrap => BoxDecoration(
           color: DifyColors.componentsPanelBgBlur,
           border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
         ),
@@ -1440,7 +1440,7 @@ class MarketplaceStickyBar extends StatelessWidget {
                   DifyType.systemSmMedium,
                   color: DifyColors.textAccentLightModeOnly,
                 ),
-                const RemixIcon('arrow-right-up-line', size: 12, color: DifyColors.textAccentLightModeOnly),
+                RemixIcon('arrow-right-up-line', size: 12, color: DifyColors.textAccentLightModeOnly),
               ],
             ),
           ),
@@ -1598,7 +1598,7 @@ class _MarketplacePluginItemState extends State<MarketplacePluginItem> {
                     spacing: 4,
                     children: [
                       DifyText(p.org, DifyType.systemXsRegular, color: DifyColors.textTertiary),
-                      const DifyText('·', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+                      DifyText('·', DifyType.systemXsRegular, color: DifyColors.textTertiary),
                       Flexible(
                         child: DifyText(
                           _plugin('install', {'num': formatInstallCount(p.installCount)}),

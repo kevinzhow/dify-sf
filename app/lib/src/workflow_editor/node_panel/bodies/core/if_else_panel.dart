@@ -170,7 +170,7 @@ class IfElsePanel extends StatelessWidget {
               title: tw('$_p.else'),
               child: Text(
                 tw('$_p.elseDescription'),
-                style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
               ),
             ),
           ),
@@ -307,7 +307,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                       children: [
                         Text(
                           index == 0 ? 'IF' : 'ELIF',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             height: 16 / 13,
                             fontWeight: FontWeight.w600,
@@ -317,7 +317,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                         if (n > 1)
                           Text(
                             'CASE${index + 1}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
                               height: 12 / 10,
                               fontWeight: FontWeight.w500,
@@ -352,7 +352,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                       opacity: _hovered == caseId ? 1 : 0,
                       child: ReorderableDragStartListener(
                         index: index,
-                        child: const MouseRegion(
+                        child: MouseRegion(
                           cursor: SystemMouseCursors.grab,
                           child: SizedBox.square(
                             dimension: 24,
@@ -588,7 +588,7 @@ class IfElseConditionList extends StatelessWidget {
                   left: 46,
                   width: 10,
                   child: Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
                         left: BorderSide(color: DifyColors.dividerDeep),
                         top: BorderSide(color: DifyColors.dividerDeep),
@@ -628,7 +628,7 @@ class IfElseConditionList extends StatelessWidget {
                             children: [
                               Text(
                                 op.toUpperCase(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
                                   height: 12 / 10,
                                   fontWeight: FontWeight.w600,
@@ -636,7 +636,7 @@ class IfElseConditionList extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 2),
-                              const RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),
+                              RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),
                             ],
                           ),
                         ),
@@ -756,7 +756,7 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
     final showBoolean =
         type == VarType.boolean || (type == VarType.arrayBoolean && const ['contains', 'not contains'].contains(op));
     final value = _c['value'];
-    const top = Border(top: BorderSide(color: DifyColors.dividerSubtle));
+    final top = Border(top: BorderSide(color: DifyColors.dividerSubtle));
 
     final head = Padding(
       padding: const EdgeInsets.all(4),
@@ -824,7 +824,7 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
                   Container(
                     constraints: const BoxConstraints(maxHeight: 100),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: const BoxDecoration(border: top),
+                    decoration: BoxDecoration(border: top),
                     child: SingleChildScrollView(
                       child: DifyPromptEditor(
                         compact: true,
@@ -860,7 +860,7 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
                 if (needsValue && !isNotInput && type == VarType.number)
                   Container(
                     padding: const EdgeInsets.fromLTRB(8, 3, 8, 4),
-                    decoration: const BoxDecoration(border: top),
+                    decoration: BoxDecoration(border: top),
                     child: IfElseConditionNumberInput(
                       numberVarType: jsStr(_c['numberVarType']) == 'variable'
                           ? VarKindType.variable
@@ -876,7 +876,7 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
                   ),
                 if (needsValue && isSelect)
                   Container(
-                    decoration: const BoxDecoration(border: top),
+                    decoration: BoxDecoration(border: top),
                     child: DifySelect<String>(
                       value: selectOptions.any((o) => o.value == selected) ? selected : null,
                       options: selectOptions,
@@ -969,7 +969,7 @@ class _SubVarKeySelect extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                        DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                         const SizedBox(width: 2),
                         Text(selected, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
                       ],
@@ -987,7 +987,7 @@ class _SubVarKeySelect extends StatelessWidget {
               DifyMenuRadioItem<String>(
                 value: k,
                 closeOnClick: true,
-                leading: const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                leading: DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                 child: Text(k),
               ),
           ],
@@ -1104,7 +1104,7 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
   Widget build(BuildContext context) {
     final w = widget;
     final kind = _capitalize(w.numberVarType.name);
-    const style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.componentsInputTextFilled);
+    final style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.componentsInputTextFilled);
     final Widget field;
     if (w.numberVarType == VarKindType.variable) {
       final selector = templateToSelector(w.value);
@@ -1129,7 +1129,7 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
                     padding: const EdgeInsets.all(4),
                     child: Row(
                       children: [
-                        const DifyIcon(
+                        DifyIcon(
                           'vender/solid/development/variable-02',
                           size: 16,
                           color: DifyColors.componentsInputTextPlaceholder,

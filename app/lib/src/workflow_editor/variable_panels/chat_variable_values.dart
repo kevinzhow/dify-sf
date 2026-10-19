@@ -61,7 +61,7 @@ class VariableTypeSelector extends StatelessWidget {
                   child: DifyText(value, DifyType.systemXsRegular, color: DifyColors.textSecondary),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 2),
                 child: RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
               ),

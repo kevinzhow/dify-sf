@@ -180,7 +180,7 @@ class _NoLoginMethod extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(DifyRadius.lg),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: [DifyColors.workflowWorkflowProgressBg1, DifyColors.workflowWorkflowProgressBg2],
           ),
         ),
@@ -197,7 +197,7 @@ class _NoLoginMethod extends StatelessWidget {
                 boxShadow: DifyShadows.lg,
               ),
               alignment: Alignment.center,
-              child: const RemixIcon('door-lock-line', size: 20, color: DifyColors.textPrimary),
+              child: RemixIcon('door-lock-line', size: 20, color: DifyColors.textPrimary),
             ),
             Text(
               tLogin(context, 'noLoginMethod'),
@@ -216,7 +216,7 @@ class _NoLoginMethod extends StatelessWidget {
       Container(
         height: 1,
         margin: const EdgeInsets.symmetric(vertical: 16),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
               DifyColors.backgroundGradientMaskTransparent,

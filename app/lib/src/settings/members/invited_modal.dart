@@ -50,13 +50,13 @@ class InvitedModal extends StatelessWidget {
     final description = stc(context, onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip');
     final title = stc(context, onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent');
     void close() => onCancel != null ? onCancel!() : Navigator.of(context).maybePop();
-    const sectionTitle = TextStyle(
+    final sectionTitle = TextStyle(
       fontSize: 14,
       height: 20 / 14,
       fontWeight: FontWeight.w500,
       color: DifyColors.textPrimary,
     );
-    const tertiary = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary);
+    final tertiary = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary);
     return SettingsDialogContent(
       label: title,
       padding: const EdgeInsets.all(32),
@@ -89,7 +89,7 @@ class InvitedModal extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     height: 28 / 20,
                     fontWeight: FontWeight.w600,
@@ -135,7 +135,7 @@ class InvitedModal extends StatelessWidget {
                               ),
                               child: Text(
                                 r.email,
-                                style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+                                style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
                               ),
                             ),
                         ],
@@ -283,7 +283,7 @@ class _InvitationLinkState extends State<InvitationLink> {
                               url,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13, height: 20 / 13, color: DifyColors.textPrimary),
+                              style: TextStyle(fontSize: 13, height: 20 / 13, color: DifyColors.textPrimary),
                             ),
                           ),
                         ),

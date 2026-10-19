@@ -2,8 +2,13 @@
 
 Usage: python3 tool/gen_dify_tokens.py <dify source root> > app/lib/src/design/dify_tokens.g.dart
 
-Reads packages/dify-ui/src/themes/light.css and web/themes/manual-light.css (colour variables, gradients), packages/dify-ui/src/styles/utilities.css
-(typography utilities) and packages/dify-ui/src/styles/styles.css (shadows). Re-run when the Dify baseline moves.
+Reads packages/dify-ui/src/themes/{light,dark}.css and web/themes/manual-{light,dark}.css (colour variables, gradients),
+packages/dify-ui/src/styles/utilities.css (typography utilities) and packages/dify-ui/src/styles/styles.css (shadows).
+Re-run when the Dify baseline moves.
+
+Colours and gradients are getters over one global switch (DifyColors.useDark, set by DifyTheme): every token is a
+getter, also those equal in both themes, so a token that starts to differ in a later Dify does not break `const` call
+sites. Shadows, typography and radii are the same in both themes and stay `const`.
 """
 import re, subprocess, sys
 from pathlib import Path
@@ -44,21 +49,54 @@ out.append('')
 
 # Colours.
 light = (ui / 'themes/light.css').read_text()
-colors, skipped = [], []
-for name, value in re.findall(r'--color-([a-z0-9-]+):\s*([^;]+);', light):
-    c = color(value)
-    if c is None:
-        skipped.append((name, value.strip()))
-    else:
-        colors.append((camel(name), c, name))
-out.append('/// Dify light theme colours (`--color-*` in packages/dify-ui/src/themes/light.css).')
+dark = (ui / 'themes/dark.css').read_text()
+def parse_colors(text):
+    found, bad = {}, []
+    for name, value in re.findall(r'--color-([a-z0-9-]+):\s*([^;]+);', text):
+        c = color(value)
+        if c is None:
+            bad.append((name, value.strip()))
+        else:
+            found.setdefault(name, c)
+    return found, bad
+def manual(theme):
+    f = root / f'web/themes/manual-{theme}.css'
+    return [f.read_text()] if f.exists() else []
+light_colors, skipped = parse_colors(light)
+dark_colors, _ = parse_colors(dark)
+# The plain colours of web/themes/manual-*.css (the chat bubble, the premium badge highlight) after the generated ones.
+for text in manual('light'):
+    for name, c in parse_colors(text)[0].items():
+        light_colors.setdefault(name, c)
+for text in manual('dark'):
+    for name, c in parse_colors(text)[0].items():
+        dark_colors.setdefault(name, c)
+light_only = []
+out.append('/// Dify colours (`--color-*` in packages/dify-ui/src/themes/light.css and dark.css, web/themes/manual-*.css) for the')
+out.append('/// current theme.')
 out.append('abstract final class DifyColors {')
+out.append('  static bool _dark = false;')
+out.append('')
+out.append('  /// Whether the getters answer the dark theme\'s values.')
+out.append('  static bool get isDark => _dark;')
+out.append('')
+out.append('  /// Switches every colour and gradient getter; only DifyTheme calls it (it also rebuilds and recaptures).')
+out.append('  static void useDark(bool dark) => _dark = dark;')
+out.append('')
 seen = set()
-for n, c, orig in colors:
+for orig, c in light_colors.items():
+    n = camel(orig)
     if n in seen: continue
     seen.add(n)
+    d = dark_colors.get(orig)
+    if d is None:
+        light_only.append(orig)
+        d = c
     out.append(f'  /// `{orig}`')
-    out.append(f'  static const {n} = {c};')
+    if d == c:
+        out.append(f'  static Color get {n} => const {c};')
+    else:
+        out.append(f'  static Color get {n} => _dark ? const {d} : const {c};')
 out.append('}')
 out.append('')
 
@@ -123,17 +161,18 @@ for name, value in re.findall(r'--shadow-([a-z0-9-]+):\s*([^;]+);', styles):
         out.append(f'  static const {camel(name)} = [{", ".join(s)}];')
 out.append('}')
 out.append('')
-# Gradients (`--color-*: linear-gradient(...)`, light.css and web/themes/manual-light.css).
-by_name = {orig: c for _, c, orig in colors}
-def resolve(v):
-    v = v.strip()
-    m = re.fullmatch(r'var\(--([a-z0-9-]+)(?:,\s*(.+))?\)', v)
-    if m:
-        # Only `--color-*` variables are defined; others fall back.
-        name = m.group(1)
-        known = by_name.get(name[6:]) if name.startswith('color-') else None
-        return known or (resolve(m.group(2)) if m.group(2) else None)
-    return color(v)
+# Gradients (`--color-*: linear-gradient(...)`, themes/{light,dark}.css and web/themes/manual-{light,dark}.css).
+def resolver(by_name):
+    def resolve(v):
+        v = v.strip()
+        m = re.fullmatch(r'var\(--([a-z0-9-]+)(?:,\s*(.+))?\)', v)
+        if m:
+            # Only `--color-*` variables are defined; others fall back.
+            name = m.group(1)
+            known = by_name.get(name[6:]) if name.startswith('color-') else None
+            return known or (resolve(m.group(2)) if m.group(2) else None)
+        return color(v)
+    return resolve
 def split_top(text):
     # Splits at the commas outside parentheses.
     out, depth, cur = [], 0, ''
@@ -144,7 +183,7 @@ def split_top(text):
         else:
             cur += ch
     return out + [cur]
-def gradient(value):
+def gradient(value, resolve):
     m = re.fullmatch(r'linear-gradient\((.*)\)', ' '.join(value.split()))
     if not m: return None
     parts = [p.strip() for p in split_top(m.group(1))]
@@ -165,18 +204,29 @@ def gradient(value):
         if len(cols) < 2 or stops[0] is not None and any(x is None for x in stops): return None
         stops = [i / (len(cols) - 1) for i in range(len(cols))]
     return f'CssLinearGradient(angle: {angle:g}, colors: [{", ".join(cols)}], stops: [{", ".join(f"{x:g}" for x in stops)}])'
-manual = root / 'web/themes/manual-light.css'
-sources = [light] + ([manual.read_text()] if manual.exists() else [])
-out.append('/// Dify gradients (`--color-*: linear-gradient(...)` in themes/light.css and web/themes/manual-light.css).')
+def gradients(texts, by_name):
+    resolve, found = resolver(by_name), {}
+    for text in texts:
+        for name, value in re.findall(r'--color-([a-z0-9-]+):\s*([^;]+);', text):
+            g = gradient(value, resolve)
+            if g and camel(name) not in found:
+                found[camel(name)] = (name, g)
+    return found
+light_g = gradients([light] + manual('light'), light_colors)
+dark_g = gradients([dark] + manual('dark'), dark_colors)
+out.append('/// Dify gradients (`--color-*: linear-gradient(...)` in themes/light.css, dark.css and web/themes/manual-*.css)')
+out.append('/// for the current theme.')
 out.append('abstract final class DifyGradients {')
-gseen = set()
-for text in sources:
-    for name, value in re.findall(r'--color-([a-z0-9-]+):\s*([^;]+);', text):
-        g = gradient(value)
-        if g and camel(name) not in gseen:
-            gseen.add(camel(name))
-            out.append(f'  /// `{name}`')
-            out.append(f'  static const {camel(name)} = {g};')
+for n, (orig, g) in light_g.items():
+    d = dark_g.get(n, (None, None))[1]
+    if d is None:
+        light_only.append(orig)
+        d = g
+    out.append(f'  /// `{orig}`')
+    if d == g:
+        out.append(f'  static CssLinearGradient get {n} => const {g};')
+    else:
+        out.append(f'  static CssLinearGradient get {n} => DifyColors._dark ? const {d} : const {g};')
 out.append('}')
 out.append('')
 out.append("""/// A CSS `linear-gradient`: the gradient line runs through the box's centre at [angle] (0 = up, clockwise), long
@@ -210,5 +260,7 @@ for n, v in [('xs', 2), ('sm', 4), ('md', 6), ('lg', 8), ('xl', 12), ('xxl', 16)
     out.append(f'  static const {n} = {v}.0;')
 out.append('}')
 print('\n'.join(out))
+if light_only:
+    print(f'// {len(light_only)} variables have no plain dark value (the light one is used in both themes): ' + ', '.join(light_only))
 if skipped:
     print(f'// {len(skipped)} colour variables are not plain colours (gradients or references): ' + ', '.join(n for n, _ in skipped[:20]) + (' …' if len(skipped) > 20 else ''))

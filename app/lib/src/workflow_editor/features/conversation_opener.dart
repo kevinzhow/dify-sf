@@ -68,7 +68,7 @@ class _ConversationOpenerState extends State<ConversationOpener> with FeatureHov
       final enabled = opening['enabled'] == true;
       final statement = opening['opening_statement'];
       return FeatureCard(
-        icon: const FeatureIcon(
+        icon: FeatureIcon(
           color: DifyColors.utilColorsBlueLightBlueLight500,
           dify: 'vender/features/love-message',
         ),
@@ -345,7 +345,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
               ),
               Text(
                 '${_questions.length}/$_maxQuestionNum',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   height: 18 / 12,
                   fontWeight: FontWeight.w500,
@@ -382,7 +382,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
 
   @override
   Widget build(BuildContext context) {
-    final placeholderStyle = const TextStyle(
+    final placeholderStyle = TextStyle(
       fontSize: 14,
       height: 24 / 14,
       color: DifyColors.componentsInputTextPlaceholder,
@@ -509,7 +509,7 @@ class _CloseButton extends StatelessWidget {
         border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
         borderRadius: BorderRadius.circular(DifyRadius.sm),
       ),
-      child: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+      child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
     ),
   );
 }
@@ -620,10 +620,10 @@ class _QuestionRowState extends State<_QuestionRow> {
                               color: w.pressed ? DifyColors.stateAccentHover : null,
                               borderRadius: BorderRadius.circular(DifyRadius.md),
                               boxShadow: _handleFocused
-                                  ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
+                                  ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
                                   : null,
                             ),
-                            child: const Center(
+                            child: Center(
                               child: RemixIcon('draggable', size: 16, color: DifyColors.textQuaternary),
                             ),
                           ),
@@ -640,7 +640,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                       focusNode: _focus,
                       autofocus: w.autofocus,
                       onChanged: w.onChanged,
-                      style: const TextStyle(fontSize: 14, height: 36 / 14, color: DifyColors.textSecondary),
+                      style: TextStyle(fontSize: 14, height: 36 / 14, color: DifyColors.textSecondary),
                       cursorColor: DifyColors.textSecondary,
                       cursorWidth: 1,
                       decoration: InputDecoration(
@@ -648,7 +648,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.only(left: 6, right: 32),
                         hintText: ad('openingStatement.openingQuestionPlaceholder'),
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 14,
                           height: 36 / 14,
                           color: DifyColors.componentsInputTextPlaceholder,
@@ -728,7 +728,7 @@ class _AddQuestionState extends State<_AddQuestion> {
           child: Row(
             spacing: 8,
             children: [
-              const RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
+              RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
               Text(
                 ad('variableConfig.addOption'),
                 style: difyTextStyle(
@@ -794,7 +794,7 @@ class ConfirmAddVar extends StatelessWidget {
                   children: [
                     Text(
                       ad('autoAddVar'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 20 / 14,
                         fontWeight: FontWeight.w500,

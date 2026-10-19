@@ -81,13 +81,13 @@ class AuthorizedInDataSourceNode extends StatelessWidget {
         color: DifyColors.componentsBadgeStatusLightSuccessBg,
         borderRadius: BorderRadius.circular(3),
         border: Border.all(color: DifyColors.componentsBadgeStatusLightSuccessBorderInner),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(color: DifyColors.componentsBadgeStatusLightSuccessHalo, offset: Offset(0, 2), blurRadius: 6),
           BoxShadow(color: DifyColors.componentsBadgeStatusLightBorderOuter, spreadRadius: 1),
         ],
       ),
     ),
-    trailing: const RemixIcon('equalizer-2-line', size: 14, color: DifyColors.componentsButtonGhostText),
+    trailing: RemixIcon('equalizer-2-line', size: 14, color: DifyColors.componentsButtonGhostText),
     child: Text(DifyI18n.tr('plugin', authorizationsNum > 1 ? 'auth.authorizations' : 'auth.authorization')),
   );
 }

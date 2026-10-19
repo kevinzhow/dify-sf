@@ -471,7 +471,7 @@ class _JsonSchemaConfigState extends State<JsonSchemaConfig> {
               child: DifyIconButton(
                 label: _c('operation.close'),
                 size: DifyIconButtonSize.lg,
-                icon: const RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
+                icon: RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
                 onPressed: widget.onClose,
               ),
             ),
@@ -552,7 +552,7 @@ class SchemaErrorMessage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 4,
       children: [
-        const RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
+        RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
         Expanded(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 48),
@@ -607,7 +607,7 @@ class _SchemaJsonEditorState extends State<SchemaJsonEditor> {
       language: CodeLanguage.json,
       noWrapper: true,
       isExpand: true,
-      titleWidget: const Padding(
+      titleWidget: Padding(
         padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: DifyText('JSON', DifyType.systemXsSemiboldUppercase, color: DifyColors.textSecondary),
       ),
@@ -618,12 +618,12 @@ class _SchemaJsonEditorState extends State<SchemaJsonEditor> {
           if (widget.showFormatButton)
             DifyIconButton(
               label: _c('operation.format'),
-              icon: const RemixIcon('indent-increase', size: 16, color: DifyColors.textTertiary),
+              icon: RemixIcon('indent-increase', size: 16, color: DifyColors.textTertiary),
               onPressed: _format,
             ),
           DifyIconButton(
             label: _c('operation.copy'),
-            icon: const RemixIcon('clipboard-line', size: 16, color: DifyColors.textTertiary),
+            icon: RemixIcon('clipboard-line', size: 16, color: DifyColors.textTertiary),
             onPressed: () => Clipboard.setData(ClipboardData(text: _value)),
           ),
         ],
@@ -726,7 +726,7 @@ class _JsonImporterState extends State<JsonImporter> {
                     DifyIconButton(
                       label: _c('operation.close'),
                       size: DifyIconButtonSize.lg,
-                      icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                      icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                       onPressed: _popup.close,
                     ),
                   ],
@@ -809,7 +809,7 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
     sideOffset: 4,
     builder: (context, c) => DifyIconButton(
       label: _w('nodes.llm.jsonSchema.generateJsonSchema'),
-      icon: const RemixIcon('sparkling-fill', size: 16, color: DifyColors.textAccent),
+      icon: RemixIcon('sparkling-fill', size: 16, color: DifyColors.textAccent),
       onPressed: c.toggle,
     ),
     popupBuilder: (context) => Container(
@@ -1513,7 +1513,7 @@ class _EditCardState extends State<EditCard> {
           if (advanced && hasAdvanced)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
               ),
               child: Column(
@@ -1697,7 +1697,7 @@ class SchemaTypeSelector extends StatelessWidget {
                       child: DifyText(item.text, DifyType.systemSmMedium, color: DifyColors.textSecondary),
                     ),
                   ),
-                  if (item.value == currentValue) const RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
+                  if (item.value == currentValue) RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
                 ],
               ),
             ),

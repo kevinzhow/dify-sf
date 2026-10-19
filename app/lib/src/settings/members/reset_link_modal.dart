@@ -44,7 +44,7 @@ class ResetLinkModal extends StatelessWidget {
   Widget build(BuildContext context) {
     void close() => Navigator.of(context).maybePop();
     final who = member.name.isEmpty ? member.email : member.name;
-    const tertiary = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary);
+    final tertiary = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary);
     return SettingsDialogContent(
       label: title,
       padding: const EdgeInsets.all(32),
@@ -69,11 +69,11 @@ class ResetLinkModal extends StatelessWidget {
                       border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
                       boxShadow: DifyShadows.xl,
                     ),
-                    child: const RemixIcon('lock-password-line', size: 22, color: DifyColors.textAccent),
+                    child: RemixIcon('lock-password-line', size: 22, color: DifyColors.textAccent),
                   ),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 4),
                 child: Text(
                   title,

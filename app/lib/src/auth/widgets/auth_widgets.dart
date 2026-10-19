@@ -450,13 +450,13 @@ class _LocaleMenuState extends State<LocaleMenu> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Padding(
+                      Padding(
                         padding: EdgeInsetsDirectional.only(end: 4),
                         child: HeroIcon('globe-alt', size: 20, color: DifyColors.textPrimary),
                       ),
                       Text(
                         selected?.name ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           height: 20 / 13,
                           fontWeight: FontWeight.w500,
@@ -550,7 +550,7 @@ class _AuthCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(1),
             child: DefaultTextStyle.merge(
-              style: const TextStyle(color: DifyColors.textPrimary, letterSpacing: 0),
+              style: TextStyle(color: DifyColors.textPrimary, letterSpacing: 0),
               child: child,
             ),
           ),
@@ -630,7 +630,7 @@ class AuthPageFrame extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
               child: Text(
                 difyCopyright(),
-                style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
               ),
             ),
           ],

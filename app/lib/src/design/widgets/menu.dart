@@ -71,7 +71,7 @@ class DifyMenuPopup extends StatefulWidget {
   final VoidCallback? _onArrowLeft;
   final _DifyMenuPopupState? _parent;
 
-  static final decoration = BoxDecoration(
+  static BoxDecoration get decoration => BoxDecoration(
     color: DifyColors.componentsPanelBgBlur,
     border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
     borderRadius: BorderRadius.circular(DifyRadius.xl),
@@ -189,7 +189,7 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
           child: MouseRegion(
             onEnter: (_) => widget._parent?._subClose?.cancel(),
             child: DefaultTextStyle.merge(
-              style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+              style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
               child: DifyBlurredBox(
                 blur: 5,
                 borderRadius: r,

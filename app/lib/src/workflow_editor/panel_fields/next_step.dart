@@ -379,7 +379,7 @@ class _AddButtonState extends State<_AddButton> {
             color: _hovered && widget.onPressed != null ? DifyColors.stateBaseHover : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
           ),
-          foregroundDecoration: const CssDashedBorder(color: DifyColors.dividerRegular, radius: DifyRadius.lg),
+          foregroundDecoration: CssDashedBorder(color: DifyColors.dividerRegular, radius: DifyRadius.lg),
           child: Row(
             spacing: 6,
             children: [
@@ -390,14 +390,14 @@ class _AddButtonState extends State<_AddButton> {
                   color: DifyColors.backgroundDefaultDimmed,
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Center(child: RemixIcon('add-line', size: 12, color: DifyColors.textPlaceholder)),
+                child: Center(child: RemixIcon('add-line', size: 12, color: DifyColors.textPlaceholder)),
               ),
               Flexible(
                 child: Text(
                   widget.label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 16 / 12,
                     fontWeight: FontWeight.w600,

@@ -244,7 +244,7 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
   Widget build(BuildContext context) {
     final w = widget;
     final selected = getOutputTypeOption(w.outputType);
-    const violet700 = DifyColors.utilColorsVioletViolet700;
+    final violet700 = DifyColors.utilColorsVioletViolet700;
     if (!w.isEditing) {
       return MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -268,8 +268,8 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
               spacing: 4,
               children: [
                 _hovered
-                    ? const RemixIcon('edit-2-line', size: 14, color: violet700)
-                    : const DifyIcon('vender/workflow/variable-x', size: 14, color: violet700),
+                    ? RemixIcon('edit-2-line', size: 14, color: violet700)
+                    : DifyIcon('vender/workflow/variable-x', size: 14, color: violet700),
                 DifyText(w.name, DifyType.systemXsMedium, color: violet700, maxLines: 1),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -306,7 +306,7 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
               mainAxisSize: MainAxisSize.min,
               spacing: 2,
               children: [
-                const DifyIcon('vender/workflow/variable-x', size: 14, color: violet700),
+                DifyIcon('vender/workflow/variable-x', size: 14, color: violet700),
                 ListenableBuilder(
                   listenable: Listenable.merge([draft, nameFocus]),
                   builder: (context, _) {
@@ -382,7 +382,7 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
                     semanticLabel: o.label,
                     onSelect: () => _onTypeChange(o.value),
                     trailing: o.value == w.outputType
-                        ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
+                        ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
                         : null,
                     child: Text(o.label),
                   ),

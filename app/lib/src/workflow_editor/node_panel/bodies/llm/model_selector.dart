@@ -377,7 +377,7 @@ class ModelSelectorButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(DifyRadius.md),
                   border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
                 ),
-                child: const RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
+                child: RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
               ),
             ),
           )
@@ -401,7 +401,7 @@ class ModelSelectorButton extends StatelessWidget {
             configureModelLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 13, height: 20 / 13, color: DifyColors.componentsInputTextPlaceholder),
+            style: TextStyle(fontSize: 13, height: 20 / 13, color: DifyColors.componentsInputTextPlaceholder),
           );
     final Widget? badge = isSelected && !disabled && ((!isActive && s.badge != null) || !isModelCompatible)
         ? ModelStatusBadge(
@@ -586,7 +586,7 @@ class _ModelSelectorPopupState extends State<ModelSelectorPopup> {
                         child: Text(
                           status,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                          style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
                         ),
                       ),
                     ),
@@ -629,7 +629,7 @@ class _ModelSelectorPopupState extends State<ModelSelectorPopup> {
               height: 32,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               radius: DifyRadius.lg,
-              leading: const RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
+              leading: RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
               label: _c('modelProvider.selector.modelProviderSettings'),
               style: DifyType.systemXsMedium,
               onPressed: w.onOpenProviderSettings!,
@@ -709,7 +709,7 @@ class _ModelSearchInputState extends State<ModelSearchInput> {
       semanticLabel: label,
       focusNode: _focus,
       height: 32,
-      leading: const Padding(
+      leading: Padding(
         padding: EdgeInsets.only(left: 8, right: 4),
         child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
       ),
@@ -745,7 +745,7 @@ class ModelSelectorEmptyState extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),
-      gradient: const LinearGradient(colors: [DifyColors.stateBaseHover, DifyColors.backgroundGradientMaskTransparent]),
+      gradient: LinearGradient(colors: [DifyColors.stateBaseHover, DifyColors.backgroundGradientMaskTransparent]),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -761,7 +761,7 @@ class ModelSelectorEmptyState extends StatelessWidget {
             border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
             boxShadow: DifyShadows.lg,
           ),
-          child: const RemixIcon('brain-2-line', size: 20, color: DifyColors.textTertiary),
+          child: RemixIcon('brain-2-line', size: 20, color: DifyColors.textTertiary),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -855,7 +855,7 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
                               label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 height: 16 / 12,
                                 fontWeight: FontWeight.w500,
@@ -866,7 +866,7 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
                           AnimatedRotation(
                             turns: _open ? 0 : -0.25,
                             duration: difyTransitionDuration,
-                            child: const DifyIcon(
+                            child: DifyIcon(
                               'vender/solid/general/arrow-down-round-fill',
                               size: 16,
                               color: DifyColors.textQuaternary,
@@ -929,7 +929,7 @@ class _CredentialStatus extends StatelessWidget {
                   DifyColors.textTertiary,
                 )
               : (
-                  const RemixIcon('alert-fill', size: 12, color: DifyColors.textWarningSecondary),
+                  RemixIcon('alert-fill', size: 12, color: DifyColors.textWarningSecondary),
                   _c('modelProvider.selector.creditsExhausted'),
                   DifyColors.textWarning,
                 )
@@ -1071,7 +1071,7 @@ class ModelSelectorModelRow extends StatelessWidget {
                             if (suggested)
                               DifyTooltip(
                                 content: Text(tip),
-                                child: const RemixIcon(
+                                child: RemixIcon(
                                   'shield-star-line',
                                   size: 14,
                                   color: DifyColors.textAccentSecondary,
@@ -1084,7 +1084,7 @@ class ModelSelectorModelRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (selected) const DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textAccent),
+              if (selected) DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textAccent),
             ],
           ),
         ),

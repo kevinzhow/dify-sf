@@ -38,7 +38,7 @@ class _TextToSpeechState extends State<TextToSpeech> with FeatureHover {
       final language = languages.where((l) => l.value == tts['language']).firstOrNull;
       final voice = tts['voice'];
       return FeatureCard(
-        icon: const FeatureIcon(color: DifyColors.utilColorsVioletViolet600, dify: 'vender/features/text-to-audio'),
+        icon: FeatureIcon(color: DifyColors.utilColorsVioletViolet600, dify: 'vender/features/text-to-audio'),
         title: ad('feature.textToSpeech.title'),
         value: enabled,
         disabled: widget.disabled,
@@ -184,7 +184,7 @@ class FeaturePopoverHeader extends StatelessWidget {
               color: hovered || focused ? DifyColors.stateBaseHover : null,
               borderRadius: BorderRadius.circular(DifyRadius.md),
             ),
-            child: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+            child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
           ),
         ),
       ],

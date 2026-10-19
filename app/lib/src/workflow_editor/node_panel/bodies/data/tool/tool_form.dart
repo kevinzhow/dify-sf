@@ -158,7 +158,7 @@ class ToolFormItem extends StatelessWidget {
                         child: Infotip(label: tooltip, width: 200, content: Text(tooltip)),
                       ),
                     if (showSchemaButton) ...[
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(left: 4, right: 2),
                         child: DifyText('·', DifyType.systemXsRegular, color: DifyColors.textQuaternary),
                       ),
@@ -171,8 +171,8 @@ class ToolFormItem extends StatelessWidget {
                           rootName: jsKey(schema['name']),
                           schema: schema['input_schema'],
                         ),
-                        leading: const RemixIcon('braces-line', size: 14, color: DifyColors.textTertiary),
-                        child: const DifyText('JSON Schema', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+                        leading: RemixIcon('braces-line', size: 14, color: DifyColors.textTertiary),
+                        child: DifyText('JSON Schema', DifyType.systemXsRegular, color: DifyColors.textTertiary),
                       ),
                     ],
                   ],
@@ -214,7 +214,7 @@ class _Description extends StatelessWidget {
               p.isLink
                   ? TextSpan(
                       text: p.text,
-                      style: const TextStyle(color: DifyColors.textAccent),
+                      style: TextStyle(color: DifyColors.textAccent),
                       semanticsLabel: p.text,
                       recognizer: TapGestureRecognizer()..onTap = () => open?.call(p.text),
                       mouseCursor: SystemMouseCursors.click,
@@ -666,7 +666,7 @@ class MultiSelectField extends StatelessWidget {
             child: Row(
               children: [
                 if (isLoading)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(right: 4),
                     child: RemixIcon('loader-4-line', size: 14, color: DifyColors.textSecondary),
                   ),
@@ -677,7 +677,7 @@ class MultiSelectField extends StatelessWidget {
                     color: filled ? DifyColors.componentsInputTextFilled : DifyColors.componentsInputTextPlaceholder,
                   ),
                 ),
-                const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
+                RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
               ],
             ),
           ),
@@ -903,7 +903,7 @@ class MixedInputPlaceholder extends StatelessWidget {
                       ),
                     ),
                     if (!disableVariableInsertion) ...[
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: 2),
                         child: DifyKbd('/', textColor: DifyColors.textPlaceholder),
                       ),

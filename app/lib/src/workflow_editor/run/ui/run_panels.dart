@@ -222,7 +222,7 @@ class _ChatRecordState extends State<ChatRecord> {
                       Expanded(
                         child: Text(
                           'TEST CHAT${fmt.formatWorkflowRunIdentifier((history?['finished_at'] as num?)?.toInt())}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             height: 24 / 16,
                             fontWeight: FontWeight.w600,
@@ -236,7 +236,7 @@ class _ChatRecordState extends State<ChatRecord> {
                           widget.onClose?.call();
                           store.historyWorkflowData.value = null;
                         },
-                        builder: (context, h, f) => const SizedBox(
+                        builder: (context, h, f) => SizedBox(
                           width: 24,
                           height: 24,
                           child: Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),

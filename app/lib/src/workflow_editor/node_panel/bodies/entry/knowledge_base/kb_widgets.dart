@@ -118,13 +118,13 @@ class KbCardBody extends StatelessWidget {
       Container(
         width: double.infinity,
         padding: const EdgeInsets.all(12),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DifyColors.componentsPanelBg,
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
         ),
         child: child,
       ),
-      const Positioned(
+      Positioned(
         top: -11,
         left: 14,
         child: DifyIcon('vender/knowledge/arrow-shape', size: 16, color: DifyColors.componentsPanelBg),
@@ -297,7 +297,7 @@ class KbRadio extends StatelessWidget {
             : (disabled ? DifyColors.componentsRadioBorderDisabled : DifyColors.componentsRadioBorder),
         width: checked ? 5 : 1,
       ),
-      boxShadow: const [BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: DifyColors.shadowShadow3)],
+      boxShadow: [BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: DifyColors.shadowShadow3)],
     ),
   );
 }
@@ -368,7 +368,7 @@ class KbNumberField extends StatelessWidget {
         right: 1,
         child: Container(
           width: 24,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(left: BorderSide(color: DifyColors.dividerSubtle)),
           ),
           child: Column(
@@ -537,7 +537,7 @@ class KbTipCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: DifyColors.dividerRegular),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [DifyColors.componentsChatInputAudioBgAlt, DifyColors.componentsChatInputAudioBg],
@@ -576,7 +576,7 @@ class KbTipCard extends StatelessWidget {
                         ? [TextSpan(text: description)]
                         : [
                             TextSpan(text: parts.first),
-                            const TextSpan(
+                            TextSpan(
                               text: 'Vision',
                               style: TextStyle(fontWeight: FontWeight.w600, color: DifyColors.textPrimary),
                             ),
@@ -798,7 +798,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
                   borderRadius: BorderRadius.circular(DifyRadius.md),
                   border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
                 ),
-                child: const RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
+                child: RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
               ),
             ),
           )
@@ -881,7 +881,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
             value: _query,
             onChanged: (v) => setState(() => _query = v),
             placeholder: DifyI18n.tr('common', 'modelProvider.searchModel'),
-            leading: const Padding(
+            leading: Padding(
               padding: EdgeInsets.only(left: 8, right: 4),
               child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
             ),
@@ -913,7 +913,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
                             renderI18nObject(g.provider.label, w.catalog.language),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: DifyColors.textTertiary,
@@ -968,7 +968,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
                 child: ModelName(modelItem: m, language: w.catalog.language, lineThrough: m.deprecated),
               ),
             ),
-            if (selected) const DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textAccent),
+            if (selected) DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textAccent),
           ],
         ),
       ),

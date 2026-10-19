@@ -150,7 +150,7 @@ class GenericTable extends StatelessWidget {
       padding: const EdgeInsets.only(left: 12),
       decoration: last
           ? null
-          : const BoxDecoration(
+          : BoxDecoration(
               border: Border(right: BorderSide(color: DifyColors.dividerRegular)),
             ),
       child: child,
@@ -260,8 +260,8 @@ class _TableRowState extends State<_TableRow> {
       decoration: BoxDecoration(
         color: _hovered ? (widget.hasContent ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
         border: Border(
-          top: const BorderSide(color: DifyColors.dividerRegular),
-          bottom: widget.last ? BorderSide.none : const BorderSide(color: DifyColors.dividerSubtle),
+          top: BorderSide(color: DifyColors.dividerRegular),
+          bottom: widget.last ? BorderSide.none : BorderSide(color: DifyColors.dividerSubtle),
         ),
       ),
       child: Stack(
@@ -280,7 +280,7 @@ class _TableRowState extends State<_TableRow> {
                   child: DifyPressable(
                     onPressed: widget.onDelete,
                     semanticLabel: 'Delete row',
-                    builder: (context, _, _) => const Padding(
+                    builder: (context, _, _) => Padding(
                       padding: EdgeInsets.all(4),
                       child: RemixIcon('delete-bin-line', size: 14, color: DifyColors.textDestructive),
                     ),

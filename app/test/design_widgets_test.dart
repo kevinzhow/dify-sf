@@ -97,7 +97,7 @@ void main() {
         find.descendant(of: find.byType(DifyButtonSurface), matching: find.byType(DecoratedBox)).first,
       );
       final shadows = (box.decoration as BoxDecoration).boxShadow!;
-      expect(shadows.last, const BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid));
+      expect(shadows.last, BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid));
       await t.sendKeyEvent(LogicalKeyboardKey.enter);
       expect(taps, 1);
     });

@@ -116,7 +116,7 @@ class _InstallFormState extends State<InstallForm> {
               children: [
                 AuthHeading(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 32,
                     height: 1.5,
                     fontWeight: FontWeight.w700,
@@ -127,7 +127,7 @@ class _InstallFormState extends State<InstallForm> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     tLogin(context, 'setAdminAccountDesc'),
-                    style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+                    style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
                   ),
                 ),
               ],
@@ -179,12 +179,12 @@ class _InstallFormState extends State<InstallForm> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: AuthInlineLinks(
-                    style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textSecondary),
+                    style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textSecondary),
                     spans: [
                       '${tLogin(context, 'license.tip')} ',
                       AuthSpanLink(
                         tLogin(context, 'license.link'),
-                        style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textAccent),
+                        style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textAccent),
                         url: difyLicenseLink,
                       ),
                     ],

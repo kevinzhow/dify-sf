@@ -556,7 +556,7 @@ class _BadgeChip extends StatelessWidget {
     required this.color,
     this.selected = false,
     this.onTap,
-    this.hoverBorder = DifyColors.stateAccentSolid,
+    this._hoverBorder,
     this.hoverBackground = true,
     this.padding = const EdgeInsets.only(left: 2, right: 3),
   });
@@ -566,7 +566,8 @@ class _BadgeChip extends StatelessWidget {
   final Color color;
   final bool selected;
   final VoidCallback? onTap;
-  final Color hoverBorder;
+  final Color? _hoverBorder;
+  Color get hoverBorder => _hoverBorder ?? DifyColors.stateAccentSolid;
   final bool hoverBackground;
   final EdgeInsets padding;
 
@@ -609,7 +610,7 @@ class CurrentChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prompt = generatorType == PromptGeneratorType.prompt;
-    const color = DifyColors.utilColorsVioletViolet600;
+    final color = DifyColors.utilColorsVioletViolet600;
     return _BadgeChip(
       icon: DifyIcon(
         prompt ? 'vender/line/general/magic-edit' : 'vender/line/general/code-assistant',
@@ -632,7 +633,7 @@ class ErrorMessageChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _BadgeChip(
-    icon: const DifyIcon(
+    icon: DifyIcon(
       'vender/solid/development/variable-02',
       size: 14,
       color: DifyColors.utilColorsOrangeDarkOrangeDark600,
@@ -652,7 +653,7 @@ class LastRunChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _BadgeChip(
-    icon: const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+    icon: DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
     label: 'last_run',
     color: DifyColors.textAccent,
     selected: selected,
@@ -668,7 +669,7 @@ class RequestUrlChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _BadgeChip(
-    icon: const RemixIcon('global-line', size: 14, color: DifyColors.utilColorsVioletViolet600),
+    icon: RemixIcon('global-line', size: 14, color: DifyColors.utilColorsVioletViolet600),
     label: DifyI18n.tr('common', 'promptEditor.requestURL.item.title'),
     color: DifyColors.utilColorsVioletViolet600,
     selected: selected,

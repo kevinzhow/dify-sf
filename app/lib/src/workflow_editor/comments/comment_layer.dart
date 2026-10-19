@@ -36,7 +36,7 @@ class CommentCursor extends StatelessWidget {
         return Positioned(
           left: m.elementX - 12,
           top: m.elementY - 12,
-          child: const IgnorePointer(
+          child: IgnorePointer(
             child: SizedBox.square(
               dimension: 24,
               child: Center(child: DifyIcon('public/other/comment', size: 14, color: DifyColors.textPrimary)),

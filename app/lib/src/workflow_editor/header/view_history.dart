@@ -102,11 +102,11 @@ class _ViewHistoryState extends State<ViewHistory> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const DifyIcon('vender/line/time/clock-play', size: 16, color: DifyColors.componentsButtonSecondaryText),
+          DifyIcon('vender/line/time/clock-play', size: 16, color: DifyColors.componentsButtonSecondaryText),
           const SizedBox(width: 4),
           Text(
             _tr('common.showRunHistory'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 16 / 13,
               fontWeight: FontWeight.w500,
@@ -190,7 +190,7 @@ class _HistoryPanel extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _tr('common.runHistory'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         height: 24 / 16,
                         fontWeight: FontWeight.w600,
@@ -213,7 +213,7 @@ class _HistoryPanel extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 48),
                           child: Column(
                             children: [
-                              const DifyIcon(
+                              DifyIcon(
                                 'vender/line/time/clock-play-slim',
                                 size: 32,
                                 color: DifyColors.textQuaternary,
@@ -222,7 +222,7 @@ class _HistoryPanel extends StatelessWidget {
                               Text(
                                 _tr('common.notRunning'),
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 13, height: 16 / 13, color: DifyColors.textQuaternary),
+                                style: TextStyle(fontSize: 13, height: 16 / 13, color: DifyColors.textQuaternary),
                               ),
                             ],
                           ),
@@ -324,7 +324,7 @@ class _HistoryRow extends StatelessWidget {
                   ),
                   Text(
                     '$author ·${f.formatTimeFromNow(((finishedAt ?? 0) != 0 ? finishedAt! : createdAt) * 1000)}',
-                    style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                    style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
                   ),
                 ],
               ),

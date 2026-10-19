@@ -194,7 +194,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                                     child: Row(
                                       spacing: 4,
                                       children: [
-                                        const DifyIcon(
+                                        DifyIcon(
                                           'vender/line/others/env',
                                           size: 16,
                                           color: DifyColors.utilColorsVioletViolet600,
@@ -217,7 +217,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                                             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                                           ),
                                         ),
-                                        const RemixIcon('lock-2-line', size: 12, color: DifyColors.textTertiary),
+                                        RemixIcon('lock-2-line', size: 12, color: DifyColors.textTertiary),
                                       ],
                                     ),
                                   ),

@@ -396,7 +396,7 @@ class _ClassListState extends State<ClassList> {
                       TextSpan(
                         // The button is a flex box: the space after the title ends its anonymous item and goes.
                         text: _w('$_p.class').toUpperCase(),
-                        children: const [
+                        children: [
                           TextSpan(
                             text: '*',
                             style: TextStyle(color: DifyColors.textDestructive),
@@ -412,7 +412,7 @@ class _ClassListState extends State<ClassList> {
                     AnimatedRotation(
                       turns: _collapsed ? -0.25 : 0,
                       duration: const Duration(milliseconds: 200),
-                      child: const DifyIcon(
+                      child: DifyIcon(
                         'vender/solid/general/arrow-down-round-fill',
                         size: 16,
                         color: DifyColors.textQuaternary,
@@ -441,7 +441,7 @@ class _ClassListState extends State<ClassList> {
               ),
               child: Text(
                 _w('$_p.renameHint'),
-                style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
               ),
             );
           },

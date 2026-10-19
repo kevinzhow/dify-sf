@@ -197,7 +197,7 @@ class FormContentPreview extends StatelessWidget {
         text: formatVariablePath(
           replaceNodeIdsWithNames(c.properties?['dataPath'] ?? '', nodeName),
         ),
-        style: const TextStyle(color: DifyColors.textAccent),
+        style: TextStyle(color: DifyColors.textAccent),
       ),
       _ => TextSpan(text: c.value ?? ''),
     };
@@ -268,7 +268,7 @@ class FormContentPreview extends StatelessWidget {
                   DifyIconButton(
                     label: cm('operation.close'),
                     onPressed: onClose,
-                    icon: const RemixIcon('close-line', size: 20, color: DifyColors.textTertiary),
+                    icon: RemixIcon('close-line', size: 20, color: DifyColors.textTertiary),
                   ),
                 ],
               ),

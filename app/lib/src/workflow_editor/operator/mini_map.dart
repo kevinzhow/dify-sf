@@ -23,7 +23,7 @@ class WorkflowMiniMap extends StatelessWidget {
 
   static const size = Size(102, 72);
   static const nodeColor = Color(0xFFE2E2E2);
-  static final _shadow = [for (final s in DifyShadows.md) s.copyWith(color: DifyColors.shadowShadow5)];
+  static List<BoxShadow> get _shadow => [for (final s in DifyShadows.md) s.copyWith(color: DifyColors.shadowShadow5)];
 
   /// d3-zoom on the map: a drag pans the canvas (React Flow's panHandler), the wheel zooms it around the middle.
   void _drag(PointerMoveEvent e) {
@@ -105,7 +105,7 @@ class _MiniMapPainter extends CustomPainter {
   final CanvasController canvas;
 
   static final _node = Paint()..color = WorkflowMiniMap.nodeColor;
-  static final _mask = Paint()..color = DifyColors.workflowMinimapBg;
+  static Paint get _mask => Paint()..color = DifyColors.workflowMinimapBg;
 
   @override
   void paint(Canvas c, Size size) {

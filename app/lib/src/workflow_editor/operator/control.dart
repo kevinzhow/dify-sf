@@ -237,7 +237,7 @@ class _MoreActionsState extends State<MoreActions> {
           child: Row(
             spacing: 8,
             children: [
-              const RemixIcon('export-line', size: 12, color: DifyColors.textTertiary),
+              RemixIcon('export-line', size: 12, color: DifyColors.textTertiary),
               Text(tw('common.exportImage'), style: heading),
             ],
           ),

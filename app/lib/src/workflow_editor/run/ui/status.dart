@@ -317,7 +317,7 @@ class _StatusPanelState extends State<StatusPanel> {
           TextSpan(text: raw.substring(0, m.start)),
           TextSpan(
             text: m.group(1),
-            style: widget.onOpenTracingTab == null ? null : const TextStyle(color: DifyColors.textAccent),
+            style: widget.onOpenTracingTab == null ? null : TextStyle(color: DifyColors.textAccent),
             recognizer: widget.onOpenTracingTab == null
                 ? null
                 : (TapGestureRecognizer()..onTap = widget.onOpenTracingTab),
@@ -450,7 +450,7 @@ class _StatusPanelState extends State<StatusPanel> {
                   TextSpan(text: widget.error ?? ''),
                   TextSpan(
                     text: _tw('common.learnMore'),
-                    style: const TextStyle(color: DifyColors.textAccent),
+                    style: TextStyle(color: DifyColors.textAccent),
                     recognizer: widget.onOpenUrl == null
                         ? null
                         : (TapGestureRecognizer()

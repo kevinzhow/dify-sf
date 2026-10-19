@@ -129,7 +129,7 @@ class ContentSwitch extends StatelessWidget {
           opacity: disabled ? 0.3 : 1,
           child: RotatedBox(
             quarterTurns: next ? 0 : 2,
-            child: const DifyIcon('vender/line/arrows/chevron-right', size: 14, color: DifyColors.textPrimary),
+            child: DifyIcon('vender/line/arrows/chevron-right', size: 14, color: DifyColors.textPrimary),
           ),
         ),
       );
@@ -145,7 +145,7 @@ class ContentSwitch extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               '${currentIndex! + 1} /$count',
-              style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textPrimary),
+              style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textPrimary),
             ),
           ),
           arrow(true),
@@ -375,13 +375,13 @@ class _WorkflowProcessItemState extends State<WorkflowProcessItem> {
         ? DifyGradients.workflowProcessPausedBg
         : DifyGradients.workflowProcessBg;
     final icon = running
-        ? const Spinning(child: RemixIcon('loader-2-line', size: 14, color: DifyColors.textTertiary))
+        ? Spinning(child: RemixIcon('loader-2-line', size: 14, color: DifyColors.textTertiary))
         : succeeded
-        ? const DifyIcon('vender/solid/general/check-circle', size: 14, color: DifyColors.textSuccess)
+        ? DifyIcon('vender/solid/general/check-circle', size: 14, color: DifyColors.textSuccess)
         : failed
-        ? const RemixIcon('error-warning-fill', size: 14, color: DifyColors.textDestructive)
+        ? RemixIcon('error-warning-fill', size: 14, color: DifyColors.textDestructive)
         : paused
-        ? const RemixIcon('pause-circle-fill', size: 14, color: DifyColors.textWarningSecondary)
+        ? RemixIcon('pause-circle-fill', size: 14, color: DifyColors.textWarningSecondary)
         : null;
     return NegativeMarginX(
       margin: 4,
@@ -395,7 +395,7 @@ class _WorkflowProcessItemState extends State<WorkflowProcessItem> {
           gradient: gradient,
           borderRadius: BorderRadius.circular(DifyRadius.xl),
           border: collapse
-              ? const Border(left: BorderSide(color: DifyColors.componentsPanelBorder, width: 0.25))
+              ? Border(left: BorderSide(color: DifyColors.componentsPanelBorder, width: 0.25))
               : Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
         ),
         child: Column(
@@ -424,7 +424,7 @@ class _WorkflowProcessItemState extends State<WorkflowProcessItem> {
                         padding: const EdgeInsets.only(left: 4),
                         child: RotatedBox(
                           quarterTurns: collapse ? 0 : 1,
-                          child: const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
+                          child: RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
                         ),
                       ),
                     ],
@@ -612,7 +612,7 @@ class _ChatAnswerState extends State<ChatAnswer> {
                 children: [
                   bubbleBox(responseParts, full: true),
                   // `absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg`.
-                  const Positioned(
+                  Positioned(
                     top: -8,
                     left: 24,
                     width: 2,
@@ -717,7 +717,7 @@ class TryToAsk extends StatelessWidget {
         height: 1,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: const [Color(0x00FFFFFF), DifyColors.dividerRegular],
+            colors: [Color(0x00FFFFFF), DifyColors.dividerRegular],
             begin: flip ? Alignment.centerRight : Alignment.centerLeft,
             end: flip ? Alignment.centerLeft : Alignment.centerRight,
           ),
@@ -785,7 +785,7 @@ class FeatureBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String ta(String key) => DifyI18n.tr('app-debug', key);
-    const order = [
+    final order = [
       (
         'moreLikeThis',
         'sparkling-fill',
@@ -861,11 +861,11 @@ class FeatureBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   spacing: 4,
                   children: [
-                    const RemixIcon('apps-2-add-line', size: 14, color: DifyColors.textAccent),
+                    RemixIcon('apps-2-add-line', size: 14, color: DifyColors.textAccent),
                     Flexible(
                       child: DifyText(ta('feature.bar.empty'), DifyType.bodyXsMedium, color: DifyColors.textAccent),
                     ),
-                    const RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
+                    RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
                   ],
                 ),
               ),
@@ -903,7 +903,7 @@ class FeatureBar extends StatelessWidget {
                     size: DifyButtonSize.small,
                     variant: DifyButtonVariant.ghostAccent,
                     onPressed: onFeatureBarClick,
-                    trailing: const RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
+                    trailing: RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
                     child: Text(ta('feature.bar.manage')),
                   ),
               ],
@@ -1024,7 +1024,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
           disabled: widget.readonly || !canSend,
           semanticLabel: _tc('operation.send'),
           onPressed: _send,
-          child: const RemixIcon('send-plane-2-fill', size: 16, color: DifyColors.componentsButtonPrimaryText),
+          child: RemixIcon('send-plane-2-fill', size: 16, color: DifyColors.componentsButtonPrimaryText),
         ),
       ),
     );
@@ -1281,7 +1281,7 @@ class _DebugChatState extends State<DebugChat> {
                 if (h != _footerHeight) setState(() => _footerHeight = h);
               },
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: DifyGradients.chatInputMask,
                   borderRadius: BorderRadius.only(bottomLeft: Radius.circular(DifyRadius.xxl)),
                 ),
@@ -1296,7 +1296,7 @@ class _DebugChatState extends State<DebugChat> {
                         child: Center(
                           child: DifyButton(
                             onPressed: widget.onStopResponding,
-                            leading: const DifyIcon(
+                            leading: DifyIcon(
                               'vender/solid/mediaAndDevices/stop-circle',
                               size: 14,
                               color: DifyColors.componentsButtonSecondaryText,

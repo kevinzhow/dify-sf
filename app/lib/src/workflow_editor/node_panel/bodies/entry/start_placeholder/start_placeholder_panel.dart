@@ -201,7 +201,7 @@ class _StartPlaceholderPanelState extends State<StartPlaceholderPanel> {
             placeholder: placeholder,
             semanticLabel: placeholder,
             focusNode: _focus,
-            leading: const Padding(
+            leading: Padding(
               padding: EdgeInsets.only(left: 8, right: 4),
               child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
             ),
@@ -216,7 +216,7 @@ class _StartPlaceholderPanelState extends State<StartPlaceholderPanel> {
                         setState(() => _search = '');
                         _focus.requestFocus();
                       },
-                      icon: const RemixIcon('close-circle-fill', size: 14, color: DifyColors.textQuaternary),
+                      icon: RemixIcon('close-circle-fill', size: 14, color: DifyColors.textQuaternary),
                     ),
                   ),
           ),
@@ -384,10 +384,10 @@ class AllStartBlocks extends StatelessWidget {
             child: Column(
               spacing: 12,
               children: [
-                const DifyIcon('vender/line/others/search-menu', size: 32, color: DifyColors.textQuaternary),
+                DifyIcon('vender/line/others/search-menu', size: 32, color: DifyColors.textQuaternary),
                 Text(
                   _wf('nodes.startPlaceholder.noTriggersFound'),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
                 ),
                 DifyPressable(
                   semanticLabel: _wf('tabs.requestToCommunity'),
@@ -402,7 +402,7 @@ class AllStartBlocks extends StatelessWidget {
                     ),
                     child: Text(
                       _wf('tabs.requestToCommunity'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textAccent),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textAccent),
                     ),
                   ),
                 ),
@@ -463,13 +463,13 @@ class _ConflictBanner extends StatelessWidget {
           const Color(0x00000000),
         ],
       ),
-      border: const Border(bottom: BorderSide(color: DifyColors.dividerSubtle, width: 0.5)),
+      border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle, width: 0.5)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 2,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(4),
           child: RemixIcon('information-fill', size: 16, color: DifyColors.textAccent),
         ),
@@ -699,7 +699,7 @@ class _TriggerPluginItemState extends State<_TriggerPluginItem> {
                           ),
                           child: Container(
                             padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               border: Border(left: BorderSide(color: DifyColors.dividerSubtle, width: 2)),
                             ),
                             child: Opacity(

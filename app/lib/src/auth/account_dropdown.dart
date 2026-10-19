@@ -66,7 +66,7 @@ class MainNavMenuContent extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(DifyRadius.xl),
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [DifyColors.backgroundSectionBurn, DifyColors.backgroundSection],
@@ -109,7 +109,7 @@ class MainNavMenuContent extends StatelessWidget {
           marginX: 0,
           paddingX: 12,
           onSelect: () => unawaited(onLogout()),
-          leading: const RemixIcon('shut-down-line', size: 16, color: DifyColors.textTertiary),
+          leading: RemixIcon('shut-down-line', size: 16, color: DifyColors.textTertiary),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(

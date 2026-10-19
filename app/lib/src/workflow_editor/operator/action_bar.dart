@@ -7,11 +7,12 @@ import '../../design/widgets/widgets.dart';
 /// The operator's bars (control.tsx, undo-redo.tsx, zoom-in-out.tsx): `rounded-lg border-[0.5px]
 /// border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg`, with [blur] `backdrop-blur-[5px]`.
 class ActionBar extends StatelessWidget {
-  const ActionBar({super.key, required this.child, this.blur = false, this.color = DifyColors.componentsActionbarBg});
+  const ActionBar({super.key, required this.child, this.blur = false, this._color});
 
   final Widget child;
   final bool blur;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.componentsActionbarBg;
 
   @override
   Widget build(BuildContext context) {

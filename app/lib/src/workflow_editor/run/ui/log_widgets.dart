@@ -42,7 +42,7 @@ class _ContainerLogButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: DifyColors.componentsButtonTertiaryBgHover,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
-        boxShadow: focused ? const [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)] : null,
+        boxShadow: focused ? [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)] : null,
       ),
       child: Row(
         spacing: 4,
@@ -51,7 +51,7 @@ class _ContainerLogButton extends StatelessWidget {
           Expanded(
             child: DifyText(label, DifyType.systemSmMedium, color: DifyColors.componentsButtonTertiaryText),
           ),
-          const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
+          RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
         ],
       ),
     ),
@@ -262,7 +262,7 @@ class _TertiaryRowButton extends StatelessWidget {
                 children: [
                   leading,
                   Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-                  const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
+                  RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
                 ],
               ),
             ),
@@ -284,7 +284,7 @@ class RetryLogTrigger extends StatelessWidget {
     final retryDetail = (nodeInfo['retryDetail'] as List?)?.cast<DifyJson>();
     return _TertiaryRowButton(
       label: _tw('nodes.common.retry.retries', {'num': retryDetail?.length}),
-      leading: const Padding(
+      leading: Padding(
         padding: EdgeInsets.only(right: 2),
         child: RemixIcon('restart-fill', size: 16, color: DifyColors.componentsButtonTertiaryText),
       ),
@@ -311,7 +311,7 @@ class AgentLogTrigger extends StatelessWidget {
         decoration: BoxDecoration(
           color: DifyColors.componentsButtonTertiaryBg,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: focused ? const [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)] : null,
+          boxShadow: focused ? [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)] : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -339,7 +339,7 @@ class AgentLogTrigger extends StatelessWidget {
                     color: DifyColors.textTertiary,
                   ),
                   const SizedBox(width: 2),
-                  const RemixIcon('arrow-right-line', size: 14, color: DifyColors.textTertiary),
+                  RemixIcon('arrow-right-line', size: 14, color: DifyColors.textTertiary),
                 ],
               ),
             ),
@@ -374,7 +374,7 @@ class _BackBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const RemixIcon('arrow-left-line', size: 16, color: DifyColors.textAccentSecondary),
+          RemixIcon('arrow-left-line', size: 16, color: DifyColors.textAccentSecondary),
           const SizedBox(width: 4),
           DifyText(_tw('singleRun.back'), DifyType.systemSmMedium, color: DifyColors.textAccentSecondary),
         ],
@@ -425,7 +425,7 @@ class _ContainerResultPanelState extends State<ContainerResultPanel> {
 
   Widget _status(int index, NodeTracingList run) {
     if (run.any((i) => i['status'] == 'failed')) {
-      return const RemixIcon('error-warning-line', size: 16, color: DifyColors.textDestructive);
+      return RemixIcon('error-warning-line', size: 16, color: DifyColors.textDestructive);
     }
     if (run.any((i) => i['status'] == 'running')) {
       return const Spinning(child: RemixIcon('loader-2-line', size: 14, color: Color(0xFF155EEF)));
@@ -440,7 +440,7 @@ class _ContainerResultPanelState extends State<ContainerResultPanel> {
         AnimatedRotation(
           turns: _expanded.contains(index) ? 0.25 : 0,
           duration: const Duration(milliseconds: 200),
-          child: const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
+          child: RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
         ),
       ],
     );
@@ -571,10 +571,10 @@ class NodeStatusIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => switch (status) {
-    'succeeded' => const RemixIcon('checkbox-circle-fill', size: 16, color: DifyColors.textSuccess),
-    'failed' => const RemixIcon('error-warning-line', size: 16, color: DifyColors.textWarning),
-    'stopped' || 'exception' => const RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
-    'running' => const Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+    'succeeded' => RemixIcon('checkbox-circle-fill', size: 16, color: DifyColors.textSuccess),
+    'failed' => RemixIcon('error-warning-line', size: 16, color: DifyColors.textWarning),
+    'stopped' || 'exception' => RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
+    'running' => Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
     _ => const SizedBox.shrink(),
   };
 }
@@ -621,7 +621,7 @@ class _AgentLogItemState extends State<AgentLogItem> {
                 children: [
                   RotatedBox(
                     quarterTurns: _expanded ? 1 : 0,
-                    child: const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textQuaternary),
+                    child: RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textQuaternary),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
@@ -653,7 +653,7 @@ class _AgentLogItemState extends State<AgentLogItem> {
                   if (children.isNotEmpty)
                     _TertiaryRowButton(
                       label: '${children.length} Action Logs',
-                      leading: const Padding(
+                      leading: Padding(
                         padding: EdgeInsets.only(right: 4),
                         child: RemixIcon('list-view', size: 16, color: DifyColors.componentsButtonTertiaryText),
                       ),
@@ -816,7 +816,7 @@ class AgentResultPanel extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(right: 6),
                     child: RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
                   ),

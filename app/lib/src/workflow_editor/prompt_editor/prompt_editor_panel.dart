@@ -196,7 +196,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
           ),
           Text(
             '${w.value.length}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 18 / 12,
               fontWeight: FontWeight.w500,
@@ -270,7 +270,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
           children: [
             _HoverPopover(
               label: label,
-              trigger: const SizedBox(
+              trigger: SizedBox(
                 width: 28,
                 height: 16,
                 child: Center(child: DifyIcon('vender/workflow/jinja', size: 24, color: DifyColors.textQuaternary)),
@@ -284,7 +284,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
                     onTap: () => widget.onOpenUrl?.call('https://jinja.palletsprojects.com/en/2.10.x/'),
                     child: Text(
                       DifyI18n.tr('workflow', 'common.learnMore'),
-                      style: const TextStyle(color: DifyColors.textAccent),
+                      style: TextStyle(color: DifyColors.textAccent),
                     ),
                   ),
                 ],
@@ -389,7 +389,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(9),
         gradient: focus && w.gradientBorder
-            ? const LinearGradient(
+            ? LinearGradient(
                 colors: [DifyColors.componentsInputBorderActivePrompt1, DifyColors.componentsInputBorderActivePrompt2],
               )
             : null,

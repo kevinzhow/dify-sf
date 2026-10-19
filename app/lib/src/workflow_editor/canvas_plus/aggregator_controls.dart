@@ -97,7 +97,7 @@ class AggregatorGroupControl extends StatelessWidget {
                   semanticLabel: DifyI18n.tr('common', 'operation.add'),
                   disabled: store.nodesReadOnly,
                   onPressed: store.nodesReadOnly ? null : popup.toggle,
-                  builder: (context, hovered, focused) => const Center(
+                  builder: (context, hovered, focused) => Center(
                     child: DifyIcon('vender/line/general/plus-02', size: 10, color: DifyColors.textTertiary),
                   ),
                 ),

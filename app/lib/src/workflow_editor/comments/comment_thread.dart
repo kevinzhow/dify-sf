@@ -459,7 +459,7 @@ class _CommentThreadState extends State<CommentThread> {
 
     final header = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: DifyColors.componentsPanelBgBlur,
         border: Border(bottom: BorderSide(color: DifyColors.componentsPanelBorder)),
       ),
@@ -468,7 +468,7 @@ class _CommentThreadState extends State<CommentThread> {
           Expanded(
             child: Text(
               tw('comments.panelTitle').toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 height: 24 / 16,
                 fontWeight: FontWeight.w600,
@@ -572,7 +572,7 @@ class _CommentThreadState extends State<CommentThread> {
                       if (_canReply)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             border: Border(top: BorderSide(color: DifyColors.componentsPanelBorder)),
                           ),
                           child: Row(
@@ -612,7 +612,7 @@ class _CommentThreadState extends State<CommentThread> {
                         child: Center(
                           child: Text(
                             tw('comments.loading'),
-                            style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                            style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
                           ),
                         ),
                       ),
@@ -721,7 +721,7 @@ class _MenuButton extends StatelessWidget {
       decoration: BoxDecoration(color: hovered ? DifyColors.stateBaseHover : null, borderRadius: radius),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+        style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
       ),
     ),
   );
@@ -764,7 +764,7 @@ class _HeaderButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: on ? (destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 1)] : null,
+          boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 1)] : null,
         ),
         child: IconTheme.merge(
           data: IconThemeData(color: color),

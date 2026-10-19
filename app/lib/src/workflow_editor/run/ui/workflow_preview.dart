@@ -142,7 +142,7 @@ class RunLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ColoredBox(
     color: color ?? DifyColors.componentsPanelBg,
-    child: const Center(
+    child: Center(
       child: Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
     ),
   );
@@ -442,7 +442,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
         );
       case _Tab.tracing:
         final tracing = tracingOf(data);
-        if (tracing.isEmpty) return const RunLoading(color: DifyColors.backgroundSectionBurn);
+        if (tracing.isEmpty) return RunLoading(color: DifyColors.backgroundSectionBurn);
         return TracingPanel(list: tracing, background: DifyColors.backgroundSectionBurn, scrollable: true);
     }
   }
@@ -482,7 +482,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
                         Expanded(
                           child: Text(
                             'Test Run${fmt.formatWorkflowRunIdentifier((result?['finished_at'] as num?)?.toInt(), (result?['status'] as String?) ?? 'Running')}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               height: 24 / 16,
                               fontWeight: FontWeight.w600,
@@ -493,7 +493,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
                         DifyPressable(
                           semanticLabel: DifyI18n.tr('common', 'operation.close'),
                           onPressed: _close,
-                          builder: (context, h, f) => const Padding(
+                          builder: (context, h, f) => Padding(
                             padding: EdgeInsets.all(4),
                             child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                           ),

@@ -59,10 +59,11 @@ class MetadataShape {
 
 /// MetadataIcon: `RiTextSnippet` for string / select, `RiHashtag` for number, `RiTimeLine` for time.
 class MetadataIcon extends StatelessWidget {
-  const MetadataIcon({super.key, this.type, this.size = 14, this.color = DifyColors.textTertiary});
+  const MetadataIcon({super.key, this.type, this.size = 14, this._color});
   final String? type;
   final double size;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textTertiary;
 
   @override
   Widget build(BuildContext context) => switch (type) {
@@ -121,7 +122,7 @@ class _OptionRow extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
       ),
     ),
   );
@@ -207,7 +208,7 @@ class MetadataFilterSelector extends StatelessWidget {
                         SizedBox(
                           width: 16,
                           child: o.key == value
-                              ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
+                              ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
                               : null,
                         ),
                         const SizedBox(width: 4),
@@ -425,7 +426,7 @@ class MetadataPanel extends StatelessWidget {
               DifyIconButton(
                 label: _c('operation.close'),
                 size: DifyIconButtonSize.lg,
-                icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                 onPressed: onCancel,
               ),
             ],
@@ -495,7 +496,7 @@ class _AddConditionState extends State<AddCondition> {
                     value: _search,
                     placeholder: label,
                     semanticLabel: label,
-                    leading: const RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
+                    leading: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
                     onChanged: (v) => setLocal(() => _search = v),
                   ),
                 ),
@@ -578,7 +579,7 @@ class ConditionList extends StatelessWidget {
                 right: 4,
                 width: 10,
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
                       left: BorderSide(color: DifyColors.dividerDeep),
                       top: BorderSide(color: DifyColors.dividerDeep),
@@ -608,14 +609,14 @@ class ConditionList extends StatelessWidget {
                       children: [
                         Text(
                           op.toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: DifyColors.textAccentSecondary,
                           ),
                         ),
                         const SizedBox(width: 2),
-                        const RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),
+                        RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),
                       ],
                     ),
                   ),
@@ -765,7 +766,7 @@ class _ConditionItemState extends State<ConditionItem> {
                 ),
                 if (editor != null)
                   Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
                     ),
                     child: editor,
@@ -1056,7 +1057,7 @@ class ConditionVariableSelector extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    const DifyIcon(
+                    DifyIcon(
                       'vender/solid/development/variable-02',
                       size: 16,
                       color: DifyColors.componentsInputTextPlaceholder,
@@ -1122,7 +1123,7 @@ class ConditionCommonVariableSelector extends StatelessWidget {
           height: 24,
           child: Row(
             children: [
-              const DifyIcon('vender/solid/development/variable-02', size: 16, color: DifyColors.textAccent),
+              DifyIcon('vender/solid/development/variable-02', size: 16, color: DifyColors.textAccent),
               const SizedBox(width: 4),
               Expanded(
                 child: DifyText(
@@ -1158,7 +1159,7 @@ class ConditionCommonVariableSelector extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                      DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                       const SizedBox(width: 4),
                       Expanded(child: DifyText(v.value, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
                       DifyText(v.type, DifyType.systemXsRegular, color: DifyColors.textTertiary),
@@ -1227,7 +1228,7 @@ class ConditionDate extends StatelessWidget {
               DifyIconButton(
                 label: _c('operation.clear'),
                 size: DifyIconButtonSize.xs,
-                icon: const RemixIcon('close-circle-fill', size: 16, color: DifyColors.textQuaternary),
+                icon: RemixIcon('close-circle-fill', size: 16, color: DifyColors.textQuaternary),
                 onPressed: () => onChange(null),
               ),
           ],

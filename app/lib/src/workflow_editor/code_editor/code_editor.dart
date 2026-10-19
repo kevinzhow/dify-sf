@@ -158,7 +158,7 @@ class _DifyCodeEditorState extends State<DifyCodeEditor> {
             left: widget.noWrapper ? 36 : 28,
             child: IgnorePointer(
               child: DefaultTextStyle.merge(
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: codeEditorLineHeight / 13,
                   leadingDistribution: TextLeadingDistribution.even,
@@ -395,7 +395,7 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
         return Positioned.fill(
           child: Container(
             padding: const EdgeInsets.only(bottom: 16),
-            decoration: const BoxDecoration(color: DifyColors.componentsPanelBg, boxShadow: shadow),
+            decoration: BoxDecoration(color: DifyColors.componentsPanelBg, boxShadow: shadow),
             child: expanded(null),
           ),
         );

@@ -314,7 +314,7 @@ class _NoteFontSizeSelectorState extends State<NoteFontSizeSelector> {
                                 ),
                               ),
                               if (size == key)
-                                const DifyIcon(
+                                DifyIcon(
                                   'vender/line/general/check',
                                   size: 16,
                                   color: DifyColors.textAccent,

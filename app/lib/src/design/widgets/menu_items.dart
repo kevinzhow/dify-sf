@@ -99,7 +99,7 @@ class _MenuRowState extends State<_MenuRow> {
     );
     if (widget.destructive) {
       row = DefaultTextStyle.merge(
-        style: const TextStyle(color: DifyColors.textDestructive),
+        style: TextStyle(color: DifyColors.textDestructive),
         child: row,
       );
     }
@@ -212,7 +212,7 @@ class DifyMenuItem extends StatelessWidget {
 
 /// The checked indicator of checkbox and radio items (`floatingItemIndicatorClassName`: `ms-auto flex shrink-0
 /// items-center text-text-accent`, `i-ri-check-line` 16 px).
-const _indicator = RemixIcon('check-line', size: 16, color: DifyColors.textAccent);
+RemixIcon get _indicator => RemixIcon('check-line', size: 16, color: DifyColors.textAccent);
 
 /// A checkbox item (`DropdownMenuCheckboxItem` with its indicator). Base UI keeps the menu open on click.
 class DifyMenuCheckboxItem extends StatelessWidget {

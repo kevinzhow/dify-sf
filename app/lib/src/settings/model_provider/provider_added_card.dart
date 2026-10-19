@@ -51,8 +51,8 @@ class ProviderIcon extends StatelessWidget {
       return SvgPicture.asset(
         'assets/dify_icons/vender/other/openai.svg',
         height: 24,
-        theme: const SvgTheme(currentColor: DifyColors.textInvertedDimmed),
-        colorFilter: const ColorFilter.mode(DifyColors.textInvertedDimmed, BlendMode.srcIn),
+        theme: SvgTheme(currentColor: DifyColors.textInvertedDimmed),
+        colorFilter: ColorFilter.mode(DifyColors.textInvertedDimmed, BlendMode.srcIn),
       );
     }
     final url = provider.iconSmall == null ? '' : renderI18nObject(provider.iconSmall, language);
@@ -71,7 +71,7 @@ class ProviderIcon extends StatelessWidget {
               borderRadius: BorderRadius.circular(DifyRadius.md),
               border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
             ),
-            child: const DifyIcon('vender/other/group', size: 16, color: DifyColors.textTertiary),
+            child: DifyIcon('vender/other/group', size: 16, color: DifyColors.textTertiary),
           ),
         const SizedBox(width: 8),
         Flexible(
@@ -231,7 +231,7 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
           if (showCollapsed)
             Container(
               padding: const EdgeInsets.fromLTRB(8, 6, 11, 6),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
               ),
               child: Row(
@@ -256,10 +256,9 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
                               showModelsLabel,
                               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                             ),
-                            if (!loading)
-                              const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
+                            if (!loading) RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
                             if (loading)
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.only(left: 2),
                                 child: DifySpinner(size: 12, color: DifyColors.textTertiary),
                               ),
@@ -274,7 +273,7 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(right: 4),
                             child: RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
                           ),
@@ -356,7 +355,7 @@ class CredentialPanel extends StatelessWidget {
                   ),
                 ),
                 if (variant == CardVariant.creditsFallback)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(left: 4),
                     child: DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
                   ),
@@ -380,7 +379,7 @@ class CredentialPanel extends StatelessWidget {
                 ),
                 if (variant == CardVariant.apiFallback) ...[
                   const Spacer(),
-                  const DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
+                  DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
                 ],
               ],
             ),
@@ -604,7 +603,7 @@ class _ModelAuthDropdownState extends State<ModelAuthDropdown> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           spacing: 8,
                           children: [
-                            const DifySpinner(size: 16, color: DifyColors.textTertiary),
+                            DifySpinner(size: 16, color: DifyColors.textTertiary),
                             Text(
                               _t('loading'),
                               style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
@@ -779,7 +778,7 @@ class ApiKeySection extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                gradient: const LinearGradient(colors: [DifyColors.stateBaseHover, Color(0x00FFFFFF)]),
+                gradient: LinearGradient(colors: [DifyColors.stateBaseHover, Color(0x00FFFFFF)]),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +801,7 @@ class ApiKeySection extends StatelessWidget {
       );
     }
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
       ),
       child: Column(

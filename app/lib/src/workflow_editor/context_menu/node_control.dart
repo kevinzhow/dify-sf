@@ -55,7 +55,7 @@ class _NodeActionsDropdownState extends State<NodeActionsDropdown> {
           borderRadius: BorderRadius.circular(DifyRadius.md),
           border: focused ? Border.all(color: DifyColors.componentsInputBorderHover) : null,
         ),
-        child: const RemixIcon('more-fill', size: 16, color: DifyColors.textTertiary),
+        child: RemixIcon('more-fill', size: 16, color: DifyColors.textTertiary),
       ),
     ),
     children: nodeActionsMenuItems(widget.actions, widget.node, showHelpLink: widget.showHelpLink),
@@ -124,10 +124,10 @@ class NodeControl extends StatelessWidget {
                     borderRadius: BorderRadius.circular(DifyRadius.md),
                   ),
                   child: running
-                      ? const DifyIcon('vender/line/mediaAndDevices/stop', size: 12, color: DifyColors.textTertiary)
+                      ? DifyIcon('vender/line/mediaAndDevices/stop', size: 12, color: DifyColors.textTertiary)
                       : DifyTooltip(
                           content: Text(runLabel),
-                          child: const RemixIcon('play-large-line', size: 12, color: DifyColors.textTertiary),
+                          child: RemixIcon('play-large-line', size: 12, color: DifyColors.textTertiary),
                         ),
                 ),
               ),

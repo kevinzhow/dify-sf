@@ -116,7 +116,7 @@ class _ZoomInOutState extends State<ZoomInOut> {
   Widget _menu(WorkflowStore store, bool readOnly, double zoom) {
     final canvas = widget.canvas;
     const blank = SizedBox.square(dimension: 16);
-    const check = RemixIcon('check-line', color: DifyColors.textAccent);
+    final check = RemixIcon('check-line', color: DifyColors.textAccent);
     Widget item(String text, VoidCallback onSelect, {Widget leading = blank, String? kbd, bool disabled = false}) =>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4), // the group's p-1
@@ -185,7 +185,7 @@ class _ZoomInOutState extends State<ZoomInOut> {
         item(
           tw('operator.zoomToFit'),
           () => _zoom(canvas.fitView),
-          leading: const RemixIcon('fullscreen-line', color: DifyColors.textTertiary),
+          leading: RemixIcon('fullscreen-line', color: DifyColors.textTertiary),
           kbd: 'workflow.zoom-to-fit',
         ),
         const SizedBox(height: 4),

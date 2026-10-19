@@ -322,12 +322,12 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                         label: runLabel,
                         onPressed: () => a.runStep(node.id),
                         icon: running
-                            ? const DifyIcon(
+                            ? DifyIcon(
                                 'vender/line/mediaAndDevices/stop',
                                 size: 16,
                                 color: DifyColors.textTertiary,
                               )
-                            : const RemixIcon('play-large-line', size: 16, color: DifyColors.textTertiary),
+                            : RemixIcon('play-large-line', size: 16, color: DifyColors.textTertiary),
                       ),
                     ),
                   ),
@@ -345,7 +345,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                 _HeaderButton(
                   label: DifyI18n.tr('common', 'operation.close'),
                   onPressed: _close,
-                  icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                  icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                 ),
               ],
             ),
@@ -581,7 +581,7 @@ class BrokenReferences extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 1),
             child: RemixIcon('link-unlink-m', size: 16, color: DifyColors.textDestructive),
           ),

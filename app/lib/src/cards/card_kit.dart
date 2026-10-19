@@ -66,13 +66,14 @@ class DifyText extends StatelessWidget {
     this.text,
     this.style, {
     super.key,
-    this.color = DifyColors.textPrimary,
+    this._color,
     this.align,
     this.maxLines = 1,
   });
   final String text;
   final DifyTextStyle style;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textPrimary;
   final TextAlign? align;
   final int? maxLines;
 

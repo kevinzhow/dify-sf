@@ -117,7 +117,7 @@ class _SystemModelSelectorState extends State<SystemModelSelector> {
       paddingX: widget.compact ? 6 : 12,
       onPressed: () => unawaited(_open(env)),
       leading: widget.isLoading
-          ? const DifySpinner(size: 14, color: DifyColors.textTertiary)
+          ? DifySpinner(size: 14, color: DifyColors.textTertiary)
           : const RemixIcon('brain-2-line', size: 14),
       child: Text(
         _t('modelProvider.systemModelSettings'),
@@ -228,7 +228,7 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                               ? Semantics(
                                   container: true,
                                   label: _t('loading'),
-                                  child: const SizedBox(
+                                  child: SizedBox(
                                     height: 192,
                                     child: Center(child: DifySpinner(size: 20, color: DifyColors.textTertiary)),
                                   ),

@@ -422,7 +422,7 @@ class _DifyToastHostState extends State<DifyToastHost> {
     final frontHeight = active.firstOrNull?.height;
     final bottom = active.isEmpty ? 0.0 : y + (active.length - 1) * _gap;
     return DefaultTextStyle.merge(
-      style: const TextStyle(color: DifyColors.textPrimary, decoration: TextDecoration.none),
+      style: TextStyle(color: DifyColors.textPrimary, decoration: TextDecoration.none),
       child: Stack(
         children: [
           Positioned(
@@ -608,7 +608,7 @@ class _ToastFrameState extends State<_ToastFrame> with SingleTickerProviderState
 }
 
 // `shadow-lg shadow-shadow-shadow-5`: the colour utility replaces shadow-lg's colours.
-final _shadow = [for (final s in DifyShadows.lg) s.copyWith(color: DifyColors.shadowShadow5)];
+List<BoxShadow> get _shadow => [for (final s in DifyShadows.lg) s.copyWith(color: DifyColors.shadowShadow5)];
 
 /// The toast's card (ToastCard): the blurred panel with the type's halo, its icon, title, description, action and
 /// close button; [onHeight] reports the height it needs.
@@ -726,7 +726,7 @@ class _ToastCard extends StatelessWidget {
                           child: DifyIconButton(
                             label: 'Close notification',
                             size: DifyIconButtonSize.sm,
-                            icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                            icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                             onPressed: onClose,
                           ),
                         ),

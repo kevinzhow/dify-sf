@@ -466,7 +466,7 @@ class _DefaultTriggerState extends State<_DefaultTrigger> {
               ),
             ),
             if (!w.readonly)
-              const DifyIcon('vender/line/arrows/chevron-selector-vertical', size: 12, color: DifyColors.textSecondary),
+              DifyIcon('vender/line/arrows/chevron-selector-vertical', size: 12, color: DifyColors.textSecondary),
           ],
         ),
       ),
@@ -514,7 +514,7 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 16 / 13,
                     fontWeight: FontWeight.w500,
@@ -522,7 +522,7 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
                   ),
                 ),
               ),
-              if (widget.checked) const DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textPrimary),
+              if (widget.checked) DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textPrimary),
             ],
           ),
         ),

@@ -405,7 +405,7 @@ class _LinkEditorState extends State<LinkEditor> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const RemixIcon('external-link-line', size: 12, color: DifyColors.textTertiary),
+                          RemixIcon('external-link-line', size: 12, color: DifyColors.textTertiary),
                           const SizedBox(width: 4),
                           Text(DifyI18n.tr('workflow', 'nodes.note.editor.openLink'), style: _small),
                           const SizedBox(width: 4),

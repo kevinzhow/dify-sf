@@ -95,7 +95,7 @@ class ConditionOperator extends StatelessWidget {
                 closeOnClick: true,
                 child: Text(
                   labelOf(o),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
                 ),
               ),
           ],
@@ -146,7 +146,7 @@ class SubVariablePicker extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                      DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                       const SizedBox(width: 2),
                       Flexible(child: DifyText(selected, DifyType.systemXsMedium, color: DifyColors.textAccent)),
                     ],
@@ -176,7 +176,7 @@ class SubVariablePicker extends StatelessWidget {
         for (final o in subVariables)
           DifyMenuItem(
             onSelect: () => onChange(o),
-            leading: const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+            leading: DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
             child: DifyText(o, DifyType.systemSmMedium, color: DifyColors.textSecondary),
           ),
       ],

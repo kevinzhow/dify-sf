@@ -66,7 +66,7 @@ class _FollowUpState extends State<FollowUp> with FeatureHover {
       final enabled = suggested['enabled'] == true;
       final modelName = featureMap(suggested, 'model')['name'];
       return FeatureCard(
-        icon: const FeatureIcon(
+        icon: FeatureIcon(
           color: DifyColors.utilColorsBlueLightBlueLight500,
           dify: 'vender/features/virtual-assistant',
         ),
@@ -215,7 +215,7 @@ class _FollowUpSettingModalState extends State<FollowUpSettingModal> {
                 padding: const EdgeInsets.only(right: 32),
                 child: Text(
                   ad('${m}title'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     height: 28 / 20,
                     fontWeight: FontWeight.w600,

@@ -148,7 +148,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
                             child: DifyIconButton(
                               label: DifyI18n.tr('common', 'operation.close'),
                               size: DifyIconButtonSize.lg,
-                              icon: const RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
+                              icon: RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
                               onPressed: _close,
                             ),
                           ),

@@ -29,7 +29,7 @@ class WorkflowConfirm extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: cancel,
-                child: const ColoredBox(color: DifyColors.backgroundOverlay),
+                child: ColoredBox(color: DifyColors.backgroundOverlay),
               ),
             ),
             Center(

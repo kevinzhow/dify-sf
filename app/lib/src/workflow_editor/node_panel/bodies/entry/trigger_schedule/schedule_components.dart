@@ -62,7 +62,7 @@ class ModeToggle extends StatelessWidget {
             ),
             Text(
               text,
-              style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary, letterSpacing: 0),
+              style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary, letterSpacing: 0),
             ),
           ],
         ),
@@ -213,11 +213,11 @@ class OnMinuteSelector extends StatelessWidget {
               child: Center(
                 child: Text(
                   '$value',
-                  style: const TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled, letterSpacing: 0),
+                  style: TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled, letterSpacing: 0),
                 ),
               ),
             ),
-            const SizedBox(width: 1, height: 32, child: ColoredBox(color: DifyColors.componentsPanelBg)),
+            SizedBox(width: 1, height: 32, child: ColoredBox(color: DifyColors.componentsPanelBg)),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 15, right: 12),

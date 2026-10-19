@@ -505,7 +505,7 @@ class StatusCodeField extends StatelessWidget {
         right: 1,
         width: 24,
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(left: BorderSide(color: DifyColors.dividerSubtle)),
           ),
           child: Column(

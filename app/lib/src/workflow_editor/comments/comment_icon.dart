@@ -53,7 +53,7 @@ class UserAvatarList extends StatelessWidget {
   final String currentUserId;
   final int maxVisible;
 
-  static const _ring = BoxDecoration(
+  static BoxDecoration get _ring => BoxDecoration(
     shape: BoxShape.circle,
     boxShadow: [BoxShadow(color: DifyColors.componentsPanelBg, spreadRadius: 2)],
   );

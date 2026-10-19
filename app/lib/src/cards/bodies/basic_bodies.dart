@@ -54,7 +54,7 @@ class StartBody extends NodeBody {
             ParamRow(
               child: Row(
                 children: [
-                  const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                  DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                   const SizedBox(width: 4),
                   Expanded(
                     child: DifyText(
@@ -65,7 +65,7 @@ class StartBody extends NodeBody {
                   ),
                   const SizedBox(width: 4),
                   if (v.entries['required'] case VBool(value: true)) ...[
-                    const DifyText('required', DifyType.system2xsRegularUppercase, color: DifyColors.textTertiary),
+                    DifyText('required', DifyType.system2xsRegularUppercase, color: DifyColors.textTertiary),
                     const SizedBox(width: 4),
                   ],
                   RemixIcon(typeIcon(_str(v.entries['type'])), size: 12, color: DifyColors.textTertiary),
@@ -158,7 +158,7 @@ class IfElseBody extends NodeBody {
       fontWeight: FontWeight.w600,
       color: DifyColors.textTertiary,
     );
-    const keyword = TextStyle(
+    final keyword = TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       height: 16 / 12,
@@ -188,7 +188,7 @@ class IfElseBody extends NodeBody {
               _ConditionLine(cond: cond, ctx: ctx, height: _lineHeight(cond)),
             ],
           ],
-          const SizedBox(
+          SizedBox(
             height: 24,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 4),
@@ -231,7 +231,7 @@ class _ConditionLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final ref = VarRef.of(cond.entries['variable_selector'], ctx);
     if (ref == null) {
-      return const ParamRow(
+      return ParamRow(
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
@@ -269,7 +269,7 @@ class _ConditionLine extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               _operators[op] ?? op,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 height: 16 / 12,
@@ -285,7 +285,7 @@ class _ConditionLine extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, height: 2, color: DifyColors.textSecondary),
+                  style: TextStyle(fontSize: 12, height: 2, color: DifyColors.textSecondary),
                 ),
               ),
             ),

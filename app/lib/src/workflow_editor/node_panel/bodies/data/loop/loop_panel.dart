@@ -106,7 +106,7 @@ class LoopPanel extends StatelessWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: c.handleAddLoopVariable,
-                    child: const SizedBox.square(
+                    child: SizedBox.square(
                       dimension: 20,
                       child: Center(child: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary)),
                     ),

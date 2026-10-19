@@ -32,7 +32,7 @@ class _FieldTitleText extends StatelessWidget {
         text: difyTransform(style, title),
         children: [
           if (required)
-            const TextSpan(
+            TextSpan(
               text: ' *',
               style: TextStyle(color: DifyColors.textDestructive),
             ),
@@ -64,7 +64,7 @@ class _WarningDot extends StatelessWidget {
           key: const Key('warning-dot'),
           width: 5,
           height: 5,
-          decoration: const BoxDecoration(color: DifyColors.textWarningSecondary, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: DifyColors.textWarningSecondary, shape: BoxShape.circle),
         ),
       ),
     ],
@@ -133,7 +133,7 @@ class _FieldState extends State<Field> {
             AnimatedRotation(
               turns: _fold ? -0.25 : 0,
               duration: difyTransitionDuration,
-              child: const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+              child: RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
             ),
         ],
       ),
@@ -580,7 +580,7 @@ class PanelBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: EdgeInsets.symmetric(horizontal: group ? 16 : 0, vertical: 8),
     decoration: withBorderBottom
-        ? const BoxDecoration(
+        ? BoxDecoration(
             border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
           )
         : null,
@@ -689,7 +689,7 @@ class VarItem extends StatelessWidget {
             Container(
               margin: const EdgeInsets.only(left: 8),
               padding: const EdgeInsets.only(left: 8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(left: BorderSide(color: DifyColors.utilColorsGrayGray200)),
               ),
               child: Column(
@@ -837,10 +837,11 @@ class _OptionCardState extends State<OptionCard> {
 
 /// InputVarTypeIcon (input-var-type-icon.tsx): the Remix icon of a Start input type.
 class InputVarTypeIcon extends StatelessWidget {
-  const InputVarTypeIcon({super.key, required this.type, this.size = 14, this.color = DifyColors.textTertiary});
+  const InputVarTypeIcon({super.key, required this.type, this.size = 14, this._color});
   final String type;
   final double size;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textTertiary;
 
   static String iconOf(String type) => switch (type) {
     'paragraph' => 'align-left',
@@ -910,7 +911,7 @@ class HelpLink extends StatelessWidget {
         child: DifyIconButton(
           label: label,
           onPressed: () => onOpen(link!),
-          icon: const RemixIcon('book-open-line', size: 16, color: DifyColors.utilColorsGrayGray500),
+          icon: RemixIcon('book-open-line', size: 16, color: DifyColors.utilColorsGrayGray500),
         ),
       ),
     );

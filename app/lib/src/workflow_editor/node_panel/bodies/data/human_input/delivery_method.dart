@@ -242,7 +242,7 @@ class _MethodSelectorState extends State<MethodSelector> {
                           border: Border.all(color: DifyColors.dividerRegular),
                           borderRadius: BorderRadius.circular(DifyRadius.sm),
                         ),
-                        child: const RemixIcon('discord-fill', size: 20, color: DifyColors.textPrimaryOnSurface),
+                        child: RemixIcon('discord-fill', size: 20, color: DifyColors.textPrimaryOnSurface),
                       ),
                     ),
                     dim: true,
@@ -266,7 +266,7 @@ class _MethodSelectorState extends State<MethodSelector> {
                         border: Border.all(color: DifyColors.dividerRegular),
                         borderRadius: BorderRadius.circular(DifyRadius.sm),
                       ),
-                      child: const RemixIcon('lightbulb-flash-fill', size: 16, color: DifyColors.textPrimaryOnSurface),
+                      child: RemixIcon('lightbulb-flash-fill', size: 16, color: DifyColors.textPrimaryOnSurface),
                     ),
                     Expanded(
                       child: DefaultTextStyle.merge(
@@ -280,7 +280,7 @@ class _MethodSelectorState extends State<MethodSelector> {
                                 children: transSpans(hi('deliveryMethod.contactTip2'), {
                                   'email': (inner) => TextSpan(
                                     text: inner.isEmpty ? 'support@dify.ai' : inner,
-                                    style: const TextStyle(color: DifyColors.textAccentLightModeOnly),
+                                    style: TextStyle(color: DifyColors.textAccentLightModeOnly),
                                   ),
                                 }),
                               ),
@@ -565,7 +565,7 @@ Future<void> showUpgradeModal(BuildContext context) {
               color: DifyColors.componentsIconBgBlueSolid,
               borderRadius: BorderRadius.circular(DifyRadius.lg),
             ),
-            child: const RemixIcon('mail-send-fill', size: 24, color: DifyColors.textPrimaryOnSurface),
+            child: RemixIcon('mail-send-fill', size: 24, color: DifyColors.textPrimaryOnSurface),
           ),
           const SizedBox(height: 16),
           DifyText(hi('deliveryMethod.upgradeTip'), DifyType.title2xlSemiBold, maxLines: null),

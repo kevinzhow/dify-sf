@@ -299,13 +299,13 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
                 builder: (context, hovered, focused) => Row(
                   children: [
                     if (selected)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(right: 8),
                         child: RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
                       ),
                     Padding(
                       padding: EdgeInsets.only(left: selected ? 0 : 24, right: 6),
-                      child: const RemixIcon('webhook-line', size: 14, color: DifyColors.textSecondary),
+                      child: RemixIcon('webhook-line', size: 14, color: DifyColors.textSecondary),
                     ),
                     Flexible(
                       child: DifyText('${s['name'] ?? ''}', DifyType.systemMdRegular, color: DifyColors.textSecondary),

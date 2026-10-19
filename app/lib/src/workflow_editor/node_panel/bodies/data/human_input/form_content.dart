@@ -410,13 +410,13 @@ class _InputFieldChipState extends State<InputFieldChip> {
                     label: cm('operation.edit'),
                     size: DifyIconButtonSize.sm,
                     onPressed: _edit,
-                    icon: const RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
+                    icon: RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
                   ),
                   DifyIconButton(
                     label: cm('operation.remove'),
                     size: DifyIconButtonSize.sm,
                     onPressed: w.onRemove,
-                    icon: const RemixIcon('delete-bin-line', size: 16, color: DifyColors.textTertiary),
+                    icon: RemixIcon('delete-bin-line', size: 16, color: DifyColors.textTertiary),
                   ),
                 ] else
                   const SizedBox(width: 20),
@@ -430,7 +430,7 @@ class _InputFieldChipState extends State<InputFieldChip> {
             left: 10 + 1.5,
             child: Stack(
               children: [
-                const Positioned(
+                Positioned(
                   left: 0,
                   right: 0,
                   bottom: 4,
@@ -443,7 +443,7 @@ class _InputFieldChipState extends State<InputFieldChip> {
                     mainAxisSize: MainAxisSize.min,
                     spacing: 2,
                     children: [
-                      const DifyIcon(
+                      DifyIcon(
                         'vender/workflow/variable-x',
                         size: 12,
                         color: DifyColors.textAccentLightModeOnly,
@@ -839,7 +839,7 @@ class TypeSwitch extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 4,
           children: [
-            const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textTertiary),
+            DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textTertiary),
             Flexible(child: DifyText(text, DifyType.systemXsMedium, color: DifyColors.textTertiary, maxLines: 1)),
           ],
         ),
@@ -872,8 +872,8 @@ class TagLabel extends StatelessWidget {
         spacing: 4,
         children: [
           isVariable
-              ? const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent)
-              : const RemixIcon('edit-line', size: 14, color: DifyColors.textAccent),
+              ? DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent)
+              : RemixIcon('edit-line', size: 14, color: DifyColors.textAccent),
           Flexible(child: DifyText(text, DifyType.systemXsMedium, color: DifyColors.textAccent, maxLines: 1)),
         ],
       ),

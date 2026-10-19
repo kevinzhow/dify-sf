@@ -68,7 +68,7 @@ class KeyValueTable extends StatelessWidget {
         padding: padding,
         alignment: Alignment.centerLeft,
         decoration: border
-            ? const BoxDecoration(
+            ? BoxDecoration(
                 border: Border(right: BorderSide(color: DifyColors.dividerRegular)),
               )
             : null,
@@ -178,10 +178,10 @@ class KeyValueRow extends StatelessWidget {
             },
             onChange: (v, base) => onChange(item.copyWith(value: v), base),
           );
-    const line = BoxDecoration(color: DifyColors.dividerRegular);
+    final line = BoxDecoration(color: DifyColors.dividerRegular);
     return Container(
       constraints: const BoxConstraints(minHeight: 28),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(top: BorderSide(color: DifyColors.dividerRegular)),
       ),
       // The column lines are drawn over the row so each cell keeps its own height (no intrinsic layout).
@@ -230,7 +230,7 @@ class KeyValueRow extends StatelessWidget {
             top: 0,
             bottom: 0,
             width: 1,
-            child: const DecoratedBox(decoration: line),
+            child: DecoratedBox(decoration: line),
           ),
           if (isSupportFile)
             Positioned(
@@ -238,7 +238,7 @@ class KeyValueRow extends StatelessWidget {
               top: 0,
               bottom: 0,
               width: 1,
-              child: const DecoratedBox(decoration: line),
+              child: DecoratedBox(decoration: line),
             ),
         ],
       ),
@@ -272,7 +272,7 @@ class _TypeSelect extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: DifyText(value, DifyType.systemSmRegular, color: DifyColors.textPrimary)),
-              if (!readonly) const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
+              if (!readonly) RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
             ],
           ),
         ),
@@ -364,7 +364,7 @@ class _KeyValueInputState extends State<KeyValueInput> {
           padding: const EdgeInsets.only(left: 2, top: 1),
           child: Text(
             w.placeholder,
-            style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textQuaternary),
+            style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textQuaternary),
           ),
         );
       }

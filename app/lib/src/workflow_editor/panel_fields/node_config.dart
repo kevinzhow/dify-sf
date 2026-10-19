@@ -152,7 +152,7 @@ class MemoryConfig extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     _wf('nodes.common.memory.conversationRoleName').toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 2,
                       fontWeight: FontWeight.w500,
@@ -204,7 +204,7 @@ class _RoleItemState extends State<_RoleItem> {
     children: [
       GestureDetector(
         onTap: _focus.requestFocus,
-        child: Text(widget.title, style: const TextStyle(fontSize: 13, color: DifyColors.textSecondary)),
+        child: Text(widget.title, style: TextStyle(fontSize: 13, color: DifyColors.textSecondary)),
       ),
       Expanded(
         child: Align(
@@ -242,7 +242,7 @@ class ResolutionPicker extends StatelessWidget {
         padding: const EdgeInsets.only(right: 8),
         child: Text(
           _wf('nodes.llm.resolution.name').toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             height: 16 / 12,
             fontWeight: FontWeight.w500,
@@ -605,7 +605,7 @@ class _StrategyItemState extends State<_StrategyItem> {
               SizedBox(
                 width: 20,
                 child: widget.checked
-                    ? const Align(
+                    ? Align(
                         alignment: Alignment.topLeft,
                         child: RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
                       )
@@ -671,7 +671,7 @@ class FailBranchCard extends StatelessWidget {
               border: Border.all(color: DifyColors.componentsCardBorder, width: 0.5),
               boxShadow: DifyShadows.lg,
             ),
-            child: const Center(child: RemixIcon('mind-map', size: 20, color: DifyColors.textTertiary)),
+            child: Center(child: RemixIcon('mind-map', size: 20, color: DifyColors.textTertiary)),
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
@@ -843,7 +843,7 @@ class ErrorHandleTip extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(right: 4),
             child: RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
           ),

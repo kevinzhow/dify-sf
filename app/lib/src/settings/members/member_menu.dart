@@ -132,7 +132,7 @@ class _MemberMenuState extends State<MemberMenu> {
           key: ValueKey('member-actions-${widget.member.id}'),
           label: label,
           size: DifyIconButtonSize.lg,
-          icon: const RemixIcon('more-fill', size: 16, color: DifyColors.textTertiary),
+          icon: RemixIcon('more-fill', size: 16, color: DifyColors.textTertiary),
           onPressed: controller.toggle,
         ),
       ),

@@ -171,7 +171,7 @@ class _ToolPanelViewState extends State<ToolPanelView> {
         container: true,
         liveRegion: true,
         label: 'Loading',
-        child: const SizedBox(
+        child: SizedBox(
           height: 200,
           child: Center(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
         ),

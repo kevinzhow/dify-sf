@@ -54,7 +54,7 @@ class Citation extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _SwitchFeature(
     type: FeatureEnum.citation,
-    icon: const FeatureIcon(color: DifyColors.utilColorsWarningWarning500, dify: 'vender/features/citations'),
+    icon: FeatureIcon(color: DifyColors.utilColorsWarningWarning500, dify: 'vender/features/citations'),
     title: ad('feature.citation.title'),
     description: ad('feature.citation.description'),
     disabled: disabled,
@@ -72,7 +72,7 @@ class SpeechToText extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _SwitchFeature(
     type: FeatureEnum.speech2text,
-    icon: const FeatureIcon(color: DifyColors.utilColorsVioletViolet600, dify: 'vender/features/microphone-01'),
+    icon: FeatureIcon(color: DifyColors.utilColorsVioletViolet600, dify: 'vender/features/microphone-01'),
     title: ad('feature.speechToText.title'),
     description: ad('feature.speechToText.description'),
     disabled: disabled,

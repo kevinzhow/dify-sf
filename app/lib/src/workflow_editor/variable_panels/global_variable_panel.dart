@@ -52,7 +52,7 @@ class GlobalVariablePanel extends StatelessWidget {
               for (final v in globalVariableList(isChatMode: isChatMode, isWorkflowPage: isWorkflowPage))
                 VariableItemCard(
                   key: ValueKey(v.name),
-                  icon: const DifyIcon(
+                  icon: DifyIcon(
                     'vender/line/others/global-variable',
                     size: 16,
                     color: DifyColors.utilColorsOrangeOrange600,
@@ -60,7 +60,7 @@ class GlobalVariablePanel extends StatelessWidget {
                   name: Text.rich(
                     TextSpan(
                       children: [
-                        const TextSpan(
+                        TextSpan(
                           text: 'sys.',
                           style: TextStyle(color: DifyColors.textTertiary),
                         ),

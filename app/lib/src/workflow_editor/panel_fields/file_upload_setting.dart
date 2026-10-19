@@ -300,7 +300,7 @@ class _UploadMethodRadioGroupState extends State<UploadMethodRadioGroup> {
                               ),
                               boxShadow: [
                                 if (checked || hovered) ...DifyShadows.xs,
-                                if (focused) const BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2),
+                                if (focused) BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2),
                               ],
                             ),
                             child: ExcludeSemantics(
@@ -430,7 +430,7 @@ class _FileTypeItemState extends State<FileTypeItem> {
                   children: [
                     Container(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
                       ),
                       child: head,

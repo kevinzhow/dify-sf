@@ -50,7 +50,7 @@ class HumanInputContentWrapper extends StatefulWidget {
     required this.child,
     this.showExpandIcon = false,
     this.expanded = false,
-    this.background = DifyColors.backgroundSection,
+    this._background,
   });
 
   final String nodeTitle;
@@ -59,7 +59,8 @@ class HumanInputContentWrapper extends StatefulWidget {
   final bool expanded;
 
   /// `bg-background-section`, or the caller's class (`bg-components-panel-bg` in the test run panel).
-  final Color background;
+  final Color? _background;
+  Color get background => _background ?? DifyColors.backgroundSection;
 
   @override
   State<HumanInputContentWrapper> createState() => _HumanInputContentWrapperState();
@@ -562,7 +563,7 @@ class HumanInputExecutedAction extends StatelessWidget {
         Row(
           spacing: 4,
           children: [
-            const DifyIcon('vender/workflow/trigger-all', size: 14, color: DifyColors.textTertiary),
+            DifyIcon('vender/workflow/trigger-all', size: 14, color: DifyColors.textTertiary),
             Expanded(
               child: Text.rich(
                 TextSpan(

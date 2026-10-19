@@ -172,7 +172,7 @@ class _RoleTriggerState extends State<_RoleTrigger> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(widget.label.toUpperCase(), style: widget.style),
-          const DifyIcon('vender/line/arrows/chevron-selector-vertical', size: 12, color: DifyColors.textSecondary),
+          DifyIcon('vender/line/arrows/chevron-selector-vertical', size: 12, color: DifyColors.textSecondary),
         ],
       ),
     ),

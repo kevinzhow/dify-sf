@@ -677,7 +677,7 @@ class _VarGroupItemState extends State<VarGroupItem> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(right: 2),
           child: DifyIcon('vender/line/files/folder', size: 14, color: DifyColors.textSecondary),
         ),

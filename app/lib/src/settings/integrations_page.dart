@@ -184,7 +184,7 @@ class _IntegrationsPageState extends State<IntegrationsPage> {
             Container(
               width: 200,
               padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: DifyColors.componentsPanelBg,
                 border: Border(right: BorderSide(color: DifyColors.dividerBurn)),
               ),
@@ -366,7 +366,7 @@ class _DescriptionWithLearnMore extends StatelessWidget {
                   _t('modelProvider.learnMore'),
                   style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent),
                 ),
-                const RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
+                RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
               ],
             ),
           ),

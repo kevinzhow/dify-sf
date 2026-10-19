@@ -126,7 +126,7 @@ class _MembersPageState extends State<MembersPage> {
         padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(DifyRadius.xl),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: [DifyColors.backgroundGradientBgFillChatBg2, DifyColors.backgroundGradientBgFillChatBg1],
           ),
         ),
@@ -185,7 +185,7 @@ class _MembersPageState extends State<MembersPage> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: DifyColors.dividerRegular)),
           ),
           child: Row(

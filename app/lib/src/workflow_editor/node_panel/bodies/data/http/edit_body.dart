@@ -160,7 +160,7 @@ class BodyTypeRadio extends StatelessWidget {
                 ExcludeSemantics(
                   child: Text(
                     label,
-                    style: const TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary),
+                    style: TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary),
                   ),
                 ),
               ],

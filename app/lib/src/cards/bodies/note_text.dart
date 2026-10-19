@@ -228,7 +228,7 @@ Map<String, Object?> _root(NoteText t) {
 // ----- drawing -----
 
 /// note-editor/theme: 12 px paragraphs (line height 1.5, as the page's), `text-text-secondary`.
-const noteParagraphStyle = TextStyle(
+TextStyle get noteParagraphStyle => TextStyle(
   fontSize: 12,
   height: 1.5,
   leadingDistribution: TextLeadingDistribution.even,
@@ -236,7 +236,7 @@ const noteParagraphStyle = TextStyle(
 );
 
 /// `.note-editor-theme_link`: text-accent, weight 500, a 1 px underline in the accent at 60 %.
-const _linkColor = DifyColors.textAccent;
+Color get _linkColor => DifyColors.textAccent;
 
 double? _px(String? v) => v != null && v.endsWith('px') ? double.tryParse(v.substring(0, v.length - 2)) : null;
 

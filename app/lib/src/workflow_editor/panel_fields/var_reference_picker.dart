@@ -333,7 +333,7 @@ class _Trigger extends StatelessWidget {
           label: DifyI18n.tr('common', 'operation.add'),
           size: DifyIconButtonSize.md,
           onPressed: readonly ? null : onOpen,
-          icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+          icon: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
         ),
       );
     }
@@ -401,7 +401,7 @@ class _Trigger extends StatelessWidget {
                             color: DifyColors.componentsInputTextFilled,
                           ),
                           const SizedBox(width: 4),
-                          const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
+                          RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
                         ],
                       ),
                     ),
@@ -438,7 +438,7 @@ class _Trigger extends StatelessWidget {
                   label: DifyI18n.tr('common', 'operation.clear'),
                   size: DifyIconButtonSize.sm,
                   onPressed: picker._clear,
-                  icon: const RemixIcon('close-line', size: 14, color: DifyColors.textTertiary),
+                  icon: RemixIcon('close-line', size: 14, color: DifyColors.textTertiary),
                 ),
               ),
             ),
@@ -522,7 +522,7 @@ class _Pill extends StatelessWidget {
   final ({int maxNodeNameWidth, int maxTypeWidth, int maxVarNameWidth}) widths;
   final VoidCallback? onJump;
 
-  static const _line3 = DifyIcon('public/common/line-3', size: 12, color: DifyColors.dividerDeep);
+  static DifyIcon get _line3 => DifyIcon('public/common/line-3', size: 12, color: DifyColors.dividerDeep);
 
   Widget _capped(double max, Widget child) => ConstrainedBox(
     constraints: BoxConstraints(maxWidth: max < 0 ? 0 : max),
@@ -531,7 +531,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const spinner = _Spin(child: RemixIcon('loader-4-line', size: 14, color: DifyColors.textSecondary));
+    final spinner = _Spin(child: RemixIcon('loader-4-line', size: 14, color: DifyColors.textSecondary));
     if (!hasValue) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -566,7 +566,7 @@ class _Pill extends StatelessWidget {
             DifyText(nodeTitle ?? '', DifyType.systemXsMedium, color: DifyColors.textSecondary),
           ),
         ),
-        const Padding(padding: EdgeInsets.only(right: 2), child: _line3),
+        Padding(padding: EdgeInsets.only(right: 2), child: _line3),
       ],
     );
     if (onJump != null) {
@@ -589,8 +589,8 @@ class _Pill extends StatelessWidget {
         children: [
           if (showNodeName) nodeLabel,
           if (isShowAPart) ...[
-            const RemixIcon('more-line', size: 12, color: DifyColors.textSecondary),
-            const Padding(padding: EdgeInsets.only(right: 2), child: _line3),
+            RemixIcon('more-line', size: 12, color: DifyColors.textSecondary),
+            Padding(padding: EdgeInsets.only(right: 2), child: _line3),
           ],
           if (isLoading) spinner,
           CategoryVarIcon(variables: value, category: category, isException: isException),
@@ -614,7 +614,7 @@ class _Pill extends StatelessWidget {
               ),
             ),
           if (showErrorIcon)
-            const Padding(
+            Padding(
               key: Key('var-reference-picker-error-icon'),
               padding: EdgeInsets.only(left: 2),
               child: RemixIcon('error-warning-fill', size: 12, color: DifyColors.textDestructive),
@@ -755,7 +755,7 @@ class _ConstantFieldState extends State<_ConstantField> {
             readOnly: readonly,
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: onChanged,
-            style: const TextStyle(fontSize: 13, color: DifyColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: DifyColors.textSecondary),
             decoration: const InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,

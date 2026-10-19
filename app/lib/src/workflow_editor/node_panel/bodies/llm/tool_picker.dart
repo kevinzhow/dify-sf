@@ -246,7 +246,7 @@ class _ToolPickerPanelState extends State<ToolPickerPanel> {
                 value: _search,
                 height: 32,
                 placeholder: DifyI18n.tr('plugin', 'searchTools'),
-                leading: const Padding(
+                leading: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8),
                   child: RemixIcon('search-line', size: 16, color: DifyColors.textQuaternary),
                 ),
@@ -275,7 +275,7 @@ class _ToolPickerPanelState extends State<ToolPickerPanel> {
             if (widget.multiple)
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
                 ),
                 child: Row(
@@ -324,7 +324,7 @@ class _ToolPickerPanelState extends State<ToolPickerPanel> {
         indent: !flat,
         disabled: already,
         trailing: already || _picked.containsKey(key)
-            ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
+            ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
             : null,
         onTap: () => _choose(picked),
       );
@@ -380,7 +380,7 @@ class _Row extends StatelessWidget {
               ),
               child: switch (icon) {
                 {'content': final String emoji} => Text(emoji, style: const TextStyle(fontSize: 12)),
-                _ => const RemixIcon('tools-line', size: 12, color: DifyColors.textTertiary),
+                _ => RemixIcon('tools-line', size: 12, color: DifyColors.textTertiary),
               },
             ),
           Expanded(

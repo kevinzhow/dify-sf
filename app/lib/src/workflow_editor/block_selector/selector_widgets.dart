@@ -174,7 +174,7 @@ Widget _defaultProviderIcon(ProviderIcon icon, double size) {
   return _blank;
 }
 
-const _blank = ColoredBox(color: DifyColors.stateBaseHover);
+ColoredBox get _blank => ColoredBox(color: DifyColors.stateBaseHover);
 
 /// SearchInput (base/search-input): an InputGroup with `i-ri-search-line` in front and a clear button once there
 /// is text; its accessible name is [placeholder].
@@ -206,7 +206,7 @@ class SelectorSearchInput extends StatelessWidget {
       placeholder: placeholder,
       semanticLabel: label ?? placeholder,
       focusNode: focusNode,
-      leading: const Padding(
+      leading: Padding(
         padding: EdgeInsets.only(left: 7, right: 5),
         child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
       ),
@@ -221,7 +221,7 @@ class SelectorSearchInput extends StatelessWidget {
                   onChanged('');
                   focusNode?.requestFocus();
                 },
-                icon: const RemixIcon('close-circle-fill', size: 16, color: DifyColors.textQuaternary),
+                icon: RemixIcon('close-circle-fill', size: 16, color: DifyColors.textQuaternary),
               ),
             ),
     ),
@@ -267,7 +267,7 @@ class SelectorSearchBox extends StatelessWidget {
       semanticLabel: placeholder,
       focusNode: focusNode,
       height: 34,
-      leading: const Padding(
+      leading: Padding(
         padding: EdgeInsets.only(left: 8, right: 6),
         child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
       ),
@@ -290,7 +290,7 @@ class SelectorSearchBox extends StatelessWidget {
             )
           else
             const SizedBox(width: 8),
-          const SizedBox(width: 1, height: 14, child: ColoredBox(color: DifyColors.dividerRegular)),
+          SizedBox(width: 1, height: 14, child: ColoredBox(color: DifyColors.dividerRegular)),
           const SizedBox(width: 2),
           _TagsFilter(tags: tags, onChanged: onTagsChanged),
         ],
@@ -338,7 +338,7 @@ class _TagsFilterState extends State<_TagsFilter> {
                 size: DifyIconButtonSize.lg,
                 variant: DifyButtonVariant.ghost,
                 onPressed: c.toggle,
-                icon: const RemixIcon('price-tag-3-line', size: 16, color: DifyColors.textTertiary),
+                icon: RemixIcon('price-tag-3-line', size: 16, color: DifyColors.textTertiary),
               )
             : Stack(
                 alignment: Alignment.centerRight,
@@ -353,7 +353,7 @@ class _TagsFilterState extends State<_TagsFilter> {
                         mainAxisSize: MainAxisSize.min,
                         spacing: 2,
                         children: [
-                          const RemixIcon('price-tag-3-line', size: 16, color: DifyColors.textSecondary),
+                          RemixIcon('price-tag-3-line', size: 16, color: DifyColors.textSecondary),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 72),
                             child: DifyText(
@@ -372,7 +372,7 @@ class _TagsFilterState extends State<_TagsFilter> {
                     label: DifyI18n.tr('plugin-tags', 'clearSelectedTags', {'tags': triggerLabel}),
                     variant: DifyButtonVariant.ghost,
                     onPressed: () => widget.onChanged(const []),
-                    icon: const RemixIcon('close-circle-fill', size: 16, color: DifyColors.textQuaternary),
+                    icon: RemixIcon('close-circle-fill', size: 16, color: DifyColors.textQuaternary),
                   ),
                 ],
               ),
@@ -454,9 +454,7 @@ class _Checkbox extends StatelessWidget {
       border: checked ? null : Border.all(color: DifyColors.componentsCheckboxBorder),
       boxShadow: DifyShadows.xs,
     ),
-    child: checked
-        ? const Center(child: RemixIcon('check-line', size: 12, color: DifyColors.componentsCheckboxIcon))
-        : null,
+    child: checked ? Center(child: RemixIcon('check-line', size: 12, color: DifyColors.componentsCheckboxIcon)) : null,
   );
 }
 
@@ -511,7 +509,7 @@ class MarketplaceFooterLink extends StatelessWidget {
         spacing: 2,
         children: [
           DifyText(label, DifyType.systemSmMedium, color: DifyColors.textAccentLightModeOnly),
-          const RemixIcon('arrow-right-up-line', size: 12, color: DifyColors.textAccentLightModeOnly),
+          RemixIcon('arrow-right-up-line', size: 12, color: DifyColors.textAccentLightModeOnly),
         ],
       ),
     );
@@ -532,7 +530,7 @@ class MarketplaceFooter extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       alignment: Alignment.centerLeft,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: DifyColors.componentsPanelBgBlur,
         border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
       ),
@@ -559,7 +557,7 @@ class SelectorEmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: 12,
         children: [
-          const DifyIcon('vender/line/general/search-menu', size: 32, color: DifyColors.textQuaternary),
+          DifyIcon('vender/line/general/search-menu', size: 32, color: DifyColors.textQuaternary),
           Semantics(
             liveRegion: true,
             child: DifyText(
@@ -638,7 +636,7 @@ class CollapsibleHeader extends StatelessWidget {
               AnimatedRotation(
                 turns: expanded ? 0 : -0.25,
                 duration: difyTransitionDuration,
-                child: const DifyIcon(
+                child: DifyIcon(
                   'vender/solid/arrows/arrow-down-round-fill',
                   size: 16,
                   color: DifyColors.textTertiary,
@@ -939,14 +937,15 @@ class BlockPreviewContent extends StatelessWidget {
     this.toolIcon,
     this.footer,
     this.titleStyle = DifyType.systemMdMedium,
-    this.descriptionColor = DifyColors.textTertiary,
+    this._descriptionColor,
   });
 
   final String type, title, description;
   final ProviderIcon toolIcon;
   final Widget? footer;
   final DifyTextStyle titleStyle;
-  final Color descriptionColor;
+  final Color? _descriptionColor;
+  Color get descriptionColor => _descriptionColor ?? DifyColors.textTertiary;
 
   @override
   Widget build(BuildContext context) => Column(

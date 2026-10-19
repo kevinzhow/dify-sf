@@ -202,7 +202,7 @@ class AgentOutputVariablesState extends State<AgentOutputVariables> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ...rows,
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 4),
               child: SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
             ),
@@ -245,7 +245,7 @@ class _NewOutputButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 4,
         children: [
-          const RemixIcon('add-line', size: 14, color: DifyColors.textSecondary),
+          RemixIcon('add-line', size: 14, color: DifyColors.textSecondary),
           Flexible(
             child: DifyText(
               _w('nodes.agent.outputVars.newOutput'),
@@ -271,7 +271,7 @@ class ChildOutputFrame extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var i = 0; i < depth; i++)
-          const SizedBox(
+          SizedBox(
             width: 20,
             child: Center(
               child: SizedBox(width: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
@@ -653,7 +653,7 @@ class _OutputEditCardState extends State<OutputEditCard> {
                     padding: const EdgeInsets.only(left: 10, right: 8),
                     decoration: BoxDecoration(
                       color: hovered || focused ? DifyColors.stateBaseHover : null,
-                      border: const Border.symmetric(horizontal: BorderSide(color: DifyColors.dividerSubtle)),
+                      border: Border.symmetric(horizontal: BorderSide(color: DifyColors.dividerSubtle)),
                     ),
                     child: Row(
                       spacing: 2,
@@ -661,7 +661,7 @@ class _OutputEditCardState extends State<OutputEditCard> {
                         AnimatedRotation(
                           turns: _advancedOpen ? 0.5 : 0,
                           duration: const Duration(milliseconds: 100),
-                          child: const RemixIcon('arrow-down-double-line', size: 12, color: DifyColors.textTertiary),
+                          child: RemixIcon('arrow-down-double-line', size: 12, color: DifyColors.textTertiary),
                         ),
                         Flexible(
                           child: DifyText(
@@ -785,7 +785,7 @@ class OutputTypeSelect extends StatelessWidget {
           DifyMenuItem(
             semanticLabel: o.label,
             onSelect: () => onChange(o.value),
-            trailing: o.value == value ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent) : null,
+            trailing: o.value == value ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent) : null,
             child: Text(o.label),
           ),
       ],

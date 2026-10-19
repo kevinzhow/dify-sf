@@ -116,8 +116,8 @@ class _TracingPanelState extends State<TracingPanel> {
                                 )
                               : null,
                           child: hovered
-                              ? const RemixIcon('arrow-down-s-line', size: 12, color: DifyColors.textPrimaryOnSurface)
-                              : const RemixIcon('menu-4-line', size: 12, color: DifyColors.textTertiary),
+                              ? RemixIcon('arrow-down-s-line', size: 12, color: DifyColors.textPrimaryOnSurface)
+                              : RemixIcon('menu-4-line', size: 12, color: DifyColors.textTertiary),
                         ),
                       ),
                     ),

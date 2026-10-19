@@ -16,7 +16,7 @@ class DifyDivider extends StatelessWidget {
     this.gradient = false,
     this.margin,
     this.length,
-    this.color = DifyColors.dividerRegular,
+    this._color,
   });
 
   const DifyDivider.vertical({
@@ -24,14 +24,15 @@ class DifyDivider extends StatelessWidget {
     this.gradient = false,
     this.margin,
     this.length,
-    this.color = DifyColors.dividerRegular,
+    this._color,
   }) : type = DifyDividerType.vertical;
 
   final DifyDividerType type;
   final bool gradient;
   final EdgeInsetsGeometry? margin;
   final double? length;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.dividerRegular;
 
   @override
   Widget build(BuildContext context) {

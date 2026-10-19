@@ -520,7 +520,7 @@ class _AddIconButton extends StatelessWidget {
   Widget build(BuildContext context) => DifyIconButton(
     label: label,
     size: DifyIconButtonSize.md,
-    icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+    icon: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
     onPressed: onPressed,
   );
 }
@@ -613,7 +613,7 @@ class PanelMemorySection extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     spacing: 4,
                     children: [
-                      const DifyText('USER', DifyType.systemXsSemibold, color: DifyColors.textSecondary),
+                      DifyText('USER', DifyType.systemXsSemibold, color: DifyColors.textSecondary),
                       Infotip(label: userTip, width: 180, content: Text(userTip)),
                     ],
                   ),
@@ -733,7 +733,7 @@ class PanelOutputSection extends StatelessWidget {
                         ],
                       ),
                     ),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.only(right: 4),
                       child: RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
                     ),
@@ -817,9 +817,9 @@ class StructureOutput extends StatelessWidget {
       children: [
         Row(
           children: [
-            const DifyText('structured_output', DifyType.codeSmSemibold, color: DifyColors.textSecondary),
+            DifyText('structured_output', DifyType.codeSmSemibold, color: DifyColors.textSecondary),
             const SizedBox(width: 8),
-            const DifyText('object', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            DifyText('object', DifyType.systemXsRegular, color: DifyColors.textTertiary),
             const Spacer(),
             DifyButton(
               size: DifyButtonSize.small,

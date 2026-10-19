@@ -54,7 +54,7 @@ class _ControlState extends State<_Control> {
 
 /// `focus-visible:ring-2 focus-visible:ring-state-accent-solid`.
 List<BoxShadow>? _ring(bool focused) =>
-    focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null;
+    focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null;
 
 /// Switch sizes (switch/index.tsx): track, radius, padding, thumb, thumb radius, checked travel.
 enum DifySwitchSize {
@@ -915,7 +915,7 @@ class _DifyNumberFieldState extends State<DifyNumberField> with _ControlledText<
             if (w.showControls)
               Container(
                 height: 30,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(left: BorderSide(color: DifyColors.dividerSubtle)),
                 ),
                 child: Column(children: [_control(1), _control(-1)]),
@@ -946,8 +946,8 @@ class DifySegmentedControl<T> extends StatefulWidget {
     this.semanticLabel,
     this.height = 32,
     this.itemPadding = const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    this.textColor = DifyColors.textSecondary,
-    this.checkedTextColor = DifyColors.textAccentLightModeOnly,
+    this._textColor,
+    this._checkedTextColor,
     this.bordered = true,
     this.tooltip = false,
     this.padding = 2,
@@ -963,7 +963,9 @@ class DifySegmentedControl<T> extends StatefulWidget {
   final String? semanticLabel;
   final double height;
   final EdgeInsets itemPadding;
-  final Color textColor, checkedTextColor;
+  final Color? _textColor, _checkedTextColor;
+  Color get textColor => _textColor ?? DifyColors.textSecondary;
+  Color get checkedTextColor => _checkedTextColor ?? DifyColors.textAccentLightModeOnly;
   final bool bordered, tooltip;
 
   /// A call site's `p-*` and `rounded-*` over the control's `p-0.5 rounded-[10px]` and the items' `rounded-lg`.
@@ -1257,7 +1259,7 @@ class GeneratorButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DifyIconButton(
     label: DifyI18n.tr('app-debug', 'operation.automatic'),
-    icon: const DifyIcon('vender/other/generator', size: 16, color: DifyColors.utilColorsBlueBlue600),
+    icon: DifyIcon('vender/other/generator', size: 16, color: DifyColors.utilColorsBlueBlue600),
     onPressed: onPressed ?? () => toast.error(DifyI18n.tr('app-debug', 'noModelProviderConfigured')),
   );
 }

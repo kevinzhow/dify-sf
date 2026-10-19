@@ -114,7 +114,7 @@ class InvalidInvitation extends StatelessWidget {
       AuthHeading(
         tLogin(context, 'invalid'),
         style: large
-            ? const TextStyle(fontSize: 32, height: 1.5, fontWeight: FontWeight.w700, color: DifyColors.textPrimary)
+            ? TextStyle(fontSize: 32, height: 1.5, fontWeight: FontWeight.w700, color: DifyColors.textPrimary)
             : difyTextStyle(DifyType.title4xlSemiBold, DifyColors.textPrimary),
       ),
       const SizedBox(height: 24),

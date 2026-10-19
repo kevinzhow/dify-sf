@@ -253,7 +253,7 @@ class AddIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DifyIconButton(
     label: label,
-    icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+    icon: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
     onPressed: onPressed,
   );
 }

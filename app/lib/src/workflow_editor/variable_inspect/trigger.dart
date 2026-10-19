@@ -43,7 +43,7 @@ class VariableInspectTrigger extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 4,
                   children: [
-                    const Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+                    Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
                     DifyText(
                       DifyI18n.tr('workflow', 'debug.variableInspect.trigger.running'),
                       DifyType.systemXsMedium,
@@ -60,7 +60,7 @@ class VariableInspectTrigger extends StatelessWidget {
                   readOnly: false,
                   accentHover: true,
                   onTap: scope.onStop,
-                  child: const RemixIcon('stop-circle-fill', size: 16, color: DifyColors.textAccent),
+                  child: RemixIcon('stop-circle-fill', size: 16, color: DifyColors.textAccent),
                 ),
               ),
             ],

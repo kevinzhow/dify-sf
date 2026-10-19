@@ -118,7 +118,7 @@ class _DifyCalendarState extends State<DifyCalendar> {
                               '${_time('months.${calendarMonthKeys[_month.month - 1]}')} ${_month.year}',
                               DifyType.systemMdSemibold,
                             ),
-                            const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+                            RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
                           ],
                         ),
                       ),
@@ -135,7 +135,7 @@ class _DifyCalendarState extends State<DifyCalendar> {
             ),
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: DifyColors.dividerRegular, width: 0.5)),
               ),
               child: Row(
@@ -232,7 +232,7 @@ class _DayItem extends StatelessWidget {
               child: Container(
                 width: 4,
                 height: 4,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: DifyColors.componentsButtonPrimaryBg,
                   shape: BoxShape.circle,
                 ),

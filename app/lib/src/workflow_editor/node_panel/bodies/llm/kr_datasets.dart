@@ -152,7 +152,7 @@ class _DatasetItemState extends State<DatasetItem> {
                       if (canEdit)
                         DifyIconButton(
                           label: _c('operation.edit'),
-                          icon: const RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
+                          icon: RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
                           onPressed: _edit,
                         ),
                       MouseRegion(
@@ -236,7 +236,7 @@ class AddDataset extends StatelessWidget {
     padding: EdgeInsets.only(bottom: Css.inlineButtonLineGap),
     child: DifyIconButton(
       label: '${_c('operation.add')} ${_w('nodes.knowledgeRetrieval.knowledge')}',
-      icon: const RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+      icon: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
       onPressed: () async {
         final picked = await showSelectDataset(context, selectedIds: selectedIds);
         if (picked != null) onChange(picked);
@@ -505,7 +505,7 @@ class _DatasetOption extends StatelessWidget {
                       '${d['name'] ?? ''}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: DifyColors.textSecondary,
@@ -553,6 +553,6 @@ class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin 
   @override
   Widget build(BuildContext context) => RotationTransition(
     turns: _c,
-    child: const RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
+    child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
   );
 }

@@ -171,7 +171,7 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
                     border: Border.all(color: DifyColors.dividerRegular),
                     borderRadius: BorderRadius.circular(DifyRadius.sm),
                   ),
-                  child: const RemixIcon('bug-line', size: 14, color: DifyColors.textPrimaryOnSurface),
+                  child: RemixIcon('bug-line', size: 14, color: DifyColors.textPrimaryOnSurface),
                 ),
                 Expanded(
                   child: Column(
@@ -375,7 +375,7 @@ class Recipient extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 12, right: 4),
                   child: Row(
                     children: [
-                      const RemixIcon('group-line', size: 16, color: DifyColors.textSecondary),
+                      RemixIcon('group-line', size: 16, color: DifyColors.textSecondary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: DifyText(
@@ -425,7 +425,7 @@ class Recipient extends StatelessWidget {
                 ),
                 child: Text(
                   workspace.isEmpty ? '' : workspace[0].toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: DifyColors.componentsAvatarShapeFillStop0,
@@ -714,7 +714,7 @@ class EmailItem extends StatelessWidget {
           spacing: 4,
           children: [
             if (isError)
-              const RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive)
+              RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive)
             else
               HiAvatar(name: name.isNotEmpty ? name : address, url: avatarUrl, size: 16),
             ConstrainedBox(
@@ -726,7 +726,7 @@ class EmailItem extends StatelessWidget {
                     if (isMe)
                       TextSpan(
                         text: cm('members.you'),
-                        style: const TextStyle(color: DifyColors.textTertiary),
+                        style: TextStyle(color: DifyColors.textTertiary),
                       ),
                   ],
                 ),
@@ -810,7 +810,7 @@ class MemberList extends StatelessWidget {
                 placeholder: search,
                 semanticLabel: search,
                 onChanged: onSearchChange,
-                leading: const Padding(
+                leading: Padding(
                   padding: EdgeInsets.only(left: 8, right: 2),
                   child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
                 ),

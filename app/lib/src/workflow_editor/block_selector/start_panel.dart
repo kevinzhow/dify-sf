@@ -145,7 +145,7 @@ class _AllStartBlocksState extends State<AllStartBlocks> {
     }
     final sectionDivider =
         triggers && marketplace && (blocks.isNotEmpty || installed.isNotEmpty) && (featured || marketResults);
-    const divider = Padding(
+    final divider = Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
     );
@@ -243,7 +243,7 @@ class _PanelFooter extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 8,
           children: [
-            const SizedBox(width: 32, height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
+            SizedBox(width: 32, height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
             SelectorLink(
               url: url,
               label: label,
@@ -251,7 +251,7 @@ class _PanelFooter extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 spacing: 4,
                 children: [
-                  const DifyIcon('vender/workflow/marketplace', size: 12, color: DifyColors.textTertiary),
+                  DifyIcon('vender/workflow/marketplace', size: 12, color: DifyColors.textTertiary),
                   DifyText(label, DifyType.systemXsRegular, color: DifyColors.textTertiary),
                 ],
               ),
@@ -273,7 +273,7 @@ class _UserInputConflictBanner extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
       color: DifyColors.componentsPanelBgBlur,
-      border: const Border(bottom: BorderSide(color: DifyColors.dividerSubtle, width: 0.5)),
+      border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle, width: 0.5)),
       gradient: LinearGradient(
         colors: [
           DifyColors.utilColorsBlueLightBlueLight500.withValues(alpha: 0.2 * 0.4),
@@ -285,7 +285,7 @@ class _UserInputConflictBanner extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 2,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(4),
           child: RemixIcon('information-fill', size: 16, color: DifyColors.textAccent),
         ),
@@ -372,7 +372,7 @@ class StartBlocksList extends StatelessWidget {
             for (final (i, type) in blocks.indexed) ...[
               _row(type),
               if (type == 'start' && !showMostCommonBadge && i < blocks.length - 1)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
                 ),
@@ -645,7 +645,7 @@ class TriggerPluginActionItem extends StatelessWidget {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(left: BorderSide(color: DifyColors.dividerSubtle, width: 2)),
                       ),
                       child: Opacity(

@@ -303,7 +303,7 @@ class ConditionList extends StatelessWidget {
                 left: 46,
                 width: 10,
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
                     border: Border(
                       top: BorderSide(color: DifyColors.dividerDeep),
@@ -345,7 +345,7 @@ class ConditionList extends StatelessWidget {
                             children: [
                               Text(
                                 logicalOperator?.toUpperCase() ?? '',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
                                   height: 12 / 10,
                                   fontWeight: FontWeight.w600,
@@ -353,7 +353,7 @@ class ConditionList extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 2),
-                              const RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),
+                              RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),
                             ],
                           ),
                         ),
@@ -642,7 +642,7 @@ class _SubVarSelect extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                        DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                         const SizedBox(width: 2),
                         Flexible(child: DifyText(selected, DifyType.systemXsMedium, color: DifyColors.textAccent)),
                       ],
@@ -660,7 +660,7 @@ class _SubVarSelect extends StatelessWidget {
               DifyMenuRadioItem(
                 value: k,
                 closeOnClick: true,
-                leading: const DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+                leading: DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                 child: Text(k),
               ),
           ],
@@ -979,7 +979,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
                       focusNode: _focus,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.eE+-]'))],
-                      style: const TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled),
+                      style: TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled),
                       cursorWidth: 1,
                       decoration: InputDecoration(
                         isCollapsed: true,

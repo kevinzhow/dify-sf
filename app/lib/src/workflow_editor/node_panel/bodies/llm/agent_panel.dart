@@ -280,7 +280,7 @@ class _ListEmpty extends StatelessWidget {
             border: Border.all(color: DifyColors.componentsCardBorder, width: 0.5),
             boxShadow: DifyShadows.lg,
           ),
-          child: const DifyIcon('vender/workflow/agent', size: 20, color: DifyColors.textAccent),
+          child: DifyIcon('vender/workflow/agent', size: 20, color: DifyColors.textAccent),
         ),
         DifyText(title, DifyType.systemMdMedium, color: DifyColors.textSecondary, maxLines: null),
         Text.rich(
@@ -377,7 +377,7 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
                   description: _w('nodes.agent.strategyNotFoundDesc'),
                 )
               else
-                const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+                RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
             ],
           ),
         ),
@@ -408,7 +408,7 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
                     value: _query,
                     semanticLabel: _w('nodes.agent.strategy.searchPlaceholder'),
                     placeholder: _w('nodes.agent.strategy.searchPlaceholder'),
-                    leading: const RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
+                    leading: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
                     onChanged: (v) => setLocal(() => _query = v),
                   ),
                 ),
@@ -480,7 +480,7 @@ class _StrategyRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: DifyText(label, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
-          if (selected) const RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
+          if (selected) RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
         ],
       ),
     ),
@@ -509,7 +509,7 @@ class _NotFoundWarn extends StatelessWidget {
     ),
     child: Semantics(
       label: title,
-      child: const RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
+      child: RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
     ),
   );
 }
@@ -539,7 +539,7 @@ class _ProviderIcon extends StatelessWidget {
         child: Text('${i['content'] ?? ''}', style: TextStyle(fontSize: size * 0.6, height: 1)),
       );
     } else {
-      child = const ColoredBox(color: DifyColors.stateBaseHover);
+      child = ColoredBox(color: DifyColors.stateBaseHover);
     }
     return Container(
       width: size,
@@ -967,7 +967,7 @@ class _AgentToolSelectorState extends State<AgentToolSelector> {
                             color: DifyColors.componentsInputTextPlaceholder,
                           ),
                         ),
-                        const RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
+                        RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
                       ],
                     ),
                   ),
@@ -1111,7 +1111,7 @@ class _ToolSelectorPopupState extends State<_ToolSelectorPopup> {
                                   : DifyColors.componentsInputTextFilled,
                             ),
                           ),
-                          const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+                          RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
                         ],
                       ),
                     ),
@@ -1228,7 +1228,7 @@ class _ToolItemState extends State<_ToolItem> {
                 ),
               ),
               if (hovered && !widget.disabled) ...[
-                const RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
+                RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
                 MouseRegion(
                   onEnter: (_) => setState(() => _deleteHover = true),
                   onExit: (_) => setState(() => _deleteHover = false),
@@ -1249,7 +1249,7 @@ class _ToolItemState extends State<_ToolItem> {
               else if (uninstalled)
                 DifyTooltip(
                   content: Text(_w('nodes.agent.toolNotInstallTooltip', {'tool': v['tool_label'] ?? ''})),
-                  child: const RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
+                  child: RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
                 ),
               if (widget.supportEnableSwitch && !uninstalled)
                 DifySwitch(

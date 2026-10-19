@@ -19,7 +19,7 @@ const featureIcons = {
 };
 
 /// OpenaiYellow is drawn in its own colours; this is the colour it is decoded with (see [IconCache]).
-const openaiYellowColor = DifyColors.componentsInputTextFilled;
+Color get openaiYellowColor => DifyColors.componentsInputTextFilled;
 
 /// StatusDot error, medium (dify-ui status-dot): `size-2 rounded-[3px] border`, red halo shadow.
 class ErrorStatusDot extends StatelessWidget {
@@ -33,7 +33,7 @@ class ErrorStatusDot extends StatelessWidget {
       color: DifyColors.componentsBadgeStatusLightErrorBg,
       borderRadius: BorderRadius.circular(3),
       border: Border.all(color: DifyColors.componentsBadgeStatusLightErrorBorderInner),
-      boxShadow: const [
+      boxShadow: [
         BoxShadow(color: DifyColors.componentsBadgeStatusLightErrorHalo, offset: Offset(0, 2), blurRadius: 6),
         BoxShadow(color: DifyColors.componentsBadgeStatusLightBorderOuter, spreadRadius: 1),
       ],
@@ -118,7 +118,7 @@ class ModelIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (const ['openai', 'langgenius/openai/openai'].contains(provider) && (modelName?.startsWith('o') ?? false)) {
-      return const SizedBox.square(
+      return SizedBox.square(
         dimension: 20,
         child: Center(child: DifyIcon('public/llm/openai-yellow', size: 16, color: openaiYellowColor)),
       );
@@ -141,7 +141,7 @@ class ModelIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(DifyRadius.md),
         border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
       ),
-      child: const Opacity(
+      child: Opacity(
         opacity: 0.35,
         child: DifyIcon('vender/other/group', size: 12, color: DifyColors.textTertiary),
       ),
@@ -164,13 +164,14 @@ class ModelName extends StatelessWidget {
     this.showFeatures = false,
     this.showFeaturesLabel = false,
     this.nameType = DifyType.systemSmRegular,
-    this.nameColor = DifyColors.componentsInputTextFilled,
+    this._nameColor,
   });
   final ModelItem? modelItem;
 
   /// The name's type and colour (a call site's `system-md-regular text-text-secondary`).
   final DifyTextStyle nameType;
-  final Color nameColor;
+  final Color? _nameColor;
+  Color get nameColor => _nameColor ?? DifyColors.componentsInputTextFilled;
   final String language;
   final bool lineThrough;
   final bool showModelType;
@@ -217,12 +218,13 @@ class ModelText extends StatelessWidget {
     this.text, {
     super.key,
     this.lineThrough = false,
-    this.color = DifyColors.componentsInputTextFilled,
+    this._color,
     this.type = DifyType.systemSmRegular,
   });
   final String text;
   final bool lineThrough;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.componentsInputTextFilled;
   final DifyTextStyle type;
 
   @override
@@ -260,7 +262,7 @@ class ModelStatusBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const RemixIcon('alert-fill', size: 12, color: DifyColors.textWarning),
+        RemixIcon('alert-fill', size: 12, color: DifyColors.textWarning),
         const SizedBox(width: 3),
         Text(
           label,
@@ -448,7 +450,7 @@ class ModelSelectorTrigger extends StatelessWidget {
               borderRadius: BorderRadius.circular(DifyRadius.md),
               border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
             ),
-            child: const RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
+            child: RemixIcon('brain-2-line', size: 14, color: DifyColors.textQuaternary),
           )
         : ModelIcon(
             provider: isSelected ? currentProvider!.provider : resolvedProvider?.provider,
@@ -467,7 +469,7 @@ class ModelSelectorTrigger extends StatelessWidget {
           )
         : isDeprecated
         ? ModelText(defaultModel!.model, lineThrough: true)
-        : const ModelText(configureModel, color: DifyColors.componentsInputTextPlaceholder);
+        : ModelText(configureModel, color: DifyColors.componentsInputTextPlaceholder);
     final Widget? badge = isSelected && !disabled && ((!isActive && s.badge != null) || !isModelCompatible)
         ? ModelStatusBadge(
             statusLabel,
@@ -507,7 +509,7 @@ class ModelSelectorTrigger extends StatelessWidget {
             Expanded(child: content),
             if (!disabled && (isActive || isEmpty)) ...[
               const SizedBox(width: 1),
-              const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
+              RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
             ],
           ],
         ),

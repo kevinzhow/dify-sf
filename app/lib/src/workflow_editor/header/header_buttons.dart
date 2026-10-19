@@ -149,7 +149,7 @@ class VersionHistoryButton extends StatelessWidget {
           variant: DifyButtonVariant.secondary,
           size: DifyIconButtonSize.lg,
           onPressed: onClick,
-          icon: const RemixIcon('history-line', size: 16, color: DifyColors.componentsButtonSecondaryText),
+          icon: RemixIcon('history-line', size: 16, color: DifyColors.componentsButtonSecondaryText),
         ),
       ),
     );

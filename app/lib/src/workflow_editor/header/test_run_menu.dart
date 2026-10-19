@@ -218,7 +218,7 @@ class _TestRunMenuState extends State<TestRunMenu> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: Text(
               DifyI18n.tr('workflow', 'common.chooseStartNodeToRun'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 20 / 14,
                 fontWeight: FontWeight.w500,

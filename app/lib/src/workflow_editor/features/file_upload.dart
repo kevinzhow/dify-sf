@@ -68,8 +68,8 @@ class _FileFeatureState extends State<_FileFeature> with FeatureHover {
       final k = widget.imageUpload ? 'feature.imageUpload' : 'feature.fileUpload';
       return FeatureCard(
         icon: widget.imageUpload
-            ? const FeatureIcon(color: DifyColors.utilColorsIndigoIndigo600, remix: 'image-2-fill')
-            : const FeatureIcon(color: DifyColors.utilColorsBlueBlue600, dify: 'vender/features/folder-upload'),
+            ? FeatureIcon(color: DifyColors.utilColorsIndigoIndigo600, remix: 'image-2-fill')
+            : FeatureIcon(color: DifyColors.utilColorsBlueBlue600, dify: 'vender/features/folder-upload'),
         title: widget.imageUpload
             ? Row(
                 children: [
@@ -81,7 +81,7 @@ class _FileFeatureState extends State<_FileFeature> with FeatureHover {
                       style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                     ),
                   ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4),
                     child: DifyBadge('LEGACY', color: DifyColors.textAccentSecondary),
                   ),

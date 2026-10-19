@@ -236,7 +236,7 @@ class _PillState extends State<_Pill> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    const style = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: DifyColors.textTertiary);
+    final style = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: DifyColors.textTertiary);
     return Semantics(
       button: !w.readOnly,
       child: MouseRegion(
@@ -268,7 +268,7 @@ class _PillState extends State<_Pill> {
                         if (w.value != null)
                           TextSpan(
                             text: ' ${w.value}',
-                            style: const TextStyle(color: DifyColors.textSecondary),
+                            style: TextStyle(color: DifyColors.textSecondary),
                           ),
                       ],
                     ),
@@ -338,7 +338,7 @@ class ApiInput extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 2),
                 child: Text(
                   method.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 18 / 12,
                     fontWeight: FontWeight.w500,
@@ -347,7 +347,7 @@ class ApiInput extends StatelessWidget {
                 ),
               ),
               if (!readonly)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(left: 4),
                   child: RemixIcon('arrow-down-s-line', size: 14, color: DifyColors.textSecondary),
                 ),

@@ -16,8 +16,9 @@ Map<Color, List<(Offset, Offset)>> edgeSegmentsByColor(
   CanvasGraph graph,
   Iterable<CanvasEdge> edges, {
   String? selected,
-  Color background = DifyColors.workflowCanvasWorkflowBg,
+  Color? background,
 }) {
+  background ??= DifyColors.workflowCanvasWorkflowBg;
   final out = <Color, List<(Offset, Offset)>>{};
   for (final e in edges) {
     final a = graph.slots[e.source], b = graph.slots[e.target];

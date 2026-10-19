@@ -17,7 +17,7 @@ class DifyPopoverSurface extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double? width;
 
-  static final decoration = BoxDecoration(
+  static BoxDecoration get decoration => BoxDecoration(
     color: DifyColors.componentsPanelBg,
     border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
     borderRadius: BorderRadius.circular(DifyRadius.xl),

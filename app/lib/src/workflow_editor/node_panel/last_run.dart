@@ -23,7 +23,7 @@ class LastRun extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const DifyIcon('vender/line/time/clock-play', size: 32, color: DifyColors.textQuaternary),
+        DifyIcon('vender/line/time/clock-play', size: 32, color: DifyColors.textQuaternary),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: DifyText(

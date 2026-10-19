@@ -402,7 +402,7 @@ class _CredentialItemState extends State<CredentialItem> {
                           SizedBox.square(
                             dimension: 16,
                             child: w.selectedCredentialId == c.credentialId
-                                ? const RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
+                                ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
                                 : null,
                           ),
                           const SizedBox(width: 6),
@@ -444,7 +444,7 @@ class _CredentialItemState extends State<CredentialItem> {
                           key: ValueKey('credential-edit-${c.credentialId}'),
                           label: _t('operation.edit'),
                           disabled: w.disabled,
-                          icon: const RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
+                          icon: RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
                           onPressed: () => w.onEdit?.call(c),
                         ),
                       ),
@@ -781,13 +781,13 @@ class _AuthorizedState extends State<Authorized> {
                         language: env.language,
                       ),
                       if (i != w.items.length - 1)
-                        const SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
+                        SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
                     ],
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
+            SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
             if (w.isModelCredential && !notAllowCustomCredential && !w.hideAddAction && env.canCreateCredential)
               DifyPressable(
                 key: const ValueKey('authorized-add-model-credential'),
@@ -799,7 +799,7 @@ class _AuthorizedState extends State<Authorized> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      const RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
+                      RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -866,7 +866,7 @@ class AddModelButton extends StatelessWidget {
         semanticLabel: _t('modelProvider.addModel'),
         onPressed: onPressed ?? () {},
         leading: const RemixIcon('add-circle-fill', size: 14),
-        child: Text(_t('modelProvider.addModel'), style: const TextStyle(color: DifyColors.textTertiary)),
+        child: Text(_t('modelProvider.addModel'), style: TextStyle(color: DifyColors.textTertiary)),
       ),
     );
     if (open) {
@@ -1028,12 +1028,12 @@ class _AddCustomModelState extends State<AddCustomModel> {
                 },
                 builder: (context, hovered, _) => Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
                   ),
                   child: Row(
                     children: [
-                      const RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
+                      RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -1070,7 +1070,7 @@ class ManageCredentialsButton extends StatelessWidget {
       size: DifyButtonSize.small,
       loading: loading,
       onPressed: onPressed ?? () {},
-      child: Text(_t('modelProvider.auth.manageCredentials'), style: const TextStyle(color: DifyColors.textTertiary)),
+      child: Text(_t('modelProvider.auth.manageCredentials'), style: TextStyle(color: DifyColors.textTertiary)),
     );
     return Padding(
       padding: const EdgeInsets.only(right: 2),
@@ -1227,7 +1227,7 @@ class _CredentialSelectorState extends State<CredentialSelector> {
                       style: difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextPlaceholder),
                     ),
                   ),
-                const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
+                RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
               ],
             ),
           ),
@@ -1282,12 +1282,12 @@ class _CredentialSelectorState extends State<CredentialSelector> {
                   builder: (context, hovered, _) => Container(
                     height: 40,
                     padding: const EdgeInsets.symmetric(horizontal: 28),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
                     ),
                     child: Row(
                       children: [
-                        const RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
+                        RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(

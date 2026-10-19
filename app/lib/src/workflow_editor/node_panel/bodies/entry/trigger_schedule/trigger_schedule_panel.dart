@@ -202,7 +202,7 @@ class _TriggerSchedulePanelState extends State<TriggerSchedulePanel> {
               ],
             ),
           ),
-          const SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
+          SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
           if (times.isNotEmpty) NextExecutionTimes(times: times),
         ],
       ),

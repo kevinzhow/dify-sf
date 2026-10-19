@@ -328,20 +328,20 @@ class _RoleOptionState extends State<_RoleOption> {
                             w.role.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+                            style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
                           ),
                           Text(
                             w.description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                            style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
                           ),
                         ],
                       ),
                     ),
                   ),
                   if (w.selected)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 2),
                       child: RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
                     )

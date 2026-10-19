@@ -74,7 +74,7 @@ class ModelList extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(count, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary)),
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.only(right: 2),
                               child: RotatedBox(
                                 quarterTurns: 1,

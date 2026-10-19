@@ -66,7 +66,7 @@ class _CopyIdState extends State<CopyId> {
                 ),
                 Opacity(
                   opacity: hovered ? 1 : 0,
-                  child: const RemixIcon('file-copy-line', size: 12, color: DifyColors.textTertiary),
+                  child: RemixIcon('file-copy-line', size: 12, color: DifyColors.textTertiary),
                 ),
               ],
             ),

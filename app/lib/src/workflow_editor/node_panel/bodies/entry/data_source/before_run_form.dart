@@ -331,7 +331,7 @@ class DataSourceBeforeRunForm extends StatelessWidget {
                     DifyIconButton(
                       label: DifyI18n.tr('common', 'operation.close'),
                       onPressed: onCancel,
-                      icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                      icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                     ),
                   ],
                 ),

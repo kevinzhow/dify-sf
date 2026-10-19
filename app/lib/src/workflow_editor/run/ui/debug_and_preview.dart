@@ -393,7 +393,7 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
                   decoration: BoxDecoration(
                     gradient: DifyGradients.chatbotBg,
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(DifyRadius.xxl)),
-                    border: const Border(
+                    border: Border(
                       left: BorderSide(color: DifyColors.componentsPanelBorder),
                       top: BorderSide(color: DifyColors.componentsPanelBorder),
                       bottom: BorderSide(color: DifyColors.componentsPanelBorder),
@@ -494,7 +494,7 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
                                 ),
                                 DifyIconButton(
                                   label: _tc('operation.close'),
-                                  icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                                  icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                                   onPressed: _close,
                                 ),
                               ],
@@ -603,7 +603,7 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
             children: [
               Container(
                 width: 224,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: DifyColors.backgroundSidenavBg,
                   border: Border(right: BorderSide(color: DifyColors.dividerBurn)),
                 ),
@@ -802,7 +802,7 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
             child: DifyPressable(
               semanticLabel: _tc('operation.close'),
               onPressed: widget.onHide,
-              builder: (context, h, f) => const Padding(
+              builder: (context, h, f) => Padding(
                 padding: EdgeInsets.all(8),
                 child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
               ),

@@ -163,7 +163,7 @@ class _TimeoutFieldState extends State<TimeoutField> {
                     w.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 18 / 13,
                       fontWeight: FontWeight.w500,
@@ -176,7 +176,7 @@ class _TimeoutFieldState extends State<TimeoutField> {
                     w.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                    style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
                   ),
                 ),
               ],

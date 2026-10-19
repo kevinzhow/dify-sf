@@ -123,7 +123,7 @@ class KnowledgeBasePanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: chunkStructure == null
               ? null
-              : const BoxDecoration(
+              : BoxDecoration(
                   border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
                 ),
           child: KbChunkStructure(
@@ -462,7 +462,7 @@ class KbInstructionLine extends StatelessWidget {
           gradient: LinearGradient(
             begin: vertical ? Alignment.bottomCenter : Alignment.centerRight,
             end: vertical ? Alignment.topCenter : Alignment.centerLeft,
-            colors: const [
+            colors: [
               DifyColors.backgroundGradientMaskTransparent,
               DifyColors.dividerSubtle,
               DifyColors.backgroundGradientMaskTransparent,
@@ -509,7 +509,7 @@ class KbInstruction extends StatelessWidget {
                   border: Border.all(color: DifyColors.componentsCardBorder, width: 0.5),
                   boxShadow: DifyShadows.lg,
                 ),
-                child: const DifyIcon('vender/knowledge/add-chunks', size: 20, color: DifyColors.textAccent),
+                child: DifyIcon('vender/knowledge/add-chunks', size: 20, color: DifyColors.textAccent),
               ),
               const Positioned(bottom: -76, left: -1, child: KbInstructionLine()),
               const Positioned(bottom: -76, right: -1, child: KbInstructionLine()),
@@ -1271,7 +1271,7 @@ class _MultiModalTip extends StatelessWidget {
           padding: const EdgeInsets.all(8),
           child: Row(
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(4),
                 child: DifyIcon(
                   'vender/solid/alertsAndFeedback/alert-triangle',

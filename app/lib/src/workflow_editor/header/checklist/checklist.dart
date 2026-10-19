@@ -152,7 +152,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                               padding: const EdgeInsets.only(right: 32),
                               child: Text(
                                 '$label${items.isNotEmpty ? '(${items.length})' : ''}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   height: 24 / 16,
                                   fontWeight: FontWeight.w600,
@@ -177,7 +177,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
                           _tr('panel.checklistDescription'),
-                          style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                          style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
                         ),
                       ),
                   ],
@@ -212,7 +212,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Column(
                     children: [
-                      const DifyIcon(
+                      DifyIcon(
                         'vender/line/general/checklist-square',
                         size: 32,
                         color: DifyColors.textQuaternary,
@@ -221,7 +221,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                       Text(
                         _tr('panel.checklistResolved'),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                        style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
                       ),
                     ],
                   ),
@@ -352,7 +352,7 @@ class ChecklistNodeGroup extends StatelessWidget {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       height: 20 / 14,
                       fontWeight: FontWeight.w500,
@@ -399,7 +399,7 @@ class _ErrorRow extends StatelessWidget {
             message,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textWarning),
+            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textWarning),
           ),
         ),
         if (goTo)
@@ -414,14 +414,14 @@ class _ErrorRow extends StatelessWidget {
                 children: [
                   Text(
                     _tr('panel.goToFix'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 16 / 12,
                       fontWeight: FontWeight.w500,
                       color: DifyColors.textAccent,
                     ),
                   ),
-                  const RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
+                  RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
                 ],
               ),
             ),
@@ -500,7 +500,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                     _tr('nodes.common.pluginsNotInstalled', {'count': items.length}),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       height: 20 / 14,
                       fontWeight: FontWeight.w500,
@@ -539,7 +539,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                             item.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textWarning),
+                            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textWarning),
                           ),
                         ),
                       ],

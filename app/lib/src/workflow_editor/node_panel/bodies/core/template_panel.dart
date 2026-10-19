@@ -208,7 +208,7 @@ class _JinjaTip extends StatelessWidget {
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           height: 18 / 12,
                           fontWeight: FontWeight.w400,
@@ -216,7 +216,7 @@ class _JinjaTip extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const RemixIcon('question-line', size: 12, color: DifyColors.textTertiary),
+                    RemixIcon('question-line', size: 12, color: DifyColors.textTertiary),
                   ],
                 ),
               ),

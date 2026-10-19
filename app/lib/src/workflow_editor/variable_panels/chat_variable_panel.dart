@@ -85,7 +85,7 @@ class _ChatVariablePanelState extends State<ChatVariablePanel> {
         DifyIconButton(
           label: tc('operation.close'),
           onPressed: () => store.setShowChatVariablePanel(false),
-          icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+          icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
         ),
       ],
       children: [
@@ -249,7 +249,7 @@ class _Tips extends StatelessWidget {
                     border: Border.all(color: DifyColors.dividerDeep),
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  child: const DifyText('TIPS', DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
+                  child: DifyText('TIPS', DifyType.system2xsMediumUppercase, color: DifyColors.textTertiary),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4, bottom: 16),
@@ -271,7 +271,7 @@ class _Tips extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: DifyShadows.md,
                       ),
-                      child: const Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
@@ -311,7 +311,7 @@ class _Tips extends StatelessWidget {
             right: 38,
             child: Transform.rotate(
               angle: math.pi / 4,
-              child: const SizedBox.square(
+              child: SizedBox.square(
                 dimension: 12,
                 child: ColoredBox(color: DifyColors.backgroundSectionBurn),
               ),
@@ -333,7 +333,7 @@ class ChatVariableItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final description = '${item['description'] ?? ''}';
     return VariableItemCard(
-      icon: const DifyIcon('vender/line/others/bubble-x', size: 16, color: DifyColors.utilColorsTealTeal700),
+      icon: DifyIcon('vender/line/others/bubble-x', size: 16, color: DifyColors.utilColorsTealTeal700),
       name: DifyText('${item['name']}', DifyType.systemSmMedium),
       type: capitalize('${item['value_type'] ?? ''}'),
       onEdit: () => onEdit(item),

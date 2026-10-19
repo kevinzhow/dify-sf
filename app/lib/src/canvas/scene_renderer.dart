@@ -1341,6 +1341,6 @@ class _SpinnerGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     SchedulerBinding.instance.addPostFrameCallback((_) => onPainted());
-    return const RemixIcon('loader-2-line', size: 14, color: DifyColors.textAccent);
+    return RemixIcon('loader-2-line', size: 14, color: DifyColors.textAccent);
   }
 }

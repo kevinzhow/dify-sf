@@ -243,7 +243,7 @@ class ToolSchemaModal extends StatelessWidget {
                           label: DifyI18n.tr('common', 'operation.close'),
                           size: DifyIconButtonSize.lg,
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
+                          icon: RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
                         ),
                       ),
                     ],

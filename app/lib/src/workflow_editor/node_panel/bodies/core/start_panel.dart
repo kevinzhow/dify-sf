@@ -118,7 +118,7 @@ class _StartPanelState extends State<_StartPanel> {
 
   static Widget _sysType(String text) => Text(
     text,
-    style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+    style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
   );
 }
 
@@ -243,7 +243,7 @@ class _StartVarListState extends State<StartVarList> {
         ),
         child: Text(
           tw('nodes.start.noVarTip'),
-          style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+          style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
         ),
       );
     }
@@ -345,11 +345,9 @@ class _Handle extends StatelessWidget {
             decoration: BoxDecoration(
               color: pressed ? DifyColors.stateBaseHover : null,
               borderRadius: BorderRadius.circular(DifyRadius.md),
-              boxShadow: focusNode.hasFocus
-                  ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
-                  : null,
+              boxShadow: focusNode.hasFocus ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
             ),
-            child: const Center(child: RemixIcon('draggable', size: 12, color: DifyColors.textTertiary)),
+            child: Center(child: RemixIcon('draggable', size: 12, color: DifyColors.textTertiary)),
           ),
         ),
       ),
@@ -432,7 +430,7 @@ class _StartVarItemState extends State<StartVarItem> {
                 children: [
                   Opacity(
                     opacity: w.iconHidden ? 0 : 1,
-                    child: const DifyIcon(
+                    child: DifyIcon(
                       'vender/solid/development/variable-02',
                       size: 14,
                       color: DifyColors.textAccent,
@@ -450,7 +448,7 @@ class _StartVarItemState extends State<StartVarItem> {
                     ),
                   ),
                   if (label.isNotEmpty) ...[
-                    const Text(
+                    Text(
                       '·',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textQuaternary),
                     ),
@@ -482,7 +480,7 @@ class _StartVarItemState extends State<StartVarItem> {
                     tw('nodes.start.required'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                    style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
                   ),
                 ),
               InputVarTypeIcon(type: jsKey(w.payload['type']), size: 14),
@@ -492,8 +490,7 @@ class _StartVarItemState extends State<StartVarItem> {
                 child: _ItemButton(
                   label: tc('operation.edit'),
                   onPressed: _edit,
-                  icon: (hovered) =>
-                      const DifyIcon('vender/solid/general/edit-03', size: 16, color: DifyColors.textTertiary),
+                  icon: (hovered) => DifyIcon('vender/solid/general/edit-03', size: 16, color: DifyColors.textTertiary),
                 ),
               ),
               _ItemButton(

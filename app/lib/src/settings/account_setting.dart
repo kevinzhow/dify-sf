@@ -154,7 +154,7 @@ class _AccountSettingState extends State<AccountSetting> {
                             top: 0,
                             bottom: 0,
                             right: 0,
-                            child: const ColoredBox(color: DifyColors.componentsPanelBg),
+                            child: ColoredBox(color: DifyColors.componentsPanelBg),
                           ),
                           Center(
                             child: SizedBox(
@@ -260,7 +260,7 @@ class _AccountSettingState extends State<AccountSetting> {
                     Container(
                       padding: g.group == AccountSettingGroup.user ? const EdgeInsets.only(top: 12) : null,
                       decoration: g.group == AccountSettingGroup.user
-                          ? const BoxDecoration(
+                          ? BoxDecoration(
                               border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
                             )
                           : null,

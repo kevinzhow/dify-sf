@@ -684,7 +684,7 @@ class BaseField extends StatelessWidget {
               ),
             ),
             if (s.required && s.label is! Widget)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: ExcludeSemantics(
                   child: Text('*', style: TextStyle(color: DifyColors.textDestructiveSecondary)),
@@ -977,7 +977,7 @@ class _HelpLink extends StatelessWidget {
           children: [
             Flexible(child: Text(text, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent))),
             const SizedBox(width: 4),
-            const RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
+            RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
           ],
         ),
       ),

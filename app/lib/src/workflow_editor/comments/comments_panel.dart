@@ -136,7 +136,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
                         ..setControlMode(ControlMode.pointer)
                         ..setActiveCommentId(null);
                     },
-                    builder: (context, hovered, focused) => const SizedBox.square(
+                    builder: (context, hovered, focused) => SizedBox.square(
                       dimension: 24,
                       child: Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
                     ),
@@ -224,7 +224,7 @@ class _FilterMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const label = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary);
+    final label = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary);
     Widget option(String text, bool checked, VoidCallback onPressed) => DifyPressable(
       onPressed: onPressed,
       builder: (context, hovered, focused) => Container(
@@ -346,7 +346,7 @@ class _CommentCardState extends State<_CommentCard> {
                     Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: c.resolved
-                          ? const RemixIcon('checkbox-circle-fill', size: 16, color: DifyColors.textSecondary)
+                          ? RemixIcon('checkbox-circle-fill', size: 16, color: DifyColors.textSecondary)
                           : Semantics(
                               button: true,
                               label: tw('comments.aria.resolveComment'),

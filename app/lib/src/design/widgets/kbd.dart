@@ -6,12 +6,18 @@ import 'text.dart';
 /// Kbd colours: `gray` (`bg-components-kbd-bg-gray text-text-tertiary`) and `white`
 /// (`bg-components-kbd-bg-white text-text-primary-on-surface`, for dark surfaces such as primary buttons).
 enum DifyKbdColor {
-  gray(DifyColors.componentsKbdBgGray, DifyColors.textTertiary),
-  white(DifyColors.componentsKbdBgWhite, DifyColors.textPrimaryOnSurface);
+  gray,
+  white;
 
-  const DifyKbdColor(this.background, this.foreground);
-  final Color background;
-  final Color foreground;
+  Color get background => switch (this) {
+    gray => DifyColors.componentsKbdBgGray,
+    white => DifyColors.componentsKbdBgWhite,
+  };
+
+  Color get foreground => switch (this) {
+    gray => DifyColors.textTertiary,
+    white => DifyColors.textPrimaryOnSurface,
+  };
 }
 
 /// dify-ui's Kbd keycap: `inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-px system-kbd

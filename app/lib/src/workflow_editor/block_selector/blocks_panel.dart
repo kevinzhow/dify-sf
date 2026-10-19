@@ -205,7 +205,7 @@ class _AgentBlockItemState extends State<AgentBlockItem> {
               Expanded(child: DifyText(b.title, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
               const SizedBox(width: 8),
               _DimmBadge(DifyI18n.tr('common', 'menus.status')),
-              const RotatedBox(
+              RotatedBox(
                 quarterTurns: 3,
                 child: DifyIcon('vender/solid/general/arrow-down-round-fill', size: 16, color: DifyColors.textTertiary),
               ),
@@ -421,7 +421,7 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
             ),
             Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
               ),
               child: Column(

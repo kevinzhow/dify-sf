@@ -169,7 +169,7 @@ class VariableNodeLabel extends StatelessWidget {
           ),
         ],
         SizedBox(width: gap),
-        const DifyText('/', DifyType.systemXsRegular, color: DifyColors.dividerDeep),
+        DifyText('/', DifyType.systemXsRegular, color: DifyColors.dividerDeep),
       ],
     );
   }
@@ -332,8 +332,8 @@ class _VariableLabelState extends State<VariableLabel> {
     final parts = <Widget>[
       if (w._showsNode) VariableNodeLabel(nodeType: w.nodeType, nodeTitle: w.nodeTitle, gap: w._gap),
       if (w.notShowFullPath) ...[
-        const RemixIcon('more-line', size: 12, color: DifyColors.textSecondary),
-        const DifyText('/', DifyType.systemXsRegular, color: DifyColors.dividerDeep),
+        RemixIcon('more-line', size: 12, color: DifyColors.textSecondary),
+        DifyText('/', DifyType.systemXsRegular, color: DifyColors.dividerDeep),
       ],
       VariableIcon(variables: w.variables, color: color),
       Flexible(
@@ -344,7 +344,7 @@ class _VariableLabelState extends State<VariableLabel> {
       if (w.errorMsg != null)
         Tooltip(
           message: w.errorMsg,
-          child: const DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
+          child: DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
         ),
     ];
     final full = w.variant == VarLabelStyle.inNode;
@@ -410,13 +410,14 @@ class InlineVarText {
   InlineVarText(
     this.text,
     this.ctx, {
-    this.color = DifyColors.textTertiary,
+    this._color,
     this.breakAll = true,
     this.truncate = false,
   });
   final String text;
   final BodyContext ctx;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textTertiary;
   final bool breakAll;
   final bool truncate;
 

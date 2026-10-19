@@ -31,7 +31,7 @@ class ArrayBadge extends StatelessWidget {
       border: Border.all(color: DifyColors.dividerDeep),
     ),
     // `system-2xs-medium-uppercase … capitalize`: the later `capitalize` wins.
-    child: const Center(
+    child: Center(
       widthFactor: 1,
       child: DifyText('Array', DifyType.system2xsMedium, color: DifyColors.textTertiary),
     ),

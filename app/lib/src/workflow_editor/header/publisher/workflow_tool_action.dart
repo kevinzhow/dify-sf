@@ -255,7 +255,7 @@ class _StateLabel extends StatelessWidget {
                     ? DifyColors.componentsBadgeStatusLightWarningHalo
                     : DifyColors.componentsBadgeStatusLightSuccessHalo,
               ),
-              const BoxShadow(spreadRadius: 1, color: DifyColors.componentsBadgeStatusLightBorderOuter),
+              BoxShadow(spreadRadius: 1, color: DifyColors.componentsBadgeStatusLightBorderOuter),
             ],
           ),
         ),

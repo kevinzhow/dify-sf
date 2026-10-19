@@ -11,7 +11,7 @@ import '../../../design/widgets/widgets.dart';
 typedef PublisherLinkHandler = void Function(String link, {required bool external});
 
 /// `focus-visible:ring-2 ring-state-accent-solid`.
-const publisherFocusRing = [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)];
+List<BoxShadow> get publisherFocusRing => [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)];
 
 /// A native `<button>` or `<a>` of the publisher: hover and focus-visible tracking, Enter / Space / tap activation,
 /// and its accessible name ([label]), description ([hint]) and role (a link when [link] is set). With a [label] the
@@ -200,11 +200,10 @@ class SuggestedAction extends StatelessWidget {
                   widthFactor: 1,
                   heightFactor: 1,
                   child: IconTheme.merge(
-                    data: const IconThemeData(color: DifyColors.textQuaternary),
+                    data: IconThemeData(color: DifyColors.textQuaternary),
                     child: DefaultTextStyle.merge(
-                      style: const TextStyle(color: DifyColors.textQuaternary),
-                      child:
-                          endIcon ?? const RemixIcon('arrow-right-up-line', size: 14, color: DifyColors.textQuaternary),
+                      style: TextStyle(color: DifyColors.textQuaternary),
+                      child: endIcon ?? RemixIcon('arrow-right-up-line', size: 14, color: DifyColors.textQuaternary),
                     ),
                   ),
                 ),
@@ -294,9 +293,10 @@ class _Reveal extends StatelessWidget {
 /// The action's icon tile: `size-8 rounded-lg border-[0.5px] border-divider-regular
 /// bg-components-panel-on-panel-item-bg shadow-xs`, the 16 px icon in [color].
 class PublisherIconTile extends StatelessWidget {
-  const PublisherIconTile({super.key, this.icon, this.color = DifyColors.textSecondary});
+  const PublisherIconTile({super.key, this.icon, this._color});
   final Widget? icon;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textSecondary;
 
   @override
   Widget build(BuildContext context) => ExcludeSemantics(

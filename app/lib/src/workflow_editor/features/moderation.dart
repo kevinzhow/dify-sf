@@ -108,7 +108,7 @@ class _ModerationState extends State<Moderation> with FeatureHover {
             ? ad('feature.moderation.outputEnabled')
             : '';
         return FeatureCard(
-          icon: const FeatureIcon(color: DifyColors.textSuccess, dify: 'vender/features/content-moderation'),
+          icon: FeatureIcon(color: DifyColors.textSuccess, dify: 'vender/features/content-moderation'),
           title: ad('feature.moderation.title'),
           value: enabled,
           disabled: widget.disabled,
@@ -373,7 +373,7 @@ class _ModerationSettingModalState extends State<ModerationSettingModal> {
                                   child: Row(
                                     children: [
                                       Expanded(child: label(tc('apiBasedExtension.selector.title'))),
-                                      const DifyIcon(
+                                      DifyIcon(
                                         'vender/line/education/book-open-01',
                                         size: 12,
                                         color: DifyColors.textTertiary,
@@ -474,9 +474,7 @@ class _ModerationSettingModalState extends State<ModerationSettingModal> {
                     decoration: BoxDecoration(
                       color: hovered ? DifyColors.stateBaseHover : null,
                       borderRadius: BorderRadius.circular(DifyRadius.lg),
-                      boxShadow: focused
-                          ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
-                          : null,
+                      boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
                     ),
                     child: Center(
                       child: RemixIcon(
@@ -543,9 +541,9 @@ class _ProviderOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = switch (provider.key) {
-      'openai_moderation' => const RemixIcon('openai-fill', size: 16, color: DifyColors.textSecondary),
-      'keywords' => const RemixIcon('search-line', size: 16, color: DifyColors.utilColorsGreenGreen600),
-      _ => const RemixIcon('image-line', size: 16, color: DifyColors.utilColorsVioletViolet600),
+      'openai_moderation' => RemixIcon('openai-fill', size: 16, color: DifyColors.textSecondary),
+      'keywords' => RemixIcon('search-line', size: 16, color: DifyColors.utilColorsGreenGreen600),
+      _ => RemixIcon('image-line', size: 16, color: DifyColors.utilColorsVioletViolet600),
     };
     return DifyPressable(
       onPressed: onTap,
@@ -569,7 +567,7 @@ class _ProviderOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(DifyRadius.xl),
           boxShadow: [
             if (selected || hovered) ...DifyShadows.xs,
-            if (focused) const BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2),
+            if (focused) BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2),
           ],
         ),
         child: Column(
@@ -823,7 +821,7 @@ class _ModerationContentState extends State<ModerationContent> {
                                 mainAxisSize: MainAxisSize.min,
                                 spacing: 2,
                                 children: [
-                                  const RemixIcon('markdown-line', size: 12, color: DifyColors.textTertiary),
+                                  RemixIcon('markdown-line', size: 12, color: DifyColors.textTertiary),
                                   Flexible(
                                     child: Text(
                                       ad('feature.moderation.modal.content.supportMarkdown').toUpperCase(),
@@ -921,7 +919,7 @@ class FormGeneration extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   height: 20 / 14,
                   fontWeight: FontWeight.w500,
@@ -965,7 +963,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
         builder: (context, hovered, focused) {
           final arrow = Opacity(
             opacity: c.isOpen ? 1 : 0.6,
-            child: const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textSecondary),
+            child: RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textSecondary),
           );
           return Container(
             height: 36,
@@ -980,7 +978,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                       Expanded(
                         child: Text(
                           tc('apiBasedExtension.selector.placeholder'),
-                          style: const TextStyle(fontSize: 14, color: DifyColors.textQuaternary),
+                          style: TextStyle(fontSize: 14, color: DifyColors.textQuaternary),
                         ),
                       ),
                       arrow,
@@ -988,7 +986,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                   )
                 : Row(
                     children: [
-                      Text('${current['name']}', style: const TextStyle(fontSize: 14, color: DifyColors.textPrimary)),
+                      Text('${current['name']}', style: TextStyle(fontSize: 14, color: DifyColors.textPrimary)),
                       const Spacer(),
                       SizedBox(
                         width: 270,
@@ -997,7 +995,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                           textAlign: TextAlign.right,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: DifyColors.textQuaternary),
+                          style: TextStyle(fontSize: 12, color: DifyColors.textQuaternary),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1031,7 +1029,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                         Expanded(
                           child: Text(
                             tc('apiBasedExtension.selector.title'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: DifyColors.textTertiary,
@@ -1047,10 +1045,10 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                             children: [
                               Text(
                                 tc('apiBasedExtension.selector.manage'),
-                                style: const TextStyle(fontSize: 12, color: DifyColors.textAccent),
+                                style: TextStyle(fontSize: 12, color: DifyColors.textAccent),
                               ),
                               const SizedBox(width: 2),
-                              const DifyIcon(
+                              DifyIcon(
                                 'vender/line/arrows/arrow-up-right',
                                 size: 12,
                                 color: DifyColors.textAccent,
@@ -1084,11 +1082,11 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                                   children: [
                                     Text(
                                       '${item['name']}',
-                                      style: const TextStyle(fontSize: 14, color: DifyColors.textPrimary),
+                                      style: TextStyle(fontSize: 14, color: DifyColors.textPrimary),
                                     ),
                                     Text(
                                       '${item['api_endpoint']}',
-                                      style: const TextStyle(fontSize: 12, color: DifyColors.textTertiary),
+                                      style: TextStyle(fontSize: 12, color: DifyColors.textTertiary),
                                     ),
                                   ],
                                 ),
@@ -1114,9 +1112,9 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      const RemixIcon('add-line', size: 16, color: DifyColors.textAccent),
+                      RemixIcon('add-line', size: 16, color: DifyColors.textAccent),
                       const SizedBox(width: 8),
-                      Text(tc('operation.add'), style: const TextStyle(fontSize: 14, color: DifyColors.textAccent)),
+                      Text(tc('operation.add'), style: TextStyle(fontSize: 14, color: DifyColors.textAccent)),
                     ],
                   ),
                 ),

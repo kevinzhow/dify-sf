@@ -184,7 +184,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   void _attach(PromptEditorController c) {
     c
       ..chipBuilder = _chip
-      ..variableValueStyle = const TextStyle(color: DifyColors.textAccent)
+      ..variableValueStyle = TextStyle(color: DifyColors.textAccent)
       ..onBlockCreated = ((b) {
         _configOf(b.kind)?.onInsert?.call();
       })
@@ -782,7 +782,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
           onPanUpdate: (d) => _onDragUpdate(d.globalPosition),
           onPanEnd: (_) => _onDragEnd(),
           onPanCancel: _onDragEnd,
-          child: const RemixIcon('draggable', size: 14, color: DifyColors.textTertiary),
+          child: RemixIcon('draggable', size: 14, color: DifyColors.textTertiary),
         ),
       ),
     );
@@ -1040,7 +1040,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
             right: 24,
             top: target.y - 2,
             height: 2,
-            child: const IgnorePointer(
+            child: IgnorePointer(
               child: Opacity(opacity: 0.4, child: ColoredBox(color: DifyColors.textAccentSecondary)),
             ),
           ),

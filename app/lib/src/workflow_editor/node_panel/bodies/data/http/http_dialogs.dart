@@ -71,13 +71,13 @@ class _AuthorizationModalState extends State<AuthorizationModal> {
               text: title,
               children: [
                 if (required)
-                  const TextSpan(
+                  TextSpan(
                     text: ' *',
                     style: TextStyle(color: DifyColors.textDestructive),
                   ),
               ],
             ),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
           ),
         ),
       ),

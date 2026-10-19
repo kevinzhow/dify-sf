@@ -90,7 +90,7 @@ class _SnippetsPanelState extends State<SnippetsPanel> {
               semanticLabel: label,
               focusNode: _focus,
               height: 32,
-              leading: const Padding(
+              leading: Padding(
                 padding: EdgeInsets.only(left: 8, right: 6),
                 child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
               ),
@@ -102,14 +102,14 @@ class _SnippetsPanelState extends State<SnippetsPanel> {
                         label: wf('tabs.clearSnippetSearch'),
                         variant: DifyButtonVariant.ghost,
                         onPressed: () => widget.onSearchTextChange?.call(''),
-                        icon: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                        icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                       ),
                     ),
             ),
           ),
         ),
         DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
           ),
           child: items == null
@@ -187,7 +187,7 @@ class SnippetEmptyState extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       spacing: 8,
       children: [
-        const DifyIcon('vender/line/general/search-menu', size: 32, color: DifyColors.textTertiary),
+        DifyIcon('vender/line/general/search-menu', size: 32, color: DifyColors.textTertiary),
         DifyText(wf('tabs.noSnippetsFound'), DifyType.systemSmRegular, color: DifyColors.textSecondary),
       ],
     ),

@@ -430,12 +430,12 @@ class _ReasoningPanelState extends State<ReasoningPanel> {
                     AnimatedRotation(
                       turns: open ? 0.25 : 0,
                       duration: const Duration(milliseconds: 500),
-                      child: const RemixIcon('arrow-right-s-line', size: 12, color: DifyColors.textSecondary),
+                      child: RemixIcon('arrow-right-s-line', size: 12, color: DifyColors.textSecondary),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       label,
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: DifyColors.textSecondary),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: DifyColors.textSecondary),
                     ),
                   ],
                 ),
@@ -446,7 +446,7 @@ class _ReasoningPanelState extends State<ReasoningPanel> {
             Container(
               margin: const EdgeInsets.only(left: 8),
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: DifyColors.componentsPanelBgAlt,
                 border: Border(left: BorderSide(color: DifyColors.componentsPanelBorder)),
               ),

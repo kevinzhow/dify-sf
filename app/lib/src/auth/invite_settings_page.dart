@@ -190,7 +190,7 @@ class _InviteSettingsFormState extends State<InviteSettingsForm> {
                 boxShadow: DifyShadows.lg,
               ),
               alignment: Alignment.center,
-              child: const RemixIcon('account-circle-line', size: 24, color: DifyColors.textAccentLightModeOnly),
+              child: RemixIcon('account-circle-line', size: 24, color: DifyColors.textAccentLightModeOnly),
             ),
           ),
           Padding(

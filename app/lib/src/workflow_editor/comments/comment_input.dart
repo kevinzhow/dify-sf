@@ -361,7 +361,7 @@ class _MentionInputState extends State<MentionInput> {
           onPressed: _mentionButton,
           icon: Opacity(
             opacity: _mentionButtonDisabled ? 0.4 : 1,
-            child: const RemixIcon('at-line', size: 16, color: DifyColors.textTertiary),
+            child: RemixIcon('at-line', size: 16, color: DifyColors.textTertiary),
           ),
         );
         final actions = editing
@@ -522,7 +522,7 @@ class _MentionRowState extends State<_MentionRow> {
                 widget.user.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   height: 20 / 14,
                   fontWeight: FontWeight.w500,
@@ -701,7 +701,7 @@ class _CommentInputState extends State<CommentInput> {
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   clipBehavior: Clip.antiAlias,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: DifyColors.componentsPanelBgBlur,
                     borderRadius: _innerTeardrop,
                   ),

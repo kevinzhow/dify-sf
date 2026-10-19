@@ -133,12 +133,12 @@ class _ToolDatePickerState extends State<ToolDatePicker> {
                         ? DifyColors.stateBaseHover
                         : DifyColors.componentsInputBgNormal,
                     borderRadius: BorderRadius.circular(DifyRadius.lg),
-                    boxShadow: focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                    boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
                   ),
                   child: Row(
                     spacing: 2,
                     children: [
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.all(1),
                         child: RemixIcon('calendar-line', size: 14, color: DifyColors.textTertiary),
                       ),
@@ -206,7 +206,7 @@ class ToolDateRangePicker extends StatelessWidget {
         child: Row(
           spacing: 2,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(1),
               child: RemixIcon('calendar-line', size: 14, color: DifyColors.textTertiary),
             ),
@@ -219,7 +219,7 @@ class ToolDateRangePicker extends StatelessWidget {
                 onClear: () => patch(clearStart: true),
               ),
             ),
-            const ExcludeSemantics(
+            ExcludeSemantics(
               child: DifyText('-', DifyType.systemSmRegular, color: DifyColors.textTertiary),
             ),
             Flexible(
@@ -284,7 +284,7 @@ class _RangeEndState extends State<_RangeEnd> {
                 decoration: BoxDecoration(
                   color: (hovered && !w.readOnly) || c.isOpen ? DifyColors.stateBaseHover : null,
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
-                  boxShadow: focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                  boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
                 ),
                 child: DifyText(
                   shown.isNotEmpty ? shown : w.placeholder,

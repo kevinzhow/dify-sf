@@ -315,7 +315,7 @@ class _NoneConfiguredWarning extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 4,
                   children: [
-                    const RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
+                    RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
                     Flexible(
                       child: Text(
                         text,
@@ -362,7 +362,7 @@ class EmptyProviderState extends StatelessWidget {
             border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
             boxShadow: DifyShadows.lg,
           ),
-          child: const RemixIcon('brain-2-line', size: 20, color: DifyColors.textPrimary),
+          child: RemixIcon('brain-2-line', size: 20, color: DifyColors.textPrimary),
         ),
         Padding(
           padding: const EdgeInsets.only(top: 8),

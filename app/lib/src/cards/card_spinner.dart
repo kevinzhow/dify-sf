@@ -8,8 +8,9 @@ import '../design/dify_tokens.g.dart';
 /// `i-ri-loader-2-line size-3.5 animate-spin`: the 14 px loader turning once a second, in its own repaint boundary
 /// (only the icon repaints). Where the renderer draws loaders itself ([CanvasSpinners]) its place is left empty.
 class CardSpinner extends StatefulWidget {
-  const CardSpinner({super.key, this.color = DifyColors.textAccent, this.size = 14});
-  final Color color;
+  const CardSpinner({super.key, this._color, this.size = 14});
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textAccent;
   final double size;
 
   @override

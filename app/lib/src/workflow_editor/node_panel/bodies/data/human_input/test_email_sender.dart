@@ -420,8 +420,7 @@ class SenderFormItem extends StatelessWidget {
         children: [
           if (input.nodeName.isNotEmpty)
             Flexible(child: DifyText(input.nodeName, DifyType.systemSmSemibold, color: DifyColors.textSecondary)),
-          if (input.nodeName.isNotEmpty)
-            const DifyText('/', DifyType.systemSmRegular, color: DifyColors.textQuaternary),
+          if (input.nodeName.isNotEmpty) DifyText('/', DifyType.systemSmRegular, color: DifyColors.textQuaternary),
           Flexible(child: DifyText(input.label, DifyType.systemSmSemibold, color: DifyColors.textAccent)),
         ],
       ),

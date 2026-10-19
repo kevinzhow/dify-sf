@@ -185,7 +185,7 @@ class QuestionClassifierBody extends NodeBody {
   const QuestionClassifierBody();
 
   static const _textWidth = 214.0 - 10; // px-1.25
-  static final _labelStyle = difyStyle(DifyType.systemXsSemibold, DifyColors.textSecondary);
+  static TextStyle get _labelStyle => difyStyle(DifyType.systemXsSemibold, DifyColors.textSecondary);
 
   static List<VMap> _classes(BodyContext ctx) => _items(ctx['classes']).whereType<VMap>().toList();
 
@@ -364,7 +364,7 @@ class AgentBody extends NodeBody {
                       borderRadius: BorderRadius.circular(DifyRadius.md),
                       border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
                     ),
-                    child: const Opacity(
+                    child: Opacity(
                       opacity: 0.35,
                       child: DifyIcon('vender/other/group', size: 12, color: DifyColors.textTertiary),
                     ),
@@ -416,7 +416,7 @@ class AgentV2Body extends NodeBody {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(
+          SizedBox(
             height: 16,
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 2),
@@ -441,13 +441,13 @@ class AgentV2Body extends NodeBody {
                     color: inline ? DifyColors.backgroundDefaultBurn : _quaternary(0.2),
                   ),
                   child: inline
-                      ? const DifyIcon('vender/agent-v2/configure', size: 14, color: DifyColors.textTertiary)
+                      ? DifyIcon('vender/agent-v2/configure', size: 14, color: DifyColors.textTertiary)
                       : null,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: inline
-                      ? const Column(
+                      ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             DifyText('Inline setup', DifyType.systemXsRegular, color: DifyColors.textSecondary),

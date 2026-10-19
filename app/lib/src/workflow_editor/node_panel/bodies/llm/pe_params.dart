@@ -99,7 +99,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const DifyIcon(
+                          DifyIcon(
                             'vender/solid/development/variable-02',
                             size: 14,
                             color: DifyColors.textAccentSecondary,
@@ -111,7 +111,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               // `text-[13px]` on the inherited 1.5 line height.
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 height: 1.5,
                                 fontWeight: FontWeight.w500,
@@ -122,7 +122,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                           const SizedBox(width: 8),
                           Text(
                             _cap('${p['type'] ?? ''}'),
-                            style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
                           ),
                         ],
                       ),
@@ -132,14 +132,14 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                             _w('$_p.addExtractParameterContent.required').toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
                           )
                         : const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${p['description'] ?? ''}',
-                    style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                    style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
                   ),
                 ],
               ),
@@ -154,7 +154,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                   padding: const EdgeInsets.only(right: 4),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(DifyRadius.lg),
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.centerRight,
                       end: Alignment.centerLeft,
                       colors: [DifyColors.componentsPanelOnPanelItemBg, DifyColors.backgroundGradientMaskTransparent],
@@ -166,7 +166,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                     children: [
                       DifyIconButton(
                         label: _c('operation.edit'),
-                        icon: const RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
+                        icon: RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
                         onPressed: widget.onEdit,
                       ),
                       DifyIconButton(
@@ -406,7 +406,7 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         _w('$_p.addExtractParameterContent.requiredContent'),
-                        style: const TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                        style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
                       ),
                     ),
                     DifySwitch(
@@ -470,7 +470,7 @@ class ImportFromTool extends StatelessWidget {
       variant: DifyButtonVariant.ghost,
       size: DifyButtonSize.small,
       onPressed: c.toggle,
-      child: Text(_w('$_p.importFromTool'), style: const TextStyle(color: DifyColors.textTertiary)),
+      child: Text(_w('$_p.importFromTool'), style: TextStyle(color: DifyColors.textTertiary)),
     ),
   );
 }

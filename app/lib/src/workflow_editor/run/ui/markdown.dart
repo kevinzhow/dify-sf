@@ -58,7 +58,7 @@ class DifyMarkdown extends StatelessWidget {
       del: const TextStyle(decoration: TextDecoration.lineThrough),
       blockquote: base,
       blockquotePadding: const EdgeInsets.symmetric(horizontal: 12),
-      blockquoteDecoration: const BoxDecoration(
+      blockquoteDecoration: BoxDecoration(
         border: Border(left: BorderSide(color: DifyColors.textAccentSecondary, width: 3)),
       ),
       listBullet: base,
@@ -74,7 +74,7 @@ class DifyMarkdown extends StatelessWidget {
         color: DifyColors.componentsInputBgNormal,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
       ),
-      horizontalRuleDecoration: const BoxDecoration(
+      horizontalRuleDecoration: BoxDecoration(
         border: Border(top: BorderSide(color: DifyColors.dividerRegular)),
       ),
     );

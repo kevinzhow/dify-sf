@@ -28,6 +28,9 @@ void main() {
         expect(t.takeException(), isNull);
       });
       testWidgets('should preserve an explicit popup width when the viewport has enough space', (t) async {
+        // The select's popup width assumes 1 px borders (Css.hairline at a 1x screen).
+        t.view.devicePixelRatio = 1;
+        addTearDown(t.view.reset);
         await renderControl(
           t,
           const DifySelect(
@@ -42,6 +45,9 @@ void main() {
         expect(t.getSize(find.byType(DifyMenuPopup)).width, 240);
       });
       testWidgets('should use positioning attributes when placement is not provided', (t) async {
+        // The select's popup width assumes 1 px borders (Css.hairline at a 1x screen).
+        t.view.devicePixelRatio = 1;
+        addTearDown(t.view.reset);
         await renderControl(
           t,
           const DifySelect(

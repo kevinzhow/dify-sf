@@ -283,7 +283,7 @@ class _NodeResizerState extends State<_NodeResizer> {
                     color: _hovered ? DifyColors.stateBaseHover : null,
                     borderRadius: BorderRadius.circular(DifyRadius.md),
                     boxShadow: _focus.hasFocus
-                        ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
+                        ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
                         : null,
                   ),
                   alignment: Alignment.center,

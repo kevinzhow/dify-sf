@@ -373,7 +373,7 @@ class BlockIcon extends StatelessWidget {
           color: DifyColors.stateBaseHover,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
         ),
-        foregroundDecoration: const CssDashedBorder(color: DifyColors.componentsPanelBorder, radius: DifyRadius.lg),
+        foregroundDecoration: CssDashedBorder(color: DifyColors.componentsPanelBorder, radius: DifyRadius.lg),
         child: Center(
           child: Opacity(
             opacity: 0.3,

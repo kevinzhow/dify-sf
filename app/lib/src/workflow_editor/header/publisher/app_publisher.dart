@@ -394,7 +394,7 @@ class _AppPublisherState extends State<AppPublisher> {
                   spacing: 4,
                   children: [
                     Text(label),
-                    const RemixIcon('arrow-down-s-line', color: DifyColors.componentsButtonPrimaryText),
+                    RemixIcon('arrow-down-s-line', color: DifyColors.componentsButtonPrimaryText),
                   ],
                 ),
               ),

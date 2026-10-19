@@ -123,7 +123,7 @@ class VarInput extends StatefulWidget {
     this.readOnly = false,
     this.placeholder,
     this.boxed = true,
-    this.idleBorder = DifyColors.componentsInputBorderHover,
+    this._idleBorder,
     this.insertVarTipToLeft = false,
     this.version,
     this.onFocusChange,
@@ -139,7 +139,8 @@ class VarInput extends StatefulWidget {
   final bool readOnly;
   final String? placeholder;
   final bool boxed;
-  final Color idleBorder;
+  final Color? _idleBorder;
+  Color get idleBorder => _idleBorder ?? DifyColors.componentsInputBorderHover;
   final bool insertVarTipToLeft;
   final int Function()? version;
   final ValueChanged<bool>? onFocusChange;
@@ -235,7 +236,7 @@ class _VarInputState extends State<VarInput> {
                   border: Border.all(color: DifyColors.dividerRegular, width: 0.5),
                   boxShadow: DifyShadows.lg,
                 ),
-                child: const DifyIcon(
+                child: DifyIcon(
                   'vender/solid/development/variable-02',
                   size: 14,
                   color: DifyColors.componentsButtonSecondaryAccentText,

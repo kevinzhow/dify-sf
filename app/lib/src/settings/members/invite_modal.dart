@@ -62,7 +62,7 @@ class InviteModal extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         height: 28 / 20,
                         fontWeight: FontWeight.w600,
@@ -71,7 +71,7 @@ class InviteModal extends StatelessWidget {
                     ),
                     Text(
                       stc(context, 'members.inviteTeamMemberTip'),
-                      style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                      style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
                     ),
                   ],
                 ),
@@ -229,7 +229,7 @@ class _InviteFormState extends State<InviteForm> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: 6,
                   children: [
-                    const RemixIcon('error-warning-fill', size: 16, color: DifyColors.textWarning),
+                    RemixIcon('error-warning-fill', size: 16, color: DifyColors.textWarning),
                     Expanded(
                       child: Text(
                         stc(context, 'members.emailNotSetup'),

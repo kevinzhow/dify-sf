@@ -746,7 +746,7 @@ class SessionBadge extends StatelessWidget {
   /// Whether the session menu is part of this widget.
   final bool menu;
 
-  static const _small = TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary);
+  static TextStyle get _small => TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary);
 
   (Color, String) _link(SessionStatus s) => switch (s.link) {
     LinkState.live => (DifyColors.textSuccess, 'Live'),

@@ -121,13 +121,13 @@ class VersionHistoryFilterItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: hovered ? DifyColors.stateBaseHover : null,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
-          boxShadow: focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+          boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
         ),
         child: Row(
           spacing: 4,
           children: [
             Expanded(child: DifyText(item.name, DifyType.systemMdRegular, color: DifyColors.textPrimary)),
-            if (isSelected) const RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
+            if (isSelected) RemixIcon('check-line', size: 16, color: DifyColors.textAccent),
           ],
         ),
       ),
@@ -247,7 +247,7 @@ class _VersionHistoryFilterState extends State<VersionHistoryFilter> {
                 ],
               ),
             ),
-            const SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
+            SizedBox(height: 1, child: ColoredBox(color: DifyColors.dividerSubtle)),
             VersionHistoryFilterSwitch(enabled: w.isOnlyShowNamedVersions, handleSwitch: w.handleSwitch),
           ],
         ),
@@ -293,7 +293,7 @@ class VersionHistoryActionMenuItem extends StatelessWidget {
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: DifyColors.textSecondary),
+                    style: TextStyle(color: DifyColors.textSecondary),
                   ),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 152),
@@ -346,7 +346,7 @@ class VersionHistoryActionMenu extends StatelessWidget {
         variant: DifyButtonVariant.secondary,
         focusNode: focusNode,
         onPressed: () => setOpen(!open),
-        icon: const RemixIcon('more-fill', size: 16, color: DifyColors.componentsButtonSecondaryText),
+        icon: RemixIcon('more-fill', size: 16, color: DifyColors.componentsButtonSecondaryText),
       ),
       children: [
         for (final o in menu.options) VersionHistoryActionMenuItem(item: o, onClick: handleClickActionMenuItem),
@@ -523,7 +523,7 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
     final row = Stack(
       children: [
         if (!w.isLast)
-          const Positioned(
+          Positioned(
             top: 24,
             left: 16 - 8,
             bottom: -12,
@@ -545,7 +545,7 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
               builder: (context, hovered, focused) => Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
-                  boxShadow: focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                  boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
                 ),
               ),
             ),
@@ -733,7 +733,7 @@ class VersionHistoryEmpty extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        const RemixIcon('history-line', size: 40, color: DifyColors.textEmptyStateIcon),
+        RemixIcon('history-line', size: 40, color: DifyColors.textEmptyStateIcon),
         DifyText(_w('versionHistory.filter.empty'), DifyType.systemXsRegular, color: DifyColors.textTertiary),
         DifyButton(
           size: DifyButtonSize.small,
@@ -1143,7 +1143,7 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
                       color: hovered ? DifyColors.stateBaseHover : null,
                       borderRadius: BorderRadius.circular(DifyRadius.sm),
                     ),
-                    child: const RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                    child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
                   ),
                 ),
               ],

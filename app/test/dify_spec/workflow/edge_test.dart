@@ -52,12 +52,12 @@ void main() {
 
     test('should use the fail-branch running color while the connected node is hovering', () {
       final stroke = customEdgeStroke(EdgeRunView.idle, connectedNodeIsHovering: true, isFailBranch: true);
-      expect(stroke, const EdgeStroke(DifyColors.workflowLinkLineFailureHandle));
+      expect(stroke, EdgeStroke(DifyColors.workflowLinkLineFailureHandle));
     });
 
     test('should fall back to the default edge color when no highlight state is active', () {
       final stroke = customEdgeStroke(EdgeRunView.idle);
-      expect(stroke, const EdgeStroke(DifyColors.workflowLinkLineNormal));
+      expect(stroke, EdgeStroke(DifyColors.workflowLinkLineNormal));
       expect(stroke.opacity, 1);
       expect(stroke.dashed, isFalse);
     });
@@ -95,7 +95,7 @@ void main() {
         const EdgeRunView(sourceStatus: 'succeeded', targetStatus: 'succeeded'),
         selected: true,
       );
-      expect(stroke, const EdgeStroke(DifyColors.workflowLinkLineHandle));
+      expect(stroke, EdgeStroke(DifyColors.workflowLinkLineHandle));
     });
   });
 }

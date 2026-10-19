@@ -21,7 +21,7 @@ String _str(Value? v) => v is VString ? v.value : '';
 Value? _at(Value? map, String key) => map is VMap ? map.entries[key] : null;
 
 /// Icons (asset, colour) the bodies in this file draw, for IconCache.preload.
-const entryBodyIcons = <(String, Color)>[
+List<(String, Color)> get entryBodyIcons => <(String, Color)>[
   ('assets/remix_icons/robot-2-fill.svg', DifyColors.textPrimaryOnSurface),
   ('assets/remix_icons/mail-send-fill.svg', DifyColors.textPrimaryOnSurface),
   ('assets/remix_icons/home-5-fill.svg', DifyColors.textPrimaryOnSurface),
@@ -113,7 +113,7 @@ class HumanInputBody extends NodeBody {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   child: DifyText(
                     'Delivery Method',
@@ -538,7 +538,7 @@ class TriggerPluginBody extends NodeBody {
             color: DifyColors.stateWarningHover,
             borderRadius: BorderRadius.circular(DifyRadius.md),
           ),
-          child: const Row(
+          child: Row(
             children: [
               DifyIcon('vender/solid/alertsAndFeedback/alert-triangle', size: 14, color: DifyColors.textWarning),
               SizedBox(width: 4),
@@ -618,7 +618,7 @@ class DataSourceEmptyBody extends NodeBody {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonPrimaryText),
+          RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonPrimaryText),
           const SizedBox(width: 4),
           Text(
             'Add Data Source',
@@ -797,7 +797,7 @@ class StartPlaceholderBody extends NodeBody {
         color: DifyColors.workflowBlockParmaBg,
         borderRadius: BorderRadius.circular(DifyRadius.md),
       ),
-      child: const DifyText(text, DifyType.systemXsRegular, color: DifyColors.textTertiary, maxLines: null),
+      child: DifyText(text, DifyType.systemXsRegular, color: DifyColors.textTertiary, maxLines: null),
     ),
   );
 }
@@ -852,7 +852,7 @@ class ContainerStartIcon extends StatelessWidget {
       shape: BoxShape.circle,
       border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: Css.hairline),
     ),
-    child: const Center(child: RemixIcon('home-5-fill', size: 12, color: DifyColors.textPrimaryOnSurface)),
+    child: Center(child: RemixIcon('home-5-fill', size: 12, color: DifyColors.textPrimaryOnSurface)),
   );
 }
 

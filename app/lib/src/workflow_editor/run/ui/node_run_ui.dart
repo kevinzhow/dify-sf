@@ -439,7 +439,7 @@ class _LastRunViewState extends State<LastRunView> with WidgetsBindingObserver {
       resolvedStatus = NodeRunningStatus.listening;
     }
     if (w.isFetching && !w.isRunAfterSingleRun) {
-      return const Center(
+      return Center(
         child: Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary)),
       );
     }

@@ -274,10 +274,10 @@ class EnvItem extends StatelessWidget {
       final text = display == null ? '' : jsKey(display);
       final description = '${env['description'] ?? ''}';
       return VariableItemCard(
-        icon: const DifyIcon('vender/line/others/env', size: 16, color: DifyColors.utilColorsVioletViolet600),
+        icon: DifyIcon('vender/line/others/env', size: 16, color: DifyColors.utilColorsVioletViolet600),
         name: DifyText('${env['name']}', DifyType.systemSmMedium),
         type: type == 'llm' ? tw('blocks.llm') : capitalize(type),
-        badge: type == 'secret' ? const RemixIcon('lock-2-line', size: 12, color: DifyColors.textTertiary) : null,
+        badge: type == 'secret' ? RemixIcon('lock-2-line', size: 12, color: DifyColors.textTertiary) : null,
         onEdit: () => onEdit(env),
         onDelete: () => onDelete(env),
         body: text.isEmpty ? null : DifyText(text, DifyType.systemXsRegular, color: DifyColors.textTertiary),

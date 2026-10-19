@@ -395,7 +395,7 @@ class _ModelModalState extends State<ModelModal> {
                                 style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
                               ),
                               const SizedBox(width: 8),
-                              const Expanded(
+                              Expanded(
                                 child: SizedBox(
                                   height: 1,
                                   child: DecoratedBox(
@@ -421,7 +421,7 @@ class _ModelModalState extends State<ModelModal> {
                               container: true,
                               liveRegion: true,
                               label: _t('loading'),
-                              child: const DifySpinner(size: 16, color: DifyColors.textTertiary),
+                              child: DifySpinner(size: 16, color: DifyColors.textTertiary),
                             ),
                           ),
                         ),
@@ -537,7 +537,7 @@ class _HelpLink extends StatelessWidget {
           TextSpan(
             text: text,
             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent),
-            children: const [
+            children: [
               WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
@@ -576,7 +576,7 @@ class _EncryptedNote extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(right: 4),
             child: DifyIcon('vender/solid/security/lock-01', size: 12, color: DifyColors.textTertiary),
           ),

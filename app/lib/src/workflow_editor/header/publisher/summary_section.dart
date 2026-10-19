@@ -58,7 +58,7 @@ class PublisherTimelineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const dot = SizedBox(
+    final dot = SizedBox(
       width: 16,
       height: 16,
       child: Padding(
@@ -74,8 +74,8 @@ class PublisherTimelineRow extends StatelessWidget {
     );
     // Row padding: top `px-1 py-0.5`, bottom `py-0.5 pr-0.5 pl-1`; the marker is 16 px wide, its line centred.
     final line = top
-        ? const Positioned(left: 11, width: 2, top: 16, bottom: -12, child: ColoredBox(color: DifyColors.dividerSubtle))
-        : const Positioned(
+        ? Positioned(left: 11, width: 2, top: 16, bottom: -12, child: ColoredBox(color: DifyColors.dividerSubtle))
+        : Positioned(
             left: 11,
             width: 2,
             top: -12,
@@ -357,7 +357,7 @@ class _StartNodeLimitHint extends StatelessWidget {
   const _StartNodeLimitHint();
 
   // The gradient's colour at 0 % (its first stop lies before the box).
-  static final _start = Color.lerp(
+  static Color get _start => Color.lerp(
     DifyColors.componentsInputBorderActivePrompt1,
     DifyColors.componentsInputBorderActivePrompt2,
     3.64 / (45.14 + 3.64),
@@ -390,7 +390,7 @@ class _StartNodeLimitHint extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               _w('publishLimit.startNodeDesc'),
-              style: const TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textSecondary),
+              style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textSecondary),
             ),
           ),
         ],

@@ -215,7 +215,7 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                 const SizedBox(height: 8),
                 Container(
                   height: 1,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [DifyColors.dividerRegular, Color(0x00FFFFFF)]),
                   ),
                 ),
@@ -352,7 +352,7 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                     Flexible(
                       child: Text(
                         _c('modelProvider.systemReasoningModel.key'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           height: 32 / 13,
                           fontWeight: FontWeight.w500,

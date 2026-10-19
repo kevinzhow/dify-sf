@@ -39,7 +39,7 @@ class UserAvatar extends StatelessWidget {
     decoration: BoxDecoration(
       shape: BoxShape.circle,
       color: color ?? const Color(0xFF155AEF),
-      boxShadow: ring ? const [BoxShadow(color: DifyColors.componentsPanelBg, spreadRadius: 1)] : null,
+      boxShadow: ring ? [BoxShadow(color: DifyColors.componentsPanelBg, spreadRadius: 1)] : null,
     ),
     clipBehavior: Clip.antiAlias,
     alignment: Alignment.center,
@@ -178,7 +178,7 @@ class _OnlineUsersState extends State<OnlineUsers> with SingleTickerProviderStat
                         width: 24,
                         height: 24,
                         transform: Matrix4.translationValues(-4, 0, 0),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: DifyColors.componentsIconBgMidnightSolid,
                           boxShadow: [BoxShadow(color: DifyColors.componentsPanelBg, spreadRadius: 1)],

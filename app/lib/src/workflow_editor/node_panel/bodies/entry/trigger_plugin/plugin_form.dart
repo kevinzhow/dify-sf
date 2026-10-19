@@ -179,7 +179,7 @@ class PluginFormItem extends StatelessWidget {
                       ),
                     ),
                     if (schema['required'] == true)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(left: 4),
                         child: DifyText('*', DifyType.systemXsRegular, color: DifyColors.textDestructiveSecondary),
                       ),
@@ -189,7 +189,7 @@ class PluginFormItem extends StatelessWidget {
                         child: Infotip(label: tooltip, width: 200, content: Text(tooltip)),
                       ),
                     if (showSchemaButton) ...[
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(left: 4, right: 2),
                         child: DifyText('·', DifyType.systemXsRegular, color: DifyColors.textQuaternary),
                       ),
@@ -197,8 +197,8 @@ class PluginFormItem extends StatelessWidget {
                         variant: DifyButtonVariant.ghost,
                         size: DifyButtonSize.small,
                         onPressed: () => onShowSchema?.call('${schema['name']}', schema['input_schema']),
-                        leading: const RemixIcon('braces-line', size: 14, color: DifyColors.textTertiary),
-                        child: const DifyText('JSON Schema', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+                        leading: RemixIcon('braces-line', size: 14, color: DifyColors.textTertiary),
+                        child: DifyText('JSON Schema', DifyType.systemXsRegular, color: DifyColors.textTertiary),
                       ),
                     ],
                   ],
@@ -632,7 +632,7 @@ class _MultiSelect extends StatelessWidget {
                         : DifyColors.componentsInputTextPlaceholder,
                   ),
                 ),
-                const RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
+                RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textQuaternary),
               ],
             ),
           ),

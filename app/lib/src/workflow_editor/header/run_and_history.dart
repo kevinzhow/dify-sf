@@ -83,11 +83,11 @@ class PreviewMode extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const RemixIcon('play-large-line', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
+              RemixIcon('play-large-line', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
               const SizedBox(width: 4),
               Text(
                 _tr('common.debugAndPreview'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 16 / 13,
                   fontWeight: FontWeight.w500,
@@ -153,14 +153,14 @@ class _RunModeState extends State<RunMode> {
               child: Container(
                 height: 28,
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: DifyColors.stateAccentHover,
                   borderRadius: BorderRadius.horizontal(left: Radius.circular(DifyRadius.md)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
+                    Spinning(child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textAccent)),
                     const SizedBox(width: 8),
                     Text(
                       _tr(isListening ? 'common.listening' : 'common.running'),
@@ -191,12 +191,12 @@ class _RunModeState extends State<RunMode> {
                   builder: (context, _) => Container(
                     width: 28,
                     height: 28,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: DifyColors.stateAccentActive,
                       borderRadius: BorderRadius.horizontal(right: Radius.circular(DifyRadius.md)),
                     ),
                     alignment: Alignment.center,
-                    child: const RemixIcon('stop-circle-line', size: 16, color: DifyColors.textAccent),
+                    child: RemixIcon('stop-circle-line', size: 16, color: DifyColors.textAccent),
                   ),
                 ),
             ],
@@ -228,7 +228,7 @@ class _RunButtonFace extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const RemixIcon('play-large-line', size: 16, color: DifyColors.textAccent),
+          RemixIcon('play-large-line', size: 16, color: DifyColors.textAccent),
           const SizedBox(width: 8),
           Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
           const SizedBox(width: 4),

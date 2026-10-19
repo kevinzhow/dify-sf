@@ -115,7 +115,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
         margin: false,
         focusNode: _triggerNode,
         leading: widget.leading,
-        trailing: const RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
+        trailing: RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
         disabled: widget.disabled,
         destructive: widget.variant == DifyMenuItemVariant.destructive,
         semanticLabel: widget.semanticLabel,

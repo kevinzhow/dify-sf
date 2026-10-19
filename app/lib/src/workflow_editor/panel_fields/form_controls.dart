@@ -61,8 +61,8 @@ class DifyCheckboxBox extends StatelessWidget {
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(4),
         boxShadow: focused
-            ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
-            : const [BoxShadow(color: DifyColors.shadowShadow3, offset: Offset(0, 1), blurRadius: 2)],
+            ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
+            : [BoxShadow(color: DifyColors.shadowShadow3, offset: Offset(0, 1), blurRadius: 2)],
       ),
       child: !on
           ? null
@@ -418,7 +418,7 @@ class _TagInputState extends State<TagInput> {
                     DifyPressable(
                       semanticLabel: '${DifyI18n.tr('common', 'operation.remove')} $item',
                       onPressed: () => w.onChange([...w.items]..removeAt(i)),
-                      builder: (context, hovered, focused) => const SizedBox(
+                      builder: (context, hovered, focused) => SizedBox(
                         width: 16,
                         height: 16,
                         child: Center(child: RemixIcon('close-line', size: 14, color: DifyColors.textTertiary)),
@@ -439,12 +439,12 @@ class _TagInputState extends State<TagInput> {
                   : null,
               foregroundDecoration: _special
                   ? null
-                  : const CssDashedBorder(color: DifyColors.dividerDeep, radius: DifyRadius.md),
+                  : CssDashedBorder(color: DifyColors.dividerDeep, radius: DifyRadius.md),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: 2,
                 children: [
-                  if (!_focused && !_special) const RemixIcon('add-line', size: 14, color: DifyColors.textPlaceholder),
+                  if (!_focused && !_special) RemixIcon('add-line', size: 14, color: DifyColors.textPlaceholder),
                   Flexible(child: input),
                 ],
               ),
@@ -511,7 +511,7 @@ class _CheckboxListState extends State<CheckboxList> {
                   ? DifyI18n.tr('common', 'noData')
                   : DifyI18n.tr('common', 'operation.noSearchResults', {'content': w.title}),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: DifyColors.textTertiary),
+              style: TextStyle(fontSize: 14, color: DifyColors.textTertiary),
             ),
           ),
         for (final o in shown)
@@ -550,7 +550,7 @@ class _CheckboxListState extends State<CheckboxList> {
           if (header)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
               ),
               child: Row(
@@ -797,7 +797,7 @@ class _InputNumberWithSliderState extends State<InputNumberWithSlider> {
                 enabled: !w.readonly,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.eE+-]'))],
-                style: const TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled),
+                style: TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled),
                 cursorWidth: 1,
                 decoration: const InputDecoration(isCollapsed: true, border: InputBorder.none),
                 onChanged: (s) => w.onChange(double.tryParse(s.trim()) ?? double.nan),
@@ -949,7 +949,7 @@ class _SelectBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: hovered || open || focused ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal,
         borderRadius: BorderRadius.circular(large ? 10 : 8),
-        boxShadow: focused ? const [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+        boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
       ),
       child: Row(
         spacing: 2,
@@ -1036,9 +1036,7 @@ class InputTypeSelect extends StatelessWidget {
           item.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: trigger
-              ? const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.componentsInputTextFilled)
-              : null,
+          style: trigger ? TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.componentsInputTextFilled) : null,
         ),
       ),
       const SizedBox(width: 8),
@@ -1137,7 +1135,7 @@ class _ConfigSelectState extends State<ConfigSelect> {
                       children: [
                         ReorderableDragStartListener(
                           index: i,
-                          child: const MouseRegion(
+                          child: MouseRegion(
                             cursor: SystemMouseCursors.grab,
                             child: SizedBox.square(
                               dimension: 24,
@@ -1236,7 +1234,7 @@ class _OptionInputState extends State<_OptionInput> {
         child: TextField(
           controller: _controller,
           onChanged: widget.onChanged,
-          style: const TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+          style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
           cursorColor: const Color(0xFF155EEF),
           cursorWidth: 1,
           decoration: const InputDecoration(

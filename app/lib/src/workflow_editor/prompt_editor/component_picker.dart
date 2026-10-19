@@ -85,7 +85,7 @@ class _PromptMenuItemState extends State<PromptMenuItem> {
               w.title,
               softWrap: false,
               overflow: TextOverflow.visible,
-              style: const TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary),
+              style: TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary),
             ),
           ),
         ],
@@ -149,7 +149,7 @@ class _VariableMenuItemState extends State<VariableMenuItem> {
         after = w.title.substring(m.end);
       }
     }
-    const style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary);
+    final style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
@@ -181,7 +181,7 @@ class _VariableMenuItemState extends State<VariableMenuItem> {
                         TextSpan(text: before),
                         TextSpan(
                           text: middle,
-                          style: const TextStyle(color: DifyColors.textAccent),
+                          style: TextStyle(color: DifyColors.textAccent),
                         ),
                         TextSpan(text: after),
                       ],
@@ -257,7 +257,7 @@ class ComponentPickerMenu extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(top: 4),
             padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
             ),
             child: footer,
@@ -289,9 +289,9 @@ class NewAgentOutputAction extends StatelessWidget {
         child: Row(
           spacing: 4,
           children: [
-            const RemixIcon('add-line', size: 16, color: DifyColors.textSecondary),
+            RemixIcon('add-line', size: 16, color: DifyColors.textSecondary),
             Expanded(child: DifyText(label, DifyType.systemSmRegular, color: DifyColors.textSecondary)),
-            const RemixIcon('question-line', size: 14, color: DifyColors.textQuaternary),
+            RemixIcon('question-line', size: 14, color: DifyColors.textQuaternary),
           ],
         ),
       ),
@@ -303,11 +303,13 @@ class NewAgentOutputAction extends StatelessWidget {
 abstract final class PickerIcons {
   static const context = DifyIcon('vender/solid/files/file-05', size: 16, color: Color(0xFF6938EF));
   static const query = DifyIcon('vender/solid/users/user-edit-02', size: 16, color: Color(0xFFFD853A));
-  static const requestUrl = RemixIcon('global-line', size: 16, color: DifyColors.utilColorsVioletViolet600);
+  static RemixIcon get requestUrl => RemixIcon('global-line', size: 16, color: DifyColors.utilColorsVioletViolet600);
   static const history = DifyIcon('vender/solid/general/message-clock-circle', size: 16, color: Color(0xFFDD2590));
-  static const variable = DifyIcon('vender/line/development/brackets-x', size: 14, color: DifyColors.textAccent);
-  static const tool = DifyIcon('vender/solid/general/tool-03', size: 14, color: DifyColors.textAccent);
-  static const arrowUpRight = DifyIcon('vender/line/arrows/arrow-up-right', size: 12, color: DifyColors.textTertiary);
+  static DifyIcon get variable =>
+      DifyIcon('vender/line/development/brackets-x', size: 14, color: DifyColors.textAccent);
+  static DifyIcon get tool => DifyIcon('vender/solid/general/tool-03', size: 14, color: DifyColors.textAccent);
+  static DifyIcon get arrowUpRight =>
+      DifyIcon('vender/line/arrows/arrow-up-right', size: 12, color: DifyColors.textTertiary);
 }
 
 /// AppIcon at 14 px: the emoji on its background.

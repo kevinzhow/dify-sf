@@ -67,7 +67,7 @@ class HeaderLoading extends StatelessWidget {
   const HeaderLoading({super.key});
 
   @override
-  Widget build(BuildContext context) => const Spinning(
+  Widget build(BuildContext context) => Spinning(
     child: RemixIcon('loader-2-line', size: 16, color: DifyColors.textTertiary),
   );
 }
@@ -90,11 +90,11 @@ class HeaderDivider extends StatelessWidget {
 /// A popup surface the header's popovers draw themselves (`rounded-xl border-[0.5px]
 /// border-components-panel-border bg-components-panel-bg shadow-xl`, or the given colour and radius).
 BoxDecoration headerPopupDecoration({
-  Color color = DifyColors.componentsPanelBg,
+  Color? color,
   double radius = DifyRadius.xl,
   List<BoxShadow> shadow = DifyShadows.xl,
 }) => BoxDecoration(
-  color: color,
+  color: color ?? DifyColors.componentsPanelBg,
   border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
   borderRadius: BorderRadius.circular(radius),
   boxShadow: shadow,
@@ -113,7 +113,7 @@ class HeaderCloseButton extends StatelessWidget {
     semanticLabel: label,
     builder: (context, _) => SizedBox.square(
       dimension: size,
-      child: const Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
+      child: Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
     ),
   );
 }

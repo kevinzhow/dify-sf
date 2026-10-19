@@ -142,7 +142,7 @@ class FeaturesTrigger extends StatelessWidget {
                   if (nodesReadOnlyOf(store, canEdit: data.canEdit) && !store.isRestoring.value) return;
                   store.setShowFeaturesPanel(!store.showFeaturesPanel.value);
                 },
-                leading: const RemixIcon('apps-2-add-line', size: 16, color: DifyColors.componentsButtonSecondaryText),
+                leading: RemixIcon('apps-2-add-line', size: 16, color: DifyColors.componentsButtonSecondaryText),
                 child: Text(DifyI18n.tr('workflow', 'common.features')),
               ),
             AppPublisher(

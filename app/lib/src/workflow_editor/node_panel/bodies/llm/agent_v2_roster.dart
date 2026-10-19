@@ -88,8 +88,8 @@ class InlineSetupAvatar extends StatelessWidget {
     width: size,
     height: size,
     alignment: Alignment.center,
-    decoration: const BoxDecoration(shape: BoxShape.circle, color: DifyColors.backgroundDefaultBurn),
-    child: const DifyIcon('vender/agent-v2/configure', size: 14, color: DifyColors.textTertiary),
+    decoration: BoxDecoration(shape: BoxShape.circle, color: DifyColors.backgroundDefaultBurn),
+    child: DifyIcon('vender/agent-v2/configure', size: 14, color: DifyColors.textTertiary),
   );
 }
 
@@ -161,7 +161,7 @@ Widget _errorTile() => Container(
     color: DifyColors.stateDestructiveHover,
     borderRadius: BorderRadius.circular(DifyRadius.lg),
   ),
-  child: const RemixIcon('error-warning-line', size: 16, color: DifyColors.textDestructive),
+  child: RemixIcon('error-warning-line', size: 16, color: DifyColors.textDestructive),
 );
 
 /// AgentRosterField: "Agent" with "Change" (the agent picker), then the agent card: an error with Retry, the
@@ -326,7 +326,7 @@ class _AgentRosterFieldState extends State<AgentRosterField> {
         child: Row(
           children: [
             Expanded(child: widget.isLoading ? _loadingContent() : _agentContent(agent)),
-            const RemixIcon('arrow-right-line', size: 16, color: DifyColors.textTertiary),
+            RemixIcon('arrow-right-line', size: 16, color: DifyColors.textTertiary),
           ],
         ),
       ),
@@ -504,7 +504,7 @@ class _InlineDialogBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      builder?.call(context) ?? const ColoredBox(color: DifyColors.componentsPanelBg, child: SizedBox.expand());
+      builder?.call(context) ?? ColoredBox(color: DifyColors.componentsPanelBg, child: SizedBox.expand());
 }
 
 /// AgentRosterDrawer: over the node panel (`top-14 bottom-1 rounded-2xl border-[0.5px] shadow-2xl`), the header
@@ -567,7 +567,7 @@ class AgentRosterDrawer extends StatelessWidget {
                   padding: isSetup
                       ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
                       : const EdgeInsets.fromLTRB(12, 12, 16, 12),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: DifyColors.componentsPanelBg,
                     border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
                   ),
@@ -603,7 +603,7 @@ class AgentRosterDrawer extends StatelessWidget {
                                             ),
                                           ),
                                           if (!isSetup)
-                                            const RemixIcon('lock-line', size: 12, color: DifyColors.textTertiary),
+                                            RemixIcon('lock-line', size: 12, color: DifyColors.textTertiary),
                                         ],
                                       ),
                                       if (description != null && description.isNotEmpty)
@@ -635,7 +635,7 @@ class AgentRosterDrawer extends StatelessWidget {
                                     ),
                                     children: [
                                       DifyMenuItem(
-                                        leading: const RemixIcon(
+                                        leading: RemixIcon(
                                           'inbox-archive-line',
                                           size: 16,
                                           color: DifyColors.textTertiary,
@@ -694,7 +694,7 @@ class AgentRosterDrawer extends StatelessWidget {
                     child:
                         body?.call(context) ??
                         (services.rosterAgentContentBuilder?.call(context, jsKey(agent['id'])) ??
-                            const ColoredBox(color: DifyColors.componentsPanelBg, child: SizedBox.expand())),
+                            ColoredBox(color: DifyColors.componentsPanelBg, child: SizedBox.expand())),
                   ),
                 ),
               ],
@@ -894,7 +894,7 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
               ),
               child: Row(
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(right: 2),
                     child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
                   ),
@@ -950,7 +950,7 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
           ),
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
             ),
             child: Column(
@@ -1041,7 +1041,7 @@ class _SelectorSkeleton extends StatelessWidget {
                     Container(
                       width: 32,
                       height: 32,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: DifyColors.textQuaternary),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: DifyColors.textQuaternary),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

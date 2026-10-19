@@ -5,2137 +5,2433 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 
-/// Dify light theme colours (`--color-*` in packages/dify-ui/src/themes/light.css).
+/// Dify colours (`--color-*` in packages/dify-ui/src/themes/light.css and dark.css, web/themes/manual-*.css) for the
+/// current theme.
 abstract final class DifyColors {
+  static bool _dark = false;
+
+  /// Whether the getters answer the dark theme's values.
+  static bool get isDark => _dark;
+
+  /// Switches every colour and gradient getter; only DifyTheme calls it (it also rebuilds and recaptures).
+  static void useDark(bool dark) => _dark = dark;
+
   /// `text-primary`
-  static const textPrimary = Color(0xFF101828);
+  static Color get textPrimary => _dark ? const Color(0xFFFBFBFC) : const Color(0xFF101828);
 
   /// `text-secondary`
-  static const textSecondary = Color(0xFF354052);
+  static Color get textSecondary => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF354052);
 
   /// `text-tertiary`
-  static const textTertiary = Color(0xFF676F83);
+  static Color get textTertiary => _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF676F83);
 
   /// `text-quaternary`
-  static const textQuaternary = Color.fromARGB(76, 16, 24, 40);
+  static Color get textQuaternary =>
+      _dark ? const Color.fromARGB(102, 200, 206, 218) : const Color.fromARGB(76, 16, 24, 40);
 
   /// `text-empty-state-icon`
-  static const textEmptyStateIcon = Color(0xFFD0D5DC);
+  static Color get textEmptyStateIcon => _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
 
   /// `text-primary-on-surface`
-  static const textPrimaryOnSurface = Color(0xFFFFFFFF);
+  static Color get textPrimaryOnSurface => _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `text-secondary-on-surface`
-  static const textSecondaryOnSurface = Color.fromARGB(230, 255, 255, 255);
+  static Color get textSecondaryOnSurface => const Color.fromARGB(230, 255, 255, 255);
 
   /// `text-destructive`
-  static const textDestructive = Color(0xFFD92D20);
+  static Color get textDestructive => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `text-destructive-secondary`
-  static const textDestructiveSecondary = Color(0xFFF04438);
+  static Color get textDestructiveSecondary => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `text-success`
-  static const textSuccess = Color(0xFF079455);
+  static Color get textSuccess => _dark ? const Color(0xFF17B26A) : const Color(0xFF079455);
 
   /// `text-success-secondary`
-  static const textSuccessSecondary = Color(0xFF17B26A);
+  static Color get textSuccessSecondary => _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `text-warning`
-  static const textWarning = Color(0xFFDC6803);
+  static Color get textWarning => _dark ? const Color(0xFFF79009) : const Color(0xFFDC6803);
 
   /// `text-warning-secondary`
-  static const textWarningSecondary = Color(0xFFF79009);
+  static Color get textWarningSecondary => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `text-accent`
-  static const textAccent = Color(0xFF0033FF);
+  static Color get textAccent => _dark ? const Color(0xFF6694FF) : const Color(0xFF0033FF);
 
   /// `text-accent-secondary`
-  static const textAccentSecondary = Color(0xFF085AFC);
+  static Color get textAccentSecondary => _dark ? const Color(0xFF3072FF) : const Color(0xFF085AFC);
 
   /// `text-accent-light-mode-only`
-  static const textAccentLightModeOnly = Color(0xFF0033FF);
+  static Color get textAccentLightModeOnly => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF0033FF);
 
   /// `text-placeholder`
-  static const textPlaceholder = Color(0xFF98A2B2);
+  static Color get textPlaceholder => _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFF98A2B2);
 
   /// `text-disabled`
-  static const textDisabled = Color(0xFFD0D5DC);
+  static Color get textDisabled => _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
 
   /// `text-text-selected`
-  static const textTextSelected = Color.fromARGB(36, 0, 51, 255);
+  static Color get textTextSelected =>
+      _dark ? const Color.fromARGB(76, 8, 90, 252) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `text-logo-text`
-  static const textLogoText = Color(0xFF18222F);
+  static Color get textLogoText => _dark ? const Color(0xFFE9E9EC) : const Color(0xFF18222F);
 
   /// `text-inverted`
-  static const textInverted = Color(0xFF000000);
+  static Color get textInverted => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
 
   /// `text-inverted-dimmed`
-  static const textInvertedDimmed = Color.fromARGB(242, 0, 0, 0);
+  static Color get textInvertedDimmed =>
+      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color.fromARGB(242, 0, 0, 0);
 
   /// `background-body`
-  static const backgroundBody = Color(0xFFF2F4F7);
+  static Color get backgroundBody => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF2F4F7);
 
   /// `background-body-transparent`
-  static const backgroundBodyTransparent = Color.fromARGB(0, 242, 244, 247);
+  static Color get backgroundBodyTransparent =>
+      _dark ? const Color.fromARGB(0, 29, 29, 32) : const Color.fromARGB(0, 242, 244, 247);
 
   /// `background-default`
-  static const backgroundDefault = Color(0xFFFFFFFF);
+  static Color get backgroundDefault => _dark ? const Color(0xFF222225) : const Color(0xFFFFFFFF);
 
   /// `background-default-hover`
-  static const backgroundDefaultHover = Color(0xFFF9FAFB);
+  static Color get backgroundDefaultHover => _dark ? const Color(0xFF27272B) : const Color(0xFFF9FAFB);
 
   /// `background-default-hover-alpha-0`
-  static const backgroundDefaultHoverAlpha0 = Color.fromARGB(0, 249, 250, 251);
+  static Color get backgroundDefaultHoverAlpha0 =>
+      _dark ? const Color.fromARGB(0, 39, 39, 43) : const Color.fromARGB(0, 249, 250, 251);
 
   /// `background-default-subtle`
-  static const backgroundDefaultSubtle = Color(0xFFFCFCFD);
+  static Color get backgroundDefaultSubtle => _dark ? const Color(0xFF222225) : const Color(0xFFFCFCFD);
 
   /// `background-default-dodge`
-  static const backgroundDefaultDodge = Color(0xFFFFFFFF);
+  static Color get backgroundDefaultDodge => _dark ? const Color(0xFF3A3A40) : const Color(0xFFFFFFFF);
 
   /// `background-default-burn`
-  static const backgroundDefaultBurn = Color(0xFFE9EBF0);
+  static Color get backgroundDefaultBurn => _dark ? const Color(0xFF1D1D20) : const Color(0xFFE9EBF0);
 
   /// `background-default-dimmed`
-  static const backgroundDefaultDimmed = Color(0xFFE9EBF0);
+  static Color get backgroundDefaultDimmed => _dark ? const Color(0xFF27272B) : const Color(0xFFE9EBF0);
 
   /// `background-default-lighter`
-  static const backgroundDefaultLighter = Color.fromARGB(128, 255, 255, 255);
+  static Color get backgroundDefaultLighter =>
+      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(128, 255, 255, 255);
 
   /// `background-section`
-  static const backgroundSection = Color(0xFFF9FAFB);
+  static Color get backgroundSection => _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color(0xFFF9FAFB);
 
   /// `background-section-burn`
-  static const backgroundSectionBurn = Color(0xFFF2F4F7);
+  static Color get backgroundSectionBurn => _dark ? const Color.fromARGB(153, 24, 24, 27) : const Color(0xFFF2F4F7);
 
   /// `background-section-burn-inverted`
-  static const backgroundSectionBurnInverted = Color(0xFFF2F4F7);
+  static Color get backgroundSectionBurnInverted => _dark ? const Color(0xFF27272B) : const Color(0xFFF2F4F7);
 
   /// `background-soft`
-  static const backgroundSoft = Color(0xFFF9FAFB);
+  static Color get backgroundSoft => _dark ? const Color.fromARGB(64, 24, 24, 27) : const Color(0xFFF9FAFB);
 
   /// `background-neutral-subtle`
-  static const backgroundNeutralSubtle = Color(0xFFF9FAFB);
+  static Color get backgroundNeutralSubtle => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF9FAFB);
 
   /// `background-surface-white`
-  static const backgroundSurfaceWhite = Color.fromARGB(242, 255, 255, 255);
+  static Color get backgroundSurfaceWhite =>
+      _dark ? const Color.fromARGB(230, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `background-sidenav-bg`
-  static const backgroundSidenavBg = Color.fromARGB(204, 255, 255, 255);
+  static Color get backgroundSidenavBg =>
+      _dark ? const Color.fromARGB(235, 39, 39, 42) : const Color.fromARGB(204, 255, 255, 255);
 
   /// `background-overlay-fullscreen`
-  static const backgroundOverlayFullscreen = Color.fromARGB(242, 249, 250, 251);
+  static Color get backgroundOverlayFullscreen =>
+      _dark ? const Color.fromARGB(247, 39, 39, 42) : const Color.fromARGB(242, 249, 250, 251);
 
   /// `background-overlay-backdrop`
-  static const backgroundOverlayBackdrop = Color.fromARGB(242, 242, 244, 247);
+  static Color get backgroundOverlayBackdrop =>
+      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(242, 242, 244, 247);
 
   /// `background-overlay`
-  static const backgroundOverlay = Color.fromARGB(153, 16, 24, 40);
+  static Color get backgroundOverlay =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(153, 16, 24, 40);
 
   /// `background-overlay-alt`
-  static const backgroundOverlayAlt = Color.fromARGB(102, 16, 24, 40);
+  static Color get backgroundOverlayAlt =>
+      _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color.fromARGB(102, 16, 24, 40);
 
   /// `background-overlay-destructive`
-  static const backgroundOverlayDestructive = Color.fromARGB(76, 240, 68, 56);
+  static Color get backgroundOverlayDestructive => const Color.fromARGB(76, 240, 68, 56);
 
   /// `background-interaction-from-bg-1`
-  static const backgroundInteractionFromBg1 = Color.fromARGB(51, 200, 206, 218);
+  static Color get backgroundInteractionFromBg1 =>
+      _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `background-interaction-from-bg-2`
-  static const backgroundInteractionFromBg2 = Color.fromARGB(36, 200, 206, 218);
+  static Color get backgroundInteractionFromBg2 =>
+      _dark ? const Color.fromARGB(36, 24, 24, 27) : const Color.fromARGB(36, 200, 206, 218);
 
   /// `background-gradient-bg-fill-chat-bg-1`
-  static const backgroundGradientBgFillChatBg1 = Color(0xFFF9FAFB);
+  static Color get backgroundGradientBgFillChatBg1 => _dark ? const Color(0xFF222225) : const Color(0xFFF9FAFB);
 
   /// `background-gradient-bg-fill-chat-bg-2`
-  static const backgroundGradientBgFillChatBg2 = Color(0xFFF2F4F7);
+  static Color get backgroundGradientBgFillChatBg2 => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF2F4F7);
 
   /// `background-gradient-bg-fill-chat-bubble-bg-1`
-  static const backgroundGradientBgFillChatBubbleBg1 = Color(0xFFFFFFFF);
+  static Color get backgroundGradientBgFillChatBubbleBg1 =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color(0xFFFFFFFF);
 
   /// `background-gradient-bg-fill-chat-bubble-bg-2`
-  static const backgroundGradientBgFillChatBubbleBg2 = Color.fromARGB(153, 255, 255, 255);
+  static Color get backgroundGradientBgFillChatBubbleBg2 =>
+      _dark ? const Color.fromARGB(5, 200, 206, 218) : const Color.fromARGB(153, 255, 255, 255);
 
   /// `background-gradient-bg-fill-debug-bg-1`
-  static const backgroundGradientBgFillDebugBg1 = Color.fromARGB(0, 255, 255, 255);
+  static Color get backgroundGradientBgFillDebugBg1 =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `background-gradient-bg-fill-debug-bg-2`
-  static const backgroundGradientBgFillDebugBg2 = Color.fromARGB(36, 200, 206, 218);
+  static Color get backgroundGradientBgFillDebugBg2 =>
+      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(36, 200, 206, 218);
 
   /// `background-gradient-mask-gray`
-  static const backgroundGradientMaskGray = Color.fromARGB(51, 200, 206, 218);
+  static Color get backgroundGradientMaskGray =>
+      _dark ? const Color.fromARGB(20, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `background-gradient-mask-transparent`
-  static const backgroundGradientMaskTransparent = Color.fromARGB(0, 255, 255, 255);
+  static Color get backgroundGradientMaskTransparent =>
+      _dark ? const Color.fromARGB(0, 0, 0, 0) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `background-gradient-mask-transparent-dark`
-  static const backgroundGradientMaskTransparentDark = Color.fromARGB(0, 0, 0, 0);
+  static Color get backgroundGradientMaskTransparentDark => const Color.fromARGB(0, 0, 0, 0);
 
   /// `background-gradient-mask-side-panel-1`
-  static const backgroundGradientMaskSidePanel1 = Color.fromARGB(5, 16, 24, 40);
+  static Color get backgroundGradientMaskSidePanel1 =>
+      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(5, 16, 24, 40);
 
   /// `background-gradient-mask-side-panel-2`
-  static const backgroundGradientMaskSidePanel2 = Color.fromARGB(76, 16, 24, 40);
+  static Color get backgroundGradientMaskSidePanel2 =>
+      _dark ? const Color.fromARGB(230, 24, 24, 27) : const Color.fromARGB(76, 16, 24, 40);
 
   /// `background-gradient-mask-input-clear-1`
-  static const backgroundGradientMaskInputClear1 = Color(0xFFE9EBF0);
+  static Color get backgroundGradientMaskInputClear1 => _dark ? const Color(0xFF393A3E) : const Color(0xFFE9EBF0);
 
   /// `background-gradient-mask-input-clear-2`
-  static const backgroundGradientMaskInputClear2 = Color.fromARGB(0, 233, 235, 240);
+  static Color get backgroundGradientMaskInputClear2 =>
+      _dark ? const Color.fromARGB(0, 57, 58, 62) : const Color.fromARGB(0, 233, 235, 240);
 
   /// `state-base-hover-subtle`
-  static const stateBaseHoverSubtle = Color.fromARGB(20, 200, 206, 218);
+  static Color get stateBaseHoverSubtle =>
+      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(20, 200, 206, 218);
 
   /// `state-base-hover`
-  static const stateBaseHover = Color.fromARGB(51, 200, 206, 218);
+  static Color get stateBaseHover =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `state-base-hover-alt`
-  static const stateBaseHoverAlt = Color.fromARGB(102, 200, 206, 218);
+  static Color get stateBaseHoverAlt =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
 
   /// `state-base-active`
-  static const stateBaseActive = Color.fromARGB(102, 200, 206, 218);
+  static Color get stateBaseActive =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
 
   /// `state-base-handle`
-  static const stateBaseHandle = Color.fromARGB(51, 16, 24, 40);
+  static Color get stateBaseHandle =>
+      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color.fromARGB(51, 16, 24, 40);
 
   /// `state-base-handle-hover`
-  static const stateBaseHandleHover = Color.fromARGB(76, 16, 24, 40);
+  static Color get stateBaseHandleHover =>
+      _dark ? const Color.fromARGB(128, 200, 206, 218) : const Color.fromARGB(76, 16, 24, 40);
 
   /// `state-accent-hover`
-  static const stateAccentHover = Color(0xFFE9F0FF);
+  static Color get stateAccentHover => _dark ? const Color.fromARGB(36, 8, 90, 252) : const Color(0xFFE9F0FF);
 
   /// `state-accent-hover-alt`
-  static const stateAccentHoverAlt = Color(0xFFD0DFFF);
+  static Color get stateAccentHoverAlt => _dark ? const Color.fromARGB(64, 8, 90, 252) : const Color(0xFFD0DFFF);
 
   /// `state-accent-active`
-  static const stateAccentActive = Color.fromARGB(20, 0, 51, 255);
+  static Color get stateAccentActive =>
+      _dark ? const Color.fromARGB(36, 8, 90, 252) : const Color.fromARGB(20, 0, 51, 255);
 
   /// `state-accent-active-alt`
-  static const stateAccentActiveAlt = Color.fromARGB(36, 0, 51, 255);
+  static Color get stateAccentActiveAlt =>
+      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `state-accent-solid`
-  static const stateAccentSolid = Color(0xFF0033FF);
+  static Color get stateAccentSolid => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `state-destructive-hover`
-  static const stateDestructiveHover = Color(0xFFFEF3F2);
+  static Color get stateDestructiveHover => _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEF3F2);
 
   /// `state-destructive-hover-transparent`
-  static const stateDestructiveHoverTransparent = Color.fromARGB(0, 254, 243, 242);
+  static Color get stateDestructiveHoverTransparent =>
+      _dark ? const Color.fromARGB(0, 240, 68, 56) : const Color.fromARGB(0, 254, 243, 242);
 
   /// `state-destructive-hover-alt`
-  static const stateDestructiveHoverAlt = Color(0xFFFEE4E2);
+  static Color get stateDestructiveHoverAlt => _dark ? const Color.fromARGB(64, 240, 68, 56) : const Color(0xFFFEE4E2);
 
   /// `state-destructive-active`
-  static const stateDestructiveActive = Color(0xFFFECDCA);
+  static Color get stateDestructiveActive => _dark ? const Color.fromARGB(76, 240, 68, 56) : const Color(0xFFFECDCA);
 
   /// `state-destructive-solid`
-  static const stateDestructiveSolid = Color(0xFFF04438);
+  static Color get stateDestructiveSolid => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `state-destructive-border`
-  static const stateDestructiveBorder = Color(0xFFFDA29B);
+  static Color get stateDestructiveBorder => _dark ? const Color(0xFFF97066) : const Color(0xFFFDA29B);
 
   /// `state-warning-hover`
-  static const stateWarningHover = Color(0xFFFFFAEB);
+  static Color get stateWarningHover => _dark ? const Color.fromARGB(36, 247, 144, 9) : const Color(0xFFFFFAEB);
 
   /// `state-warning-hover-transparent`
-  static const stateWarningHoverTransparent = Color.fromARGB(0, 255, 250, 235);
+  static Color get stateWarningHoverTransparent =>
+      _dark ? const Color.fromARGB(0, 247, 144, 9) : const Color.fromARGB(0, 255, 250, 235);
 
   /// `state-warning-hover-alt`
-  static const stateWarningHoverAlt = Color(0xFFFEF0C7);
+  static Color get stateWarningHoverAlt => _dark ? const Color.fromARGB(64, 247, 144, 9) : const Color(0xFFFEF0C7);
 
   /// `state-warning-active`
-  static const stateWarningActive = Color(0xFFFEDF89);
+  static Color get stateWarningActive => _dark ? const Color.fromARGB(76, 247, 144, 9) : const Color(0xFFFEDF89);
 
   /// `state-warning-solid`
-  static const stateWarningSolid = Color(0xFFF79009);
+  static Color get stateWarningSolid => const Color(0xFFF79009);
 
   /// `state-success-hover`
-  static const stateSuccessHover = Color(0xFFECFDF3);
+  static Color get stateSuccessHover => _dark ? const Color.fromARGB(36, 23, 178, 106) : const Color(0xFFECFDF3);
 
   /// `state-success-hover-alt`
-  static const stateSuccessHoverAlt = Color(0xFFDCFAE6);
+  static Color get stateSuccessHoverAlt => _dark ? const Color.fromARGB(64, 23, 178, 106) : const Color(0xFFDCFAE6);
 
   /// `state-success-active`
-  static const stateSuccessActive = Color(0xFFABEFC6);
+  static Color get stateSuccessActive => _dark ? const Color.fromARGB(76, 23, 178, 106) : const Color(0xFFABEFC6);
 
   /// `state-success-solid`
-  static const stateSuccessSolid = Color(0xFF17B26A);
+  static Color get stateSuccessSolid => _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `workflow-workflow-progress-bg-1`
-  static const workflowWorkflowProgressBg1 = Color.fromARGB(51, 200, 206, 218);
+  static Color get workflowWorkflowProgressBg1 =>
+      _dark ? const Color.fromARGB(64, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `workflow-workflow-progress-bg-2`
-  static const workflowWorkflowProgressBg2 = Color.fromARGB(10, 200, 206, 218);
+  static Color get workflowWorkflowProgressBg2 =>
+      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(10, 200, 206, 218);
 
   /// `workflow-block-bg`
-  static const workflowBlockBg = Color(0xFFFCFCFD);
+  static Color get workflowBlockBg => _dark ? const Color(0xFF27272B) : const Color(0xFFFCFCFD);
 
   /// `workflow-block-bg-transparent`
-  static const workflowBlockBgTransparent = Color.fromARGB(230, 252, 252, 253);
+  static Color get workflowBlockBgTransparent =>
+      _dark ? const Color.fromARGB(245, 39, 39, 43) : const Color.fromARGB(230, 252, 252, 253);
 
   /// `workflow-block-border`
-  static const workflowBlockBorder = Color(0xFFFFFFFF);
+  static Color get workflowBlockBorder => _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `workflow-block-border-highlight`
-  static const workflowBlockBorderHighlight = Color.fromARGB(36, 0, 51, 255);
+  static Color get workflowBlockBorderHighlight =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `workflow-block-parma-bg`
-  static const workflowBlockParmaBg = Color(0xFFF2F4F7);
+  static Color get workflowBlockParmaBg => _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFF2F4F7);
 
   /// `workflow-block-wrapper-bg-1`
-  static const workflowBlockWrapperBg1 = Color(0xFFE9EBF0);
+  static Color get workflowBlockWrapperBg1 => _dark ? const Color(0xFF27272B) : const Color(0xFFE9EBF0);
 
   /// `workflow-block-wrapper-bg-2`
-  static const workflowBlockWrapperBg2 = Color.fromARGB(51, 233, 235, 240);
+  static Color get workflowBlockWrapperBg2 =>
+      _dark ? const Color.fromARGB(51, 39, 39, 43) : const Color.fromARGB(51, 233, 235, 240);
 
   /// `workflow-link-line-normal`
-  static const workflowLinkLineNormal = Color(0xFFD0D5DC);
+  static Color get workflowLinkLineNormal => _dark ? const Color(0xFF676F83) : const Color(0xFFD0D5DC);
 
   /// `workflow-link-line-normal-transparent`
-  static const workflowLinkLineNormalTransparent = Color.fromARGB(51, 208, 213, 220);
+  static Color get workflowLinkLineNormalTransparent =>
+      _dark ? const Color.fromARGB(51, 103, 111, 131) : const Color.fromARGB(51, 208, 213, 220);
 
   /// `workflow-link-line-active`
-  static const workflowLinkLineActive = Color(0xFF085AFC);
+  static Color get workflowLinkLineActive => _dark ? const Color(0xFF3072FF) : const Color(0xFF085AFC);
 
   /// `workflow-link-line-handle`
-  static const workflowLinkLineHandle = Color(0xFF085AFC);
+  static Color get workflowLinkLineHandle => _dark ? const Color(0xFF3072FF) : const Color(0xFF085AFC);
 
   /// `workflow-link-line-failure-active`
-  static const workflowLinkLineFailureActive = Color(0xFFF79009);
+  static Color get workflowLinkLineFailureActive => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `workflow-link-line-failure-handle`
-  static const workflowLinkLineFailureHandle = Color(0xFFF79009);
+  static Color get workflowLinkLineFailureHandle => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `workflow-link-line-failure-button-bg`
-  static const workflowLinkLineFailureButtonBg = Color(0xFFDC6803);
+  static Color get workflowLinkLineFailureButtonBg => _dark ? const Color(0xFFF79009) : const Color(0xFFDC6803);
 
   /// `workflow-link-line-failure-button-hover`
-  static const workflowLinkLineFailureButtonHover = Color(0xFFB54708);
+  static Color get workflowLinkLineFailureButtonHover => _dark ? const Color(0xFFDC6803) : const Color(0xFFB54708);
 
   /// `workflow-link-line-success-active`
-  static const workflowLinkLineSuccessActive = Color(0xFF17B26A);
+  static Color get workflowLinkLineSuccessActive => _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `workflow-link-line-success-handle`
-  static const workflowLinkLineSuccessHandle = Color(0xFF17B26A);
+  static Color get workflowLinkLineSuccessHandle => _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `workflow-link-line-error-active`
-  static const workflowLinkLineErrorActive = Color(0xFFF04438);
+  static Color get workflowLinkLineErrorActive => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `workflow-link-line-error-handle`
-  static const workflowLinkLineErrorHandle = Color(0xFFF04438);
+  static Color get workflowLinkLineErrorHandle => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `workflow-minimap-block`
-  static const workflowMinimapBlock = Color.fromARGB(76, 200, 206, 218);
+  static Color get workflowMinimapBlock =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(76, 200, 206, 218);
 
   /// `workflow-minimap-bg`
-  static const workflowMinimapBg = Color(0xFFE9EBF0);
+  static Color get workflowMinimapBg => _dark ? const Color(0xFF27272B) : const Color(0xFFE9EBF0);
 
   /// `workflow-display-glass-1`
-  static const workflowDisplayGlass1 = Color.fromARGB(31, 255, 255, 255);
+  static Color get workflowDisplayGlass1 =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(31, 255, 255, 255);
 
   /// `workflow-display-glass-2`
-  static const workflowDisplayGlass2 = Color.fromARGB(128, 255, 255, 255);
+  static Color get workflowDisplayGlass2 =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(128, 255, 255, 255);
 
   /// `workflow-display-highlight`
-  static const workflowDisplayHighlight = Color.fromARGB(128, 255, 255, 255);
+  static Color get workflowDisplayHighlight =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(128, 255, 255, 255);
 
   /// `workflow-display-outline`
-  static const workflowDisplayOutline = Color.fromARGB(13, 0, 0, 0);
+  static Color get workflowDisplayOutline =>
+      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(13, 0, 0, 0);
 
   /// `workflow-display-vignette-dark`
-  static const workflowDisplayVignetteDark = Color.fromARGB(31, 0, 0, 0);
+  static Color get workflowDisplayVignetteDark =>
+      _dark ? const Color.fromARGB(102, 0, 0, 0) : const Color.fromARGB(31, 0, 0, 0);
 
   /// `workflow-display-success-bg`
-  static const workflowDisplaySuccessBg = Color(0xFFECFDF3);
+  static Color get workflowDisplaySuccessBg => _dark ? const Color.fromARGB(51, 23, 178, 106) : const Color(0xFFECFDF3);
 
   /// `workflow-display-success-bg-line-pattern`
-  static const workflowDisplaySuccessBgLinePattern = Color.fromARGB(76, 23, 178, 106);
+  static Color get workflowDisplaySuccessBgLinePattern =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 23, 178, 106);
 
   /// `workflow-display-success-border-1`
-  static const workflowDisplaySuccessBorder1 = Color.fromARGB(204, 23, 178, 106);
+  static Color get workflowDisplaySuccessBorder1 =>
+      _dark ? const Color.fromARGB(230, 23, 178, 106) : const Color.fromARGB(204, 23, 178, 106);
 
   /// `workflow-display-success-border-2`
-  static const workflowDisplaySuccessBorder2 = Color.fromARGB(128, 23, 178, 106);
+  static Color get workflowDisplaySuccessBorder2 =>
+      _dark ? const Color.fromARGB(204, 23, 178, 106) : const Color.fromARGB(128, 23, 178, 106);
 
   /// `workflow-display-success-vignette-color`
-  static const workflowDisplaySuccessVignetteColor = Color.fromARGB(51, 23, 178, 106);
+  static Color get workflowDisplaySuccessVignetteColor =>
+      _dark ? const Color.fromARGB(64, 23, 178, 106) : const Color.fromARGB(51, 23, 178, 106);
 
   /// `workflow-display-error-bg`
-  static const workflowDisplayErrorBg = Color(0xFFFEF3F2);
+  static Color get workflowDisplayErrorBg => _dark ? const Color.fromARGB(51, 240, 68, 56) : const Color(0xFFFEF3F2);
 
   /// `workflow-display-error-bg-line-pattern`
-  static const workflowDisplayErrorBgLinePattern = Color.fromARGB(76, 240, 68, 56);
+  static Color get workflowDisplayErrorBgLinePattern =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 240, 68, 56);
 
   /// `workflow-display-error-border-1`
-  static const workflowDisplayErrorBorder1 = Color.fromARGB(204, 240, 68, 56);
+  static Color get workflowDisplayErrorBorder1 =>
+      _dark ? const Color.fromARGB(230, 240, 68, 56) : const Color.fromARGB(204, 240, 68, 56);
 
   /// `workflow-display-error-border-2`
-  static const workflowDisplayErrorBorder2 = Color.fromARGB(128, 240, 68, 56);
+  static Color get workflowDisplayErrorBorder2 =>
+      _dark ? const Color.fromARGB(204, 240, 68, 56) : const Color.fromARGB(128, 240, 68, 56);
 
   /// `workflow-display-error-vignette-color`
-  static const workflowDisplayErrorVignetteColor = Color.fromARGB(51, 240, 68, 56);
+  static Color get workflowDisplayErrorVignetteColor =>
+      _dark ? const Color.fromARGB(64, 240, 68, 56) : const Color.fromARGB(51, 240, 68, 56);
 
   /// `workflow-display-warning-bg`
-  static const workflowDisplayWarningBg = Color(0xFFFFFAEB);
+  static Color get workflowDisplayWarningBg => _dark ? const Color.fromARGB(51, 247, 144, 9) : const Color(0xFFFFFAEB);
 
   /// `workflow-display-warning-bg-line-pattern`
-  static const workflowDisplayWarningBgLinePattern = Color.fromARGB(76, 247, 144, 9);
+  static Color get workflowDisplayWarningBgLinePattern =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 247, 144, 9);
 
   /// `workflow-display-warning-border-1`
-  static const workflowDisplayWarningBorder1 = Color.fromARGB(204, 247, 144, 9);
+  static Color get workflowDisplayWarningBorder1 =>
+      _dark ? const Color.fromARGB(230, 247, 144, 9) : const Color.fromARGB(204, 247, 144, 9);
 
   /// `workflow-display-warning-border-2`
-  static const workflowDisplayWarningBorder2 = Color.fromARGB(128, 247, 144, 9);
+  static Color get workflowDisplayWarningBorder2 =>
+      _dark ? const Color.fromARGB(204, 247, 144, 9) : const Color.fromARGB(128, 247, 144, 9);
 
   /// `workflow-display-warning-vignette-color`
-  static const workflowDisplayWarningVignetteColor = Color.fromARGB(51, 247, 144, 9);
+  static Color get workflowDisplayWarningVignetteColor =>
+      _dark ? const Color.fromARGB(64, 247, 144, 9) : const Color.fromARGB(51, 247, 144, 9);
 
   /// `workflow-display-normal-bg`
-  static const workflowDisplayNormalBg = Color(0xFFF0F9FF);
+  static Color get workflowDisplayNormalBg => _dark ? const Color.fromARGB(51, 11, 165, 236) : const Color(0xFFF0F9FF);
 
   /// `workflow-display-normal-bg-line-pattern`
-  static const workflowDisplayNormalBgLinePattern = Color.fromARGB(76, 11, 165, 236);
+  static Color get workflowDisplayNormalBgLinePattern =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 11, 165, 236);
 
   /// `workflow-display-normal-border-1`
-  static const workflowDisplayNormalBorder1 = Color.fromARGB(204, 11, 165, 236);
+  static Color get workflowDisplayNormalBorder1 =>
+      _dark ? const Color.fromARGB(230, 11, 165, 236) : const Color.fromARGB(204, 11, 165, 236);
 
   /// `workflow-display-normal-border-2`
-  static const workflowDisplayNormalBorder2 = Color.fromARGB(128, 11, 165, 236);
+  static Color get workflowDisplayNormalBorder2 =>
+      _dark ? const Color.fromARGB(204, 11, 165, 236) : const Color.fromARGB(128, 11, 165, 236);
 
   /// `workflow-display-normal-vignette-color`
-  static const workflowDisplayNormalVignetteColor = Color.fromARGB(51, 11, 165, 236);
+  static Color get workflowDisplayNormalVignetteColor =>
+      _dark ? const Color.fromARGB(64, 11, 165, 236) : const Color.fromARGB(51, 11, 165, 236);
 
   /// `workflow-display-disabled-bg`
-  static const workflowDisplayDisabledBg = Color(0xFFF9FAFB);
+  static Color get workflowDisplayDisabledBg =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color(0xFFF9FAFB);
 
   /// `workflow-display-disabled-bg-line-pattern`
-  static const workflowDisplayDisabledBgLinePattern = Color.fromARGB(76, 200, 206, 218);
+  static Color get workflowDisplayDisabledBgLinePattern =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 200, 206, 218);
 
   /// `workflow-display-disabled-border-1`
-  static const workflowDisplayDisabledBorder1 = Color.fromARGB(153, 200, 206, 218);
+  static Color get workflowDisplayDisabledBorder1 => const Color.fromARGB(153, 200, 206, 218);
 
   /// `workflow-display-disabled-border-2`
-  static const workflowDisplayDisabledBorder2 = Color.fromARGB(102, 200, 206, 218);
+  static Color get workflowDisplayDisabledBorder2 =>
+      _dark ? const Color.fromARGB(64, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
 
   /// `workflow-display-disabled-vignette-color`
-  static const workflowDisplayDisabledVignetteColor = Color.fromARGB(102, 200, 206, 218);
+  static Color get workflowDisplayDisabledVignetteColor =>
+      _dark ? const Color.fromARGB(64, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
 
   /// `workflow-display-disabled-outline`
-  static const workflowDisplayDisabledOutline = Color.fromARGB(0, 0, 0, 0);
+  static Color get workflowDisplayDisabledOutline =>
+      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(0, 0, 0, 0);
 
   /// `workflow-canvas-workflow-dot-color`
-  static const workflowCanvasWorkflowDotColor = Color.fromARGB(38, 133, 133, 173);
+  static Color get workflowCanvasWorkflowDotColor =>
+      _dark ? const Color.fromARGB(28, 133, 133, 173) : const Color.fromARGB(38, 133, 133, 173);
 
   /// `workflow-canvas-workflow-bg`
-  static const workflowCanvasWorkflowBg = Color(0xFFF2F4F7);
+  static Color get workflowCanvasWorkflowBg => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF2F4F7);
 
   /// `workflow-canvas-workflow-top-bar-1`
-  static const workflowCanvasWorkflowTopBar1 = Color.fromARGB(230, 242, 244, 247);
+  static Color get workflowCanvasWorkflowTopBar1 =>
+      _dark ? const Color.fromARGB(230, 29, 29, 32) : const Color.fromARGB(230, 242, 244, 247);
 
   /// `workflow-canvas-workflow-top-bar-2`
-  static const workflowCanvasWorkflowTopBar2 = Color.fromARGB(13, 242, 244, 247);
+  static Color get workflowCanvasWorkflowTopBar2 =>
+      _dark ? const Color.fromARGB(20, 29, 29, 32) : const Color.fromARGB(13, 242, 244, 247);
 
   /// `workflow-canvas-canvas-overlay`
-  static const workflowCanvasCanvasOverlay = Color.fromARGB(204, 242, 244, 247);
+  static Color get workflowCanvasCanvasOverlay =>
+      _dark ? const Color.fromARGB(204, 29, 29, 32) : const Color.fromARGB(204, 242, 244, 247);
 
   /// `workflow-debug-run-status-bg`
-  static const workflowDebugRunStatusBg = Color.fromARGB(20, 255, 68, 5);
+  static Color get workflowDebugRunStatusBg =>
+      _dark ? const Color.fromARGB(102, 230, 46, 5) : const Color.fromARGB(20, 255, 68, 5);
 
   /// `workflow-debug-run-status-bg-alt`
-  static const workflowDebugRunStatusBgAlt = Color.fromARGB(36, 255, 68, 5);
+  static Color get workflowDebugRunStatusBgAlt =>
+      _dark ? const Color.fromARGB(128, 255, 46, 0) : const Color.fromARGB(36, 255, 68, 5);
 
   /// `workflow-debug-breakpoint`
-  static const workflowDebugBreakpoint = Color(0xFFE62E05);
+  static Color get workflowDebugBreakpoint => _dark ? const Color(0xFFFF692E) : const Color(0xFFE62E05);
 
   /// `workflow-debug-text`
-  static const workflowDebugText = Color(0xFFE62E05);
+  static Color get workflowDebugText => _dark ? const Color(0xFFFF9C66) : const Color(0xFFE62E05);
 
   /// `workflow-debug-text-disabled`
-  static const workflowDebugTextDisabled = Color.fromARGB(51, 255, 68, 5);
+  static Color get workflowDebugTextDisabled => const Color.fromARGB(51, 255, 68, 5);
 
   /// `workflow-test-run-run-status-bg`
-  static const workflowTestRunRunStatusBg = Color.fromARGB(20, 0, 51, 255);
+  static Color get workflowTestRunRunStatusBg =>
+      _dark ? const Color.fromARGB(128, 8, 90, 252) : const Color.fromARGB(20, 0, 51, 255);
 
   /// `workflow-test-run-paused-bg`
-  static const workflowTestRunPausedBg = Color.fromARGB(36, 247, 144, 9);
+  static Color get workflowTestRunPausedBg =>
+      _dark ? const Color.fromARGB(76, 247, 144, 9) : const Color.fromARGB(36, 247, 144, 9);
 
   /// `workflow-test-run-paused-text`
-  static const workflowTestRunPausedText = Color(0xFFDC6803);
+  static Color get workflowTestRunPausedText => _dark ? const Color(0xFFFDB022) : const Color(0xFFDC6803);
 
   /// `workflow-test-run-run-status-bg-alt`
-  static const workflowTestRunRunStatusBgAlt = Color.fromARGB(36, 0, 51, 255);
+  static Color get workflowTestRunRunStatusBgAlt =>
+      _dark ? const Color.fromARGB(230, 45, 90, 190) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `workflow-test-run-text`
-  static const workflowTestRunText = Color(0xFF002CDE);
+  static Color get workflowTestRunText => _dark ? const Color(0xFFD0DFFF) : const Color(0xFF002CDE);
 
   /// `components-icon-bg-red-solid`
-  static const componentsIconBgRedSolid = Color(0xFFD92D20);
+  static Color get componentsIconBgRedSolid => const Color(0xFFD92D20);
 
   /// `components-icon-bg-rose-solid`
-  static const componentsIconBgRoseSolid = Color(0xFFE31B54);
+  static Color get componentsIconBgRoseSolid => const Color(0xFFE31B54);
 
   /// `components-icon-bg-pink-solid`
-  static const componentsIconBgPinkSolid = Color(0xFFDD2590);
+  static Color get componentsIconBgPinkSolid => const Color(0xFFDD2590);
 
   /// `components-icon-bg-orange-dark-solid`
-  static const componentsIconBgOrangeDarkSolid = Color(0xFFFF4405);
+  static Color get componentsIconBgOrangeDarkSolid => const Color(0xFFFF4405);
 
   /// `components-icon-bg-orange-solid`
-  static const componentsIconBgOrangeSolid = Color(0xFFF79009);
+  static Color get componentsIconBgOrangeSolid => const Color(0xFFF79009);
 
   /// `components-icon-bg-yellow-solid`
-  static const componentsIconBgYellowSolid = Color(0xFFEAAA08);
+  static Color get componentsIconBgYellowSolid => const Color(0xFFEAAA08);
 
   /// `components-icon-bg-green-solid`
-  static const componentsIconBgGreenSolid = Color(0xFF4CA30D);
+  static Color get componentsIconBgGreenSolid => const Color(0xFF4CA30D);
 
   /// `components-icon-bg-teal-solid`
-  static const componentsIconBgTealSolid = Color(0xFF0E9384);
+  static Color get componentsIconBgTealSolid => const Color(0xFF0E9384);
 
   /// `components-icon-bg-blue-light-solid`
-  static const componentsIconBgBlueLightSolid = Color(0xFF0BA5EC);
+  static Color get componentsIconBgBlueLightSolid => const Color(0xFF0BA5EC);
 
   /// `components-icon-bg-blue-solid`
-  static const componentsIconBgBlueSolid = Color(0xFF0033FF);
+  static Color get componentsIconBgBlueSolid => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-icon-bg-indigo-solid`
-  static const componentsIconBgIndigoSolid = Color(0xFF444CE7);
+  static Color get componentsIconBgIndigoSolid => const Color(0xFF444CE7);
 
   /// `components-icon-bg-violet-solid`
-  static const componentsIconBgVioletSolid = Color(0xFF7839EE);
+  static Color get componentsIconBgVioletSolid => const Color(0xFF7839EE);
 
   /// `components-icon-bg-midnight-solid`
-  static const componentsIconBgMidnightSolid = Color(0xFF828DAD);
+  static Color get componentsIconBgMidnightSolid => _dark ? const Color(0xFF5D698D) : const Color(0xFF828DAD);
 
   /// `components-icon-bg-red-soft`
-  static const componentsIconBgRedSoft = Color(0xFFFEF3F2);
+  static Color get componentsIconBgRedSoft => _dark ? const Color.fromARGB(51, 240, 68, 56) : const Color(0xFFFEF3F2);
 
   /// `components-icon-bg-rose-soft`
-  static const componentsIconBgRoseSoft = Color(0xFFFFF1F3);
+  static Color get componentsIconBgRoseSoft => _dark ? const Color.fromARGB(51, 246, 61, 104) : const Color(0xFFFFF1F3);
 
   /// `components-icon-bg-pink-soft`
-  static const componentsIconBgPinkSoft = Color(0xFFFDF2FA);
+  static Color get componentsIconBgPinkSoft => _dark ? const Color.fromARGB(51, 238, 70, 188) : const Color(0xFFFDF2FA);
 
   /// `components-icon-bg-orange-dark-soft`
-  static const componentsIconBgOrangeDarkSoft = Color(0xFFFFF4ED);
+  static Color get componentsIconBgOrangeDarkSoft =>
+      _dark ? const Color.fromARGB(51, 255, 68, 5) : const Color(0xFFFFF4ED);
 
   /// `components-icon-bg-orange-soft`
-  static const componentsIconBgOrangeSoft = Color(0xFFFFFAEB);
+  static Color get componentsIconBgOrangeSoft =>
+      _dark ? const Color.fromARGB(51, 247, 144, 9) : const Color(0xFFFFFAEB);
 
   /// `components-icon-bg-yellow-soft`
-  static const componentsIconBgYellowSoft = Color(0xFFFEFBE8);
+  static Color get componentsIconBgYellowSoft =>
+      _dark ? const Color.fromARGB(51, 234, 170, 8) : const Color(0xFFFEFBE8);
 
   /// `components-icon-bg-green-soft`
-  static const componentsIconBgGreenSoft = Color(0xFFF3FEE7);
+  static Color get componentsIconBgGreenSoft =>
+      _dark ? const Color.fromARGB(51, 102, 198, 28) : const Color(0xFFF3FEE7);
 
   /// `components-icon-bg-teal-soft`
-  static const componentsIconBgTealSoft = Color(0xFFF0FDF9);
+  static Color get componentsIconBgTealSoft => _dark ? const Color.fromARGB(51, 21, 183, 158) : const Color(0xFFF0FDF9);
 
   /// `components-icon-bg-blue-light-soft`
-  static const componentsIconBgBlueLightSoft = Color(0xFFF0F9FF);
+  static Color get componentsIconBgBlueLightSoft =>
+      _dark ? const Color.fromARGB(51, 11, 165, 236) : const Color(0xFFF0F9FF);
 
   /// `components-icon-bg-blue-soft`
-  static const componentsIconBgBlueSoft = Color(0xFFE9F0FF);
+  static Color get componentsIconBgBlueSoft => _dark ? const Color.fromARGB(51, 0, 51, 255) : const Color(0xFFE9F0FF);
 
   /// `components-icon-bg-indigo-soft`
-  static const componentsIconBgIndigoSoft = Color(0xFFEEF4FF);
+  static Color get componentsIconBgIndigoSoft =>
+      _dark ? const Color.fromARGB(51, 97, 114, 243) : const Color(0xFFEEF4FF);
 
   /// `components-icon-bg-violet-soft`
-  static const componentsIconBgVioletSoft = Color(0xFFF5F3FF);
+  static Color get componentsIconBgVioletSoft =>
+      _dark ? const Color.fromARGB(51, 135, 91, 247) : const Color(0xFFF5F3FF);
 
   /// `components-icon-bg-midnight-soft`
-  static const componentsIconBgMidnightSoft = Color(0xFFF0F2F5);
+  static Color get componentsIconBgMidnightSoft =>
+      _dark ? const Color.fromARGB(51, 130, 141, 173) : const Color(0xFFF0F2F5);
 
   /// `components-avatar-default-avatar-bg`
-  static const componentsAvatarDefaultAvatarBg = Color(0xFFD0D5DC);
+  static Color get componentsAvatarDefaultAvatarBg => _dark ? const Color(0xFF222225) : const Color(0xFFD0D5DC);
 
   /// `components-avatar-mask-darkmode-dimmed`
-  static const componentsAvatarMaskDarkmodeDimmed = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsAvatarMaskDarkmodeDimmed =>
+      _dark ? const Color.fromARGB(31, 0, 0, 0) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-avatar-shape-fill-stop-0`
-  static const componentsAvatarShapeFillStop0 = Color(0xFFFFFFFF);
+  static Color get componentsAvatarShapeFillStop0 =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-avatar-shape-fill-stop-100`
-  static const componentsAvatarShapeFillStop100 = Color.fromARGB(230, 255, 255, 255);
+  static Color get componentsAvatarShapeFillStop100 =>
+      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color.fromARGB(230, 255, 255, 255);
 
   /// `components-avatar-bg-mask-stop-0`
-  static const componentsAvatarBgMaskStop0 = Color.fromARGB(31, 255, 255, 255);
+  static Color get componentsAvatarBgMaskStop0 =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(31, 255, 255, 255);
 
   /// `components-avatar-bg-mask-stop-100`
-  static const componentsAvatarBgMaskStop100 = Color.fromARGB(20, 255, 255, 255);
+  static Color get componentsAvatarBgMaskStop100 =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(20, 255, 255, 255);
 
   /// `components-chat-input-audio-bg`
-  static const componentsChatInputAudioBg = Color(0xFFE9F0FF);
+  static Color get componentsChatInputAudioBg => _dark ? const Color.fromARGB(51, 0, 51, 255) : const Color(0xFFE9F0FF);
 
   /// `components-chat-input-audio-bg-alt`
-  static const componentsChatInputAudioBgAlt = Color(0xFFFCFCFD);
+  static Color get componentsChatInputAudioBgAlt =>
+      _dark ? const Color.fromARGB(230, 24, 24, 27) : const Color(0xFFFCFCFD);
 
   /// `components-chat-input-audio-wave-default`
-  static const componentsChatInputAudioWaveDefault = Color.fromARGB(51, 0, 51, 255);
+  static Color get componentsChatInputAudioWaveDefault =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(51, 0, 51, 255);
 
   /// `components-chat-input-audio-wave-active`
-  static const componentsChatInputAudioWaveActive = Color(0xFF0033FF);
+  static Color get componentsChatInputAudioWaveActive => _dark ? const Color(0xFF6694FF) : const Color(0xFF0033FF);
 
   /// `components-chat-input-bg-mask-1`
-  static const componentsChatInputBgMask1 = Color.fromARGB(3, 255, 255, 255);
+  static Color get componentsChatInputBgMask1 =>
+      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(3, 255, 255, 255);
 
   /// `components-chat-input-bg-mask-2`
-  static const componentsChatInputBgMask2 = Color(0xFFF2F4F7);
+  static Color get componentsChatInputBgMask2 =>
+      _dark ? const Color.fromARGB(153, 24, 24, 27) : const Color(0xFFF2F4F7);
 
   /// `components-chat-input-border`
-  static const componentsChatInputBorder = Color(0xFFFFFFFF);
+  static Color get componentsChatInputBorder =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color(0xFFFFFFFF);
 
   /// `components-label-gray`
-  static const componentsLabelGray = Color(0xFFF2F4F7);
+  static Color get componentsLabelGray => _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFF2F4F7);
 
   /// `components-premium-badge-highlight-stop-0`
-  static const componentsPremiumBadgeHighlightStop0 = Color.fromARGB(31, 255, 255, 255);
+  static Color get componentsPremiumBadgeHighlightStop0 => const Color.fromARGB(31, 255, 255, 255);
 
   /// `components-premium-badge-highlight-stop-100`
-  static const componentsPremiumBadgeHighlightStop100 = Color.fromARGB(76, 255, 255, 255);
+  static Color get componentsPremiumBadgeHighlightStop100 =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(76, 255, 255, 255);
 
   /// `components-premium-badge-orange-bg-stop-0`
-  static const componentsPremiumBadgeOrangeBgStop0 = Color(0xFFFF692E);
+  static Color get componentsPremiumBadgeOrangeBgStop0 => const Color(0xFFFF692E);
 
   /// `components-premium-badge-orange-bg-stop-100`
-  static const componentsPremiumBadgeOrangeBgStop100 = Color(0xFFE04F16);
+  static Color get componentsPremiumBadgeOrangeBgStop100 => const Color(0xFFE04F16);
 
   /// `components-premium-badge-orange-stroke-stop-0`
-  static const componentsPremiumBadgeOrangeStrokeStop0 = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeOrangeStrokeStop0 =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-orange-stroke-stop-100`
-  static const componentsPremiumBadgeOrangeStrokeStop100 = Color(0xFFE62E05);
+  static Color get componentsPremiumBadgeOrangeStrokeStop100 =>
+      _dark ? const Color(0xFFFF4405) : const Color(0xFFE62E05);
 
   /// `components-premium-badge-orange-text-stop-0`
-  static const componentsPremiumBadgeOrangeTextStop0 = Color(0xFFFEFAF5);
+  static Color get componentsPremiumBadgeOrangeTextStop0 => _dark ? const Color(0xFFFEF6EE) : const Color(0xFFFEFAF5);
 
   /// `components-premium-badge-orange-text-stop-100`
-  static const componentsPremiumBadgeOrangeTextStop100 = Color(0xFFFDEAD7);
+  static Color get componentsPremiumBadgeOrangeTextStop100 => _dark ? const Color(0xFFF9DBAF) : const Color(0xFFFDEAD7);
 
   /// `components-premium-badge-orange-glow`
-  static const componentsPremiumBadgeOrangeGlow = Color(0xFF772917);
+  static Color get componentsPremiumBadgeOrangeGlow => _dark ? const Color(0xFFB93815) : const Color(0xFF772917);
 
   /// `components-premium-badge-orange-glow-hover`
-  static const componentsPremiumBadgeOrangeGlowHover = Color(0xFFF7B27A);
+  static Color get componentsPremiumBadgeOrangeGlowHover => _dark ? const Color(0xFFFDEAD7) : const Color(0xFFF7B27A);
 
   /// `components-premium-badge-orange-bg-stop-0-hover`
-  static const componentsPremiumBadgeOrangeBgStop0Hover = Color(0xFFFF4405);
+  static Color get componentsPremiumBadgeOrangeBgStop0Hover =>
+      _dark ? const Color(0xFFFF692E) : const Color(0xFFFF4405);
 
   /// `components-premium-badge-orange-bg-stop-100-hover`
-  static const componentsPremiumBadgeOrangeBgStop100Hover = Color(0xFFB93815);
+  static Color get componentsPremiumBadgeOrangeBgStop100Hover => const Color(0xFFB93815);
 
   /// `components-premium-badge-orange-stroke-stop-0-hover`
-  static const componentsPremiumBadgeOrangeStrokeStop0Hover = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeOrangeStrokeStop0Hover =>
+      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-orange-stroke-stop-100-hover`
-  static const componentsPremiumBadgeOrangeStrokeStop100Hover = Color(0xFFBC1B06);
+  static Color get componentsPremiumBadgeOrangeStrokeStop100Hover =>
+      _dark ? const Color(0xFFFF4405) : const Color(0xFFBC1B06);
 
   /// `components-premium-badge-blue-bg-stop-0`
-  static const componentsPremiumBadgeBlueBgStop0 = Color(0xFF3072FF);
+  static Color get componentsPremiumBadgeBlueBgStop0 => const Color(0xFF3072FF);
 
   /// `components-premium-badge-blue-bg-stop-100`
-  static const componentsPremiumBadgeBlueBgStop100 = Color(0xFF0033FF);
+  static Color get componentsPremiumBadgeBlueBgStop100 => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-premium-badge-blue-stroke-stop-0`
-  static const componentsPremiumBadgeBlueStrokeStop0 = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeBlueStrokeStop0 =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-blue-stroke-stop-100`
-  static const componentsPremiumBadgeBlueStrokeStop100 = Color(0xFF0033FF);
+  static Color get componentsPremiumBadgeBlueStrokeStop100 => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-premium-badge-blue-text-stop-0`
-  static const componentsPremiumBadgeBlueTextStop0 = Color(0xFFF5F8FF);
+  static Color get componentsPremiumBadgeBlueTextStop0 => _dark ? const Color(0xFFE9F0FF) : const Color(0xFFF5F8FF);
 
   /// `components-premium-badge-blue-text-stop-100`
-  static const componentsPremiumBadgeBlueTextStop100 = Color(0xFFD0DFFF);
+  static Color get componentsPremiumBadgeBlueTextStop100 => _dark ? const Color(0xFFA0BDFF) : const Color(0xFFD0DFFF);
 
   /// `components-premium-badge-blue-glow`
-  static const componentsPremiumBadgeBlueGlow = Color(0xFF001EA0);
+  static Color get componentsPremiumBadgeBlueGlow => _dark ? const Color(0xFF002CDE) : const Color(0xFF001EA0);
 
   /// `components-premium-badge-blue-glow-hover`
-  static const componentsPremiumBadgeBlueGlowHover = Color(0xFF6694FF);
+  static Color get componentsPremiumBadgeBlueGlowHover => _dark ? const Color(0xFFD0DFFF) : const Color(0xFF6694FF);
 
   /// `components-premium-badge-blue-bg-stop-0-hover`
-  static const componentsPremiumBadgeBlueBgStop0Hover = Color(0xFF085AFC);
+  static Color get componentsPremiumBadgeBlueBgStop0Hover => _dark ? const Color(0xFF6694FF) : const Color(0xFF085AFC);
 
   /// `components-premium-badge-blue-bg-stop-100-hover`
-  static const componentsPremiumBadgeBlueBgStop100Hover = Color(0xFF002CDE);
+  static Color get componentsPremiumBadgeBlueBgStop100Hover => const Color(0xFF002CDE);
 
   /// `components-premium-badge-blue-stroke-stop-0-hover`
-  static const componentsPremiumBadgeBlueStrokeStop0Hover = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeBlueStrokeStop0Hover =>
+      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-blue-stroke-stop-100-hover`
-  static const componentsPremiumBadgeBlueStrokeStop100Hover = Color(0xFF001EA0);
+  static Color get componentsPremiumBadgeBlueStrokeStop100Hover =>
+      _dark ? const Color(0xFF085AFC) : const Color(0xFF001EA0);
 
   /// `components-premium-badge-indigo-bg-stop-0`
-  static const componentsPremiumBadgeIndigoBgStop0 = Color(0xFF8098F9);
+  static Color get componentsPremiumBadgeIndigoBgStop0 => _dark ? const Color(0xFF6172F3) : const Color(0xFF8098F9);
 
   /// `components-premium-badge-indigo-bg-stop-100`
-  static const componentsPremiumBadgeIndigoBgStop100 = Color(0xFF444CE7);
+  static Color get componentsPremiumBadgeIndigoBgStop100 => _dark ? const Color(0xFF3538CD) : const Color(0xFF444CE7);
 
   /// `components-premium-badge-indigo-stroke-stop-0`
-  static const componentsPremiumBadgeIndigoStrokeStop0 = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeIndigoStrokeStop0 =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-indigo-stroke-stop-100`
-  static const componentsPremiumBadgeIndigoStrokeStop100 = Color(0xFF6172F3);
+  static Color get componentsPremiumBadgeIndigoStrokeStop100 =>
+      _dark ? const Color(0xFF444CE7) : const Color(0xFF6172F3);
 
   /// `components-premium-badge-indigo-text-stop-0`
-  static const componentsPremiumBadgeIndigoTextStop0 = Color(0xFFF5F8FF);
+  static Color get componentsPremiumBadgeIndigoTextStop0 => _dark ? const Color(0xFFEEF4FF) : const Color(0xFFF5F8FF);
 
   /// `components-premium-badge-indigo-text-stop-100`
-  static const componentsPremiumBadgeIndigoTextStop100 = Color(0xFFE0EAFF);
+  static Color get componentsPremiumBadgeIndigoTextStop100 => _dark ? const Color(0xFFC7D7FE) : const Color(0xFFE0EAFF);
 
   /// `components-premium-badge-indigo-glow`
-  static const componentsPremiumBadgeIndigoGlow = Color(0xFF2D3282);
+  static Color get componentsPremiumBadgeIndigoGlow => _dark ? const Color(0xFF3538CD) : const Color(0xFF2D3282);
 
   /// `components-premium-badge-indigo-glow-hover`
-  static const componentsPremiumBadgeIndigoGlowHover = Color(0xFFA4BCFD);
+  static Color get componentsPremiumBadgeIndigoGlowHover => _dark ? const Color(0xFFE0EAFF) : const Color(0xFFA4BCFD);
 
   /// `components-premium-badge-indigo-bg-stop-0-hover`
-  static const componentsPremiumBadgeIndigoBgStop0Hover = Color(0xFF6172F3);
+  static Color get componentsPremiumBadgeIndigoBgStop0Hover =>
+      _dark ? const Color(0xFFA4BCFD) : const Color(0xFF6172F3);
 
   /// `components-premium-badge-indigo-bg-stop-100-hover`
-  static const componentsPremiumBadgeIndigoBgStop100Hover = Color(0xFF2D31A6);
+  static Color get componentsPremiumBadgeIndigoBgStop100Hover =>
+      _dark ? const Color(0xFF3538CD) : const Color(0xFF2D31A6);
 
   /// `components-premium-badge-indigo-stroke-stop-0-hover`
-  static const componentsPremiumBadgeIndigoStrokeStop0Hover = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeIndigoStrokeStop0Hover =>
+      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-indigo-stroke-stop-100-hover`
-  static const componentsPremiumBadgeIndigoStrokeStop100Hover = Color(0xFF2D31A6);
+  static Color get componentsPremiumBadgeIndigoStrokeStop100Hover =>
+      _dark ? const Color(0xFF444CE7) : const Color(0xFF2D31A6);
 
   /// `components-premium-badge-grey-bg-stop-0`
-  static const componentsPremiumBadgeGreyBgStop0 = Color(0xFF98A2B2);
+  static Color get componentsPremiumBadgeGreyBgStop0 => _dark ? const Color(0xFF676F83) : const Color(0xFF98A2B2);
 
   /// `components-premium-badge-grey-bg-stop-100`
-  static const componentsPremiumBadgeGreyBgStop100 = Color(0xFF676F83);
+  static Color get componentsPremiumBadgeGreyBgStop100 => _dark ? const Color(0xFF495464) : const Color(0xFF676F83);
 
   /// `components-premium-badge-grey-stroke-stop-0`
-  static const componentsPremiumBadgeGreyStrokeStop0 = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeGreyStrokeStop0 =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-grey-stroke-stop-100`
-  static const componentsPremiumBadgeGreyStrokeStop100 = Color(0xFF676F83);
+  static Color get componentsPremiumBadgeGreyStrokeStop100 => _dark ? const Color(0xFF495464) : const Color(0xFF676F83);
 
   /// `components-premium-badge-grey-text-stop-0`
-  static const componentsPremiumBadgeGreyTextStop0 = Color(0xFFFCFCFD);
+  static Color get componentsPremiumBadgeGreyTextStop0 => _dark ? const Color(0xFFF9FAFB) : const Color(0xFFFCFCFD);
 
   /// `components-premium-badge-grey-text-stop-100`
-  static const componentsPremiumBadgeGreyTextStop100 = Color(0xFFF2F4F7);
+  static Color get componentsPremiumBadgeGreyTextStop100 => _dark ? const Color(0xFFE9EBF0) : const Color(0xFFF2F4F7);
 
   /// `components-premium-badge-grey-glow`
-  static const componentsPremiumBadgeGreyGlow = Color(0xFF101828);
+  static Color get componentsPremiumBadgeGreyGlow => _dark ? const Color(0xFF354052) : const Color(0xFF101828);
 
   /// `components-premium-badge-grey-glow-hover`
-  static const componentsPremiumBadgeGreyGlowHover = Color(0xFFD0D5DC);
+  static Color get componentsPremiumBadgeGreyGlowHover => _dark ? const Color(0xFFF2F4F7) : const Color(0xFFD0D5DC);
 
   /// `components-premium-badge-grey-bg-stop-0-hover`
-  static const componentsPremiumBadgeGreyBgStop0Hover = Color(0xFF676F83);
+  static Color get componentsPremiumBadgeGreyBgStop0Hover => _dark ? const Color(0xFF98A2B2) : const Color(0xFF676F83);
 
   /// `components-premium-badge-grey-bg-stop-100-hover`
-  static const componentsPremiumBadgeGreyBgStop100Hover = Color(0xFF354052);
+  static Color get componentsPremiumBadgeGreyBgStop100Hover => const Color(0xFF354052);
 
   /// `components-premium-badge-grey-stroke-stop-0-hover`
-  static const componentsPremiumBadgeGreyStrokeStop0Hover = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeGreyStrokeStop0Hover =>
+      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-premium-badge-grey-stroke-stop-100-hover`
-  static const componentsPremiumBadgeGreyStrokeStop100Hover = Color(0xFF354052);
+  static Color get componentsPremiumBadgeGreyStrokeStop100Hover =>
+      _dark ? const Color(0xFF676F83) : const Color(0xFF354052);
 
   /// `components-dropzone-bg`
-  static const componentsDropzoneBg = Color(0xFFF9FAFB);
+  static Color get componentsDropzoneBg => _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color(0xFFF9FAFB);
 
   /// `components-dropzone-bg-alt`
-  static const componentsDropzoneBgAlt = Color(0xFFF2F4F7);
+  static Color get componentsDropzoneBgAlt => _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color(0xFFF2F4F7);
 
   /// `components-dropzone-bg-accent`
-  static const componentsDropzoneBgAccent = Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsDropzoneBgAccent =>
+      _dark ? const Color.fromARGB(51, 0, 51, 255) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `components-dropzone-border`
-  static const componentsDropzoneBorder = Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsDropzoneBorder =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `components-dropzone-border-alt`
-  static const componentsDropzoneBorderAlt = Color.fromARGB(51, 16, 24, 40);
+  static Color get componentsDropzoneBorderAlt =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(51, 16, 24, 40);
 
   /// `components-dropzone-border-accent`
-  static const componentsDropzoneBorderAccent = Color(0xFF6694FF);
+  static Color get componentsDropzoneBorderAccent => const Color(0xFF6694FF);
 
   /// `components-panel-bg`
-  static const componentsPanelBg = Color(0xFFFFFFFF);
+  static Color get componentsPanelBg => _dark ? const Color(0xFF222225) : const Color(0xFFFFFFFF);
 
   /// `components-panel-bg-transparent`
-  static const componentsPanelBgTransparent = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsPanelBgTransparent =>
+      _dark ? const Color.fromARGB(0, 34, 34, 37) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-panel-bg-alt`
-  static const componentsPanelBgAlt = Color(0xFFF9FAFB);
+  static Color get componentsPanelBgAlt => _dark ? const Color(0xFF222225) : const Color(0xFFF9FAFB);
 
   /// `components-panel-bg-blur`
-  static const componentsPanelBgBlur = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPanelBgBlur =>
+      _dark ? const Color.fromARGB(242, 44, 44, 48) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-panel-bg-blur-burn`
-  static const componentsPanelBgBlurBurn = Color.fromARGB(230, 255, 255, 255);
+  static Color get componentsPanelBgBlurBurn =>
+      _dark ? const Color.fromARGB(230, 31, 31, 35) : const Color.fromARGB(230, 255, 255, 255);
 
   /// `components-panel-border`
-  static const componentsPanelBorder = Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsPanelBorder =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `components-panel-border-subtle`
-  static const componentsPanelBorderSubtle = Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsPanelBorderSubtle =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `components-panel-gradient-1`
-  static const componentsPanelGradient1 = Color(0xFFFFFFFF);
+  static Color get componentsPanelGradient1 => _dark ? const Color(0xFF27272B) : const Color(0xFFFFFFFF);
 
   /// `components-panel-gradient-2`
-  static const componentsPanelGradient2 = Color(0xFFF9FAFB);
+  static Color get componentsPanelGradient2 => _dark ? const Color(0xFF222225) : const Color(0xFFF9FAFB);
 
   /// `components-panel-on-panel-item-bg`
-  static const componentsPanelOnPanelItemBg = Color(0xFFFFFFFF);
+  static Color get componentsPanelOnPanelItemBg => _dark ? const Color(0xFF27272B) : const Color(0xFFFFFFFF);
 
   /// `components-panel-on-panel-item-bg-transparent`
-  static const componentsPanelOnPanelItemBgTransparent = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPanelOnPanelItemBgTransparent =>
+      _dark ? const Color.fromARGB(242, 44, 44, 48) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-panel-on-panel-item-bg-hover`
-  static const componentsPanelOnPanelItemBgHover = Color(0xFFF9FAFB);
+  static Color get componentsPanelOnPanelItemBgHover => _dark ? const Color(0xFF3A3A40) : const Color(0xFFF9FAFB);
 
   /// `components-panel-on-panel-item-bg-hover-transparent`
-  static const componentsPanelOnPanelItemBgHoverTransparent = Color.fromARGB(0, 249, 250, 251);
+  static Color get componentsPanelOnPanelItemBgHoverTransparent =>
+      _dark ? const Color.fromARGB(0, 58, 58, 64) : const Color.fromARGB(0, 249, 250, 251);
 
   /// `components-panel-on-panel-item-bg-destructive-hover-transparent`
-  static const componentsPanelOnPanelItemBgDestructiveHoverTransparent = Color.fromARGB(0, 254, 243, 242);
+  static Color get componentsPanelOnPanelItemBgDestructiveHoverTransparent =>
+      _dark ? const Color.fromARGB(0, 255, 251, 250) : const Color.fromARGB(0, 254, 243, 242);
 
   /// `components-panel-on-panel-item-bg-alt`
-  static const componentsPanelOnPanelItemBgAlt = Color(0xFFF9FAFB);
+  static Color get componentsPanelOnPanelItemBgAlt => _dark ? const Color(0xFF3A3A40) : const Color(0xFFF9FAFB);
 
   /// `components-marketplace-header-bg`
-  static const componentsMarketplaceHeaderBg = Color.fromARGB(250, 255, 255, 255);
+  static Color get componentsMarketplaceHeaderBg =>
+      _dark ? const Color.fromARGB(230, 31, 31, 35) : const Color.fromARGB(250, 255, 255, 255);
 
   /// `components-card-bg`
-  static const componentsCardBg = Color(0xFFFCFCFD);
+  static Color get componentsCardBg => _dark ? const Color(0xFF222225) : const Color(0xFFFCFCFD);
 
   /// `components-card-bg-alt`
-  static const componentsCardBgAlt = Color(0xFFFFFFFF);
+  static Color get componentsCardBgAlt => _dark ? const Color(0xFF27272B) : const Color(0xFFFFFFFF);
 
   /// `components-card-bg-transparent`
-  static const componentsCardBgTransparent = Color.fromARGB(0, 252, 252, 253);
+  static Color get componentsCardBgTransparent =>
+      _dark ? const Color.fromARGB(0, 34, 34, 37) : const Color.fromARGB(0, 252, 252, 253);
 
   /// `components-card-bg-alt-transparent`
-  static const componentsCardBgAltTransparent = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsCardBgAltTransparent =>
+      _dark ? const Color.fromARGB(0, 39, 39, 43) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-card-border`
-  static const componentsCardBorder = Color(0xFFFFFFFF);
+  static Color get componentsCardBorder => _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-actionbar-border`
-  static const componentsActionbarBorder = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsActionbarBorder =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-actionbar-bg`
-  static const componentsActionbarBg = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsActionbarBg => _dark ? const Color(0xFF222225) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-actionbar-bg-accent`
-  static const componentsActionbarBgAccent = Color(0xFFF5F8FF);
+  static Color get componentsActionbarBgAccent => _dark ? const Color(0xFF27272B) : const Color(0xFFF5F8FF);
 
   /// `components-actionbar-border-accent`
-  static const componentsActionbarBorderAccent = Color(0xFFA0BDFF);
+  static Color get componentsActionbarBorderAccent => _dark ? const Color(0xFF3072FF) : const Color(0xFFA0BDFF);
 
   /// `components-input-bg-normal`
-  static const componentsInputBgNormal = Color.fromARGB(64, 200, 206, 218);
+  static Color get componentsInputBgNormal =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(64, 200, 206, 218);
 
   /// `components-input-bg-hover`
-  static const componentsInputBgHover = Color.fromARGB(36, 200, 206, 218);
+  static Color get componentsInputBgHover =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 200, 206, 218);
 
   /// `components-input-bg-active`
-  static const componentsInputBgActive = Color(0xFFF9FAFB);
+  static Color get componentsInputBgActive => _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFF9FAFB);
 
   /// `components-input-bg-disabled`
-  static const componentsInputBgDisabled = Color.fromARGB(36, 200, 206, 218);
+  static Color get componentsInputBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 200, 206, 218);
 
   /// `components-input-bg-destructive`
-  static const componentsInputBgDestructive = Color(0xFFFFFFFF);
+  static Color get componentsInputBgDestructive =>
+      _dark ? const Color.fromARGB(3, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-input-text-filled`
-  static const componentsInputTextFilled = Color(0xFF101828);
+  static Color get componentsInputTextFilled => _dark ? const Color(0xFFF4F4F5) : const Color(0xFF101828);
 
   /// `components-input-text-placeholder`
-  static const componentsInputTextPlaceholder = Color(0xFF98A2B2);
+  static Color get componentsInputTextPlaceholder =>
+      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFF98A2B2);
 
   /// `components-input-text-disabled`
-  static const componentsInputTextDisabled = Color(0xFFD0D5DC);
+  static Color get componentsInputTextDisabled =>
+      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
 
   /// `components-input-text-filled-disabled`
-  static const componentsInputTextFilledDisabled = Color(0xFF676F83);
+  static Color get componentsInputTextFilledDisabled =>
+      _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF676F83);
 
   /// `components-input-text-filled-blue`
-  static const componentsInputTextFilledBlue = Color(0xFF0033FF);
+  static Color get componentsInputTextFilledBlue => _dark ? const Color(0xFF6694FF) : const Color(0xFF0033FF);
 
   /// `components-input-border-hover`
-  static const componentsInputBorderHover = Color(0xFFD0D5DC);
+  static Color get componentsInputBorderHover => _dark ? const Color(0xFF3A3A40) : const Color(0xFFD0D5DC);
 
   /// `components-input-border-active`
-  static const componentsInputBorderActive = Color(0xFFD0D5DC);
+  static Color get componentsInputBorderActive => _dark ? const Color(0xFF747481) : const Color(0xFFD0D5DC);
 
   /// `components-input-border-active-prompt-1`
-  static const componentsInputBorderActivePrompt1 = Color(0xFF0BA5EC);
+  static Color get componentsInputBorderActivePrompt1 => _dark ? const Color(0xFF36BFFA) : const Color(0xFF0BA5EC);
 
   /// `components-input-border-active-prompt-2`
-  static const componentsInputBorderActivePrompt2 = Color(0xFF0033FF);
+  static Color get componentsInputBorderActivePrompt2 => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-input-border-destructive`
-  static const componentsInputBorderDestructive = Color(0xFFFDA29B);
+  static Color get componentsInputBorderDestructive => _dark ? const Color(0xFFF97066) : const Color(0xFFFDA29B);
 
   /// `components-progress-brand-progress`
-  static const componentsProgressBrandProgress = Color(0xFF0033FF);
+  static Color get componentsProgressBrandProgress => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-progress-brand-border`
-  static const componentsProgressBrandBorder = Color(0xFF0033FF);
+  static Color get componentsProgressBrandBorder => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-progress-brand-bg`
-  static const componentsProgressBrandBg = Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsProgressBrandBg =>
+      _dark ? const Color.fromARGB(10, 8, 90, 252) : const Color.fromARGB(10, 0, 51, 255);
 
   /// `components-progress-white-progress`
-  static const componentsProgressWhiteProgress = Color(0xFFFFFFFF);
+  static Color get componentsProgressWhiteProgress => const Color(0xFFFFFFFF);
 
   /// `components-progress-white-border`
-  static const componentsProgressWhiteBorder = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsProgressWhiteBorder => const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-progress-white-bg`
-  static const componentsProgressWhiteBg = Color.fromARGB(3, 255, 255, 255);
+  static Color get componentsProgressWhiteBg => const Color.fromARGB(3, 255, 255, 255);
 
   /// `components-progress-gray-progress`
-  static const componentsProgressGrayProgress = Color(0xFF98A2B2);
+  static Color get componentsProgressGrayProgress => const Color(0xFF98A2B2);
 
   /// `components-progress-gray-border`
-  static const componentsProgressGrayBorder = Color(0xFF98A2B2);
+  static Color get componentsProgressGrayBorder => const Color(0xFF98A2B2);
 
   /// `components-progress-gray-bg`
-  static const componentsProgressGrayBg = Color.fromARGB(5, 200, 206, 218);
+  static Color get componentsProgressGrayBg => const Color.fromARGB(5, 200, 206, 218);
 
   /// `components-progress-warning-progress`
-  static const componentsProgressWarningProgress = Color(0xFFF79009);
+  static Color get componentsProgressWarningProgress => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `components-progress-warning-border`
-  static const componentsProgressWarningBorder = Color(0xFFF79009);
+  static Color get componentsProgressWarningBorder => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `components-progress-warning-bg`
-  static const componentsProgressWarningBg = Color.fromARGB(10, 247, 144, 9);
+  static Color get componentsProgressWarningBg => const Color.fromARGB(10, 247, 144, 9);
 
   /// `components-progress-error-progress`
-  static const componentsProgressErrorProgress = Color(0xFFF04438);
+  static Color get componentsProgressErrorProgress => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `components-progress-error-border`
-  static const componentsProgressErrorBorder = Color(0xFFF04438);
+  static Color get componentsProgressErrorBorder => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `components-progress-error-bg`
-  static const componentsProgressErrorBg = Color.fromARGB(10, 240, 68, 56);
+  static Color get componentsProgressErrorBg => const Color.fromARGB(10, 240, 68, 56);
 
   /// `components-progress-bar-progress`
-  static const componentsProgressBarProgress = Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsProgressBarProgress =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `components-progress-bar-progress-highlight`
-  static const componentsProgressBarProgressHighlight = Color.fromARGB(51, 0, 51, 255);
+  static Color get componentsProgressBarProgressHighlight =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(51, 0, 51, 255);
 
   /// `components-progress-bar-progress-solid`
-  static const componentsProgressBarProgressSolid = Color(0xFF0033FF);
+  static Color get componentsProgressBarProgressSolid =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFF0033FF);
 
   /// `components-progress-bar-border`
-  static const componentsProgressBarBorder = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsProgressBarBorder =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-progress-bar-bg`
-  static const componentsProgressBarBg = Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsProgressBarBg =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 0, 51, 255);
 
   /// `components-button-button-seam`
-  static const componentsButtonButtonSeam = Color.fromARGB(8, 0, 0, 0);
+  static Color get componentsButtonButtonSeam =>
+      _dark ? const Color.fromARGB(38, 0, 0, 0) : const Color.fromARGB(8, 0, 0, 0);
 
   /// `components-button-primary-text`
-  static const componentsButtonPrimaryText = Color(0xFFFFFFFF);
+  static Color get componentsButtonPrimaryText =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-button-primary-text-disabled`
-  static const componentsButtonPrimaryTextDisabled = Color.fromARGB(153, 255, 255, 255);
+  static Color get componentsButtonPrimaryTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(153, 255, 255, 255);
 
   /// `components-button-primary-bg`
-  static const componentsButtonPrimaryBg = Color(0xFF0033FF);
+  static Color get componentsButtonPrimaryBg => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-button-primary-bg-hover`
-  static const componentsButtonPrimaryBgHover = Color(0xFF002CDE);
+  static Color get componentsButtonPrimaryBgHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-button-primary-bg-disabled`
-  static const componentsButtonPrimaryBgDisabled = Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsButtonPrimaryBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `components-button-primary-border`
-  static const componentsButtonPrimaryBorder = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonPrimaryBorder =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-button-primary-border-hover`
-  static const componentsButtonPrimaryBorderHover = Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsButtonPrimaryBorderHover =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `components-button-primary-border-disabled`
-  static const componentsButtonPrimaryBorderDisabled = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsButtonPrimaryBorderDisabled =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-button-secondary-text`
-  static const componentsButtonSecondaryText = Color(0xFF354052);
+  static Color get componentsButtonSecondaryText =>
+      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color(0xFF354052);
 
   /// `components-button-secondary-text-disabled`
-  static const componentsButtonSecondaryTextDisabled = Color.fromARGB(64, 16, 24, 40);
+  static Color get componentsButtonSecondaryTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(64, 16, 24, 40);
 
   /// `components-button-secondary-bg`
-  static const componentsButtonSecondaryBg = Color(0xFFFFFFFF);
+  static Color get componentsButtonSecondaryBg =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-button-secondary-bg-hover`
-  static const componentsButtonSecondaryBgHover = Color(0xFFF9FAFB);
+  static Color get componentsButtonSecondaryBgHover =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFF9FAFB);
 
   /// `components-button-secondary-bg-disabled`
-  static const componentsButtonSecondaryBgDisabled = Color(0xFFF9FAFB);
+  static Color get componentsButtonSecondaryBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF9FAFB);
 
   /// `components-button-secondary-border`
-  static const componentsButtonSecondaryBorder = Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsButtonSecondaryBorder =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(36, 16, 24, 40);
 
   /// `components-button-secondary-border-hover`
-  static const componentsButtonSecondaryBorderHover = Color.fromARGB(51, 16, 24, 40);
+  static Color get componentsButtonSecondaryBorderHover =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(51, 16, 24, 40);
 
   /// `components-button-secondary-border-disabled`
-  static const componentsButtonSecondaryBorderDisabled = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonSecondaryBorderDisabled =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-button-secondary-accent-text`
-  static const componentsButtonSecondaryAccentText = Color(0xFF0033FF);
+  static Color get componentsButtonSecondaryAccentText =>
+      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color(0xFF0033FF);
 
   /// `components-button-secondary-accent-text-disabled`
-  static const componentsButtonSecondaryAccentTextDisabled = Color(0xFFA0BDFF);
+  static Color get componentsButtonSecondaryAccentTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFA0BDFF);
 
   /// `components-button-secondary-accent-bg`
-  static const componentsButtonSecondaryAccentBg = Color(0xFFFFFFFF);
+  static Color get componentsButtonSecondaryAccentBg =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-button-secondary-accent-bg-hover`
-  static const componentsButtonSecondaryAccentBgHover = Color(0xFFF2F4F7);
+  static Color get componentsButtonSecondaryAccentBgHover =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFF2F4F7);
 
   /// `components-button-secondary-accent-bg-disabled`
-  static const componentsButtonSecondaryAccentBgDisabled = Color(0xFFF9FAFB);
+  static Color get componentsButtonSecondaryAccentBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF9FAFB);
 
   /// `components-button-secondary-accent-border`
-  static const componentsButtonSecondaryAccentBorder = Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsButtonSecondaryAccentBorder =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(36, 16, 24, 40);
 
   /// `components-button-secondary-accent-border-hover`
-  static const componentsButtonSecondaryAccentBorderHover = Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsButtonSecondaryAccentBorderHover =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(36, 16, 24, 40);
 
   /// `components-button-secondary-accent-border-disabled`
-  static const componentsButtonSecondaryAccentBorderDisabled = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonSecondaryAccentBorderDisabled =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-button-tertiary-text`
-  static const componentsButtonTertiaryText = Color(0xFF354052);
+  static Color get componentsButtonTertiaryText => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF354052);
 
   /// `components-button-tertiary-text-disabled`
-  static const componentsButtonTertiaryTextDisabled = Color.fromARGB(64, 16, 24, 40);
+  static Color get componentsButtonTertiaryTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(64, 16, 24, 40);
 
   /// `components-button-tertiary-bg`
-  static const componentsButtonTertiaryBg = Color(0xFFF2F4F7);
+  static Color get componentsButtonTertiaryBg =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFF2F4F7);
 
   /// `components-button-tertiary-bg-hover`
-  static const componentsButtonTertiaryBgHover = Color(0xFFE9EBF0);
+  static Color get componentsButtonTertiaryBgHover =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color(0xFFE9EBF0);
 
   /// `components-button-tertiary-bg-disabled`
-  static const componentsButtonTertiaryBgDisabled = Color(0xFFF9FAFB);
+  static Color get componentsButtonTertiaryBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF9FAFB);
 
   /// `components-button-ghost-text`
-  static const componentsButtonGhostText = Color(0xFF354052);
+  static Color get componentsButtonGhostText => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF354052);
 
   /// `components-button-ghost-text-disabled`
-  static const componentsButtonGhostTextDisabled = Color.fromARGB(64, 16, 24, 40);
+  static Color get componentsButtonGhostTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(64, 16, 24, 40);
 
   /// `components-button-ghost-bg-hover`
-  static const componentsButtonGhostBgHover = Color.fromARGB(51, 200, 206, 218);
+  static Color get componentsButtonGhostBgHover =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `components-button-destructive-primary-text`
-  static const componentsButtonDestructivePrimaryText = Color(0xFFFFFFFF);
+  static Color get componentsButtonDestructivePrimaryText =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-button-destructive-primary-text-disabled`
-  static const componentsButtonDestructivePrimaryTextDisabled = Color.fromARGB(153, 255, 255, 255);
+  static Color get componentsButtonDestructivePrimaryTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(153, 255, 255, 255);
 
   /// `components-button-destructive-primary-bg`
-  static const componentsButtonDestructivePrimaryBg = Color(0xFFD92D20);
+  static Color get componentsButtonDestructivePrimaryBg => const Color(0xFFD92D20);
 
   /// `components-button-destructive-primary-bg-hover`
-  static const componentsButtonDestructivePrimaryBgHover = Color(0xFFB42318);
+  static Color get componentsButtonDestructivePrimaryBgHover =>
+      _dark ? const Color(0xFFF04438) : const Color(0xFFB42318);
 
   /// `components-button-destructive-primary-bg-disabled`
-  static const componentsButtonDestructivePrimaryBgDisabled = Color(0xFFFEE4E2);
+  static Color get componentsButtonDestructivePrimaryBgDisabled =>
+      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEE4E2);
 
   /// `components-button-destructive-primary-border`
-  static const componentsButtonDestructivePrimaryBorder = Color.fromARGB(10, 24, 24, 27);
+  static Color get componentsButtonDestructivePrimaryBorder =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(10, 24, 24, 27);
 
   /// `components-button-destructive-primary-border-hover`
-  static const componentsButtonDestructivePrimaryBorderHover = Color.fromARGB(20, 24, 24, 27);
+  static Color get componentsButtonDestructivePrimaryBorderHover =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(20, 24, 24, 27);
 
   /// `components-button-destructive-primary-border-disabled`
-  static const componentsButtonDestructivePrimaryBorderDisabled = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsButtonDestructivePrimaryBorderDisabled =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-button-destructive-secondary-text`
-  static const componentsButtonDestructiveSecondaryText = Color(0xFFD92D20);
+  static Color get componentsButtonDestructiveSecondaryText =>
+      _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `components-button-destructive-secondary-text-disabled`
-  static const componentsButtonDestructiveSecondaryTextDisabled = Color.fromARGB(51, 240, 68, 56);
+  static Color get componentsButtonDestructiveSecondaryTextDisabled => const Color.fromARGB(51, 240, 68, 56);
 
   /// `components-button-destructive-secondary-bg`
-  static const componentsButtonDestructiveSecondaryBg = Color(0xFFFFFFFF);
+  static Color get componentsButtonDestructiveSecondaryBg =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-button-destructive-secondary-bg-hover`
-  static const componentsButtonDestructiveSecondaryBgHover = Color(0xFFFEF3F2);
+  static Color get componentsButtonDestructiveSecondaryBgHover =>
+      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEF3F2);
 
   /// `components-button-destructive-secondary-bg-disabled`
-  static const componentsButtonDestructiveSecondaryBgDisabled = Color(0xFFFEF3F2);
+  static Color get componentsButtonDestructiveSecondaryBgDisabled =>
+      _dark ? const Color.fromARGB(20, 240, 68, 56) : const Color(0xFFFEF3F2);
 
   /// `components-button-destructive-secondary-border`
-  static const componentsButtonDestructiveSecondaryBorder = Color.fromARGB(20, 24, 24, 27);
+  static Color get componentsButtonDestructiveSecondaryBorder =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(20, 24, 24, 27);
 
   /// `components-button-destructive-secondary-border-hover`
-  static const componentsButtonDestructiveSecondaryBorderHover = Color.fromARGB(64, 240, 68, 56);
+  static Color get componentsButtonDestructiveSecondaryBorderHover =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(64, 240, 68, 56);
 
   /// `components-button-destructive-secondary-border-disabled`
-  static const componentsButtonDestructiveSecondaryBorderDisabled = Color.fromARGB(10, 240, 68, 56);
+  static Color get componentsButtonDestructiveSecondaryBorderDisabled =>
+      _dark ? const Color.fromARGB(20, 240, 68, 56) : const Color.fromARGB(10, 240, 68, 56);
 
   /// `components-button-destructive-tertiary-text`
-  static const componentsButtonDestructiveTertiaryText = Color(0xFFD92D20);
+  static Color get componentsButtonDestructiveTertiaryText => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `components-button-destructive-tertiary-text-disabled`
-  static const componentsButtonDestructiveTertiaryTextDisabled = Color.fromARGB(51, 240, 68, 56);
+  static Color get componentsButtonDestructiveTertiaryTextDisabled => const Color.fromARGB(51, 240, 68, 56);
 
   /// `components-button-destructive-tertiary-bg`
-  static const componentsButtonDestructiveTertiaryBg = Color(0xFFFEE4E2);
+  static Color get componentsButtonDestructiveTertiaryBg =>
+      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEE4E2);
 
   /// `components-button-destructive-tertiary-bg-hover`
-  static const componentsButtonDestructiveTertiaryBgHover = Color(0xFFFECDCA);
+  static Color get componentsButtonDestructiveTertiaryBgHover =>
+      _dark ? const Color.fromARGB(64, 240, 68, 56) : const Color(0xFFFECDCA);
 
   /// `components-button-destructive-tertiary-bg-disabled`
-  static const componentsButtonDestructiveTertiaryBgDisabled = Color.fromARGB(10, 240, 68, 56);
+  static Color get componentsButtonDestructiveTertiaryBgDisabled =>
+      _dark ? const Color.fromARGB(20, 240, 68, 56) : const Color.fromARGB(10, 240, 68, 56);
 
   /// `components-button-destructive-ghost-text`
-  static const componentsButtonDestructiveGhostText = Color(0xFFD92D20);
+  static Color get componentsButtonDestructiveGhostText => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `components-button-destructive-ghost-text-disabled`
-  static const componentsButtonDestructiveGhostTextDisabled = Color.fromARGB(51, 240, 68, 56);
+  static Color get componentsButtonDestructiveGhostTextDisabled => const Color.fromARGB(51, 240, 68, 56);
 
   /// `components-button-destructive-ghost-bg-hover`
-  static const componentsButtonDestructiveGhostBgHover = Color(0xFFFEE4E2);
+  static Color get componentsButtonDestructiveGhostBgHover =>
+      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEE4E2);
 
   /// `components-button-indigo-bg`
-  static const componentsButtonIndigoBg = Color(0xFF444CE7);
+  static Color get componentsButtonIndigoBg => const Color(0xFF444CE7);
 
   /// `components-button-indigo-bg-hover`
-  static const componentsButtonIndigoBgHover = Color(0xFF3538CD);
+  static Color get componentsButtonIndigoBgHover => _dark ? const Color(0xFF6172F3) : const Color(0xFF3538CD);
 
   /// `components-button-indigo-bg-disabled`
-  static const componentsButtonIndigoBgDisabled = Color.fromARGB(36, 97, 114, 243);
+  static Color get componentsButtonIndigoBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 97, 114, 243);
 
   /// `components-button-debug-text`
-  static const componentsButtonDebugText = Color(0xFFFFFFFF);
+  static Color get componentsButtonDebugText =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-button-debug-text-disabled`
-  static const componentsButtonDebugTextDisabled = Color.fromARGB(153, 255, 255, 255);
+  static Color get componentsButtonDebugTextDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(153, 255, 255, 255);
 
   /// `components-button-debug-bg`
-  static const componentsButtonDebugBg = Color(0xFFFF4405);
+  static Color get componentsButtonDebugBg => const Color(0xFFFF4405);
 
   /// `components-button-debug-bg-hover`
-  static const componentsButtonDebugBgHover = Color(0xFFE62E05);
+  static Color get componentsButtonDebugBgHover => _dark ? const Color(0xFFFF692E) : const Color(0xFFE62E05);
 
   /// `components-button-debug-bg-disabled`
-  static const componentsButtonDebugBgDisabled = Color.fromARGB(51, 255, 68, 5);
+  static Color get componentsButtonDebugBgDisabled =>
+      _dark ? const Color.fromARGB(20, 255, 68, 5) : const Color.fromARGB(51, 255, 68, 5);
 
   /// `components-button-debug-border`
-  static const componentsButtonDebugBorder = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonDebugBorder =>
+      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-button-debug-border-hover`
-  static const componentsButtonDebugBorderHover = Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsButtonDebugBorderHover =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `components-button-debug-border-disabled`
-  static const componentsButtonDebugBorderDisabled = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsButtonDebugBorderDisabled =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-checkbox-icon`
-  static const componentsCheckboxIcon = Color(0xFFFFFFFF);
+  static Color get componentsCheckboxIcon => _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-checkbox-icon-disabled`
-  static const componentsCheckboxIconDisabled = Color.fromARGB(128, 255, 255, 255);
+  static Color get componentsCheckboxIconDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(128, 255, 255, 255);
 
   /// `components-checkbox-bg`
-  static const componentsCheckboxBg = Color(0xFF0033FF);
+  static Color get componentsCheckboxBg => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-checkbox-bg-hover`
-  static const componentsCheckboxBgHover = Color(0xFF002CDE);
+  static Color get componentsCheckboxBgHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-checkbox-bg-disabled`
-  static const componentsCheckboxBgDisabled = Color(0xFFF2F4F7);
+  static Color get componentsCheckboxBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF2F4F7);
 
   /// `components-checkbox-bg-disabled-checked`
-  static const componentsCheckboxBgDisabledChecked = Color(0xFFA0BDFF);
+  static Color get componentsCheckboxBgDisabledChecked =>
+      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color(0xFFA0BDFF);
 
   /// `components-checkbox-bg-unchecked`
-  static const componentsCheckboxBgUnchecked = Color(0xFFFFFFFF);
+  static Color get componentsCheckboxBgUnchecked =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-checkbox-bg-unchecked-hover`
-  static const componentsCheckboxBgUncheckedHover = Color(0xFFFFFFFF);
+  static Color get componentsCheckboxBgUncheckedHover =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-checkbox-border`
-  static const componentsCheckboxBorder = Color(0xFFD0D5DC);
+  static Color get componentsCheckboxBorder =>
+      _dark ? const Color.fromARGB(102, 255, 255, 255) : const Color(0xFFD0D5DC);
 
   /// `components-checkbox-border-hover`
-  static const componentsCheckboxBorderHover = Color(0xFF98A2B2);
+  static Color get componentsCheckboxBorderHover =>
+      _dark ? const Color.fromARGB(153, 255, 255, 255) : const Color(0xFF98A2B2);
 
   /// `components-checkbox-border-disabled`
-  static const componentsCheckboxBorderDisabled = Color.fromARGB(10, 24, 24, 27);
+  static Color get componentsCheckboxBorderDisabled =>
+      _dark ? const Color.fromARGB(3, 255, 255, 255) : const Color.fromARGB(10, 24, 24, 27);
 
   /// `components-radio-bg`
-  static const componentsRadioBg = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsRadioBg => const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-radio-bg-hover`
-  static const componentsRadioBgHover = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsRadioBgHover =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-radio-bg-disabled`
-  static const componentsRadioBgDisabled = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsRadioBgDisabled =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-radio-border-checked`
-  static const componentsRadioBorderChecked = Color(0xFF0033FF);
+  static Color get componentsRadioBorderChecked => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-radio-border-checked-hover`
-  static const componentsRadioBorderCheckedHover = Color(0xFF002CDE);
+  static Color get componentsRadioBorderCheckedHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-radio-border-checked-disabled`
-  static const componentsRadioBorderCheckedDisabled = Color(0xFFA0BDFF);
+  static Color get componentsRadioBorderCheckedDisabled =>
+      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color(0xFFA0BDFF);
 
   /// `components-radio-border`
-  static const componentsRadioBorder = Color(0xFFD0D5DC);
+  static Color get componentsRadioBorder => _dark ? const Color.fromARGB(102, 255, 255, 255) : const Color(0xFFD0D5DC);
 
   /// `components-radio-border-hover`
-  static const componentsRadioBorderHover = Color(0xFF98A2B2);
+  static Color get componentsRadioBorderHover =>
+      _dark ? const Color.fromARGB(153, 255, 255, 255) : const Color(0xFF98A2B2);
 
   /// `components-radio-border-disabled`
-  static const componentsRadioBorderDisabled = Color.fromARGB(10, 24, 24, 27);
+  static Color get componentsRadioBorderDisabled =>
+      _dark ? const Color.fromARGB(3, 255, 255, 255) : const Color.fromARGB(10, 24, 24, 27);
 
   /// `components-toggle-knob`
-  static const componentsToggleKnob = Color(0xFFFFFFFF);
+  static Color get componentsToggleKnob => _dark ? const Color(0xFFF4F4F5) : const Color(0xFFFFFFFF);
 
   /// `components-toggle-knob-hover`
-  static const componentsToggleKnobHover = Color(0xFFFFFFFF);
+  static Color get componentsToggleKnobHover => _dark ? const Color(0xFFFEFEFE) : const Color(0xFFFFFFFF);
 
   /// `components-toggle-knob-disabled`
-  static const componentsToggleKnobDisabled = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsToggleKnobDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-toggle-bg`
-  static const componentsToggleBg = Color(0xFF0033FF);
+  static Color get componentsToggleBg => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-toggle-bg-hover`
-  static const componentsToggleBgHover = Color(0xFF002CDE);
+  static Color get componentsToggleBgHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-toggle-bg-disabled`
-  static const componentsToggleBgDisabled = Color(0xFFD0DFFF);
+  static Color get componentsToggleBgDisabled =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFD0DFFF);
 
   /// `components-toggle-bg-unchecked`
-  static const componentsToggleBgUnchecked = Color(0xFFE9EBF0);
+  static Color get componentsToggleBgUnchecked =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFE9EBF0);
 
   /// `components-toggle-bg-unchecked-hover`
-  static const componentsToggleBgUncheckedHover = Color(0xFFD0D5DC);
+  static Color get componentsToggleBgUncheckedHover =>
+      _dark ? const Color.fromARGB(76, 255, 255, 255) : const Color(0xFFD0D5DC);
 
   /// `components-toggle-bg-unchecked-disabled`
-  static const componentsToggleBgUncheckedDisabled = Color(0xFFF2F4F7);
+  static Color get componentsToggleBgUncheckedDisabled =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFF2F4F7);
 
   /// `components-option-card-option-bg`
-  static const componentsOptionCardOptionBg = Color(0xFFFCFCFD);
+  static Color get componentsOptionCardOptionBg =>
+      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color(0xFFFCFCFD);
 
   /// `components-option-card-option-border`
-  static const componentsOptionCardOptionBorder = Color(0xFFE9EBF0);
+  static Color get componentsOptionCardOptionBorder =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color(0xFFE9EBF0);
 
   /// `components-option-card-option-bg-hover`
-  static const componentsOptionCardOptionBgHover = Color(0xFFFFFFFF);
+  static Color get componentsOptionCardOptionBgHover =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFFFFFFF);
 
   /// `components-option-card-option-border-hover`
-  static const componentsOptionCardOptionBorderHover = Color(0xFFD0D5DC);
+  static Color get componentsOptionCardOptionBorderHover =>
+      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
 
   /// `components-option-card-option-selected-bg`
-  static const componentsOptionCardOptionSelectedBg = Color(0xFFFFFFFF);
+  static Color get componentsOptionCardOptionSelectedBg =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-option-card-option-selected-border`
-  static const componentsOptionCardOptionSelectedBorder = Color(0xFF0033FF);
+  static Color get componentsOptionCardOptionSelectedBorder =>
+      _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-slider-knob`
-  static const componentsSliderKnob = Color(0xFFFFFFFF);
+  static Color get componentsSliderKnob => _dark ? const Color(0xFFF4F4F5) : const Color(0xFFFFFFFF);
 
   /// `components-slider-knob-border`
-  static const componentsSliderKnobBorder = Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsSliderKnobBorder =>
+      _dark ? const Color.fromARGB(51, 16, 24, 40) : const Color.fromARGB(36, 16, 24, 40);
 
   /// `components-slider-knob-border-hover`
-  static const componentsSliderKnobBorderHover = Color.fromARGB(51, 16, 24, 40);
+  static Color get componentsSliderKnobBorderHover =>
+      _dark ? const Color.fromARGB(76, 16, 24, 40) : const Color.fromARGB(51, 16, 24, 40);
 
   /// `components-slider-knob-hover`
-  static const componentsSliderKnobHover = Color(0xFFFFFFFF);
+  static Color get componentsSliderKnobHover => _dark ? const Color(0xFFFEFEFE) : const Color(0xFFFFFFFF);
 
   /// `components-slider-knob-disabled`
-  static const componentsSliderKnobDisabled = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsSliderKnobDisabled =>
+      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-slider-range`
-  static const componentsSliderRange = Color(0xFF0033FF);
+  static Color get componentsSliderRange => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-slider-track`
-  static const componentsSliderTrack = Color(0xFFE9EBF0);
+  static Color get componentsSliderTrack => _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFE9EBF0);
 
   /// `components-tooltip-bg`
-  static const componentsTooltipBg = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsTooltipBg =>
+      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-kbd-bg-gray`
-  static const componentsKbdBgGray = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsKbdBgGray =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-kbd-bg-white`
-  static const componentsKbdBgWhite = Color.fromARGB(31, 255, 255, 255);
+  static Color get componentsKbdBgWhite => const Color.fromARGB(31, 255, 255, 255);
 
   /// `components-menu-item-text`
-  static const componentsMenuItemText = Color(0xFF495464);
+  static Color get componentsMenuItemText => _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF495464);
 
   /// `components-menu-item-text-hover`
-  static const componentsMenuItemTextHover = Color(0xFF354052);
+  static Color get componentsMenuItemTextHover =>
+      _dark ? const Color.fromARGB(204, 200, 206, 218) : const Color(0xFF354052);
 
   /// `components-menu-item-text-active`
-  static const componentsMenuItemTextActive = Color(0xFF18222F);
+  static Color get componentsMenuItemTextActive =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFF18222F);
 
   /// `components-menu-item-text-active-accent`
-  static const componentsMenuItemTextActiveAccent = Color(0xFF18222F);
+  static Color get componentsMenuItemTextActiveAccent =>
+      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFF18222F);
 
   /// `components-menu-item-bg-hover`
-  static const componentsMenuItemBgHover = Color.fromARGB(51, 200, 206, 218);
+  static Color get componentsMenuItemBgHover =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `components-menu-item-bg-active`
-  static const componentsMenuItemBgActive = Color.fromARGB(20, 0, 51, 255);
+  static Color get componentsMenuItemBgActive =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 0, 51, 255);
 
   /// `components-segmented-control-bg-normal`
-  static const componentsSegmentedControlBgNormal = Color.fromARGB(51, 200, 206, 218);
+  static Color get componentsSegmentedControlBgNormal =>
+      _dark ? const Color.fromARGB(178, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
 
   /// `components-segmented-control-item-active-bg`
-  static const componentsSegmentedControlItemActiveBg = Color(0xFFFFFFFF);
+  static Color get componentsSegmentedControlItemActiveBg =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-segmented-control-item-active-border`
-  static const componentsSegmentedControlItemActiveBorder = Color(0xFFFFFFFF);
+  static Color get componentsSegmentedControlItemActiveBorder =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color(0xFFFFFFFF);
 
   /// `components-segmented-control-item-active-accent-bg`
-  static const componentsSegmentedControlItemActiveAccentBg = Color(0xFFFFFFFF);
+  static Color get componentsSegmentedControlItemActiveAccentBg =>
+      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color(0xFFFFFFFF);
 
   /// `components-segmented-control-item-active-accent-border`
-  static const componentsSegmentedControlItemActiveAccentBorder = Color(0xFFFFFFFF);
+  static Color get componentsSegmentedControlItemActiveAccentBorder =>
+      _dark ? const Color.fromARGB(76, 8, 90, 252) : const Color(0xFFFFFFFF);
 
   /// `components-badge-white-to-dark`
-  static const componentsBadgeWhiteToDark = Color(0xFFFFFFFF);
+  static Color get componentsBadgeWhiteToDark =>
+      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color(0xFFFFFFFF);
 
   /// `components-badge-white-to-dark-alpha`
-  static const componentsBadgeWhiteToDarkAlpha = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsBadgeWhiteToDarkAlpha =>
+      _dark ? const Color.fromARGB(0, 24, 24, 27) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-badge-bg-green-soft`
-  static const componentsBadgeBgGreenSoft = Color.fromARGB(20, 23, 178, 106);
+  static Color get componentsBadgeBgGreenSoft =>
+      _dark ? const Color.fromARGB(36, 23, 178, 106) : const Color.fromARGB(20, 23, 178, 106);
 
   /// `components-badge-bg-orange-soft`
-  static const componentsBadgeBgOrangeSoft = Color.fromARGB(20, 247, 144, 9);
+  static Color get componentsBadgeBgOrangeSoft =>
+      _dark ? const Color.fromARGB(36, 247, 144, 9) : const Color.fromARGB(20, 247, 144, 9);
 
   /// `components-badge-bg-red-soft`
-  static const componentsBadgeBgRedSoft = Color.fromARGB(20, 240, 68, 56);
+  static Color get componentsBadgeBgRedSoft =>
+      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color.fromARGB(20, 240, 68, 56);
 
   /// `components-badge-bg-blue-light-soft`
-  static const componentsBadgeBgBlueLightSoft = Color.fromARGB(20, 11, 165, 236);
+  static Color get componentsBadgeBgBlueLightSoft =>
+      _dark ? const Color.fromARGB(36, 11, 165, 236) : const Color.fromARGB(20, 11, 165, 236);
 
   /// `components-badge-bg-gray-soft`
-  static const componentsBadgeBgGraySoft = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsBadgeBgGraySoft =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-badge-bg-dimm`
-  static const componentsBadgeBgDimm = Color.fromARGB(13, 255, 255, 255);
+  static Color get componentsBadgeBgDimm =>
+      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(13, 255, 255, 255);
 
   /// `components-badge-status-light-border-outer`
-  static const componentsBadgeStatusLightBorderOuter = Color(0xFFFFFFFF);
+  static Color get componentsBadgeStatusLightBorderOuter => _dark ? const Color(0xFF222225) : const Color(0xFFFFFFFF);
 
   /// `components-badge-status-light-high-light`
-  static const componentsBadgeStatusLightHighLight = Color.fromARGB(76, 255, 255, 255);
+  static Color get componentsBadgeStatusLightHighLight => const Color.fromARGB(76, 255, 255, 255);
 
   /// `components-badge-status-light-success-bg`
-  static const componentsBadgeStatusLightSuccessBg = Color(0xFF47CD89);
+  static Color get componentsBadgeStatusLightSuccessBg => _dark ? const Color(0xFF17B26A) : const Color(0xFF47CD89);
 
   /// `components-badge-status-light-success-border-inner`
-  static const componentsBadgeStatusLightSuccessBorderInner = Color(0xFF17B26A);
+  static Color get componentsBadgeStatusLightSuccessBorderInner =>
+      _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `components-badge-status-light-success-halo`
-  static const componentsBadgeStatusLightSuccessHalo = Color.fromARGB(64, 23, 178, 106);
+  static Color get componentsBadgeStatusLightSuccessHalo =>
+      _dark ? const Color.fromARGB(76, 23, 178, 106) : const Color.fromARGB(64, 23, 178, 106);
 
   /// `components-badge-status-light-warning-bg`
-  static const componentsBadgeStatusLightWarningBg = Color(0xFFFDB022);
+  static Color get componentsBadgeStatusLightWarningBg => _dark ? const Color(0xFFF79009) : const Color(0xFFFDB022);
 
   /// `components-badge-status-light-warning-border-inner`
-  static const componentsBadgeStatusLightWarningBorderInner = Color(0xFFF79009);
+  static Color get componentsBadgeStatusLightWarningBorderInner =>
+      _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `components-badge-status-light-warning-halo`
-  static const componentsBadgeStatusLightWarningHalo = Color.fromARGB(64, 247, 144, 9);
+  static Color get componentsBadgeStatusLightWarningHalo =>
+      _dark ? const Color.fromARGB(76, 247, 144, 9) : const Color.fromARGB(64, 247, 144, 9);
 
   /// `components-badge-status-light-error-bg`
-  static const componentsBadgeStatusLightErrorBg = Color(0xFFF97066);
+  static Color get componentsBadgeStatusLightErrorBg => _dark ? const Color(0xFFF04438) : const Color(0xFFF97066);
 
   /// `components-badge-status-light-error-border-inner`
-  static const componentsBadgeStatusLightErrorBorderInner = Color(0xFFF04438);
+  static Color get componentsBadgeStatusLightErrorBorderInner =>
+      _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `components-badge-status-light-error-halo`
-  static const componentsBadgeStatusLightErrorHalo = Color.fromARGB(64, 240, 68, 56);
+  static Color get componentsBadgeStatusLightErrorHalo =>
+      _dark ? const Color.fromARGB(76, 240, 68, 56) : const Color.fromARGB(64, 240, 68, 56);
 
   /// `components-badge-status-light-normal-bg`
-  static const componentsBadgeStatusLightNormalBg = Color(0xFF36BFFA);
+  static Color get componentsBadgeStatusLightNormalBg => _dark ? const Color(0xFF0BA5EC) : const Color(0xFF36BFFA);
 
   /// `components-badge-status-light-normal-border-inner`
-  static const componentsBadgeStatusLightNormalBorderInner = Color(0xFF0BA5EC);
+  static Color get componentsBadgeStatusLightNormalBorderInner =>
+      _dark ? const Color(0xFF36BFFA) : const Color(0xFF0BA5EC);
 
   /// `components-badge-status-light-normal-halo`
-  static const componentsBadgeStatusLightNormalHalo = Color.fromARGB(64, 11, 165, 236);
+  static Color get componentsBadgeStatusLightNormalHalo =>
+      _dark ? const Color.fromARGB(76, 11, 165, 236) : const Color.fromARGB(64, 11, 165, 236);
 
   /// `components-badge-status-light-disabled-bg`
-  static const componentsBadgeStatusLightDisabledBg = Color(0xFF98A2B2);
+  static Color get componentsBadgeStatusLightDisabledBg => _dark ? const Color(0xFF676F83) : const Color(0xFF98A2B2);
 
   /// `components-badge-status-light-disabled-border-inner`
-  static const componentsBadgeStatusLightDisabledBorderInner = Color(0xFF676F83);
+  static Color get componentsBadgeStatusLightDisabledBorderInner =>
+      _dark ? const Color(0xFF98A2B2) : const Color(0xFF676F83);
 
   /// `components-badge-status-light-disabled-halo`
-  static const componentsBadgeStatusLightDisabledHalo = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsBadgeStatusLightDisabledHalo =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-tab-active`
-  static const componentsTabActive = Color(0xFF0033FF);
+  static Color get componentsTabActive => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-main-nav-text`
-  static const componentsMainNavText = Color(0xFF495464);
+  static Color get componentsMainNavText => _dark ? const Color(0xFFA8A8B3) : const Color(0xFF495464);
 
   /// `components-main-nav-text-active`
-  static const componentsMainNavTextActive = Color(0xFF0033FF);
+  static Color get componentsMainNavTextActive => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF0033FF);
 
   /// `components-main-nav-nav-button-border`
-  static const componentsMainNavNavButtonBorder = Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsMainNavNavButtonBorder =>
+      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
 
   /// `components-main-nav-nav-button-text`
-  static const componentsMainNavNavButtonText = Color(0xFF495464);
+  static Color get componentsMainNavNavButtonText =>
+      _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF495464);
 
   /// `components-main-nav-nav-button-text-active`
-  static const componentsMainNavNavButtonTextActive = Color(0xFF0033FF);
+  static Color get componentsMainNavNavButtonTextActive => _dark ? const Color(0xFFF4F4F5) : const Color(0xFF0033FF);
 
   /// `components-main-nav-nav-button-bg`
-  static const componentsMainNavNavButtonBg = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsMainNavNavButtonBg => const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-main-nav-nav-button-bg-hover`
-  static const componentsMainNavNavButtonBgHover = Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsMainNavNavButtonBgHover =>
+      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `components-main-nav-nav-button-bg-active`
-  static const componentsMainNavNavButtonBgActive = Color(0xFFFCFCFD);
+  static Color get componentsMainNavNavButtonBgActive =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFFCFCFD);
 
   /// `components-main-nav-nav-user-border`
-  static const componentsMainNavNavUserBorder = Color(0xFFFFFFFF);
+  static Color get componentsMainNavNavUserBorder =>
+      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
 
   /// `components-main-nav-glass-inner-glow`
-  static const componentsMainNavGlassInnerGlow = Color.fromARGB(76, 255, 255, 255);
+  static Color get componentsMainNavGlassInnerGlow =>
+      _dark ? const Color.fromARGB(13, 210, 219, 255) : const Color.fromARGB(76, 255, 255, 255);
 
   /// `components-main-nav-glass-shadow-reflection`
-  static const componentsMainNavGlassShadowReflection = Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsMainNavGlassShadowReflection =>
+      _dark ? const Color.fromARGB(10, 210, 219, 255) : const Color.fromARGB(10, 0, 51, 255);
 
   /// `components-main-nav-glass-shadow-reflection-glow`
-  static const componentsMainNavGlassShadowReflectionGlow = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsMainNavGlassShadowReflectionGlow =>
+      _dark ? const Color.fromARGB(5, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-main-nav-glass-text-glow`
-  static const componentsMainNavGlassTextGlow = Color.fromARGB(46, 49, 70, 255);
+  static Color get componentsMainNavGlassTextGlow =>
+      _dark ? const Color.fromARGB(69, 245, 246, 255) : const Color.fromARGB(46, 49, 70, 255);
 
   /// `components-main-nav-glass-surface-first`
-  static const componentsMainNavGlassSurfaceFirst = Color.fromARGB(20, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceFirst =>
+      _dark ? const Color.fromARGB(20, 196, 207, 255) : const Color.fromARGB(20, 0, 51, 255);
 
   /// `components-main-nav-glass-surface-middle-1`
-  static const componentsMainNavGlassSurfaceMiddle1 = Color.fromARGB(31, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceMiddle1 =>
+      _dark ? const Color.fromARGB(31, 210, 219, 255) : const Color.fromARGB(31, 0, 51, 255);
 
   /// `components-main-nav-glass-surface-middle-2`
-  static const componentsMainNavGlassSurfaceMiddle2 = Color.fromARGB(26, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceMiddle2 =>
+      _dark ? const Color.fromARGB(26, 210, 219, 255) : const Color.fromARGB(26, 0, 51, 255);
 
   /// `components-main-nav-glass-surface-end`
-  static const componentsMainNavGlassSurfaceEnd = Color.fromARGB(20, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceEnd =>
+      _dark ? const Color.fromARGB(20, 196, 207, 255) : const Color.fromARGB(20, 0, 51, 255);
 
   /// `components-main-nav-glass-edge-reflection-first`
-  static const componentsMainNavGlassEdgeReflectionFirst = Color.fromARGB(0, 0, 51, 255);
+  static Color get componentsMainNavGlassEdgeReflectionFirst =>
+      _dark ? const Color.fromARGB(0, 92, 124, 255) : const Color.fromARGB(0, 0, 51, 255);
 
   /// `components-main-nav-glass-edge-reflection-middle`
-  static const componentsMainNavGlassEdgeReflectionMiddle = Color.fromARGB(153, 0, 51, 255);
+  static Color get componentsMainNavGlassEdgeReflectionMiddle =>
+      _dark ? const Color.fromARGB(204, 210, 219, 255) : const Color.fromARGB(153, 0, 51, 255);
 
   /// `components-main-nav-glass-edge-reflection-end`
-  static const componentsMainNavGlassEdgeReflectionEnd = Color.fromARGB(0, 0, 51, 255);
+  static Color get componentsMainNavGlassEdgeReflectionEnd =>
+      _dark ? const Color.fromARGB(0, 92, 124, 255) : const Color.fromARGB(0, 0, 51, 255);
 
   /// `components-main-nav-glass-edge-highlight-first`
-  static const componentsMainNavGlassEdgeHighlightFirst = Color.fromARGB(250, 255, 255, 255);
+  static Color get componentsMainNavGlassEdgeHighlightFirst =>
+      _dark ? const Color.fromARGB(38, 196, 207, 255) : const Color.fromARGB(250, 255, 255, 255);
 
   /// `components-main-nav-glass-edge-highlight-middle`
-  static const componentsMainNavGlassEdgeHighlightMiddle = Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsMainNavGlassEdgeHighlightMiddle =>
+      _dark ? const Color.fromARGB(0, 72, 108, 255) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `components-main-nav-glass-edge-highlight-end`
-  static const componentsMainNavGlassEdgeHighlightEnd = Color.fromARGB(107, 255, 255, 255);
+  static Color get componentsMainNavGlassEdgeHighlightEnd =>
+      _dark ? const Color.fromARGB(13, 196, 207, 255) : const Color.fromARGB(107, 255, 255, 255);
 
   /// `components-chart-bg`
-  static const componentsChartBg = Color(0xFFFFFFFF);
+  static Color get componentsChartBg => _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color(0xFFFFFFFF);
 
   /// `components-chart-line`
-  static const componentsChartLine = Color(0xFF0033FF);
+  static Color get componentsChartLine => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-chart-current-1`
-  static const componentsChartCurrent1 = Color(0xFF0033FF);
+  static Color get componentsChartCurrent1 => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-chart-current-2`
-  static const componentsChartCurrent2 = Color(0xFFD0DFFF);
+  static Color get componentsChartCurrent2 => _dark ? const Color.fromARGB(76, 8, 90, 252) : const Color(0xFFD0DFFF);
 
   /// `components-chart-area-1`
-  static const componentsChartArea1 = Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsChartArea1 =>
+      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color.fromARGB(36, 0, 51, 255);
 
   /// `components-chart-area-2`
-  static const componentsChartArea2 = Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsChartArea2 =>
+      _dark ? const Color.fromARGB(10, 8, 90, 252) : const Color.fromARGB(10, 0, 51, 255);
 
   /// `divider-subtle`
-  static const dividerSubtle = Color.fromARGB(10, 16, 24, 40);
+  static Color get dividerSubtle =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `divider-regular`
-  static const dividerRegular = Color.fromARGB(20, 16, 24, 40);
+  static Color get dividerRegular =>
+      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `divider-deep`
-  static const dividerDeep = Color.fromARGB(36, 16, 24, 40);
+  static Color get dividerDeep =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(36, 16, 24, 40);
 
   /// `divider-intense`
-  static const dividerIntense = Color.fromARGB(76, 16, 24, 40);
+  static Color get dividerIntense =>
+      _dark ? const Color.fromARGB(102, 200, 206, 218) : const Color.fromARGB(76, 16, 24, 40);
 
   /// `divider-burn`
-  static const dividerBurn = Color.fromARGB(10, 16, 24, 40);
+  static Color get dividerBurn => _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(10, 16, 24, 40);
 
   /// `divider-solid`
-  static const dividerSolid = Color(0xFFD0D5DC);
+  static Color get dividerSolid => _dark ? const Color(0xFF3A3A40) : const Color(0xFFD0D5DC);
 
   /// `divider-solid-alt`
-  static const dividerSolidAlt = Color(0xFF98A2B2);
+  static Color get dividerSolidAlt => _dark ? const Color(0xFF747481) : const Color(0xFF98A2B2);
 
   /// `divider-accent`
-  static const dividerAccent = Color(0xFFE5EAFF);
+  static Color get dividerAccent => _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFE5EAFF);
 
   /// `effects-highlight`
-  static const effectsHighlight = Color(0xFFFFFFFF);
+  static Color get effectsHighlight => _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color(0xFFFFFFFF);
 
   /// `effects-highlight-subtle`
-  static const effectsHighlightSubtle = Color.fromARGB(128, 255, 255, 255);
+  static Color get effectsHighlightSubtle =>
+      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(128, 255, 255, 255);
 
   /// `effects-highlight-lightmode-off`
-  static const effectsHighlightLightmodeOff = Color.fromARGB(0, 255, 255, 255);
+  static Color get effectsHighlightLightmodeOff =>
+      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(0, 255, 255, 255);
 
   /// `effects-image-frame`
-  static const effectsImageFrame = Color(0xFFFFFFFF);
+  static Color get effectsImageFrame => const Color(0xFFFFFFFF);
 
   /// `effects-icon-border`
-  static const effectsIconBorder = Color.fromARGB(20, 16, 24, 40);
+  static Color get effectsIconBorder =>
+      _dark ? const Color.fromARGB(38, 255, 255, 255) : const Color.fromARGB(20, 16, 24, 40);
 
   /// `shadow-shadow-1`
-  static const shadowShadow1 = Color.fromARGB(8, 9, 9, 11);
+  static Color get shadowShadow1 => _dark ? const Color.fromARGB(13, 0, 0, 0) : const Color.fromARGB(8, 9, 9, 11);
 
   /// `shadow-shadow-2`
-  static const shadowShadow2 = Color.fromARGB(10, 9, 9, 11);
+  static Color get shadowShadow2 => _dark ? const Color.fromARGB(20, 0, 0, 0) : const Color.fromARGB(10, 9, 9, 11);
 
   /// `shadow-shadow-3`
-  static const shadowShadow3 = Color.fromARGB(13, 9, 9, 11);
+  static Color get shadowShadow3 => _dark ? const Color.fromARGB(26, 0, 0, 0) : const Color.fromARGB(13, 9, 9, 11);
 
   /// `shadow-shadow-4`
-  static const shadowShadow4 = Color.fromARGB(15, 9, 9, 11);
+  static Color get shadowShadow4 => _dark ? const Color.fromARGB(31, 0, 0, 0) : const Color.fromARGB(15, 9, 9, 11);
 
   /// `shadow-shadow-5`
-  static const shadowShadow5 = Color.fromARGB(20, 9, 9, 11);
+  static Color get shadowShadow5 => _dark ? const Color.fromARGB(41, 0, 0, 0) : const Color.fromARGB(20, 9, 9, 11);
 
   /// `shadow-shadow-6`
-  static const shadowShadow6 = Color.fromARGB(26, 9, 9, 11);
+  static Color get shadowShadow6 => _dark ? const Color.fromARGB(51, 0, 0, 0) : const Color.fromARGB(26, 9, 9, 11);
 
   /// `shadow-shadow-7`
-  static const shadowShadow7 = Color.fromARGB(31, 9, 9, 11);
+  static Color get shadowShadow7 => _dark ? const Color.fromARGB(61, 0, 0, 0) : const Color.fromARGB(31, 9, 9, 11);
 
   /// `shadow-shadow-8`
-  static const shadowShadow8 = Color.fromARGB(36, 9, 9, 11);
+  static Color get shadowShadow8 => _dark ? const Color.fromARGB(71, 0, 0, 0) : const Color.fromARGB(36, 9, 9, 11);
 
   /// `shadow-shadow-9`
-  static const shadowShadow9 = Color.fromARGB(46, 9, 9, 11);
+  static Color get shadowShadow9 => _dark ? const Color.fromARGB(92, 0, 0, 0) : const Color.fromARGB(46, 9, 9, 11);
 
   /// `shadow-shadow-10`
-  static const shadowShadow10 = Color.fromARGB(13, 9, 9, 11);
+  static Color get shadowShadow10 => _dark ? const Color.fromARGB(102, 0, 0, 0) : const Color.fromARGB(13, 9, 9, 11);
 
   /// `third-party-aws`
-  static const thirdPartyAws = Color(0xFF141F2E);
+  static Color get thirdPartyAws => const Color(0xFF141F2E);
 
   /// `third-party-aws-alt`
-  static const thirdPartyAwsAlt = Color(0xFF0F1824);
+  static Color get thirdPartyAwsAlt => _dark ? const Color(0xFF192639) : const Color(0xFF0F1824);
 
   /// `third-party-model-bg-openai`
-  static const thirdPartyModelBgOpenai = Color(0xFFE3E5E8);
+  static Color get thirdPartyModelBgOpenai => _dark ? const Color(0xFF121212) : const Color(0xFFE3E5E8);
 
   /// `third-party-model-bg-anthropic`
-  static const thirdPartyModelBgAnthropic = Color(0xFFEEEDE7);
+  static Color get thirdPartyModelBgAnthropic => _dark ? const Color(0xFF1D1917) : const Color(0xFFEEEDE7);
 
   /// `third-party-model-bg-default`
-  static const thirdPartyModelBgDefault = Color(0xFFF9FAFB);
+  static Color get thirdPartyModelBgDefault => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF9FAFB);
 
   /// `util-colors-orange-dark-orange-dark-50`
-  static const utilColorsOrangeDarkOrangeDark50 = Color(0xFFFFF4ED);
+  static Color get utilColorsOrangeDarkOrangeDark50 => _dark ? const Color(0xFF57130A) : const Color(0xFFFFF4ED);
 
   /// `util-colors-orange-dark-orange-dark-100`
-  static const utilColorsOrangeDarkOrangeDark100 = Color(0xFFFFE6D5);
+  static Color get utilColorsOrangeDarkOrangeDark100 => _dark ? const Color(0xFF771A0D) : const Color(0xFFFFE6D5);
 
   /// `util-colors-orange-dark-orange-dark-200`
-  static const utilColorsOrangeDarkOrangeDark200 = Color(0xFFFFD6AE);
+  static Color get utilColorsOrangeDarkOrangeDark200 => _dark ? const Color(0xFF97180C) : const Color(0xFFFFD6AE);
 
   /// `util-colors-orange-dark-orange-dark-300`
-  static const utilColorsOrangeDarkOrangeDark300 = Color(0xFFFF9C66);
+  static Color get utilColorsOrangeDarkOrangeDark300 => _dark ? const Color(0xFFBC1B06) : const Color(0xFFFF9C66);
 
   /// `util-colors-orange-dark-orange-dark-400`
-  static const utilColorsOrangeDarkOrangeDark400 = Color(0xFFFF692E);
+  static Color get utilColorsOrangeDarkOrangeDark400 => _dark ? const Color(0xFFE62E05) : const Color(0xFFFF692E);
 
   /// `util-colors-orange-dark-orange-dark-500`
-  static const utilColorsOrangeDarkOrangeDark500 = Color(0xFFFF4405);
+  static Color get utilColorsOrangeDarkOrangeDark500 => const Color(0xFFFF4405);
 
   /// `util-colors-orange-dark-orange-dark-600`
-  static const utilColorsOrangeDarkOrangeDark600 = Color(0xFFE62E05);
+  static Color get utilColorsOrangeDarkOrangeDark600 => _dark ? const Color(0xFFFF692E) : const Color(0xFFE62E05);
 
   /// `util-colors-orange-dark-orange-dark-700`
-  static const utilColorsOrangeDarkOrangeDark700 = Color(0xFFBC1B06);
+  static Color get utilColorsOrangeDarkOrangeDark700 => _dark ? const Color(0xFFFF9C66) : const Color(0xFFBC1B06);
 
   /// `util-colors-orange-orange-50`
-  static const utilColorsOrangeOrange50 = Color(0xFFFEF6EE);
+  static Color get utilColorsOrangeOrange50 => _dark ? const Color(0xFF511C10) : const Color(0xFFFEF6EE);
 
   /// `util-colors-orange-orange-100`
-  static const utilColorsOrangeOrange100 = Color(0xFFFDEAD7);
+  static Color get utilColorsOrangeOrange100 => _dark ? const Color(0xFF772917) : const Color(0xFFFDEAD7);
 
   /// `util-colors-orange-orange-200`
-  static const utilColorsOrangeOrange200 = Color(0xFFF9DBAF);
+  static Color get utilColorsOrangeOrange200 => _dark ? const Color(0xFF932F19) : const Color(0xFFF9DBAF);
 
   /// `util-colors-orange-orange-300`
-  static const utilColorsOrangeOrange300 = Color(0xFFF7B27A);
+  static Color get utilColorsOrangeOrange300 => _dark ? const Color(0xFFB93815) : const Color(0xFFF7B27A);
 
   /// `util-colors-orange-orange-400`
-  static const utilColorsOrangeOrange400 = Color(0xFFF38744);
+  static Color get utilColorsOrangeOrange400 => _dark ? const Color(0xFFE04F16) : const Color(0xFFF38744);
 
   /// `util-colors-orange-orange-500`
-  static const utilColorsOrangeOrange500 = Color(0xFFEF6820);
+  static Color get utilColorsOrangeOrange500 => const Color(0xFFEF6820);
 
   /// `util-colors-orange-orange-600`
-  static const utilColorsOrangeOrange600 = Color(0xFFE04F16);
+  static Color get utilColorsOrangeOrange600 => _dark ? const Color(0xFFF38744) : const Color(0xFFE04F16);
 
   /// `util-colors-orange-orange-700`
-  static const utilColorsOrangeOrange700 = Color(0xFFB93815);
+  static Color get utilColorsOrangeOrange700 => _dark ? const Color(0xFFF7B27A) : const Color(0xFFB93815);
 
   /// `util-colors-orange-orange-100-transparent`
-  static const utilColorsOrangeOrange100Transparent = Color.fromARGB(0, 253, 234, 215);
+  static Color get utilColorsOrangeOrange100Transparent =>
+      _dark ? const Color.fromARGB(0, 119, 41, 23) : const Color.fromARGB(0, 253, 234, 215);
 
   /// `util-colors-pink-pink-50`
-  static const utilColorsPinkPink50 = Color(0xFFFDF2FA);
+  static Color get utilColorsPinkPink50 => _dark ? const Color(0xFF4E0D30) : const Color(0xFFFDF2FA);
 
   /// `util-colors-pink-pink-100`
-  static const utilColorsPinkPink100 = Color(0xFFFCE7F6);
+  static Color get utilColorsPinkPink100 => _dark ? const Color(0xFF851651) : const Color(0xFFFCE7F6);
 
   /// `util-colors-pink-pink-200`
-  static const utilColorsPinkPink200 = Color(0xFFFCCEEE);
+  static Color get utilColorsPinkPink200 => _dark ? const Color(0xFF9E165F) : const Color(0xFFFCCEEE);
 
   /// `util-colors-pink-pink-300`
-  static const utilColorsPinkPink300 = Color(0xFFFAA7E0);
+  static Color get utilColorsPinkPink300 => _dark ? const Color(0xFFC11574) : const Color(0xFFFAA7E0);
 
   /// `util-colors-pink-pink-400`
-  static const utilColorsPinkPink400 = Color(0xFFF670C7);
+  static Color get utilColorsPinkPink400 => _dark ? const Color(0xFFDD2590) : const Color(0xFFF670C7);
 
   /// `util-colors-pink-pink-500`
-  static const utilColorsPinkPink500 = Color(0xFFEE46BC);
+  static Color get utilColorsPinkPink500 => const Color(0xFFEE46BC);
 
   /// `util-colors-pink-pink-600`
-  static const utilColorsPinkPink600 = Color(0xFFDD2590);
+  static Color get utilColorsPinkPink600 => _dark ? const Color(0xFFF670C7) : const Color(0xFFDD2590);
 
   /// `util-colors-pink-pink-700`
-  static const utilColorsPinkPink700 = Color(0xFFC11574);
+  static Color get utilColorsPinkPink700 => _dark ? const Color(0xFFFAA7E0) : const Color(0xFFC11574);
 
   /// `util-colors-fuchsia-fuchsia-50`
-  static const utilColorsFuchsiaFuchsia50 = Color(0xFFFDF4FF);
+  static Color get utilColorsFuchsiaFuchsia50 => _dark ? const Color(0xFF47104C) : const Color(0xFFFDF4FF);
 
   /// `util-colors-fuchsia-fuchsia-100`
-  static const utilColorsFuchsiaFuchsia100 = Color(0xFFFBE8FF);
+  static Color get utilColorsFuchsiaFuchsia100 => _dark ? const Color(0xFF6F1877) : const Color(0xFFFBE8FF);
 
   /// `util-colors-fuchsia-fuchsia-200`
-  static const utilColorsFuchsiaFuchsia200 = Color(0xFFF6D0FE);
+  static Color get utilColorsFuchsiaFuchsia200 => _dark ? const Color(0xFF821890) : const Color(0xFFF6D0FE);
 
   /// `util-colors-fuchsia-fuchsia-300`
-  static const utilColorsFuchsiaFuchsia300 = Color(0xFFEEAAFD);
+  static Color get utilColorsFuchsiaFuchsia300 => _dark ? const Color(0xFF9F1AB1) : const Color(0xFFEEAAFD);
 
   /// `util-colors-fuchsia-fuchsia-400`
-  static const utilColorsFuchsiaFuchsia400 = Color(0xFFE478FA);
+  static Color get utilColorsFuchsiaFuchsia400 => _dark ? const Color(0xFFBA24D5) : const Color(0xFFE478FA);
 
   /// `util-colors-fuchsia-fuchsia-500`
-  static const utilColorsFuchsiaFuchsia500 = Color(0xFFD444F1);
+  static Color get utilColorsFuchsiaFuchsia500 => const Color(0xFFD444F1);
 
   /// `util-colors-fuchsia-fuchsia-600`
-  static const utilColorsFuchsiaFuchsia600 = Color(0xFFBA24D5);
+  static Color get utilColorsFuchsiaFuchsia600 => _dark ? const Color(0xFFE478FA) : const Color(0xFFBA24D5);
 
   /// `util-colors-fuchsia-fuchsia-700`
-  static const utilColorsFuchsiaFuchsia700 = Color(0xFF9F1AB1);
+  static Color get utilColorsFuchsiaFuchsia700 => _dark ? const Color(0xFFEEAAFD) : const Color(0xFF9F1AB1);
 
   /// `util-colors-purple-purple-50`
-  static const utilColorsPurplePurple50 = Color(0xFFF4F3FF);
+  static Color get utilColorsPurplePurple50 => _dark ? const Color(0xFF27115F) : const Color(0xFFF4F3FF);
 
   /// `util-colors-purple-purple-100`
-  static const utilColorsPurplePurple100 = Color(0xFFEBE9FE);
+  static Color get utilColorsPurplePurple100 => _dark ? const Color(0xFF3E1C96) : const Color(0xFFEBE9FE);
 
   /// `util-colors-purple-purple-200`
-  static const utilColorsPurplePurple200 = Color(0xFFD9D6FE);
+  static Color get utilColorsPurplePurple200 => _dark ? const Color(0xFF4A1FB8) : const Color(0xFFD9D6FE);
 
   /// `util-colors-purple-purple-300`
-  static const utilColorsPurplePurple300 = Color(0xFFBDB4FE);
+  static Color get utilColorsPurplePurple300 => _dark ? const Color(0xFF5925DC) : const Color(0xFFBDB4FE);
 
   /// `util-colors-purple-purple-400`
-  static const utilColorsPurplePurple400 = Color(0xFF9B8AFB);
+  static Color get utilColorsPurplePurple400 => _dark ? const Color(0xFF6938EF) : const Color(0xFF9B8AFB);
 
   /// `util-colors-purple-purple-500`
-  static const utilColorsPurplePurple500 = Color(0xFF7A5AF8);
+  static Color get utilColorsPurplePurple500 => const Color(0xFF7A5AF8);
 
   /// `util-colors-purple-purple-600`
-  static const utilColorsPurplePurple600 = Color(0xFF6938EF);
+  static Color get utilColorsPurplePurple600 => _dark ? const Color(0xFF9B8AFB) : const Color(0xFF6938EF);
 
   /// `util-colors-purple-purple-700`
-  static const utilColorsPurplePurple700 = Color(0xFF5925DC);
+  static Color get utilColorsPurplePurple700 => _dark ? const Color(0xFFBDB4FE) : const Color(0xFF5925DC);
 
   /// `util-colors-indigo-indigo-50`
-  static const utilColorsIndigoIndigo50 = Color(0xFFEEF4FF);
+  static Color get utilColorsIndigoIndigo50 => _dark ? const Color(0xFF1F235B) : const Color(0xFFEEF4FF);
 
   /// `util-colors-indigo-indigo-100`
-  static const utilColorsIndigoIndigo100 = Color(0xFFE0EAFF);
+  static Color get utilColorsIndigoIndigo100 => _dark ? const Color(0xFF2D3282) : const Color(0xFFE0EAFF);
 
   /// `util-colors-indigo-indigo-200`
-  static const utilColorsIndigoIndigo200 = Color(0xFFC7D7FE);
+  static Color get utilColorsIndigoIndigo200 => _dark ? const Color(0xFF2D31A6) : const Color(0xFFC7D7FE);
 
   /// `util-colors-indigo-indigo-300`
-  static const utilColorsIndigoIndigo300 = Color(0xFFA4BCFD);
+  static Color get utilColorsIndigoIndigo300 => _dark ? const Color(0xFF3538CD) : const Color(0xFFA4BCFD);
 
   /// `util-colors-indigo-indigo-400`
-  static const utilColorsIndigoIndigo400 = Color(0xFF8098F9);
+  static Color get utilColorsIndigoIndigo400 => _dark ? const Color(0xFF444CE7) : const Color(0xFF8098F9);
 
   /// `util-colors-indigo-indigo-500`
-  static const utilColorsIndigoIndigo500 = Color(0xFF6172F3);
+  static Color get utilColorsIndigoIndigo500 => const Color(0xFF6172F3);
 
   /// `util-colors-indigo-indigo-600`
-  static const utilColorsIndigoIndigo600 = Color(0xFF444CE7);
+  static Color get utilColorsIndigoIndigo600 => _dark ? const Color(0xFF8098F9) : const Color(0xFF444CE7);
 
   /// `util-colors-indigo-indigo-700`
-  static const utilColorsIndigoIndigo700 = Color(0xFF3538CD);
+  static Color get utilColorsIndigoIndigo700 => _dark ? const Color(0xFFA4BCFD) : const Color(0xFF3538CD);
 
   /// `util-colors-blue-blue-50`
-  static const utilColorsBlueBlue50 = Color(0xFFEFF8FF);
+  static Color get utilColorsBlueBlue50 => _dark ? const Color(0xFF102A56) : const Color(0xFFEFF8FF);
 
   /// `util-colors-blue-blue-100`
-  static const utilColorsBlueBlue100 = Color(0xFFD1E9FF);
+  static Color get utilColorsBlueBlue100 => _dark ? const Color(0xFF194185) : const Color(0xFFD1E9FF);
 
   /// `util-colors-blue-blue-200`
-  static const utilColorsBlueBlue200 = Color(0xFFB2DDFF);
+  static Color get utilColorsBlueBlue200 => _dark ? const Color(0xFF1849A9) : const Color(0xFFB2DDFF);
 
   /// `util-colors-blue-blue-300`
-  static const utilColorsBlueBlue300 = Color(0xFF84CAFF);
+  static Color get utilColorsBlueBlue300 => _dark ? const Color(0xFF175CD3) : const Color(0xFF84CAFF);
 
   /// `util-colors-blue-blue-400`
-  static const utilColorsBlueBlue400 = Color(0xFF53B1FD);
+  static Color get utilColorsBlueBlue400 => _dark ? const Color(0xFF1570EF) : const Color(0xFF53B1FD);
 
   /// `util-colors-blue-blue-500`
-  static const utilColorsBlueBlue500 = Color(0xFF2E90FA);
+  static Color get utilColorsBlueBlue500 => const Color(0xFF2E90FA);
 
   /// `util-colors-blue-blue-600`
-  static const utilColorsBlueBlue600 = Color(0xFF1570EF);
+  static Color get utilColorsBlueBlue600 => _dark ? const Color(0xFF53B1FD) : const Color(0xFF1570EF);
 
   /// `util-colors-blue-blue-700`
-  static const utilColorsBlueBlue700 = Color(0xFF175CD3);
+  static Color get utilColorsBlueBlue700 => _dark ? const Color(0xFF84CAFF) : const Color(0xFF175CD3);
 
   /// `util-colors-blue-light-blue-light-50`
-  static const utilColorsBlueLightBlueLight50 = Color(0xFFF0F9FF);
+  static Color get utilColorsBlueLightBlueLight50 => _dark ? const Color(0xFF062C41) : const Color(0xFFF0F9FF);
 
   /// `util-colors-blue-light-blue-light-100`
-  static const utilColorsBlueLightBlueLight100 = Color(0xFFE0F2FE);
+  static Color get utilColorsBlueLightBlueLight100 => _dark ? const Color(0xFF0B4A6F) : const Color(0xFFE0F2FE);
 
   /// `util-colors-blue-light-blue-light-200`
-  static const utilColorsBlueLightBlueLight200 = Color(0xFFB9E6FE);
+  static Color get utilColorsBlueLightBlueLight200 => _dark ? const Color(0xFF065986) : const Color(0xFFB9E6FE);
 
   /// `util-colors-blue-light-blue-light-300`
-  static const utilColorsBlueLightBlueLight300 = Color(0xFF7CD4FD);
+  static Color get utilColorsBlueLightBlueLight300 => _dark ? const Color(0xFF026AA2) : const Color(0xFF7CD4FD);
 
   /// `util-colors-blue-light-blue-light-400`
-  static const utilColorsBlueLightBlueLight400 = Color(0xFF36BFFA);
+  static Color get utilColorsBlueLightBlueLight400 => _dark ? const Color(0xFF0086C9) : const Color(0xFF36BFFA);
 
   /// `util-colors-blue-light-blue-light-500`
-  static const utilColorsBlueLightBlueLight500 = Color(0xFF0BA5EC);
+  static Color get utilColorsBlueLightBlueLight500 => const Color(0xFF0BA5EC);
 
   /// `util-colors-blue-light-blue-light-600`
-  static const utilColorsBlueLightBlueLight600 = Color(0xFF0086C9);
+  static Color get utilColorsBlueLightBlueLight600 => _dark ? const Color(0xFF36BFFA) : const Color(0xFF0086C9);
 
   /// `util-colors-blue-light-blue-light-700`
-  static const utilColorsBlueLightBlueLight700 = Color(0xFF026AA2);
+  static Color get utilColorsBlueLightBlueLight700 => _dark ? const Color(0xFF7CD4FD) : const Color(0xFF026AA2);
 
   /// `util-colors-blue-brand-blue-brand-50`
-  static const utilColorsBlueBrandBlueBrand50 = Color(0xFFF5F8FF);
+  static Color get utilColorsBlueBrandBlueBrand50 => _dark ? const Color(0xFF001782) : const Color(0xFFF5F8FF);
 
   /// `util-colors-blue-brand-blue-brand-100`
-  static const utilColorsBlueBrandBlueBrand100 = Color(0xFFD0DFFF);
+  static Color get utilColorsBlueBrandBlueBrand100 => _dark ? const Color(0xFF001EA0) : const Color(0xFFD0DFFF);
 
   /// `util-colors-blue-brand-blue-brand-200`
-  static const utilColorsBlueBrandBlueBrand200 = Color(0xFFA0BDFF);
+  static Color get utilColorsBlueBrandBlueBrand200 => _dark ? const Color(0xFF0025BE) : const Color(0xFFA0BDFF);
 
   /// `util-colors-blue-brand-blue-brand-300`
-  static const utilColorsBlueBrandBlueBrand300 = Color(0xFF6694FF);
+  static Color get utilColorsBlueBrandBlueBrand300 => _dark ? const Color(0xFF002CDE) : const Color(0xFF6694FF);
 
   /// `util-colors-blue-brand-blue-brand-400`
-  static const utilColorsBlueBrandBlueBrand400 = Color(0xFF3072FF);
+  static Color get utilColorsBlueBrandBlueBrand400 => _dark ? const Color(0xFF0033FF) : const Color(0xFF3072FF);
 
   /// `util-colors-blue-brand-blue-brand-500`
-  static const utilColorsBlueBrandBlueBrand500 = Color(0xFF085AFC);
+  static Color get utilColorsBlueBrandBlueBrand500 => const Color(0xFF085AFC);
 
   /// `util-colors-blue-brand-blue-brand-600`
-  static const utilColorsBlueBrandBlueBrand600 = Color(0xFF0033FF);
+  static Color get utilColorsBlueBrandBlueBrand600 => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `util-colors-blue-brand-blue-brand-700`
-  static const utilColorsBlueBrandBlueBrand700 = Color(0xFF002CDE);
+  static Color get utilColorsBlueBrandBlueBrand700 => _dark ? const Color(0xFF6694FF) : const Color(0xFF002CDE);
 
   /// `util-colors-gray-blue-gray-blue-50`
-  static const utilColorsGrayBlueGrayBlue50 = Color(0xFFF8F9FC);
+  static Color get utilColorsGrayBlueGrayBlue50 => _dark ? const Color(0xFF0D0F1C) : const Color(0xFFF8F9FC);
 
   /// `util-colors-gray-blue-gray-blue-100`
-  static const utilColorsGrayBlueGrayBlue100 = Color(0xFFEAECF5);
+  static Color get utilColorsGrayBlueGrayBlue100 => _dark ? const Color(0xFF101323) : const Color(0xFFEAECF5);
 
   /// `util-colors-gray-blue-gray-blue-200`
-  static const utilColorsGrayBlueGrayBlue200 = Color(0xFFD5D9EB);
+  static Color get utilColorsGrayBlueGrayBlue200 => _dark ? const Color(0xFF293056) : const Color(0xFFD5D9EB);
 
   /// `util-colors-gray-blue-gray-blue-300`
-  static const utilColorsGrayBlueGrayBlue300 = Color(0xFFB3B8DB);
+  static Color get utilColorsGrayBlueGrayBlue300 => _dark ? const Color(0xFF363F72) : const Color(0xFFB3B8DB);
 
   /// `util-colors-gray-blue-gray-blue-400`
-  static const utilColorsGrayBlueGrayBlue400 = Color(0xFF717BBC);
+  static Color get utilColorsGrayBlueGrayBlue400 => _dark ? const Color(0xFF3E4784) : const Color(0xFF717BBC);
 
   /// `util-colors-gray-blue-gray-blue-500`
-  static const utilColorsGrayBlueGrayBlue500 = Color(0xFF4E5BA6);
+  static Color get utilColorsGrayBlueGrayBlue500 => const Color(0xFF4E5BA6);
 
   /// `util-colors-gray-blue-gray-blue-600`
-  static const utilColorsGrayBlueGrayBlue600 = Color(0xFF3E4784);
+  static Color get utilColorsGrayBlueGrayBlue600 => _dark ? const Color(0xFF717BBC) : const Color(0xFF3E4784);
 
   /// `util-colors-gray-blue-gray-blue-700`
-  static const utilColorsGrayBlueGrayBlue700 = Color(0xFF363F72);
+  static Color get utilColorsGrayBlueGrayBlue700 => _dark ? const Color(0xFFB3B8DB) : const Color(0xFF363F72);
 
   /// `util-colors-red-red-50`
-  static const utilColorsRedRed50 = Color(0xFFFEF3F2);
+  static Color get utilColorsRedRed50 => _dark ? const Color(0xFF55160C) : const Color(0xFFFEF3F2);
 
   /// `util-colors-red-red-100`
-  static const utilColorsRedRed100 = Color(0xFFFEE4E2);
+  static Color get utilColorsRedRed100 => _dark ? const Color(0xFF7A271A) : const Color(0xFFFEE4E2);
 
   /// `util-colors-red-red-200`
-  static const utilColorsRedRed200 = Color(0xFFFECDCA);
+  static Color get utilColorsRedRed200 => _dark ? const Color(0xFF912018) : const Color(0xFFFECDCA);
 
   /// `util-colors-red-red-300`
-  static const utilColorsRedRed300 = Color(0xFFFDA29B);
+  static Color get utilColorsRedRed300 => _dark ? const Color(0xFFB42318) : const Color(0xFFFDA29B);
 
   /// `util-colors-red-red-400`
-  static const utilColorsRedRed400 = Color(0xFFF97066);
+  static Color get utilColorsRedRed400 => _dark ? const Color(0xFFD92D20) : const Color(0xFFF97066);
 
   /// `util-colors-red-red-500`
-  static const utilColorsRedRed500 = Color(0xFFF04438);
+  static Color get utilColorsRedRed500 => const Color(0xFFF04438);
 
   /// `util-colors-red-red-600`
-  static const utilColorsRedRed600 = Color(0xFFD92D20);
+  static Color get utilColorsRedRed600 => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `util-colors-red-red-700`
-  static const utilColorsRedRed700 = Color(0xFFB42318);
+  static Color get utilColorsRedRed700 => _dark ? const Color(0xFFFDA29B) : const Color(0xFFB42318);
 
   /// `util-colors-green-green-50`
-  static const utilColorsGreenGreen50 = Color(0xFFECFDF3);
+  static Color get utilColorsGreenGreen50 => _dark ? const Color(0xFF053321) : const Color(0xFFECFDF3);
 
   /// `util-colors-green-green-100`
-  static const utilColorsGreenGreen100 = Color(0xFFDCFAE6);
+  static Color get utilColorsGreenGreen100 => _dark ? const Color(0xFF074D31) : const Color(0xFFDCFAE6);
 
   /// `util-colors-green-green-200`
-  static const utilColorsGreenGreen200 = Color(0xFFABEFC6);
+  static Color get utilColorsGreenGreen200 => _dark ? const Color(0xFF085D3A) : const Color(0xFFABEFC6);
 
   /// `util-colors-green-green-300`
-  static const utilColorsGreenGreen300 = Color(0xFF75E0A7);
+  static Color get utilColorsGreenGreen300 => _dark ? const Color(0xFF067647) : const Color(0xFF75E0A7);
 
   /// `util-colors-green-green-400`
-  static const utilColorsGreenGreen400 = Color(0xFF47CD89);
+  static Color get utilColorsGreenGreen400 => _dark ? const Color(0xFF079455) : const Color(0xFF47CD89);
 
   /// `util-colors-green-green-500`
-  static const utilColorsGreenGreen500 = Color(0xFF17B26A);
+  static Color get utilColorsGreenGreen500 => const Color(0xFF17B26A);
 
   /// `util-colors-green-green-600`
-  static const utilColorsGreenGreen600 = Color(0xFF079455);
+  static Color get utilColorsGreenGreen600 => _dark ? const Color(0xFF47CD89) : const Color(0xFF079455);
 
   /// `util-colors-green-green-700`
-  static const utilColorsGreenGreen700 = Color(0xFF067647);
+  static Color get utilColorsGreenGreen700 => _dark ? const Color(0xFF75E0A7) : const Color(0xFF067647);
 
   /// `util-colors-green-light-green-light-50`
-  static const utilColorsGreenLightGreenLight50 = Color(0xFFF3FEE7);
+  static Color get utilColorsGreenLightGreenLight50 => _dark ? const Color(0xFF15290A) : const Color(0xFFF3FEE7);
 
   /// `util-colors-green-light-green-light-100`
-  static const utilColorsGreenLightGreenLight100 = Color(0xFFE3FBCC);
+  static Color get utilColorsGreenLightGreenLight100 => _dark ? const Color(0xFF2B5314) : const Color(0xFFE3FBCC);
 
   /// `util-colors-green-light-green-light-200`
-  static const utilColorsGreenLightGreenLight200 = Color(0xFFD0F8AB);
+  static Color get utilColorsGreenLightGreenLight200 => _dark ? const Color(0xFF326212) : const Color(0xFFD0F8AB);
 
   /// `util-colors-green-light-green-light-300`
-  static const utilColorsGreenLightGreenLight300 = Color(0xFFA6EF67);
+  static Color get utilColorsGreenLightGreenLight300 => _dark ? const Color(0xFF3B7C0F) : const Color(0xFFA6EF67);
 
   /// `util-colors-green-light-green-light-400`
-  static const utilColorsGreenLightGreenLight400 = Color(0xFF85E13A);
+  static Color get utilColorsGreenLightGreenLight400 => _dark ? const Color(0xFF4CA30D) : const Color(0xFF85E13A);
 
   /// `util-colors-green-light-green-light-500`
-  static const utilColorsGreenLightGreenLight500 = Color(0xFF66C61C);
+  static Color get utilColorsGreenLightGreenLight500 => const Color(0xFF66C61C);
 
   /// `util-colors-green-light-green-light-600`
-  static const utilColorsGreenLightGreenLight600 = Color(0xFF4CA30D);
+  static Color get utilColorsGreenLightGreenLight600 => _dark ? const Color(0xFF85E13A) : const Color(0xFF4CA30D);
 
   /// `util-colors-green-light-green-light-700`
-  static const utilColorsGreenLightGreenLight700 = Color(0xFF3B7C0F);
+  static Color get utilColorsGreenLightGreenLight700 => _dark ? const Color(0xFFA6EF67) : const Color(0xFF3B7C0F);
 
   /// `util-colors-warning-warning-50`
-  static const utilColorsWarningWarning50 = Color(0xFFFFFAEB);
+  static Color get utilColorsWarningWarning50 => _dark ? const Color(0xFF4E1D09) : const Color(0xFFFFFAEB);
 
   /// `util-colors-warning-warning-100`
-  static const utilColorsWarningWarning100 = Color(0xFFFEF0C7);
+  static Color get utilColorsWarningWarning100 => _dark ? const Color(0xFF7A2E0E) : const Color(0xFFFEF0C7);
 
   /// `util-colors-warning-warning-200`
-  static const utilColorsWarningWarning200 = Color(0xFFFEDF89);
+  static Color get utilColorsWarningWarning200 => _dark ? const Color(0xFF93370D) : const Color(0xFFFEDF89);
 
   /// `util-colors-warning-warning-300`
-  static const utilColorsWarningWarning300 = Color(0xFFFEC84B);
+  static Color get utilColorsWarningWarning300 => _dark ? const Color(0xFFB54708) : const Color(0xFFFEC84B);
 
   /// `util-colors-warning-warning-400`
-  static const utilColorsWarningWarning400 = Color(0xFFFDB022);
+  static Color get utilColorsWarningWarning400 => _dark ? const Color(0xFFDC6803) : const Color(0xFFFDB022);
 
   /// `util-colors-warning-warning-500`
-  static const utilColorsWarningWarning500 = Color(0xFFF79009);
+  static Color get utilColorsWarningWarning500 => const Color(0xFFF79009);
 
   /// `util-colors-warning-warning-600`
-  static const utilColorsWarningWarning600 = Color(0xFFDC6803);
+  static Color get utilColorsWarningWarning600 => _dark ? const Color(0xFFFDB022) : const Color(0xFFDC6803);
 
   /// `util-colors-warning-warning-700`
-  static const utilColorsWarningWarning700 = Color(0xFFB54708);
+  static Color get utilColorsWarningWarning700 => _dark ? const Color(0xFFFEC84B) : const Color(0xFFB54708);
 
   /// `util-colors-yellow-yellow-50`
-  static const utilColorsYellowYellow50 = Color(0xFFFEFBE8);
+  static Color get utilColorsYellowYellow50 => _dark ? const Color(0xFF542C0D) : const Color(0xFFFEFBE8);
 
   /// `util-colors-yellow-yellow-100`
-  static const utilColorsYellowYellow100 = Color(0xFFFEF7C3);
+  static Color get utilColorsYellowYellow100 => _dark ? const Color(0xFF713B12) : const Color(0xFFFEF7C3);
 
   /// `util-colors-yellow-yellow-200`
-  static const utilColorsYellowYellow200 = Color(0xFFFEEE95);
+  static Color get utilColorsYellowYellow200 => _dark ? const Color(0xFF854A0E) : const Color(0xFFFEEE95);
 
   /// `util-colors-yellow-yellow-300`
-  static const utilColorsYellowYellow300 = Color(0xFFFDE272);
+  static Color get utilColorsYellowYellow300 => _dark ? const Color(0xFFA15C07) : const Color(0xFFFDE272);
 
   /// `util-colors-yellow-yellow-400`
-  static const utilColorsYellowYellow400 = Color(0xFFFAC515);
+  static Color get utilColorsYellowYellow400 => _dark ? const Color(0xFFCA8504) : const Color(0xFFFAC515);
 
   /// `util-colors-yellow-yellow-500`
-  static const utilColorsYellowYellow500 = Color(0xFFEAAA08);
+  static Color get utilColorsYellowYellow500 => const Color(0xFFEAAA08);
 
   /// `util-colors-yellow-yellow-600`
-  static const utilColorsYellowYellow600 = Color(0xFFCA8504);
+  static Color get utilColorsYellowYellow600 => _dark ? const Color(0xFFFAC515) : const Color(0xFFCA8504);
 
   /// `util-colors-yellow-yellow-700`
-  static const utilColorsYellowYellow700 = Color(0xFFA15C07);
+  static Color get utilColorsYellowYellow700 => _dark ? const Color(0xFFFDE272) : const Color(0xFFA15C07);
 
   /// `util-colors-teal-teal-50`
-  static const utilColorsTealTeal50 = Color(0xFFF0FDF9);
+  static Color get utilColorsTealTeal50 => _dark ? const Color(0xFF0A2926) : const Color(0xFFF0FDF9);
 
   /// `util-colors-teal-teal-100`
-  static const utilColorsTealTeal100 = Color(0xFFCCFBEF);
+  static Color get utilColorsTealTeal100 => _dark ? const Color(0xFF134E48) : const Color(0xFFCCFBEF);
 
   /// `util-colors-teal-teal-200`
-  static const utilColorsTealTeal200 = Color(0xFF99F6E0);
+  static Color get utilColorsTealTeal200 => _dark ? const Color(0xFF125D56) : const Color(0xFF99F6E0);
 
   /// `util-colors-teal-teal-300`
-  static const utilColorsTealTeal300 = Color(0xFF5FE9D0);
+  static Color get utilColorsTealTeal300 => _dark ? const Color(0xFF107569) : const Color(0xFF5FE9D0);
 
   /// `util-colors-teal-teal-400`
-  static const utilColorsTealTeal400 = Color(0xFF2ED3B7);
+  static Color get utilColorsTealTeal400 => _dark ? const Color(0xFF0E9384) : const Color(0xFF2ED3B7);
 
   /// `util-colors-teal-teal-500`
-  static const utilColorsTealTeal500 = Color(0xFF15B79E);
+  static Color get utilColorsTealTeal500 => const Color(0xFF15B79E);
 
   /// `util-colors-teal-teal-600`
-  static const utilColorsTealTeal600 = Color(0xFF0E9384);
+  static Color get utilColorsTealTeal600 => _dark ? const Color(0xFF2ED3B7) : const Color(0xFF0E9384);
 
   /// `util-colors-teal-teal-700`
-  static const utilColorsTealTeal700 = Color(0xFF107569);
+  static Color get utilColorsTealTeal700 => _dark ? const Color(0xFF5FE9D0) : const Color(0xFF107569);
 
   /// `util-colors-cyan-cyan-50`
-  static const utilColorsCyanCyan50 = Color(0xFFECFDFF);
+  static Color get utilColorsCyanCyan50 => _dark ? const Color(0xFF0D2D3A) : const Color(0xFFECFDFF);
 
   /// `util-colors-cyan-cyan-100`
-  static const utilColorsCyanCyan100 = Color(0xFFCFF9FE);
+  static Color get utilColorsCyanCyan100 => _dark ? const Color(0xFF164C63) : const Color(0xFFCFF9FE);
 
   /// `util-colors-cyan-cyan-200`
-  static const utilColorsCyanCyan200 = Color(0xFFA5F0FC);
+  static Color get utilColorsCyanCyan200 => _dark ? const Color(0xFF155B75) : const Color(0xFFA5F0FC);
 
   /// `util-colors-cyan-cyan-300`
-  static const utilColorsCyanCyan300 = Color(0xFF67E3F9);
+  static Color get utilColorsCyanCyan300 => _dark ? const Color(0xFF0E7090) : const Color(0xFF67E3F9);
 
   /// `util-colors-cyan-cyan-400`
-  static const utilColorsCyanCyan400 = Color(0xFF22CCEE);
+  static Color get utilColorsCyanCyan400 => _dark ? const Color(0xFF088AB2) : const Color(0xFF22CCEE);
 
   /// `util-colors-cyan-cyan-500`
-  static const utilColorsCyanCyan500 = Color(0xFF06AED4);
+  static Color get utilColorsCyanCyan500 => const Color(0xFF06AED4);
 
   /// `util-colors-cyan-cyan-600`
-  static const utilColorsCyanCyan600 = Color(0xFF088AB2);
+  static Color get utilColorsCyanCyan600 => _dark ? const Color(0xFF22CCEE) : const Color(0xFF088AB2);
 
   /// `util-colors-cyan-cyan-700`
-  static const utilColorsCyanCyan700 = Color(0xFF0E7090);
+  static Color get utilColorsCyanCyan700 => _dark ? const Color(0xFF67E3F9) : const Color(0xFF0E7090);
 
   /// `util-colors-violet-violet-50`
-  static const utilColorsVioletViolet50 = Color(0xFFF5F3FF);
+  static Color get utilColorsVioletViolet50 => _dark ? const Color(0xFF2E125E) : const Color(0xFFF5F3FF);
 
   /// `util-colors-violet-violet-100`
-  static const utilColorsVioletViolet100 = Color(0xFFECE9FE);
+  static Color get utilColorsVioletViolet100 => _dark ? const Color(0xFF491C96) : const Color(0xFFECE9FE);
 
   /// `util-colors-violet-violet-200`
-  static const utilColorsVioletViolet200 = Color(0xFFDDD6FE);
+  static Color get utilColorsVioletViolet200 => _dark ? const Color(0xFF5720B7) : const Color(0xFFDDD6FE);
 
   /// `util-colors-violet-violet-300`
-  static const utilColorsVioletViolet300 = Color(0xFFC3B5FD);
+  static Color get utilColorsVioletViolet300 => _dark ? const Color(0xFF6927DA) : const Color(0xFFC3B5FD);
 
   /// `util-colors-violet-violet-400`
-  static const utilColorsVioletViolet400 = Color(0xFFA48AFB);
+  static Color get utilColorsVioletViolet400 => _dark ? const Color(0xFF7839EE) : const Color(0xFFA48AFB);
 
   /// `util-colors-violet-violet-500`
-  static const utilColorsVioletViolet500 = Color(0xFF875BF7);
+  static Color get utilColorsVioletViolet500 => const Color(0xFF875BF7);
 
   /// `util-colors-violet-violet-600`
-  static const utilColorsVioletViolet600 = Color(0xFF7839EE);
+  static Color get utilColorsVioletViolet600 => _dark ? const Color(0xFFA48AFB) : const Color(0xFF7839EE);
 
   /// `util-colors-violet-violet-700`
-  static const utilColorsVioletViolet700 = Color(0xFF6927DA);
+  static Color get utilColorsVioletViolet700 => _dark ? const Color(0xFFC3B5FD) : const Color(0xFF6927DA);
 
   /// `util-colors-gray-gray-50`
-  static const utilColorsGrayGray50 = Color(0xFFF9FAFB);
+  static Color get utilColorsGrayGray50 => _dark ? const Color(0xFF0C111C) : const Color(0xFFF9FAFB);
 
   /// `util-colors-gray-gray-100`
-  static const utilColorsGrayGray100 = Color(0xFFF2F4F7);
+  static Color get utilColorsGrayGray100 => _dark ? const Color(0xFF101828) : const Color(0xFFF2F4F7);
 
   /// `util-colors-gray-gray-200`
-  static const utilColorsGrayGray200 = Color(0xFFE9EBF0);
+  static Color get utilColorsGrayGray200 => _dark ? const Color(0xFF18222F) : const Color(0xFFE9EBF0);
 
   /// `util-colors-gray-gray-300`
-  static const utilColorsGrayGray300 = Color(0xFFD0D5DC);
+  static Color get utilColorsGrayGray300 => _dark ? const Color(0xFF354052) : const Color(0xFFD0D5DC);
 
   /// `util-colors-gray-gray-400`
-  static const utilColorsGrayGray400 = Color(0xFF98A2B2);
+  static Color get utilColorsGrayGray400 => _dark ? const Color(0xFF495464) : const Color(0xFF98A2B2);
 
   /// `util-colors-gray-gray-500`
-  static const utilColorsGrayGray500 = Color(0xFF676F83);
+  static Color get utilColorsGrayGray500 => const Color(0xFF676F83);
 
   /// `util-colors-gray-gray-600`
-  static const utilColorsGrayGray600 = Color(0xFF495464);
+  static Color get utilColorsGrayGray600 => _dark ? const Color(0xFF98A2B2) : const Color(0xFF495464);
 
   /// `util-colors-gray-gray-700`
-  static const utilColorsGrayGray700 = Color(0xFF354052);
+  static Color get utilColorsGrayGray700 => _dark ? const Color(0xFFD0D5DC) : const Color(0xFF354052);
 
   /// `util-colors-rose-rose-50`
-  static const utilColorsRoseRose50 = Color(0xFFFFF1F3);
+  static Color get utilColorsRoseRose50 => _dark ? const Color(0xFF510B24) : const Color(0xFFFFF1F3);
 
   /// `util-colors-rose-rose-100`
-  static const utilColorsRoseRose100 = Color(0xFFFFE4E8);
+  static Color get utilColorsRoseRose100 => _dark ? const Color(0xFF89123E) : const Color(0xFFFFE4E8);
 
   /// `util-colors-rose-rose-200`
-  static const utilColorsRoseRose200 = Color(0xFFFECDD6);
+  static Color get utilColorsRoseRose200 => _dark ? const Color(0xFFA11043) : const Color(0xFFFECDD6);
 
   /// `util-colors-rose-rose-300`
-  static const utilColorsRoseRose300 = Color(0xFFFEA3B4);
+  static Color get utilColorsRoseRose300 => _dark ? const Color(0xFFC01048) : const Color(0xFFFEA3B4);
 
   /// `util-colors-rose-rose-400`
-  static const utilColorsRoseRose400 = Color(0xFFFD6F8E);
+  static Color get utilColorsRoseRose400 => _dark ? const Color(0xFFE31B54) : const Color(0xFFFD6F8E);
 
   /// `util-colors-rose-rose-500`
-  static const utilColorsRoseRose500 = Color(0xFFF63D68);
+  static Color get utilColorsRoseRose500 => const Color(0xFFF63D68);
 
   /// `util-colors-rose-rose-600`
-  static const utilColorsRoseRose600 = Color(0xFFE31B54);
+  static Color get utilColorsRoseRose600 => _dark ? const Color(0xFFFD6F8E) : const Color(0xFFE31B54);
 
   /// `util-colors-rose-rose-700`
-  static const utilColorsRoseRose700 = Color(0xFFC01048);
+  static Color get utilColorsRoseRose700 => _dark ? const Color(0xFFFEA3B4) : const Color(0xFFC01048);
 
   /// `util-colors-midnight-midnight-50`
-  static const utilColorsMidnightMidnight50 = Color(0xFFFBFBFC);
+  static Color get utilColorsMidnightMidnight50 => _dark ? const Color(0xFF171C22) : const Color(0xFFFBFBFC);
 
   /// `util-colors-midnight-midnight-100`
-  static const utilColorsMidnightMidnight100 = Color(0xFFF0F2F5);
+  static Color get utilColorsMidnightMidnight100 => _dark ? const Color(0xFF202431) : const Color(0xFFF0F2F5);
 
   /// `util-colors-midnight-midnight-200`
-  static const utilColorsMidnightMidnight200 = Color(0xFFDFE1EA);
+  static Color get utilColorsMidnightMidnight200 => _dark ? const Color(0xFF2F3648) : const Color(0xFFDFE1EA);
 
   /// `util-colors-midnight-midnight-300`
-  static const utilColorsMidnightMidnight300 = Color(0xFFC6CBD9);
+  static Color get utilColorsMidnightMidnight300 => _dark ? const Color(0xFF3E465E) : const Color(0xFFC6CBD9);
 
   /// `util-colors-midnight-midnight-400`
-  static const utilColorsMidnightMidnight400 = Color(0xFFA7AEC5);
+  static Color get utilColorsMidnightMidnight400 => _dark ? const Color(0xFF5D698D) : const Color(0xFFA7AEC5);
 
   /// `util-colors-midnight-midnight-500`
-  static const utilColorsMidnightMidnight500 = Color(0xFF828DAD);
+  static Color get utilColorsMidnightMidnight500 => const Color(0xFF828DAD);
 
   /// `util-colors-midnight-midnight-600`
-  static const utilColorsMidnightMidnight600 = Color(0xFF5D698D);
+  static Color get utilColorsMidnightMidnight600 => _dark ? const Color(0xFFA7AEC5) : const Color(0xFF5D698D);
 
   /// `util-colors-midnight-midnight-700`
-  static const utilColorsMidnightMidnight700 = Color(0xFF3E465E);
+  static Color get utilColorsMidnightMidnight700 => _dark ? const Color(0xFFC6CBD9) : const Color(0xFF3E465E);
 
   /// `saas-background`
-  static const saasBackground = Color(0xFFFFFFFF);
+  static Color get saasBackground => _dark ? const Color(0xFF0B0B0E) : const Color(0xFFFFFFFF);
 
   /// `saas-background-inverted`
-  static const saasBackgroundInverted = Color(0xFF0B0B0E);
+  static Color get saasBackgroundInverted => _dark ? const Color.fromARGB(230, 255, 255, 255) : const Color(0xFF0B0B0E);
 
   /// `saas-background-inverted-hover`
-  static const saasBackgroundInvertedHover = Color(0xFF222225);
+  static Color get saasBackgroundInvertedHover => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF222225);
 
   /// `saas-pricing-grid-bg`
-  static const saasPricingGridBg = Color.fromARGB(128, 200, 206, 218);
+  static Color get saasPricingGridBg =>
+      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(128, 200, 206, 218);
 
   /// `saas-dify-blue-static`
-  static const saasDifyBlueStatic = Color(0xFF0033FF);
+  static Color get saasDifyBlueStatic => const Color(0xFF0033FF);
 
   /// `saas-dify-blue-static-hover`
-  static const saasDifyBlueStaticHover = Color(0xFF002CDE);
+  static Color get saasDifyBlueStaticHover => _dark ? const Color(0xFF085AFC) : const Color(0xFF002CDE);
 
   /// `saas-dify-blue-accessible`
-  static const saasDifyBlueAccessible = Color(0xFF0033FF);
+  static Color get saasDifyBlueAccessible => _dark ? const Color(0xFF0A68FF) : const Color(0xFF0033FF);
 
   /// `saas-dify-blue-inverted`
-  static const saasDifyBlueInverted = Color(0xFF0033FF);
+  static Color get saasDifyBlueInverted => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF0033FF);
 
   /// `saas-dify-blue-inverted-dimmed`
-  static const saasDifyBlueInvertedDimmed = Color(0xFF0033FF);
+  static Color get saasDifyBlueInvertedDimmed =>
+      _dark ? const Color.fromARGB(224, 255, 255, 255) : const Color(0xFF0033FF);
 
   /// `dify-logo-blue`
-  static const difyLogoBlue = Color(0xFF0033FF);
+  static Color get difyLogoBlue => _dark ? const Color(0xFFE8E8E8) : const Color(0xFF0033FF);
 
   /// `dify-logo-black`
-  static const difyLogoBlack = Color(0xFF000000);
+  static Color get difyLogoBlack => _dark ? const Color(0xFFE8E8E8) : const Color(0xFF000000);
 
   /// `dify-logo-outline-1`
-  static const difyLogoOutline1 = Color.fromARGB(0, 0, 0, 0);
+  static Color get difyLogoOutline1 => _dark ? const Color(0xFFFFFFFF) : const Color.fromARGB(0, 0, 0, 0);
 
   /// `dify-logo-outline-2`
-  static const difyLogoOutline2 = Color.fromARGB(0, 0, 0, 0);
+  static Color get difyLogoOutline2 => _dark ? const Color(0xFFE8E8E8) : const Color.fromARGB(0, 0, 0, 0);
 
   /// `brand-color-opacity-50`
-  static const brandColorOpacity50 = Color(0xFFF3F5FD);
+  static Color get brandColorOpacity50 => _dark ? const Color(0xFF020821) : const Color(0xFFF3F5FD);
 
   /// `brand-color-opacity-100`
-  static const brandColorOpacity100 = Color(0xFFE2E7FB);
+  static Color get brandColorOpacity100 => _dark ? const Color(0xFF031042) : const Color(0xFFE2E7FB);
 
   /// `brand-color-opacity-200`
-  static const brandColorOpacity200 = Color(0xFFBAC6F5);
+  static Color get brandColorOpacity200 => _dark ? const Color(0xFF051969) : const Color(0xFFBAC6F5);
 
   /// `brand-color-opacity-300`
-  static const brandColorOpacity300 = Color(0xFF899EEE);
+  static Color get brandColorOpacity300 => _dark ? const Color(0xFF07228E) : const Color(0xFF899EEE);
 
   /// `brand-color-opacity-400`
-  static const brandColorOpacity400 = Color(0xFF4F6DE5);
+  static Color get brandColorOpacity400 => _dark ? const Color(0xFF082BB4) : const Color(0xFF4F6DE5);
 
   /// `brand-color-opacity-500`
-  static const brandColorOpacity500 = Color(0xFF0033FF);
+  static Color get brandColorOpacity500 => const Color(0xFF0033FF);
 
   /// `brand-color-opacity-600`
-  static const brandColorOpacity600 = Color(0xFF082BB4);
+  static Color get brandColorOpacity600 => _dark ? const Color(0xFF4F6DE5) : const Color(0xFF082BB4);
 
   /// `brand-color-opacity-700`
-  static const brandColorOpacity700 = Color(0xFF07228E);
+  static Color get brandColorOpacity700 => _dark ? const Color(0xFF899EEE) : const Color(0xFF07228E);
 
   /// `brand-color-opacity-800`
-  static const brandColorOpacity800 = Color(0xFF051969);
+  static Color get brandColorOpacity800 => _dark ? const Color(0xFFBAC6F5) : const Color(0xFF051969);
 
   /// `brand-color-opacity-900`
-  static const brandColorOpacity900 = Color(0xFF031042);
+  static Color get brandColorOpacity900 => _dark ? const Color(0xFFE2E7FB) : const Color(0xFF031042);
 
   /// `brand-color-opacity-1000`
-  static const brandColorOpacity1000 = Color(0xFF020821);
+  static Color get brandColorOpacity1000 => _dark ? const Color(0xFFF3F5FD) : const Color(0xFF020821);
+
+  /// `premium-badge-border-highlight-color`
+  static Color get premiumBadgeBorderHighlightColor => _dark ? const Color(0x33FFFFFF) : const Color(0xF2FFFFFF);
+
+  /// `background-gradient-bg-fill-chat-bubble-bg-3`
+  static Color get backgroundGradientBgFillChatBubbleBg3 => _dark ? const Color(0xFF27314D) : const Color(0xFFE1EFFE);
 }
 
 /// Dify typography utilities (packages/dify-ui/src/styles/utilities.css). Dify uses the system font stack;
@@ -2690,304 +2986,465 @@ abstract final class DifyShadows {
   ];
 }
 
-/// Dify gradients (`--color-*: linear-gradient(...)` in themes/light.css and web/themes/manual-light.css).
+/// Dify gradients (`--color-*: linear-gradient(...)` in themes/light.css, dark.css and web/themes/manual-*.css)
+/// for the current theme.
 abstract final class DifyGradients {
   /// `chatbot-bg`
-  static const chatbotBg = CssLinearGradient(
-    angle: 180,
-    colors: [Color.fromARGB(230, 249, 250, 251), Color.fromARGB(230, 242, 244, 247)],
-    stops: [0, 0.9048],
-  );
+  static CssLinearGradient get chatbotBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(230, 34, 34, 37), Color.fromARGB(230, 29, 29, 32)],
+          stops: [0, 0.9048],
+        )
+      : const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(230, 249, 250, 251), Color.fromARGB(230, 242, 244, 247)],
+          stops: [0, 0.9048],
+        );
 
   /// `chat-bubble-bg`
-  static const chatBubbleBg = CssLinearGradient(
-    angle: 180,
-    colors: [Color(0xFFFFFFFF), Color.fromARGB(153, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get chatBubbleBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(255, 42, 43, 48), Color.fromARGB(255, 37, 38, 42)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 180,
+          colors: [Color(0xFFFFFFFF), Color.fromARGB(153, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `chat-input-mask`
-  static const chatInputMask = CssLinearGradient(
-    angle: 180,
-    colors: [Color.fromARGB(3, 255, 255, 255), Color(0xFFF2F4F7)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get chatInputMask => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(10, 24, 24, 27), Color.fromARGB(153, 24, 24, 27)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(3, 255, 255, 255), Color(0xFFF2F4F7)],
+          stops: [0, 1],
+        );
 
   /// `workflow-process-bg`
-  static const workflowProcessBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color.fromARGB(51, 200, 206, 218), Color.fromARGB(10, 200, 206, 218)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get workflowProcessBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(64, 24, 24, 27), Color.fromARGB(10, 24, 24, 27)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(51, 200, 206, 218), Color.fromARGB(10, 200, 206, 218)],
+          stops: [0, 1],
+        );
 
   /// `workflow-process-paused-bg`
-  static const workflowProcessPausedBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color(0xFFFFFAEB), Color.fromARGB(0, 255, 250, 235)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get workflowProcessPausedBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(36, 247, 144, 9), Color.fromARGB(0, 247, 144, 9)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color(0xFFFFFAEB), Color.fromARGB(0, 255, 250, 235)],
+          stops: [0, 1],
+        );
 
   /// `workflow-process-failed-bg`
-  static const workflowProcessFailedBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color(0xFFFEF3F2), Color.fromARGB(0, 254, 243, 242)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get workflowProcessFailedBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(36, 240, 68, 56), Color.fromARGB(0, 240, 68, 56)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color(0xFFFEF3F2), Color.fromARGB(0, 254, 243, 242)],
+          stops: [0, 1],
+        );
 
   /// `workflow-run-failed-bg`
-  static const workflowRunFailedBg = CssLinearGradient(
-    angle: 98,
-    colors: [Color.fromARGB(26, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 0.2601],
-  );
+  static CssLinearGradient get workflowRunFailedBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 98,
+          colors: [Color.fromARGB(31, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 0.2601],
+        )
+      : const CssLinearGradient(
+          angle: 98,
+          colors: [Color.fromARGB(26, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 0.2601],
+        );
 
   /// `workflow-batch-failed-bg`
-  static const workflowBatchFailedBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get workflowBatchFailedBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `marketplace-divider-bg`
-  static const marketplaceDividerBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get marketplaceDividerBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(36, 200, 206, 218), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `marketplace-plugin-empty`
-  static const marketplacePluginEmpty = CssLinearGradient(
-    angle: 180,
-    colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFCFCFD)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get marketplacePluginEmpty => DifyColors._dark
+      ? const CssLinearGradient(angle: 180, colors: [Color.fromARGB(0, 0, 0, 0), Color(0xFF222225)], stops: [0, 1])
+      : const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFCFCFD)],
+          stops: [0, 1],
+        );
 
   /// `toast-success-bg`
-  static const toastSuccessBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 23, 178, 106), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get toastSuccessBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 23, 178, 106), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 23, 178, 106), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `toast-warning-bg`
-  static const toastWarningBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 247, 144, 9), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get toastWarningBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 247, 144, 9), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 247, 144, 9), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `toast-error-bg`
-  static const toastErrorBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get toastErrorBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `toast-info-bg`
-  static const toastInfoBg = CssLinearGradient(angle: 92, colors: [Color.fromARGB(64, 11, 165, 236)], stops: [0]);
+  static CssLinearGradient get toastInfoBg => DifyColors._dark
+      ? const CssLinearGradient(angle: 92, colors: [Color.fromARGB(76, 11, 165, 236)], stops: [0])
+      : const CssLinearGradient(angle: 92, colors: [Color.fromARGB(64, 11, 165, 236)], stops: [0]);
 
   /// `account-teams-bg`
-  static const accountTeamsBg = CssLinearGradient(
-    angle: 271,
-    colors: [Color.fromARGB(230, 249, 250, 251), Color.fromARGB(230, 242, 244, 247)],
-    stops: [-0.001, 0.9826],
-  );
+  static CssLinearGradient get accountTeamsBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 271,
+          colors: [Color.fromARGB(230, 34, 34, 37), Color.fromARGB(230, 29, 29, 32)],
+          stops: [-0.001, 0.9826],
+        )
+      : const CssLinearGradient(
+          angle: 271,
+          colors: [Color.fromARGB(230, 249, 250, 251), Color.fromARGB(230, 242, 244, 247)],
+          stops: [-0.001, 0.9826],
+        );
 
   /// `app-detail-bg`
-  static const appDetailBg = CssLinearGradient(
-    angle: 169,
-    colors: [Color(0xFFF2F4F7), Color(0xFFF9FAFB)],
-    stops: [0.0118, 0.9952],
-  );
+  static CssLinearGradient get appDetailBg => DifyColors._dark
+      ? const CssLinearGradient(angle: 169, colors: [Color(0xFF1D1D20), Color(0xFF222225)], stops: [0.0118, 0.9952])
+      : const CssLinearGradient(angle: 169, colors: [Color(0xFFF2F4F7), Color(0xFFF9FAFB)], stops: [0.0118, 0.9952]);
 
   /// `app-detail-overlay-bg`
-  static const appDetailOverlayBg = CssLinearGradient(
-    angle: 270,
-    colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(3, 16, 24, 40), Color.fromARGB(46, 16, 24, 40)],
-    stops: [0, 0.08, 1],
-  );
+  static CssLinearGradient get appDetailOverlayBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 270,
+          colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(5, 24, 24, 27), Color.fromARGB(138, 24, 24, 27)],
+          stops: [0, 0.08, 1],
+        )
+      : const CssLinearGradient(
+          angle: 270,
+          colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(3, 16, 24, 40), Color.fromARGB(46, 16, 24, 40)],
+          stops: [0, 0.08, 1],
+        );
 
   /// `dataset-warning-message-bg`
-  static const datasetWarningMessageBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 247, 144, 9), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetWarningMessageBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 247, 144, 9), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 247, 144, 9), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `dataset-chunk-process-success-bg`
-  static const datasetChunkProcessSuccessBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 23, 178, 106), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetChunkProcessSuccessBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 23, 178, 106), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 23, 178, 106), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `dataset-chunk-process-error-bg`
-  static const datasetChunkProcessErrorBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetChunkProcessErrorBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(76, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `dataset-chunk-detail-card-hover-bg`
-  static const datasetChunkDetailCardHoverBg = CssLinearGradient(
-    angle: 180,
-    colors: [Color(0xFFF2F4F7), Color(0xFFF9FAFB)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetChunkDetailCardHoverBg => DifyColors._dark
+      ? const CssLinearGradient(angle: 180, colors: [Color(0xFF1D1D20), Color(0xFF222225)], stops: [0, 1])
+      : const CssLinearGradient(angle: 180, colors: [Color(0xFFF2F4F7), Color(0xFFF9FAFB)], stops: [0, 1]);
 
   /// `dataset-child-chunk-expand-btn-bg`
-  static const datasetChildChunkExpandBtnBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color.fromARGB(51, 200, 206, 218), Color.fromARGB(10, 200, 206, 218)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetChildChunkExpandBtnBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(64, 24, 24, 27), Color.fromARGB(10, 24, 24, 27)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(51, 200, 206, 218), Color.fromARGB(10, 200, 206, 218)],
+          stops: [0, 1],
+        );
 
   /// `dataset-option-card-blue-gradient`
-  static const datasetOptionCardBlueGradient = CssLinearGradient(
-    angle: 90,
-    colors: [Color(0xFFF2F4F7), Color(0xFFF9FAFB)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetOptionCardBlueGradient => DifyColors._dark
+      ? const CssLinearGradient(angle: 90, colors: [Color(0xFF24252E), Color(0xFF1E1E21)], stops: [0, 1])
+      : const CssLinearGradient(angle: 90, colors: [Color(0xFFF2F4F7), Color(0xFFF9FAFB)], stops: [0, 1]);
 
   /// `dataset-option-card-purple-gradient`
-  static const datasetOptionCardPurpleGradient = CssLinearGradient(
-    angle: 90,
-    colors: [Color(0xFFF0EEFA), Color(0xFFF9FAFB)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetOptionCardPurpleGradient => DifyColors._dark
+      ? const CssLinearGradient(angle: 90, colors: [Color(0xFF25242E), Color(0xFF1E1E21)], stops: [0, 1])
+      : const CssLinearGradient(angle: 90, colors: [Color(0xFFF0EEFA), Color(0xFFF9FAFB)], stops: [0, 1]);
 
   /// `dataset-option-card-orange-gradient`
-  static const datasetOptionCardOrangeGradient = CssLinearGradient(
-    angle: 90,
-    colors: [Color(0xFFF8F2EE), Color(0xFFF9FAFB)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetOptionCardOrangeGradient => DifyColors._dark
+      ? const CssLinearGradient(angle: 90, colors: [Color(0xFF2B2322), Color(0xFF1E1E21)], stops: [0, 1])
+      : const CssLinearGradient(angle: 90, colors: [Color(0xFFF8F2EE), Color(0xFFF9FAFB)], stops: [0, 1]);
 
   /// `dataset-chunk-list-mask-bg`
-  static const datasetChunkListMaskBg = CssLinearGradient(
-    angle: 180,
-    colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFCFCFD)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get datasetChunkListMaskBg => DifyColors._dark
+      ? const CssLinearGradient(angle: 180, colors: [Color.fromARGB(0, 34, 34, 37), Color(0xFF222225)], stops: [0, 1])
+      : const CssLinearGradient(
+          angle: 180,
+          colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFCFCFD)],
+          stops: [0, 1],
+        );
 
   /// `line-divider-bg`
-  static const lineDividerBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get lineDividerBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(36, 200, 206, 218), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `access-app-icon-mask-bg`
-  static const accessAppIconMaskBg = CssLinearGradient(
-    angle: 135,
-    colors: [Color.fromARGB(31, 255, 255, 255), Color.fromARGB(20, 255, 255, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get accessAppIconMaskBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 135,
+          colors: [Color.fromARGB(51, 255, 255, 255), Color.fromARGB(8, 255, 255, 255)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 135,
+          colors: [Color.fromARGB(31, 255, 255, 255), Color.fromARGB(20, 255, 255, 255)],
+          stops: [0, 1],
+        );
 
   /// `premium-yearly-tip-text-background`
-  static const premiumYearlyTipTextBackground = CssLinearGradient(
-    angle: 91,
-    colors: [Color(0xFFF79009), Color(0xFFDC6803)],
-    stops: [0.0218, 1.0879],
-  );
+  static CssLinearGradient get premiumYearlyTipTextBackground => DifyColors._dark
+      ? const CssLinearGradient(angle: 91, colors: [Color(0xFFFDB022), Color(0xFFF79009)], stops: [0.0218, 1.0879])
+      : const CssLinearGradient(angle: 91, colors: [Color(0xFFF79009), Color(0xFFDC6803)], stops: [0.0218, 1.0879]);
 
   /// `premium-badge-background`
-  static const premiumBadgeBackground = CssLinearGradient(
+  static CssLinearGradient get premiumBadgeBackground => const CssLinearGradient(
     angle: 95,
     colors: [Color.fromARGB(230, 152, 162, 178), Color.fromARGB(230, 103, 111, 131)],
     stops: [0, 1.0558],
   );
 
   /// `premium-text-background`
-  static const premiumTextBackground = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(242, 252, 252, 253), Color.fromARGB(242, 242, 244, 247)],
-    stops: [0, 0.9778],
-  );
+  static CssLinearGradient get premiumTextBackground => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(242, 249, 250, 251), Color.fromARGB(242, 233, 235, 240)],
+          stops: [0, 0.9778],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(242, 252, 252, 253), Color.fromARGB(242, 242, 244, 247)],
+          stops: [0, 0.9778],
+        );
 
   /// `price-enterprise-background`
-  static const priceEnterpriseBackground = CssLinearGradient(
+  static CssLinearGradient get priceEnterpriseBackground => const CssLinearGradient(
     angle: 180,
     colors: [Color.fromARGB(0, 185, 211, 234), Color.fromARGB(235, 180, 209, 234)],
     stops: [0, 1],
   );
 
   /// `grid-mask-background`
-  static const gridMaskBackground = CssLinearGradient(
-    angle: 0,
-    colors: [Color(0xFFFFFFFF), Color.fromARGB(26, 217, 217, 217), Color.fromARGB(26, 217, 217, 217)],
-    stops: [0, 0.6225, 1],
-  );
+  static CssLinearGradient get gridMaskBackground => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 0,
+          colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(26, 24, 24, 25), Color.fromARGB(26, 24, 24, 25)],
+          stops: [0, 0.6225, 1],
+        )
+      : const CssLinearGradient(
+          angle: 0,
+          colors: [Color(0xFFFFFFFF), Color.fromARGB(26, 217, 217, 217), Color.fromARGB(26, 217, 217, 217)],
+          stops: [0, 0.6225, 1],
+        );
 
   /// `node-data-source-bg`
-  static const nodeDataSourceBg = CssLinearGradient(
-    angle: 100,
-    colors: [Color(0xFFE9EBF0), Color.fromARGB(51, 233, 235, 240)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get nodeDataSourceBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 100,
+          colors: [Color.fromARGB(255, 39, 39, 43), Color.fromARGB(51, 39, 39, 43)],
+          stops: [0, 1],
+        )
+      : const CssLinearGradient(
+          angle: 100,
+          colors: [Color(0xFFE9EBF0), Color.fromARGB(51, 233, 235, 240)],
+          stops: [0, 1],
+        );
 
   /// `tag-selector-mask-bg`
-  static const tagSelectorMaskBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color.fromARGB(0, 252, 252, 253), Color(0xFFFCFCFD)],
-    stops: [0, 0.77027],
-  );
+  static CssLinearGradient get tagSelectorMaskBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(0, 34, 34, 37), Color(0xFF222225)],
+          stops: [0, 0.77027],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(0, 252, 252, 253), Color(0xFFFCFCFD)],
+          stops: [0, 0.77027],
+        );
 
   /// `tag-selector-mask-hover-bg`
-  static const tagSelectorMaskHoverBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFFFFFF)],
-    stops: [0, 0.77027],
-  );
+  static CssLinearGradient get tagSelectorMaskHoverBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(0, 39, 39, 43), Color(0xFF27272B)],
+          stops: [0, 0.77027],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFFFFFF)],
+          stops: [0, 0.77027],
+        );
 
   /// `pipeline-template-card-hover-bg`
-  static const pipelineTemplateCardHoverBg = CssLinearGradient(
-    angle: 0,
-    colors: [Color.fromARGB(255, 249, 250, 251), Color.fromARGB(0, 249, 250, 251)],
-    stops: [0.6027, 1],
-  );
+  static CssLinearGradient get pipelineTemplateCardHoverBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 0,
+          colors: [Color.fromARGB(255, 58, 58, 64), Color.fromARGB(0, 58, 58, 64)],
+          stops: [0.6027, 1],
+        )
+      : const CssLinearGradient(
+          angle: 0,
+          colors: [Color.fromARGB(255, 249, 250, 251), Color.fromARGB(0, 249, 250, 251)],
+          stops: [0.6027, 1],
+        );
 
   /// `pipeline-add-documents-title-bg`
-  static const pipelineAddDocumentsTitleBg = CssLinearGradient(
-    angle: 92,
-    colors: [Color.fromARGB(242, 11, 165, 236), Color.fromARGB(242, 21, 90, 239)],
-    stops: [0, 0.9778],
-  );
+  static CssLinearGradient get pipelineAddDocumentsTitleBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(255, 54, 191, 250), Color.fromARGB(255, 41, 109, 255)],
+          stops: [0, 0.9778],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.fromARGB(242, 11, 165, 236), Color.fromARGB(242, 21, 90, 239)],
+          stops: [0, 0.9778],
+        );
 
   /// `billing-plan-title-bg`
-  static const billingPlanTitleBg = CssLinearGradient(
-    angle: 95,
-    colors: [Color(0xFF0033FF), Color(0xFF0033FF)],
-    stops: [0.2947, 1.0531],
-  );
+  static CssLinearGradient get billingPlanTitleBg => DifyColors._dark
+      ? const CssLinearGradient(angle: 95, colors: [Color(0xFF0A68FF), Color(0xFF0033FF)], stops: [0.2947, 1.0531])
+      : const CssLinearGradient(angle: 95, colors: [Color(0xFF0033FF), Color(0xFF0033FF)], stops: [0.2947, 1.0531]);
 
   /// `billing-plan-card-premium-bg`
-  static const billingPlanCardPremiumBg = CssLinearGradient(
-    angle: 180,
-    colors: [Color(0xFFFF9900), Color.fromARGB(0, 255, 153, 0)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get billingPlanCardPremiumBg =>
+      const CssLinearGradient(angle: 180, colors: [Color(0xFFFF9900), Color.fromARGB(0, 255, 153, 0)], stops: [0, 1]);
 
   /// `billing-plan-card-enterprise-bg`
-  static const billingPlanCardEnterpriseBg = CssLinearGradient(
-    angle: 180,
-    colors: [Color(0xFF0033FF), Color.fromARGB(0, 0, 51, 255)],
-    stops: [0, 1],
-  );
+  static CssLinearGradient get billingPlanCardEnterpriseBg =>
+      const CssLinearGradient(angle: 180, colors: [Color(0xFF0033FF), Color.fromARGB(0, 0, 51, 255)], stops: [0, 1]);
 
   /// `knowledge-pipeline-creation-footer-bg`
-  static const knowledgePipelineCreationFooterBg = CssLinearGradient(
-    angle: 90,
-    colors: [Color(0xFFFCFCFD), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0.0489, 1],
-  );
+  static CssLinearGradient get knowledgePipelineCreationFooterBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 90,
+          colors: [Color.fromARGB(255, 34, 34, 37), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0.0489, 1],
+        )
+      : const CssLinearGradient(
+          angle: 90,
+          colors: [Color(0xFFFCFCFD), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0.0489, 1],
+        );
 
   /// `chat-answer-human-input-form-divider-bg`
-  static const chatAnswerHumanInputFormDividerBg = CssLinearGradient(
-    angle: 0,
-    colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
-    stops: [0, 2.125],
-  );
+  static CssLinearGradient get chatAnswerHumanInputFormDividerBg => DifyColors._dark
+      ? const CssLinearGradient(
+          angle: 0,
+          colors: [Color.fromARGB(36, 200, 206, 218), Color.fromARGB(0, 0, 0, 0)],
+          stops: [0, 2.125],
+        )
+      : const CssLinearGradient(
+          angle: 0,
+          colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
+          stops: [0, 2.125],
+        );
 }
 
 /// A CSS `linear-gradient`: the gradient line runs through the box's centre at [angle] (0 = up, clockwise), long
@@ -3029,3 +3486,4 @@ abstract final class DifyRadius {
   static const container = 10.0;
   static const badge = 5.0;
 }
+// 1 variables have no plain dark value (the light one is used in both themes): premium-badge-background

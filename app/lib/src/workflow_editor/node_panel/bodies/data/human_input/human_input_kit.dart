@@ -197,10 +197,11 @@ class HiDivider extends StatelessWidget {
 /// Badge (base/badge): `h-5 rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium-uppercase`, or the
 /// `size="s"` / [color] variants the panel uses.
 class HiBadge extends StatelessWidget {
-  const HiBadge(this.text, {super.key, this.height = 20, this.color = DifyColors.textTertiary, this.border});
+  const HiBadge(this.text, {super.key, this.height = 20, this._color, this.border});
   final String text;
   final double height;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? DifyColors.textTertiary;
   final Color? border;
 
   @override

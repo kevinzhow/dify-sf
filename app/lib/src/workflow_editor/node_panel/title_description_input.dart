@@ -186,7 +186,7 @@ class _DescriptionInputState extends State<DescriptionInput> with _Draft<Descrip
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textPrimary);
+    final style = TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textPrimary);
     return Container(
       constraints: const BoxConstraints(maxHeight: 60),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),

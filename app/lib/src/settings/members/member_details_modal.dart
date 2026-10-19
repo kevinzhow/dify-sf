@@ -167,7 +167,7 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
             ),
             child: Column(
@@ -349,7 +349,7 @@ class _PermissionRoleChipState extends State<PermissionRoleChip> {
       spans.add(
         TextSpan(
           text: m[1],
-          style: const TextStyle(color: DifyColors.textAccent),
+          style: TextStyle(color: DifyColors.textAccent),
         ),
       );
       at = m.end;

@@ -65,7 +65,7 @@ class _Divider extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Container(
       height: 1,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
             DifyColors.backgroundGradientMaskTransparent,
@@ -117,7 +117,7 @@ class _BackLinkState extends State<_BackLink> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: DifyColors.backgroundDefaultDimmed, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: DifyColors.backgroundDefaultDimmed, shape: BoxShape.circle),
                   child: RemixIcon('arrow-left-line', size: 12, color: color),
                 ),
                 const SizedBox(width: 8),
@@ -196,7 +196,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 12,
           children: [
-            const _IconBox(
+            _IconBox(
               child: RemixIcon('lock-password-line', size: 24, color: DifyColors.textAccentLightModeOnly),
             ),
             Padding(
@@ -333,7 +333,7 @@ class _ResetPasswordCheckCodeFormState extends State<ResetPasswordCheckCodeForm>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 12,
           children: [
-            const _IconBox(
+            _IconBox(
               child: RemixIcon('mail-send-fill', size: 24, color: DifyColors.textAccentLightModeOnly),
             ),
             Padding(
@@ -594,7 +594,7 @@ class _SetPasswordFormState extends State<SetPasswordForm> {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 12),
             child: _IconBox(
               filled: false,

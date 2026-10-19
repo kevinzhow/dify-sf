@@ -8,49 +8,52 @@ import '../../i18n/dify_i18n.dart';
 import '../card_kit.dart';
 import 'note_text.dart';
 
-/// note-node/constants.ts THEME_MAP (light): the colour picker's ring ([outer]), the title strip and swatch ([title]),
+/// note-node/constants.ts THEME_MAP: the colour picker's ring ([outer]), the title strip and swatch ([title]),
 /// the card ([bg]) and its border while selected ([border]).
 enum NoteTheme {
-  blue(
-    DifyColors.utilColorsBlueBlue500,
-    DifyColors.utilColorsBlueBlue100,
-    DifyColors.utilColorsBlueBlue50,
-    DifyColors.utilColorsBlueBlue300,
-  ),
-  cyan(
-    DifyColors.utilColorsCyanCyan500,
-    DifyColors.utilColorsCyanCyan100,
-    DifyColors.utilColorsCyanCyan50,
-    DifyColors.utilColorsCyanCyan300,
-  ),
-  green(
-    DifyColors.utilColorsGreenGreen500,
-    DifyColors.utilColorsGreenGreen100,
-    DifyColors.utilColorsGreenGreen50,
-    DifyColors.utilColorsGreenGreen300,
-  ),
-  yellow(
-    DifyColors.utilColorsYellowYellow500,
-    DifyColors.utilColorsYellowYellow100,
-    DifyColors.utilColorsYellowYellow50,
-    DifyColors.utilColorsYellowYellow300,
-  ),
-  pink(
-    DifyColors.utilColorsPinkPink500,
-    DifyColors.utilColorsPinkPink100,
-    DifyColors.utilColorsPinkPink50,
-    DifyColors.utilColorsPinkPink300,
-  ),
-  // Dify's violet card is violet-100, not 50.
-  violet(
-    DifyColors.utilColorsVioletViolet500,
-    DifyColors.utilColorsVioletViolet100,
-    DifyColors.utilColorsVioletViolet100,
-    DifyColors.utilColorsVioletViolet300,
-  );
+  blue,
+  cyan,
+  green,
+  yellow,
+  pink,
+  violet;
 
-  const NoteTheme(this.outer, this.title, this.bg, this.border);
-  final Color outer, title, bg, border;
+  Color get outer => switch (this) {
+    blue => DifyColors.utilColorsBlueBlue500,
+    cyan => DifyColors.utilColorsCyanCyan500,
+    green => DifyColors.utilColorsGreenGreen500,
+    yellow => DifyColors.utilColorsYellowYellow500,
+    pink => DifyColors.utilColorsPinkPink500,
+    violet => DifyColors.utilColorsVioletViolet500,
+  };
+
+  Color get title => switch (this) {
+    blue => DifyColors.utilColorsBlueBlue100,
+    cyan => DifyColors.utilColorsCyanCyan100,
+    green => DifyColors.utilColorsGreenGreen100,
+    yellow => DifyColors.utilColorsYellowYellow100,
+    pink => DifyColors.utilColorsPinkPink100,
+    violet => DifyColors.utilColorsVioletViolet100,
+  };
+
+  Color get bg => switch (this) {
+    blue => DifyColors.utilColorsBlueBlue50,
+    cyan => DifyColors.utilColorsCyanCyan50,
+    green => DifyColors.utilColorsGreenGreen50,
+    yellow => DifyColors.utilColorsYellowYellow50,
+    pink => DifyColors.utilColorsPinkPink50,
+    // Dify's violet card is violet-100, not 50.
+    violet => DifyColors.utilColorsVioletViolet100,
+  };
+
+  Color get border => switch (this) {
+    blue => DifyColors.utilColorsBlueBlue300,
+    cyan => DifyColors.utilColorsCyanCyan300,
+    green => DifyColors.utilColorsGreenGreen300,
+    yellow => DifyColors.utilColorsYellowYellow300,
+    pink => DifyColors.utilColorsPinkPink300,
+    violet => DifyColors.utilColorsVioletViolet300,
+  };
 
   static NoteTheme of(Object? name) => values.where((t) => t.name == name).firstOrNull ?? blue;
 }

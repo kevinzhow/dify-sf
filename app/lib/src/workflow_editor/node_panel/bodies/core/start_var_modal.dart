@@ -395,7 +395,7 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
               Positioned.fill(
                 child: GestureDetector(
                   onTap: widget.onClose,
-                  child: const ColoredBox(color: DifyColors.backgroundOverlay),
+                  child: ColoredBox(color: DifyColors.backgroundOverlay),
                 ),
               ),
               Center(
@@ -689,7 +689,7 @@ class _HiddenDescription extends StatelessWidget {
             baseline: TextBaseline.alphabetic,
             child: GestureDetector(
               onTap: () => onOpenUrl?.call(url),
-              child: Text(m[1]!, style: const TextStyle(color: DifyColors.textAccent)),
+              child: Text(m[1]!, style: TextStyle(color: DifyColors.textAccent)),
             ),
           ),
           TextSpan(text: text.substring(m.end)),
@@ -715,7 +715,7 @@ class _FileDefaultPlaceholder extends StatelessWidget {
     child: Row(
       spacing: 4,
       children: [
-        const RemixIcon('upload-cloud-2-line', size: 16, color: DifyColors.textQuaternary),
+        RemixIcon('upload-cloud-2-line', size: 16, color: DifyColors.textQuaternary),
         Flexible(
           child: DifyText(
             DifyI18n.tr('common', 'fileUploader.uploadFromComputer'),
