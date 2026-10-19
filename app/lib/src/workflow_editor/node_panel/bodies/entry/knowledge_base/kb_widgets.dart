@@ -807,6 +807,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
             child: ModelIcon(
               provider: selected ? currentProvider.provider : resolved?.provider,
               iconSmall: selected ? currentProvider.iconSmall : resolved?.iconSmall,
+              iconSmallDark: selected ? currentProvider.iconSmallDark : resolved?.iconSmallDark,
               modelName: selected ? currentModel.model : w.value?.model,
               language: w.catalog.language,
             ),
@@ -958,6 +959,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
             ModelIcon(
               provider: provider.provider,
               iconSmall: provider.iconSmall,
+              iconSmallDark: provider.iconSmallDark,
               modelName: m.model,
               language: w.catalog.language,
             ),

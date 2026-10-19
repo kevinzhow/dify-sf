@@ -564,6 +564,7 @@ class AuthorizedItem extends StatelessWidget {
                     child: ModelIcon(
                       provider: provider.providerName,
                       iconSmall: provider.iconSmall,
+                      iconSmallDark: provider.iconSmallDark,
                       modelName: model!.model,
                       language: language,
                     ),
@@ -997,6 +998,7 @@ class _AddCustomModelState extends State<AddCustomModel> {
                                   child: ModelIcon(
                                     provider: widget.provider.providerName,
                                     iconSmall: widget.provider.iconSmall,
+                                    iconSmallDark: widget.provider.iconSmallDark,
                                     modelName: m.model,
                                     language: env.language,
                                   ),

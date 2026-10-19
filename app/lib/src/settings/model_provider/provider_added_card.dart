@@ -55,7 +55,15 @@ class ProviderIcon extends StatelessWidget {
         colorFilter: ColorFilter.mode(DifyColors.textInvertedDimmed, BlendMode.srcIn),
       );
     }
-    final url = provider.iconSmall == null ? '' : renderI18nObject(provider.iconSmall, language);
+    // provider-icon/index.tsx: `icon_small_dark` in the dark theme when the provider has one.
+    final dark = DifyColors.isDark && provider.iconSmallDark != null
+        ? renderI18nObject(provider.iconSmallDark, language)
+        : '';
+    final url = dark.isNotEmpty
+        ? dark
+        : provider.iconSmall == null
+        ? ''
+        : renderI18nObject(provider.iconSmall, language);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
+import '../design/dify_theme_mode.dart';
 import '../design/dify_tokens.g.dart';
 import 'canvas_view_state.dart';
 
@@ -25,6 +26,12 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
   @override
   void initState() {
     super.initState();
+    _makeTile();
+    DifyTheme.changes.addListener(_makeTile);
+  }
+
+  /// Bakes the tile in the current theme's colours (again after a theme switch).
+  void _makeTile() {
     final recorder = ui.PictureRecorder();
     const s = gap * tileScale;
     Canvas(recorder)
@@ -34,13 +41,23 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
         dot / 2 * tileScale,
         Paint()..color = DifyColors.workflowCanvasWorkflowDotColor,
       );
-    recorder.endRecording().toImage(s.toInt(), s.toInt()).then((image) {
-      if (mounted) setState(() => _tile = image);
+    final picture = recorder.endRecording();
+    final generation = ++_generation;
+    picture.toImage(s.toInt(), s.toInt()).then((image) {
+      picture.dispose();
+      if (!mounted || generation != _generation) return image.dispose();
+      final old = _tile;
+      setState(() => _tile = image);
+      // Painted with the new tile from the next frame on.
+      if (old != null) WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
     });
   }
 
+  int _generation = 0;
+
   @override
   void dispose() {
+    DifyTheme.changes.removeListener(_makeTile);
     _tile?.dispose();
     super.dispose();
   }

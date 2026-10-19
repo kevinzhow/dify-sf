@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../design/dify_theme_mode.dart';
 import '../editor/editor_controller.dart';
 import 'canvas_a11y.dart';
 import 'canvas_background.dart';
@@ -176,6 +177,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     canvas.nodeRun.addListener(_runStatusChanged);
     canvas.edgeRun.addListener(_edgeRunChanged);
     canvas.dimming.addListener(_dimChanged);
+    DifyTheme.changes.addListener(_themeChanged);
     _documentChanged();
     if (canvas.edgeRun.value.isNotEmpty) _edgeRunChanged();
   }
@@ -267,6 +269,22 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       renderer.apply(_everything());
       if (_positions.isNotEmpty) renderer.beginMove(_positions.keys.toSet());
     });
+  }
+
+  /// The colour theme switched: the renderer's captures, textures, materials and built cards hold the old colours, so
+  /// it starts over (as on [_fallBackToWidgets]) with the nodes, the moves in progress (a drag, a transition), the run's
+  /// edges and the dimming.
+  void _themeChanged() {
+    if (!mounted) return;
+    setState(() {
+      renderer.dispose();
+      renderer = _makeRenderer(kind);
+      renderer.apply(_everything());
+      final moving = {..._positions.keys, ...input.moving};
+      if (moving.isNotEmpty) renderer.beginMove(moving);
+    });
+    _edgeRunChanged();
+    if (canvas.dimming.value != null) _dimChanged();
   }
 
   CanvasChange _everything() {
@@ -399,6 +417,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     canvas.nodeRun.removeListener(_runStatusChanged);
     canvas.edgeRun.removeListener(_edgeRunChanged);
     canvas.dimming.removeListener(_dimChanged);
+    DifyTheme.changes.removeListener(_themeChanged);
     selection.removeListener(_selectionChanged);
     view.removeListener(a11y.viewMoved);
     view.removeListener(_viewMoved);

@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'src/canvas/workflow_canvas.dart';
 import 'src/cards/dify_cards.dart';
 import 'src/design/dify_icon.dart';
+import 'src/design/dify_theme_mode.dart';
 import 'src/i18n/dify_i18n.dart';
 import 'src/home_page.dart';
 import 'src/auth/auth_api.dart' show TokenStore;
@@ -19,13 +20,16 @@ import 'src/settings.dart';
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final settings = await AppSettings.load();
-  // Cards on the canvas are captured right after they first paint: their icons must be ready by then.
-  await IconCache.preload(DifyCards.icons);
   final options =
       (kIsWeb
             ? LaunchOptions.fromQuery(Uri.base.queryParameters, path: Uri.base.path, fragment: Uri.base.fragment)
             : LaunchOptions.parse(args))
         ..applyTo(settings);
+  // Cards on the canvas are captured right after they first paint: their icons must be ready by then, in the colours
+  // of the theme (the launch option's, the remembered choice, or the system's), and again after a switch.
+  DifyTheme.icons = () => DifyCards.icons;
+  final theme = await AppTheme.load(override: options.theme);
+  await IconCache.preload(DifyCards.icons);
   // Cards measure and draw text outside the widget tree too: the translations load before anything is built. The
   // language: the command line's, the one chosen last time (the sign-in page's locale menu), the system's.
   final lang =
@@ -40,5 +44,5 @@ Future<void> main(List<String> args) async {
   final tokens = TokenStore.platform(
     directory: kIsWeb ? null : '${(await getApplicationSupportDirectory()).path}/auth',
   );
-  runApp(buildApp(settings, launch: options, locale: AppLocale(lang), tokenStore: tokens));
+  runApp(buildApp(settings, launch: options, locale: AppLocale(lang), theme: theme, tokenStore: tokens));
 }

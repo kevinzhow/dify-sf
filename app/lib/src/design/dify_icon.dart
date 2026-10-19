@@ -8,17 +8,25 @@ abstract final class IconCache {
 
   static PictureInfo? get(String asset, Color color) => _pictures[(asset, color.toARGB32())];
 
-  /// Decodes [icons] (asset path, colour for `currentColor`).
+  /// Decodes [icons] (asset path, colour for `currentColor`), all at once.
   static Future<void> preload(Iterable<(String, Color)> icons) async {
-    for (final (asset, color) in icons) {
-      final key = (asset, color.toARGB32());
-      if (_pictures.containsKey(key)) continue;
-      try {
-        _pictures[key] = await vg.loadPicture(SvgAssetLoader(asset, theme: SvgTheme(currentColor: color)), null);
-      } catch (_) {
-        // A missing or unreadable icon falls back to SvgPicture.
-      }
-    }
+    final keys = {
+      for (final (asset, color) in icons)
+        if (!_pictures.containsKey((asset, color.toARGB32()))) (asset, color.toARGB32()),
+    };
+    await Future.wait([
+      for (final key in keys)
+        () async {
+          try {
+            _pictures[key] = await vg.loadPicture(
+              SvgAssetLoader(key.$1, theme: SvgTheme(currentColor: Color(key.$2))),
+              null,
+            );
+          } catch (_) {
+            // A missing or unreadable icon falls back to SvgPicture.
+          }
+        }(),
+    ]);
   }
 }
 

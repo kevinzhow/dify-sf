@@ -384,6 +384,7 @@ class ModelSelectorButton extends StatelessWidget {
         : ModelIcon(
             provider: isSelected ? currentProvider!.provider : resolved?.provider,
             iconSmall: isSelected ? currentProvider!.iconSmall : resolved?.iconSmall,
+            iconSmallDark: isSelected ? currentProvider!.iconSmallDark : resolved?.iconSmallDark,
             modelName: isSelected ? currentModel!.model : defaultModel?.model,
             language: catalog.language,
           );
@@ -1047,6 +1048,7 @@ class ModelSelectorModelRow extends StatelessWidget {
                     ModelIcon(
                       provider: provider.provider,
                       iconSmall: provider.iconSmall,
+                      iconSmallDark: provider.iconSmallDark,
                       modelName: model.model,
                       language: language,
                     ),

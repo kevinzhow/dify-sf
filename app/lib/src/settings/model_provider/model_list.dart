@@ -174,6 +174,7 @@ class _ModelListItemState extends State<ModelListItem> {
             child: ModelIcon(
               provider: widget.provider.providerName,
               iconSmall: widget.provider.iconSmall,
+              iconSmallDark: widget.provider.iconSmallDark,
               modelName: m.model,
               language: env.language,
             ),

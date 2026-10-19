@@ -23,6 +23,10 @@ import 'run_view.dart';
 /// [lift] is the distance in front of the canvas plane (towards the camera).
 vm.Vector3 toWorld(Offset p, [double lift = 0]) => vm.Vector3(p.dx, -p.dy, -lift);
 
+/// A card's colour before its capture lands: a light lavender in the light theme, the block background in the dark
+/// one (where the lavender would flash).
+Color get _placeholderColor => DifyColors.isDark ? DifyColors.workflowBlockBg : const Color(0xFFF8F7FF);
+
 /// A screen colour (sRGB) as the scene's linear colour, so it reaches the screen unchanged (linear tone mapping).
 vm.Vector4 srgb(Color c) {
   double lin(double v) => v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4).toDouble();
@@ -289,7 +293,7 @@ class SceneRenderer extends CanvasRenderer {
     _cardNodes[slot] = card;
     scene.add(card);
     final m = UnlitMaterial()
-      ..baseColorFactor = srgb(const Color(0xFFF8F7FF))
+      ..baseColorFactor = srgb(_placeholderColor)
       ..alphaMode = AlphaMode.blend
       ..displayReferred = true;
     final type = _skeletonTextures[n.type];
@@ -923,7 +927,7 @@ class SceneRenderer extends CanvasRenderer {
     final material = UnlitMaterial()
       ..alphaMode = AlphaMode.blend
       ..displayReferred = true
-      ..baseColorFactor = srgb(const Color(0xFFF8F7FF));
+      ..baseColorFactor = srgb(_placeholderColor);
     final mesh = InstancedMesh(geometry: _unitQuad, material: material, sortTransparentInstances: false);
     _skeletonMeshes[type] = mesh;
     _skeletonLayer.addComponent(InstancedMeshComponent(mesh));

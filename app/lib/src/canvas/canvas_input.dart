@@ -93,6 +93,9 @@ class CanvasInput {
   Set<int> _moving = {};
   Timer? _sendTimer;
 
+  /// The nodes a drag is moving now (empty between drags): a new renderer takes them over mid-drag.
+  Set<int> get moving => _moving;
+
   /// Pointers the live card took (its editor, toolbar, resize handle): no canvas gesture for them.
   final _claimed = <int>{};
 

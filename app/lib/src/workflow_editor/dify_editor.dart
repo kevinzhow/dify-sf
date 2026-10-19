@@ -637,7 +637,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
         conversationVariables: widget.controller.appLists.conversationVariables,
         modelProviders: [for (final p in widget.models?.summary ?? const <Json>[]) '${p['provider']}'],
         // useGetToolIcon: the store's tool collections, else the icon the node was created with.
-        toolIcon: (n) => getToolIcon(store)(n.data),
+        toolIcon: (n) => getToolIcon(store, theme: DifyColors.isDark ? 'dark' : null)(n.data),
       ),
     );
     final session = widget.controller.session, user = widget.user;

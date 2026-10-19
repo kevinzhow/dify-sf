@@ -105,13 +105,15 @@ class ModelIcon extends StatelessWidget {
     super.key,
     this.provider,
     this.iconSmall,
+    this.iconSmallDark,
     this.modelName,
     this.language = 'en_US',
   });
 
-  /// The provider's id (`provider.provider`) and `icon_small`; both null without a provider.
+  /// The provider's id (`provider.provider`) and `icon_small`; both null without a provider. [iconSmallDark]
+  /// (`icon_small_dark`) replaces the icon in the dark theme where the provider has one.
   final String? provider;
-  final I18nText? iconSmall;
+  final I18nText? iconSmall, iconSmallDark;
   final String? modelName;
   final String language;
 
@@ -123,7 +125,8 @@ class ModelIcon extends StatelessWidget {
         child: Center(child: DifyIcon('public/llm/openai-yellow', size: 16, color: openaiYellowColor)),
       );
     }
-    final url = renderI18nObject(iconSmall, language);
+    final dark = DifyColors.isDark && iconSmallDark != null ? renderI18nObject(iconSmallDark, language) : '';
+    final url = dark.isNotEmpty ? dark : renderI18nObject(iconSmall, language);
     if (url.isNotEmpty) {
       return SizedBox.square(
         dimension: 20,
@@ -455,6 +458,7 @@ class ModelSelectorTrigger extends StatelessWidget {
         : ModelIcon(
             provider: isSelected ? currentProvider!.provider : resolvedProvider?.provider,
             iconSmall: isSelected ? currentProvider!.iconSmall : resolvedProvider?.iconSmall,
+            iconSmallDark: isSelected ? currentProvider!.iconSmallDark : resolvedProvider?.iconSmallDark,
             modelName: isSelected ? currentModel!.model : defaultModel?.model,
             language: language,
           );

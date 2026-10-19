@@ -253,7 +253,12 @@ class _ModelModalState extends State<ModelModal> {
             child: SizedBox.square(
               dimension: 16,
               child: FittedBox(
-                child: ModelIcon(provider: provider.providerName, iconSmall: provider.iconSmall, language: language),
+                child: ModelIcon(
+                  provider: provider.providerName,
+                  iconSmall: provider.iconSmall,
+                  iconSmallDark: provider.iconSmallDark,
+                  language: language,
+                ),
               ),
             ),
           ),
@@ -279,6 +284,7 @@ class _ModelModalState extends State<ModelModal> {
                 child: ModelIcon(
                   provider: provider.providerName,
                   iconSmall: provider.iconSmall,
+                  iconSmallDark: provider.iconSmallDark,
                   modelName: w.model!.model,
                   language: language,
                 ),

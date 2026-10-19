@@ -11,6 +11,7 @@ import 'cards/card_kit.dart' show cardFontFamily;
 import 'demo/demo_backend.dart';
 import 'design/dify_icon.dart';
 import 'design/dify_theme.dart';
+import 'design/dify_theme_mode.dart';
 import 'design/dify_tokens.g.dart';
 import 'design/widgets/toast.dart';
 import 'design/widgets/widgets.dart' show DifyPressable, difyTextStyle;
@@ -380,8 +381,11 @@ Widget buildApp(
   AuthApi Function(Uri server)? authApiFor,
   TokenStore? tokenStore,
   AppLocale? locale,
+  AppTheme? theme,
 }) {
   final appLocale = locale ?? AppLocale(currentDifyLanguage());
+  // Tests without a theme get one that stays in the current theme and remembers nothing.
+  final appTheme = theme ?? AppTheme(DifyColors.isDark ? DifyThemeMode.dark : DifyThemeMode.light, remember: false);
   // The in-memory demo needs no server and no account.
   final session =
       auth ??
@@ -390,36 +394,45 @@ Widget buildApp(
               ..useLocalAccount(const Account(id: 'demo-user', email: '', name: 'You', role: AccountRole.owner)))
           : null);
   final navigatorKey = GlobalKey<NavigatorState>();
-  return MaterialApp(
-    title: 'dify-sf',
-    debugShowCheckedModeBanner: false,
-    navigatorKey: navigatorKey,
-    // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
-    theme: difyTheme(
-      fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
-    ),
-    home: AppRoot(
-      settings: settings,
-      launch: launch,
+  return ListenableBuilder(
+    listenable: appTheme,
+    builder: (context, _) => MaterialApp(
+      title: 'dify-sf',
+      debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
-      auth: session,
-      authApiFor: authApiFor,
-      tokenStore: tokenStore,
-      home: (_) => HomePage(settings: settings, backendFor: backendFor, launch: launch),
-    ),
-    // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog. The UI language is above
-    // the navigator, so every page follows a change.
-    builder: (context, child) => AppLocaleScope(
-      locale: appLocale,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          child!,
-          DefaultTextStyle(
-            style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
-            child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
+      // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
+      theme: difyTheme(
+        fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
+        brightness: appTheme.isDark ? Brightness.dark : Brightness.light,
+      ),
+      // next-themes' disableTransitionOnChange: the new theme shows at once.
+      themeAnimationDuration: Duration.zero,
+      home: AppRoot(
+        settings: settings,
+        launch: launch,
+        navigatorKey: navigatorKey,
+        auth: session,
+        authApiFor: authApiFor,
+        tokenStore: tokenStore,
+        home: (_) => HomePage(settings: settings, backendFor: backendFor, launch: launch),
+      ),
+      // Dify's root layout: one ToastHost (timeout 5 s, at most 3) over every page and dialog. The UI language is above
+      // the navigator, so every page follows a change.
+      builder: (context, child) => AppThemeScope(
+        theme: appTheme,
+        child: AppLocaleScope(
+          locale: appLocale,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              child!,
+              DefaultTextStyle(
+                style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
+                child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     ),
   );
