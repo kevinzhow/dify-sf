@@ -174,7 +174,7 @@ struct PostgresIntegrationTests {
         try await withStore { store, logger in
             let registry = DocumentRegistry(store: store, config: ServerConfig.defaults, logger: logger)
             try await withApp(configure: { app in
-                Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
+                try Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
             }) { app in
                 try await app.testing { client in
                     let h = try await ownerHeaders(client)
@@ -226,7 +226,7 @@ struct PostgresIntegrationTests {
         try await withStore { store, logger in
             let registry = DocumentRegistry(store: store, config: ServerConfig.defaults, logger: logger)
             try await withApp(configure: { app in
-                Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
+                try Routes(registry: registry, store: store, config: ServerConfig.defaults, logger: logger).register(on: app)
             }) { app in
                 try await app.testing { client in
                     let h = try await ownerHeaders(client)

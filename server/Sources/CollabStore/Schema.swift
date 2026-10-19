@@ -8,7 +8,9 @@
 /// * `rejections` and `client_state.high` make the per-client cseq high-water mark durable, so a retransmit of
 ///   a rejected op gets the original reason, also after a restart.
 /// * `snapshots` are checkpoints of the materialised document; recovery = latest snapshot + replay of `ops`.
-/// * `secrets` holds the plaintext of secret environment variables (protocol 1.7), never part of a document.
+/// * `secrets` holds the secret environment variables (protocol 1.7), never part of a document; since 1.9 encrypted.
+/// * Model providers (protocol 1.9): `provider_credentials`, `provider_settings`, `provider_model_credentials`,
+///   `provider_models`, `provider_model_settings`, `default_models`.
 /// * `comments` and `comment_replies` are canvas comments (additive, Dify's workflow comments): a resource beside the
 ///   document, not part of it (no ops, no log, no snapshots, no export, no undo).
 /// * Accounts (protocol 1.8, Dify's community edition: one workspace per server): `accounts`, `members` (the workspace's
@@ -207,6 +209,76 @@ public enum Schema {
             account_id text        NOT NULL,
             created_at timestamptz NOT NULL DEFAULT now(),
             PRIMARY KEY (doc_id, client_id)
+        )
+        """,
+        // Protocol 1.9: secrets are stored encrypted (`SecretCipher`, the server's COLLAB_SECRETS_KEY). `sealed` marks rows written
+        // that way; rows of older servers (plaintext) are sealed at startup once a key is configured (`sealLegacySecrets`).
+        "ALTER TABLE secrets ADD COLUMN IF NOT EXISTS sealed boolean NOT NULL DEFAULT false",
+        // Model providers (protocol 1.9; Dify's provider_credentials, providers, provider_model_credentials, provider_models,
+        // provider_model_settings, tenant_default_models, without tenant columns: one workspace). `encrypted_config` is the whole
+        // credential JSON sealed with the server's secrets key. A provider has a `provider_settings` row while it has
+        // credentials (Dify's custom `providers` row); its `current_credential_id` may be NULL (the current one was deleted).
+        """
+        CREATE TABLE IF NOT EXISTS provider_credentials (
+            id               text        PRIMARY KEY,
+            provider         text        NOT NULL,
+            name             text        NOT NULL,
+            encrypted_config text        NOT NULL,
+            created_by       text,
+            created_at       timestamptz NOT NULL DEFAULT now(),
+            updated_at       timestamptz NOT NULL DEFAULT now(),
+            UNIQUE (provider, name)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS provider_settings (
+            provider              text        PRIMARY KEY,
+            current_credential_id text,
+            updated_at            timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS provider_model_credentials (
+            id               text        PRIMARY KEY,
+            provider         text        NOT NULL,
+            model            text        NOT NULL,
+            model_type       text        NOT NULL,
+            name             text        NOT NULL,
+            encrypted_config text        NOT NULL,
+            created_by       text,
+            created_at       timestamptz NOT NULL DEFAULT now(),
+            updated_at       timestamptz NOT NULL DEFAULT now(),
+            UNIQUE (provider, model, model_type, name)
+        )
+        """,
+        // Custom models in the model list, with their current credential (Dify's provider_models).
+        """
+        CREATE TABLE IF NOT EXISTS provider_models (
+            provider              text        NOT NULL,
+            model                 text        NOT NULL,
+            model_type            text        NOT NULL,
+            current_credential_id text,
+            created_at            timestamptz NOT NULL DEFAULT now(),
+            updated_at            timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (provider, model, model_type)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS provider_model_settings (
+            provider   text        NOT NULL,
+            model      text        NOT NULL,
+            model_type text        NOT NULL,
+            enabled    boolean     NOT NULL,
+            updated_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (provider, model, model_type)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS default_models (
+            model_type text        PRIMARY KEY,
+            provider   text        NOT NULL,
+            model      text        NOT NULL,
+            updated_at timestamptz NOT NULL DEFAULT now()
         )
         """,
         // Databases created before the idempotency-key fingerprint existed.

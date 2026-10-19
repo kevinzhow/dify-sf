@@ -1,0 +1,78 @@
+model: o3
+label:
+  zh_Hans: o3
+  en_US: o3
+model_type: llm
+features:
+  - agent-thought
+  - vision
+  - structured-output
+  - tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 200000
+parameter_rules:
+  - name: max_tokens
+    use_template: max_tokens
+    default: 100000
+    min: 1
+    max: 100000
+  - name: reasoning_effort
+    label:
+      zh_Hans: 推理工作
+      en_US: reasoning_effort
+    type: string
+    help:
+      zh_Hans: 限制推理模型的推理工作
+      en_US: constrains effort on reasoning for reasoning models
+    required: false
+    options:
+      - low
+      - medium
+      - high
+  - name: response_format
+    label:
+      zh_Hans: 回复格式
+      en_US: response_format
+    type: string
+    help:
+      zh_Hans: 指定模型必须输出的格式
+      en_US: specifying the format that the model must output
+    required: false
+    options:
+      - text
+      - json_object
+      - json_schema
+  - name: json_schema
+    use_template: json_schema
+  - name: enable_stream
+    label:
+      zh_Hans: 流式响应
+      en_US: Streaming
+    type: boolean
+    help:
+      zh_Hans: 是否启用流式响应。
+      en_US: Whether to enable streaming responses.
+    required: true
+    default: true
+  - name: service_tier
+    label:
+      zh_Hans: 服务层级
+      en_US: Service tier
+    type: string
+    help:
+      zh_Hans: Auto 跟随项目设置；Default、Flex 和 Priority 分别使用标准、低成本和低延迟处理。
+      en_US: Auto follows the project setting; Default, Flex, and Priority select standard, lower-cost, and lower-latency processing respectively.
+    required: false
+    default: auto
+    options:
+      - auto
+      - default
+      - flex
+      - priority
+pricing:
+  input: "2.0"
+  output: "8.0"
+  unit: "0.000001"
+  currency: USD

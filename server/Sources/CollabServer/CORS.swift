@@ -6,7 +6,7 @@ import Vapor
 struct CORSPolicy: Middleware {
     let allowedOrigins: [String]
 
-    static let allowedMethods = "GET, POST, PUT, DELETE, OPTIONS"
+    static let allowedMethods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     static let allowedHeaders = "Content-Type, Accept, Authorization, Last-Event-ID, Cache-Control"
     static let exposedHeaders = "Content-Type"
 

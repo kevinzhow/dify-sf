@@ -47,6 +47,15 @@ public struct ServerConfig: Sendable {
     /// `loginLockoutSeconds` (Dify: 5 and 86400), counted from the last failure. Per server process.
     public var loginMaxFailures: Int
     public var loginLockoutSeconds: Int
+    /// Protocol 1.9: the key that encrypts secrets at rest (model provider credentials, secret environment variables): base64
+    /// of 32 random bytes. Empty = no key: the server refuses to store secrets (`503 secrets_key_missing`) and cannot read
+    /// sealed ones; it never stores them in plaintext. Losing or changing the key makes stored secrets unreadable.
+    public var secretsKey: String
+    /// Check model provider credentials with one request to the provider before saving them (`COLLAB_MODELS_VALIDATE`,
+    /// default true; false for servers without internet access).
+    public var modelsValidate: Bool
+    /// Timeout of that request.
+    public var modelsValidateTimeoutSeconds: Int
 
     public init(reader: ConfigReader) {
         httpHost = reader.string(forKey: "collab.http.host", default: "127.0.0.1")
@@ -76,6 +85,9 @@ public struct ServerConfig: Sendable {
         inviteExpiryHours = reader.int(forKey: "collab.auth.inviteExpiryHours", default: 72)
         loginMaxFailures = reader.int(forKey: "collab.auth.loginMaxFailures", default: 5)
         loginLockoutSeconds = reader.int(forKey: "collab.auth.loginLockoutSeconds", default: 86_400)
+        secretsKey = reader.string(forKey: "collab.secrets.key", isSecret: true, default: "")
+        modelsValidate = reader.bool(forKey: "collab.models.validate", default: true)
+        modelsValidateTimeoutSeconds = reader.int(forKey: "collab.models.validateTimeoutSeconds", default: 10)
     }
 }
 

@@ -7,6 +7,8 @@ RUN swift build -c release --product collab-server
 
 FROM swift:6.4-slim
 COPY --from=build /src/.build/release/collab-server /usr/local/bin/collab-server
+# Protocol 1.9: the vendored model provider definitions (SwiftPM resource bundle of CollabModels), found next to the binary.
+COPY --from=build /src/.build/release/DifySF_CollabModels.bundle /usr/local/bin/DifySF_CollabModels.bundle
 USER nobody
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/collab-server"]

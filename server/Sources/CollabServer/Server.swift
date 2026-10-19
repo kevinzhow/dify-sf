@@ -49,14 +49,22 @@ public enum CollabServerMain {
         ]
         pgConfig.options.minimumConnections = 2
         let pg = PostgresClient(configuration: pgConfig, backgroundLogger: logger)
-        let store = PostgresStore(client: pg, logger: logger, operationTimeout: .milliseconds(config.dbOperationTimeoutMs))
+        // Protocol 1.9: secrets at rest are encrypted with COLLAB_SECRETS_KEY. A malformed key stops the server (better than
+        // silently refusing every secret); no key at all is allowed: secrets are then refused, never stored in plaintext.
+        let secretsKey = try SecretsKey.from(setting: config.secretsKey)
+        if secretsKey == nil {
+            logger.warning("COLLAB_SECRETS_KEY is not set: model provider credentials and secret environment variables cannot be stored")
+        }
+        let store = PostgresStore(client: pg, logger: logger, operationTimeout: .milliseconds(config.dbOperationTimeoutMs), cipher: secretsKey)
+        let models = try ModelService.live(config: config)
+        logger.info("model providers: \(models.catalog.providers.count) definitions, credential checks \(config.modelsValidate ? "on" : "off")")
         let registry = DocumentRegistry(store: store, config: config, logger: logger)
 
         let app = try Application(.production,
                                   configuration: ServerConfiguration(address: .hostname(config.httpHost, port: config.httpPort)),
                                   configReader: reader.scoped(to: "collab.http"))
         app.middleware.use(CORSPolicy(allowedOrigins: config.corsAllowedOrigins), at: .beginning)
-        Routes(registry: registry, store: store, config: config, logger: logger).register(on: app)
+        try Routes(registry: registry, store: store, config: config, logger: logger, models: models).register(on: app)
 
         let group = ServiceGroup(
             configuration: .init(
@@ -84,6 +92,12 @@ struct Migrator: Service {
             do {
                 try await store.migrate()
                 logger.info("database schema ready")
+                // Protocol 1.9: secrets that older servers stored in plaintext are encrypted once a key is configured.
+                let sealed = try await store.sealLegacySecrets()
+                if sealed.sealed > 0 { logger.info("encrypted \(sealed.sealed) secrets stored in plaintext by an older server") }
+                if sealed.plaintextLeft > 0 {
+                    logger.warning("\(sealed.plaintextLeft) secrets are still stored in plaintext: set COLLAB_SECRETS_KEY to encrypt them")
+                }
                 break
             } catch {
                 logger.warning("database not ready (attempt \(attempt)): \(error)")

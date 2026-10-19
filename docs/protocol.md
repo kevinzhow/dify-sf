@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.8
+# dify-sf collaboration protocol, version 1.9
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,26 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.9 (additive; clients older than 1.9 are unaffected): **model providers** (section 2, "Model providers (1.9)"): Dify 1.17.1's
+  console API for the workspace's LLM providers, under `/v1/workspace/`: the provider catalog (`GET model-providers/summary`,
+  `GET model-providers`), the active models per type for the selectors (`GET models/model-types/{type}`), default models
+  (`GET`/`POST default-model`; without a stored default the first active model is picked **and stored**, as in Dify), parameter
+  rules (`GET model-providers/{provider}/models/parameter-rules`), a provider's model list with statuses and enable/disable,
+  provider credentials (several per provider, one current: create, update, delete, switch, validate), custom models and their
+  credentials, and public provider icons. Shapes are Dify's (the `data` envelopes, `custom_configuration`, statuses
+  `active`/`no-configure`/`disabled`/`credential-removed`); provider ids are Dify's long form `org/plugin/provider`, three path
+  segments. Provider definitions are the official ones (langgenius/dify-official-plugins, vendored at a pinned commit).
+  Documents and ops are unchanged (an LLM node's `model` stays in its config). A client that gets `404` from an older server
+  has no providers.
+  * **Secrets at rest** are encrypted from 1.9 on (AES-256-GCM with the server's `COLLAB_SECRETS_KEY`): model provider
+    credentials and the 1.7 secret environment variables (plaintext rows of older servers are encrypted at startup). A server
+    without a key refuses to store any secret (`503 secrets_key_missing`) instead of storing plaintext; this also applies to
+    `POST /secrets`, and to imports and replacements of files with secret values. Credentials are never sent back in clear:
+    reads mask secret fields with Dify's mask, and an update may send `[__HIDDEN__]` for a secret that stays as it is.
+  * Saving credentials checks them with **one cheap request to the provider** (switch: `COLLAB_MODELS_VALIDATE`).
+  * Writes, credential reads and validation need **privileged** (owner, admin); reads any member; icons are public.
+  * New error codes: `credential_validation_failed` (400), `credential_name_exists` (409), `secrets_key_missing` (503). CORS
+    also allows `PATCH`. Streams accept `proto=1.9` (as 1.8).
 * Additive, no version change: **password reset** (section 2, "Password reset"): Dify 1.17.1's forgot-password flow with a
   six-digit code by mail (`POST /v1/forgot-password`, `/v1/forgot-password/validity`, `/v1/forgot-password/resets`), the
   system features the sign-in page reads (`GET /v1/system-features`: `is_email_setup`), the server's SMTP configuration,
@@ -209,6 +229,9 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | GET | `/v1/docs/{doc}/export` | member | The document as a Dify workflow file (YAML, or `?format=json`); secret environment variables are `""` unless `?include_secret=true` (1.7), which needs **privileged** (1.8; `403 forbidden` otherwise). |
 | POST | `/v1/docs/{doc}/ops` | edit | Submit a batch of ops (section 4). 1.8: the whole batch is `403 forbidden` for a read-only role or a client id bound to another account. |
 | GET | `/v1/docs/{doc}/events` | member | SSE stream (section 5). The token may also come as `?access_token=`. |
+| GET | `/v1/workspace/model-providers`, `.../summary`, `/v1/workspace/models/model-types/{type}`, `/v1/workspace/default-model`, `.../{provider}/models`, `.../{provider}/models/parameter-rules` | member | 1.9: providers, models, default models, parameter rules ("Model providers"). |
+| POST, PUT, PATCH, DELETE | `/v1/workspace/default-model`, `.../{provider}/credentials...`, `.../{provider}/models...` | privileged | 1.9: default models, credentials, custom models, enable/disable ("Model providers"); credential reads too. |
+| GET | `/v1/workspace/model-providers/{provider}/{icon_type}/{lang}` | public | 1.9: a provider icon (SVG/PNG). |
 
 The `example` template is a small workflow: `start` -> `llm` -> `code` -> `answer`, with a variable reference from the
 LLM prompt/code node to the start node and a keyed list (`outputs`) on the code node. `empty` has a single `start`
@@ -367,6 +390,8 @@ secret stays `""` without a reference. `GET /v1/docs/{doc}/export` never writes 
 (Dify's default) unless `?include_secret=true` (Dify's option of the same name), which writes the stored plaintext (`""` for an
 unknown or missing reference) and, since 1.8, is for the owner and admins only (`403 forbidden` for everyone else; Dify lets
 every editor export secrets, dify-sf keeps plaintext secrets to the privileged roles). Stored secrets are never deleted, also not when the variable is removed.
+Since 1.9 the server stores them encrypted and refuses to store one without a secrets key (`503 secrets_key_missing`; section
+"Secrets at rest").
 
 ### Replacing a document: `POST /v1/docs/{doc}/replace`
 
@@ -525,11 +550,141 @@ deleted) the server sends an `event: comments` on the document's event stream (s
 connected to the same server process. It is a notification only: clients refetch `GET /comments` (or the one comment). The
 REST list is the truth; clients must also refetch after every (re)connect of the stream, since notifications are not replayed.
 
+### Model providers (1.9)
+
+Dify 1.17.1's model provider settings (`/console/api/workspaces/current/...`, `api/controllers/console/workspace/
+model_providers.py` and `models.py`), under **`/v1/workspace/`**, for the one workspace. Answers have Dify's shapes, so a
+client that ports Dify's web code parses them unchanged; the differences are listed at the end. There is no model runtime:
+dify-sf stores settings and credentials and serves the catalog; it calls a provider only to check credentials.
+
+**Providers.** The catalog is fixed per server build: the official provider definitions of
+[langgenius/dify-official-plugins](https://github.com/langgenius/dify-official-plugins) (Apache-2.0), vendored unchanged at a
+pinned commit (`server/Sources/CollabModels/Resources/dify-official-plugins/SOURCE.md`, refreshed by
+`tool/refresh-model-providers.sh <commit>`): OpenAI, Anthropic, Gemini (`langgenius/gemini/google`), Azure OpenAI, Tongyi,
+Zhipu AI, Moonshot, DeepSeek, Ollama, OpenAI-API-compatible, in that display order. A provider id is
+`organization/plugin/provider` (Dify's long form, as in workflow files; `langgenius/openai/openai`) and is **three path
+segments** in every URL below (`{provider}`); an unknown provider is `404`.
+
+**Statuses.** A provider is configured when it has a usable current credential (predefined models) or custom models. A
+predefined model is `active` while its provider has a current credential, else `no-configure`; `disabled` when switched off
+(`PATCH .../models/disable`). A custom model is `active` with its current credential. dify-sf only: models of a provider whose
+current credential cannot be decrypted (the server's key changed) are `credential-removed` (Dify uses the status for custom
+models whose credential was deleted). Lists sort a provider's models by model type, then by the plugin's `_position.yaml`
+(looked up by the type value, so as in Dify only types without a hyphen are ordered), then by file name; deprecated models
+are left out of the selector lists.
+
+**Credentials.** A provider has any number of named credentials and at most one current one; so has each custom model.
+Names are at most 30 characters and unique per provider (per model); without a name the server picks Dify's `API KEY <n>`.
+The first credential of a provider becomes its current one; deleting the current one leaves the provider without a current
+credential (its models `no-configure`) until a switch; deleting the last one unconfigures the provider. A custom model joins
+the model list with its first credential and leaves it with its last.
+
+* **Form rules** (graphon's credential schema validator): only fields whose `show_on` conditions hold are kept (custom models:
+  `__model_type` is the model type); an empty required field is `400`, an empty optional one takes the field's default; values
+  are strings, `select`/`radio` values must be options, `switch` values `true`/`false` (stored as booleans); other keys are
+  dropped. Form errors are `400 bad_request` with Dify's message (`Variable api_key is required`).
+* **Check on save**: creating or updating a credential sends one inexpensive authenticated request to the provider, with a
+  10-second timeout (`COLLAB_MODELS_VALIDATE_TIMEOUT_SECONDS`): `GET {base}/models` (OpenAI, DeepSeek, Moonshot, Zhipu AI,
+  Tongyi in compatible mode), Anthropic's `GET /v1/models`, Gemini's `GET /v1beta/models` (key in a header), Ollama's
+  `POST /api/show {"model"}`, Azure OpenAI's `GET /openai/models` (API-key auth), and for OpenAI-API-compatible `GET
+  {endpoint}/models` with a 1-token chat (or completion) request when that is `404`/`405`. Base URLs come from the
+  credentials (`openai_api_base`, `endpoint_url`, `base_url`, ...). A refusal or an unreachable provider is `400
+  credential_validation_failed` with a short reason (the provider's own message, secrets replaced by `***`). Providers or
+  configurations without a check (Azure with Entra ID) are saved unchecked; `COLLAB_MODELS_VALIDATE=false` switches checks
+  off (`validate` then always succeeds). Only the privileged roles can make the server send these requests.
+* **Secrets** (`secret-input` fields) are never sent back: reads mask them with Dify's mask (the first 6 characters, twelve `*`,
+  the last 2; twenty `*` for 8 characters or fewer). On update, a secret sent as **`[__HIDDEN__]`** keeps its stored value (the
+  web form sends that for an untouched field); if the stored credential cannot be decrypted that is `400` (enter it again).
+* **At rest** the whole credential is encrypted (AES-256-GCM, `COLLAB_SECRETS_KEY`, see "Secrets at rest" below). Without a key
+  every credential write is `503 secrets_key_missing`; the catalog works, with every provider unconfigured.
+
+| Method | Path (under `/v1/workspace`) | Body / query | Answer |
+|---|---|---|---|
+| GET | `/model-providers/summary` | - | `200 {"data":[ModelProviderSummary...],"plugins":{}}`: every provider (below) |
+| GET | `/model-providers` | `?model_type=` (optional) | `200 {"data":[Provider...]}`: every provider, or those supporting the type |
+| GET | `/models/model-types/{type}` | - | `200 {"data":[{"provider","label","icon_small","icon_small_dark","status":"active","models":[Model...]}]}`: only active, non-deprecated models, only providers that have one |
+| GET | `/default-model` | `?model_type=` | `200 {"data": null \| {"model","model_type","provider":{"provider","provider_name":"","label","icon_small","icon_small_dark":null,"supported_model_types","models":[]}}}`. Without a stored default the first active model of the type (providers in display order, models in list order) becomes the default and is stored (Dify's `get_default_model`); `null` when there is none |
+| POST | `/default-model` | `{"model_settings":[{"model_type","provider"?,"model"?}]}` | `200 {"result":"success"}`; entries without `provider` are skipped; the model must be an active model of the type (`400 Model x does not exist.`) |
+| GET | `/model-providers/{provider}/models` | - | `200 {"data":[Model + "provider":{"provider","provider_name":"","label","icon_small","icon_small_dark","supported_model_types","models":[]}...]}`: every model of the provider, every status |
+| PATCH | `/model-providers/{provider}/models/enable`, `/disable` | `{"model","model_type"}` | `200 {"result":"success"}` |
+| GET | `/model-providers/{provider}/models/parameter-rules` | `?model=` | `200 {"data":[ParameterRule...]}` of an LLM; `[]` without a usable credential or for an unknown model; `400 Model x is disabled.` |
+| POST | `/model-providers/{provider}/models` | `{"model","model_type","config_from"?,"credential_id"?,"load_balancing"?}` | `200 {"result":"success"}`; with `config_from: "custom-model"` the custom model (in the list) gets `credential_id` as its current credential (required); load balancing is ignored |
+| DELETE | `/model-providers/{provider}/models` | `{"model","model_type"}` | `204`: the custom model leaves the list (its credentials stay: `can_added_models`) |
+| GET | `/model-providers/{provider}/credentials` | `?credential_id=` (optional) | `200 {"credentials":{...}}`: that credential's values, or the current one's (`{}` if none), secrets masked |
+| POST | `/model-providers/{provider}/credentials` | `{"credentials":{...},"name"?}` | `201 {"result":"success"}` after the check |
+| PUT | `/model-providers/{provider}/credentials` | `{"credential_id","credentials":{...},"name"?}` | `200 {"result":"success"}` after the check; `[__HIDDEN__]` keeps a stored secret |
+| DELETE | `/model-providers/{provider}/credentials` | `{"credential_id"}` | `204` |
+| POST | `/model-providers/{provider}/credentials/switch` | `{"credential_id"}` | `200 {"result":"success"}`: the provider's current credential |
+| POST | `/model-providers/{provider}/credentials/validate` | `{"credentials":{...}}` | `200 {"result":"success"}` or `200 {"result":"error","error":"<reason>"}`; stores nothing |
+| GET | `/model-providers/{provider}/models/credentials` | `?model=&model_type=[&config_from=][&credential_id=]` | `200 {"credentials":{...},"current_credential_id","current_credential_name","load_balancing":{"enabled":false,"configs":[]},"available_credentials":[{"credential_id","credential_name"}]}`; with `config_from=predefined-model` the available credentials are the provider's, else the model's |
+| POST | `/model-providers/{provider}/models/credentials` | `{"model","model_type","credentials":{...},"name"?}` | `201`; the model joins the list if it is not there (`400` for a provider without custom models) |
+| PUT | `/model-providers/{provider}/models/credentials` | `{"model","model_type","credential_id","credentials":{...},"name"?}` | `200` |
+| DELETE | `/model-providers/{provider}/models/credentials` | `{"model","model_type","credential_id"}` | `204` |
+| POST | `/model-providers/{provider}/models/credentials/switch` | `{"model","model_type","credential_id"}` | `200`: adds the model to the list with this credential, or makes it the model's current one (`400 Can't add same credential` if it already is) |
+| POST | `/model-providers/{provider}/models/credentials/validate` | `{"model","model_type","credentials":{...}}` | as `credentials/validate` |
+| GET | `/model-providers/{provider}/{icon_type}/{lang}` | - | **public**. `icon_type`: `icon_small`, `icon_small_dark`; `lang`: `zh_Hans` (any case) or anything else for `en_US`. The image (mostly `image/svg+xml`), `404` if the provider has none |
+
+Access: reads need any member; everything else, including credential reads and both `validate` calls, needs **privileged**
+(owner, admin; Dify's `is_admin_or_owner_required`; Dify lets members validate). Errors: `404 not_found` (unknown provider,
+credential, custom model), `400 bad_request` (malformed body, unknown `model_type`, form errors, a name over 30 characters),
+`400 credential_validation_failed`, `409 credential_name_exists`, `503 secrets_key_missing`.
+
+Shapes (all i18n objects are `{"en_US","zh_Hans"}`, `zh_Hans` defaulting to `en_US`):
+
+* `ModelProviderSummary` = `{"provider","plugin_id","label","description","icon_small","icon_small_dark","supported_model_types",
+  "configurate_methods","preferred_provider_type":"custom","is_configured","custom_configuration":{"status":"active"|"no-configure",
+  "has_custom_models","available_credentials":[{"credential_id","credential_name"}],"current_credential_id","current_credential_name",
+  "current_credential_usable"},"system_configuration":{"enabled":false}}`. Credentials are listed newest first.
+* `Provider` = the summary's provider fields + `"background","help":{"title","url"},"provider_credential_schema":{"credential_form_schemas":[...]},
+  "model_credential_schema":{"model":{"label","placeholder"},"credential_form_schemas":[...]}` and
+  `"custom_configuration":{"status","current_credential_id","current_credential_name","available_credentials","custom_models":[{"model",
+  "model_type","credentials":null,"current_credential_id","current_credential_name","available_model_credentials","unadded_to_model_list"}],
+  "can_added_models":[{"model","model_type"}]}`, `"system_configuration":{"enabled":false,"current_quota_type":null,"quota_configurations":[]}`.
+  A form field is graphon's `{"variable","label","type","required","default","options":[{"label","value","show_on"}],"placeholder",
+  "max_length","show_on":[{"variable","value"}]}` (the plugin YAML's `help` and `url` are not part of it, as in Dify).
+* `Model` = `{"model","label","model_type","features","fetch_from":"predefined-model"|"customizable-model","model_properties":{"mode",
+  "context_size",...},"deprecated","status","load_balancing_enabled":false,"has_invalid_load_balancing_configs":false}`.
+* `ParameterRule` = `{"name","use_template","label","type","help","required","default","min","max","precision","options":[...]}`.
+  **Templates** (`use_template`: temperature, top_p, top_k, presence_penalty, frequency_penalty, max_tokens, response_format,
+  json_schema) resolve as in Dify, where the plugin SDK builds the schema (`ParameterRule.validate_label`): the template's
+  fields with the rule's own keys laid over them (whole values: an own `label` replaces the template's), and `{en_US: name}`
+  only when neither has a label. So a rule `{name: temperature, use_template: temperature}` has the label
+  `{"en_US":"Temperature","zh_Hans":"温度"}`, type `float`, `0`..`1`, default `0`, precision `2`.
+* **Custom models** compute their schema from their credentials, as the plugins' Python does (`get_customizable_model_schema`):
+  ported for Ollama and OpenAI-API-compatible (features, `mode` and `context_size`, their parameter rules); the other providers
+  with custom models (OpenAI, Anthropic, Tongyi, Moonshot, Azure OpenAI) get a generic schema: temperature, top_p and
+  max_tokens from the templates (`max` from the credentials' `max_tokens`), `mode` (default `chat`) and `context_size`
+  (default 4096) from the credentials. Azure OpenAI's base-model table (Python in the plugin) is not ported yet. A custom
+  model whose credentials the plugin could not read (an OpenAI-API-compatible model without a completion mode) is left out,
+  as in Dify.
+
+Differences from Dify: no `tenant_id` members; icon URLs are relative to the server
+(`/v1/workspace/model-providers/{provider}/icon_small/en_US`; clients resolve them against the server, as invitation links);
+`plugins` is `{}`; no hosted quota (`system_configuration.enabled` is false, `preferred_provider_type` always `custom`); no load
+balancing; no per-credential visibility; no plugin installation (the catalog is fixed); no model invocation.
+
+### Secrets at rest (1.9)
+
+Secrets are stored encrypted with **AES-256-GCM** and the server's key `COLLAB_SECRETS_KEY` (base64 of 32 random bytes,
+`openssl rand -base64 32`): model provider credentials (the whole credential) and secret environment variables (1.7). A stored
+value is `v1:` + base64(nonce | ciphertext | tag); the row it belongs to (credential id, document and reference) is the
+associated data, so a value cannot be moved to another row. Keys never appear in logs or answers.
+
+* **No key**: the server starts (and says so in its log) but refuses to store any secret: `503 secrets_key_missing` from
+  credential writes, `POST /secrets`, and imports and replacements of Dify files that carry secret values. It never stores a
+  secret in plaintext. Sealed secrets cannot be read without the key.
+* **A malformed key** (not base64 of 32 bytes) stops the server at startup.
+* **Older databases**: secret environment variables that a server before 1.9 stored in plaintext are encrypted at startup once a
+  key is configured (idempotent; without a key the server logs how many are still plaintext and keeps reading them).
+* **Losing or changing the key** makes the stored secrets unreadable: provider credentials then show as not usable (models
+  `credential-removed`, masked reads empty) and must be entered again; secret environment variables export as `""`. There is no
+  key rotation yet (the `v1:` prefix leaves room for it). The development compose file sets a fixed development key.
+
 ### CORS
 
 Browser clients on another origin are supported. The server answers `OPTIONS` preflights itself and adds
 `Access-Control-Allow-Origin: <origin>` (never `*` unless configured so) and `Vary: Origin` to every response for an allowed origin.
-Allowed methods: `GET, POST, PUT, DELETE, OPTIONS`; allowed request headers: `Content-Type, Accept, Authorization, Last-Event-ID,
+Allowed methods: `GET, POST, PUT, PATCH, DELETE, OPTIONS` (`PATCH` since 1.9: enabling and disabling models); allowed request headers: `Content-Type, Accept, Authorization, Last-Event-ID,
 Cache-Control` (so `fetch`-based SSE with `Authorization` and `Last-Event-ID` works; the native `EventSource` cannot send custom
 headers, use `?lastEventId=` and `?access_token=`);
 exposed response headers: `Content-Type`; preflight cache `Access-Control-Max-Age: 600`. Allowed origins are configured with
@@ -554,6 +709,9 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 409 | `setup_done`, `email_taken` | 1.8: `POST /setup` after the install; an email in use. | Sign in instead. |
 | 409 | `outstanding_ops`, `cseq_used`, `conflict` | `POST /replace`: the client has unresolved ops; the `cseq` is used; an op of the replacement was refused (nothing committed). | Resolve the ops, then retry with the next cseq. |
 | 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |
+| 400 | `credential_validation_failed` | 1.9: the model provider refused the credentials (or could not be reached) when saving them; the message is the short reason. | Tell the user; fix the credentials. |
+| 409 | `credential_name_exists` | 1.9: a credential name in use for this provider (or custom model). | Pick another name. |
+| 503 | `secrets_key_missing` | 1.9: the server has no secrets key, so it refuses to store secrets (credentials, secret environment variables). | Tell the operator (set `COLLAB_SECRETS_KEY`); do not retry. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |
 | 429 | `login_rate_limited` | 1.8: too many failed sign-ins for this email (Dify's rule). | Wait (24 hours by default). |
 | 400 | `mail_not_configured`, `invalid_email`, `email_code_error`, `password_mismatch`, `account_not_found` | Password reset: no mail on this server; not the code's email; a wrong code; the new passwords differ; the account is gone. | Tell the user. |

@@ -13,7 +13,9 @@ let testDbHost = ProcessInfo.processInfo.environment["TEST_DB_HOST"]
 
 /// Boots a PostgresClient on a fresh, empty schema for the duration of `body`, so that every test has its own database
 /// (accounts are per server: "set up once" must be testable, and tests run in parallel).
-func withStore<T: Sendable>(_ body: @Sendable (PostgresStore, Logger) async throws -> T) async throws -> T {
+/// The store has a random secrets key (protocol 1.9) unless `secretsKey` is false (a server without COLLAB_SECRETS_KEY).
+func withStore<T: Sendable>(secretsKey: Bool = true, cipher: (any SecretCipher)? = nil,
+                            _ body: @Sendable (PostgresStore, Logger) async throws -> T) async throws -> T {
     var logger = Logger(label: "test")
     logger.logLevel = .error
     let port = Int(ProcessInfo.processInfo.environment["TEST_DB_PORT"] ?? "5432") ?? 5432
@@ -36,7 +38,7 @@ func withStore<T: Sendable>(_ body: @Sendable (PostgresStore, Logger) async thro
     let client = PostgresClient(configuration: cfg, backgroundLogger: logger)
     return try await withThrowingTaskGroup(of: T?.self) { group in
         group.addTask { await client.run(); return nil }
-        let store = PostgresStore(client: client, logger: logger)
+        let store = PostgresStore(client: client, logger: logger, cipher: secretsKey ? (cipher ?? SecretsKey.random()) : nil)
         var migrated = false
         for _ in 0..<50 where !migrated {
             do { try await store.migrate(); migrated = true } catch { try await Task.sleep(for: .milliseconds(100)) }
@@ -82,7 +84,8 @@ struct API {
     func get(_ path: String, token: String? = nil) async throws -> Answer { try await send(.get, path, token: token) }
     func post(_ path: String, _ body: String? = nil, token: String? = nil) async throws -> Answer { try await send(.post, path, body, token: token) }
     func put(_ path: String, _ body: String? = nil, token: String? = nil) async throws -> Answer { try await send(.put, path, body, token: token) }
-    func delete(_ path: String, token: String? = nil) async throws -> Answer { try await send(.delete, path, token: token) }
+    func delete(_ path: String, _ body: String? = nil, token: String? = nil) async throws -> Answer { try await send(.delete, path, body, token: token) }
+    func patch(_ path: String, _ body: String? = nil, token: String? = nil) async throws -> Answer { try await send(.patch, path, body, token: token) }
 
     /// `POST /v1/setup` on a fresh database: the owner's access token.
     func setupOwner(email: String = "owner@example.com", name: String = "Olivia", password: String = "owner-pass-1") async throws -> String {
@@ -109,12 +112,12 @@ struct API {
 }
 
 /// Runs `body` against the routes of a server on a fresh database.
-func withServer(config: ServerConfig = .defaults,
+func withServer(config: ServerConfig = .defaults, secretsKey: Bool = true, models: ModelService? = nil,
                 _ body: @Sendable @escaping (API, PostgresStore, DocumentRegistry) async throws -> Void) async throws {
-    try await withStore { store, logger in
+    try await withStore(secretsKey: secretsKey) { store, logger in
         let registry = DocumentRegistry(store: store, config: config, logger: logger)
         try await withApp(configure: { app in
-            Routes(registry: registry, store: store, config: config, logger: logger).register(on: app)
+            try Routes(registry: registry, store: store, config: config, logger: logger, models: models).register(on: app)
         }) { app in
             try await app.testing { client in try await body(API(client: client), store, registry) }
         }
@@ -128,7 +131,7 @@ func withRunningServer(config: ServerConfig = .defaults,
     try await withStore { store, logger in
         let registry = DocumentRegistry(store: store, config: config, logger: logger)
         try await withApp(configure: { app in
-            Routes(registry: registry, store: store, config: config, logger: logger).register(on: app)
+            try Routes(registry: registry, store: store, config: config, logger: logger).register(on: app)
         }) { app in
             try await app.testing(.running) { client in
                 guard let port = client.port else { Issue.record("the live test server has no port"); return }

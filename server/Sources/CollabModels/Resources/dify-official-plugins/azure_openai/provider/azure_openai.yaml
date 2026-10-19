@@ -1,0 +1,626 @@
+background: "#E3F0FF"
+configurate_methods:
+  - customizable-model
+extra:
+  python:
+    model_sources:
+      - models/llm/llm.py
+      - models/text_embedding/text_embedding.py
+      - models/tts/tts.py
+      - models/speech2text/speech2text.py
+    provider_source: provider/azure_openai.py
+help:
+  title:
+    en_US: Get your API key from Azure
+    zh_Hans: 从 Azure 获取 API Key
+  url:
+    en_US: https://azure.microsoft.com/en-us/products/ai-services/openai-service
+icon_large:
+  en_US: icon.svg
+icon_large_dark:
+  en_US: icon-dark.svg
+icon_small:
+  en_US: icon.svg
+icon_small_dark:
+  en_US: icon-dark.svg
+label:
+  en_US: Azure OpenAI Service Model
+model_credential_schema:
+  credential_form_schemas:
+    - label:
+        en_US: API Base URL
+        zh_Hans: API Base URL
+      placeholder:
+        en_US: "Enter your API Base URL, eg: https://example.com/xxx"
+        zh_Hans: 在此输入您的 API Base URL，如：https://example.com/xxx
+      required: true
+      type: text-input
+      variable: openai_api_base
+    - label:
+        en_US: Authentication Method
+        zh_Hans: 身份验证方式
+      options:
+        - label:
+            en_US: API Key
+            zh_Hans: API 密钥
+          value: api_key
+        - label:
+            en_US: Microsoft Entra ID (Service Principal)
+            zh_Hans: Microsoft Entra ID（服务主体）
+          value: entra_id_service_principal
+      placeholder:
+        en_US: Select authentication method
+        zh_Hans: 选择身份验证方式
+      required: true
+      type: select
+      variable: auth_method
+      default: api_key
+    - label:
+        en_US: API Key
+        zh_Hans: API Key
+      placeholder:
+        en_US: Enter your API key here
+        zh_Hans: 在此输入您的 API Key
+      required: false
+      type: secret-input
+      variable: openai_api_key
+      show_on:
+        - variable: auth_method
+          value: api_key
+    - label:
+        en_US: Application (Client) ID
+        zh_Hans: 应用程序（客户端）ID
+      placeholder:
+        en_US: Enter your Azure AD Application (Client) ID
+        zh_Hans: 在此输入您的 Azure AD 应用程序（客户端）ID
+      required: false
+      type: text-input
+      variable: azure_client_id
+      show_on:
+        - variable: auth_method
+          value: entra_id_service_principal
+    - label:
+        en_US: Directory (Tenant) ID
+        zh_Hans: 目录（租户）ID
+      placeholder:
+        en_US: Enter your Azure AD Directory (Tenant) ID
+        zh_Hans: 在此输入您的 Azure AD 目录（租户）ID
+      required: false
+      type: text-input
+      variable: azure_tenant_id
+      show_on:
+        - variable: auth_method
+          value: entra_id_service_principal
+    - label:
+        en_US: Client Secret Value
+        zh_Hans: 客户端密钥值
+      placeholder:
+        en_US: Enter your Azure AD Client Secret Value
+        zh_Hans: 在此输入您的 Azure AD 客户端密钥值
+      required: false
+      type: secret-input
+      variable: azure_client_secret
+      show_on:
+        - variable: auth_method
+          value: entra_id_service_principal
+    - label:
+        en_US: API Version
+        zh_Hans: API 版本
+      help:
+        en_US: Optional when your API Base URL already ends with /openai/v1. Non-v1 Azure endpoints fall back to the default API version (2025-04-01-preview) if left empty. Older dated versions are deprecated by Azure and no longer support modern models (gpt-5/codex require the Responses API, available from 2025-03-01-preview); prefer the versionless /openai/v1 endpoint. Upgrading this plugin changes the effective version for configurations that leave this field empty; if your Azure resource or gateway (e.g. API Management) does not serve 2025-04-01-preview, pin an explicitly supported version below.
+        zh_Hans: 当 API Base URL 已经以 /openai/v1 结尾时，此项可留空。非 v1 的 Azure endpoint 若留空，会使用默认 API 版本（2025-04-01-preview）。Azure 已弃用较旧的日期版本——现代模型（gpt-5/codex 需要自 2025-03-01-preview 起可用的 Responses API）无法在旧版本上运行；建议优先使用无版本的 /openai/v1 端点。注意：升级本插件会改变留空此字段的配置所实际使用的版本；如果您的 Azure 资源或网关（如 API Management）不支持 2025-04-01-preview，请在下方显式选择受支持的版本。
+      options:
+        - label:
+            en_US: 2025-04-01-preview
+          value: 2025-04-01-preview
+        - label:
+            en_US: 2025-03-01-preview
+          value: 2025-03-01-preview
+        - label:
+            en_US: 2025-02-01-preview
+          value: 2025-02-01-preview
+        - label:
+            en_US: 2025-01-01-preview
+          value: 2025-01-01-preview
+        - label:
+            en_US: 2024-12-01-preview
+          value: 2024-12-01-preview
+        - label:
+            en_US: 2024-10-01-preview
+          value: 2024-10-01-preview
+        - label:
+            en_US: 2024-09-01-preview
+          value: 2024-09-01-preview
+        - label:
+            en_US: 2024-08-01-preview
+          value: 2024-08-01-preview
+        - label:
+            en_US: 2024-07-01-preview
+          value: 2024-07-01-preview
+        - label:
+            en_US: 2024-05-01-preview
+          value: 2024-05-01-preview
+        - label:
+            en_US: 2024-04-01-preview
+          value: 2024-04-01-preview
+        - label:
+            en_US: 2024-03-01-preview
+          value: 2024-03-01-preview
+        - label:
+            en_US: 2024-02-15-preview
+          value: 2024-02-15-preview
+        - label:
+            en_US: 2023-12-01-preview
+          value: 2023-12-01-preview
+        - label:
+            en_US: "2024-02-01"
+          value: "2024-02-01"
+        - label:
+            en_US: "2024-06-01"
+          value: "2024-06-01"
+        - label:
+            en_US: "2024-10-21"
+          value: "2024-10-21"
+      placeholder:
+        en_US: Select an API Version if you are not using /openai/v1
+        zh_Hans: 若未使用 /openai/v1，请在此选择 API 版本
+      required: false
+      type: select
+      variable: openai_api_version
+    - label:
+        en_US: Enable request metadata (optional)
+        zh_Hans: 启用请求元数据（可选）
+      options:
+        - label:
+            en_US: Enabled
+            zh_Hans: 已启用
+          value: enabled
+        - label:
+            en_US: Disabled
+            zh_Hans: 已禁用
+          value: disabled
+      required: false
+      type: select
+      variable: enable_request_metadata
+      default: disabled
+      help:
+        en_US: "When enabled, attaches dify_app_id and dify_source as metadata on both the Chat Completions and Responses routes, AND sets store=true so the metadata is recorded in Stored Completions (required by Azure OpenAI API: metadata is only accepted when store is true). Requires an API Version of 2024-10-01-preview or newer, or a versionless /openai/v1 endpoint; on older versions the metadata is skipped rather than failing the request. Requests and responses are persisted on your Azure OpenAI resource — same data-storage context as Azure OpenAI's standard logging; data does not leave Azure and is not used to train foundation models. See: https://learn.microsoft.com/en-us/azure/foundry/responsible-ai/openai/data-privacy Default disabled."
+        zh_Hans: 启用后，在 Chat Completions 和 Responses 两条路由的调用中附加 dify_app_id 和 dify_source 作为 metadata，同时设置 store=true 以便 metadata 被记录到 Stored Completions（Azure OpenAI API 要求：仅当 store 为 true 时才接受 metadata）。需要 API 版本为 2024-10-01-preview 或更新，或使用无版本的 /openai/v1 端点；在更旧的版本上会跳过 metadata 而不会导致请求失败。请求和响应会保存在您的 Azure OpenAI 资源中 —— 与 Azure OpenAI 标准日志记录相同的数据存储上下文；数据不会离开 Azure，也不会用于训练基础模型。默认禁用。
+    - label:
+        en_US: Base Model
+        zh_Hans: 基础模型
+      options:
+        - label:
+            en_US: gpt-5
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5
+        - label:
+            en_US: gpt-5-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5-mini
+        - label:
+            en_US: gpt-5-nano
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5-nano
+        - label:
+            en_US: gpt-5-chat
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5-chat
+        - label:
+            en_US: gpt-5-pro
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5-pro
+        - label:
+            en_US: gpt-5.1
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.1
+        - label:
+            en_US: gpt-5.1-chat
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.1-chat
+        - label:
+            en_US: gpt-5.1-codex
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.1-codex
+        - label:
+            en_US: gpt-5.1-codex-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.1-codex-mini
+        - label:
+            en_US: gpt-5.1-codex-max
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.1-codex-max
+        - label:
+            en_US: gpt-5.2
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.2
+        - label:
+            en_US: gpt-5.2-chat
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.2-chat
+        - label:
+            en_US: gpt-5.2-codex
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.2-codex
+        - label:
+            en_US: gpt-5.3-chat
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.3-chat
+        - label:
+            en_US: gpt-5.3-codex
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.3-codex
+        - label:
+            en_US: gpt-5.4
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.4
+        - label:
+            en_US: gpt-5.4-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.4-mini
+        - label:
+            en_US: gpt-5.4-nano
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.4-nano
+        - label:
+            en_US: gpt-5.4-pro
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.4-pro
+        - label:
+            en_US: gpt-5.5
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.5
+        - label:
+            en_US: gpt-5.6-sol
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.6-sol
+        - label:
+            en_US: gpt-5.6-terra
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.6-terra
+        - label:
+            en_US: gpt-5.6-luna
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-5.6-luna
+        - label:
+            en_US: gpt-6.1-sol
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-6.1-sol
+        - label:
+            en_US: gpt-6-astra
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-6-astra
+        - label:
+            en_US: gpt-6-sol
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-6-sol
+        - label:
+            en_US: gpt-6-luna
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-6-luna
+        - label:
+            en_US: gpt-35-turbo
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-35-turbo
+        - label:
+            en_US: gpt-35-turbo-0125
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-35-turbo-0125
+        - label:
+            en_US: gpt-35-turbo-16k
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-35-turbo-16k
+        - label:
+            en_US: gpt-4
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4
+        - label:
+            en_US: gpt-4-32k
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4-32k
+        - label:
+            en_US: gpt-4.5-preview
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4.5-preview
+        - label:
+            en_US: o3-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: o3-mini
+        - label:
+            en_US: o3
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: o3
+        - label:
+            en_US: o4-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: o4-mini
+        - label:
+            en_US: o1-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: o1-mini
+        - label:
+            en_US: o1-preview
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: o1-preview
+        - label:
+            en_US: o1
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: o1
+        - label:
+            en_US: gpt-4o-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4o-mini
+        - label:
+            en_US: gpt-4o-mini-2024-07-18
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4o-mini-2024-07-18
+        - label:
+            en_US: gpt-4o
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4o
+        - label:
+            en_US: gpt-4o-2024-05-13
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4o-2024-05-13
+        - label:
+            en_US: gpt-4o-2024-08-06
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4o-2024-08-06
+        - label:
+            en_US: gpt-4.1
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4.1
+        - label:
+            en_US: gpt-4.1-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4.1-mini
+        - label:
+            en_US: gpt-4.1-nano
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4.1-nano
+        - label:
+            en_US: gpt-4-turbo
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4-turbo
+        - label:
+            en_US: gpt-4-turbo-2024-04-09
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4-turbo-2024-04-09
+        - label:
+            en_US: gpt-4o-2024-11-20
+          value: gpt-4o-2024-11-20
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-0125-preview
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4-0125-preview
+        - label:
+            en_US: gpt-4-1106-preview
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4-1106-preview
+        - label:
+            en_US: gpt-4-vision-preview
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-4-vision-preview
+        - label:
+            en_US: gpt-35-turbo-instruct
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: gpt-35-turbo-instruct
+        - label:
+            en_US: grok-3
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: grok-3
+        - label:
+            en_US: grok-3-mini
+          show_on:
+            - value: llm
+              variable: __model_type
+          value: grok-3-mini
+        - label:
+            en_US: text-embedding-ada-002
+          show_on:
+            - value: text-embedding
+              variable: __model_type
+          value: text-embedding-ada-002
+        - label:
+            en_US: text-embedding-3-small
+          show_on:
+            - value: text-embedding
+              variable: __model_type
+          value: text-embedding-3-small
+        - label:
+            en_US: text-embedding-3-large
+          show_on:
+            - value: text-embedding
+              variable: __model_type
+          value: text-embedding-3-large
+        - label:
+            en_US: gpt-transcribe
+          show_on:
+            - value: speech2text
+              variable: __model_type
+          value: gpt-transcribe
+        - label:
+            en_US: whisper-1
+          show_on:
+            - value: speech2text
+              variable: __model_type
+          value: whisper-1
+        - label:
+            en_US: gpt-4o-transcribe
+          show_on:
+            - value: speech2text
+              variable: __model_type
+          value: gpt-4o-transcribe
+        - label:
+            en_US: gpt-4o-mini-transcribe
+          show_on:
+            - value: speech2text
+              variable: __model_type
+          value: gpt-4o-mini-transcribe
+        - label:
+            en_US: gpt-4o-transcribe-diarize
+          show_on:
+            - value: speech2text
+              variable: __model_type
+          value: gpt-4o-transcribe-diarize
+        - label:
+            en_US: tts-1
+          show_on:
+            - value: tts
+              variable: __model_type
+          value: tts-1
+        - label:
+            en_US: tts-1-hd
+          show_on:
+            - value: tts
+              variable: __model_type
+          value: tts-1-hd
+        - label:
+            en_US: gpt-4o-mini-tts
+          show_on:
+            - value: tts
+              variable: __model_type
+          value: gpt-4o-mini-tts
+      placeholder:
+        en_US: Enter your model version
+        zh_Hans: 在此输入您的模型版本
+      required: true
+      type: select
+      variable: base_model_name
+  model:
+    label:
+      en_US: Deployment Name
+      zh_Hans: 部署名称
+    placeholder:
+      en_US: Enter your Deployment Name here, matching the Azure deployment name.
+      zh_Hans: 在此输入您的部署名称，与 Azure 部署名称匹配。
+models:
+  llm:
+    predefined:
+      - models/llm/*.yaml
+  speech2text:
+    predefined:
+      - models/speech2text/*.yaml
+  text_embedding:
+    predefined:
+      - models/text_embedding/*.yaml
+  tts:
+    predefined:
+      - models/tts/*.yaml
+provider: azure_openai
+supported_model_types:
+  - llm
+  - text-embedding
+  - speech2text
+  - tts

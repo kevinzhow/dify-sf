@@ -40,6 +40,11 @@ let package = Package(
         .executableTarget(name: "collab-sim", dependencies: ["CollabSim"]),
         // Dify workflow files (DSL, YAML) <-> documents.
         .target(name: "CollabDSL", dependencies: ["CollabCore", .product(name: "Yams", package: "Yams")]),
+        // Model providers (protocol 1.9): the vendored official provider definitions (Resources, see its SOURCE.md), parameter
+        // templates, custom-model schemas, credential form rules and the credential checks' requests. No I/O beyond reading
+        // its resources.
+        .target(name: "CollabModels", dependencies: [.product(name: "Yams", package: "Yams")],
+                resources: [.copy("Resources/dify-official-plugins")]),
         // Postgres persistence (plain SQL via postgres-nio).
         .target(name: "CollabStore", dependencies: [
             "CollabCore",
@@ -47,7 +52,8 @@ let package = Package(
         ]),
         // The Vapor application: HTTP routes, per-document sequencer actors, SSE hub, configuration.
         .target(name: "CollabServer", dependencies: [
-            "CollabCore", "CollabStore", "CollabDSL",
+            "CollabCore", "CollabStore", "CollabDSL", "CollabModels",
+            .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Vapor", package: "vapor"),
             .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
             .product(name: "Configuration", package: "swift-configuration"),
@@ -69,8 +75,9 @@ let package = Package(
         ]),
         .executableTarget(name: "collab-bench", dependencies: ["CollabHarness"]),
         .testTarget(name: "CollabTests", dependencies: [
-            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL",
+            "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL", "CollabModels",
             .product(name: "PostgresNIO", package: "postgres-nio"),
+            .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Configuration", package: "swift-configuration"),
             .product(name: "VaporTesting", package: "vapor"),
             .product(name: "NIOPosix", package: "swift-nio"),

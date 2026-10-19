@@ -36,6 +36,12 @@ services:
       COLLAB_DB_USER: collab
       COLLAB_DB_PASSWORD: collab
       COLLAB_DB_NAME: collab
+      # Protocol 1.9: encrypts model provider credentials and secret environment variables at rest. A fixed DEVELOPMENT key
+      # so that local data survives restarts; any real deployment sets its own (`openssl rand -base64 32`) and keeps it:
+      # without it the server refuses to store secrets, and with another key the stored ones cannot be read.
+      COLLAB_SECRETS_KEY: ${COLLAB_SECRETS_KEY:-ZGlmeS1zZi1sb2NhbC1kZXZlbG9wbWVudC1rZXktMDE=}
+      # Check provider credentials with one request to the provider before saving (false for servers without internet).
+      COLLAB_MODELS_VALIDATE: ${COLLAB_MODELS_VALIDATE:-true}
     ports:
       - "127.0.0.1:${COLLAB_PORT:-8080}:8080"
 

@@ -1,0 +1,737 @@
+provider: openai_api_compatible
+label:
+  en_US: OpenAI-API-compatible
+description:
+  en_US: Model providers compatible with OpenAI's API standard, such as LM Studio.
+  zh_Hans: 兼容 OpenAI API 的模型供应商，例如 LM Studio 。
+icon_small:
+  en_US: icon.svg
+supported_model_types:
+  - llm
+  - rerank
+  - text-embedding
+  - speech2text
+  - tts
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter full model name
+      zh_Hans: 输入模型全称
+  credential_form_schemas:
+    - variable: display_name
+      label:
+        en_US: Model display name
+        zh_Hans: 模型显示名称
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 模型在界面的显示名称
+        en_US: The display name of the model in the interface.
+    - variable: api_key
+      label:
+        zh_Hans: API Key
+        en_US: API Key
+      type: secret-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: language
+      label:
+        en_US: Language
+        zh_Hans: 语言
+      type: text-input
+      required: false
+      show_on:
+        - variable: __model_type
+          value: speech2text
+      placeholder:
+        zh_Hans: ISO-639-1 语言代码，例如 zh、en、ru；留空则由模型自动检测
+        en_US: ISO-639-1 language code, e.g. zh, en, ru. Leave empty to let the model auto-detect.
+    - variable: initial_prompt
+      label:
+        en_US: Initial Prompt
+        zh_Hans: 初始提示
+      type: text-input
+      required: false
+      show_on:
+        - variable: __model_type
+          value: speech2text
+      placeholder:
+        zh_Hans: 模型在对话开始时的初始提示
+        en_US: The initial prompt for the model at the start of the conversation.
+    - variable: endpoint_url
+      label:
+        zh_Hans: API Base URL
+        en_US: API Base URL
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: Base URL, e.g. https://api.openai.com/v1
+        en_US: Base URL, e.g. https://api.openai.com/v1
+    - variable: rerank_endpoint_url
+      label:
+        zh_Hans: 重排序端点 URL
+        en_US: Rerank Endpoint URL
+      type: text-input
+      required: false
+      show_on:
+        - variable: __model_type
+          value: rerank
+      placeholder:
+        zh_Hans: 可选完整 URL；留空使用 API Base URL + /rerank；请勿包含凭据或令牌
+        en_US: Optional complete URL; defaults to API Base URL + /rerank; do not include credentials or tokens
+    - variable: endpoint_model_name
+      label:
+        zh_Hans: API endpoint中的模型名称
+        en_US: model name for API endpoint
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: endpoint model name, e.g. chatgpt4.0
+        en_US: endpoint model name, e.g. chatgpt4.0
+    - variable: mode
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 对话类型
+        en_US: Completion mode
+      type: select
+      required: false
+      default: chat
+      placeholder:
+        zh_Hans: 选择对话类型
+        en_US: Select completion mode
+      options:
+        - value: completion
+          label:
+            en_US: Completion
+            zh_Hans: 补全
+        - value: chat
+          label:
+            en_US: Chat
+            zh_Hans: 对话
+    - variable: context_size
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      required: true
+      show_on:
+        - variable: __model_type
+          value: llm
+      type: text-input
+      default: "4096"
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
+    - variable: max_chunks
+      label:
+        zh_Hans: 模型每批的最大分块数
+        en_US: Model max chunks per batch
+      required: true
+      show_on:
+        - variable: __model_type
+          value: text-embedding
+      type: text-input
+      default: "1"
+      placeholder:
+        zh_Hans: 在此输入您的模型每批次的最大分块数量
+        en_US: Enter your Model maximum chunks per batch size
+    - variable: context_size
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      required: true
+      show_on:
+        - variable: __model_type
+          value: text-embedding
+      type: text-input
+      default: "4096"
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
+    - variable: encoding_format
+      label:
+        zh_Hans: Embedding encoding format
+        en_US: Embedding encoding format
+      required: false
+      show_on:
+        - variable: __model_type
+          value: text-embedding
+      type: select
+      default: not_set
+      options:
+        - value: not_set
+          label:
+            zh_Hans: Not set
+            en_US: Not set
+        - value: float
+          label:
+            zh_Hans: float
+            en_US: float
+      help:
+        zh_Hans: Set this to float for strict OpenAI-compatible gateways such as LiteLLM that require an explicit embedding encoding_format.
+        en_US: Set this to float for strict OpenAI-compatible gateways such as LiteLLM that require an explicit embedding encoding_format.
+    - variable: vision_support
+      show_on:
+        - variable: __model_type
+          value: text-embedding
+      label:
+        zh_Hans: 视觉支持
+        en_US: Vision Support
+      type: select
+      required: false
+      default: no_support
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: context_size
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      required: true
+      show_on:
+        - variable: __model_type
+          value: rerank
+      type: text-input
+      default: "4096"
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
+    - variable: vision_support
+      show_on:
+        - variable: __model_type
+          value: rerank
+      label:
+        zh_Hans: 视觉支持
+        en_US: Vision Support
+      type: select
+      required: false
+      default: no_support
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: max_tokens_to_sample
+      label:
+        zh_Hans: 最大 token 上限
+        en_US: Upper bound for max tokens
+      show_on:
+        - variable: __model_type
+          value: llm
+      default: "4096"
+      type: text-input
+    - variable: agent_thought_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Thinking Mode Support
+        zh_Hans: 思考模式支持
+      type: select
+      required: false
+      default: not_supported
+      options:
+        - value: only_thinking_supported
+          label:
+            en_US: Only Thinking Mode
+            zh_Hans: 仅支持思考模式
+        - value: not_supported
+          label:
+            en_US: Only Non-Thinking Mode
+            zh_Hans: 仅支持非思考模式
+        - value: supported
+          label:
+            en_US: Both Modes
+            zh_Hans: 两种模式都支持
+      help:
+        en_US: Configure whether the model supports thinking mode, non-thinking mode, or both. This will control the availability of the thinking mode toggle.
+        zh_Hans: 配置模型是否支持思考模式、非思考模式或两者都支持。这将控制思考模式开关的可用性。
+    - variable: web_search_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Web Search Support
+        zh_Hans: 联网搜索支持
+      type: select
+      required: false
+      default: not_supported
+      options:
+        - value: not_supported
+          label:
+            en_US: Not Supported
+            zh_Hans: 不支持
+        - value: tool_standard
+          label:
+            en_US: Standard Tools Format
+            zh_Hans: 标准 Tools 格式
+        - value: tool_simple
+          label:
+            en_US: Simple Tools Format
+            zh_Hans: 简单 Tools 格式
+        - value: parameter
+          label:
+            en_US: Parameter Format
+            zh_Hans: 参数格式
+      help:
+        en_US: >
+          Configure web search support and format. 
+          Standard Tools: {"type": "web_search", "web_search": {"enable": true}} (ZhipuAI, Baichuan). 
+          Simple Tools: {"type": "web_search"} (Volcengine). 
+          Parameter: {"web_search": true} as a top-level parameter.
+        zh_Hans: >
+          配置联网搜索支持和格式。
+          标准 Tools 格式: {"type": "web_search", "web_search": {"enable": true}} (智谱AI、百川)。
+          简单 Tools 格式: {"type": "web_search"} (火山引擎)。
+          参数格式: {"web_search": true} 作为顶层参数。
+    - variable: compatibility_mode
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Compatibility mode
+        zh_Hans: 兼容模式
+      type: select
+      required: false
+      default: strict
+      options:
+        - value: strict
+          label:
+            en_US: OpenAI compatible
+            zh_Hans: 严格（OpenAI 兼容）
+        - value: extended
+          label:
+            en_US: Enable extra settings
+            zh_Hans: 扩展（启用额外设置）
+      help:
+        en_US: Choose strict OpenAI compatibility or extended settings that add extra parameters (e.g., thinking, chat_template_kwargs, enable_thinking).
+        zh_Hans: 选择严格的 OpenAI 兼容或扩展设置（会添加额外参数，例如 thinking、chat_template_kwargs、enable_thinking）。
+    - variable: api_type
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: API Type
+        zh_Hans: API 类型
+      type: select
+      required: false
+      default: chat_completions
+      options:
+        - value: chat_completions
+          label:
+            en_US: Chat Completions API (/chat/completions)
+            zh_Hans: Chat Completions API (/chat/completions)
+        - value: responses
+          label:
+            en_US: Responses API (/responses)
+            zh_Hans: Responses API (/responses)
+      help:
+        en_US: Choose Chat Completions API (standard endpoint) or Responses API (required for OpenAI native web search with domain filtering).
+        zh_Hans: 选择 Chat Completions API（标准端点）或 Responses API（适用于包含域名过滤的 OpenAI 原生联网搜索）。
+    - variable: token_param_name
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Token parameter name
+        zh_Hans: token 参数名
+      type: select
+      required: false
+      default: auto
+      options:
+        - value: auto
+          label:
+            en_US: Auto (detect by model)
+            zh_Hans: 自动（按模型判断）
+        - value: max_tokens
+          label:
+            en_US: Use max_tokens
+            zh_Hans: 使用 max_tokens
+        - value: max_completion_tokens
+          label:
+            en_US: Use max_completion_tokens
+            zh_Hans: 使用 max_completion_tokens
+      help:
+        en_US: Some OpenAI-compatible endpoints require max_completion_tokens (Responses API). Choose explicitly if auto-detection is wrong.
+        zh_Hans: 一些兼容端要求使用 max_completion_tokens（Responses API）。若自动判断不准确，可在此显式指定。
+    - variable: user_identity_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: User Identity Support
+        zh_Hans: 用户标识支持
+      type: select
+      required: false
+      default: support
+      help:
+        en_US: >
+          Whether the endpoint accepts the optional top-level user parameter.
+          Some OpenAI-compatible gateways reject it as an unsupported parameter.
+          Choose Not Support to omit it from the request body.
+        zh_Hans: >
+          端点是否接受可选的顶层 user 参数。
+          部分 OpenAI 兼容网关会将其视为不支持的参数而拒绝请求。
+          选择「不支持」可将其从请求体中省略。
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: stream_include_usage
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Include Usage in Stream
+        zh_Hans: 流式中包含用量
+      type: select
+      required: false
+      default: enabled
+      help:
+        en_US: >
+          Whether to send `stream_options: {include_usage: true}` so the endpoint
+          returns prompt/completion token counts in the final stream chunk.
+          OpenAI-compatible servers (vLLM, SGLang, llama.cpp, ...) only emit
+          `usage` when this is requested; without it, Dify falls back to local
+          token estimation that counts only the first prompt message, which
+          undercounts multi-message prompts (e.g. a long user prompt after a
+          system prompt). Choose Disabled only if the endpoint rejects the
+          field.
+        zh_Hans: >
+          是否发送 `stream_options: {include_usage: true}`，让端点在流式最后一片
+          中返回 prompt / completion token 数量。OpenAI 兼容服务端（vLLM、SGLang、
+          llama.cpp 等）只有在请求中显式要求时才会返回 `usage`；否则 Dify 会
+          回退到本地估算，仅对第一条 prompt 消息计 token，导致多消息 prompt
+          （例如系统提示后跟很长的用户消息）被少算。仅在端点拒绝该字段时
+          选择「禁用」。
+      options:
+        - value: enabled
+          label:
+            en_US: Enabled
+            zh_Hans: 启用
+        - value: disabled
+          label:
+            en_US: Disabled
+            zh_Hans: 禁用
+    - variable: function_calling_type
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 函数调用类型
+        en_US: Function Call Type
+      type: select
+      required: false
+      default: no_call
+      options:
+        - value: function_call
+          label:
+            en_US: Function Call
+            zh_Hans: 函数调用
+        - value: tool_call
+          label:
+            en_US: Tool Call
+            zh_Hans: 工具调用
+        - value: no_call
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: stream_function_calling
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 流式函数调用
+        en_US: Stream function calling
+      type: select
+      required: false
+      default: not_supported
+      options:
+        - value: supported
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: not_supported
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: vision_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 视觉支持
+        en_US: Vision Support
+        ja_JP: 画像入力対応
+      type: select
+      required: false
+      default: no_support
+      help:
+        en_US: Whether the model can accept image input. Covers IMAGE content only; enable video_support / audio_support / document_support independently for other modalities.
+        zh_Hans: 模型是否支持图像输入。仅覆盖 IMAGE 类型内容；视频/音频/文档请分别启用对应的开关。
+        ja_JP: モデルが画像入力を受け付けるかどうか。IMAGE タイプのみを対象。動画・音声・文書はそれぞれ独立した設定で有効化してください。
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: video_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 视频支持
+        en_US: Video Support
+        ja_JP: 動画入力対応
+      type: select
+      required: false
+      default: no_support
+      help:
+        en_US: Whether the model can accept video input. Covers VIDEO content only; independent from vision_support.
+        zh_Hans: 模型是否支持视频输入。仅覆盖 VIDEO 类型内容；与视觉支持相互独立。
+        ja_JP: モデルが動画入力を受け付けるかどうか。VIDEO タイプのみを対象。画像入力対応とは独立した設定です。
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: audio_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 音频支持
+        en_US: Audio Support
+        ja_JP: 音声入力対応
+      type: select
+      required: false
+      default: no_support
+      help:
+        en_US: Whether the model can accept audio input. Covers AUDIO content only; independent from vision_support.
+        zh_Hans: 模型是否支持音频输入。仅覆盖 AUDIO 类型内容；与视觉支持相互独立。
+        ja_JP: モデルが音声入力を受け付けるかどうか。AUDIO タイプのみを対象。画像入力対応とは独立した設定です。
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: document_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 文档支持
+        en_US: Document Support
+        ja_JP: 文書入力対応
+      type: select
+      required: false
+      default: no_support
+      help:
+        en_US: Whether the model can accept document input such as PDF. Covers DOCUMENT content only; independent from vision_support.
+        zh_Hans: 模型是否支持文档输入（如 PDF）。仅覆盖 DOCUMENT 类型内容；与视觉支持相互独立。
+        ja_JP: モデルが PDF などの文書入力を受け付けるかどうか。DOCUMENT タイプのみを対象。画像入力対応とは独立した設定です。
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: structured_output_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 结构化输出
+        en_US: Structured Output
+      type: select
+      required: false
+      default: not_supported
+      options:
+        - value: supported
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: not_supported
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: stream_mode_auth
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 流模式授权
+        en_US: Stream mode auth
+      type: select
+      required: false
+      default: not_use
+      options:
+        - value: use
+          label:
+            en_US: Use
+            zh_Hans: 使用
+        - value: not_use
+          label:
+            en_US: Not Use
+            zh_Hans: 不使用
+    - variable: stream_mode_delimiter
+      label:
+        zh_Hans: 流模式返回结果的分隔符
+        en_US: Delimiter for streaming results
+      show_on:
+        - variable: __model_type
+          value: llm
+      default: '\n\n'
+      type: text-input
+    - variable: voices
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Available Voices (comma-separated)
+        zh_Hans: 可用声音（用英文逗号分隔）
+      type: text-input
+      required: false
+      default: "alloy"
+      placeholder:
+        en_US: "alloy,echo,fable,onyx,nova,shimmer"
+        zh_Hans: "alloy,echo,fable,onyx,nova,shimmer"
+      help:
+        en_US: "List voice names separated by commas. First voice will be used as default."
+        zh_Hans: "用英文逗号分隔的声音列表。第一个声音将作为默认值。"
+    - variable: tts_api_format
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: TTS API Format
+        zh_Hans: TTS API 格式
+      type: select
+      required: false
+      default: openai
+      options:
+        - value: openai
+          label:
+            en_US: OpenAI Compatible
+            zh_Hans: OpenAI 兼容
+        - value: byteplus
+          label:
+            en_US: BytePlus TTS
+            zh_Hans: BytePlus TTS
+      help:
+        en_US: "Select the TTS API format. Use 'BytePlus TTS' for BytePlus/Volcengine TTS services."
+        zh_Hans: "选择 TTS API 格式。使用 'BytePlus TTS' 适配 BytePlus/火山引擎 TTS 服务。"
+    - variable: tts_resource_id
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Resource ID (BytePlus)
+        zh_Hans: Resource ID (BytePlus)
+      type: text-input
+      required: false
+      placeholder:
+        en_US: "e.g. seed-tts-2.0 (optional, defaults to model name)"
+        zh_Hans: "例如 seed-tts-2.0（可选，默认使用模型名称）"
+      help:
+        en_US: "BytePlus TTS Resource ID. If empty, the model name will be used."
+        zh_Hans: "BytePlus TTS 的 Resource ID。留空则使用模型名称。"
+    - variable: tts_sample_rate
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Sample Rate (BytePlus)
+        zh_Hans: 采样率 (BytePlus)
+      type: select
+      required: false
+      default: "24000"
+      options:
+        - value: "24000"
+          label:
+            en_US: "24000 Hz"
+            zh_Hans: "24000 Hz"
+        - value: "16000"
+          label:
+            en_US: "16000 Hz"
+            zh_Hans: "16000 Hz"
+        - value: "8000"
+          label:
+            en_US: "8000 Hz"
+            zh_Hans: "8000 Hz"
+      help:
+        en_US: "Audio sample rate for BytePlus TTS output."
+        zh_Hans: "BytePlus TTS 输出的音频采样率。"
+    - variable: document_prefix
+      label:
+        zh_Hans: 文档前缀
+        en_US: Document prefix
+      required: false
+      show_on:
+        - variable: __model_type
+          value: text-embedding
+      type: text-input
+      default: ""
+      placeholder:
+        zh_Hans: "输入您的文档前缀, 例如 document:"
+        en_US: "Enter your Document prefix, e.g. document:"
+    - variable: query_prefix
+      label:
+        zh_Hans: 查询前缀
+        en_US: Query prefix
+      required: false
+      show_on:
+        - variable: __model_type
+          value: text-embedding
+      type: text-input
+      default: ""
+      placeholder:
+        zh_Hans: "请输入您的查询前缀, 例如 query:"
+        en_US: "Enter your Query prefix, e.g. query:"
+extra:
+  python:
+    provider_source: provider/openai_api_compatible.py
+    model_sources:
+      - "models/llm/llm.py"
+      - "models/text_embedding/text_embedding.py"
+      - "models/rerank/rerank.py"
+      - "models/speech2text/speech2text.py"
+      - "models/tts/tts.py"

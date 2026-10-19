@@ -20,13 +20,17 @@ struct Routes: Sendable {
 
     /// Dify's login error rate limit (per process).
     let limiter: LoginLimiter
+    /// Model providers (protocol 1.9): the catalog and the credential checker.
+    let models: ModelService
 
-    init(registry: DocumentRegistry, store: PostgresStore, config: ServerConfig, logger: Logger) {
+    /// `models` defaults to the vendored catalog with real credential checks (as configured).
+    init(registry: DocumentRegistry, store: PostgresStore, config: ServerConfig, logger: Logger, models: ModelService? = nil) throws {
         self.registry = registry
         self.store = store
         self.config = config
         self.logger = logger
         limiter = LoginLimiter(maxFailures: config.loginMaxFailures, lockoutSeconds: config.loginLockoutSeconds)
+        self.models = try models ?? ModelService.live(config: config)
     }
 
     /// Every `/v1` route except setup, login, refresh and activation requires `Authorization: Bearer <access token>`
@@ -54,6 +58,7 @@ struct Routes: Sendable {
         r.post("v1", "docs", ":doc", "ops") { req in await handle(req) { try await submit(req, doc: try docId(req)) } }
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
         registerComments(on: r)
+        registerModels(on: r)
     }
 
     // MARK: - Plumbing
@@ -77,6 +82,8 @@ struct Routes: Sendable {
             case .unauthorized(let m): return error(.unauthorized, "unauthorized", m)
             case .http(let status, let code, let m): return error(HTTPResponse.Status(code: status), code, m)
             }
+        } catch is SecretsKeyMissing {
+            return error(.serviceUnavailable, "secrets_key_missing", "the server has no secrets key (COLLAB_SECRETS_KEY), so it cannot store secrets")
         } catch let e as Abort where e.status == .contentTooLarge {
             return error(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes")
         } catch {
@@ -170,6 +177,7 @@ struct Routes: Sendable {
         let text = (try? WireJSON.decode(Wrapped.self, from: data))?.yaml ?? String(decoding: data, as: UTF8.self)
         let imported: DifyDSL.Imported
         do { imported = try DifyDSL.importYAML(text) } catch { throw ServerError.badRequest("not an importable Dify workflow: \(error)") }
+        if !imported.secrets.isEmpty { try requireSecretsKey() }
         let docId = id ?? UUID().uuidString.lowercased()
         let created: Bool
         do {
@@ -238,6 +246,7 @@ struct Routes: Sendable {
             } catch {
                 throw ServerError.badRequest("not an importable Dify workflow: \(error)")
             }
+            if !plan.secrets.isEmpty, store.cipher == nil { throw SecretsKeyMissing() }
             return (.init(ops: plan.ops, metadata: plan.metadata == metadata ? nil : plan.metadata, secrets: plan.secrets),
                     (plan.renamedNodes, plan.renamedEdges))
         }
@@ -301,8 +310,11 @@ struct Routes: Sendable {
             throw ServerError.badRequest("body must be {\"value\": string}")
         }
         try await requireDoc(doc)
+        try requireSecretsKey()
         let ref = DifyDSL.newSecretRef()
-        do { try await store.storeSecret(doc, ref: ref, value: value) } catch { throw ServerError.unavailable("\(error)") }
+        do { try await store.storeSecret(doc, ref: ref, value: value) } catch let e as SecretsKeyMissing { throw e } catch {
+            throw ServerError.unavailable("\(error)")
+        }
         struct Stored: Encodable { var ref: String; var masked: String }
         return try json(Stored(ref: ref, masked: DifyDSL.maskSecret(value)), status: .created)
     }

@@ -1,0 +1,216 @@
+background: '#EFF1FE'
+configurate_methods:
+- predefined-model
+- customizable-model
+extra:
+  python:
+    model_sources:
+    - models/llm/llm.py
+    - models/rerank/rerank.py
+    - models/text_embedding/text_embedding.py
+    - models/tts/tts.py
+    - models/speech2text/speech2text.py
+    provider_source: provider/tongyi.py
+help:
+  title:
+    en_US: Get your API key from AliCloud
+    zh_Hans: 从阿里云百炼获取 API Key
+  url:
+    en_US: https://bailian.console.aliyun.com/?apiKey=1#/api-key
+icon_large:
+  en_US: icon.svg
+  zh_Hans: icon.svg
+icon_large_dark:
+  en_US: icon-dark.svg
+  zh_Hans: icon-dark.svg
+icon_small:
+  en_US: icon.svg
+icon_small_dark:
+  en_US: icon-dark.svg
+label:
+  en_US: Tongyi
+  zh_Hans: 通义
+model_credential_schema:
+  credential_form_schemas:
+  - label:
+      en_US: API Key
+    placeholder:
+      en_US: Enter your API Key
+      zh_Hans: 在此输入您的 API Key
+    required: true
+    type: secret-input
+    variable: dashscope_api_key
+  - label:
+      en_US: API Host
+      zh_Hans: 接入域名
+    help:
+      text:
+        en_US: >-
+          Optional. Workspace-specific host such as
+          llm-xxx.cn-beijing.maas.aliyuncs.com, copied from the Model Studio
+          console. Leave empty to keep using the shared DashScope host.
+        zh_Hans: >-
+          可选。业务空间专属域名，如 llm-xxx.cn-beijing.maas.aliyuncs.com，
+          可从百炼控制台的 API Host 复制。留空则继续使用共享的 DashScope 域名。
+    placeholder:
+      en_US: e.g. llm-xxx.cn-beijing.maas.aliyuncs.com
+      zh_Hans: 例如 llm-xxx.cn-beijing.maas.aliyuncs.com
+    required: false
+    type: text-input
+    variable: api_host
+  - default: '4096'
+    label:
+      en_US: Model context size
+      zh_Hans: 模型上下文长度
+    placeholder:
+      en_US: Enter your Model context size
+      zh_Hans: 在此输入您的模型上下文长度
+    required: true
+    type: text-input
+    variable: context_size
+  - default: '4096'
+    label:
+      en_US: Upper bound for max tokens
+      zh_Hans: 最大 token 上限
+    show_on:
+    - value: llm
+      variable: __model_type
+    type: text-input
+    variable: max_tokens
+  - default: no_call
+    label:
+      en_US: Function calling
+    options:
+    - label:
+        en_US: Not Support
+        zh_Hans: 不支持
+      value: no_call
+    - label:
+        en_US: Support
+        zh_Hans: 支持
+      value: function_call
+    required: false
+    show_on:
+    - value: llm
+      variable: __model_type
+    type: select
+    variable: function_calling_type
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+models:
+  llm:
+    position: models/llm/_position.yaml
+    predefined:
+      - models/llm/*.yaml
+  rerank:
+    position: models/rerank/_position.yaml
+    predefined:
+      - models/rerank/*.yaml
+  speech2text:
+    predefined:
+      - models/speech2text/*.yaml
+  text_embedding:
+    predefined:
+      - models/text_embedding/*.yaml
+  tts:
+    predefined:
+      - models/tts/*.yaml
+provider: tongyi
+provider_credential_schema:
+  credential_form_schemas:
+  - label:
+      en_US: API Key
+    placeholder:
+      en_US: Enter your API Key
+      zh_Hans: 在此输入您的 API Key
+    required: true
+    type: secret-input
+    variable: dashscope_api_key
+  - label:
+      en_US: API Host
+      zh_Hans: 接入域名
+    help:
+      text:
+        en_US: >-
+          Optional. Workspace-specific host such as
+          llm-xxx.cn-beijing.maas.aliyuncs.com, copied from the API Host field in
+          the Model Studio console. Recommended for production: it raises the
+          request timeout to 3600s and isolates traffic per workspace, and it is
+          the only way to reach the Frankfurt and Tokyo regions. Overrides the
+          option below when set. Leave empty to keep using the shared DashScope
+          host, which stops receiving new features after 2026-09-30.
+        zh_Hans: >-
+          可选。业务空间专属域名，如 llm-xxx.cn-beijing.maas.aliyuncs.com，
+          可从百炼控制台的 API Host 处复制。推荐用于生产环境：请求超时提升至
+          3600 秒并按业务空间隔离流量，也是访问法兰克福、东京地域的唯一方式。
+          填写后将覆盖下方选项。留空则继续使用共享的 DashScope 域名，
+          该域名自 2026-09-30 起不再支持新特性。
+    placeholder:
+      en_US: e.g. llm-xxx.cn-beijing.maas.aliyuncs.com
+      zh_Hans: 例如 llm-xxx.cn-beijing.maas.aliyuncs.com
+    required: false
+    type: text-input
+    variable: api_host
+  - label:
+      en_US: Use International Endpoint
+      zh_Hans: 使用国际端点
+    help:
+      text:
+        en_US: >-
+          Selects between the shared hosts dashscope.aliyuncs.com and
+          dashscope-intl.aliyuncs.com. Ignored when API Host is set.
+        zh_Hans: >-
+          在共享域名 dashscope.aliyuncs.com 与 dashscope-intl.aliyuncs.com
+          之间切换。当填写了「接入域名」时此项无效。
+    type: radio
+    required: true
+    default: "false"
+    variable: use_international_endpoint
+    options:
+      - label:
+          en_US: "True"
+          zh_Hans: "是"
+        value: "true"
+      - label:
+          en_US: "False"
+          zh_Hans: "否"
+        value: "false"
+  - label:
+      en_US: Enable request metadata
+      zh_Hans: 启用请求元数据
+    help:
+      text:
+        en_US: >-
+          Attach Dify app_id and dify_source to each Tongyi request as
+          X-Dify-App-Id and X-Dify-Source headers, so usage can be
+          attributed to a specific Dify app. Routed through custom
+          headers because the DashScope API does not document a
+          body-level metadata field. Default is disabled.
+        zh_Hans: >-
+          将 Dify app_id 与 dify_source 作为 X-Dify-App-Id 和 X-Dify-Source
+          头附加到每次 Tongyi 请求，以便按 Dify 应用归因用量。由于 DashScope
+          API 不支持 body 级别的元数据，因此通过自定义头传递。默认禁用。
+    options:
+    - label:
+        en_US: Disabled
+        zh_Hans: 禁用
+      value: disabled
+    - label:
+        en_US: Enabled
+        zh_Hans: 启用
+      value: enabled
+    required: false
+    type: select
+    variable: enable_request_metadata
+    default: disabled
+supported_model_types:
+  - llm
+  - text-embedding
+  - rerank
+  - speech2text
+  - tts

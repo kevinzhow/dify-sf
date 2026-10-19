@@ -46,7 +46,11 @@ Configuration is read with swift-configuration from environment variables or `--
 `COLLAB_HTTP_HOST` / `COLLAB_HTTP_PORT`, `COLLAB_DB_HOST` / `PORT` / `USER` / `PASSWORD` / `NAME`, `COLLAB_DB_POOL_SIZE`,
 `COLLAB_CORS_ALLOWED_ORIGINS` (default: localhost dev origins), `COLLAB_SSE_PING_SECONDS` (10), `COLLAB_MAX_REPLAY` (2000), `COLLAB_SNAPSHOT_EVERY` (200), `COLLAB_LOG_LEVEL`,
 accounts: `COLLAB_AUTH_ACCESS_TOKEN_MINUTES` (60), `COLLAB_AUTH_REFRESH_TOKEN_DAYS` (30), `COLLAB_AUTH_INVITE_EXPIRY_HOURS` (72),
-`COLLAB_AUTH_LOGIN_MAX_FAILURES` (5), `COLLAB_AUTH_LOGIN_LOCKOUT_SECONDS` (86400).
+`COLLAB_AUTH_LOGIN_MAX_FAILURES` (5), `COLLAB_AUTH_LOGIN_LOCKOUT_SECONDS` (86400);
+secrets and model providers (protocol 1.9): `COLLAB_SECRETS_KEY` (base64 of 32 random bytes, `openssl rand -base64 32`; encrypts
+model provider credentials and secret environment variables at rest; unset = the server refuses to store secrets; keep it: with
+another key stored secrets cannot be read), `COLLAB_MODELS_VALIDATE` (true: check credentials with the provider before saving),
+`COLLAB_MODELS_VALIDATE_TIMEOUT_SECONDS` (10).
 
 ## Test
 

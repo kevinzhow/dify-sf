@@ -30,11 +30,32 @@ public struct PostgresStore: Sendable {
     /// Upper bound for any single database operation as seen by the caller. A connection that silently dies (half-open
     /// TCP) would otherwise make a query wait forever, and with it the document's sequencer.
     public let operationTimeout: Duration
+    /// Encrypts secrets at rest (protocol 1.9); nil = the server has no secrets key: storing a secret throws
+    /// `SecretsKeyMissing` (nothing is ever stored in plaintext), reading sealed rows yields nothing.
+    public let cipher: (any SecretCipher)?
 
-    public init(client: PostgresClient, logger: Logger, operationTimeout: Duration = .seconds(20)) {
+    public init(client: PostgresClient, logger: Logger, operationTimeout: Duration = .seconds(20), cipher: (any SecretCipher)? = nil) {
         self.client = client
         self.logger = logger
         self.operationTimeout = operationTimeout
+        self.cipher = cipher
+    }
+
+    /// The sealed form of a secret environment variable (context: document and reference).
+    func sealSecret(doc: String, ref: String, _ value: String) throws -> String {
+        guard let cipher else { throw SecretsKeyMissing() }
+        return try cipher.seal(value, context: "secrets:\(doc):\(ref)")
+    }
+
+    /// The plaintext of a `secrets` row: sealed rows are opened (nil if that fails: wrong or missing key), rows written
+    /// before 1.9 that were not sealed yet are plaintext.
+    func openSecret(doc: String, ref: String, value: String, sealed: Bool) -> String? {
+        guard sealed else { return value }
+        guard let cipher else { return nil }
+        do { return try cipher.open(value, context: "secrets:\(doc):\(ref)") } catch {
+            logger.warning("secret \(ref) of \(doc) cannot be decrypted with the configured key")
+            return nil
+        }
     }
 
     /// Runs a database operation with the deadline above.
@@ -86,23 +107,50 @@ public struct PostgresStore: Sendable {
         try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata, secrets: secrets) }
     }
 
-    /// Stores the plaintext of a secret environment variable under `ref` (protocol 1.7). Idempotent for the same value.
+    /// Stores a secret environment variable under `ref` (protocol 1.7), encrypted (1.9; `SecretsKeyMissing` without a key).
+    /// Idempotent for the same reference.
     public func storeSecret(_ id: String, ref: String, value: String) async throws {
+        let sealed = try sealSecret(doc: id, ref: ref, value)
         try await bounded {
             _ = try await self.client.query("""
-                INSERT INTO secrets (doc_id, ref, value) VALUES (\(id), \(ref), \(value)) ON CONFLICT (doc_id, ref) DO NOTHING
+                INSERT INTO secrets (doc_id, ref, value, sealed) VALUES (\(id), \(ref), \(sealed), true) ON CONFLICT (doc_id, ref) DO NOTHING
                 """, logger: self.logger)
         }
     }
 
-    /// ref -> plaintext of every secret of the document.
+    /// ref -> plaintext of every secret of the document (secrets that cannot be decrypted are left out).
     public func secrets(_ id: String) async throws -> [String: String] {
         try await bounded {
             var out: [String: String] = [:]
-            for try await (r, v) in try await self.client.query("SELECT ref, value FROM secrets WHERE doc_id = \(id)", logger: self.logger).decode((String, String).self) {
-                out[r] = v
+            let rows = try await self.client.query("SELECT ref, value, sealed FROM secrets WHERE doc_id = \(id)", logger: self.logger)
+            for try await (r, v, sealed) in rows.decode((String, String, Bool).self) {
+                if let plain = self.openSecret(doc: id, ref: r, value: v, sealed: sealed) { out[r] = plain }
             }
             return out
+        }
+    }
+
+    /// Protocol 1.9 migration: encrypts the `secrets` rows that older servers stored in plaintext. Needs the key (no-op
+    /// without one, answering how many rows are still plaintext). Idempotent; returns the number of rows sealed (or left).
+    @discardableResult
+    public func sealLegacySecrets() async throws -> (sealed: Int, plaintextLeft: Int) {
+        try await bounded {
+            guard self.cipher != nil else {
+                for try await n in try await self.client.query("SELECT count(*)::bigint FROM secrets WHERE NOT sealed", logger: self.logger).decode(Int.self) {
+                    return (0, n)
+                }
+                return (0, 0)
+            }
+            return try await self.client.withTransaction(logger: self.logger) { tx in
+                var rows: [(String, String, String)] = []
+                for try await row in try await tx.query("SELECT doc_id, ref, value FROM secrets WHERE NOT sealed FOR UPDATE", logger: self.logger)
+                    .decode((String, String, String).self) { rows.append(row) }
+                for (doc, ref, value) in rows {
+                    let sealed = try self.sealSecret(doc: doc, ref: ref, value)
+                    _ = try await tx.query("UPDATE secrets SET value = \(sealed), sealed = true WHERE doc_id = \(doc) AND ref = \(ref)", logger: self.logger)
+                }
+                return (rows.count, 0)
+            }
         }
     }
 
@@ -160,6 +208,8 @@ public struct PostgresStore: Sendable {
 
     /// Creates the document with its seed state (snapshot at seq 0). Returns false if it already existed.
     func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Bool {
+        var sealedSecrets: [String: String] = [:]
+        for (ref, value) in secrets { sealedSecrets[ref] = try sealSecret(doc: id, ref: ref, value) }
         let state = try WireJSON.encodeString(initial)
         let meta = try metadata.map { try WireJSON.encodeString($0) }
         return try await client.withTransaction(logger: logger) { c in
@@ -171,8 +221,8 @@ public struct PostgresStore: Sendable {
                 if let meta {
                     _ = try await c.query("INSERT INTO doc_meta (doc_id, dsl) VALUES (\(id), \(meta)::text::jsonb)", logger: logger)
                 }
-                for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) {
-                    _ = try await c.query("INSERT INTO secrets (doc_id, ref, value) VALUES (\(id), \(ref), \(value))", logger: logger)
+                for (ref, value) in sealedSecrets.sorted(by: { $0.key < $1.key }) {
+                    _ = try await c.query("INSERT INTO secrets (doc_id, ref, value, sealed) VALUES (\(id), \(ref), \(value), true)", logger: logger)
                 }
             }
             return created
@@ -325,7 +375,10 @@ public struct PostgresStore: Sendable {
             if g.batch.highChanged { rows.highClient.append(g.client); rows.highValue.append(g.batch.newHigh) }
         }
         rows.metadata = try metadata.map { try WireJSON.encodeString($0) }
-        for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) { rows.secretRef.append(ref); rows.secretValue.append(value) }
+        for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) {
+            rows.secretRef.append(ref)
+            rows.secretValue.append(try sealSecret(doc: id, ref: ref, value))
+        }
         let snap = snapshot.map { ($0.seq, snapshotJSON!) }
         let frozen = rows
         do {
@@ -388,8 +441,8 @@ public struct PostgresStore: Sendable {
             }
             if !r.secretRef.isEmpty {
                 _ = try await tx.query("""
-                    INSERT INTO secrets (doc_id, ref, value)
-                    SELECT \(id), u.ref, u.value FROM unnest(\(r.secretRef)::text[], \(r.secretValue)::text[]) AS u(ref, value)
+                    INSERT INTO secrets (doc_id, ref, value, sealed)
+                    SELECT \(id), u.ref, u.value, true FROM unnest(\(r.secretRef)::text[], \(r.secretValue)::text[]) AS u(ref, value)
                     ON CONFLICT (doc_id, ref) DO NOTHING
                     """, logger: logger)
             }

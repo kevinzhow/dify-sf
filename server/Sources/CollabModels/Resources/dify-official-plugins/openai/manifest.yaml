@@ -1,0 +1,36 @@
+version: 1.0.7
+type: plugin
+author: "langgenius"
+name: "openai"
+description:
+  en_US: Current OpenAI language, embedding, moderation, and audio models.
+  zh_Hans: OpenAI 当前的语言、嵌入、内容审核与音频模型。
+label:
+  en_US: "OpenAI"
+created_at: "2024-07-12T08:03:44.658609186Z"
+icon: icon.svg
+icon_dark: icon-dark.svg
+resource:
+  memory: 1048576
+  permission:
+    tool:
+      enabled: true
+    model:
+      enabled: true
+      llm: true
+      text_embedding: true
+      tts: true
+      speech2text: true
+      moderation: true
+plugins:
+  models:
+    - "provider/openai.yaml"
+meta:
+  version: 0.0.1
+  arch:
+    - "amd64"
+    - "arm64"
+  runner:
+    language: "python"
+    version: "3.12"
+    entrypoint: "main"

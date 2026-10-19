@@ -1,0 +1,177 @@
+background: '#F9FAFB'
+configurate_methods:
+- customizable-model
+extra:
+  python:
+    model_sources:
+    - models/llm/llm.py
+    - models/text_embedding/text_embedding.py
+    - models/rerank/rerank.py
+    provider_source: provider/ollama.py
+help:
+  title:
+    en_US: How to integrate with Ollama
+    zh_Hans: 如何集成 Ollama
+  url:
+    en_US: https://docs.dify.ai/tutorials/model-configuration/ollama
+icon_large:
+  en_US: icon.svg
+icon_large_dark:
+  en_US: icon-dark.svg
+icon_small:
+  en_US: icon.svg
+icon_small_dark:
+  en_US: icon-dark.svg
+label:
+  en_US: Ollama
+model_credential_schema:
+  credential_form_schemas:
+  - label:
+      en_US: Base URL
+      zh_Hans: 基础 URL
+    placeholder:
+      en_US: Base url of Ollama server, e.g. http://192.168.1.100:11434
+      zh_Hans: Ollama server 的基础 URL，例如 http://192.168.1.100:11434
+    required: true
+    type: text-input
+    variable: base_url
+  - label:
+      en_US: API Key (optional)
+      zh_Hans: API 密钥（可选）
+    placeholder:
+      en_US: Bearer token sent as Authorization header. Leave blank for unauthenticated Ollama deployments.
+      zh_Hans: 作为 Authorization 标头发送的 Bearer 令牌。如果 Ollama 没有身份验证，请留空。
+    required: false
+    type: secret-input
+    variable: api_key
+  - default: chat
+    label:
+      en_US: Completion mode
+      zh_Hans: 模型类型
+    options:
+    - label:
+        en_US: Completion
+        zh_Hans: 补全
+      value: completion
+    - label:
+        en_US: Chat
+        zh_Hans: 对话
+      value: chat
+    placeholder:
+      en_US: Select completion mode
+      zh_Hans: 选择对话类型
+    required: true
+    show_on:
+    - value: llm
+      variable: __model_type
+    type: select
+    variable: mode
+  - default: '4096'
+    label:
+      en_US: Model context size
+      zh_Hans: 模型上下文长度
+    placeholder:
+      en_US: Enter your Model context size
+      zh_Hans: 在此输入您的模型上下文长度
+    required: true
+    type: text-input
+    variable: context_size
+  - default: '4096'
+    label:
+      en_US: Upper bound for max tokens
+      zh_Hans: 最大 token 上限
+    required: true
+    show_on:
+    - value: llm
+      variable: __model_type
+    type: text-input
+    variable: max_tokens
+  - default: 'false'
+    label:
+      en_US: Vision support
+      zh_Hans: 是否支持 Vision
+    options:
+    - label:
+        en_US: 'Yes'
+        zh_Hans: 是
+      value: 'true'
+    - label:
+        en_US: 'No'
+        zh_Hans: 否
+      value: 'false'
+    required: false
+    show_on:
+    - value: llm
+      variable: __model_type
+    type: radio
+    variable: vision_support
+  - default: 'false'
+    label:
+      en_US: Function call support
+      zh_Hans: 是否支持函数调用
+    options:
+    - label:
+        en_US: 'Yes'
+        zh_Hans: 是
+      value: 'true'
+    - label:
+        en_US: 'No'
+        zh_Hans: 否
+      value: 'false'
+    required: false
+    show_on:
+    - value: llm
+      variable: __model_type
+    type: radio
+    variable: function_call_support
+  - default: disabled
+    label:
+      en_US: Attach Dify app_id as request headers
+      zh_Hans: 附加 Dify app_id 作为请求头
+    help:
+      title:
+        en_US: How does this work?
+        zh_Hans: 这是如何工作的？
+      text:
+        en_US: |-
+          When enabled, the plugin attaches the current Dify app_id and a `dify`
+          source marker as `X-Dify-App-Id` / `X-Dify-Source` request headers on
+          every Ollama API call. The headers are written into the
+          `extra_headers` credential, which the plugin merges into the
+          outbound `requests.post` headers alongside `Content-Type` and
+          `Authorization`. The headers are forwarded by the underlying HTTP
+          client and are used for observability / proxy-side propagation.
+          Ollama does not document them. Default is `disabled`, so the
+          request shape is unchanged unless you opt in.
+        zh_Hans: |-
+          启用后，插件会通过 `extra_headers` 凭据在每次 Ollama API 调用中附加当前
+          Dify app_id 与 `dify` 源标记，作为 `X-Dify-App-Id` / `X-Dify-Source`
+          请求头。该凭据由插件在 `requests.post` 出口与 `Content-Type` /
+          `Authorization` 一同合并发送。这些请求头由底层 HTTP 客户端转发，用于
+          可观测性与代理侧传播，Ollama API 不会消费它们。默认值为 `disabled`，
+          即未开启时请求结构保持不变。
+    options:
+    - label:
+        en_US: Enabled
+        zh_Hans: 启用
+      value: enabled
+    - label:
+        en_US: Disabled
+        zh_Hans: 禁用
+      value: disabled
+    required: false
+    show_on: []
+    type: select
+    variable: enable_request_metadata
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+provider: ollama
+supported_model_types:
+- llm
+- text-embedding
+- rerank
