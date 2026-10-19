@@ -18,8 +18,8 @@ String _docs(String key) => DifyI18n.tr('dataset-documents', key);
 /// text on [customizedConfirmKey] (Enter) or blur. Empty text is ignored (an error when [required]); duplicates and
 /// tags over 20 characters are refused with [onError] (Dify's `toast.error`). With Tab as the confirm key (the stop
 /// sequences) the whole input is the `rounded-lg bg-components-input-bg-normal` box and Enter types `↵`.
-class TagInput extends StatefulWidget {
-  const TagInput({
+class DifyTagInput extends StatefulWidget {
+  const DifyTagInput({
     super.key,
     required this.items,
     required this.onChange,
@@ -52,10 +52,10 @@ class TagInput extends StatefulWidget {
   final ValueChanged<String>? onError;
 
   @override
-  State<TagInput> createState() => _TagInputState();
+  State<DifyTagInput> createState() => _DifyTagInputState();
 }
 
-class _TagInputState extends State<TagInput> {
+class _DifyTagInputState extends State<DifyTagInput> {
   final _text = TextEditingController();
   late final _focus = FocusNode(debugLabel: 'TagInput', onKeyEvent: _onKey)..addListener(_onFocus);
   bool _focused = false;

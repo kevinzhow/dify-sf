@@ -569,7 +569,7 @@ class _AgentTaskFieldState extends State<AgentTaskField> {
                     color: DifyColors.textSecondary,
                   ),
                 ),
-                Infotip(
+                DifyInfotip(
                   label: tooltip,
                   content: Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,

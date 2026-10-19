@@ -65,7 +65,7 @@ void main() {
     await t.tap(find.text(tr('ok')));
     await t.pumpAndSettle();
     expect(selected, {'type': 'emoji', 'icon': '🧠', 'background': '#E0F2FE'});
-    expect(find.byType(AppIconPicker), findsNothing);
+    expect(find.byType(DifyAppIconPicker), findsNothing);
   });
 
   testWidgets('search results precede the complete category grid and clearing search restores its first row', (
@@ -106,7 +106,10 @@ void main() {
         selected = value;
       },
     );
-    expect(t.widget<AppIconPicker>(find.byType(AppIconPicker)).initialEmoji, (icon: '🤖', background: '#F5F3FF'));
+    expect(t.widget<DifyAppIconPicker>(find.byType(DifyAppIconPicker)).initialEmoji, (
+      icon: '🤖',
+      background: '#F5F3FF',
+    ));
     await t.tap(find.text(tr('cancel')));
     await t.pumpAndSettle();
     expect(calls, 1);
@@ -124,7 +127,7 @@ void main() {
     await t.tap(find.text(tr('ok')));
     await t.pumpAndSettle();
     expect(selected, isFalse);
-    expect(find.byType(AppIconPicker), findsOneWidget);
+    expect(find.byType(DifyAppIconPicker), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
     expect(find.text(DifyI18n.tr('common', 'imageUploader.uploadFromComputerUploadError')), findsOneWidget);
   });

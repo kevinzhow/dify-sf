@@ -238,7 +238,7 @@ class SubscriptionSelectorView extends StatelessWidget {
                   color: DifyColors.textSecondary,
                 ),
                 const SizedBox(width: 4),
-                Infotip(label: _pt('subscription.list.tip'), content: Text(_pt('subscription.list.tip'))),
+                DifyInfotip(label: _pt('subscription.list.tip'), content: Text(_pt('subscription.list.tip'))),
                 const Spacer(),
                 DifyIconButton(
                   label: _pt('subscription.empty.button'),

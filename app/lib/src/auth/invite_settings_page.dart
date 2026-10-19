@@ -144,7 +144,7 @@ class _InviteSettingsFormState extends State<InviteSettingsForm> {
         : joinTitle;
     Widget body;
     if (c == null || _returnToSignIn(auth)) {
-      body = const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: DifyAreaLoading());
+      body = const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: DifyLoading());
     } else if (!c.isValid) {
       body = InvalidInvitation(onExplore: () => auth.go(const SignInRoute()));
     } else {

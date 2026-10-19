@@ -72,10 +72,10 @@ void main() {
     testWidgets('should update the selected icon before confirming the duplicate', (t) async {
       final rig = await _render(t, iconBackground: '#FFEAD5');
       await tapButton(t, _iconButton);
-      expect(find.byType(AppIconPicker), findsOneWidget);
+      expect(find.byType(DifyAppIconPicker), findsOneWidget);
       await t.tap(find.byKey(const ValueKey('icon-color-#E4FBCC')));
       await _ok(t);
-      expect(find.byType(AppIconPicker), findsNothing);
+      expect(find.byType(DifyAppIconPicker), findsNothing);
       await tapButton(t, 'app.duplicate');
       expect(rig.confirmed.single, (name: 'Demo App', iconType: 'emoji', icon: '🤖', iconBackground: '#E4FBCC'));
       expect(rig.hidden, 1);
@@ -103,7 +103,7 @@ void main() {
         iconUrl: 'https://example.com/original.png',
       );
       await tapButton(t, _iconButton);
-      expect(find.byType(AppIconPicker), findsOneWidget);
+      expect(find.byType(DifyAppIconPicker), findsOneWidget);
       final emoji = find.byWidgetPredicate(
         (w) =>
             w.key is ValueKey<String> &&
@@ -115,10 +115,10 @@ void main() {
       await t.tap(find.byKey(const ValueKey('icon-color-#E4FBCC')));
       await _ok(t);
       await tapButton(t, _iconButton);
-      expect(find.byType(AppIconPicker), findsOneWidget);
+      expect(find.byType(DifyAppIconPicker), findsOneWidget);
       await t.tap(find.text('app.iconPicker.cancel'));
       await settle(t);
-      expect(find.byType(AppIconPicker), findsNothing);
+      expect(find.byType(DifyAppIconPicker), findsNothing);
       await tapButton(t, 'app.duplicate');
       final p = rig.confirmed.single;
       expect(p.name, 'Image App');

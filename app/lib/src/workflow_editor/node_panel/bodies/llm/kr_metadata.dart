@@ -277,7 +277,7 @@ class _MetadataFilterState extends State<MetadataFilter> {
       indicator: mode == MetadataFilteringMode.automatic,
       collapsed: _collapsed,
       onCollapse: (v) => setState(() => _collapsed = v),
-      afterTrigger: Infotip(label: tip, width: 200, content: Text(tip)),
+      afterTrigger: DifyInfotip(label: tip, width: 200, content: Text(tip)),
       actions: Padding(
         padding: const EdgeInsets.only(right: 16),
         child: Row(

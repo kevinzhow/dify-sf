@@ -688,7 +688,7 @@ class _GhostRow extends StatelessWidget {
   );
 }
 
-/// SearchInput: an `h-8` input with the search icon and, once there is text, a clear button that keeps the focus.
+/// DifySearchInput: an `h-8` input with the search icon and, once there is text, a clear button that keeps the focus.
 class ModelSearchInput extends StatefulWidget {
   const ModelSearchInput({super.key, required this.value, required this.onChanged});
   final String value;

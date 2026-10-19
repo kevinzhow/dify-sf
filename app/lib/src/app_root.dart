@@ -120,7 +120,7 @@ class _AppRootState extends State<AppRoot> {
   Widget build(BuildContext context) {
     final route = _auth.route;
     final Widget page = switch (route) {
-      StartingRoute() => const AuthPageFrame(child: Center(child: DifyAreaLoading())),
+      StartingRoute() => const AuthPageFrame(child: Center(child: DifyLoading())),
       UnreachableRoute(:final error) => UnreachablePage(
         server: _auth.server,
         error: error,

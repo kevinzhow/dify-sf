@@ -288,7 +288,7 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                           ),
                         ),
                       ),
-                      Infotip(
+                      DifyInfotip(
                         label: _c('modelProvider.rerankModel.tip'),
                         width: 200,
                         content: Text(_c('modelProvider.rerankModel.tip')),
@@ -359,7 +359,7 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                         ),
                       ),
                     ),
-                    Infotip(
+                    DifyInfotip(
                       label: _c('modelProvider.systemReasoningModel.tip'),
                       content: Text(_c('modelProvider.systemReasoningModel.tip')),
                     ),
@@ -418,7 +418,7 @@ class _RerankModeCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 2),
-            Infotip(label: tips, width: 200, iconSize: 14, content: Text(tips)),
+            DifyInfotip(label: tips, width: 200, iconSize: 14, content: Text(tips)),
           ],
         ),
       ),
@@ -633,7 +633,7 @@ class ParamItem extends StatelessWidget {
                     child: DifyText(name, DifyType.systemSmSemibold, color: DifyColors.textSecondary),
                   ),
                 ),
-                if (tip != null && tip!.isNotEmpty) Infotip(label: tip!, width: 200, content: Text(tip!)),
+                if (tip != null && tip!.isNotEmpty) DifyInfotip(label: tip!, width: 200, content: Text(tip!)),
               ],
             ),
           ),

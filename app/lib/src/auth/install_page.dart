@@ -92,7 +92,7 @@ class _InstallFormState extends State<InstallForm> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Padding(padding: EdgeInsets.only(top: 8), child: DifyAreaLoading());
+    if (_loading) return const Padding(padding: EdgeInsets.only(top: 8), child: DifyLoading());
     _email.validate = (v) => zodEmailRegex.hasMatch(v) ? null : tLogin(context, 'error.emailInValid');
     _name.validate = (v) => v.isEmpty ? tLogin(context, 'error.nameEmpty') : null;
     _password.validate = (v) =>

@@ -567,7 +567,7 @@ class StudioSearchInput extends StatefulWidget {
 
 class _StudioSearchInputState extends State<StudioSearchInput> {
   @override
-  Widget build(BuildContext context) => SearchInput(
+  Widget build(BuildContext context) => DifySearchInput(
     key: const ValueKey('studio-search'),
     value: widget.value,
     width: widget.width,

@@ -142,7 +142,7 @@ void main() {
           onChange: (_, [_]) {},
         ),
       );
-      final tip = find.byWidgetPredicate((w) => w is Infotip && w.label == 'Select from tools');
+      final tip = find.byWidgetPredicate((w) => w is DifyInfotip && w.label == 'Select from tools');
       expect(tip, findsOneWidget);
       await t.tap(tip);
       await settle(t);

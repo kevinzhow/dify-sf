@@ -9,8 +9,8 @@ import 'widgets.dart';
 
 /// base/checkbox-list: a bordered box with a header (select-all checkbox, [title], the selected count, a search
 /// input; each part optional) over the options (`p-1`, at most [maxHeight] tall), each a checkbox and its label.
-class CheckboxList extends StatefulWidget {
-  const CheckboxList({
+class DifyCheckboxList extends StatefulWidget {
+  const DifyCheckboxList({
     super.key,
     required this.options,
     required this.value,
@@ -31,10 +31,10 @@ class CheckboxList extends StatefulWidget {
   final double? maxHeight;
 
   @override
-  State<CheckboxList> createState() => _CheckboxListState();
+  State<DifyCheckboxList> createState() => _DifyCheckboxListState();
 }
 
-class _CheckboxListState extends State<CheckboxList> {
+class _DifyCheckboxListState extends State<DifyCheckboxList> {
   String _query = '';
 
   @override

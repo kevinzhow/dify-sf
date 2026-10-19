@@ -18,7 +18,7 @@ void main() {
     expect(const CorePanelHostData().toastError, difyToastError);
     expect(const DataPanelHost(child: SizedBox()).toast, difyToast);
     expect(const DataSourceHost(child: SizedBox()).onToastError, difyToastError);
-    expect(TagInput(items: const [], onChange: (_) {}).onError, difyToastError);
+    expect(DifyTagInput(items: const [], onChange: (_) {}).onError, difyToastError);
   });
 
   testWidgets('a panel without a host shows its error on the app toast host', (t) async {

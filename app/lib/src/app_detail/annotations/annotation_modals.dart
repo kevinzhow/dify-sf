@@ -719,7 +719,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
             ),
           ),
         if (_total > appPageLimit)
-          LogPagination(
+          DifyPagination(
             page: _currPage + 1,
             totalPages: totalPages,
             onPageChange: (page) {
@@ -744,7 +744,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
         offset: const Offset(0, 9),
         child: Align(
           alignment: AlignmentDirectional.centerStart,
-          child: TabSliderPlain(
+          child: DifyTabSliderPlain(
             value: _activeTab.name,
             itemPaddingBottom: 14,
             onChange: (v) => setState(() => _activeTab = _Tab.values.byName(v)),

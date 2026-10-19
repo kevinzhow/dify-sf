@@ -607,7 +607,7 @@ class AgentStrategyForm extends StatelessWidget {
           if (tip.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Infotip(label: tip, width: 200, content: Text(tip)),
+              child: DifyInfotip(label: tip, width: 200, content: Text(tip)),
             ),
         ],
       ),
@@ -1345,7 +1345,7 @@ class _MultipleToolSelectorState extends State<MultipleToolSelector> {
                         ),
                       ),
                     ),
-                    if (widget.tooltip.isNotEmpty) Infotip(label: widget.tooltip, content: Text(widget.tooltip)),
+                    if (widget.tooltip.isNotEmpty) DifyInfotip(label: widget.tooltip, content: Text(widget.tooltip)),
                   ],
                 ),
               ),

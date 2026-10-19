@@ -11,11 +11,11 @@ import '../dify_icon.dart';
 import '../dify_tokens.g.dart';
 import 'widgets.dart';
 
-/// Infotip (base/infotip): a 16 px question mark (`text-text-quaternary`, hover tertiary) that opens a popover with
+/// DifyInfotip (base/infotip): a 16 px question mark (`text-text-quaternary`, hover tertiary) that opens a popover with
 /// [content] on hover (300 ms in, 200 ms out) or on tap; the box is `max-w-75 rounded-md px-3 py-2 system-xs-regular
 /// text-text-tertiary` on the popover surface, above the icon.
-class Infotip extends StatefulWidget {
-  const Infotip({
+class DifyInfotip extends StatefulWidget {
+  const DifyInfotip({
     super.key,
     required this.label,
     required this.content,
@@ -34,10 +34,10 @@ class Infotip extends StatefulWidget {
   final double? width;
 
   @override
-  State<Infotip> createState() => _InfotipState();
+  State<DifyInfotip> createState() => _DifyInfotipState();
 }
 
-class _InfotipState extends State<Infotip> {
+class _DifyInfotipState extends State<DifyInfotip> {
   final _floating = DifyFloatingController();
   Timer? _timer;
   bool _hovered = false;

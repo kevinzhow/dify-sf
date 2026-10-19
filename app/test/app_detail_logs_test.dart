@@ -53,7 +53,7 @@ void main() {
     await renderPage(t, detailFor(app('workflow'), services: {AppLogsSource: source}));
     expect(find.text('app-log.workflowTitle'), findsOneWidget);
     expect(rows(), findsNWidgets(appPageLimit));
-    expect(find.byType(LogPagination), findsOneWidget);
+    expect(find.byType(DifyPagination), findsOneWidget);
     await t.tap(rows().first);
     await settle(t);
     expect(find.byKey(const ValueKey('log-drawer')), findsOneWidget);

@@ -60,7 +60,7 @@ class _Section extends StatelessWidget {
           children: [
             const SizedBox(width: 12),
             Flexible(child: DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary)),
-            if (tooltip != null) ...[const SizedBox(width: 4), Infotip(label: tooltip!, content: Text(tooltip!))],
+            if (tooltip != null) ...[const SizedBox(width: 4), DifyInfotip(label: tooltip!, content: Text(tooltip!))],
             const Spacer(),
             ?operations,
           ],

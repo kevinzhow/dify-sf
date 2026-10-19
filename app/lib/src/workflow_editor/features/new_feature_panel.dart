@@ -324,7 +324,7 @@ class FeatureCard extends StatelessWidget {
                         if (tooltip != null)
                           Padding(
                             padding: const EdgeInsets.only(left: 2),
-                            child: Infotip(label: tooltip!, content: Text(tooltip!)),
+                            child: DifyInfotip(label: tooltip!, content: Text(tooltip!)),
                           ),
                       ],
                     ),

@@ -34,7 +34,7 @@ AppIconSelection appIconSelectionOf({String? iconType, String? icon, String? bac
 Future<AppIconSelection?> pickAppIcon(BuildContext context, AppIconSelection current, {UploadAppIcon? upload}) async {
   final v = await showDifyDialog<Map<String, Object?>>(
     context,
-    builder: (context) => AppIconPicker(
+    builder: (context) => DifyAppIconPicker(
       initialEmoji: current.type == 'emoji' ? (icon: current.icon, background: current.background) : null,
       upload: upload,
       enableImageUpload: upload != null,

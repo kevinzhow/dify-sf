@@ -82,7 +82,7 @@ class _AnnotationFilterState extends State<AnnotationFilter> {
         spacing: 8,
         runSpacing: 8,
         children: [
-          SearchInput(
+          DifySearchInput(
             width: 200,
             value: widget.keyword,
             placeholder: _c('operation.search'),

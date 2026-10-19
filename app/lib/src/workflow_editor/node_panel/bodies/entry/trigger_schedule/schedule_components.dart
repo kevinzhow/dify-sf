@@ -371,7 +371,7 @@ class MonthlyDaysSelector extends StatelessWidget {
                 child: OverflowBox(
                   maxWidth: 16,
                   maxHeight: 16,
-                  child: Infotip(label: tip, iconSize: 12, content: Text(tip)),
+                  child: DifyInfotip(label: tip, iconSize: 12, content: Text(tip)),
                 ),
               ),
             )

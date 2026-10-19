@@ -227,7 +227,7 @@ class InstructionEditor extends StatelessWidget {
               style: difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textSecondary),
             ),
           ),
-          Infotip(label: tip, width: 120, iconSize: 14, content: Text(tip)),
+          DifyInfotip(label: tip, width: 120, iconSize: 14, content: Text(tip)),
         ],
       ),
       value: value,

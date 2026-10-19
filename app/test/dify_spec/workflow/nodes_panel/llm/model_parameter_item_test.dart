@@ -153,7 +153,7 @@ void main() {
         onChange: changes.add,
       );
       expect(find.text('placeholder'), findsOneWidget);
-      final input = find.descendant(of: find.byType(TagInput), matching: find.byType(EditableText));
+      final input = find.descendant(of: find.byType(DifyTagInput), matching: find.byType(EditableText));
       await t.enterText(input, 'tag1');
       await t.sendKeyEvent(LogicalKeyboardKey.tab);
       await settle(t);

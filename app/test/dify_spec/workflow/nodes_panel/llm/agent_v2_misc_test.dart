@@ -277,7 +277,10 @@ void main() {
       final r = await renderDialog(t);
       await t.tap(find.bySemanticsLabel('agent-v-2.roster.saveToRosterForm.changeIcon'));
       await t.pumpAndSettle();
-      expect(t.widget<AppIconPicker>(find.byType(AppIconPicker)).initialEmoji, (icon: '🤖', background: '#F5F3FF'));
+      expect(t.widget<DifyAppIconPicker>(find.byType(DifyAppIconPicker)).initialEmoji, (
+        icon: '🤖',
+        background: '#F5F3FF',
+      ));
       await t.enterText(
         find.descendant(of: find.byKey(const ValueKey('icon-emoji-search')), matching: find.byType(EditableText)),
         'brain',

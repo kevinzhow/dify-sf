@@ -332,7 +332,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Infotip(
+                    DifyInfotip(
                       label: ad('openingStatement.openingQuestionDescription'),
                       width: 220,
                       content: Text(ad('openingStatement.openingQuestionDescription')),

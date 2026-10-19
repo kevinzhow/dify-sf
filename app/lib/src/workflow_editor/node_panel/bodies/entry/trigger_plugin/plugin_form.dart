@@ -115,7 +115,7 @@ List<Json> filterVisibleOptions(List<Json> options, Json values) => [
       o,
 ];
 
-/// One field of a plugin form: its label row (label, `*`, tooltip as an Infotip or a description line, a
+/// One field of a plugin form: its label row (label, `*`, tooltip as a DifyInfotip or a description line, a
 /// "JSON Schema" button for object / array fields) above the [FormInputItem].
 class PluginFormItem extends StatelessWidget {
   const PluginFormItem({
@@ -185,7 +185,7 @@ class PluginFormItem extends StatelessWidget {
                     if (!showDescription && tooltip.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Infotip(label: tooltip, width: 200, content: Text(tooltip)),
+                        child: DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
                       ),
                     if (showSchemaButton) ...[
                       Padding(
@@ -360,7 +360,7 @@ class FormInputItem extends StatelessWidget {
         _ => s.defaultValue is List ? [for (final i in s.defaultValue! as List) '$i'] : <String>[],
       }.where(allowed.contains).toList();
       controls.add(
-        CheckboxList(
+        DifyCheckboxList(
           options: items,
           value: checked,
           disabled: readOnly,

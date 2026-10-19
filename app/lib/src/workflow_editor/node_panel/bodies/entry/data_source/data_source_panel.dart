@@ -95,7 +95,7 @@ class _DataSourcePanelState extends State<DataSourcePanel> {
                   color: DifyColors.componentsInputBgNormal,
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
                 ),
-                child: TagInput(
+                child: DifyTagInput(
                   items: [for (final e in jsList(data['fileExtensions'])) '$e'],
                   onChange: (items) => props.setData('fileExtensions', items),
                   placeholder: _wf('nodes.dataSource.supportedFileFormatsPlaceholder'),

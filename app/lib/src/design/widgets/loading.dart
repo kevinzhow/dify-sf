@@ -8,17 +8,17 @@ import 'package:flutter/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 
 /// base/loading (`type="area"`): four squares fading in turn (2 s each, 0.5 s apart), centred; `role="status"`.
-class DifyAreaLoading extends StatefulWidget {
-  const DifyAreaLoading({super.key, this.app = false});
+class DifyLoading extends StatefulWidget {
+  const DifyLoading({super.key, this.app = false});
 
   /// `type="app"` (full height).
   final bool app;
 
   @override
-  State<DifyAreaLoading> createState() => _DifyAreaLoadingState();
+  State<DifyLoading> createState() => _DifyLoadingState();
 }
 
-class _DifyAreaLoadingState extends State<DifyAreaLoading> with SingleTickerProviderStateMixin {
+class _DifyLoadingState extends State<DifyLoading> with SingleTickerProviderStateMixin {
   late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
   final _start = DateTime.now();
 

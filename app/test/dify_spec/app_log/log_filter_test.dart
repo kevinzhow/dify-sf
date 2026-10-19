@@ -43,7 +43,7 @@ void main() {
 
       testWidgets('should return null when loading', (t) async {
         await renderFilter(t, count: null);
-        expect(find.byType(LogChip), findsNothing);
+        expect(find.byType(DifyChip), findsNothing);
         expect(searchField(), findsNothing);
       });
 

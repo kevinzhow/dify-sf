@@ -19,7 +19,7 @@ import 'annotation_types.dart';
 
 String _t(String ns, String key) => DifyI18n.tr(ns, key);
 
-/// config-param.tsx `Item`: the title (`py-1 system-sm-semibold text-text-secondary`) with an Infotip, then [child].
+/// config-param.tsx `Item`: the title (`py-1 system-sm-semibold text-text-secondary`) with a DifyInfotip, then [child].
 class AnnotationConfigItem extends StatelessWidget {
   const AnnotationConfigItem({super.key, required this.title, required this.tooltip, required this.child});
 
@@ -41,7 +41,7 @@ class AnnotationConfigItem extends StatelessWidget {
                 child: Text(title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
               ),
             ),
-            Infotip(label: tooltip, width: 200, content: Text(tooltip)),
+            DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
           ],
         ),
       ),

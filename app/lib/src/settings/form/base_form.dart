@@ -606,7 +606,7 @@ class AuthForm extends StatelessWidget {
 
 // ---- BaseField -----------------------------------------------------------------------------------------------------
 
-/// BaseField: the label row (label, `*` when required, the tooltip's Infotip), the control by the schema's type, the
+/// BaseField: the label row (label, `*` when required, the tooltip's DifyInfotip), the control by the schema's type, the
 /// validation message (external errors first, else the field's own once touched; warnings), the description and the
 /// help link.
 class BaseField extends StatelessWidget {
@@ -690,7 +690,7 @@ class BaseField extends StatelessWidget {
             if (tooltip.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 2),
-                child: Infotip(label: tooltip, width: 200, content: Text(tooltip)),
+                child: DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
               ),
           ],
         ),
@@ -783,7 +783,7 @@ class BaseField extends StatelessWidget {
           label: shownLabel,
           hint: describedBy.isEmpty ? null : describedBy,
           validationResult: invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
-          child: CheckboxList(
+          child: DifyCheckboxList(
             title: s.name,
             options: options,
             value: [

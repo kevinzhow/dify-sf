@@ -270,7 +270,7 @@ class _ParameterItemState extends State<ParameterItem> {
                     if (help.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
-                        child: Infotip(label: help, width: 150, content: Text(help)),
+                        child: DifyInfotip(label: help, width: 150, content: Text(help)),
                       ),
                   ],
                 ),
@@ -397,7 +397,7 @@ class _ParameterItemState extends State<ParameterItem> {
       case 'tag':
         return SizedBox(
           width: 170,
-          child: TagInput(
+          child: DifyTagInput(
             items: [for (final t in (value is List ? value : const [])) '$t'],
             onChange: _input,
             customizedConfirmKey: LogicalKeyboardKey.tab,

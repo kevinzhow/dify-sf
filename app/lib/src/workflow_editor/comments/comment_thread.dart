@@ -370,7 +370,7 @@ class _CommentThreadState extends State<CommentThread> {
                   }),
                   children: _deletingReply == r.id
                       ? [
-                          InlineDeleteConfirm(
+                          DifyInlineDeleteConfirm(
                             title: tw('comments.actions.deleteReply'),
                             onConfirm: () {
                               setState(() {

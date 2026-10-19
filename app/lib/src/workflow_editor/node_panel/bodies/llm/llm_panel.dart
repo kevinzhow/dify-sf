@@ -585,7 +585,7 @@ class PanelMemorySection extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Infotip(label: tip, content: Text(tip)),
+                      DifyInfotip(label: tip, content: Text(tip)),
                       const Spacer(),
                       Container(
                         constraints: const BoxConstraints(maxWidth: 120),
@@ -613,7 +613,7 @@ class PanelMemorySection extends StatelessWidget {
                     spacing: 4,
                     children: [
                       DifyText('USER', DifyType.systemXsSemibold, color: DifyColors.textSecondary),
-                      Infotip(label: userTip, width: 180, content: Text(userTip)),
+                      DifyInfotip(label: userTip, width: 180, content: Text(userTip)),
                     ],
                   ),
                   value: query.isNotEmpty ? query : '${defaultMemory['query_prompt_template']}',
@@ -747,7 +747,7 @@ class PanelOutputSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                Infotip(label: tip, width: 150, content: Text(tip)),
+                DifyInfotip(label: tip, width: 150, content: Text(tip)),
                 const SizedBox(width: 8),
                 DifySwitch(
                   checked: structuredOutputEnabled,

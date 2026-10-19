@@ -649,7 +649,7 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
               checked: _temp['hide'] == true,
               disabled: _temp['required'] == true,
               onChanged: (v) => _set('hide', v),
-              trailing: Infotip(
+              trailing: DifyInfotip(
                 label: ad('variableConfig.hiddenDescription').replaceAll(RegExp(r'<[^>]+>'), ''),
                 width: 300,
                 content: _HiddenDescription(onOpenUrl: w.onOpenUrl),

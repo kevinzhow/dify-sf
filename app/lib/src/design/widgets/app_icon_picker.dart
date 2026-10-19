@@ -41,7 +41,7 @@ Future<Map<String, Object?>?> showAppIconPicker(
   Future<IconFile?> Function()? pickFile,
 }) => showDifyDialog<Map<String, Object?>>(
   context,
-  builder: (context) => AppIconPicker(
+  builder: (context) => DifyAppIconPicker(
     initialEmoji: initialEmoji,
     upload: upload,
     pickFile: pickFile,
@@ -50,8 +50,8 @@ Future<Map<String, Object?>?> showAppIconPicker(
   ),
 );
 
-class AppIconPicker extends StatefulWidget {
-  const AppIconPicker({
+class DifyAppIconPicker extends StatefulWidget {
+  const DifyAppIconPicker({
     super.key,
     this.initialEmoji,
     this.upload,
@@ -67,10 +67,10 @@ class AppIconPicker extends StatefulWidget {
   final ValueChanged<Map<String, Object?>> onSelect;
   final VoidCallback onCancel;
   @override
-  State<AppIconPicker> createState() => _AppIconPickerState();
+  State<DifyAppIconPicker> createState() => _DifyAppIconPickerState();
 }
 
-class _AppIconPickerState extends State<AppIconPicker> {
+class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
   late String _emoji = widget.initialEmoji?.icon ?? '';
   late String _background = widget.initialEmoji?.background ?? iconEmojiBackgrounds.first;
   late bool _styles = _emoji.isNotEmpty;

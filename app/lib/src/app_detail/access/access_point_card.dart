@@ -572,7 +572,7 @@ class AccessPointUrl extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 2,
         children: [
-          if (copyDisabled) const _DisabledIcon('file-copy-line') else CopyFeedback(content: value),
+          if (copyDisabled) const _DisabledIcon('file-copy-line') else DifyCopyFeedback(content: value),
           if (showQrCode)
             if (copyDisabled) const _DisabledIcon('qr-code-line') else ShareQrCode(content: value, save: saveQrCode),
           if (showRegenerate)

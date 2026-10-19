@@ -257,7 +257,7 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                                                 ),
                                                 Padding(
                                                   padding: const EdgeInsets.only(left: 2),
-                                                  child: Infotip(
+                                                  child: DifyInfotip(
                                                     label: _t(r.tipKey),
                                                     width: 261,
                                                     content: Text(_t(r.tipKey)),

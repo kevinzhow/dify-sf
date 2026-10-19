@@ -297,7 +297,7 @@ void main() {
         formSchema: const FormSchema(type: FormTypeEnum.textInput, name: 'info', label: 'Info', tooltip: 'Extra info'),
       );
       expect(find.text('Info'), findsOneWidget);
-      await t.tap(find.descendant(of: find.byType(Infotip), matching: find.byType(RemixIcon)));
+      await t.tap(find.descendant(of: find.byType(DifyInfotip), matching: find.byType(RemixIcon)));
       await t.pumpAndSettle();
       expect(find.text('Extra info'), findsOneWidget);
     });
@@ -318,7 +318,7 @@ void main() {
           'features': ['a'],
         },
       );
-      expect(find.byType(CheckboxList), findsOneWidget);
+      expect(find.byType(DifyCheckboxList), findsOneWidget);
       expect(find.text('Feature A'), findsOneWidget);
       expect(find.text('Feature B'), findsOneWidget);
       await t.tap(find.text('Feature B'));

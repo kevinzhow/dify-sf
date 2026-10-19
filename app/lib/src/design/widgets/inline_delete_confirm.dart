@@ -8,8 +8,8 @@ import '../dify_tokens.g.dart';
 import 'widgets.dart';
 
 /// base/inline-delete-confirm in the reply menu (`m-0 w-full border-0 shadow-none`): the title and No / Yes.
-class InlineDeleteConfirm extends StatelessWidget {
-  const InlineDeleteConfirm({super.key, required this.title, required this.onConfirm, required this.onCancel});
+class DifyInlineDeleteConfirm extends StatelessWidget {
+  const DifyInlineDeleteConfirm({super.key, required this.title, required this.onConfirm, required this.onCancel});
   final String title;
   final VoidCallback onConfirm, onCancel;
 

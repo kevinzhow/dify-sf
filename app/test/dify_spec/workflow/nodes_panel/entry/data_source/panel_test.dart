@@ -104,10 +104,10 @@ void main() {
         wrap: (child) => DataSourceHost(dataSourceList: dataSourceList, child: child),
       );
 
-      final field = find.descendant(of: find.byType(TagInput), matching: find.byType(EditableText));
+      final field = find.descendant(of: find.byType(DifyTagInput), matching: find.byType(EditableText));
       expect(
         find.descendant(
-          of: find.byType(TagInput),
+          of: find.byType(DifyTagInput),
           matching: find.text('workflow.nodes.dataSource.supportedFileFormatsPlaceholder'),
         ),
         findsOneWidget,

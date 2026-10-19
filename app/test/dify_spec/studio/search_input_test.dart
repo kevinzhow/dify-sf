@@ -26,7 +26,7 @@ class _Controlled extends StatefulWidget {
 class _ControlledState extends State<_Controlled> {
   late String value = widget.initial;
   @override
-  Widget build(BuildContext context) => SearchInput(
+  Widget build(BuildContext context) => DifySearchInput(
     value: value,
     onValueChange: (v) => setState(() => value = v),
   );
@@ -38,7 +38,7 @@ void main() {
   group('SearchInput', () {
     group('Render', () {
       testWidgets('renders correctly with default props', (t) async {
-        await _render(t, SearchInput(value: '', onValueChange: (_) {}));
+        await _render(t, DifySearchInput(value: '', onValueChange: (_) {}));
         final node = _box(t);
         expect(node.label, 'common.operation.search');
         expect(_editable(t).controller.text, '');
@@ -46,37 +46,37 @@ void main() {
       });
 
       testWidgets('renders custom placeholder', (t) async {
-        await _render(t, SearchInput(value: '', onValueChange: (_) {}, placeholder: 'Custom Placeholder'));
+        await _render(t, DifySearchInput(value: '', onValueChange: (_) {}, placeholder: 'Custom Placeholder'));
         expect(find.text('Custom Placeholder'), findsOneWidget);
         expect(_box(t).label, 'common.operation.search');
       });
 
       testWidgets('uses custom aria label', (t) async {
-        await _render(t, SearchInput(value: '', onValueChange: (_) {}, semanticLabel: 'Search providers'));
+        await _render(t, DifySearchInput(value: '', onValueChange: (_) {}, semanticLabel: 'Search providers'));
         expect(_box(t, 'Search providers').label, 'Search providers');
       });
 
       testWidgets('exposes the input element through its ref', (t) async {
         final node = FocusNode();
         addTearDown(node.dispose);
-        await _render(t, SearchInput(value: '', onValueChange: (_) {}, focusNode: node));
+        await _render(t, DifySearchInput(value: '', onValueChange: (_) {}, focusNode: node));
         expect(_editable(t).focusNode, same(node));
       });
 
       testWidgets('focuses the searchbox when autoFocus is enabled', (t) async {
-        await _render(t, SearchInput(value: '', onValueChange: (_) {}, autofocus: true));
+        await _render(t, DifySearchInput(value: '', onValueChange: (_) {}, autofocus: true));
         expect(_editable(t).focusNode.hasFocus, isTrue);
       });
 
       testWidgets('shows clear button when value is present', (t) async {
-        await _render(t, SearchInput(value: 'has value', onValueChange: (_) {}));
+        await _render(t, DifySearchInput(value: 'has value', onValueChange: (_) {}));
         expect(button('common.operation.clear'), findsOneWidget);
       });
 
       testWidgets('keeps a disabled searchbox inert and exposes its description', (t) async {
         await _render(
           t,
-          SearchInput(value: 'has value', onValueChange: (_) {}, disabled: true, description: 'Search unavailable'),
+          DifySearchInput(value: 'has value', onValueChange: (_) {}, disabled: true, description: 'Search unavailable'),
         );
         expect(_editable(t).readOnly || !(_editable(t).focusNode.canRequestFocus), isTrue);
         final hinted = find.byWidgetPredicate((w) => w is Semantics && w.properties.hint == 'Search unavailable');
@@ -90,7 +90,7 @@ void main() {
     group('Interaction', () {
       testWidgets('calls onValueChange when typing', (t) async {
         final calls = <String>[];
-        await _render(t, SearchInput(value: '', onValueChange: calls.add));
+        await _render(t, DifySearchInput(value: '', onValueChange: calls.add));
         await t.enterText(find.byType(EditableText), 'test');
         expect(calls, ['test']);
       });

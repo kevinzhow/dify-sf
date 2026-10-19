@@ -1,5 +1,5 @@
 // The plugin trigger, the data source checks and the start block list (Dify has no specs for these): checkValid,
-// use-config's parameter handling, the panel's form and outputs, the subscription status, TagInput's refusals and
+// use-config's parameter handling, the panel's form and outputs, the subscription status, DifyTagInput's refusals and
 // the start block search.
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/data_source/data_source_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/start_placeholder/start_placeholder_panel.dart';
@@ -289,7 +289,7 @@ void main() {
         MaterialApp(
           home: Material(
             child: StatefulBuilder(
-              builder: (context, setState) => TagInput(
+              builder: (context, setState) => DifyTagInput(
                 items: items,
                 onChange: (v) => setState(() => items = v),
                 onError: errors.add,

@@ -345,7 +345,7 @@ class ApiKeyTable extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.end,
                               spacing: 4,
                               children: [
-                                CopyFeedback(content: key.token),
+                                DifyCopyFeedback(content: key.token),
                                 if (canManage)
                                   DifyIconButton(
                                     label: '${_t('common', 'operation.delete')} ${maskApiKeyToken(key.token)}',
@@ -415,7 +415,7 @@ class CreatedApiKeyDialog extends StatelessWidget {
                 fontFamily: monoFontFamily,
                 trailing: Padding(
                   padding: const EdgeInsetsDirectional.only(end: 4),
-                  child: CopyFeedback(content: value),
+                  child: DifyCopyFeedback(content: value),
                 ),
               ),
             ),

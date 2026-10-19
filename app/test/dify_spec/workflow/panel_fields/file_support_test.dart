@@ -30,7 +30,7 @@ List<SemanticsData> _checkboxes(WidgetTester t) => [
 ];
 
 SemanticsData _tagInput(WidgetTester t) =>
-    t.getSemantics(find.descendant(of: find.byType(TagInput), matching: find.byType(TextField))).getSemanticsData();
+    t.getSemantics(find.descendant(of: find.byType(DifyTagInput), matching: find.byType(TextField))).getSemanticsData();
 
 /// The upload method radio named [label] is checked.
 bool _checked(WidgetTester t, String label) =>
@@ -109,7 +109,7 @@ void main() {
             onCustomFileTypesChange: changes.add,
           ),
         );
-        final input = find.descendant(of: find.byType(TagInput), matching: find.byType(TextField));
+        final input = find.descendant(of: find.byType(DifyTagInput), matching: find.byType(TextField));
         expect(t.widget<TextField>(input).decoration?.hintText, _ad('file.custom.createPlaceholder'));
         await t.enterText(input, 'csv');
         FocusManager.instance.primaryFocus?.unfocus();
@@ -178,7 +178,7 @@ void main() {
               .getSemantics(find.byWidgetPredicate((w) => w is DifyCheckbox && w.label == _ad('file.custom.name')))
               .getSemanticsData();
           expect(customCheckbox.validationResult, SemanticsValidationResult.none);
-          await t.enterText(find.descendant(of: find.byType(TagInput), matching: find.byType(TextField)), '.csv');
+          await t.enterText(find.descendant(of: find.byType(DifyTagInput), matching: find.byType(TextField)), '.csv');
           await t.testTextInput.receiveAction(TextInputAction.done);
           await t.pump();
           expect(changes.last, {
@@ -351,7 +351,7 @@ void main() {
             changes.add,
           ),
         );
-        await t.enterText(find.descendant(of: find.byType(TagInput), matching: find.byType(TextField)), 'csv');
+        await t.enterText(find.descendant(of: find.byType(DifyTagInput), matching: find.byType(TextField)), 'csv');
         FocusManager.instance.primaryFocus?.unfocus();
         await t.pump();
         expect(changes.last['allowed_file_extensions'], ['pdf', 'csv']);

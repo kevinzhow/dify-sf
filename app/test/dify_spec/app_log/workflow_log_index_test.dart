@@ -127,7 +127,7 @@ void main() {
       testWidgets('should not render pagination when total is less than limit', (t) async {
         source.workflowLogsAnswer = mockLogsResponse([mockWorkflowLog()], 1);
         await renderLogs(t);
-        expect(find.byType(LogPagination), findsNothing);
+        expect(find.byType(DifyPagination), findsNothing);
       });
 
       testWidgets('should render pagination when total exceeds limit', (t) async {
@@ -136,7 +136,7 @@ void main() {
         ], appPageLimit + 10);
         await renderLogs(t);
         expect(find.byType(LogTable), findsOneWidget);
-        expect(find.byType(LogPagination), findsOneWidget);
+        expect(find.byType(DifyPagination), findsOneWidget);
       });
     });
 

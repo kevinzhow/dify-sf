@@ -438,7 +438,7 @@ class _FileTypeItemState extends State<FileTypeItem> {
                       onTap: () {}, // e.stopPropagation()
                       child: Padding(
                         padding: const EdgeInsets.all(12),
-                        child: TagInput(
+                        child: DifyTagInput(
                           items: w.customFileTypes,
                           label: DifyI18n.tr('app-debug', 'variableConfig.file.custom.name'),
                           placeholder: DifyI18n.tr('app-debug', 'variableConfig.file.custom.createPlaceholder'),

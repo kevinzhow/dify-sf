@@ -50,7 +50,7 @@ class EmailContext {
   final List<Object?> formInputs;
 }
 
-/// DeliveryMethodForm: the "Delivery Method" header (Infotip, the add selector unless [readonly]), the empty tip or
+/// DeliveryMethodForm: the "Delivery Method" header (DifyInfotip, the add selector unless [readonly]), the empty tip or
 /// one [MethodItem] per method. A changed method replaces the one of its type; a deleted one removes its type.
 /// [isTriggerMode]: the workflow starts from a trigger (no Webapp delivery).
 class DeliveryMethodForm extends StatelessWidget {

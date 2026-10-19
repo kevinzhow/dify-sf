@@ -133,7 +133,7 @@ class _MembersPageState extends State<MembersPage> {
         child: Row(
           spacing: 12,
           children: [
-            WorkspaceAvatar(name: name, size: WorkspaceAvatarSize.xxl),
+            DifyWorkspaceAvatar(name: name, size: DifyWorkspaceAvatarSize.xxl),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

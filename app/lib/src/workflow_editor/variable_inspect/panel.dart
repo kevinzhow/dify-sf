@@ -811,7 +811,7 @@ class InspectRight extends StatelessWidget {
                     icon: 'arrow-go-back-line',
                     onPressed: () => crud.resetConversationVar('${v['id']}'),
                   ),
-                if (v['value_type'] != 'secret') CopyFeedback(content: _copyContent(v['value'])),
+                if (v['value_type'] != 'secret') DifyCopyFeedback(content: _copyContent(v['value'])),
               ],
               DifyIconButton(
                 label: _close(),

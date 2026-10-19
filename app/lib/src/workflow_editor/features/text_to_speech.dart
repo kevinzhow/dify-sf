@@ -253,7 +253,7 @@ class _ParamConfigContentState extends State<ParamConfigContent> {
               child: Row(
                 children: [
                   Flexible(child: DifyText(ad('voice.voiceSettings.language'), label, color: DifyColors.textSecondary)),
-                  Infotip(
+                  DifyInfotip(
                     label: ad('voice.voiceSettings.resolutionTooltip'),
                     width: 180,
                     content: Column(

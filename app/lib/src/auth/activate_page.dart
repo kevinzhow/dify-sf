@@ -63,7 +63,7 @@ class _ActivateFormState extends State<ActivateForm> {
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: md ? 108 : 24),
           child: c == null
-              ? const DifyAreaLoading()
+              ? const DifyLoading()
               : c.isValid
               ? const SizedBox.shrink()
               : SizedBox(

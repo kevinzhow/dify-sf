@@ -94,7 +94,7 @@ class AppChart extends StatelessWidget {
                   ),
                   if (explanation.isNotEmpty) ...[
                     const SizedBox(width: 4),
-                    Infotip(
+                    DifyInfotip(
                       label: explanation,
                       width: 240,
                       content: Text(
@@ -356,7 +356,7 @@ class _BizChartState extends State<BizChart> {
   @override
   Widget build(BuildContext context) {
     final rows = _rows;
-    if (rows == null) return const DifyAreaLoading();
+    if (rows == null) return const DifyLoading();
     final c = widget.config;
     final noData = rows.isEmpty;
     final period = widget.period.query ?? defaultChartPeriod(widget.now?.call());

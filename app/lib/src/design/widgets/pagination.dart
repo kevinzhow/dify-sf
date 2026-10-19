@@ -55,8 +55,8 @@ List<PageItem> paginationPageItems({
 
 /// dify-ui's Pagination facade as the logs use it: previous / "page / total" (click to type a page) / next on the
 /// left, the page buttons in the middle, the page size control ("Items per page" on hover) on the right.
-class LogPagination extends StatefulWidget {
-  const LogPagination({
+class DifyPagination extends StatefulWidget {
+  const DifyPagination({
     super.key,
     required this.page,
     required this.totalPages,
@@ -75,10 +75,10 @@ class LogPagination extends StatefulWidget {
   final ValueChanged<int>? onPageSizeChange;
 
   @override
-  State<LogPagination> createState() => _LogPaginationState();
+  State<DifyPagination> createState() => _DifyPaginationState();
 }
 
-class _LogPaginationState extends State<LogPagination> {
+class _DifyPaginationState extends State<DifyPagination> {
   bool _editing = false, _sizeHover = false;
 
   void _go(int page) {

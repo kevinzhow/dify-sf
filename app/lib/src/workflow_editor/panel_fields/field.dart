@@ -69,7 +69,7 @@ class _WarningDot extends StatelessWidget {
   );
 }
 
-/// Field (field.tsx): a 24 px title row (title, `*` when [required], an [Infotip] for [tooltip]) with [operations]
+/// Field (field.tsx): a 24 px title row (title, `*` when [required], an [DifyInfotip] for [tooltip]) with [operations]
 /// on the right, and [child] 4 px below. [supportFold] makes the row toggle the child (folded at first) with a
 /// chevron; [inline] puts the child beside the title.
 class Field extends StatefulWidget {
@@ -118,7 +118,7 @@ class _FieldState extends State<Field> {
             ),
             if (w.tooltip != null && w.tooltip!.isNotEmpty) ...[
               const SizedBox(width: 4),
-              Infotip(label: w.tooltip!, content: Text(w.tooltip!)),
+              DifyInfotip(label: w.tooltip!, content: Text(w.tooltip!)),
             ],
           ],
         ),
@@ -492,7 +492,7 @@ class _FieldTitleState extends State<FieldTitle> {
                             ),
                           if (w.tooltip != null) ...[
                             const SizedBox(width: 4),
-                            Infotip(label: w.tooltip!, content: Text(w.tooltip!)),
+                            DifyInfotip(label: w.tooltip!, content: Text(w.tooltip!)),
                           ],
                         ],
                       ),
@@ -821,7 +821,7 @@ class _OptionCardState extends State<OptionCard> {
                   mainAxisAlignment: w.align,
                   children: [
                     c.hasBoundedWidth ? Flexible(child: text) : text,
-                    if (w.tooltip != null) Infotip(label: w.tooltip!, width: 240, content: Text(w.tooltip!)),
+                    if (w.tooltip != null) DifyInfotip(label: w.tooltip!, width: 240, content: Text(w.tooltip!)),
                   ],
                 );
               },

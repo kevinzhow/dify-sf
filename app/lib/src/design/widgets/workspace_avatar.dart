@@ -6,24 +6,24 @@ import 'package:flutter/widgets.dart';
 import '../dify_tokens.g.dart';
 
 /// base/workspace-avatar sizes: the box, its radius and the initial's font size / line height.
-enum WorkspaceAvatarSize {
+enum DifyWorkspaceAvatarSize {
   xs(20, DifyRadius.md, 10, 12),
   sm(24, DifyRadius.md, 13, 16),
   lg(36, DifyRadius.lg, 16, 20),
   xxl(48, DifyRadius.xl, 20, 28);
 
-  const WorkspaceAvatarSize(this.box, this.radius, this.fontSize, this.lineHeight);
+  const DifyWorkspaceAvatarSize(this.box, this.radius, this.fontSize, this.lineHeight);
   final double box, radius, fontSize, lineHeight;
 }
 
 /// base/workspace-avatar: the workspace's upper-cased initial (`?` without a name) in white (`font-semibold
 /// uppercase opacity-90`) on `bg-components-icon-bg-orange-dark-solid` under the avatar mask gradient, `border
 /// border-divider-regular`, `shadow-xs`.
-class WorkspaceAvatar extends StatelessWidget {
-  const WorkspaceAvatar({super.key, this.name, this.size = WorkspaceAvatarSize.sm});
+class DifyWorkspaceAvatar extends StatelessWidget {
+  const DifyWorkspaceAvatar({super.key, this.name, this.size = DifyWorkspaceAvatarSize.sm});
 
   final String? name;
-  final WorkspaceAvatarSize size;
+  final DifyWorkspaceAvatarSize size;
 
   @override
   Widget build(BuildContext context) {

@@ -84,7 +84,7 @@ class _NormalFormState extends State<NormalForm> {
     final forCurrent = isInvitationForAccount(_invite?.email, auth.account?.email);
     final redirecting = auth.signedIn && (!route.isInvite || forCurrent);
     if (redirecting || (route.isInvite && _inviteLoading)) {
-      return const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: DifyAreaLoading());
+      return const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: DifyLoading());
     }
     final workspace = _invite?.workspaceName ?? '';
     final tertiaryXs = difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary);

@@ -89,7 +89,7 @@ class ChatLogFilter extends StatelessWidget {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          LogChip(
+          DifyChip(
             key: const ValueKey('chat-log-period'),
             minWidth: 150,
             panelWidth: 270,
@@ -99,7 +99,7 @@ class ChatLogFilter extends StatelessWidget {
             onSelect: (item) => setQueryParams(q.copyWith(period: item.value)),
             onClear: () => setQueryParams(q.copyWith(period: '9')),
           ),
-          LogChip(
+          DifyChip(
             key: const ValueKey('chat-log-annotation'),
             minWidth: 150,
             panelWidth: 270,
@@ -113,7 +113,7 @@ class ChatLogFilter extends StatelessWidget {
             onSelect: (item) => setQueryParams(q.copyWith(annotationStatus: item.value)),
             onClear: () => setQueryParams(q.copyWith(annotationStatus: 'all')),
           ),
-          SearchInput(
+          DifySearchInput(
             key: const ValueKey('chat-log-keyword'),
             width: 200,
             value: q.keyword ?? '',
@@ -338,7 +338,7 @@ class ChatLogsState extends State<ChatLogs> {
                         ),
                 ),
                 if (total != null && total > appPageLimit)
-                  LogPagination(
+                  DifyPagination(
                     page: _page + 1,
                     totalPages: totalPages,
                     onPageChange: (p) => _setPage(p - 1),

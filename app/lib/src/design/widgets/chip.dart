@@ -17,8 +17,8 @@ typedef ChipItem = ({String value, String name});
 /// base/chip: a select whose trigger shows the selected item's name (with a filter icon, or [leftIcon]); with a value
 /// it turns into a secondary button with a clear button on its right (`aria-label` "Clear `name`"), else it shows a
 /// down arrow. The popup (`w-60`, or [panelWidth]) lists the items with a check on the selected one.
-class LogChip extends StatefulWidget {
-  const LogChip({
+class DifyChip extends StatefulWidget {
+  const DifyChip({
     super.key,
     required this.value,
     required this.items,
@@ -42,10 +42,10 @@ class LogChip extends StatefulWidget {
   final double panelWidth;
 
   @override
-  State<LogChip> createState() => _LogChipState();
+  State<DifyChip> createState() => _DifyChipState();
 }
 
-class _LogChipState extends State<LogChip> {
+class _DifyChipState extends State<DifyChip> {
   bool _open = false;
 
   @override

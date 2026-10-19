@@ -155,7 +155,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
               child: Row(
                 spacing: 6,
                 children: [
-                  WorkspaceAvatar(name: name),
+                  DifyWorkspaceAvatar(name: name),
                   Expanded(
                     child: Align(
                       heightFactor: 1,
@@ -318,7 +318,7 @@ class _WorkspaceMenuHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                WorkspaceAvatar(name: name, size: WorkspaceAvatarSize.lg),
+                DifyWorkspaceAvatar(name: name, size: DifyWorkspaceAvatarSize.lg),
               ],
             ),
           ),
@@ -565,9 +565,9 @@ class _WorkspaceSwitcherState extends State<WorkspaceSwitcher> {
                               selected: w.current,
                               child: WorkspaceMenuButton(
                                 key: ValueKey('workspace-item-${w.id}'),
-                                icon: WorkspaceAvatar(
+                                icon: DifyWorkspaceAvatar(
                                   name: w.name.isEmpty ? w.id : w.name,
-                                  size: WorkspaceAvatarSize.xs,
+                                  size: DifyWorkspaceAvatarSize.xs,
                                 ),
                                 label: w.name.isEmpty ? w.id : w.name,
                                 current: w.current,

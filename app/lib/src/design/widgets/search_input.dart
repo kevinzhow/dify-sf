@@ -13,8 +13,8 @@ import 'widgets.dart';
 
 String _c(String key) => DifyI18n.tr('common', key);
 
-class SearchInput extends StatefulWidget {
-  const SearchInput({
+class DifySearchInput extends StatefulWidget {
+  const DifySearchInput({
     super.key,
     required this.value,
     required this.onValueChange,
@@ -44,10 +44,10 @@ class SearchInput extends StatefulWidget {
   final double? width;
 
   @override
-  State<SearchInput> createState() => _SearchInputState();
+  State<DifySearchInput> createState() => _DifySearchInputState();
 }
 
-class _SearchInputState extends State<SearchInput> {
+class _DifySearchInputState extends State<DifySearchInput> {
   FocusNode? _own;
   FocusNode get _focus => widget.focusNode ?? (_own ??= FocusNode(debugLabel: 'SearchInput'));
 

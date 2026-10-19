@@ -174,7 +174,7 @@ Widget _defaultProviderIcon(ProviderIcon icon, double size) {
 
 ColoredBox get _blank => ColoredBox(color: DifyColors.stateBaseHover);
 
-/// SearchInput (base/search-input): an InputGroup with `i-ri-search-line` in front and a clear button once there
+/// DifySearchInput (base/search-input): an InputGroup with `i-ri-search-line` in front and a clear button once there
 /// is text; its accessible name is [placeholder].
 class SelectorSearchInput extends StatelessWidget {
   const SelectorSearchInput({

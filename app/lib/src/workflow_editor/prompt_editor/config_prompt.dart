@@ -137,7 +137,7 @@ class PromptRoleTitle extends StatelessWidget {
                 trigger: _RoleTrigger(label: r?.name ?? '', style: style),
               ),
             ),
-          if (description != null) Infotip(label: description, width: 180, content: Text(description)),
+          if (description != null) DifyInfotip(label: description, width: 180, content: Text(description)),
         ],
       ),
     );

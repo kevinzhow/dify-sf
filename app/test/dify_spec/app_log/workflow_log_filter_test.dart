@@ -234,7 +234,7 @@ void main() {
         expect(wrap.direction, Axis.horizontal);
         expect(wrap.spacing, 8);
         expect(wrap.runSpacing, 8);
-        expect(find.byType(LogChip), findsNWidgets(2));
+        expect(find.byType(DifyChip), findsNWidgets(2));
       });
     });
   });

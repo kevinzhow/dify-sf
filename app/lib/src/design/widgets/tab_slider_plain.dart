@@ -8,8 +8,8 @@ import 'widgets.dart';
 
 /// base/tab-slider-plain: the options side by side (`space-x-6`), each `pb-2.5 system-xl-semibold` (tertiary, the
 /// active one primary with a 2 px brand line under it).
-class TabSliderPlain extends StatelessWidget {
-  const TabSliderPlain({
+class DifyTabSliderPlain extends StatelessWidget {
+  const DifyTabSliderPlain({
     super.key,
     required this.value,
     required this.onChange,

@@ -340,7 +340,7 @@ class AppDetailPageState extends State<AppDetailPage> {
             fit: StackFit.expand,
             children: [
               if (app == null || page == null)
-                ColoredBox(color: DifyColors.backgroundBody, child: const DifyAreaLoading())
+                ColoredBox(color: DifyColors.backgroundBody, child: const DifyLoading())
               else
                 _pages(page),
               if (app != null)

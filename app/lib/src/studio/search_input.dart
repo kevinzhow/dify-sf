@@ -1,4 +1,4 @@
-/// base/search-input's search-state helpers (the `SearchInput` itself lives in design/widgets).
+/// base/search-input's search-state helpers (the `DifySearchInput` itself lives in design/widgets).
 library;
 
 /// search-state.ts `hasSearchText`.

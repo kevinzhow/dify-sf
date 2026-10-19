@@ -71,7 +71,7 @@ Future<void> _submit(WidgetTester t) async {
 
 Future<void> _openPicker(WidgetTester t) async {
   await tapButton(t, 'app.iconPicker.emoji');
-  expect(find.byType(AppIconPicker), findsOneWidget);
+  expect(find.byType(DifyAppIconPicker), findsOneWidget);
 }
 
 void main() {

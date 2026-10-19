@@ -154,7 +154,7 @@ class ToolFormItem extends StatelessWidget {
                     if (!showDescription && tooltip.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Infotip(label: tooltip, width: 200, content: Text(tooltip)),
+                        child: DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
                       ),
                     if (showSchemaButton) ...[
                       Padding(
@@ -363,7 +363,7 @@ class _FormInputItemState extends State<FormInputItem> {
       if (s.isDateRange && jsStr(varInput['type']) != ToolVarKind.variable)
         ToolDateRangePicker(value: value, onChange: _valueChange, readOnly: w.readOnly),
       if (s.isCheckbox && s.isConstant)
-        CheckboxList(
+        DifyCheckboxList(
           title: i18nText(w.schema['label'], language).isNotEmpty ? i18nText(w.schema['label'], language) : s.variable,
           options: getCheckboxListOptions(visibleOptions, language),
           value: getCheckboxListValue(value, s.defaultValue, visibleOptions),

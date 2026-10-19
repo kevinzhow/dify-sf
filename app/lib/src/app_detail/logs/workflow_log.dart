@@ -80,14 +80,14 @@ class WorkflowLogFilter extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
-          LogChip(
+          DifyChip(
             key: const ValueKey('workflow-log-status'),
             value: q.status ?? 'all',
             items: workflowLogStatusItems,
             onSelect: (item) => setQueryParams(q.copyWith(status: item.value)),
             onClear: () => setQueryParams(q.copyWith(status: 'all')),
           ),
-          LogChip(
+          DifyChip(
             key: const ValueKey('workflow-log-period'),
             minWidth: 150,
             panelWidth: 270,
@@ -97,7 +97,7 @@ class WorkflowLogFilter extends StatelessWidget {
             onSelect: (item) => setQueryParams(q.copyWith(period: item.value)),
             onClear: () => setQueryParams(q.copyWith(period: '9')),
           ),
-          SearchInput(
+          DifySearchInput(
             key: const ValueKey('workflow-log-keyword'),
             width: 200,
             value: q.keyword ?? '',
@@ -269,7 +269,7 @@ class WorkflowLogsState extends State<WorkflowLogs> {
                         ),
                 ),
                 if (total != null && total > appPageLimit)
-                  LogPagination(
+                  DifyPagination(
                     page: _page + 1,
                     totalPages: totalPages,
                     onPageChange: (p) {

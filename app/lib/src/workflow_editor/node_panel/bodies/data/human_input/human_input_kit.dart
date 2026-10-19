@@ -126,7 +126,7 @@ Widget? methodTile(String type, {double iconSize = 14, double padding = 2, bool 
   );
 }
 
-/// A section header (`flex items-center gap-0.5`: `system-sm-semibold-uppercase text-text-secondary` and an Infotip)
+/// A section header (`flex items-center gap-0.5`: `system-sm-semibold-uppercase text-text-secondary` and a DifyInfotip)
 /// with [actions] on the right.
 class HiSectionHeader extends StatelessWidget {
   const HiSectionHeader({super.key, required this.title, this.tooltip, this.actions});
@@ -150,7 +150,7 @@ class HiSectionHeader extends StatelessWidget {
               spacing: 2,
               children: [
                 DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary),
-                if (tooltip != null) Infotip(label: tooltip!, content: Text(tooltip!)),
+                if (tooltip != null) DifyInfotip(label: tooltip!, content: Text(tooltip!)),
               ],
             ),
           ),

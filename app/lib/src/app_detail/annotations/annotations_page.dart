@@ -479,7 +479,7 @@ class AnnotationsPageState extends State<AnnotationsPage> {
                               : const AnnotationEmptyElement(),
                         ),
                         if (_total > appPageLimit)
-                          LogPagination(
+                          DifyPagination(
                             page: _currPage + 1,
                             totalPages: totalPages,
                             onPageChange: (page) {
