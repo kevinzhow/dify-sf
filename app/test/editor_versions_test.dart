@@ -85,7 +85,13 @@ void main() {
     // A second version: the draft with an End node after the Start node.
     final end = controller.addNode('end', x: 400, y: 282);
     controller.connect(start, end);
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    // Publishing reads the server's graph. Wait for edit acknowledgments rather than assuming that a fixed
+    // 100 ms delay is enough when this file runs alongside the full suite.
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (controller.session.pending.isNotEmpty && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(controller.session.pending, isEmpty, reason: 'the draft edits must reach the server before publishing');
     _tick();
     await versions.publish();
     final v2 = versions.published!;
