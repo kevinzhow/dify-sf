@@ -70,7 +70,7 @@ public enum CollabServerMain {
             configuration: .init(
                 services: [
                     .init(service: Named(name: "postgres", base: pg, logger: logger)),
-                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger), logger: logger)),
+                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger, staleRunSeconds: config.runtimeMaxTimeSeconds + 300), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
                     .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
@@ -85,6 +85,8 @@ public enum CollabServerMain {
 struct Migrator: Service {
     let store: PostgresStore
     let logger: Logger
+    /// Protocol 1.14: a run "running" for longer than this ran in a server that stopped.
+    var staleRunSeconds: Double = 3900
 
     func run() async throws {
         var delay = 0.2
@@ -98,6 +100,9 @@ struct Migrator: Service {
                 // Protocol 1.11: apps of older servers get their Web App site.
                 let sites = try await store.backfillSites()
                 if sites > 0 { logger.info("created the Web App sites of \(sites) apps of an older server") }
+                // Protocol 1.14: draft runs still "running" past the time limit ran in a server that stopped.
+                try await store.failStaleWorkflowRuns(error: "The server stopped while the run was running",
+                                                      startedBefore: Date().addingTimeInterval(-staleRunSeconds))
                 // Protocol 1.9: secrets that older servers stored in plaintext are encrypted once a key is configured.
                 let sealed = try await store.sealLegacySecrets()
                 if sealed.sealed > 0 { logger.info("encrypted \(sealed.sealed) secrets stored in plaintext by an older server") }

@@ -13,6 +13,8 @@ public struct VariablePool: Sendable {
 
     /// node id -> (name -> value), names in insertion order.
     public private(set) var variables: [String: [(name: String, segment: Segment)]] = [:]
+    /// Node ids in the order of their first value (Python's dict order of `variable_dictionary`).
+    public private(set) var nodeOrder: [String] = []
 
     public init() {}
 
@@ -25,6 +27,7 @@ public struct VariablePool: Sendable {
         guard selector.count == Self.selectorsLength else {
             throw InvalidSelector(description: "Invalid selector: expected \(Self.selectorsLength) elements (node_id, variable_name), got \(selector.count) elements")
         }
+        if variables[selector[0]] == nil { nodeOrder.append(selector[0]) }
         var list = variables[selector[0]] ?? []
         if let i = list.firstIndex(where: { $0.name == selector[1] }) {
             list[i].segment = value
@@ -56,8 +59,23 @@ public struct VariablePool: Sendable {
     /// `remove(selector)`: one element clears the node, two remove one variable.
     public mutating func remove(_ selector: [String]) {
         guard let first = selector.first else { return }
-        if selector.count == 1 { variables[first] = []; return }
+        if selector.count == 1 {
+            if variables[first] == nil { nodeOrder.append(first) }
+            variables[first] = []
+            return
+        }
         variables[first]?.removeAll { $0.name == selector[1] }
+    }
+
+    /// `flatten(unprefixed_node_id:)`: every value as `"node.name"` (just `name` for `unprefixedNodeId`), in insertion order.
+    public func flatten(unprefixedNodeId: String? = nil) -> JSONObject {
+        var out = JSONObject()
+        for node in nodeOrder {
+            for (name, segment) in variables[node] ?? [] {
+                out[node == unprefixedNodeId ? name : node + "." + name] = segment.value
+            }
+        }
+        return out
     }
 
     /// `get_by_prefix(node_id)`: a node's values by name.

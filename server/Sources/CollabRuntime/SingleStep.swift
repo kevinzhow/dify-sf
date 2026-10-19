@@ -75,11 +75,15 @@ public struct SingleStepRun: Sendable {
     /// The draft's environment variables (`workflow.environment_variables`, secret values included).
     public var environmentVariables: [JSONValue]
     public var factory: any NodeFactory
+    /// Dify's `VariableLoader` (draft variables): values the node reads that neither the request nor the pool has.
+    public var variableLoader: (@Sendable ([[String]]) async throws -> [(selector: [String], segment: Segment)])?
 
-    public init(graph: GraphConfig, environmentVariables: [JSONValue], factory: any NodeFactory) {
+    public init(graph: GraphConfig, environmentVariables: [JSONValue], factory: any NodeFactory,
+                variableLoader: (@Sendable ([[String]]) async throws -> [(selector: [String], segment: Segment)])? = nil) {
         self.graph = graph
         self.environmentVariables = environmentVariables
         self.factory = factory
+        self.variableLoader = variableLoader
     }
 
     public struct NodeNotFound: Error, CustomStringConvertible, Sendable {
@@ -120,6 +124,15 @@ public struct SingleStepRun: Sendable {
         // inject_default_system_variable_mappings: an LLM node with memory reads sys.query.
         if config.type == NodeType.llm, config.data["memory"]?.object != nil, !mapping.contains(where: { $0.key == "\(nodeId).#sys.query#" }) {
             mapping.append(("\(nodeId).#sys.query#", ["sys", "query"]))
+        }
+        // load_into_variable_pool: what the inputs and the pool lack comes from the draft variables.
+        if let variableLoader {
+            let missing = try DraftVariableRules.selectorsToLoad(mapping: mapping, userInputs: userInputs, pool: pool)
+            if !missing.isEmpty {
+                for (selector, segment) in try await variableLoader(missing) where selector.count == VariablePool.selectorsLength {
+                    try pool.add(selector, segment)
+                }
+            }
         }
         try Self.mapUserInputs(mapping, userInputs, &pool)
 

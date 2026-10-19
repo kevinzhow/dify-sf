@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.13
+# dify-sf collaboration protocol, version 1.14
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,27 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.14 (additive; clients older than 1.14 are unaffected): **whole draft runs** (section 2, "Draft runs (1.14)"), the
+  workflow runtime's engine and the node types Dify's workflows use most, **draft variables** ("Draft variables (1.14)").
+  * `POST /v1/apps/{app}/workflows/draft/run` (edit; workflow apps) `{"inputs": {...}, "files": []}`: Dify's draft run, an
+    SSE stream of Dify 1.17.1's events (`workflow_started`, `node_started`, `text_chunk`, `node_retry`, `node_finished`,
+    `reasoning_chunk`, `workflow_finished`; `event: ping` while idle). The run reads the document at one seq and writes no
+    ops: `workflow_runs` and `workflow_node_executions` hold it.
+  * `POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop` (edit): Dify's stop. `GET /v1/apps/{app}/workflow-runs` (member):
+    the run history; `GET .../workflow-runs/{run}` and `.../workflow-runs/{run}/node-executions` now answer real runs.
+    `GET .../workflows/draft/nodes/{node}/last-run` also finds a node's execution within a whole run.
+  * Node types (draft runs and single node runs): `start`, `end`, `answer`, `llm`, `if-else`, `variable-aggregator`
+    (and the legacy `variable-assigner`), `assigner` (variable assigner v1 / v2), `template-transform`, `code`,
+    `http-request`, `list-operator`, `parameter-extractor`, `question-classifier`; error strategies (fail branch, default
+    value), retries, execution limits. Iteration and loop (P3), human input (P4), files (P5), tools, knowledge and agents
+    are not run yet: a graph with them is refused (`unsupported_node_type`).
+  * Draft variables: Dify's `/workflows/draft/variables...`, `/nodes/{node}/variables`, `/conversation-variables`,
+    `/system-variables`, `/environment-variables`; single node runs read missing values from them.
+  * `GET /v1/system-features`' `workflow_runtime` becomes `{"protocol_version": "1.14", "single_node_run": [...],
+    "draft_run": [...]}` (still only with a model runtime). New configuration: `COLLAB_RUNTIME_MAX_WORKERS`,
+    `COLLAB_RUNTIME_MAX_STEPS`, `COLLAB_RUNTIME_MAX_TIME_SECONDS` (and the code sandbox / SSRF proxy keys, "Draft runs").
+    New error code `runtime_service_not_configured` (400).
+  * Dify files written as JSON with UTF-16 surrogate-pair escapes (`"\uD83E\uDD16"`) import (they were refused).
 * 1.13 (additive; clients older than 1.13 are unaffected): **workflow runtime, single node run** (section 2, "Runtime
   (1.13)"): the first part of the Swift workflow runtime (a port of graphon 0.7.0, Dify 1.17.1's engine), with models
   invoked through Dify's plugin daemon.
@@ -325,7 +346,11 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | DELETE | `/v1/apps/{app}/api-keys/{key}` | privileged | 1.11: delete a key (the app is looked up first: `404` before `403`). |
 | GET, POST, DELETE | `/v1/apps/{app}/annotations...`, `/v1/apps/{app}/annotation-setting`, `.../annotation-reply/...`, `.../annotation-settings/{id}` | edit | 1.11: annotations (chatflows) and the Annotation Reply setting; `GET .../annotations/count` is **member**. |
 | GET, POST, PATCH, DELETE | `/v1/apps/{app}/workflows`, `.../workflows/publish`, `.../workflows/{id}`, `.../workflows/{id}/restore` | edit | 1.11: publish, versions (one version with its document: dify-sf only), restore; `GET /v1/apps/{app}/export?workflow_id=` exports one version. |
-| GET | `/v1/apps/{app}/statistics/...`, `/v1/apps/{app}/workflow/statistics/...`, `/v1/apps/{app}/workflow-app-logs`, `/v1/apps/{app}/workflow-runs/{run}...` | member | 1.11: Overview statistics, workflow logs and runs (empty until a runtime exists). |
+| GET | `/v1/apps/{app}/statistics/...`, `/v1/apps/{app}/workflow/statistics/...`, `/v1/apps/{app}/workflow-app-logs` | member | 1.11: Overview statistics and workflow logs (empty until published runs exist). |
+| POST | `/v1/apps/{app}/workflows/draft/run` | edit | 1.14: a draft run, Dify's SSE events ("Draft runs"). |
+| POST | `/v1/apps/{app}/workflow-runs/tasks/{task}/stop` | edit | 1.14: stop a draft run. |
+| GET | `/v1/apps/{app}/workflow-runs`, `.../workflow-runs/{run}`, `.../workflow-runs/{run}/node-executions` | member | 1.14: run history, a run, its node executions ("Draft runs"). |
+| GET, PATCH, PUT, DELETE | `/v1/apps/{app}/workflows/draft/variables...`, `.../draft/nodes/{node}/variables`, `.../draft/{conversation,system,environment}-variables` | edit | 1.14: draft variables ("Draft variables"). |
 | GET | `/v1/apps/{app}/chat-conversations...`, `/v1/apps/{app}/chat-messages` | edit | 1.11: chat logs (empty until a runtime exists). |
 | POST | `/v1/apps/{app}/feedbacks` | member | 1.11: a member's like / dislike of a message in the logs ("Overview statistics and logs"). |
 | POST | `/v1/apps/{app}/workflows/draft/nodes/{node}/run` | edit | 1.13: run one node of the draft ("Runtime"). |
@@ -949,8 +974,8 @@ These endpoints answer Dify's shapes for an app nobody has used, so clients call
   `average-app-interactions` (workflow apps only). Dify's charts fill the days without a row with zeros.
 * **`GET .../workflow-app-logs`** (member; workflow apps; `page` 1-99999, `limit` 1-100, `status`, `keyword`,
   `created_at__before` / `__after` ISO times, `detail`): `{"page", "limit", "total": 0, "has_more": false, "data": []}`.
-  **`GET .../workflow-runs/{run}`** (member): `404` "Workflow run not found"; **`.../workflow-runs/{run}/node-executions`**:
-  `{"data": []}` (Dify answers an unknown run so).
+  Runs: see "Draft runs (1.14)" (`GET .../workflow-runs/{run}` answers `404` "Workflow run not found" for an unknown run,
+  `.../node-executions` `{"data": []}`, as Dify).
 * **`GET .../chat-conversations`** (edit; chat modes; `page`, `limit`, `keyword`, `start`, `end`, `annotation_status`
   `annotated` / `not_annotated` / `all`, `sort_by` `created_at` / `-created_at` / `updated_at` / `-updated_at`): an empty
   page. **`GET .../chat-conversations/{id}`** and **`GET .../chat-messages?conversation_id=`** (edit): `404` "Conversation Not
@@ -1032,8 +1057,150 @@ is missing is `400 invalid_param` "Variable key {node}.#x.y# not found in user i
 **`GET /v1/apps/{app}/workflows/draft/nodes/{node}/last-run`** (member): the node's newest execution in this app (single
 runs now, runs of the whole draft later), in the shape above; `404 not_found` "last run not found" without one.
 
-**Deviations from Dify.** Single runs do not fill Dify's draft-variable cache yet (the variable inspect panel's values;
-values a node reads come from `inputs` only). Large values are never offloaded (`*_truncated` are always false).
+**Deviations from Dify.** Large values are never offloaded (`*_truncated` are always false). (1.14: single node runs of every
+node type the runtime has, except start nodes; they read values missing from `inputs` from the caller's draft variables
+and write their outputs back to them, as Dify.)
+
+### Draft runs (1.14)
+
+A draft run runs the whole draft as Dify's debugger does ("Test run"), on the Swift engine (`server/Sources/CollabRuntime/
+Engine`, a port of graphon 0.7.0's `GraphEngine`: ready queue and parallel branches, edge traversal and skip propagation,
+error strategies, retries, the execution limits layer, and Dify's response stream filter that orders the answer / end
+streams). Models go through the plugin daemon as in 1.13; code and Jinja2 through Dify's code sandbox; HTTP requests
+through Dify's SSRF proxy.
+
+**`POST /v1/apps/{app}/workflows/draft/run`** (edit; workflow apps, else `404 app_not_found`). Body: Dify's
+`{"inputs": {...}, "files": []}` (`inputs` required; files are not supported yet: a non-empty list is `400 invalid_param`).
+
+* **Consistency.** The server reads the document at its current seq N in one read and renders it as Dify's graph (as the
+  export, secret environment variables with their values); edits during the run do not affect it. It writes **no ops**: a
+  `workflow_runs` row (Dify's columns plus `doc_seq` = N, the graph it ran, the inputs) and one `workflow_node_executions`
+  row per node execution (`triggered_from` `workflow-run`; `index` 1, 2, ... in start order).
+* **Inputs** are checked as Dify's `_prepare_user_inputs`: one value per start variable in the start node's order (missing
+  optional ones take their default or null), required ones present, `number` parsed from text (`"1.5"` -> 1.5, `"7"` -> 7),
+  `select` among the options, text `max_length`, `checkbox` from `true/1/yes/on`, `json_object` an object; NUL characters
+  removed. `sys.*` are Dify's: `files`, `user_id` (the account), `app_id`, `timestamp`, `workflow_id` (the app id: the draft's
+  id), `workflow_run_id`.
+* **Refused before streaming** (no run is recorded): `400 invalid_param` (inputs, node data, a model that cannot be
+  prepared, an invalid graph), `400 unsupported_node_type` (a node type not run yet: see the changes above; the graph is
+  built whole, as Dify builds it), `400 model_runtime_not_configured`, `400 runtime_service_not_configured`.
+* **Answer** `200`, `Content-Type: text/event-stream`: Dify's frames, `data: {...}\n\n`, each `{"event", "workflow_run_id",
+  "task_id", "data"}` (Dify's member order; `task_id` is the run id in dify-sf), and `event: ping\n\n` after 10 s without a
+  frame. Events and `data` as Dify 1.17.1's `WorkflowResponseConverter`:
+  * `workflow_started` `{id, workflow_id, inputs (inputs + sys.*), created_at, reason: "initial"}`;
+  * `node_started` `{id (the node execution), node_id, node_type, title, index (1), predecessor_node_id (null), inputs (null),
+    inputs_truncated, created_at, extras, iteration_id, loop_id, agent_strategy}`;
+  * `text_chunk` `{text, from_variable_selector}`: the answer / end templates streamed in order (an end node streams its
+    outputs joined by newlines; an LLM's tokens as they come when its text is the next part of the template);
+  * `reasoning_chunk` `{message_id: null, reasoning, node_id, is_final}` (separated reasoning shown by a template);
+  * `node_retry` (a failed attempt that is retried: `status` `retry`, `retry_index`) and `node_finished` `{id, node_id,
+    node_type, title, index, predecessor_node_id, inputs, inputs_truncated, process_data, process_data_truncated, outputs
+    (a start node's are its inputs), outputs_truncated, status (succeeded | failed | exception), error, elapsed_time,
+    execution_metadata (null when empty), created_at, finished_at, files, iteration_id, loop_id}`;
+  * `workflow_finished` `{id, workflow_id, status (succeeded | partial-succeeded | failed | stopped), outputs, error,
+    elapsed_time, total_tokens, total_steps, created_by {id, name, email}, created_at, finished_at, exceptions_count,
+    files}`; the stream ends after it.
+* **Engine rules** (graphon's): nodes run as soon as all their incoming edges are decided and one was taken (joins wait,
+  skipped branches propagate), up to `COLLAB_RUNTIME_MAX_WORKERS` (10) at once; a branch node (if-else, question classifier,
+  any node with the fail-branch strategy) takes the edges of its handle. A failed node with `retry_config.retry_enabled`
+  (LLM, code, HTTP request) is retried after `retry_interval` ms up to `max_retries`; then its `error_strategy`: none fails
+  the run with the node's error, `fail-branch` continues on the `fail-branch` edge with outputs `error_message`,
+  `error_type`, `default-value` continues with the default values plus those. Every failed attempt counts in
+  `exceptions_count`, and a run with any ends `partial-succeeded` (as graphon). Limits: `COLLAB_RUNTIME_MAX_STEPS` (500 node
+  starts) and `COLLAB_RUNTIME_MAX_TIME_SECONDS` (3600) stop the run (`stopped`, "Aborted: Maximum execution steps exceeded:
+  501 > 500").
+* The run continues when the client goes away; **`POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop`** (edit; workflow
+  and chatflow apps) stops it: `workflow_finished` with `status` `stopped`, `error` "Aborted: User requested stop"; nodes
+  still running are recorded `failed` with that error (Dify's persistence). Answers `{"result": "success"}`, also for
+  unknown or finished tasks (as Dify).
+
+**`GET /v1/apps/{app}/workflow-runs`** (member; workflow and chatflow apps): Dify's `WorkflowRunPaginationResponse`
+`{"limit", "has_more", "data": [{id, version ("draft"), status, elapsed_time, total_tokens, total_steps,
+created_by_account {id, name, email}, created_at, finished_at, exceptions_count, retry_index (null)}]}`, newest first;
+query `limit` (1-100, 20), `last_id` (a run id: the page after it; unknown: `400 invalid_param` "Last workflow run not
+exists"), `status`, `triggered_from` (`debugging`, the default, or `app-run`, empty until published runs exist).
+**`GET .../workflow-runs/{run}`**: Dify's `WorkflowRunDetailResponse` (`id, version, graph, inputs, status, outputs, error,
+elapsed_time, total_tokens, total_steps, created_by_role, created_by_account, created_by_end_user, created_at,
+finished_at, exceptions_count`). **`GET .../workflow-runs/{run}/node-executions`**: `{"data": [...]}`, the run's node
+executions oldest first, in the single node run's shape (1.13).
+
+**Node types** (graphon's semantics; mocked nodes are never used outside tests):
+* `start`, `end`, `answer`: inputs into the pool under the start node; an end node's outputs are the run's outputs; answers
+  concatenate into `outputs.answer` (chatflows: P6).
+* `if-else`: Dify's cases and conditions (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`,
+  `not empty`, `in`, `not in`, `all of`, `=`, `≠`, `>`, `<`, `≥`, `≤`, `null`, `not null`, `exists`, `not exists`) with
+  Python's comparisons and graphon's errors; the legacy `conditions` shape; `selected_case_id` / handle `false` otherwise.
+* `variable-aggregator` / `variable-assigner` (legacy): the first existing variable (per group when grouping is on).
+* `assigner` (variable assigner; data `version` "1" = v1, otherwise v2, as Dify picks the class): v1 overwrites, appends to or
+  clears `assigned_variable_selector` from `input_variable_selector`; v2 applies `items` in order (`over-write`, `clear`,
+  `append`, `extend`, `set`, `+=`, `-=`, `*=`, `/=`, `remove-first`, `remove-last`), each item seeing the earlier ones,
+  with graphon's checks of operations, input types and values. Writes keep the variable's type and reach the pool before
+  later nodes (or a streaming answer that shows the variable) continue; `process_data` has the new values and
+  `__updated_variables`.
+* `list-operator`: on an array of strings, numbers or booleans: filter (templates allowed in values), extract the n-th item,
+  order (stable, Python's ordering), limit (Python's slice: `size` -1 drops the last item); outputs `result`,
+  `first_record`, `last_record`.
+* `template-transform` (Jinja2), `code` (`python3`, `javascript`) and the Jinja2 prompts of LLM nodes run in Dify's code
+  sandbox (`dify-sandbox` 0.2.15, `POST /v1/sandbox/run`, Dify's runner scripts byte for byte, inputs as base64 JSON, the
+  result between `<<RESULT>>` markers). Configuration: `COLLAB_SANDBOX_URL` (empty = no sandbox: such nodes are refused with
+  `runtime_service_not_configured`), `COLLAB_SANDBOX_KEY`, `COLLAB_SANDBOX_{CONNECT,READ,WRITE}_TIMEOUT_SECONDS`, and Dify's
+  limits `COLLAB_CODE_MAX_*` / `COLLAB_CODE_MIN_NUMBER`, `COLLAB_TEMPLATE_TRANSFORM_MAX_LENGTH`. Code outputs are validated
+  as graphon does (declared types, depth 5, string / array / number / precision limits, NUL removal) with Dify's messages
+  and `error_type` (`OutputValidationError`, `DepthLimitError`, `CodeNodeError`, `CodeExecutionError`).
+* `http-request` calls out through the SSRF proxy (`COLLAB_SSRF_PROXY_URL`, Dify's Squid; empty = direct calls, without
+  protection) with Dify's `COLLAB_HTTP_REQUEST_*` timeouts, size limits and SSL default; a destination the proxy refuses
+  fails the node with Dify's "blocked by SSRF protection" message. Requests are built as graphon builds them (templates in
+  URL, params, headers, auth and body; httpx 0.28's body encoding); `process_data.request` is the raw request with secrets
+  and the auth header masked. A non-2xx answer fails the node (`HTTPResponseCodeError`) only with a retry or an error
+  strategy. Deviations: no files (a `binary` body fails "cannot fetch file", form-data file fields are skipped, a file
+  response fails the node); JSON bodies are not repaired (Dify runs `json_repair`); no `traceparent` header; responses are
+  decoded by their charset or as UTF-8.
+* `question-classifier` (a branch node): one model call with Dify's classification prompt (chat: a system prompt and two
+  worked examples before the query; completion: one prompt); the answer's JSON names the class, whose edge (`class_id`)
+  is taken; outputs `class_name` (references rendered), `class_label` (default `CLASS n`), `class_id`, `usage`. An unknown
+  class id selects the first class; an answer without JSON fails the node (`could not find json block in the output.`).
+* `parameter-extractor`: with a model that can call tools and `reasoning_mode: function_call`, the model calls
+  `extract_parameters` with the parameters' JSON schema; otherwise Dify's JSON prompt (chat or completion); invoked with
+  `stream: false`. Outputs: each parameter normalized to its type (numbers parsed from text, the type's default when
+  missing or unusable) plus `__is_success`, `__reason`, `__usage`; a failed model call fails the node with `__is_success:
+  0`, `__reason: "Failed to invoke model"`, `__error`.
+* `llm` structured output (`structured_output_enabled` + `structured_output.schema`): models with the `structured-output`
+  feature get the schema natively (`json_schema`, and `response_format: json_schema` when offered); other models a JSON
+  `response_format` when offered and Dify's schema system prompt. The answer is parsed into `structured_output`; an answer
+  that is not a JSON object fails the node ("Failed to parse structured output: ..."). Deviations: a malformed answer is
+  repaired only by stripping code fences and taking the first complete JSON object (Dify uses `json_repair`); no
+  conversation memory or vision files; no token count before the call.
+
+**Deviations from Dify.** Chatflow debug runs (`/advanced-chat/workflows/draft/run`, conversations, messages, memory)
+come with P6. Files are not supported (P5). Values are never offloaded (`*_truncated` false). Dify's `index` of a
+`node_started` / `node_finished` frame is always 1 (its FIXME); dify-sf sends the same. A run's `task_id` is its run id.
+Node executions are stored when they end (Dify also stores the start), and retried attempts are not kept as history.
+
+### Draft variables (1.14)
+
+Dify 1.17.1's draft variable API under `/v1/apps/{app}/workflows/draft/...` (edit; workflow and chatflow apps). Draft
+variables are **per account and app** (as Dify), written by draft runs and single node runs with Dify's `DraftVariableSaver`
+rules (an LLM's `finish_reason` is not saved; a start node's `sys.` values; the variable assigner saves the conversation
+variables it wrote; nodes inside an iteration or loop save nothing; `__dummy__` marks nodes without other outputs), stored
+in `workflow_draft_variables` beside the document (with the doc seq and node execution they came from), never ops.
+
+* `GET .../draft/variables?page=1..100000&limit=1..100` -> `{items, total}` without values: `{id, type (node | sys |
+  conversation), name, description, selector, value_type (integer and float shown as number), edited, visible,
+  is_truncated: false}`, newest first; `total` on page 1 only (else null). `DELETE` (204) removes all.
+* `GET` / `DELETE .../draft/nodes/{node}/variables` -> `{items}` with values (`value`, `full_content: null`); node `sys` or
+  `conversation`: `400 invalid_param` (Dify's message).
+* `GET` / `PATCH {name?, value?}` / `DELETE .../draft/variables/{id}`: another account's id or not a UUID: `404 not_found`
+  "variable not found, id=..."; `PATCH` marks `edited`, the value must fit the stored type.
+* `PUT .../draft/variables/{id}/reset`: a conversation variable back to the draft's default; a node or `sys` variable back
+  to its node execution's stored outputs; `204` when the variable is gone.
+* `GET .../draft/conversation-variables` (filled from the document first, existing values kept), `.../system-variables`,
+  `.../environment-variables` (from the document at its current seq; secret values masked) -> `{items}`.
+* Single node runs (1.13) read values their `inputs` lack from the caller's draft variables (Dify's variable loader).
+
+Deviations: `PATCH` of a non-editable variable, a type mismatch or a rename onto an existing name, and resetting a
+non-editable system variable answer `400 invalid_param` (Dify: 500). Values are never offloaded. No `POST` for environment
+or conversation variables: in dify-sf those are document edits (protocol 1.7). Environment secrets are masked (Dify
+returns the stored value).
 
 ### Model providers (1.9)
 
@@ -1200,7 +1367,7 @@ Non-2xx responses carry `{"error":{"code":"...","message":"..."}}`.
 | 409 | `outstanding_ops`, `cseq_used`, `conflict` | `POST /replace`: the client has unresolved ops; the `cseq` is used; an op of the replacement was refused (nothing committed). | Resolve the ops, then retry with the next cseq. |
 | 400 | `version_unconfirmed` | `POST /replace`: the file's DSL version needs the user's confirmation (Dify's pending import). | Ask, then repeat with `confirm=true`. |
 | 400 | `credential_validation_failed` | 1.9: the model provider refused the credentials (or could not be reached) when saving them; the message is the short reason. | Tell the user; fix the credentials. |
-| 400 | `invalid_param`, `unsupported_node_type`, `model_runtime_not_configured` | 1.13, single node run: missing inputs or a model that cannot be prepared (Dify's message); a node type the server does not run yet; no plugin daemon configured. | Tell the user. |
+| 400 | `invalid_param`, `unsupported_node_type`, `model_runtime_not_configured`, `runtime_service_not_configured` | 1.13 / 1.14, single node and draft runs: missing or invalid inputs, invalid node data or a model that cannot be prepared (Dify's message); a node type the server does not run yet; no plugin daemon configured; no code sandbox / HTTP proxy configured for a node that needs one. | Tell the user. |
 | 409 | `credential_name_exists` | 1.9: a credential name in use for this provider (or custom model). | Pick another name. |
 | 503 | `secrets_key_missing` | 1.9: the server has no secrets key, so it refuses to store secrets (credentials, secret environment variables). | Tell the operator (set `COLLAB_SECRETS_KEY`); do not retry. |
 | 413 | `payload_too_large` | Body over 1 MiB. | Split the batch. |

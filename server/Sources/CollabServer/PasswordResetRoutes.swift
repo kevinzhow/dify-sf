@@ -143,12 +143,15 @@ extension Routes {
             var workflow_runtime: WorkflowRuntime?
         }
         struct WorkflowRuntime: Encodable {
-            var protocol_version = "1.13"
+            var protocol_version = "1.14"
             /// The node types `POST .../workflows/draft/nodes/{node}/run` runs.
             var single_node_run: [String]
+            /// 1.14: the node types a draft run (`POST .../workflows/draft/run`) runs; a graph with others is refused.
+            var draft_run: [String]
         }
         let mail = config.mail.isConfigured
-        let runtime = runtimeConfigured ? WorkflowRuntime(single_node_run: Self.singleRunNodeTypes) : nil
+        let runtime = runtimeConfigured
+            ? WorkflowRuntime(single_node_run: Self.singleRunNodeTypes, draft_run: Self.draftRunNodeTypes) : nil
         return try json(Features(is_email_setup: mail, enable_change_email: mail, workflow_runtime: runtime))
     }
 

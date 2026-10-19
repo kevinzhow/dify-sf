@@ -280,3 +280,32 @@ struct DSLTests {
         #expect(try JSONDecoder().decode(Value.self, from: data) == .map(["t": .double(0.7), "n": .int(3)]))
     }
 }
+
+/// A Dify file written as JSON escapes emoji as UTF-16 surrogate pairs, which YAML's double-quoted strings refuse.
+@Suite struct DSLSurrogateTests {
+    static let json = #"""
+    {"app": {"name": "Bot \uD83E\uDD16", "mode": "workflow", "icon": "\uD83E\uDD16", "description": "a \\uD83E stays text, lone \uD83E"},
+     "kind": "app", "version": "0.3.1",
+     "workflow": {"graph": {"nodes": [{"id": "s", "type": "custom", "position": {"x": 0, "y": 0},
+       "data": {"type": "start", "title": "Start \uD83D\uDE80", "variables": []}}], "edges": []},
+       "features": {}, "environment_variables": [], "conversation_variables": []}}
+    """#
+
+    @Test func jsonWithSurrogatePairsImports() throws {
+        let imported = try DifyDSL.importYAML(Self.json)
+        #expect(imported.document.nodes.values.first?.title == "Start 🚀")
+        guard case .map(let top) = try DifyDSL.parseYAML(Self.json), case .map(let app)? = top["app"] else {
+            Issue.record("no app")
+            return
+        }
+        #expect(app["name"] == .string("Bot 🤖"))
+        #expect(app["icon"] == .string("🤖"))
+        // an escaped backslash before "u" is text; a lone surrogate becomes U+FFFD
+        #expect(app["description"] == .string("a \\uD83E stays text, lone \u{FFFD}"))
+    }
+
+    @Test func yamlIsUntouched() {
+        let yaml = "app:\n  name: 'x \\uD83E'\n"
+        #expect(DifyDSL.yamlReadable(yaml) == yaml)
+    }
+}

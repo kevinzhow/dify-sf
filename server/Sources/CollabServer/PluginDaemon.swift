@@ -114,12 +114,18 @@ struct PluginDaemonModelRuntime: ModelRuntime {
 
     func invokeLLM(_ instance: ModelInstance, promptMessages: [PromptMessage], parameters: JSONObject, stop: [String],
                    user: String?) -> AsyncThrowingStream<LLMResultChunk, any Error> {
+        invokeLLM(instance, promptMessages: promptMessages, parameters: parameters, tools: [], stop: stop, stream: true, user: user)
+    }
+
+    func invokeLLM(_ instance: ModelInstance, promptMessages: [PromptMessage], parameters: JSONObject, tools: [PromptMessageTool],
+                   stop: [String], stream streamFlag: Bool, user: String?) -> AsyncThrowingStream<LLMResultChunk, any Error> {
         let (stream, continuation) = AsyncThrowingStream<LLMResultChunk, any Error>.makeStream()
         let task = Task {
             do {
                 let (pluginId, name) = try Self.split(instance.provider)
                 let data = PluginDaemonWire.llmInvokeData(provider: name, model: instance.modelName, credentials: instance.credentials,
-                                                          promptMessages: promptMessages, parameters: parameters, stop: stop)
+                                                          promptMessages: promptMessages, parameters: parameters, tools: tools,
+                                                          stop: stop, stream: streamFlag)
                 let body = PluginDaemonWire.dispatchBody(userId: user, appId: appId, data: data)
                 for try await chunk in daemon.dispatch("llm/invoke", pluginId: pluginId, body: body) {
                     continuation.yield(LLMResultChunk(json: chunk))

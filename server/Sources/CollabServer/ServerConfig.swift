@@ -72,6 +72,15 @@ public struct ServerConfig: Sendable {
     public var pluginDaemonTenant: String
     /// Bound on one daemon request, streaming included (`COLLAB_PLUGIN_DAEMON_TIMEOUT_SECONDS`; Dify's 600).
     public var pluginDaemonTimeoutSeconds: Int
+    /// Protocol 1.14, draft runs: nodes running at once (`COLLAB_RUNTIME_MAX_WORKERS`; Dify's `GRAPH_ENGINE_MAX_WORKERS`, 10),
+    /// the step limit (`COLLAB_RUNTIME_MAX_STEPS`; Dify's `WORKFLOW_MAX_EXECUTION_STEPS`, 500) and the time limit in seconds
+    /// (`COLLAB_RUNTIME_MAX_TIME_SECONDS`; Dify's `WORKFLOW_MAX_EXECUTION_TIME`, 3600).
+    public var runtimeMaxWorkers: Int
+    public var runtimeMaxSteps: Int
+    public var runtimeMaxTimeSeconds: Double
+    /// Protocol 1.14: the code sandbox (`COLLAB_SANDBOX_URL` / `_KEY`), the SSRF proxy (`COLLAB_SSRF_PROXY_URL`) and Dify's
+    /// code / template / HTTP request limits (RuntimeServiceClients.swift).
+    public var runtimeServices: RuntimeServicesConfig
 
     /// The tenant id when `COLLAB_PLUGIN_DAEMON_TENANT` is unset (one workspace per server).
     public static let defaultPluginDaemonTenant = "00000000-0000-0000-0000-000000000001"
@@ -115,6 +124,10 @@ public struct ServerConfig: Sendable {
         pluginDaemonTenant = reader.string(forKey: "collab.pluginDaemon.tenant", default: Self.defaultPluginDaemonTenant)
             .trimmingCharacters(in: .whitespaces)
         pluginDaemonTimeoutSeconds = reader.int(forKey: "collab.pluginDaemon.timeoutSeconds", default: 600)
+        runtimeMaxWorkers = max(1, reader.int(forKey: "collab.runtime.maxWorkers", default: 10))
+        runtimeMaxSteps = max(1, reader.int(forKey: "collab.runtime.maxSteps", default: 500))
+        runtimeMaxTimeSeconds = Double(max(1, reader.int(forKey: "collab.runtime.maxTimeSeconds", default: 3600)))
+        runtimeServices = RuntimeServicesConfig(reader: reader)
     }
 }
 

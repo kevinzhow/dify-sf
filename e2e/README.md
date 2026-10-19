@@ -41,6 +41,8 @@ Everything is Python standard library only (`python3 -I`), no virtual environmen
 * `lib/runtrace.py`: the normalized trace format and the comparison, shared by all of the above.
 * `stack.sh`: `stub-up|ref-up|ours-up|...-down|down|mem|status`; `session.sh`: one whole session (up, setup, tests,
   memory, always down).
+* `perf_draft_run.py` (`session.sh ... perf`): a 20-node draft run on dify-sf (LLM nodes on the stub, code and templates in
+  the sandbox, two parallel branches), timed per run, with the server container's memory.
 
 ## Running
 

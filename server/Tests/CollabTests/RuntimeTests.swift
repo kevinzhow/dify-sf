@@ -287,13 +287,14 @@ struct RuntimeLLMTests {
     }
 
     @Test func unsupportedNodesAndStructuredOutput() async throws {
-        let g = try graph([("code", ["type": "code", "title": "Code"]), ("llm", llmData([["role": "user", "text": "hi"]], extra: [
+        let g = try graph([("code", ["type": "tool", "title": "Code"]), ("llm", llmData([["role": "user", "text": "hi"]], extra: [
             "structured_output_enabled": true, "structured_output": ["schema": ["type": "object"]],
         ]))])
         let run = SingleStepRun(graph: g, environmentVariables: [], factory: BuiltinNodeFactory(models: FakeModels()))
         await #expect(throws: UnsupportedNodeType.self) { _ = try await run.run(nodeId: "code", userInputs: [:], userId: nil, appId: nil) }
         await #expect(throws: SingleStepRun.NodeNotFound.self) { _ = try await run.run(nodeId: "nope", userInputs: [:], userId: nil, appId: nil) }
         let e = try await run.run(nodeId: "llm", userInputs: [:], userId: nil, appId: nil)
-        #expect(e.status == .failed && e.error == "Structured output is not supported by this runtime yet.")
+        // Structured output (prompt-based for a model without the feature): "Hello world" is no JSON object.
+        #expect(e.status == .failed && e.error == "Failed to parse structured output: Failed to parse structured output: Hello world")
     }
 }

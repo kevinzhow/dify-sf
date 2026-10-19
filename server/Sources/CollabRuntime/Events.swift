@@ -50,6 +50,27 @@ public enum MetadataKey {
     public static let totalPrice = "total_price"
     public static let currency = "currency"
     public static let errorStrategy = "error_strategy"
+    public static let iterationId = "iteration_id"
+    public static let loopId = "loop_id"
+}
+
+/// `NodeExecutionType`: how the engine treats a node.
+public enum NodeExecutionType: String, Sendable, Hashable {
+    /// Regular nodes that run and produce outputs.
+    case executable
+    /// Answer and End: their templates are streamed in order (the response stream filter).
+    case response
+    /// Nodes that choose one outgoing handle (if-else, question classifier, fail-branch nodes).
+    case branch
+    /// Iteration and loop.
+    case container
+    /// Start nodes (entry points).
+    case root
+}
+
+/// `NodeState`: of a node or an edge during a run.
+public enum NodeState: String, Sendable, Hashable {
+    case unknown, taken, skipped
 }
 
 /// `NodeRunResult`: what a node produced. Mappings keep Python's dict order.
@@ -64,6 +85,10 @@ public struct NodeRunResult: Sendable {
     public var error = ""
     public var errorType = ""
     public var retryIndex = 0
+    /// The segment types of outputs whose type is not what their value implies (graphon's nodes return `Segment`s: an
+    /// aggregator's `output` keeps its variable's type, a list operator's empty `result` is still `array[string]`). The
+    /// engine stores these outputs with that type.
+    public var outputTypes: [String: SegmentType] = [:]
 
     public init(status: NodeExecutionStatus = .pending, inputs: JSONObject = JSONObject(), processData: JSONObject = JSONObject(),
                 outputs: JSONObject = JSONObject(), metadata: JSONObject = JSONObject(), llmUsage: LLMUsage = .empty,
@@ -87,6 +112,9 @@ public enum NodeEvent: Sendable {
     case streamReasoning(selector: [String], chunk: String, isFinal: Bool)
     /// `RunRetrieverResourceEvent`: the context an LLM node read.
     case retrieverResource(resources: [JSONValue], context: String)
+    /// `VariableUpdatedEvent`: the node changed a variable (a conversation variable, by the variable assigner); the engine
+    /// writes it to the pool before downstream nodes run.
+    case variableUpdated(selector: [String], value: Segment)
     /// `StreamCompletedEvent`: the node's result.
     case completed(NodeRunResult)
 }
@@ -97,14 +125,37 @@ public enum GraphNodeEvent: Sendable {
     case streamChunk(executionId: String, nodeId: String, selector: [String], chunk: String, isFinal: Bool)
     case reasoningChunk(executionId: String, nodeId: String, selector: [String], chunk: String, isFinal: Bool)
     case retrieverResource(executionId: String, nodeId: String, resources: [JSONValue], context: String)
+    case variableUpdated(executionId: String, nodeId: String, selector: [String], value: Segment)
     case succeeded(executionId: String, nodeId: String, startAt: Date, finishedAt: Date, result: NodeRunResult)
     case failed(executionId: String, nodeId: String, startAt: Date, finishedAt: Date, result: NodeRunResult, error: String)
+    /// `NodeRunExceptionEvent`: a failure an error strategy turned into outputs (the engine makes these).
+    case exception(executionId: String, nodeId: String, startAt: Date, finishedAt: Date, result: NodeRunResult, error: String)
+    /// `NodeRunRetryEvent`: a failed attempt that is retried (`retryIndex` from 1; the engine makes these).
+    case retry(executionId: String, nodeId: String, startAt: Date, result: NodeRunResult, error: String, retryIndex: Int)
 
     /// The final result of `succeeded` / `failed` (`is_node_result_event`).
     public var result: NodeRunResult? {
         switch self {
-        case .succeeded(_, _, _, _, let r), .failed(_, _, _, _, let r, _): return r
+        case .succeeded(_, _, _, _, let r), .failed(_, _, _, _, let r, _), .exception(_, _, _, _, let r, _): return r
         default: return nil
+        }
+    }
+
+    public var nodeId: String {
+        switch self {
+        case .started(_, let n, _, _, _), .streamChunk(_, let n, _, _, _), .reasoningChunk(_, let n, _, _, _),
+             .retrieverResource(_, let n, _, _), .variableUpdated(_, let n, _, _), .succeeded(_, let n, _, _, _),
+             .failed(_, let n, _, _, _, _), .exception(_, let n, _, _, _, _), .retry(_, let n, _, _, _, _):
+            return n
+        }
+    }
+
+    public var executionId: String {
+        switch self {
+        case .started(let x, _, _, _, _), .streamChunk(let x, _, _, _, _), .reasoningChunk(let x, _, _, _, _),
+             .retrieverResource(let x, _, _, _), .variableUpdated(let x, _, _, _), .succeeded(let x, _, _, _, _),
+             .failed(let x, _, _, _, _, _), .exception(let x, _, _, _, _, _), .retry(let x, _, _, _, _, _):
+            return x
         }
     }
 }

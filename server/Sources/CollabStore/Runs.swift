@@ -83,21 +83,23 @@ extension PostgresStore {
                 WHERE e.doc_id = \(doc) AND e.node_id = \(nodeId)
                 ORDER BY e.created_at DESC, e.id DESC LIMIT 1
                 """, logger: self.logger)
-            for try await row in rows {
-                let r = row.makeRandomAccess()
-                var e = StoredNodeExecution(
-                    id: try r[0].decode(String.self), docId: try r[1].decode(String.self), workflowRunId: try r[2].decode(String?.self),
-                    triggeredFrom: try r[3].decode(String.self), docSeq: Int(try r[4].decode(Int64.self)), index: Int(try r[5].decode(Int32.self)),
-                    predecessorNodeId: try r[6].decode(String?.self), nodeId: try r[7].decode(String.self), nodeType: try r[8].decode(String.self),
-                    title: try r[9].decode(String.self), inputs: try r[10].decode(String?.self), processData: try r[11].decode(String?.self),
-                    outputs: try r[12].decode(String?.self), status: try r[13].decode(String.self), error: try r[14].decode(String?.self),
-                    elapsedTime: try r[15].decode(Double.self), executionMetadata: try r[16].decode(String?.self),
-                    createdBy: try r[17].decode(String?.self), createdAt: try r[18].decode(Date.self), finishedAt: try r[19].decode(Date?.self))
-                e.createdByName = try r[20].decode(String?.self)
-                e.createdByEmail = try r[21].decode(String?.self)
-                return e
-            }
+            for try await row in rows { return try Self.decodeNodeExecution(row) }
             return nil
         }
+    }
+
+    static func decodeNodeExecution(_ row: PostgresRow) throws -> StoredNodeExecution {
+        let r = row.makeRandomAccess()
+        var e = StoredNodeExecution(
+            id: try r[0].decode(String.self), docId: try r[1].decode(String.self), workflowRunId: try r[2].decode(String?.self),
+            triggeredFrom: try r[3].decode(String.self), docSeq: Int(try r[4].decode(Int64.self)), index: Int(try r[5].decode(Int32.self)),
+            predecessorNodeId: try r[6].decode(String?.self), nodeId: try r[7].decode(String.self), nodeType: try r[8].decode(String.self),
+            title: try r[9].decode(String.self), inputs: try r[10].decode(String?.self), processData: try r[11].decode(String?.self),
+            outputs: try r[12].decode(String?.self), status: try r[13].decode(String.self), error: try r[14].decode(String?.self),
+            elapsedTime: try r[15].decode(Double.self), executionMetadata: try r[16].decode(String?.self),
+            createdBy: try r[17].decode(String?.self), createdAt: try r[18].decode(Date.self), finishedAt: try r[19].decode(Date?.self))
+        e.createdByName = try r[20].decode(String?.self)
+        e.createdByEmail = try r[21].decode(String?.self)
+        return e
     }
 }

@@ -8,8 +8,60 @@ import Yams
 extension DifyDSL {
     /// A YAML document as a `Value` (the same reading as `importYAML`).
     public static func parseYAML(_ yaml: String) throws -> Value {
-        guard let node = try Yams.compose(yaml: yaml) else { throw DSLError("empty document") }
+        guard let node = try Yams.compose(yaml: yamlReadable(yaml)) else { throw DSLError("empty document") }
         return try value(of: node)
+    }
+
+    /// A Dify file is YAML, or JSON (YAML's subset), as some tools and Dify's own JSON export write it. JSON escapes
+    /// characters outside the Basic Multilingual Plane as UTF-16 surrogate pairs (`"\uD83E\uDD16"` for an emoji), which
+    /// YAML's double-quoted strings do not allow (libyaml refuses them). For a JSON document each escaped pair becomes
+    /// YAML's 32-bit escape (`\U0001F916`) and a lone surrogate becomes U+FFFD (what Python's decoder would keep is not
+    /// valid Unicode text). YAML documents, and everything outside JSON strings, are left as they are.
+    public static func yamlReadable(_ text: String) -> String {
+        guard text.drop(while: { $0.isWhitespace || $0 == "\u{FEFF}" }).first == "{", text.contains("\\u") else { return text }
+        var out = String.UnicodeScalarView()
+        let s = Array(text.unicodeScalars)
+        var i = 0
+        var inString = false
+        func hex4(_ at: Int) -> UInt32? {
+            guard at + 4 <= s.count else { return nil }
+            var v: UInt32 = 0
+            for k in at..<(at + 4) {
+                guard let d = Character(s[k]).hexDigitValue else { return nil }
+                v = v * 16 + UInt32(d)
+            }
+            return v
+        }
+        while i < s.count {
+            let c = s[i]
+            if !inString {
+                if c == "\"" { inString = true }
+                out.append(c)
+                i += 1
+                continue
+            }
+            if c == "\"" { inString = false; out.append(c); i += 1; continue }
+            guard c == "\\", i + 1 < s.count else { out.append(c); i += 1; continue }
+            let next = s[i + 1]
+            if next == "u", let hi = hex4(i + 2), (0xD800...0xDFFF).contains(hi) {
+                if hi <= 0xDBFF, i + 7 < s.count, s[i + 6] == "\\", s[i + 7] == "u",
+                   let lo = hex4(i + 8), (0xDC00...0xDFFF).contains(lo) {
+                    let scalar = 0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00)
+                    let h = String(scalar, radix: 16, uppercase: true)
+                    out.append(contentsOf: ("\\U" + String(repeating: "0", count: 8 - h.count) + h).unicodeScalars)
+                    i += 12
+                } else {
+                    out.append(contentsOf: "\\uFFFD".unicodeScalars)
+                    i += 6
+                }
+                continue
+            }
+            // Any other escape (including `\\`) is copied as a pair, so an escaped backslash never starts an escape.
+            out.append(c)
+            out.append(next)
+            i += 2
+        }
+        return String(out)
     }
 
     /// Dify 1.17.1's `CURRENT_APP_DSL_VERSION`.

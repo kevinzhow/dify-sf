@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # One differential-test session from start to stop; the stacks are always taken down at the end (also on failure).
 #
-#   e2e/session.sh [ref] [ours] [compare] [self] [difysf] [conformance]
+#   e2e/session.sh [ref] [ours] [compare] [self] [difysf] [perf] [conformance]
 #     ref         stack R (Dify 1.17.1) + llmstub; setup_ref.py (account, plugin, stub model, probe run)
 #     ours        stack P (dify-sf, profile runtime); setup_ours.py (plugin into dify-sf's daemon, invoke via daemon;
 #                 with ref also through Dify's daemon)
 #     compare     e2e/compare.py over the live cases (needs ref); `self` adds Dify-vs-Dify, `difysf` adds Dify-vs-dify-sf
 #                 (needs ours)
+#     perf        a 20-node draft run on stack P, timed, with the server's memory (needs ours; e2e/perf_draft_run.py)
 #     conformance the client conformance test against stack P's server (needs ours and DIFYSF_CLIENT_DIR, a checkout of
 #                 dify-sf-client; dart on PATH)
 # Memory of every container is measured after each phase (e2e/.out/mem.tsv). Needs DIFY_DOCKER_DIR for ref. On a
@@ -50,6 +51,11 @@ if want compare; then
   step "compare ${flags[*]}"; $PY "$E2E/compare.py" "${flags[@]}" 2>&1 | tee "$OUT/compare.log"
   [ "${PIPESTATUS[0]}" = 0 ] || status=1
   "$STACK" mem after-compare
+fi
+if want perf; then
+  step "perf: 20-node draft run on stack P"; $PY "$E2E/perf_draft_run.py" 2>&1 | tee "$OUT/perf.log"
+  [ "${PIPESTATUS[0]}" = 0 ] || status=1
+  "$STACK" mem after-perf
 fi
 if want conformance; then
   step "client conformance against stack P"

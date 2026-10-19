@@ -4,7 +4,7 @@
 // (prompt_messages_to_prompt_for_saving). See ../../NOTICE.md.
 //
 // Not ported yet: conversation memory (Dify gives single-step runs none), vision and multimodal output files (no file
-// storage before P5), structured output, LLM polling, Jinja2 prompts without a renderer (they need the code sandbox).
+// storage before P5), LLM polling, Jinja2 prompts without a renderer (they need the code sandbox).
 
 import Foundation
 
@@ -30,6 +30,7 @@ public struct LLMNode: RuntimeNode {
     let defaultQuerySelector = ["sys", "query"]
 
     public var nodeType: String { NodeType.llm }
+    public var retryEnabled: Bool { data.base.retryConfig.retryEnabled }
     public var base: BaseNodeData { data.base }
 
     public init(id: String, data: LLMNodeData, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime,
@@ -86,11 +87,18 @@ public struct LLMNode: RuntimeNode {
 
             let promptMessages = try await fetchPromptMessages(sysQuery: resolveMemoryQuery(pool), context: contextText ?? "",
                                                                template: template, pool: pool)
+            // Structured output (Dify's invoke_llm_with_structured_output): the schema goes to the model natively or as a
+            // system prompt; the whole answer is parsed into `structured_output` at the end.
+            var invokeModel = model
+            var invokeMessages = promptMessages
             if data.structuredOutputEnabled {
-                throw NodeError("LLMNodeError", "Structured output is not supported by this runtime yet.")
+                let schemaObject = try LLMPrompting.structuredOutputSchema(data.structuredOutput)
+                (invokeModel.parameters, invokeMessages) = LLMPrompting.applyStructuredOutput(
+                    schema: schemaObject, model: schema, provider: model.provider, parameters: model.parameters, messages: promptMessages)
             }
 
-            let completed = try await invokeStreaming(model, promptMessages, stop: model.stop, context: context, emit: emit)
+            var completed = try await invokeStreaming(invokeModel, invokeMessages, stop: model.stop, context: context, emit: emit)
+            if data.structuredOutputEnabled { completed.structuredOutput = try LLMPrompting.parseStructuredOutput(completed.rawText) }
             usage = completed.usage
             let cleanText = data.reasoningFormat == "tagged" ? completed.text
                 : Reasoning.split(completed.text, format: data.reasoningFormat).clean
@@ -134,6 +142,8 @@ public struct LLMNode: RuntimeNode {
 
     struct Completed {
         var text: String
+        /// Everything the model answered (before any reasoning split).
+        var rawText = ""
         var reasoning: String
         var usage: LLMUsage
         var finishReason: String?
@@ -205,7 +215,7 @@ public struct LLMNode: RuntimeNode {
             usage.timeToFirstToken = Self.round3(Self.seconds(firstToken - start))
             usage.timeToGenerate = Self.round3(Self.seconds(end - firstToken))
         }
-        return Completed(text: data.reasoningFormat == "separated" ? clean : fullText, reasoning: reasoning, usage: usage,
+        return Completed(text: data.reasoningFormat == "separated" ? clean : fullText, rawText: fullText, reasoning: reasoning, usage: usage,
                          finishReason: finishReason, structuredOutput: structuredOutput)
     }
 

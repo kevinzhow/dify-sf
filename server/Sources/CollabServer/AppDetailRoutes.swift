@@ -58,8 +58,8 @@ extension Routes {
         }
         // Logs (empty until a runtime exists).
         apps.get(":app", "workflow-app-logs") { req in await handle(req) { try await workflowLogs(req) } }
-        apps.get(":app", "workflow-runs", ":run") { req in await handle(req) { try await workflowRun(req) } }
-        apps.get(":app", "workflow-runs", ":run", "node-executions") { req in await handle(req) { try await nodeExecutions(req) } }
+        apps.get(":app", "workflow-runs", ":run") { req in await handle(req) { try await workflowRunDetail(req) } }
+        apps.get(":app", "workflow-runs", ":run", "node-executions") { req in await handle(req) { try await workflowRunNodeExecutions(req) } }
         apps.get(":app", "chat-conversations") { req in await handle(req) { try await chatConversations(req) } }
         apps.get(":app", "chat-conversations", ":conversation") { req in await handle(req) { try await chatConversation(req) } }
         apps.get(":app", "chat-messages") { req in await handle(req) { try await chatMessages(req) } }
@@ -809,20 +809,6 @@ extension Routes {
             }
         }
         return try json(JSON.object(["page": .int(page), "limit": .int(limit), "total": 0, "has_more": false, "data": .array([])]))
-    }
-
-    /// `GET /v1/apps/{app}/workflow-runs/{run}` (any member): no runs yet -> `404`.
-    private func workflowRun(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req)
-        _ = try await appOfMode(req, p, Self.workflowModes)
-        throw ServerError.missing("Workflow run not found")
-    }
-
-    /// `GET /v1/apps/{app}/workflow-runs/{run}/node-executions` (any member): `{data: []}` (Dify answers an unknown run so).
-    private func nodeExecutions(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req)
-        _ = try await appOfMode(req, p, Self.workflowModes)
-        return try json(JSON.object(["data": .array([])]))
     }
 
     static let chatModes = ["chat", "agent-chat", "advanced-chat", "agent"]

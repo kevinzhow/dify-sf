@@ -43,7 +43,8 @@ public struct GraphConfig: Sendable {
     public init(json: JSONValue) throws {
         self.json = json
         guard let nodes = json["nodes"]?.array else { throw Invalid(description: "graph has no nodes") }
-        self.nodes = try nodes.map { n in
+        // Editor-only note widgets (`type: custom-note`) are never graph nodes (graphon's `_filter_canvas_only_nodes`).
+        self.nodes = try nodes.filter { $0["type"]?.string != "custom-note" }.map { n in
             guard let id = n["id"]?.string, let data = n["data"]?.object else { throw Invalid(description: "node without id or data") }
             return NodeConfig(id: id, data: data, parentId: n["parentId"]?.string)
         }

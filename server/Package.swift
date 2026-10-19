@@ -8,6 +8,7 @@ let package = Package(
         .executable(name: "collab-server", targets: ["collab-server"]),
         .executable(name: "collab-sim", targets: ["collab-sim"]),
         .executable(name: "collab-bench", targets: ["collab-bench"]),
+        .executable(name: "collab-runtime", targets: ["collab-runtime"]),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", exact: "5.0.0-beta.4"),
@@ -49,6 +50,10 @@ let package = Package(
         // variable pool, nodes, single-step runs, the plugin daemon's wire format. Pure: no I/O (models come through a
         // protocol the server implements).
         .target(name: "CollabRuntime", exclude: ["NOTICE.md", "LICENSE-graphon.txt"]),
+        // Golden-trace replay: Dify's sample workflows run on the Swift engine with Dify's mock nodes, normalized and
+        // compared as e2e/lib/runtrace.py does (used by the tests and by `collab-runtime replay`).
+        .target(name: "CollabRuntimeReplay", dependencies: ["CollabRuntime", .product(name: "Yams", package: "Yams")]),
+        .executableTarget(name: "collab-runtime", dependencies: ["CollabRuntimeReplay"]),
         // Postgres persistence (plain SQL via postgres-nio).
         .target(name: "CollabStore", dependencies: [
             "CollabCore",
@@ -80,6 +85,7 @@ let package = Package(
         .executableTarget(name: "collab-bench", dependencies: ["CollabHarness"]),
         .testTarget(name: "CollabTests", dependencies: [
             "CollabCore", "CollabInvariants", "CollabSim", "CollabClientKit", "CollabStore", "CollabServer", "CollabDSL", "CollabModels", "CollabRuntime",
+            "CollabRuntimeReplay",
             .product(name: "PostgresNIO", package: "postgres-nio"),
             .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Configuration", package: "swift-configuration"),

@@ -72,7 +72,7 @@ public enum DifyDSL {
 
     public static func importYAML(_ yaml: String, newId: () -> String = newVariableId,
                                   newSecretRef: () -> String = newSecretRef) throws -> Imported {
-        guard let node = try Yams.compose(yaml: yaml) else { throw DSLError("empty document") }
+        guard let node = try Yams.compose(yaml: yamlReadable(yaml)) else { throw DSLError("empty document") }
         return try importValue(value(of: node), newId: newId, newSecretRef: newSecretRef)
     }
 

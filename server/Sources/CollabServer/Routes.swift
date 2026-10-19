@@ -12,6 +12,8 @@ struct Routes: Sendable {
     let passwordResetLimits = PasswordResetLimits()
     /// Changing the email (protocol 1.12): Dify's mail and code limits (per process).
     let changeEmailLimits = ChangeEmailLimits()
+    /// Draft runs in progress (protocol 1.14), by task id.
+    let runs = WorkflowRunRegistry()
     let registry: DocumentRegistry
     let store: PostgresStore
     let config: ServerConfig
@@ -64,6 +66,8 @@ struct Routes: Sendable {
         registerApps(on: r)
         registerAppDetail(on: r)
         registerRuntime(on: r)
+        registerRuns(on: r)
+        registerDraftVariables(on: r)
     }
 
     // MARK: - Plumbing

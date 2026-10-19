@@ -17,7 +17,8 @@ public enum PluginDaemonWire {
 
     /// `dispatch/llm/invoke`'s data.
     public static func llmInvokeData(provider: String, model: String, credentials: JSONObject, promptMessages: [PromptMessage],
-                                     parameters: JSONObject, stop: [String], stream: Bool = true) -> JSONObject {
+                                     parameters: JSONObject, tools: [PromptMessageTool] = [], stop: [String],
+                                     stream: Bool = true) -> JSONObject {
         [
             "provider": .string(provider),
             "model_type": "llm",
@@ -25,7 +26,7 @@ public enum PluginDaemonWire {
             "credentials": .object(credentials),
             "prompt_messages": .array(promptMessages.map(\.json)),
             "model_parameters": .object(parameters),
-            "tools": .null,
+            "tools": tools.isEmpty ? .null : .array(tools.map(\.json)),
             "stop": stop.isEmpty ? .null : .array(stop.map(JSONValue.string)),
             "stream": .bool(stream),
         ]

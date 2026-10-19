@@ -54,6 +54,7 @@ func withFakeDaemon(_ body: @Sendable @escaping (String, DaemonLog) async throws
             let body = await record(req, "/plugin/\(req.parameters.get("tenant") ?? "")/dispatch/llm/invoke")
             let messages = body["data"]?["prompt_messages"]?.array ?? []
             let last = messages.last { $0["role"] == "user" }?["content"]?.string ?? ""
+            if last.contains("[[slow]]") { try? await Task.sleep(for: .seconds(5)) }
             if last.contains("[[fail]]") {
                 let invoke = JSONValue.object(["error_type": "InvokeAuthorizationError", "message": "Incorrect API key provided"]).compactJSON()
                 let outer = JSONValue.object(["error_type": "PluginInvokeError", "message": .string(invoke)]).compactJSON()
@@ -166,7 +167,9 @@ struct RuntimeRouteTests {
         try await withFakeDaemon { daemon, log in
             try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
                 let features = try await api.get("/v1/system-features")
-                #expect(try JSONValue.parse(features.text)["workflow_runtime"] == ["protocol_version": "1.13", "single_node_run": ["llm"]])
+                let runtime = try JSONValue.parse(features.text)["workflow_runtime"]
+                #expect(runtime?["protocol_version"] == "1.14" && runtime?["single_node_run"]?.array?.contains("llm") == true)
+                #expect(runtime?["draft_run"]?.array?.contains("start") == true)
                 let (owner, ownerId, app) = try await runtimeFixture(api)
                 let head = try await store.documentHead(app)
 

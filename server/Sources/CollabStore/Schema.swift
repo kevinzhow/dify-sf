@@ -22,7 +22,8 @@
 ///   and `client_accounts` (which account a client id belongs to); `password_resets` and, protocol 1.12, `email_changes`
 ///   (forgot-password and change-email tokens).
 /// * Runs (protocol 1.13): `workflow_node_executions` (Dify's table of the same name: node runs, single-step ones too, with
-///   the document seq they ran at). Never ops: runs do not change the document.
+///   the document seq they ran at) and, protocol 1.14, `workflow_runs` (whole draft runs). Never ops: runs do not change
+///   the document.
 public enum Schema {
     public static let statements: [String] = [
         """
@@ -527,8 +528,58 @@ public enum Schema {
         )
         """,
         "CREATE INDEX IF NOT EXISTS workflow_node_executions_last ON workflow_node_executions (doc_id, node_id, created_at DESC)",
+        // Protocol 1.14: workflow runs (Dify's `workflow_runs`; draft runs = `triggered_from` `debugging`). `doc_seq` = the
+        // document seq the run read; `graph` = the Dify graph it ran (JSON text, key order kept). Never ops.
+        """
+        CREATE TABLE IF NOT EXISTS workflow_runs (
+            id               text             PRIMARY KEY,
+            doc_id           text             NOT NULL REFERENCES documents(id),
+            doc_seq          bigint           NOT NULL,
+            workflow_id      text             NOT NULL,
+            type             text             NOT NULL,
+            triggered_from   text             NOT NULL,
+            version          text             NOT NULL,
+            graph            text             NOT NULL,
+            inputs           text             NOT NULL,
+            status           text             NOT NULL,
+            outputs          text,
+            error            text,
+            elapsed_time     double precision NOT NULL DEFAULT 0,
+            total_tokens     bigint           NOT NULL DEFAULT 0,
+            total_steps      integer          NOT NULL DEFAULT 0,
+            exceptions_count integer          NOT NULL DEFAULT 0,
+            created_by       text,
+            created_at       timestamptz      NOT NULL,
+            finished_at      timestamptz
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS workflow_runs_doc ON workflow_runs (doc_id, triggered_from, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS workflow_node_executions_run ON workflow_node_executions (workflow_run_id, created_at)",
         // Databases created before the idempotency-key fingerprint existed.
         "ALTER TABLE ops ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
         "ALTER TABLE rejections ADD COLUMN IF NOT EXISTS fp bigint NOT NULL DEFAULT 0",
+        // Protocol 1.14: draft variables (Dify's `workflow_draft_variables`): per account and app, the latest value of each
+        // node output, system variable and conversation variable of debug runs, for the variable inspect panel. Beside the
+        // document, never ops; `value` is JSON text (key order kept); `doc_seq` = the document seq of the run that produced it.
+        """
+        CREATE TABLE IF NOT EXISTS workflow_draft_variables (
+            id                text        PRIMARY KEY,
+            doc_id            text        NOT NULL REFERENCES documents(id),
+            user_id           text        NOT NULL,
+            node_id           text        NOT NULL,
+            name              text        NOT NULL,
+            description       text        NOT NULL DEFAULT '',
+            value_type        text        NOT NULL,
+            value             text        NOT NULL,
+            visible           boolean     NOT NULL,
+            editable          boolean     NOT NULL,
+            node_execution_id text,
+            doc_seq           bigint,
+            last_edited_at    timestamptz,
+            created_at        timestamptz NOT NULL,
+            updated_at        timestamptz NOT NULL,
+            UNIQUE (doc_id, user_id, node_id, name)
+        )
+        """,
     ]
 }

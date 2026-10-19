@@ -13,7 +13,10 @@ import Vapor
 /// writes only run records (`workflow_node_executions`), never ops.
 extension Routes {
     /// The node types a single run supports (`system-features`' `workflow_runtime.single_node_run`).
-    static var singleRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes }
+    /// The node types a draft run supports (`system-features`' `workflow_runtime.draft_run`).
+    static var draftRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes }
+
+    static var singleRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes.filter { !NodeType.startTypes.contains($0) } }
 
     /// A model runtime is configured (`COLLAB_PLUGIN_DAEMON_URL`).
     var runtimeConfigured: Bool { !config.pluginDaemonURL.isEmpty }
@@ -64,18 +67,15 @@ extension Routes {
             throw ServerError.http(status: 400, code: "unsupported_node_type",
                                    message: "Running a \(node.type) node is not supported by this server yet")
         }
-        guard runtimeConfigured else {
-            throw ServerError.http(status: 400, code: "model_runtime_not_configured",
-                                   message: "This server has no model runtime (COLLAB_PLUGIN_DAEMON_URL is not set)")
+        // Dify fills the conversation draft variables first, then loads what the node reads and the request lacks from them.
+        do { try await prefillConversationDraftVariables(appId: a.id, userId: p.id, viewer: p.id) } catch {
+            throw ServerError.unavailable("\(error)")
         }
-        let daemon = PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
-                                        timeoutSeconds: config.pluginDaemonTimeoutSeconds)
         let routes = self
-        let models = PluginDaemonModelRuntime(daemon: daemon, credentialsOf: { provider, model, type in
-            try await routes.currentCredentials(provider: provider, model: model, modelType: type)
-        }, appId: a.id)
+        let appId = a.id, userId = p.id
         let run = SingleStepRun(graph: graph, environmentVariables: exported["workflow"]?["environment_variables"]?.array ?? [],
-                                factory: BuiltinNodeFactory(models: models))
+                                factory: BuiltinNodeFactory(services: runtimeServices(appId: a.id)),
+                                variableLoader: { selectors in try await routes.loadDraftVariables(appId: appId, userId: userId, selectors: selectors) })
         let execution: NodeExecution
         do {
             execution = try await run.run(nodeId: nodeId, userInputs: inputs, userId: p.id, appId: a.id)
@@ -90,6 +90,10 @@ extension Routes {
         } catch let e as any NodeRunError {
             // Preparing the node failed (Dify raises these out of the request too): the model's credentials or schema.
             throw Self.invalidParam(e.description)
+        } catch let e as DraftVariableError {
+            throw Self.invalidParam(e.description)
+        } catch {
+            throw preparationError(error)
         }
 
         let stored = StoredNodeExecution(
@@ -101,6 +105,15 @@ extension Routes {
             elapsedTime: execution.elapsedTime, executionMetadata: execution.metadata.map { JSONValue.object($0).compactJSON() },
             createdBy: p.id, createdAt: execution.createdAt, finishedAt: execution.finishedAt)
         do { try await store.insertNodeExecution(stored) } catch { throw ServerError.unavailable("\(error)") }
+        // `_handle_single_step_result`: the node's outputs become draft variables (the variable inspect panel).
+        if execution.status == .succeeded || execution.status == .exception {
+            do {
+                try await saveDraftVariables(appId: a.id, userId: p.id, docSeq: snapshot.seq, nodeId: execution.nodeId, nodeType: execution.nodeType,
+                                             executionId: execution.id, processData: execution.processData, outputs: execution.outputs ?? [:])
+            } catch {
+                logger.error("saving draft variables of \(execution.id) failed: \(error)")
+            }
+        }
         let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
         return rawJSON(execution.responseJSON(createdByAccount: account))
     }

@@ -1,0 +1,555 @@
+import CollabCore
+import CollabDSL
+import CollabRuntime
+import CollabStore
+import Foundation
+import HTTPTypes
+import Logging
+import Synchronization
+import Vapor
+
+/// Whole draft runs (protocol 1.14): Dify 1.17.1's `POST /apps/{app}/workflows/draft/run` (an SSE stream in Dify's event
+/// format), the stop command, the run history and a run's detail and node executions. A run reads the document at one
+/// seq, runs the graph on the Swift engine (`CollabRuntime.GraphEngine`) in its own task (a client that goes away does
+/// not stop it; the stop command does) and writes only run records (`workflow_runs`, `workflow_node_executions`), never
+/// ops.
+extension Routes {
+    func registerRuns(on r: any RoutesBuilder) {
+        let apps = r.grouped("v1", "apps")
+        apps.post(":app", "workflows", "draft", "run") { req in await handle(req) { try await runDraft(req) } }
+        apps.post(":app", "workflow-runs", "tasks", ":task", "stop") { req in await handle(req) { try await stopRun(req) } }
+        apps.get(":app", "workflow-runs") { req in await handle(req) { try await listRuns(req) } }
+    }
+
+    /// The services nodes call: models (plugin daemon) when configured, the code sandbox (Jinja2 too) and HTTP through the
+    /// SSRF proxy.
+    func runtimeServices(appId: String) -> RuntimeServices {
+        var services = config.runtimeServices.services(models: nil)
+        if runtimeConfigured {
+            let daemon = PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
+                                            timeoutSeconds: config.pluginDaemonTimeoutSeconds)
+            let routes = self
+            services.models = PluginDaemonModelRuntime(daemon: daemon, credentialsOf: { provider, model, type in
+                try await routes.currentCredentials(provider: provider, model: model, modelType: type)
+            }, appId: appId)
+        }
+        return services
+    }
+
+    /// Errors preparing a graph (before anything runs), as the single node run answers them.
+    func preparationError(_ error: any Error) -> ServerError {
+        switch error {
+        case let e as UnsupportedNodeType:
+            return .http(status: 400, code: "unsupported_node_type", message: e.description)
+        case let e as ServiceNotConfigured where e.service == .models:
+            return .http(status: 400, code: "model_runtime_not_configured",
+                         message: "This server has no model runtime (COLLAB_PLUGIN_DAEMON_URL is not set)")
+        case let e as ServiceNotConfigured:
+            return .http(status: 400, code: "runtime_service_not_configured", message: e.description)
+        case let e as NodeDataError: return Self.invalidParam(e.description)
+        case let e as any NodeRunError: return Self.invalidParam(e.description)
+        case let e as RuntimeGraph.ValidationError: return Self.invalidParam(e.description)
+        case let e as GraphConfig.Invalid: return Self.invalidParam(e.description)
+        case let e as WorkflowBootstrap.InvalidInput: return Self.invalidParam(e.description)
+        case let e as ServerError: return e
+        default: return .unavailable("\(error)")
+        }
+    }
+
+    /// The draft at its current seq as Dify's workflow (graph, environment and conversation variables).
+    func draftWorkflow(_ appId: String, viewer: String) async throws -> (seq: Int, workflow: JSONValue) {
+        let snapshot = try await registry.sequencer(appId).currentSnapshot()
+        let metadata = try await currentMetadata(appId, viewer: viewer)
+        let secrets: [String: String]
+        do { secrets = try await store.secrets(appId) } catch { throw ServerError.unavailable("\(error)") }
+        let exported = try JSONValue.parse(try WireJSON.encode(try DifyDSL.exportValue(snapshot.doc, metadata: metadata, secrets: secrets)))
+        return (snapshot.seq, exported["workflow"] ?? .null)
+    }
+
+    // MARK: - POST /v1/apps/{app}/workflows/draft/run
+
+    /// `POST /v1/apps/{app}/workflows/draft/run` `{"inputs": {...}, "files": [...]}` (edit; workflow apps): Dify's draft run.
+    /// Answers an SSE stream of Dify's events (`data: {...}` lines; `event: ping` while idle) until `workflow_finished`.
+    private func runDraft(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req, .edit)
+        let a = try await appOfMode(req, p, ["workflow"])
+        let data = try await body(req)
+        guard let parsed = try? JSONValue.parse(data.isEmpty ? Data("{}".utf8) : data), case .object(let b) = parsed else {
+            throw ServerError.badRequest("the body must be a JSON object")
+        }
+        guard let inputsValue = b["inputs"], inputsValue != .null else { throw Self.invalidParam("missing inputs") }
+        guard case .object(let rawInputs) = inputsValue else { throw ServerError.badRequest("inputs must be an object") }
+        if let files = b["files"], files != .null {
+            guard case .array(let list) = files else { throw ServerError.badRequest("files must be a list") }
+            if !list.isEmpty { throw Self.invalidParam("file inputs are not supported by this server yet") }
+        }
+
+        // One consistent read: the document at seq N, rendered as Dify's workflow.
+        let (seq, workflow) = try await draftWorkflow(a.id, viewer: p.id)
+        let runId = UUID().uuidString.lowercased()
+        // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
+        let taskId = runId
+        let prepared: PreparedRun
+        do {
+            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs, services: runtimeServices(appId: a.id),
+                                                  userId: p.id, appId: a.id, workflowId: a.id, runId: runId)
+        } catch {
+            throw preparationError(error)
+        }
+
+        let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
+        var stored = StoredWorkflowRun(id: runId, docId: a.id, docSeq: seq, workflowId: a.id, type: "workflow", triggeredFrom: "debugging",
+                                       version: "draft", graph: (workflow["graph"] ?? .null).compactJSON(),
+                                       inputs: JSONValue.object(prepared.workflowInputs).compactJSON(), status: "running", createdBy: p.id,
+                                       createdAt: Date())
+        stored.createdByName = p.account.name
+        do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
+
+        let channel = RunChannel()
+        let commands = GraphEngineCommands()
+        await runs.add(taskId, WorkflowRunRegistry.Active(appId: a.id, runId: runId, commands: commands))
+        let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: a.id, graph: prepared.graph, account: account,
+                                       inputs: prepared.workflowInputs, startedAt: stored.createdAt)
+        let engine = GraphEngine(graph: prepared.graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
+                                                                                 maxSteps: config.runtimeMaxSteps,
+                                                                                 maxTimeSeconds: config.runtimeMaxTimeSeconds),
+                                 commands: commands, userId: p.id, appId: a.id)
+        let routes = self
+        let execution = RunExecution(routes: routes, appId: a.id, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
+                                     channel: channel, encoder: encoder)
+        Task.detached { await execution.run(engine: engine, pool: prepared.pool) }
+
+        var headers = HTTPFields()
+        headers[.contentType] = "text/event-stream"
+        headers[.cacheControl] = "no-store"
+        headers[HTTPField.Name("X-Accel-Buffering")!] = "no"
+        let subscription = await channel.subscribe()
+        let logger = self.logger
+        let body = try Response.Body(stream: { writer in
+            do {
+                for await frame in subscription { try await writer.write(frame) }
+            } catch {
+                logger.debug("run stream \(runId) ended: \(error)")
+                throw error
+            }
+        }, count: nil)
+        return Response(status: .ok, headers: headers, body: body)
+    }
+
+    // MARK: - Stop
+
+    /// `POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop` (edit; workflow and chatflow apps): Dify's stop command
+    /// (`AbortCommand("User requested stop")`); `{"result": "success"}` also for tasks that are not running (as Dify).
+    private func stopRun(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req, .edit)
+        let a = try await appOfMode(req, p, Self.workflowModes)
+        guard let task = req.parameters.get("task"), !task.isEmpty, task.utf8.count <= 255 else { throw ServerError.badRequest("invalid task id") }
+        if let active = await runs.get(task), active.appId == a.id { active.commands.abort(reason: "User requested stop") }
+        return rawJSON(["result": "success"])
+    }
+
+    // MARK: - History and records
+
+    /// `GET /v1/apps/{app}/workflow-runs?last_id=&limit=&status=&triggered_from=` (any member; workflow and chatflow apps):
+    /// Dify's `WorkflowRunPaginationResponse`, newest first (draft runs: `triggered_from` `debugging`, the default).
+    private func listRuns(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req)
+        let a = try await appOfMode(req, p, Self.workflowModes)
+        let q = queryAll(req)
+        let limit = try queryInt(q, "limit", 20, 1...100)
+        let triggered = q["triggered_from"]?.last.flatMap { $0.isEmpty ? nil : $0 } ?? "debugging"
+        guard ["debugging", "app-run"].contains(triggered) else { throw Self.invalidParam("triggered_from must be debugging or app-run") }
+        let status = q["status"]?.last.flatMap { $0.isEmpty ? nil : $0 }
+        if let status, !Self.runStatuses.contains(status) {
+            throw Self.invalidParam("status must be one of \(Self.runStatuses.joined(separator: ", "))")
+        }
+        let lastId = q["last_id"]?.last.flatMap { $0.isEmpty ? nil : $0 }
+        if let lastId, UUID(uuidString: lastId) == nil { throw Self.invalidParam("last_id must be a UUID") }
+        let page: (runs: [StoredWorkflowRun], hasMore: Bool)?
+        do { page = try await store.workflowRuns(doc: a.id, triggeredFrom: triggered, status: status, limit: limit, lastId: lastId) } catch {
+            throw ServerError.unavailable("\(error)")
+        }
+        guard let page else { throw Self.invalidParam("Last workflow run not exists") }
+        let data: [JSONValue] = page.runs.map { r in
+            [
+                "id": .string(r.id), "version": .string(r.version), "status": .string(r.status), "elapsed_time": .double(r.elapsedTime),
+                "total_tokens": .int(r.totalTokens), "total_steps": .int(r.totalSteps), "created_by_account": Self.accountJSON(r),
+                "created_at": Self.epochSeconds(r.createdAt), "finished_at": r.finishedAt.map(Self.epochSeconds) ?? .null,
+                "exceptions_count": .int(r.exceptionsCount), "retry_index": .null,
+            ]
+        }
+        return rawJSON(["limit": .int(limit), "has_more": .bool(page.hasMore), "data": .array(data)])
+    }
+
+    /// `GET /v1/apps/{app}/workflow-runs/{run}` (any member): Dify's `WorkflowRunDetailResponse`; `404` "Workflow run not found".
+    func workflowRunDetail(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req)
+        let a = try await appOfMode(req, p, Self.workflowModes)
+        guard let id = req.parameters.get("run") else { throw ServerError.missing("Workflow run not found") }
+        let found: StoredWorkflowRun?
+        do { found = try await store.workflowRun(doc: a.id, id: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
+        guard let r = found else { throw ServerError.missing("Workflow run not found") }
+        func parsed(_ text: String?) -> JSONValue { text.flatMap { try? JSONValue.parse($0) } ?? .null }
+        let detail: JSONValue = [
+            "id": .string(r.id), "version": .string(r.version), "graph": parsed(r.graph), "inputs": parsed(r.inputs),
+            "status": .string(r.status), "outputs": r.outputs.map { parsed($0) } ?? .object([:]), "error": r.error.map(JSONValue.string) ?? .null,
+            "elapsed_time": .double(r.elapsedTime), "total_tokens": .int(r.totalTokens), "total_steps": .int(r.totalSteps),
+            "created_by_role": r.createdBy == nil ? .null : "account", "created_by_account": Self.accountJSON(r), "created_by_end_user": .null,
+            "created_at": Self.epochSeconds(r.createdAt), "finished_at": r.finishedAt.map(Self.epochSeconds) ?? .null,
+            "exceptions_count": .int(r.exceptionsCount),
+        ]
+        return rawJSON(detail)
+    }
+
+    /// `GET /v1/apps/{app}/workflow-runs/{run}/node-executions` (any member): `{"data": [WorkflowRunNodeExecutionResponse]}`,
+    /// oldest first; `{"data": []}` for an unknown run (as Dify).
+    func workflowRunNodeExecutions(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req)
+        let a = try await appOfMode(req, p, Self.workflowModes)
+        guard let id = req.parameters.get("run") else { return rawJSON(["data": []]) }
+        let list: [StoredNodeExecution]
+        do { list = try await store.nodeExecutions(doc: a.id, run: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
+        return rawJSON(["data": .array(list.map(Self.executionJSON))])
+    }
+
+    static func epochSeconds(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
+
+    static func accountJSON(_ r: StoredWorkflowRun) -> JSONValue {
+        guard let id = r.createdBy else { return .null }
+        return ["id": .string(id), "name": .string(r.createdByName ?? ""), "email": .string(r.createdByEmail ?? "")]
+    }
+}
+
+extension Routes {
+    /// Saves a run's node outputs as draft variables (the variable inspect panel).
+    func saveRunDraftVariables(appId: String, userId: String, docSeq: Int, nodeId: String, nodeType: String, executionId: String,
+                               status: String, result: NodeRunResult) async {
+        // Dify saves succeeded and exception results, with the outputs as a run projects them (a start node: its inputs).
+        guard status == "succeeded" || status == "exception" else { return }
+        let outputs = nodeType == NodeType.start ? result.inputs : result.outputs
+        do {
+            try await saveDraftVariables(appId: appId, userId: userId, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType,
+                                         executionId: executionId, processData: result.processData, outputs: outputs)
+        } catch {
+            logger.error("saving draft variables of \(executionId) failed: \(error)")
+        }
+    }
+}
+
+// MARK: - Preparing a run
+
+/// A graph ready to run with its pool (Dify's `WorkflowAppGenerator.generate` + `WorkflowAppRunner.run` up to the engine).
+struct PreparedRun: Sendable {
+    var graph: RuntimeGraph
+    var pool: VariablePool
+    /// The run's inputs as Dify stores and streams them: the user inputs and `sys.*`.
+    var workflowInputs: JSONObject
+
+    static func make(workflow: JSONValue, rawInputs: JSONObject, services: RuntimeServices, userId: String, appId: String,
+                     workflowId: String, runId: String, query: String? = nil) async throws -> PreparedRun {
+        let config = try GraphConfig(json: workflow["graph"] ?? .null)
+        let rootId = try RuntimeGraph.defaultRootId(config)
+        let graph = try await RuntimeGraph.build(config, rootId: rootId, factory: BuiltinNodeFactory(services: services))
+        let variables = (graph.node(rootId) as? StartNode)?.variables ?? []
+        let inputs = try WorkflowBootstrap.prepareUserInputs(rawInputs, variables: variables)
+        var systemValues: [(String, JSONValue?)] = [("files", .array([])), ("user_id", .string(userId)), ("app_id", .string(appId)),
+                                                    ("timestamp", .int(Int(Date().timeIntervalSince1970))),
+                                                    ("workflow_id", .string(workflowId)), ("workflow_execution_id", .string(runId))]
+        if let query { systemValues.insert(("query", .string(query)), at: 0) }
+        let system = WorkflowBootstrap.systemVariables(systemValues)
+        let environment = try (workflow["environment_variables"]?.array ?? []).map(WorkflowBootstrap.variable)
+        let conversation = try (workflow["conversation_variables"]?.array ?? []).map(WorkflowBootstrap.variable)
+        let pool = try WorkflowBootstrap.pool(system: system, environment: environment, conversation: conversation, rootId: rootId,
+                                              inputs: inputs)
+        var workflowInputs = inputs
+        for (k, v) in system where k != "conversation_id" { workflowInputs["sys.\(k)"] = v }
+        return PreparedRun(graph: graph, pool: pool, workflowInputs: workflowInputs)
+    }
+}
+
+// MARK: - Running
+
+/// One run in its task: engine events -> Dify's SSE frames (to the channel) and run records.
+final class RunExecution: Sendable {
+    let routes: Routes
+    let appId: String
+    let docSeq: Int
+    let runId: String
+    let taskId: String
+    let createdBy: String
+    let channel: RunChannel
+    let encoderBox: Mutex<RunStreamEncoder>
+
+    init(routes: Routes, appId: String, docSeq: Int, runId: String, taskId: String, createdBy: String, channel: RunChannel,
+         encoder: RunStreamEncoder) {
+        self.routes = routes
+        self.appId = appId
+        self.docSeq = docSeq
+        self.runId = runId
+        self.taskId = taskId
+        self.createdBy = createdBy
+        self.channel = channel
+        encoderBox = Mutex(encoder)
+    }
+
+    func run(engine: GraphEngine, pool: VariablePool) async {
+        let started = ContinuousClock.now
+        // Dify's queue sends a ping every 10 s; here while nothing else was sent.
+        let pinger = Task { [channel] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(10))
+                if Task.isCancelled { break }
+                await channel.pingIfIdle(seconds: 10)
+            }
+        }
+        var index = 0
+        var running: [String: (nodeId: String, nodeType: String, title: String, startAt: Date, index: Int)] = [:]
+        for await event in engine.run(pool: pool) {
+            let frames = encoderBox.withLock { $0.encode(event) }
+            for f in frames { await channel.publish(Self.sse(f)) }
+            switch event {
+            case .node(.started(let x, let nodeId, let type, let title, let startAt)):
+                index += 1
+                running[x] = (nodeId, type, title, startAt, index)
+            case .node(.succeeded(let x, let nodeId, _, let finishedAt, let r)):
+                await persist(x, nodeId, running.removeValue(forKey: x), "succeeded", r, error: nil, finishedAt: finishedAt)
+            case .node(.failed(let x, let nodeId, _, let finishedAt, let r, let error)):
+                await persist(x, nodeId, running.removeValue(forKey: x), "failed", r, error: error.isEmpty ? r.error : error, finishedAt: finishedAt)
+            case .node(.exception(let x, let nodeId, _, let finishedAt, let r, let error)):
+                await persist(x, nodeId, running.removeValue(forKey: x), "exception", r, error: error.isEmpty ? r.error : error,
+                              finishedAt: finishedAt)
+            case .runSucceeded(let s), .runPartialSucceeded(let s):
+                let status: String = { if case .runSucceeded = event { return "succeeded" }; return "partial-succeeded" }()
+                await finish(status: status, error: nil, stats: s, started: started, running: running)
+            case .runFailed(let error, let s):
+                await finish(status: "failed", error: error, stats: s, started: started, running: running)
+            case .runAborted(let reason, let s):
+                await finish(status: "stopped", error: reason, stats: s, started: started, running: running)
+            default: break
+            }
+        }
+        pinger.cancel()
+        await channel.finish()
+        await routes.runs.remove(taskId)
+    }
+
+    static func sse(_ payload: JSONValue) -> String { "data: " + payload.compactJSON() + "\n\n" }
+
+    /// A node execution as Dify's persistence layer stores it (start node outputs = its inputs).
+    func persist(_ executionId: String, _ nodeId: String, _ start: (nodeId: String, nodeType: String, title: String, startAt: Date, index: Int)?,
+                 _ status: String, _ r: NodeRunResult, error: String?, finishedAt: Date) async {
+        let startAt = start?.startAt ?? finishedAt
+        let nodeType = start?.nodeType ?? ""
+        let outputs = nodeType == NodeType.start ? r.inputs : r.outputs
+        let e = StoredNodeExecution(
+            id: executionId, docId: appId, workflowRunId: runId, triggeredFrom: "workflow-run", docSeq: docSeq, index: start?.index ?? 0,
+            predecessorNodeId: nil, nodeId: nodeId, nodeType: nodeType, title: start?.title ?? "",
+            inputs: JSONValue.object(r.inputs).compactJSON(), processData: JSONValue.object(r.processData).compactJSON(),
+            outputs: JSONValue.object(outputs).compactJSON(), status: status, error: error.flatMap { $0.isEmpty ? nil : $0 },
+            elapsedTime: max(finishedAt.timeIntervalSince(startAt), 0), executionMetadata: JSONValue.object(r.metadata).compactJSON(),
+            createdBy: createdBy, createdAt: startAt, finishedAt: finishedAt)
+        do { try await routes.store.upsertNodeExecution(e) } catch {
+            routes.logger.error("run \(runId): storing node execution \(executionId) failed: \(error)")
+        }
+        await routes.saveRunDraftVariables(appId: appId, userId: createdBy, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType, executionId: executionId,
+                                           status: status, result: r)
+    }
+
+    func finish(status: String, error: String?, stats: GraphRunStats, started: ContinuousClock.Instant,
+                running: [String: (nodeId: String, nodeType: String, title: String, startAt: Date, index: Int)]) async {
+        let now = Date()
+        // `_fail_running_node_executions`: nodes still running when the run ends.
+        for (x, s) in running {
+            let e = StoredNodeExecution(
+                id: x, docId: appId, workflowRunId: runId, triggeredFrom: "workflow-run", docSeq: docSeq, index: s.index, predecessorNodeId: nil,
+                nodeId: s.nodeId, nodeType: s.nodeType, title: s.title, inputs: nil, processData: nil, outputs: nil, status: "failed",
+                error: error ?? "", elapsedTime: max(now.timeIntervalSince(s.startAt), 0), executionMetadata: nil, createdBy: createdBy,
+                createdAt: s.startAt, finishedAt: now)
+            try? await routes.store.upsertNodeExecution(e)
+        }
+        let elapsed = SingleStepRunSeconds.of(ContinuousClock.now - started)
+        do {
+            try await routes.store.finishWorkflowRun(id: runId, status: status, outputs: JSONValue.object(stats.outputs).compactJSON(), error: error,
+                                                     elapsedTime: elapsed, totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
+                                                     exceptionsCount: status == "stopped" ? 0 : stats.exceptionsCount, finishedAt: now)
+        } catch {
+            routes.logger.error("run \(runId): storing the result failed: \(error)")
+        }
+    }
+}
+
+enum SingleStepRunSeconds {
+    static func of(_ d: Duration) -> Double { Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18 }
+}
+
+/// Dify's stream for one run (`WorkflowResponseConverter` + the generate pipeline): engine events -> SSE payloads.
+struct RunStreamEncoder: Sendable {
+    let taskId: String
+    let runId: String
+    let workflowId: String
+    let graph: RuntimeGraph
+    let account: JSONValue
+    let inputs: JSONObject
+    let startedAt: Date
+    var snapshots: [String: (title: String, startAt: Date)] = [:]
+
+    init(taskId: String, runId: String, workflowId: String, graph: RuntimeGraph, account: JSONValue, inputs: JSONObject, startedAt: Date) {
+        self.taskId = taskId
+        self.runId = runId
+        self.workflowId = workflowId
+        self.graph = graph
+        self.account = account
+        self.inputs = inputs
+        self.startedAt = startedAt
+    }
+
+    static func ts(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
+
+    /// Dify's frame: `{"event", "workflow_run_id"}` updated with the response's `model_dump` (`event`, `task_id`, ..., `data`).
+    func envelope(_ event: String, _ data: JSONValue) -> JSONValue {
+        ["event": .string(event), "workflow_run_id": .string(runId), "task_id": .string(taskId), "data": data]
+    }
+
+    func nodeType(_ id: String) -> String { graph.nodes[id]?.nodeType ?? "" }
+
+    mutating func encode(_ event: GraphEngineEvent) -> [JSONValue] {
+        switch event {
+        case .runStarted:
+            return [envelope("workflow_started", ["id": .string(runId), "workflow_id": .string(workflowId), "inputs": .object(inputs),
+                                                  "created_at": Self.ts(startedAt), "reason": "initial"])]
+        case .node(let e):
+            switch e {
+            case .started(let x, let nodeId, let type, let title, let startAt):
+                snapshots[x] = (title, startAt)
+                return [envelope("node_started", [
+                    "id": .string(x), "node_id": .string(nodeId), "node_type": .string(type), "title": .string(title), "index": 1,
+                    "predecessor_node_id": .null, "inputs": .null, "inputs_truncated": false, "created_at": Self.ts(startAt), "extras": [:],
+                    "iteration_id": .null, "loop_id": .null, "agent_strategy": .null,
+                ])]
+            case .streamChunk(_, _, let selector, let chunk, _):
+                return [envelope("text_chunk", ["text": .string(chunk), "from_variable_selector": .array(selector.map(JSONValue.string))])]
+            case .reasoningChunk(_, let nodeId, _, let chunk, let isFinal):
+                if chunk.isEmpty && !isFinal { return [] }
+                return [envelope("reasoning_chunk", ["message_id": .null, "reasoning": .string(chunk), "node_id": .string(nodeId),
+                                                     "is_final": .bool(isFinal)])]
+            case .succeeded(let x, let nodeId, let startAt, let finishedAt, let r):
+                return [finished(x, nodeId, "succeeded", r, error: nil, startAt: startAt, finishedAt: finishedAt)]
+            case .failed(let x, let nodeId, let startAt, let finishedAt, let r, let error):
+                return [finished(x, nodeId, "failed", r, error: error.isEmpty ? (r.error.isEmpty ? "Unknown error" : r.error) : error,
+                                 startAt: startAt, finishedAt: finishedAt)]
+            case .exception(let x, let nodeId, let startAt, let finishedAt, let r, let error):
+                return [finished(x, nodeId, "exception", r, error: error.isEmpty ? (r.error.isEmpty ? "Unknown error" : r.error) : error,
+                                 startAt: startAt, finishedAt: finishedAt)]
+            case .retry(let x, let nodeId, let startAt, let r, let error, let retryIndex):
+                let snap = snapshots[x]
+                let now = Date()
+                return [envelope("node_retry", [
+                    "id": .string(x), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)), "title": .string(snap?.title ?? ""),
+                    "index": 1, "predecessor_node_id": .null, "inputs": .object(r.inputs), "inputs_truncated": false,
+                    "process_data": .object(r.processData), "process_data_truncated": false, "outputs": .object(projected(nodeId, r)),
+                    "outputs_truncated": false, "status": "retry", "error": .string(error), "elapsed_time": .double(now.timeIntervalSince(startAt)),
+                    "execution_metadata": r.metadata.isEmpty ? .null : .object(r.metadata), "created_at": Self.ts(snap?.startAt ?? startAt),
+                    "finished_at": Self.ts(now), "files": [], "iteration_id": .null, "loop_id": .null, "retry_index": .int(retryIndex),
+                ])]
+            case .retrieverResource, .variableUpdated:
+                return []
+            }
+        case .edgeTaken, .edgeSkipped:
+            return []
+        case .runSucceeded(let s): return [workflowFinished("succeeded", error: nil, stats: s, exceptions: 0)]
+        case .runPartialSucceeded(let s): return [workflowFinished("partial-succeeded", error: nil, stats: s, exceptions: s.exceptionsCount)]
+        case .runFailed(let error, let s): return [workflowFinished("failed", error: error, stats: s, exceptions: s.exceptionsCount)]
+        case .runAborted(let reason, let s): return [workflowFinished("stopped", error: reason, stats: s, exceptions: 0)]
+        }
+    }
+
+    /// `project_node_outputs_for_workflow_run`: a start node's outputs are its inputs.
+    func projected(_ nodeId: String, _ r: NodeRunResult) -> JSONObject { nodeType(nodeId) == NodeType.start ? r.inputs : r.outputs }
+
+    mutating func finished(_ x: String, _ nodeId: String, _ status: String, _ r: NodeRunResult, error: String?, startAt: Date,
+                           finishedAt: Date) -> JSONValue {
+        let snap = snapshots.removeValue(forKey: x)
+        let start = snap?.startAt ?? startAt
+        return envelope("node_finished", [
+            "id": .string(x), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)), "title": .string(snap?.title ?? ""),
+            "index": snap == nil ? 0 : 1, "predecessor_node_id": .null, "inputs": .object(r.inputs), "inputs_truncated": false,
+            "process_data": .object(r.processData), "process_data_truncated": false, "outputs": .object(projected(nodeId, r)),
+            "outputs_truncated": false, "status": .string(status), "error": error.map(JSONValue.string) ?? .null,
+            "elapsed_time": .double(finishedAt.timeIntervalSince(start)), "execution_metadata": r.metadata.isEmpty ? .null : .object(r.metadata),
+            "created_at": Self.ts(start), "finished_at": Self.ts(finishedAt), "files": [], "iteration_id": .null, "loop_id": .null,
+        ])
+    }
+
+    func workflowFinished(_ status: String, error: String?, stats: GraphRunStats, exceptions: Int) -> JSONValue {
+        let now = Date()
+        return envelope("workflow_finished", [
+            "id": .string(runId), "workflow_id": .string(workflowId), "status": .string(status), "outputs": .object(stats.outputs),
+            "error": error.map(JSONValue.string) ?? .null, "elapsed_time": .double(now.timeIntervalSince(startedAt)),
+            "total_tokens": .int(stats.totalTokens), "total_steps": .int(stats.totalSteps), "created_by": account,
+            "created_at": Self.ts(startedAt), "finished_at": Self.ts(now), "exceptions_count": .int(exceptions), "files": [],
+        ])
+    }
+}
+
+// MARK: - Channels and the registry of running tasks
+
+/// The frames of one run for its SSE subscribers: every frame is kept (a subscriber that attaches late gets them all) until
+/// the run ends.
+actor RunChannel {
+    private var frames: [String] = []
+    private var subscribers: [Int: AsyncStream<String>.Continuation] = [:]
+    private var next = 0
+    private var finished = false
+    private var lastSent = ContinuousClock.now
+
+    func publish(_ frame: String) {
+        frames.append(frame)
+        lastSent = .now
+        for c in subscribers.values { c.yield(frame) }
+    }
+
+    /// `event: ping` when nothing was sent for `seconds` (not kept for late subscribers).
+    func pingIfIdle(seconds: Int) {
+        guard !finished, ContinuousClock.now - lastSent >= .seconds(seconds) else { return }
+        lastSent = .now
+        for c in subscribers.values { c.yield("event: ping\n\n") }
+    }
+
+    func finish() {
+        finished = true
+        for c in subscribers.values { c.finish() }
+        subscribers = [:]
+    }
+
+    func subscribe() -> AsyncStream<String> {
+        let (stream, cont) = AsyncStream<String>.makeStream(bufferingPolicy: .unbounded)
+        for f in frames { cont.yield(f) }
+        if finished {
+            cont.finish()
+            return stream
+        }
+        let id = next
+        next += 1
+        subscribers[id] = cont
+        cont.onTermination = { _ in Task { await self.unsubscribe(id) } }
+        return stream
+    }
+
+    private func unsubscribe(_ id: Int) { subscribers[id] = nil }
+}
+
+/// Running draft runs by task id (Dify's task ids; the stop command finds them here).
+actor WorkflowRunRegistry {
+    struct Active: Sendable {
+        var appId: String
+        var runId: String
+        var commands: GraphEngineCommands
+    }
+
+    private var active: [String: Active] = [:]
+
+    func add(_ taskId: String, _ a: Active) { active[taskId] = a }
+    func get(_ taskId: String) -> Active? { active[taskId] }
+    func remove(_ taskId: String) { active[taskId] = nil }
+    var count: Int { active.count }
+}
