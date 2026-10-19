@@ -41,7 +41,11 @@ void main() {
     });
 
     test('paths, methods and bodies are Dify\'s', () async {
-      final execution = {'id': 'e1', 'status': 'succeeded', 'outputs': {'text': 'hi'}};
+      final execution = {
+        'id': 'e1',
+        'status': 'succeeded',
+        'outputs': {'text': 'hi'},
+      };
       answer = (_) => http.Response(jsonEncode(execution), 200);
       final run = await api.singleNodeRun('app 1', 'llm/x', {
         'inputs': {'#start.q#': 'ping'},
@@ -59,9 +63,19 @@ void main() {
     });
 
     test('a node without a run is null; errors carry the server\'s code', () async {
-      answer = (_) => http.Response(jsonEncode({'error': {'code': 'not_found', 'message': 'last run not found'}}), 404);
+      answer = (_) => http.Response(
+        jsonEncode({
+          'error': {'code': 'not_found', 'message': 'last run not found'},
+        }),
+        404,
+      );
       expect(await api.nodeLastRun('a', 'llm'), isNull);
-      answer = (_) => http.Response(jsonEncode({'error': {'code': 'app_not_found', 'message': 'wrong mode'}}), 404);
+      answer = (_) => http.Response(
+        jsonEncode({
+          'error': {'code': 'app_not_found', 'message': 'wrong mode'},
+        }),
+        404,
+      );
       await expectLater(
         api.nodeLastRun('a', 'llm'),
         throwsA(isA<TransportException>().having((e) => e.code, 'code', 'app_not_found')),
@@ -84,7 +98,8 @@ void main() {
     });
 
     test('a failed node is an answer, not an error', () async {
-      answer = (_) => http.Response(jsonEncode({'id': 'e2', 'status': 'failed', 'error': 'slow down', 'outputs': null}), 200);
+      answer = (_) =>
+          http.Response(jsonEncode({'id': 'e2', 'status': 'failed', 'error': 'slow down', 'outputs': null}), 200);
       final r = await api.singleNodeRun('a', 'llm', {'inputs': <String, Object?>{}});
       expect(r['status'], 'failed');
       expect(r['error'], 'slow down');
@@ -100,5 +115,133 @@ void main() {
     expect(r['status'], 'succeeded');
     expect(await api.nodeLastRun('a', 'llm'), r);
     expect(api.calls.map((c) => c.op), ['last-run', 'run', 'last-run']);
+  });
+
+  group('Protocol 1.14: draft runs and draft variables', () {
+    test('workflow_runtime.draft_run is parsed', () {
+      final f = SystemFeatures.fromJson({
+        'is_email_setup': false,
+        'workflow_runtime': {
+          'protocol_version': '1.14',
+          'single_node_run': ['llm', 'code'],
+          'draft_run': ['start', 'end', 'llm'],
+        },
+      });
+      expect(f.workflowRuntime!.draftRun, {'start', 'end', 'llm'});
+      expect(WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.13'})!.draftRun, isEmpty);
+    });
+
+    test('the draft run stream yields Dify\'s payloads and drops pings; refusals throw', () async {
+      final sent = <http.BaseRequest>[];
+      final api = HttpWorkflowRunApi(
+        Uri.parse('http://h:1/'),
+        client: MockClient.streaming((req, body) async {
+          sent.add(req);
+          if (req.url.path.endsWith('/nope/workflows/draft/run')) {
+            return http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  jsonEncode({
+                    'error': {'code': 'unsupported_node_type', 'message': 'tool'},
+                  }),
+                ),
+              ),
+              400,
+            );
+          }
+          final frames = [
+            'data: {"event":"workflow_started","workflow_run_id":"r","task_id":"r","data":{"id":"r"}}\n\n',
+            'event: ping\n\n',
+            'data: {"event":"text_chunk","workflow_run_id":"r","task_id":"r","data":{"text":"h\u00e9"',
+            ',"from_variable_selector":["llm","text"]}}\n\n',
+            'data: {"event":"workflow_finished","workflow_run_id":"r","task_id":"r","data":{"status":"succeeded"}}\n\n',
+          ];
+          return http.StreamedResponse(Stream.fromIterable(frames.map(utf8.encode)), 200);
+        }),
+      );
+      final events = await api.draftRun('a', {
+        'inputs': {'q': 'x'},
+        'files': <Object?>[],
+      }).toList();
+      expect(events.map((e) => e['event']), ['workflow_started', 'text_chunk', 'workflow_finished']);
+      expect((events[1]['data']! as Map)['text'], 'hé');
+      expect(sent.single.method, 'POST');
+      expect(sent.single.url.path, '/v1/apps/a/workflows/draft/run');
+      await expectLater(
+        api.draftRun('nope', {'inputs': <String, Object?>{}}).toList(),
+        throwsA(isA<TransportException>().having((e) => e.code, 'code', 'unsupported_node_type')),
+      );
+    });
+
+    test('history, records, stop and draft variables use Dify\'s paths', () async {
+      final sent = <http.Request>[];
+      final api = HttpWorkflowRunApi(
+        Uri.parse('http://h:1/'),
+        client: MockClient((req) async {
+          sent.add(req);
+          final p = req.url.path;
+          if (p.endsWith('/node-executions')) {
+            return http.Response(
+              jsonEncode({
+                'data': [
+                  {'id': 'e'},
+                ],
+              }),
+              200,
+            );
+          }
+          if (p.endsWith('/reset')) return http.Response('', 204);
+          if (req.method == 'DELETE') return http.Response('', 204);
+          if (p.endsWith('/variables') && p.contains('/nodes/')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  {'id': 'v'},
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(jsonEncode({'ok': true, 'items': <Object?>[]}), 200);
+        }),
+      );
+      await api.runHistory('a', lastId: 'r1', limit: 5);
+      expect(sent.last.url.toString(), 'http://h:1/v1/apps/a/workflow-runs?limit=5&last_id=r1');
+      await api.runDetail('a', 'r1');
+      expect(sent.last.url.path, '/v1/apps/a/workflow-runs/r1');
+      expect(await api.runNodeExecutions('a', 'r1'), [
+        {'id': 'e'},
+      ]);
+      await api.stopRun('a', 't 1');
+      expect(sent.last.url.path, '/v1/apps/a/workflow-runs/tasks/t%201/stop');
+      expect(sent.last.method, 'POST');
+      await api.draftVariables('a', page: 2, limit: 10);
+      expect(sent.last.url.toString(), 'http://h:1/v1/apps/a/workflows/draft/variables?page=2&limit=10');
+      expect(await api.nodeVariables('a', 'llm'), [
+        {'id': 'v'},
+      ]);
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/nodes/llm/variables');
+      await api.draftVariablesOfKind('a', 'system');
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/system-variables');
+      await api.updateDraftVariable('a', 'v1', {'value': 3});
+      expect(sent.last.method, 'PATCH');
+      expect(jsonDecode(sent.last.body), {'value': 3});
+      expect(await api.resetDraftVariable('a', 'v1'), isNull);
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/variables/v1/reset');
+      await api.deleteDraftVariables('a', nodeId: 'llm');
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/nodes/llm/variables');
+      await api.deleteDraftVariables('a');
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/variables');
+    });
+
+    test('the fake records runs in its history', () async {
+      final fake = FakeWorkflowRunApi();
+      final events = await fake.draftRun('a', {
+        'inputs': {'q': 1},
+      }).toList();
+      expect(events.last['event'], 'workflow_finished');
+      final history = await fake.runHistory('a');
+      expect((history['data']! as List).single, containsPair('status', 'succeeded'));
+    });
   });
 }

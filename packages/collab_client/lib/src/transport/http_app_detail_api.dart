@@ -13,6 +13,7 @@ import '../client/transport.dart';
 import '../monitor_api.dart';
 import '../versions_api.dart';
 import '../workflow_run_api.dart';
+import 'sse_parser.dart';
 
 /// The app detail pages' APIs (protocol 1.11) against a real server at [baseUrl]: [HttpAccessApi], [HttpAnnotationsApi],
 /// [HttpVersionsApi], [HttpStatsApi], [HttpLogsApi]. Pass the signed-in user's `auth`: every request carries its bearer
@@ -576,5 +577,154 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
       if (e.statusCode == 404 && e.code == 'not_found') return null;
       rethrow;
     }
+  }
+
+  String _draft(String appId) => '${HttpConsoleApi._app(appId)}/workflows/draft';
+
+  /// The SSE stream of a draft run: the response head within [timeout], then frames for as long as the run lasts.
+  @override
+  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body) async* {
+    final path = '${_draft(appId)}/run';
+    final req = http.Request('POST', _url(path))
+      ..headers['Content-Type'] = 'application/json'
+      ..headers['Accept'] = 'text/event-stream'
+      ..body = jsonEncode(body);
+    final http.StreamedResponse res;
+    try {
+      res = await _client.send(req).timeout(timeout);
+    } on TimeoutException {
+      throw TransportException('POST $path timed out', timeout: true);
+    } on TransportException {
+      rethrow;
+    } on Object catch (e) {
+      throw TransportException('POST $path failed: $e');
+    }
+    if (res.statusCode != 200) {
+      final text = utf8.decode(await res.stream.toBytes(), allowMalformed: true);
+      throw transportErrorOf(res.statusCode, text);
+    }
+    final parser = SseParser();
+    await for (final chunk in res.stream.cast<List<int>>().transform(utf8.decoder)) {
+      for (final m in parser.add(chunk)) {
+        if (m.event != 'message') continue; // `event: ping`
+        final Object? json;
+        try {
+          json = jsonDecode(m.data);
+        } on FormatException {
+          continue;
+        }
+        if (json is Map<String, Object?>) yield json;
+      }
+    }
+  }
+
+  @override
+  Future<void> stopRun(String appId, String taskId) async => _send(
+    'POST',
+    '${HttpConsoleApi._app(appId)}/workflow-runs/tasks/${HttpConsoleApi._seg(taskId)}/stop',
+    ok: const [200],
+  );
+
+  @override
+  Future<Map<String, Object?>> runHistory(String appId, {String? lastId, int limit = 20}) async => HttpConsoleApi._map(
+    (await _send(
+      'GET',
+      '${HttpConsoleApi._app(appId)}/workflow-runs',
+      ok: const [200],
+      query: {
+        'limit': ['$limit'],
+        if (lastId != null && lastId.isNotEmpty) 'last_id': [lastId],
+      },
+    )).json,
+  );
+
+  @override
+  Future<Map<String, Object?>> runDetail(String appId, String runId) async => HttpConsoleApi._map(
+    (await _send(
+      'GET',
+      '${HttpConsoleApi._app(appId)}/workflow-runs/${HttpConsoleApi._seg(runId)}',
+      ok: const [200],
+    )).json,
+  );
+
+  @override
+  Future<List<Map<String, Object?>>> runNodeExecutions(String appId, String runId) async => HttpConsoleApi._data(
+    (await _send(
+      'GET',
+      '${HttpConsoleApi._app(appId)}/workflow-runs/${HttpConsoleApi._seg(runId)}/node-executions',
+      ok: const [200],
+    )).json,
+  );
+
+  static List<Map<String, Object?>> _items(Object? json) {
+    final items = HttpConsoleApi._map(json)['items'];
+    if (items is! List<Object?>) throw const TransportException('malformed answer: no items');
+    return [
+      for (final x in items)
+        if (x is Map<String, Object?>) x,
+    ];
+  }
+
+  @override
+  Future<Map<String, Object?>> draftVariables(String appId, {int page = 1, int limit = 20}) async =>
+      HttpConsoleApi._map(
+        (await _send(
+          'GET',
+          '${_draft(appId)}/variables',
+          ok: const [200],
+          query: {
+            'page': ['$page'],
+            'limit': ['$limit'],
+          },
+        )).json,
+      );
+
+  @override
+  Future<List<Map<String, Object?>>> nodeVariables(String appId, String nodeId) async => _items(
+    (await _send('GET', '${_draft(appId)}/nodes/${HttpConsoleApi._seg(nodeId)}/variables', ok: const [200])).json,
+  );
+
+  @override
+  Future<List<Map<String, Object?>>> draftVariablesOfKind(String appId, String kind) async {
+    if (!const {'conversation', 'system', 'environment'}.contains(kind)) {
+      throw ArgumentError.value(kind, 'kind', 'conversation, system or environment');
+    }
+    return _items((await _send('GET', '${_draft(appId)}/$kind-variables', ok: const [200])).json);
+  }
+
+  @override
+  Future<Map<String, Object?>> draftVariable(String appId, String variableId) async => HttpConsoleApi._map(
+    (await _send('GET', '${_draft(appId)}/variables/${HttpConsoleApi._seg(variableId)}', ok: const [200])).json,
+  );
+
+  @override
+  Future<Map<String, Object?>> updateDraftVariable(String appId, String variableId, Map<String, Object?> patch) async =>
+      HttpConsoleApi._map(
+        (await _send(
+          'PATCH',
+          '${_draft(appId)}/variables/${HttpConsoleApi._seg(variableId)}',
+          ok: const [200],
+          body: patch,
+        )).json,
+      );
+
+  @override
+  Future<Map<String, Object?>?> resetDraftVariable(String appId, String variableId) async {
+    final r = await _send(
+      'PUT',
+      '${_draft(appId)}/variables/${HttpConsoleApi._seg(variableId)}/reset',
+      ok: const [200, 204],
+    );
+    return r.status == 204 ? null : HttpConsoleApi._map(r.json);
+  }
+
+  @override
+  Future<void> deleteDraftVariables(String appId, {String? variableId, String? nodeId}) async {
+    final path = variableId != null
+        ? '${_draft(appId)}/variables/${HttpConsoleApi._seg(variableId)}'
+        : nodeId != null
+        ? '${_draft(appId)}/nodes/${HttpConsoleApi._seg(nodeId)}/variables'
+        : '${_draft(appId)}/variables';
+    await _send('DELETE', path, ok: const [200, 204]);
   }
 }

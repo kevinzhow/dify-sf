@@ -308,7 +308,11 @@ final class SystemFeatures {
 
 /// `system-features`' `workflow_runtime` (protocol 1.13): `{"protocol_version": "1.13", "single_node_run": ["llm"]}`.
 final class WorkflowRuntimeFeatures {
-  const WorkflowRuntimeFeatures({required this.protocolVersion, this.singleNodeRun = const {}});
+  const WorkflowRuntimeFeatures({
+    required this.protocolVersion,
+    this.singleNodeRun = const {},
+    this.draftRun = const {},
+  });
 
   /// Null when [json] is not an object (the member is absent).
   static WorkflowRuntimeFeatures? fromJson(Object? json) {
@@ -320,6 +324,11 @@ final class WorkflowRuntimeFeatures {
           for (final t in types)
             if (t is String) t,
       },
+      draftRun: {
+        if (json['draft_run'] case final List<Object?> types)
+          for (final t in types)
+            if (t is String) t,
+      },
     );
   }
 
@@ -328,6 +337,10 @@ final class WorkflowRuntimeFeatures {
 
   /// The node types `POST .../workflows/draft/nodes/{node}/run` runs on the server (`llm` in 1.13).
   final Set<String> singleNodeRun;
+
+  /// 1.14: the node types a whole draft run (`POST .../workflows/draft/run`) supports; empty before 1.14. A graph with
+  /// another node type is refused (`unsupported_node_type`).
+  final Set<String> draftRun;
 }
 
 /// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password. Also the answer of
