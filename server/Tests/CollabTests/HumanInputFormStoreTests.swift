@@ -74,10 +74,14 @@ struct HumanInputFormStoreTests {
             // Dify resumes on every submission and pauses again for B: A alone is enough.
             #expect(try await store.pause(workflowRunId: run, generation: 1)?.resumeRequested == true)
             #expect(try await store.humanInputForm(token: "tok-b")?.status == .waiting)
-            let generation = try await store.claimResume(workflowRunId: run, at: at)
-            #expect(generation == 1)
+            let claim = try await store.claimResume(workflowRunId: run, at: at)
+            #expect(claim?.generation == 1)
             #expect(try await runStatus(store, doc, run) == "running")
+            // The resume takes A's decision, and only A's: B is still waiting and belongs to no decision yet.
+            #expect(claim?.decisions.map(\.executionId) == ["exec-a"])
+            #expect(claim?.decisions.first?.submittedInputs == "{}", "the resume can still read what was submitted")
             #expect(try await store.humanInputForm(token: "tok-a")?.consumedAt != nil, "A's answer is consumed by the resume")
+            #expect(try await store.humanInputForm(token: "tok-a")?.submittedInputs == "{}", "consuming is not deleting")
             #expect(try await store.humanInputForm(token: "tok-b")?.consumedAt == nil, "B is untouched")
         }
     }
@@ -110,7 +114,7 @@ struct HumanInputFormStoreTests {
             let at = Date()
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
             _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
-            #expect(try await store.claimResume(workflowRunId: run, at: at) == 1)
+            #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
             // A was in that resume; the next pause must not wake on it again.
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-c", token: "tok-c")], at: at)
             #expect(try await store.pause(workflowRunId: run, generation: 2)?.resumeRequested == false)
@@ -130,7 +134,7 @@ struct HumanInputFormStoreTests {
             #expect(try await store.openPauses(workflowRunId: run).count == 1)
             // After the resume the run may pause again, as generation 2.
             _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
-            #expect(try await store.claimResume(workflowRunId: run, at: at) == 1)
+            #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
             #expect(try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-d", token: "tok-d")], at: at) == 2)
         }
     }
@@ -145,7 +149,7 @@ struct HumanInputFormStoreTests {
             // Paused, nothing answered: not ready.
             #expect(try await store.claimResume(workflowRunId: run, at: at) == nil)
             _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
-            #expect(try await store.claimResume(workflowRunId: run, at: at) == 1)
+            #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
             // Already resumed: the same answer cannot claim twice.
             #expect(try await store.claimResume(workflowRunId: run, at: at) == nil)
             #expect(try await runStatus(store, doc, run) == "running")
@@ -162,7 +166,7 @@ struct HumanInputFormStoreTests {
             #expect(try await store.humanInputForm(token: "tok-a")?.status == .timedOut)
             #expect(try await runStatus(store, doc, run) == "paused", "a node deadline does not end the run")
             #expect(try await store.pause(workflowRunId: run, generation: 1)?.resumeRequested == true)
-            #expect(try await store.claimResume(workflowRunId: run, at: at) == 1)
+            #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
 
             // Global deadline: every waiting form expires, the run stops and the pause closes.
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-b", token: "tok-b")], at: at)

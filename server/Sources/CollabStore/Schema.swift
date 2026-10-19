@@ -589,7 +589,9 @@ public enum Schema {
         // run, so resuming is claimed once per generation rather than once per node execution — two nodes waiting in the
         // same pause must not each start an engine, and a node that pauses again after a resume is another generation
         // rather than a duplicate key. `snapshot` is the JSON text the engine wrote (key order, number kinds and segment
-        // types kept). `resume_requested` means every form of this generation is answered; `resumed_at` is the claim.
+        // types kept). `execution_ids` lists the node executions the snapshot has to decide on: the resume consumes exactly
+        // those forms, so a submission that arrives later is left for the next pause. `resume_requested` means one of this
+        // run's forms is terminal and no resume has consumed it yet; `resumed_at` is the claim.
         """
         CREATE TABLE IF NOT EXISTS workflow_pauses (
             workflow_run_id text             NOT NULL REFERENCES workflow_runs(id),
@@ -597,6 +599,7 @@ public enum Schema {
             doc_id          text             NOT NULL REFERENCES documents(id),
             node_id         text             NOT NULL DEFAULT '',
             snapshot        text             NOT NULL,
+            execution_ids   text[]           NOT NULL DEFAULT '{}',
             total_tokens    bigint           NOT NULL DEFAULT 0,
             total_steps     integer          NOT NULL DEFAULT 0,
             elapsed_time    double precision NOT NULL DEFAULT 0,

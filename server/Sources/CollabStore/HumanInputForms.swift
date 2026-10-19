@@ -10,6 +10,8 @@ public struct StoredWorkflowPause: Sendable, Equatable {
     /// The node whose pause produced this generation (the one that stopped the dispatcher first).
     public var nodeId: String
     public var snapshot: String
+    /// The node executions this pause's snapshot still has to decide on: the resume consumes exactly their forms.
+    public var executionIds: [String]
     public var totalTokens: Int
     public var totalSteps: Int
     public var elapsedTime: Double
@@ -19,13 +21,14 @@ public struct StoredWorkflowPause: Sendable, Equatable {
     public var resumeRequested: Bool
 
     public init(workflowRunId: String, generation: Int, docId: String, nodeId: String = "", snapshot: String,
-                totalTokens: Int = 0, totalSteps: Int = 0, elapsedTime: Double = 0, createdAt: Date,
-                resumedAt: Date? = nil, resumeRequested: Bool = false) {
+                executionIds: [String] = [], totalTokens: Int = 0, totalSteps: Int = 0, elapsedTime: Double = 0,
+                createdAt: Date, resumedAt: Date? = nil, resumeRequested: Bool = false) {
         self.workflowRunId = workflowRunId
         self.generation = generation
         self.docId = docId
         self.nodeId = nodeId
         self.snapshot = snapshot
+        self.executionIds = executionIds
         self.totalTokens = totalTokens
         self.totalSteps = totalSteps
         self.elapsedTime = elapsedTime
@@ -120,6 +123,16 @@ public enum HumanInputSubmitOutcome: Sendable, Equatable {
     case notFound
 }
 
+/// What a resume took from a pause: the generation it closed and the decisions it must apply. `decisions` are the forms
+/// that were already terminal for the executions this pause covers; `consumed_at` only says a resume took them, never
+/// that the engine is done with them — the inputs are still there to read, and a submission that arrives afterwards is
+/// not in this list: it is left for the next pause.
+public struct HumanInputResumeClaim: Sendable, Equatable {
+    public var generation: Int
+    public var pause: StoredWorkflowPause
+    public var decisions: [StoredHumanInputForm]
+}
+
 public enum HumanInputStoreError: Error, Equatable {
     /// A status value the schema does not define: never guessed (guessing `waiting` would reopen a closed form).
     case unknownStatus(String)
@@ -158,8 +171,8 @@ extension PostgresStore {
     }
 
     static let pauseColumns = """
-        workflow_run_id, generation, doc_id, node_id, snapshot, total_tokens, total_steps, elapsed_time, created_at,
-        resumed_at, resume_requested
+        workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids, total_tokens, total_steps, elapsed_time,
+        created_at, resumed_at, resume_requested
         """
 
     static func decodePause(_ row: PostgresRow) throws -> StoredWorkflowPause {
@@ -167,10 +180,10 @@ extension PostgresStore {
         return StoredWorkflowPause(
             workflowRunId: try r[0].decode(String.self), generation: Int(try r[1].decode(Int32.self)),
             docId: try r[2].decode(String.self), nodeId: try r[3].decode(String.self),
-            snapshot: try r[4].decode(String.self), totalTokens: Int(try r[5].decode(Int64.self)),
-            totalSteps: Int(try r[6].decode(Int32.self)), elapsedTime: try r[7].decode(Double.self),
-            createdAt: try r[8].decode(Date.self), resumedAt: try r[9].decode(Date?.self),
-            resumeRequested: try r[10].decode(Bool.self))
+            snapshot: try r[4].decode(String.self), executionIds: try r[5].decode([String].self),
+            totalTokens: Int(try r[6].decode(Int64.self)), totalSteps: Int(try r[7].decode(Int32.self)),
+            elapsedTime: try r[8].decode(Double.self), createdAt: try r[9].decode(Date.self),
+            resumedAt: try r[10].decode(Date?.self), resumeRequested: try r[11].decode(Bool.self))
     }
 
     /// Serializes every writer of one run's pause and forms on the run's own row, in the order run → forms. Two
@@ -229,10 +242,10 @@ extension PostgresStore {
                     UPDATE workflow_runs SET status = 'paused' WHERE id = \(workflowRunId)
                     """, logger: self.logger)
                 _ = try await c.query("""
-                    INSERT INTO workflow_pauses (workflow_run_id, generation, doc_id, node_id, snapshot, total_tokens,
-                        total_steps, elapsed_time, created_at)
-                    VALUES (\(workflowRunId), \(generation), \(docId), \(nodeId), \(snapshot), \(totalTokens), \(totalSteps),
-                        \(elapsedTime), \(at))
+                    INSERT INTO workflow_pauses (workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids,
+                        total_tokens, total_steps, elapsed_time, created_at)
+                    VALUES (\(workflowRunId), \(generation), \(docId), \(nodeId), \(snapshot), \(forms.map(\.executionId)),
+                        \(totalTokens), \(totalSteps), \(elapsedTime), \(at))
                     """, logger: self.logger)
                 for f in forms {
                     // `ON CONFLICT` on (run, execution): a form still waiting keeps its id and token and moves to this
@@ -282,37 +295,41 @@ extension PostgresStore {
     }
 
     /// Claims the run's resumption: one atomic `paused → running` on the run row, allowed only when the run is paused and
-    /// its single open pause has an unconsumed answer. The pause is closed and the forms it woke on are marked consumed in
-    /// the same transaction, so the same answer cannot wake the run twice. Old generations, a run that is still waiting,
-    /// and a stopped or failed run are all refused. Returns the generation that was resumed.
-    @discardableResult
-    public func claimResume(workflowRunId: String, at: Date) async throws -> Int? {
+    /// its single open pause has an unconsumed answer. The pause is closed, and **only the forms of the executions this
+    /// pause covers** are marked consumed and handed back as `decisions` — a submission that arrives afterwards belongs to
+    /// the next pause, and an answer this resume already took does not wake again. Old generations, a waiting run and a
+    /// stopped or failed run are all refused.
+    public func claimResume(workflowRunId: String, at: Date) async throws -> HumanInputResumeClaim? {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(workflowRunId, c)
-                let claimed = try await c.query("""
+                let won = try await c.query("""
                     UPDATE workflow_runs SET status = 'running'
                     WHERE id = \(workflowRunId) AND status = 'paused'
                       AND EXISTS (SELECT 1 FROM workflow_pauses p
                                   WHERE p.workflow_run_id = \(workflowRunId) AND p.resumed_at IS NULL AND p.resume_requested)
                     RETURNING id
                     """, logger: self.logger)
-                var won = false
-                for try await _ in claimed { won = true }
-                guard won else { return nil }
+                var claimed = false
+                for try await _ in won { claimed = true }
+                guard claimed else { return nil }
                 let closed = try await c.query("""
                     UPDATE workflow_pauses SET resumed_at = \(at)
                     WHERE workflow_run_id = \(workflowRunId) AND resumed_at IS NULL
-                    RETURNING generation
+                    RETURNING \(unescaped: Self.pauseColumns)
                     """, logger: self.logger)
-                var generation: Int?
-                for try await (g,) in closed { generation = Int(try g.decode(Int32.self)) }
-                _ = try await c.query("""
+                var pause: StoredWorkflowPause?
+                for try await row in closed { pause = try Self.decodePause(row) }
+                guard let pause else { return nil }
+                let taken = try await c.query("""
                     UPDATE human_input_forms SET consumed_at = \(at)
-                    WHERE workflow_run_id = \(workflowRunId) AND status IN ('submitted', 'timed_out')
-                      AND consumed_at IS NULL
+                    WHERE workflow_run_id = \(workflowRunId) AND execution_id = ANY(\(pause.executionIds))
+                      AND status IN ('submitted', 'timed_out') AND consumed_at IS NULL
+                    RETURNING \(unescaped: Self.formColumns)
                     """, logger: self.logger)
-                return generation
+                var decisions: [StoredHumanInputForm] = []
+                for try await row in taken { decisions.append(try Self.decodeForm(row)) }
+                return HumanInputResumeClaim(generation: pause.generation, pause: pause, decisions: decisions)
             }
         }
     }
