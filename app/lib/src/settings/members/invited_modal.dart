@@ -50,13 +50,9 @@ class InvitedModal extends StatelessWidget {
     final description = stc(context, onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip');
     final title = stc(context, onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent');
     void close() => onCancel != null ? onCancel!() : Navigator.of(context).maybePop();
-    final sectionTitle = TextStyle(
-      fontSize: 14,
-      height: 20 / 14,
-      fontWeight: FontWeight.w500,
-      color: DifyColors.textPrimary,
-    );
-    final tertiary = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary);
+    // `text-sm font-medium text-text-primary`, `text-sm text-text-tertiary`
+    final sectionTitle = difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary);
+    final tertiary = difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary);
     return SettingsDialogContent(
       label: title,
       padding: const EdgeInsets.all(32),
@@ -81,7 +77,7 @@ class InvitedModal extends StatelessWidget {
                       border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
                       boxShadow: DifyShadows.xl,
                     ),
-                    child: const HeroIcon('check-circle-solid', size: 22, color: Color(0xFF039855)),
+                    child: HeroIcon('check-circle-solid', size: 22, color: DifyInvitedModalColors.check),
                   ),
                 ),
               ),
@@ -89,12 +85,7 @@ class InvitedModal extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    height: 28 / 20,
-                    fontWeight: FontWeight.w600,
-                    color: DifyColors.textPrimary,
-                  ),
+                  style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary), // `text-xl font-semibold`
                 ),
               ),
               Padding(
@@ -135,7 +126,7 @@ class InvitedModal extends StatelessWidget {
                               ),
                               child: Text(
                                 r.email,
-                                style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+                                style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary), // `text-sm`
                               ),
                             ),
                         ],
@@ -154,9 +145,9 @@ class InvitedModal extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFEF6EE), // orange-50
+                                color: DifyTailwind.orange50, // `bg-orange-50`
                                 borderRadius: BorderRadius.circular(DifyRadius.md),
-                                border: Border.all(color: const Color(0xFFFDA29B)), // red-300
+                                border: Border.all(color: DifyTailwind.red300), // `border-red-300`
                               ),
                               child: DifyTooltip(
                                 content: Text(r.message ?? ''),
@@ -164,8 +155,8 @@ class InvitedModal extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 4,
                                   children: [
-                                    Text(r.email, style: const TextStyle(fontSize: 14, height: 20 / 14)),
-                                    const RemixIcon('question-line', size: 16, color: Color(0xFFFDA29B)),
+                                    Text(r.email, style: DifyType.systemMdRegular.style), // `text-sm`
+                                    RemixIcon('question-line', size: 16, color: DifyTailwind.red300), // `text-red-300`
                                   ],
                                 ),
                               ),
@@ -283,7 +274,10 @@ class _InvitationLinkState extends State<InvitationLink> {
                               url,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 13, height: 20 / 13, color: DifyColors.textPrimary),
+                              style: difyTextStyle(
+                                DifyTw.text13Leading20,
+                                DifyColors.textPrimary,
+                              ), // `text-[13px]` in an `h-5` row
                             ),
                           ),
                         ),

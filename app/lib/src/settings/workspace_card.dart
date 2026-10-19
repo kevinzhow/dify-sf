@@ -300,12 +300,10 @@ class _WorkspaceMenuHeader extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 20 / 16,
-                      fontWeight: FontWeight.w500,
-                      color: DifyColors.textPrimary,
-                    ),
+                    style: difyTextStyle(
+                      DifyTw.textBaseMediumLeading20,
+                      DifyColors.textPrimary,
+                    ) /* `text-base/5 font-medium` */,
                   ),
                 ),
                 DifyWorkspaceAvatar(name: name, size: DifyWorkspaceAvatarSize.lg),

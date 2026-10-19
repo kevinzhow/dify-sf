@@ -134,7 +134,7 @@ class AppChart extends StatelessWidget {
                               const TextSpan(text: '('),
                               TextSpan(
                                 text: '~${getTokenSummary(statistics)}',
-                                style: TextStyle(color: OverviewPalette.orange400),
+                                style: TextStyle(color: DifyTailwind.orange400),
                               ),
                               const TextSpan(text: ')'),
                             ],
@@ -161,13 +161,6 @@ class AppChart extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Tailwind palette colours Dify's overview uses outside its theme tokens (`text-orange-400` is Tailwind's default
-/// `oklch(75% 0.183 55.934)`; `text-primary-600` is dify-ui's `--color-primary-600`). The same in both themes.
-abstract final class OverviewPalette {
-  static Color get orange400 => const Color(0xFFFF8904);
-  static Color get primary600 => const Color(0xFF155EEF);
 }
 
 /// One `createBizChartComponent` config.

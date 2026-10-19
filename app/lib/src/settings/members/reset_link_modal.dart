@@ -44,7 +44,7 @@ class ResetLinkModal extends StatelessWidget {
   Widget build(BuildContext context) {
     void close() => Navigator.of(context).maybePop();
     final who = member.name.isEmpty ? member.email : member.name;
-    final tertiary = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary);
+    final tertiary = difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary); // `text-sm`
     return SettingsDialogContent(
       label: title,
       padding: const EdgeInsets.all(32),
@@ -77,12 +77,7 @@ class ResetLinkModal extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 4),
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    height: 28 / 20,
-                    fontWeight: FontWeight.w600,
-                    color: DifyColors.textPrimary,
-                  ),
+                  style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary) /* `text-xl font-semibold` */,
                 ),
               ),
               Padding(

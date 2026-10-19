@@ -1,4 +1,5 @@
 import 'package:collab_client/collab_client.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 
 import '../canvas/run_view.dart';
@@ -128,7 +129,7 @@ abstract final class NodeExtras {
 
 Widget _retryRow(int retries, RetryLook look, int retryIndex, BoxDecoration box) {
   final (border, bg, color) = switch (look) {
-    RetryLook.idle => (const Color(0x00000000), DifyColors.workflowBlockParmaBg, DifyColors.textTertiary),
+    RetryLook.idle => (Colors.transparent, DifyColors.workflowBlockParmaBg, DifyColors.textTertiary),
     RetryLook.running => (DifyColors.stateAccentActive, DifyColors.stateAccentHover, DifyColors.textAccent),
     RetryLook.succeeded => (DifyColors.stateSuccessActive, DifyColors.stateSuccessHover, DifyColors.textSuccess),
     RetryLook.failed => (DifyColors.stateWarningActive, DifyColors.stateWarningHover, DifyColors.textWarning),

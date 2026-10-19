@@ -107,14 +107,15 @@ class InvalidInvitation extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             '🤷‍♂️',
-            style: TextStyle(fontSize: large ? 40 : 24, fontWeight: FontWeight.w700),
+            // `text-[40px] font-bold` / `text-2xl font-bold`
+            style: (large ? DifyTw.text40Bold : DifyTw.text2xlBold).style,
           ),
         ),
       ),
       AuthHeading(
         tLogin(context, 'invalid'),
         style: large
-            ? TextStyle(fontSize: 32, height: 1.5, fontWeight: FontWeight.w700, color: DifyColors.textPrimary)
+            ? difyTextStyle(DifyTw.text32BoldLeading48, DifyColors.textPrimary)
             : difyTextStyle(DifyType.title4xlSemiBold, DifyColors.textPrimary),
       ),
       const SizedBox(height: 24),
@@ -122,7 +123,7 @@ class InvalidInvitation extends StatelessWidget {
         key: const ValueKey('explore-dify'),
         variant: DifyButtonVariant.primary,
         onPressed: onExplore,
-        child: Text(tLogin(context, 'explore'), style: const TextStyle(fontSize: 14)),
+        child: Text(tLogin(context, 'explore'), style: DifyTw.textSm.style), // `text-sm!`
       ),
     ],
   );

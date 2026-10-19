@@ -133,7 +133,7 @@ class DifyCards extends CardSpec {
   /// Every icon (asset, colour) cards draw, decoded before the canvas starts (see IconCache).
   static Iterable<(String, Color)> get icons sync* {
     for (final t in bodies.keys) {
-      yield ('assets/dify_icons/${blockGlyph(t)}.svg', Colors.white);
+      yield ('assets/dify_icons/${blockGlyph(t)}.svg', DifyTailwind.white);
       yield ('assets/dify_icons/${varBlockGlyph(t)}.svg', DifyColors.textSecondary);
     }
     yield ('assets/dify_icons/${blockGlyph('start-placeholder')}.svg', DifyColors.textPrimary);

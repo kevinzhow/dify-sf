@@ -7,6 +7,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
 
+import '../../design/dify_palette.dart';
+
 /// One statistics row (`{date, <value fields>, total_price?, currency?}`): the server's JSON, or a fallback row.
 typedef ChartRow = Map<String, Object?>;
 
@@ -26,37 +28,20 @@ enum ChartType {
   final bool showTokens;
 }
 
-/// Dify's literal chart colours (`COLOR_TYPE_MAP`, `COMMON_COLOR_MAP`, the tooltip's inline styles). ECharts gets no
-/// theme, so they are the same in both themes, as in Dify.
+/// The chart colours of a [ChartColorType] (`COLOR_TYPE_MAP`); the rest of the chart's literals are
+/// [DifyChartColors].
 abstract final class ChartColors {
   static Color line(ChartColorType t) => switch (t) {
-    ChartColorType.green => const Color.fromRGBO(6, 148, 162, 1),
-    ChartColorType.orange => const Color.fromRGBO(255, 138, 76, 1),
-    ChartColorType.blue => const Color.fromRGBO(28, 100, 242, 1),
+    ChartColorType.green => DifyChartColors.greenLine,
+    ChartColorType.orange => DifyChartColors.orangeLine,
+    ChartColorType.blue => DifyChartColors.blueLine,
   };
 
   static (Color, Color) area(ChartColorType t) => switch (t) {
-    ChartColorType.green => (const Color.fromRGBO(6, 148, 162, 0.2), const Color.fromRGBO(67, 174, 185, 0.08)),
-    ChartColorType.orange => (const Color.fromRGBO(254, 145, 87, 0.2), const Color.fromRGBO(255, 138, 76, 0.1)),
-    ChartColorType.blue => (const Color.fromRGBO(28, 100, 242, 0.3), const Color.fromRGBO(28, 100, 242, 0.1)),
+    ChartColorType.green => (DifyChartColors.greenAreaTop, DifyChartColors.greenAreaBottom),
+    ChartColorType.orange => (DifyChartColors.orangeAreaTop, DifyChartColors.orangeAreaBottom),
+    ChartColorType.blue => (DifyChartColors.blueAreaTop, DifyChartColors.blueAreaBottom),
   };
-
-  /// `COMMON_COLOR_MAP.label`.
-  static Color get label => const Color(0xFF9CA3AF);
-  static Color get splitLineLight => const Color(0xFFF3F4F6);
-  static Color get splitLineDark => const Color(0xFFE5E7EB);
-
-  /// The tooltip's date (`#6B7280`), value (`#1F2A37`) and price (`#FF8A4C`).
-  static Color get tooltipName => const Color(0xFF6B7280);
-  static Color get tooltipValue => const Color(0xFF1F2A37);
-  static Color get tooltipPrice => const Color(0xFFFF8A4C);
-
-  /// ECharts' tooltip box: `backgroundColor` (`tokens.color.neutral00`) and its shadow.
-  static Color get tooltipBackground => const Color(0xFFFFFFFF);
-  static Color get tooltipShadow => const Color.fromRGBO(0, 0, 0, 0.2);
-
-  /// Symbols are `emptyCircle`s filled with ECharts' `symbolInnerColor`.
-  static Color get symbolInner => const Color(0xFFFFFFFF);
 }
 
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

@@ -61,7 +61,7 @@ Color blockColor(String type) => switch (type) {
   'http-request' || 'trigger-schedule' => DifyColors.utilColorsVioletViolet500,
   'knowledge-retrieval' || 'question-classifier' || 'document-extractor' => DifyColors.utilColorsGreenGreen500,
   'datasource' => DifyColors.componentsIconBgMidnightSolid,
-  _ => const Color(0xFF828DAD),
+  _ => Colors.transparent, // no ICON_CONTAINER_BG_COLOR_MAP entry: no background
 };
 
 /// Captured cards leave room for controls painted by the shared live control layer.

@@ -3,7 +3,7 @@
 library;
 
 import 'package:collab_client/collab_client.dart' show AppModes, AppSortBy, Member;
-import 'package:flutter/material.dart' show Material, MaterialType;
+import 'package:flutter/material.dart' show Colors, Material, MaterialType;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -19,7 +19,7 @@ String _a(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('
 String _c(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
 
 /// `text-[13px] leading-4`.
-const _chipText = TextStyle(fontSize: 13, height: 16 / 13, letterSpacing: 0);
+final _chipText = DifyTw.text13Leading16.style;
 
 /// The filter chip (`chipClassName`: `flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4`):
 /// [selected] = `border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs
@@ -46,7 +46,7 @@ Widget _chip({
           ? DifyColors.stateAccentSolid
           : selected
           ? DifyColors.componentsButtonSecondaryBorder
-          : const Color(0x00000000),
+          : Colors.transparent,
       width: focused ? 2 : Css.hairline,
     ),
     boxShadow: selected ? DifyShadows.xs : null,
@@ -183,7 +183,7 @@ class _AppSortFilterState extends State<AppSortFilter> {
                       const TextSpan(text: '  '),
                       TextSpan(
                         text: active,
-                        style: TextStyle(fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+                        style: difyTextStyle(DifyTw.fontMedium, DifyColors.textSecondary), // `font-medium`
                       ),
                     ],
                   ),
@@ -372,7 +372,7 @@ class _CreatorsFilterState extends State<CreatorsFilter> {
                       ),
                       Text(
                         '+$count',
-                        style: TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: textColor),
+                        style: difyTextStyle(DifyType.systemXsMedium, textColor), // `text-xs leading-4 font-medium`
                       ),
                     ] else
                       RemixIcon('arrow-down-s-line', size: 16, color: textColor),
@@ -520,7 +520,7 @@ class CreatorRow extends StatelessWidget {
                         option.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+                        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary), // `text-sm`
                       ),
                     ),
                     if (option.isYou)
@@ -531,7 +531,7 @@ class CreatorRow extends StatelessWidget {
                           _a('studio.filters.you'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textQuaternary),
+                          style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textQuaternary),
                         ),
                       ),
                   ],

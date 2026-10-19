@@ -238,7 +238,7 @@ class _BoldTrans extends StatelessWidget {
       spans.add(
         TextSpan(
           text: m[1],
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: DifyType.systemMdMedium.style, // `system-md-medium`
         ),
       );
       at = m.end;

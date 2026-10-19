@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
 import 'canvas_selection.dart';
 import 'canvas_view_state.dart';
@@ -174,7 +175,7 @@ class NodeFocusRingPainter extends CustomPainter {
   final double width;
 
   /// `state-accent-solid`.
-  static const color = Color(0xFF0033FF);
+  static Color get color => DifyColors.stateAccentSolid;
 
   @override
   void paint(Canvas canvas, Size size) {

@@ -571,11 +571,13 @@ class _StripesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const d = 6 / 1.4142135623730951;
+    // `transparent`: CSS interpolates premultiplied, so the stripe colour at alpha 0.
+    final clear = DifyCreateAppColors.stripe.withValues(alpha: 0);
     final paint = Paint()
       ..shader = ui.Gradient.linear(
         Offset.zero,
         const Offset(d, d),
-        const [Color(0x00000000), Color(0x00000000), Color(0x0A101828), Color(0x00000000), Color(0x00000000)],
+        [clear, clear, DifyCreateAppColors.stripe, clear, clear],
         const [0, 2 / 6, 4 / 6, 4 / 6, 1],
         TileMode.repeated,
       );

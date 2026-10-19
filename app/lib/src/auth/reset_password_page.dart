@@ -351,7 +351,7 @@ class _ResetPasswordCheckCodeFormState extends State<ResetPasswordCheckCodeForm>
                           TextSpan(text: tLogin(context, 'checkCode.tipsPrefix')),
                           TextSpan(
                             text: widget.route.email,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: DifyTw.fontBold.style, // `<strong>`
                           ),
                           TextSpan(text: '\n${tLogin(context, 'checkCode.validTime')}'),
                         ],

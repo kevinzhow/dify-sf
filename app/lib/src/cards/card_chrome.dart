@@ -34,15 +34,7 @@ class DifyNodeCard extends StatelessWidget {
     final body = DifyCards.bodyOf(node.type);
     // Cards are styled by Dify's tokens alone: nothing inherited from the app's (Material) text theme.
     return DefaultTextStyle(
-      style: TextStyle(
-        fontFamily: cardFontFamily,
-        fontSize: 14,
-        height: 20 / 14,
-        letterSpacing: 0,
-        wordSpacing: 0,
-        color: DifyColors.textPrimary,
-        leadingDistribution: TextLeadingDistribution.even,
-      ),
+      style: difyStyle(DifyType.systemMdRegular, DifyColors.textPrimary).copyWith(wordSpacing: 0),
       child: ListenableBuilder(
         listenable: Listenable.merge([
           node.node,
@@ -231,7 +223,7 @@ class NodeHeaderMeta extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: '${DifyI18n.tr('workflow', 'nodes.iteration.parallelModeEnableTitle')}\n',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    style: DifyTw.fontExtrabold.style,
                   ),
                   TextSpan(text: DifyI18n.tr('workflow', 'nodes.iteration.parallelModeEnableDesc')),
                 ],
@@ -388,11 +380,11 @@ class BlockIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: blockColor(type),
         borderRadius: BorderRadius.circular(size.radius),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.02), width: 0.5),
+        border: Border.all(color: DifyTailwind.white.withValues(alpha: 0.02), width: 0.5), // border-white/2
         boxShadow: size == BlockIconSize.md ? DifyShadows.md : DifyShadows.xs,
       ),
       child: Center(
-        child: DifyIcon(blockGlyph(type), size: size.glyph, color: Colors.white),
+        child: DifyIcon(blockGlyph(type), size: size.glyph, color: DifyTailwind.white), // text-white
       ),
     );
   }

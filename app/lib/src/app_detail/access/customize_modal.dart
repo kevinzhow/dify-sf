@@ -51,7 +51,7 @@ class CustomizeModal extends StatelessWidget {
     decoration: BoxDecoration(color: DifyColors.utilColorsBlueBlue50, borderRadius: BorderRadius.circular(16)),
     child: Text(
       n,
-      style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textAccent),
+      style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textAccent),
     ),
   );
 
@@ -70,8 +70,8 @@ class CustomizeModal extends StatelessWidget {
   );
 
   Widget _step(String n, {required String title, required String tip, required Widget child, bool last = false}) {
-    final body = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textPrimary);
-    final small = TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary);
+    final body = difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary); // inherited 14/20
+    final small = difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary); // `text-xs`
     return Padding(
       padding: EdgeInsets.only(top: 16, bottom: last ? 16 : (n == '2' ? 0 : 16)),
       child: Row(
@@ -181,12 +181,8 @@ class CustomizeModal extends StatelessWidget {
                                   scrollDirection: Axis.horizontal,
                                   child: SelectableText(
                                     env,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      height: 16 / 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: DifyColors.textSecondary,
-                                    ),
+                                    // `text-xs font-medium text-text-secondary`
+                                    style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
                                   ),
                                 ),
                               ),

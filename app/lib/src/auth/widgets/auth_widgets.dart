@@ -391,12 +391,8 @@ class _LocaleMenuState extends State<LocaleMenu> {
                       ),
                       Text(
                         selected?.name ?? '',
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 20 / 13,
-                          fontWeight: FontWeight.w500,
-                          color: DifyColors.textPrimary,
-                        ),
+                        // `text-[13px] font-medium` (the row: the size-5 icon's 20 px)
+                        style: difyTextStyle(DifyTw.text13MediumLeading20, DifyColors.textPrimary),
                       ),
                     ],
                   ),
@@ -547,7 +543,7 @@ class _AuthCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(1),
             child: DefaultTextStyle.merge(
-              style: TextStyle(color: DifyColors.textPrimary, letterSpacing: 0),
+              style: difyTextStyle(DifyTw.trackingNormal, DifyColors.textPrimary),
               child: child,
             ),
           ),
@@ -627,7 +623,7 @@ class AuthPageFrame extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
               child: Text(
                 difyCopyright(),
-                style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // `text-sm font-normal`
               ),
             ),
           ],

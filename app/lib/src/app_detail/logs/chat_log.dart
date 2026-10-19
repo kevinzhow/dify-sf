@@ -425,7 +425,7 @@ class HandThumbIconWithCount extends StatelessWidget {
           if (count > 0)
             Text(
               '$count',
-              style: TextStyle(fontSize: 12, height: 16 / 12, color: fg),
+              style: difyTextStyle(DifyType.systemXsRegular, fg), // `text-xs`
             ),
         ],
       ),

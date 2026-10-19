@@ -217,10 +217,10 @@ class _AnnotationCsvUploaderState extends State<AnnotationCsvUploader> {
                       file.name.replaceFirst(RegExp(r'.csv$'), ''),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 14, color: DifyColors.textPrimary),
+                      style: difyTextStyle(DifyTw.text14, DifyColors.textPrimary), // inherited 14 px
                     ),
                   ),
-                  Text('.csv', style: TextStyle(fontSize: 14, color: DifyColors.textTertiary)),
+                  Text('.csv', style: difyTextStyle(DifyTw.text14, DifyColors.textTertiary)),
                 ],
               ),
             ),
@@ -329,8 +329,9 @@ class AnnotationCsvDownloader extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = AppLocaleScope.of(context);
     final q = _a('batchModal.question'), a = _a('batchModal.answer');
-    final head = TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary);
-    final cell = TextStyle(fontSize: 13, height: 16 / 13, color: DifyColors.textSecondary);
+    // `table text-xs`, `thead text-text-tertiary`, `td text-[13px]` (line height: the table's)
+    final head = difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary);
+    final cell = difyTextStyle(DifyTw.text13Leading16, DifyColors.textSecondary);
     Widget row(List<String> texts, TextStyle style, {Color? border}) => Container(
       height: 36,
       decoration: BoxDecoration(

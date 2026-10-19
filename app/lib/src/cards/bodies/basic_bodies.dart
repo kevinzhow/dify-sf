@@ -159,12 +159,8 @@ class IfElseBody extends NodeBody {
       fontWeight: FontWeight.w600,
       color: DifyColors.textTertiary,
     );
-    final keyword = TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-      height: 16 / 12,
-      color: DifyColors.textSecondary,
-    );
+    // `text-[12px] font-semibold` in a 16 px line.
+    final keyword = difyTextStyle(DifyType.systemXsSemibold, DifyColors.textSecondary);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
@@ -237,7 +233,7 @@ class _ConditionLine extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(
             'Condition NOT setup',
-            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textSecondary),
+            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary), // text-xs font-normal
           ),
         ),
       );
@@ -270,12 +266,7 @@ class _ConditionLine extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               _operators[op] ?? op,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                height: 16 / 12,
-                color: DifyColors.textPrimary,
-              ),
+              style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textPrimary), // text-xs font-medium
             ),
           ),
           if (height == 24)
@@ -286,7 +277,7 @@ class _ConditionLine extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, height: 2, color: DifyColors.textSecondary),
+                  style: difyTextStyle(DifyTw.textXsLeading24, DifyColors.textSecondary),
                 ),
               ),
             ),

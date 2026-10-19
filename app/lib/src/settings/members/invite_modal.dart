@@ -62,16 +62,11 @@ class InviteModal extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
-                        fontSize: 20,
-                        height: 28 / 20,
-                        fontWeight: FontWeight.w600,
-                        color: DifyColors.textPrimary,
-                      ),
+                      style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary),
                     ),
                     Text(
                       stc(context, 'members.inviteTeamMemberTip'),
-                      style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                      style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // `text-sm`
                     ),
                   ],
                 ),

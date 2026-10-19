@@ -328,13 +328,19 @@ class _RoleOptionState extends State<_RoleOption> {
                             w.role.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+                            style: difyTextStyle(
+                              DifyType.systemMdRegular,
+                              DifyColors.textSecondary,
+                            ), // `text-sm leading-5`
                           ),
                           Text(
                             w.description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                            style: difyTextStyle(
+                              DifyTw.textXsLeading18,
+                              DifyColors.textTertiary,
+                            ), // `text-xs leading-4.5`
                           ),
                         ],
                       ),

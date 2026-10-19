@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 
 import '../../design/dify_tokens.g.dart';
+import '../../design/widgets/widgets.dart';
 
 /// Lexical's text format bits (TextNode `format`).
 abstract final class NoteFormat {
@@ -228,12 +229,7 @@ Map<String, Object?> _root(NoteText t) {
 // ----- drawing -----
 
 /// note-editor/theme: 12 px paragraphs (line height 1.5, as the page's), `text-text-secondary`.
-TextStyle get noteParagraphStyle => TextStyle(
-  fontSize: 12,
-  height: 1.5,
-  leadingDistribution: TextLeadingDistribution.even,
-  color: DifyColors.textSecondary,
-);
+TextStyle get noteParagraphStyle => difyTextStyle(DifyTw.textXsLeading18, DifyColors.textSecondary);
 
 /// `.note-editor-theme_link`: text-accent, weight 500, a 1 px underline in the accent at 60 %.
 Color get _linkColor => DifyColors.textAccent;

@@ -31,10 +31,7 @@ List<(String, Color)> get entryBodyIcons => <(String, Color)>[
 ];
 
 /// `text-2xs font-medium tracking-wide uppercase`; the line height is the inherited 1.5.
-const _caption = DifyTextStyle(
-  TextStyle(fontSize: 10, fontWeight: FontWeight.w500, height: 1.5, letterSpacing: 0.25),
-  uppercase: true,
-);
+const _caption = DifyTw.text2xsMediumTrackingWideUppercaseLeading15;
 
 /// `mb-1 px-3 py-1` around [children] stacked `space-y-0.5`; [rows] of 24 px: py-1 + rows + mb-1.
 double _rowsBlock(int rows) => 4 + rows * 24 + max(0, rows - 1) * 2 + 4 + 4;
@@ -623,13 +620,8 @@ class DataSourceEmptyBody extends NodeBody {
           const SizedBox(width: 4),
           Text(
             'Add Data Source',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 16 / 13,
-              color: DifyColors.componentsButtonPrimaryText,
-              fontFamily: cardFontFamily,
-            ),
+            // Button `medium`: `text-[13px] leading-4 font-medium`.
+            style: difyStyle(DifyTw.text13MediumLeading16, DifyColors.componentsButtonPrimaryText),
           ),
         ],
       ),

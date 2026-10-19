@@ -8,6 +8,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../design/dify_palette.dart';
 import 'app_chart_utils.dart';
 
 /// ECharts' axis label font size and the gap between a label and its axis (`axisLabel.margin`).
@@ -195,8 +196,13 @@ TextPainter _painter(String text, TextStyle style) => TextPainter(
 )..layout();
 
 /// The label style of a chart in [fontFamily].
-TextStyle chartLabelStyle(String? fontFamily) =>
-    TextStyle(fontSize: _labelFontSize, color: ChartColors.label, fontFamily: fontFamily, height: 1, letterSpacing: 0);
+TextStyle chartLabelStyle(String? fontFamily) => TextStyle(
+  fontSize: _labelFontSize,
+  color: DifyChartColors.label,
+  fontFamily: fontFamily,
+  height: 1,
+  letterSpacing: 0,
+);
 
 /// Paints a [ChartLayout]: split lines, the gradient area, the line and its symbols, the axis labels.
 class AppChartPainter extends CustomPainter {
@@ -221,21 +227,21 @@ class AppChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     // y split lines (solid, light), at every tick.
-    thin.color = ChartColors.splitLineLight;
+    thin.color = DifyChartColors.splitLineLight;
     for (final t in l.yTicks) {
       final y = crisp(l.yOf(t));
       canvas.drawLine(Offset(p.left, y), Offset(p.right, y), thin);
     }
     // xAxis[1]: solid darker lines at the seed categories that are not empty.
     final seed = options.markLineSeedData;
-    thin.color = ChartColors.splitLineDark;
+    thin.color = DifyChartColors.splitLineDark;
     for (var i = 0; i < seed.length; i++) {
       if (!options.innerSplitLine(i, seed[i])) continue;
       final x = crisp(seed.length == 1 ? p.center.dx : p.left + i * p.width / (seed.length - 1));
       canvas.drawLine(Offset(x, p.top), Offset(x, p.bottom), thin);
     }
     // xAxis[0]: dashed light lines ([10, 10]) at the first and the last date.
-    thin.color = ChartColors.splitLineLight;
+    thin.color = DifyChartColors.splitLineLight;
     for (var i = 0; i < l.xs.length; i++) {
       if (!options.outerSplitLine(i)) continue;
       final x = crisp(l.xs[i]);
@@ -293,7 +299,7 @@ class AppChartPainter extends CustomPainter {
       if (pt == null || !l.symbols[i]) continue;
       final r = _symbolSize / 2 * (i == hovered ? 1.5 : 1);
       canvas
-        ..drawCircle(pt, r, Paint()..color = ChartColors.symbolInner)
+        ..drawCircle(pt, r, Paint()..color = DifyChartColors.symbolInner)
         ..drawCircle(
           pt,
           r,
@@ -419,15 +425,15 @@ class _ChartTooltip extends StatelessWidget {
     final price = content.price;
     final value = Text.rich(
       TextSpan(
-        style: s(14, ChartColors.tooltipValue),
+        style: s(14, DifyChartColors.tooltipValue),
         children: [
           TextSpan(text: content.value),
           if (price != null) ...[
             const TextSpan(text: ' '),
             const WidgetSpan(child: SizedBox(width: 4)),
-            TextSpan(text: '( ', style: s(12, ChartColors.tooltipName)),
-            TextSpan(text: '~\$$price', style: s(12, ChartColors.tooltipPrice)),
-            TextSpan(text: ' )', style: s(12, ChartColors.tooltipName)),
+            TextSpan(text: '( ', style: s(12, DifyChartColors.tooltipName)),
+            TextSpan(text: '~\$$price', style: s(12, DifyChartColors.tooltipPrice)),
+            TextSpan(text: ' )', style: s(12, DifyChartColors.tooltipName)),
           ],
         ],
       ),
@@ -437,15 +443,15 @@ class _ChartTooltip extends StatelessWidget {
     final box = Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: ChartColors.tooltipBackground,
+        color: DifyChartColors.tooltipBackground,
         borderRadius: BorderRadius.circular(4),
-        boxShadow: [BoxShadow(color: ChartColors.tooltipShadow, blurRadius: 10, offset: const Offset(1, 2))],
+        boxShadow: [BoxShadow(color: DifyChartColors.tooltipShadow, blurRadius: 10, offset: const Offset(1, 2))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(content.name, style: s(12, ChartColors.tooltipName), maxLines: 1, softWrap: false),
+          Text(content.name, style: s(12, DifyChartColors.tooltipName), maxLines: 1, softWrap: false),
           value,
         ],
       ),
@@ -464,7 +470,7 @@ class _ChartTooltip extends StatelessWidget {
                 bottom: -3,
                 child: Transform.rotate(
                   angle: math.pi / 4,
-                  child: Container(width: 6, height: 6, color: ChartColors.tooltipBackground),
+                  child: Container(width: 6, height: 6, color: DifyChartColors.tooltipBackground),
                 ),
               ),
               box,

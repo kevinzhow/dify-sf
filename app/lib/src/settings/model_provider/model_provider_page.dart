@@ -290,7 +290,7 @@ class _NoneConfiguredWarning extends StatelessWidget {
     ),
     child: Stack(
       children: [
-        const Positioned.fill(
+        Positioned.fill(
           child: Opacity(
             opacity: 0.4,
             child: DecoratedBox(
@@ -298,7 +298,10 @@ class _NoneConfiguredWarning extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment(-0.88, -0.48),
                   end: Alignment(0.88, 0.48),
-                  colors: [Color(0x40F79009), Color(0x00FFFFFF)],
+                  colors: [
+                    DifyModelProviderColors.noneConfiguredGlowStart,
+                    DifyModelProviderColors.noneConfiguredGlowEnd,
+                  ],
                 ),
               ),
             ),

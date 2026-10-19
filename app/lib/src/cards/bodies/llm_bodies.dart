@@ -157,11 +157,11 @@ class KnowledgeRetrievalBody extends NodeBody {
                     height: 16,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF4ED),
+                      color: DifyDatasetIconColors.defaultBackground,
                       borderRadius: BorderRadius.circular(DifyRadius.sm),
                       border: Border.all(color: DifyColors.dividerRegular, width: Css.hairline),
                     ),
-                    child: const Text('📙', style: TextStyle(fontSize: 12, height: 1)),
+                    child: Text('📙', style: difyEmojiTextStyle(12)),
                   ),
                   const SizedBox(width: 4),
                   Expanded(

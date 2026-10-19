@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 
+import '../design/dify_palette.dart';
+
 /// Dify's edge path: React Flow's bezier with curvature 0.16 from a source handle on the right to a target handle on
 /// the left, both ends pulled 8 px into the handles (custom-edge.tsx). [source] and [target] are the handle points;
 /// set [inset] to 0 for the line dragged out of a handle (custom-connection-line.tsx).
@@ -22,10 +24,10 @@ List<Offset> edgeCurve(Offset source, Offset target, {double inset = 8, int segm
 Rect connectionLineMarker(Offset to) => Rect.fromLTWH(to.dx, to.dy - 4, 2, 8);
 
 /// `fill="#2970FF"`.
-const connectionLineMarkerColor = Color(0xFF2970FF);
+Color get connectionLineMarkerColor => DifyConnectionLineColors.marker;
 
 /// The connection line's stroke: `stroke="#D0D5DD" strokeWidth={2}`.
-const connectionLineColor = Color(0xFFD0D5DD);
+Color get connectionLineColor => DifyConnectionLineColors.stroke;
 
 /// React Flow's calculateControlOffset: half the horizontal distance when the target is to the right, otherwise
 /// curvature * 25 * sqrt(-distance).

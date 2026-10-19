@@ -412,7 +412,9 @@ class SystemQuotaCard extends StatelessWidget {
     width: 128,
     margin: const EdgeInsets.only(left: 4),
     decoration: BoxDecoration(
-      color: destructive ? DifyColors.stateDestructiveHover : const Color(0x2EFFFFFF),
+      color: destructive
+          ? DifyColors.stateDestructiveHover
+          : DifyTailwind.white.withValues(alpha: 0.18) /* `bg-white/18` */,
       borderRadius: BorderRadius.circular(DifyRadius.lg),
       border: Border.all(
         color: destructive ? DifyColors.stateDestructiveBorder : DifyColors.componentsPanelBorder,
@@ -463,8 +465,8 @@ class _GridPainter extends CustomPainter {
     }
     final mask = Paint()
       ..blendMode = BlendMode.dstIn
-      ..shader = const RadialGradient(
-        colors: [Color(0x99000000), Color(0x00000000)],
+      ..shader = RadialGradient(
+        colors: [DifyModelProviderColors.quotaGridMask, DifyModelProviderColors.quotaGridMaskEnd],
         stops: [0, 0.7],
       ).createShader(rect);
     canvas.drawRect(rect, mask);
@@ -788,7 +790,11 @@ class ApiKeySection extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                gradient: LinearGradient(colors: [DifyColors.stateBaseHover, Color(0x00FFFFFF)]),
+                // `bg-linear-to-r from-state-base-hover to-transparent`: CSS interpolates premultiplied, so `transparent` is
+                // the start colour at alpha 0.
+                gradient: LinearGradient(
+                  colors: [DifyColors.stateBaseHover, DifyColors.stateBaseHover.withValues(alpha: 0)],
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

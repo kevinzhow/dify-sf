@@ -14,7 +14,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
 import '../../workflow/workspace_models.dart';
-import 'app_chart.dart' show OverviewPalette;
 
 /// The Cloud link of the community edition.
 const difyCloudAppsUrl = 'https://cloud.dify.ai/apps';
@@ -61,20 +60,10 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
   Widget _panel(BuildContext context) {
     if (!_show) return const SizedBox.shrink();
     String t(String key) => DifyI18n.tr('appOverview', key);
-    final title = TextStyle(
-      fontSize: 24,
-      height: 32 / 24,
-      fontWeight: FontWeight.w600,
-      color: DifyColors.textPrimary,
-      letterSpacing: 0,
-    );
-    final link = TextStyle(
-      fontSize: 12,
-      height: 16 / 12,
-      fontWeight: FontWeight.w500,
-      color: OverviewPalette.primary600,
-      letterSpacing: 0,
-    );
+    // `text-[24px] font-semibold text-text-primary mb-6 leading-8`
+    final title = difyTextStyle(DifyTw.text24SemiboldLeading32, DifyColors.textPrimary);
+    // `text-xs font-medium text-primary-600`
+    final link = difyTextStyle(DifyType.systemXsMedium, DifyColors.primary600);
     return Container(
       key: const ValueKey('apikey-info-panel'),
       margin: const EdgeInsets.only(bottom: 24),
@@ -110,7 +99,7 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
                     trailing: const DifyIcon('vender/line/general/link-external-02', size: 16),
                     child: Text(
                       t('apiKeyInfo.setAPIBtn'),
-                      style: const TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w500),
+                      style: DifyType.systemMdMedium.style, // `text-sm font-medium`
                     ),
                   ),
                 ),
@@ -135,7 +124,7 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
                             DifyIcon(
                               'vender/line/general/link-external-02',
                               size: 12,
-                              color: OverviewPalette.primary600,
+                              color: DifyColors.primary600,
                             ),
                           ],
                         ),

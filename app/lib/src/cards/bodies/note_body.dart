@@ -141,36 +141,16 @@ class NoteTextScope extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTextStyle(
-    style: TextStyle(
-      fontFamily: cardFontFamily,
-      fontSize: 14,
-      height: 20 / 14,
-      letterSpacing: 0,
-      wordSpacing: 0,
-      color: DifyColors.textPrimary,
-      leadingDistribution: TextLeadingDistribution.even,
-    ),
+    style: difyStyle(DifyType.systemMdRegular, DifyColors.textPrimary).copyWith(wordSpacing: 0),
     child: child,
   );
 }
 
 /// The placeholder (prompt-editor Placeholder `compact`: 13 px, leading 20 px).
-TextStyle get notePlaceholderStyle => TextStyle(
-  fontFamily: cardFontFamily,
-  fontSize: 13,
-  height: 20 / 13,
-  leadingDistribution: TextLeadingDistribution.even,
-  color: DifyColors.componentsInputTextPlaceholder,
-);
+TextStyle get notePlaceholderStyle => difyStyle(DifyTw.text13Leading20, DifyColors.componentsInputTextPlaceholder);
 
 /// The author line: `text-xs text-text-tertiary`.
-TextStyle get noteAuthorStyle => TextStyle(
-  fontFamily: cardFontFamily,
-  fontSize: 12,
-  height: 16 / 12,
-  leadingDistribution: TextLeadingDistribution.even,
-  color: DifyColors.textTertiary,
-);
+TextStyle get noteAuthorStyle => difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary);
 
 /// Where the editor sits in a note of [data] (inside the border, below the strip, `px-3 py-2.5`, above the author
 /// line `p-3 pt-0`).
@@ -196,7 +176,8 @@ class NoteCardView extends StatelessWidget {
   final bool hovered, selected;
   final Widget? editor;
 
-  static const _unselectedBorder = Color(0x0D000000);
+  /// `border-black/5`
+  static Color get _unselectedBorder => DifyTailwind.black.withValues(alpha: 0.05);
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +263,7 @@ class _GlyphPainter extends CustomPainter {
       ..lineTo(9.75, 12)
       ..cubicTo(10.9926, 12, 12, 10.9926, 12, 9.75)
       ..close();
-    canvas.drawPath(p, Paint()..color = const Color(0x29000000));
+    canvas.drawPath(p, Paint()..color = DifyNoteNodeColors.resizeGlyph);
   }
 
   @override

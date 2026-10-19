@@ -423,7 +423,7 @@ class InlineVarText {
   final bool truncate;
 
   static final _pattern = RegExp(r'\{\{#([^#]*)#\}\}');
-  static const _style = TextStyle(fontSize: 12, height: 16 / 12, leadingDistribution: TextLeadingDistribution.even);
+  static TextStyle get _style => DifyType.systemXsRegular.style; // text-xs
 
   /// Text pieces lie 3 px above where the line puts them; the chips don't move.
   static const textLift = 3.0;
@@ -520,7 +520,7 @@ class InlineVarText {
                 child: SizedBox(height: 18, child: l),
               ),
             ),
-            const Color(0x00000000),
+            Colors.transparent,
           ),
         ),
         Positioned.fill(

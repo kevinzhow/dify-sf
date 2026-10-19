@@ -9,6 +9,7 @@ import 'package:vector_math/vector_math.dart' as vm;
 
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
+import '../design/dify_palette.dart';
 import 'canvas_graph.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
@@ -25,7 +26,7 @@ vm.Vector3 toWorld(Offset p, [double lift = 0]) => vm.Vector3(p.dx, -p.dy, -lift
 
 /// A card's colour before its capture lands: a light lavender in the light theme, the block background in the dark
 /// one (where the lavender would flash).
-Color get _placeholderColor => DifyColors.isDark ? DifyColors.workflowBlockBg : const Color(0xFFF8F7FF);
+Color get _placeholderColor => DifyColors.isDark ? DifyColors.workflowBlockBg : DifyCanvasPlaceholderColors.light;
 
 /// A screen colour (sRGB) as the scene's linear colour, so it reaches the screen unchanged (linear tone mapping).
 vm.Vector4 srgb(Color c) {
@@ -220,7 +221,7 @@ class SceneRenderer extends CanvasRenderer {
     if (_disposed) return;
     scene.toneMapping = ToneMappingMode.linear; // a flat 2D canvas: colours pass through unchanged
     // Dify's edge colours (custom-edge.tsx, custom-connection-line.tsx).
-    _previewMaterial = UnlitMaterial()..baseColorFactor = srgb(const Color(0xFFD0D5DD));
+    _previewMaterial = UnlitMaterial()..baseColorFactor = srgb(connectionLineColor);
     _captureSpinner();
     // Opaque scene geometry behind the cards. (Display-referred surfaces are composited without depth order among
     // themselves, which would draw the frames over the cards.)

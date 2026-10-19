@@ -116,9 +116,9 @@ class _NormalFormState extends State<NormalForm> {
             Container(
               height: 1,
               margin: const EdgeInsets.only(top: 16 - 8, bottom: 20 - 8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0x03FFFFFF), Color(0x14101828), Color(0x03FFFFFF)],
+                  colors: [DifySigninSplitColors.edge, DifySigninSplitColors.middle, DifySigninSplitColors.edge],
                   stops: [0, 0.505, 1],
                 ),
               ),

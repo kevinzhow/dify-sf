@@ -3,7 +3,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart' show InputBorder, InputDecoration, TextField, VisualDensity;
+import 'package:flutter/material.dart' show Colors, InputBorder, InputDecoration, TextField, VisualDensity;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -306,7 +306,7 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
     final label = stc(context, 'members.emailRecipients');
     final tip = stc(context, 'members.emailRecipientsTip');
 
-    Color bg = DifyColors.componentsInputBgNormal, border = const Color(0x00000000);
+    Color bg = DifyColors.componentsInputBgNormal, border = Colors.transparent;
     if (w.disabled) {
       bg = DifyColors.componentsInputBgDisabled;
     } else if (invalid) {
@@ -355,7 +355,7 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
                   // Enter with an empty draft submits the form (the form's Enter handler); never leave the field.
                   onEditingComplete: () {},
                   style: textStyle,
-                  cursorColor: const Color(0xFF155EEF),
+                  cursorColor: DifyColors.primary600, // `caret-primary-600` (the Input's)
                   cursorWidth: 1,
                   maxLines: 1,
                   decoration: InputDecoration(

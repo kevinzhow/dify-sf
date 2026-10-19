@@ -241,7 +241,7 @@ class StudioPageState extends State<StudioPage> {
                         key: const ValueKey('studio-drop-overlay'),
                         margin: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: const Color(0x24155AEF),
+                          color: DifyAppListColors.dropOverlay,
                           borderRadius: BorderRadius.circular(DifyRadius.xxl),
                         ),
                         foregroundDecoration: CssDashedBorder(
@@ -276,12 +276,8 @@ class StudioPageState extends State<StudioPage> {
               header: true,
               child: Text(
                 _c('menus.apps'),
-                style: TextStyle(
-                  fontSize: 18,
-                  height: 21.6 / 18,
-                  fontWeight: FontWeight.w600,
-                  color: DifyColors.textPrimary,
-                ),
+                // `text-[18px]/[21.6px] font-semibold` (= title-2xl-semi-bold)
+                style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
               ),
             ),
           ),

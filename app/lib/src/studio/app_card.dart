@@ -224,12 +224,8 @@ class _AppCardState extends State<AppCard> {
                         app.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 20 / 14,
-                          fontWeight: FontWeight.w600,
-                          color: DifyColors.textSecondary,
-                        ),
+                        // `text-sm/5 font-semibold text-text-secondary`
+                        style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
                       ),
                       Text(
                         difyTransform(DifyType.system2xsMediumUppercase, appModeLabel(app.mode)),

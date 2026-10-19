@@ -78,13 +78,12 @@ Widget _label(String text) => Padding(
   padding: const EdgeInsets.symmetric(vertical: 8),
   child: Text(
     text,
-    style: TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w500, color: DifyColors.textPrimary),
+    style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
   ),
 );
 
 /// The dialogs' title (`text-xl leading-7.5 font-semibold text-text-primary`).
-TextStyle get _titleStyle =>
-    TextStyle(fontSize: 20, height: 30 / 20, fontWeight: FontWeight.w600, color: DifyColors.textPrimary);
+TextStyle get _titleStyle => difyTextStyle(DifyTw.textXlSemiboldLeading30, DifyColors.textPrimary);
 
 /// What explore/create-app-modal's `onConfirm` receives.
 typedef AppInfoPayload = ({
@@ -301,12 +300,8 @@ class _EditAppModalState extends State<EditAppModal> {
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   child: Text(
                                     _a('maxActiveRequests'),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      height: 20 / 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: DifyColors.textPrimary,
-                                    ),
+                                    // `py-2 text-sm leading-5 font-medium text-text-primary`
+                                    style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
                                   ),
                                 ),
                                 DifyInput(

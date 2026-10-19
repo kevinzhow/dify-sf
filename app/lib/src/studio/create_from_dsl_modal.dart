@@ -516,7 +516,7 @@ class DslUploaderState extends State<DslUploader> {
                 _a('dslUploader.button'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // inherited 14/20
               ),
             ),
             Flexible(
@@ -540,13 +540,15 @@ class DslUploaderState extends State<DslUploader> {
                     _a('dslUploader.browse'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 20 / 14,
-                      color: widget.disabled ? DifyColors.textDisabled : DifyColors.textAccent,
-                      decoration: hovered && !widget.disabled ? TextDecoration.underline : null,
-                      decorationColor: DifyColors.textAccent,
-                    ),
+                    // `text-sm font-normal hover:underline`
+                    style:
+                        difyTextStyle(
+                          DifyType.systemMdRegular,
+                          widget.disabled ? DifyColors.textDisabled : DifyColors.textAccent,
+                        ).copyWith(
+                          decoration: hovered && !widget.disabled ? TextDecoration.underline : null,
+                          decorationColor: DifyColors.textAccent,
+                        ),
                   ),
                 ),
               ),
@@ -589,12 +591,8 @@ class DslUploaderState extends State<DslUploader> {
                             file.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              height: 16 / 12,
-                              fontWeight: FontWeight.w500,
-                              color: DifyColors.textSecondary,
-                            ),
+                            // `text-[12px] leading-4 font-medium text-text-secondary`
+                            style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
                           ),
                           SizedBox(
                             height: 12,
@@ -609,12 +607,8 @@ class DslUploaderState extends State<DslUploader> {
                                   TextSpan(text: formatFileSize(file.size).toUpperCase()),
                                 ],
                               ),
-                              style: TextStyle(
-                                fontSize: 10,
-                                height: 12 / 10,
-                                fontWeight: FontWeight.w500,
-                                color: DifyColors.textTertiary,
-                              ),
+                              // `text-2xs leading-3 font-medium text-text-tertiary uppercase`
+                              style: difyTextStyle(DifyType.system2xsMedium, DifyColors.textTertiary),
                             ),
                           ),
                         ],

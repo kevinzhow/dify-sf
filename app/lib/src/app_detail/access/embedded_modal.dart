@@ -332,12 +332,8 @@ class EmbeddedModalState extends State<EmbeddedModal> {
             Flexible(
               child: Text(
                 _t('chromePlugin'),
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 20 / 14,
-                  fontWeight: FontWeight.w500,
-                  color: DifyColors.textPrimaryOnSurface,
-                ),
+                // `text-sm leading-tight font-medium text-white`
+                style: difyTextStyle(DifyTw.textSmMediumLeadingTight, DifyTailwind.white),
               ),
             ),
           ],
@@ -391,12 +387,11 @@ class EmbeddedModalState extends State<EmbeddedModal> {
               child: SelectableText(
                 content,
                 key: const ValueKey('embedded-pre'),
-                style: TextStyle(
-                  fontFamily: monoFontFamily,
-                  fontSize: 13,
-                  height: 1.25,
-                  color: DifyColors.textSecondary,
-                ),
+                // `font-mono text-[13px] leading-tight text-text-secondary`
+                style: difyTextStyle(
+                  DifyTw.text13LeadingTight,
+                  DifyColors.textSecondary,
+                ).copyWith(fontFamily: monoFontFamily),
               ),
             ),
           ),
