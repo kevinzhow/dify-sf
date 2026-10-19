@@ -108,6 +108,9 @@ Future<void> hover(WidgetTester t, Finder f) async {
   await gesture.addPointer(location: Offset.zero);
   addTearDown(gesture.removePointer);
   await gesture.moveTo(t.getCenter(f));
+  // DifyTooltip is Base UI's Tooltip: `delay` 300 ms before it opens, then a 150 ms fade. `pumpAndSettle` alone
+  // does not advance the delay timer.
+  await t.pump(const Duration(milliseconds: 350));
   await t.pumpAndSettle();
 }
 
@@ -221,9 +224,20 @@ void main() {
 
         expect(find.text('CHAT'), findsNothing);
         expect(background(t), DifyColors.componentsInputBgDisabled);
-        await hover(t, find.text('Incompatible'));
-
+        final gesture = await t.createGesture(kind: PointerDeviceKind.mouse);
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await gesture.moveTo(t.getCenter(find.text('Incompatible')));
+        // The delay itself (nothing before 300 ms) is asserted in the variable-label tooltip test; Base UI's delay
+        // group makes the next tooltip open at once, so the exact wait is not this test's subject.
+        await t.pump(const Duration(milliseconds: 400));
+        await t.pumpAndSettle();
         expect(find.text(DerivedModelStatus.incompatibleTip), findsOneWidget);
+        // Away from both the trigger and the popup (placement top puts it over the top-left corner).
+        await gesture.moveTo(t.getBottomRight(find.byType(MaterialApp)) + const Offset(-4, -4));
+        await t.pump(const Duration(milliseconds: 600));
+        await t.pumpAndSettle();
+        expect(find.text(DerivedModelStatus.incompatibleTip), findsNothing, reason: 'closed when the pointer leaves');
       });
 
       testWidgets('should show incompatible badge when selected model fails the compatibility predicate', (t) async {

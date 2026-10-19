@@ -23,22 +23,55 @@ Future<({List<CreateAppRequest> requests, List<int> closes})> _renderModal(
 }) async {
   final requests = <CreateAppRequest>[];
   final closes = <int>[];
-  await renderMembers(
-    t,
-    CreateAppModal(
-      defaultAppMode: AppModes.advancedChat,
-      onClose: () => closes.add(1),
-      onCreate: (r) async {
-        requests.add(r);
-        await onCreate?.call(r);
-      },
-    ),
-  );
+  await renderMembers(t, _modal(requests, closes, onCreate));
   return (requests: requests, closes: closes);
 }
 
+CreateAppModal _modal(
+  List<CreateAppRequest> requests,
+  List<int> closes,
+  Future<void> Function(CreateAppRequest r)? onCreate,
+) => CreateAppModal(
+  defaultAppMode: AppModes.advancedChat,
+  onClose: () => closes.add(1),
+  onCreate: (r) async {
+    requests.add(r);
+    await onCreate?.call(r);
+  },
+);
+
 void main() {
   group('CreateAppModal', () {
+    testWidgets('should give the form half the dialog (floored at 740) and keep the preview box at 666', (t) async {
+      // Dify's own boxes, probed with Playwright at the three window sizes: the form column is `flex-1 shrink-0`
+      // (content 660 + px-10, so 740 at least) and the preview's `max-w-190` box is its content width everywhere.
+      addTearDown(t.view.reset);
+      for (final (window, form, box) in [(1440.0, 740.0, 666.0), (1600.0, 783.0, 666.0), (1920.0, 943.0, 666.0)]) {
+        // The shell's inset: `p-4` on both sides and the 1 px border, so the modal sees `window - 34`.
+        await renderMembers(
+          t,
+          Center(
+            child: SizedBox(
+              width: window - 34,
+              height: 900 - 34,
+              child: _modal(<CreateAppRequest>[], <int>[], null),
+            ),
+          ),
+        );
+        // renderMembers fixes the surface at 1440x900; the window itself is what the test varies.
+        t.view.devicePixelRatio = 1;
+        t.view.physicalSize = Size(window, 900);
+        await t.pumpAndSettle();
+        expect(t.getSize(find.byKey(const ValueKey('create-app-form'))).width, form, reason: 'form at $window');
+        expect(
+          t.getSize(find.byKey(const ValueKey('create-app-preview-box'))).width,
+          box,
+          reason: 'preview box at $window',
+        );
+        expect(t.takeException(), isNull, reason: 'no overflow at $window');
+      }
+    });
+
     testWidgets('creates an app, notifies success, and fires callbacks', (t) async {
       final f = await StudioFixture.create();
       final calls = await renderStudio(t, f);

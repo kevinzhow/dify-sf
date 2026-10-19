@@ -134,9 +134,15 @@ void main() {
       );
     });
 
-    testWidgets('should initially focus Browse when the file import dialog opens', (t) async {
+    testWidgets('should initially focus Browse when the file import dialog opens, without a focus ring', (t) async {
       await _render(t);
       expect(_focusIn(find.byKey(const ValueKey('dsl-browse'))), isTrue);
+      // `initialFocus` with `focusVisible: false`: focused, but the ring waits for the keyboard (the comparison
+      // against Dify's dialog showed ours drawing it on open).
+      final box = t.widget<Container>(
+        find.descendant(of: find.byKey(const ValueKey('dsl-browse')), matching: find.byType(Container)).first,
+      );
+      expect((box.decoration as BoxDecoration?)?.border, isNull);
     });
 
     testWidgets('should move focus from each active tab directly to its first panel control', (t) async {

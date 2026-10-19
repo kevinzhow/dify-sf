@@ -1,6 +1,7 @@
 // dify-spec: web/app/components/workflow/nodes/_base/components/variable/variable-label/__tests__/index.spec.tsx
 import 'package:dify_sf_app/src/cards/variable_label.dart';
 import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -110,10 +111,27 @@ void main() {
         await render(tester, const VariableName(variables: ['node-id', 'payload', 'answer'], notShowFullPath: true));
 
         expect(find.text('answer'), findsOneWidget);
-        expect(
-          tester.widget<Tooltip>(find.ancestor(of: find.text('answer'), matching: find.byType(Tooltip))).message,
-          'answer',
+        final tooltip = tester.widget<DifyTooltip>(
+          find.ancestor(of: find.text('answer'), matching: find.byType(DifyTooltip)),
         );
+        expect((tooltip.content as Text).data, 'answer');
+      });
+
+      testWidgets('should show the full name in a tooltip after the delay when hovering', (tester) async {
+        await render(tester, const VariableName(variables: ['node-id', 'payload', 'answer'], notShowFullPath: true));
+        final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await gesture.moveTo(tester.getCenter(find.text('answer')));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(find.text('answer'), findsOneWidget, reason: 'only the inline label so far, no tooltip copy');
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pumpAndSettle();
+        expect(find.text('answer'), findsNWidgets(2), reason: 'the label and the tooltip');
+        await gesture.moveTo(Offset.zero);
+        await tester.pump(const Duration(milliseconds: 250), EnginePhase.build);
+        await tester.pumpAndSettle();
+        expect(find.text('answer'), findsOneWidget, reason: 'closed when the pointer leaves');
       });
 
       testWidgets('should render the base node label only when node type exists', (tester) async {

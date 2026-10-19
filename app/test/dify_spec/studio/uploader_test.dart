@@ -68,8 +68,20 @@ bool _hasFocus(WidgetTester t, Finder f) {
   return inside;
 }
 
+/// `focus-visible:ring-2` on Browse: the 2 px ring is the pressable's only border.
+bool _browseRing(WidgetTester t) {
+  final box = t.widget<Container>(
+    find.descendant(of: find.byKey(const ValueKey('dsl-browse')), matching: find.byType(Container)).first,
+  );
+  final decoration = box.decoration;
+  return decoration is BoxDecoration && decoration.border != null;
+}
+
 void main() {
-  setUp(_updates.clear);
+  setUp(() {
+    _updates.clear();
+    DifyInputMode.reset();
+  });
 
   group('Uploader', () {
     testWidgets('should upload a single dropped file', (t) async {
@@ -172,6 +184,23 @@ void main() {
       _uploader(t).dragExit();
       await t.pump();
       expect(zone().fill, DifyColors.componentsDropzoneBg);
+    });
+
+    testWidgets('should draw Browse\'s ring for keyboard focus, and drop it on the next pointer down', (t) async {
+      await renderMembers(t, const _Host(controlled: false));
+      expect(_browseRing(t), isFalse, reason: 'no focus yet, so nothing to ring');
+      while (!_hasFocus(t, find.byKey(const ValueKey('dsl-browse')))) {
+        await t.sendKeyEvent(LogicalKeyboardKey.tab);
+        await t.pump();
+      }
+      await t.pump();
+      expect(_browseRing(t), isTrue, reason: 'focus-visible: the keyboard reached Browse');
+      expect(_hasFocus(t, find.byKey(const ValueKey('dsl-browse'))), isTrue);
+      // A pointer down anywhere: the focus stays on Browse, the ring does not stay with it.
+      await t.tapAt(const Offset(5, 5));
+      await t.pump();
+      expect(_hasFocus(t, find.byKey(const ValueKey('dsl-browse'))), isTrue, reason: 'still focused');
+      expect(_browseRing(t), isFalse, reason: 'a pointer down clears focus-visible, as :focus-visible does');
     });
 
     testWidgets('should reopen the hidden input and restore the previous file when the picker is cancelled', (t) async {

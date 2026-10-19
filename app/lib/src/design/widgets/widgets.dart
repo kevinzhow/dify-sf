@@ -21,6 +21,7 @@ export 'floating.dart';
 export 'form_control_shared.dart';
 export 'icon_button.dart';
 export 'infotip.dart';
+export 'input_mode.dart';
 export 'inline_delete_confirm.dart';
 export 'inline_extent.dart';
 export 'input.dart';

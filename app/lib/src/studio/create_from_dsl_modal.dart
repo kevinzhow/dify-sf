@@ -432,9 +432,6 @@ class DslUploader extends StatefulWidget {
 class DslUploaderState extends State<DslUploader> {
   bool _dragging = false;
   bool _hovered = false;
-  // `focus-visible`: a ring only once the keyboard has been used. The dialog focuses Browse when it opens
-  // (`initialFocus`, with `focusVisible: false`), which a plain `hasFocus` check would draw a ring for.
-  bool _keyboardFocus = false;
   final _row = FocusNode(debugLabel: 'dsl file row');
   FocusNode? _ownBrowse;
   FocusNode get _browse => widget.browseFocusNode ?? (_ownBrowse ??= FocusNode(debugLabel: 'dsl browse'));
@@ -442,17 +439,14 @@ class DslUploaderState extends State<DslUploader> {
   @override
   void initState() {
     super.initState();
-    HardwareKeyboard.instance.addHandler(_onKey);
-  }
-
-  bool _onKey(KeyEvent event) {
-    if (!_keyboardFocus) setState(() => _keyboardFocus = true);
-    return false;
+    // `focus-visible`: the ring waits for the keyboard. The dialog focuses Browse when it opens (`initialFocus`,
+    // with `focusVisible: false`), and any pointer down clears it — the tracker is one app-wide listener, not one
+    // per uploader: see [DifyInputMode].
+    DifyInputMode.ensureInstalled();
   }
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_onKey);
     _row.dispose();
     _ownBrowse?.dispose();
     super.dispose();
@@ -546,31 +540,34 @@ class DslUploaderState extends State<DslUploader> {
                       disabled: widget.disabled,
                       semanticLabel: _a('dslUploader.browse'),
                       onPressed: () => unawaited(_select()),
-                      // `focus-visible:ring-2`: the dialog focuses Browse when it opens (`initialFocus`, with
-                      // `focusVisible: false`), so the ring waits for the keyboard the way the browser does.
-                      builder: (context, hovered, focused) => Container(
-                        height: 24,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        alignment: Alignment.center,
-                        decoration: focused && _keyboardFocus
-                            ? BoxDecoration(
-                                borderRadius: BorderRadius.circular(DifyRadius.md),
-                                border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
-                              )
-                            : null,
-                        child: Text(
-                          _a('dslUploader.browse'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          // `text-sm font-normal hover:underline`
-                          style:
-                              difyTextStyle(
-                                DifyType.systemMdRegular,
-                                widget.disabled ? DifyColors.textDisabled : DifyColors.textAccent,
-                              ).copyWith(
-                                decoration: hovered && !widget.disabled ? TextDecoration.underline : null,
-                                decorationColor: DifyColors.textAccent,
-                              ),
+                      // `focus-visible:ring-2`: the node's focus, but only while the keyboard is the last input — a
+                      // pointer down clears the ring and leaves the focus where it was.
+                      builder: (context, hovered, _) => AnimatedBuilder(
+                        animation: Listenable.merge([DifyInputMode.keyboardFocusVisible, _browse]),
+                        builder: (context, _) => Container(
+                          height: 24,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: Alignment.center,
+                          decoration: _browse.hasFocus && DifyInputMode.keyboardFocusVisible.value
+                              ? BoxDecoration(
+                                  borderRadius: BorderRadius.circular(DifyRadius.md),
+                                  border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
+                                )
+                              : null,
+                          child: Text(
+                            _a('dslUploader.browse'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            // `text-sm font-normal hover:underline`
+                            style:
+                                difyTextStyle(
+                                  DifyType.systemMdRegular,
+                                  widget.disabled ? DifyColors.textDisabled : DifyColors.textAccent,
+                                ).copyWith(
+                                  decoration: hovered && !widget.disabled ? TextDecoration.underline : null,
+                                  decorationColor: DifyColors.textAccent,
+                                ),
+                          ),
                         ),
                       ),
                     ),

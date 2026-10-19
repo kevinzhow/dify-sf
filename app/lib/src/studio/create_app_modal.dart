@@ -195,16 +195,16 @@ class _CreateAppModalState extends State<CreateAppModal> {
       bindings: modEnter(widget.canCreateApp ? _handleCreate : null),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // `flex flex-1 shrink-0 justify-end` on the form column: `shrink-0` keeps its content width (660 + px-10 on
-          // both sides) and it only grows past it; the preview column is `flex-1 shrink` with `max-w-190` (760). At
-          // 1440 the form is 740 and the preview 684, which is what the divider positions show.
+          // `flex flex-1 shrink-0 justify-end` on the form column and `flex flex-1 shrink` on the preview: each takes
+          // half the dialog; below 1480 (2 x 740) the form keeps its content width (660 + px-10) and the preview gives
+          // way. Measured in Dify at 1440 / 1600 / 1920 the form column is 740 / 783 / 943 wide: half, floored at 740.
           const formMin = 740.0;
-          const previewMax = 760.0;
-          final formWidth = math.min(constraints.maxWidth, math.max(formMin, constraints.maxWidth - previewMax));
+          final formWidth = math.min(constraints.maxWidth, math.max(formMin, constraints.maxWidth / 2));
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
+                key: const ValueKey('create-app-form'),
                 width: formWidth,
                 child: SingleChildScrollView(
                   child: Align(
@@ -528,61 +528,66 @@ class _Preview extends StatelessWidget {
           ),
           Align(
             alignment: AlignmentDirectional.topStart,
-            child: Container(
-              width: 666,
-              decoration: BoxDecoration(
-                border: Border(left: line, right: line),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: top),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          difyTransform(DifyType.systemSmSemiboldUppercase, title),
-                          style: difyTextStyle(DifyType.systemSmSemiboldUppercase, DifyColors.textSecondary),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: 32, maxWidth: 384),
-                            child: Text(
-                              description,
-                              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Container(
+                key: const ValueKey('create-app-preview-box'),
+                // `max-w-190 border-x`: a flex item with `width: auto`, so it is its content width (664 + 2 borders)
+                // at every window size — measured 666 wide at 1440, 1600 and 1920, inside columns of 666, 783 and 943.
+                width: math.min(constraints.maxWidth, 666),
+                decoration: BoxDecoration(
+                  border: Border(left: line, right: line),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: top),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            difyTransform(DifyType.systemSmSemiboldUppercase, title),
+                            style: difyTextStyle(DifyType.systemSmSemiboldUppercase, DifyColors.textSecondary),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 32, maxWidth: 384),
+                              child: Text(
+                                description,
+                                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(border: Border(bottom: line)),
-                  ),
-                  SizedBox(
-                    height: 448,
-                    child: CustomPaint(
-                      painter: _StripesPainter(),
-                      child: Center(
-                        child: Image.asset(
-                          'assets/screenshots/$theme/${workflow ? 'Workflow' : 'Chatflow'}.png',
-                          key: ValueKey('create-app-preview-$mode'),
-                          width: 664,
-                          height: 448,
-                          excludeFromSemantics: true,
-                          errorBuilder: (_, _, _) => const SizedBox(width: 664, height: 448),
+                    DecoratedBox(
+                      decoration: BoxDecoration(border: Border(bottom: line)),
+                    ),
+                    SizedBox(
+                      height: 448,
+                      child: CustomPaint(
+                        painter: _StripesPainter(),
+                        child: Center(
+                          child: Image.asset(
+                            'assets/screenshots/$theme/${workflow ? 'Workflow' : 'Chatflow'}.png',
+                            key: ValueKey('create-app-preview-$mode'),
+                            width: 664,
+                            height: 448,
+                            excludeFromSemantics: true,
+                            errorBuilder: (_, _, _) => const SizedBox(width: 664, height: 448),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(border: Border(bottom: line)),
-                  ),
-                ],
+                    DecoratedBox(
+                      decoration: BoxDecoration(border: Border(bottom: line)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
