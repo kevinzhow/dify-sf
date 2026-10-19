@@ -1,0 +1,157 @@
+# dify-sf live case: two iterations over [1..7] whose inner code (Dify's sandbox) answers a
+# string for 4, which fails its number output: `iter_a` parallel (3 at a
+# time, continue-on-error: a null in its place), `iter_b` sequential (remove-abnormal-output: dropped).
+app:
+  mode: workflow
+  name: iteration_modes_parallel
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  description: ''
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.3.1
+dependencies: []
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: code, targetHandle: target, type: custom, data: {sourceType: start, targetType: code, isInIteration: false, isInLoop: false}}
+    - {id: e2, source: code, sourceHandle: source, target: iter_a, targetHandle: target, type: custom, data: {sourceType: code, targetType: iteration, isInIteration: false, isInLoop: false}}
+    - {id: e3, source: iter_astart, sourceHandle: source, target: inner_a, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: iteration-start, targetType: code, isInIteration: true, isInLoop: false, iteration_id: iter_a}}
+    - {id: e4, source: iter_a, sourceHandle: source, target: iter_b, targetHandle: target, type: custom, data: {sourceType: iteration, targetType: iteration, isInIteration: false, isInLoop: false}}
+    - {id: e5, source: iter_bstart, sourceHandle: source, target: inner_b, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: iteration-start, targetType: code, isInIteration: true, isInLoop: false, iteration_id: iter_b}}
+    - {id: e6, source: iter_b, sourceHandle: source, target: end, targetHandle: target, type: custom, data: {sourceType: iteration, targetType: end, isInIteration: false, isInLoop: false}}
+    nodes:
+    - id: start
+      type: custom
+      position: {x: 0, y: 0}
+      data: {type: start, title: Start, desc: '', variables: []}
+    - id: code
+      type: custom
+      position: {x: 300, y: 0}
+      data:
+        type: code
+        title: List
+        desc: ''
+        code_language: python3
+        code: |
+          def main() -> dict:
+              return {"result": [1, 2, 3, 4, 5, 6, 7]}
+        variables: []
+        outputs:
+          result: {type: 'array[number]', children: null}
+    - id: iter_a
+      type: custom
+      position: {x: 600, y: 0}
+      width: 400
+      height: 200
+      zIndex: 1
+      data:
+        type: iteration
+        title: Parallel
+        desc: ''
+        start_node_id: iter_astart
+        iterator_selector: [code, result]
+        iterator_input_type: array[number]
+        output_selector: [inner_a, y]
+        output_type: array[number]
+        is_parallel: true
+        parallel_nums: 3
+        error_handle_mode: continue-on-error
+        flatten_output: true
+        width: 400
+        height: 200
+    - id: iter_astart
+      type: custom-iteration-start
+      parentId: iter_a
+      position: {x: 24, y: 68}
+      draggable: false
+      selectable: false
+      zIndex: 1002
+      data: {type: iteration-start, title: '', desc: '', isInIteration: true}
+    - id: inner_a
+      type: custom
+      parentId: iter_a
+      position: {x: 128, y: 68}
+      zIndex: 1002
+      data:
+        type: code
+        title: Times ten
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: iter_a
+        code_language: python3
+        code: |
+          def main(x: int) -> dict:
+              if x == 4:
+                  return {"y": "four"}
+              return {"y": x * 10}
+        variables:
+        - {variable: x, value_selector: [iter_a, item], value_type: number}
+        outputs:
+          y: {type: number, children: null}
+    - id: iter_b
+      type: custom
+      position: {x: 1100, y: 0}
+      width: 400
+      height: 200
+      zIndex: 1
+      data:
+        type: iteration
+        title: Sequential
+        desc: ''
+        start_node_id: iter_bstart
+        iterator_selector: [code, result]
+        iterator_input_type: array[number]
+        output_selector: [inner_b, y]
+        output_type: array[number]
+        is_parallel: false
+        parallel_nums: 10
+        error_handle_mode: remove-abnormal-output
+        flatten_output: true
+        width: 400
+        height: 200
+    - id: iter_bstart
+      type: custom-iteration-start
+      parentId: iter_b
+      position: {x: 24, y: 68}
+      draggable: false
+      selectable: false
+      zIndex: 1002
+      data: {type: iteration-start, title: '', desc: '', isInIteration: true}
+    - id: inner_b
+      type: custom
+      parentId: iter_b
+      position: {x: 128, y: 68}
+      zIndex: 1002
+      data:
+        type: code
+        title: Plus index
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: iter_b
+        code_language: python3
+        code: |
+          def main(x: int, i: int) -> dict:
+              if x == 4:
+                  return {"y": "four"}
+              return {"y": x + i * 100}
+        variables:
+        - {variable: x, value_selector: [iter_b, item], value_type: number}
+        - {variable: i, value_selector: [iter_b, index], value_type: number}
+        outputs:
+          y: {type: number, children: null}
+    - id: end
+      type: custom
+      position: {x: 1600, y: 0}
+      data:
+        type: end
+        title: End
+        desc: ''
+        outputs:
+        - {variable: a, value_selector: [iter_a, output], value_type: 'array[number]'}
+        - {variable: b, value_selector: [iter_b, output], value_type: 'array[number]'}

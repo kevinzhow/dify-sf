@@ -1,5 +1,6 @@
 // collab-runtime: tools around the workflow runtime.
 //   collab-runtime replay [--workers N] [--only SUBSTRING] [TRACES_DIR] [FIXTURES_DIR]
+//   collab-runtime bench [RUNS] | bench-iteration [RUNS] [ROUNDS] [PARALLEL]
 // replays Dify's golden traces (graphon 0.7.0 with Dify's mock nodes) on the Swift engine and prints PASS/DIFF/SKIP.
 
 import CollabRuntime
@@ -7,6 +8,11 @@ import CollabRuntimeReplay
 import Foundation
 
 var args = Array(CommandLine.arguments.dropFirst())
+if args.first == "bench-iteration" {
+    let n = args.dropFirst().compactMap { Int($0) }
+    print(try await Bench.iteration(runs: n.count > 0 ? n[0] : 20, rounds: n.count > 1 ? n[1] : 100, parallel: n.count > 2 ? n[2] : 10))
+    exit(0)
+}
 if args.first == "bench" {
     let runs = args.count > 1 ? Int(args[1]) ?? 50 : 50
     print(try await Bench.run(runs: runs))

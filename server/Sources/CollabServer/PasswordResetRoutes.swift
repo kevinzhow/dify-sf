@@ -143,7 +143,7 @@ extension Routes {
             var workflow_runtime: WorkflowRuntime?
         }
         struct WorkflowRuntime: Encodable {
-            var protocol_version = "1.14"
+            var protocol_version = "1.15"
             /// The node types `POST .../workflows/draft/nodes/{node}/run` runs.
             var single_node_run: [String]
             /// 1.14: the node types a draft run (`POST .../workflows/draft/run`) runs; a graph with others is refused.

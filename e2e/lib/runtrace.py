@@ -174,7 +174,10 @@ def _executions(trace):
     ex, order = {}, []
     for i, ev in enumerate(trace["events"]):
         if ev["event"] == "node_started":
-            ex.setdefault(ev["exec"], {"node_id": ev["node_id"], "node_type": ev.get("node_type")})["start"] = i
+            e = ex.setdefault(ev["exec"], {"node_id": ev["node_id"], "node_type": ev.get("node_type")})
+            e["start"] = i
+            if ev.get("in"):
+                e["in"] = ev["in"]
             order.append(ev["exec"])
         elif ev["event"] == "node_finished":
             e = ex.setdefault(ev["exec"], {"node_id": ev["node_id"], "node_type": ev.get("node_type")})
@@ -192,6 +195,18 @@ def _streams(trace):
             per[key] = per.get(key, "") + ev["text"]
             total.append(ev["text"])
     return per, "".join(total)
+
+
+CONTAINER_EVENTS = ("iteration_started", "iteration_next", "iteration_completed", "loop_started", "loop_next", "loop_completed")
+
+
+def _containers(trace):
+    """Per container node: its iteration / loop events in order (without node_id)."""
+    out = {}
+    for ev in trace["events"]:
+        if ev["event"] in CONTAINER_EVENTS:
+            out.setdefault(ev.get("node_id"), []).append({k: v for k, v in ev.items() if k != "node_id"})
+    return out
 
 
 def _final(trace):
@@ -238,21 +253,43 @@ def deep_diff(a, b, path, out, ignore=()):
         out.append({"path": path, "a": a, "b": b})
 
 
-def compare(a, b, ignore=()):
+def _unordered(ex, containers):
+    """Executions inside `containers` (parallel iterations: rounds start in any order) as sorted lists per node."""
+    out = {}
+    for lab, e in ex.items():
+        if e.get("in") in containers:
+            fields = {k: e.get(k) for k in ("node_type", "status", "inputs", "process_data", "outputs", "error")}
+            out.setdefault(e["node_id"], []).append(fields)
+    return {n: sorted(v, key=lambda f: json.dumps(f, sort_keys=True)) for n, v in out.items()}
+
+
+def compare(a, b, ignore=(), unordered=()):
     """Compares two traces by per-branch partial order. Returns a list of differences
     ({"path", "a", "b"} or {"path", "note"}); empty = equivalent.
 
     * run result (status, outputs, error) must be equal;
     * the same node executions (labels) must exist, with equal status, inputs, process_data, outputs and error;
+    * each container node's iteration / loop events (started, next, completed) must be equal, in order;
     * each text stream (per selector) and the whole streamed answer must be equal;
     * order: for executions X, Y where X's node is a graph ancestor of Y's node, "X finished before Y started" must
       agree; the total order of unrelated (parallel) executions is not compared.
-    `ignore` holds paths to skip, e.g. "exec[llm#1].process_data".
+    `ignore` holds paths to skip, e.g. "exec[llm#1].process_data". `unordered` holds container node ids whose inner
+    executions are compared per node as multisets (parallel iterations), without labels and order.
     """
     diffs = []
     deep_diff(_final(a), _final(b), "run", diffs, ignore)
+    # Request validation errors happen before workflow_started and have no final run result.
+    # Comparing only executions/results would incorrectly accept two different rejected requests as equivalent.
+    deep_diff([e for e in a["events"] if e["event"] == "error"],
+              [e for e in b["events"] if e["event"] == "error"], "errors", diffs, ignore)
     ea, oa = _executions(a)
     eb, ob = _executions(b)
+    if unordered:
+        deep_diff(_unordered(ea, unordered), _unordered(eb, unordered), "unordered", diffs, ignore)
+        ea = {k: v for k, v in ea.items() if v.get("in") not in unordered}
+        eb = {k: v for k, v in eb.items() if v.get("in") not in unordered}
+        oa = [x for x in oa if x in ea]
+    deep_diff(_containers(a), _containers(b), "container", diffs, ignore)
     for lab in sorted(set(ea) | set(eb)):
         if lab not in ea:
             diffs.append({"path": f"exec[{lab}]", "a": "<not executed>", "b": eb[lab].get("status")})

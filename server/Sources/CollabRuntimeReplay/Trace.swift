@@ -89,9 +89,13 @@ public enum RunTrace {
         func nodeType(_ id: String) -> String { graph.nodes[id]?.nodeType ?? "" }
 
         mutating func nodeFinished(_ x: String, _ nodeId: String, _ status: String, _ r: NodeRunResult, error: String?) {
-            add(["event": "node_finished", "exec": .string(labelOf(nodeId, x)), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)),
-                 "status": .string(status), "inputs": norm(.object(r.inputs)), "process_data": norm(.object(cleanProcessData(r.processData))),
-                 "outputs": norm(.object(r.outputs)), "error": error.flatMap { $0.isEmpty ? nil : JSONValue.string($0) } ?? .null])
+            var ev: JSONObject = [
+            "event": "node_finished", "exec": .string(labelOf(nodeId, x)), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)),
+            "status": .string(status), "inputs": norm(.object(r.inputs)), "process_data": norm(.object(cleanProcessData(r.processData))),
+            "outputs": norm(.object(r.outputs)), "error": error.flatMap { $0.isEmpty ? nil : JSONValue.string($0) } ?? .null,
+        ]
+        if let c = NodeScope(metadata: r.metadata).containerId { ev["in"] = .string(c) }
+        add(ev)
         }
 
         public mutating func add(_ event: GraphEngineEvent) {
@@ -99,8 +103,11 @@ public enum RunTrace {
             case .runStarted: add(["event": "workflow_started"])
             case .node(let e):
                 switch e {
-                case .started(let x, let nodeId, let type, _, _):
-                    add(["event": "node_started", "exec": .string(labelStart(nodeId, x)), "node_id": .string(nodeId), "node_type": .string(type)])
+                case .started(let x, let nodeId, let type, _, _, let scope):
+                    var ev: JSONObject = ["event": "node_started", "exec": .string(labelStart(nodeId, x)), "node_id": .string(nodeId),
+                                          "node_type": .string(type)]
+                    if let c = scope.containerId { ev["in"] = .string(c) }
+                    add(ev)
                 case .streamChunk(_, _, let selector, let chunk, _):
                     add(["event": "text_chunk", "selector": .array(selector.map(JSONValue.string)), "text": .string(chunk)])
                 case .retry(_, let nodeId, _, _, let error, let index):
@@ -108,6 +115,13 @@ public enum RunTrace {
                 case .succeeded(let x, let nodeId, _, _, let r): nodeFinished(x, nodeId, "succeeded", r, error: r.error)
                 case .failed(let x, let nodeId, _, _, let r, let error): nodeFinished(x, nodeId, "failed", r, error: error.isEmpty ? r.error : error)
                 case .exception(let x, let nodeId, _, _, let r, let error): nodeFinished(x, nodeId, "exception", r, error: error.isEmpty ? r.error : error)
+                case .containerStarted(_, let nodeId, let kind, _, let inputs, _):
+                    add(["event": .string("\(kind.rawValue)_started"), "node_id": .string(nodeId), "inputs": norm(.object(inputs))])
+                case .containerNext(_, let nodeId, let kind, let index, _):
+                    add(["event": .string("\(kind.rawValue)_next"), "node_id": .string(nodeId), "index": .int(index)])
+                case .containerCompleted(_, let nodeId, let kind, _, _, let outputs, _, let steps, let error):
+                    add(["event": .string("\(kind.rawValue)_completed"), "node_id": .string(nodeId), "status": .string(error == nil ? "succeeded" : "failed"),
+                         "outputs": norm(.object(outputs)), "error": error.map(JSONValue.string) ?? .null, "steps": .int(steps)])
                 case .variableUpdated(_, let nodeId, let selector, let value):
                     add(["event": "variable_updated", "node_id": .string(nodeId), "selector": .array(selector.map(JSONValue.string)),
                          "value": norm(value.value)])
@@ -165,6 +179,8 @@ public enum RunTrace {
         var fields: JSONObject = [:]
         var start: Int?
         var end: Int?
+        /// The container it ran in (`in` of its started event).
+        var container: String?
     }
 
     static func executions(_ trace: JSONValue) -> ([String: Execution], [String]) {
@@ -175,6 +191,7 @@ public enum RunTrace {
                 var e = ex[label] ?? Execution(nodeId: node)
                 e.fields["node_type"] = ev["node_type"] ?? .null
                 e.start = i
+                if let c = ev["in"]?.string { e.container = c }
                 ex[label] = e
                 order.append(label)
             } else if ev["event"] == "node_finished" {
@@ -209,11 +226,45 @@ public enum RunTrace {
         return .null
     }
 
-    /// `compare(a, b)`: empty = equivalent.
-    public static func compare(_ a: JSONValue, _ b: JSONValue) -> [Difference] {
+    static let containerEvents: Set<String> = ["iteration_started", "iteration_next", "iteration_completed", "loop_started", "loop_next",
+                                               "loop_completed"]
+
+    /// `_containers`: per container node, its iteration / loop events in order (without `node_id`).
+    static func containers(_ trace: JSONValue) -> JSONObject {
+        var out = JSONObject()
+        for ev in trace["events"]?.array ?? [] {
+            guard let name = ev["event"]?.string, containerEvents.contains(name), case .object(let o) = ev else { continue }
+            let node = o["node_id"]?.string ?? "null"
+            var item = JSONObject()
+            for (k, v) in o where k != "node_id" { item[k] = v }
+            out[node] = .array((out[node]?.array ?? []) + [.object(item)])
+        }
+        return out
+    }
+
+    /// `_unordered`: the executions inside `containers` as sorted lists per node.
+    static func unordered(_ ex: [String: Execution], _ containers: Set<String>) -> JSONObject {
+        var out: [String: [JSONValue]] = [:]
+        for e in ex.values where e.container.map(containers.contains) == true {
+            var f = JSONObject()
+            for k in ["node_type", "status", "inputs", "process_data", "outputs", "error"] { f[k] = e.fields[k] ?? .null }
+            out[e.nodeId, default: []].append(.object(f))
+        }
+        return JSONObject(out.keys.sorted().map { k in (k, .array(out[k]!.sorted { $0.compactJSON() < $1.compactJSON() })) })
+    }
+
+    /// `compare(a, b, unordered=...)`: empty = equivalent.
+    public static func compare(_ a: JSONValue, _ b: JSONValue, unordered containerIds: Set<String> = []) -> [Difference] {
         var diffs: [Difference] = []
         deepDiff(final(a), final(b), "run", &diffs)
-        let (ea, oa) = executions(a), (eb, _) = executions(b)
+        var (ea, oa) = executions(a), (eb, _) = executions(b)
+        if !containerIds.isEmpty {
+            deepDiff(.object(unordered(ea, containerIds)), .object(unordered(eb, containerIds)), "unordered", &diffs)
+            ea = ea.filter { $0.value.container.map(containerIds.contains) != true }
+            eb = eb.filter { $0.value.container.map(containerIds.contains) != true }
+            oa = oa.filter { ea[$0] != nil }
+        }
+        deepDiff(.object(containers(a)), .object(containers(b)), "container", &diffs)
         for label in Set(ea.keys).union(eb.keys).sorted() {
             guard let x = ea[label] else { diffs.append(Difference(path: "exec[\(label)]", a: "<not executed>", b: eb[label]!.fields["status"] ?? .null)); continue }
             guard let y = eb[label] else { diffs.append(Difference(path: "exec[\(label)]", a: x.fields["status"] ?? .null, b: "<not executed>")); continue }

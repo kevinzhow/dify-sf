@@ -178,7 +178,7 @@ public struct SingleStepRun: Sendable {
     }
 
     /// `WorkflowEntry.mapping_user_inputs_to_variable_pool`.
-    static func mapUserInputs(_ mapping: [(key: String, selector: [String])], _ inputs: JSONObject, _ pool: inout VariablePool) throws {
+    public static func mapUserInputs(_ mapping: [(key: String, selector: [String])], _ inputs: JSONObject, _ pool: inout VariablePool) throws {
         for (nodeVariable, selector) in mapping {
             let parts = nodeVariable.split(separator: ".", omittingEmptySubsequences: false).map(String.init)
             let key = parts.dropFirst().joined(separator: ".")

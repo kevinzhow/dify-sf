@@ -20,12 +20,15 @@ struct RuntimeEngineTests {
     func goldenTracesReplay(workers: Int) async throws {
         let results = try await Replay.replayAll(tracesDir: Self.traces, fixturesDir: Self.fixtures, maxWorkers: workers)
         #expect(results.count == 31)
+        // With several workers, two answers that become ready together finish in either order, and `outputs.answer`
+        // concatenates them in finishing order (graphon's `merge_response_outputs`; the goldens ran with one worker).
+        let concurrentAnswers: Set<String> = workers > 1 ? ["test_complex_branch.hello"] : []
+        // Every case, the iteration and loop ones too (phase P3).
         for r in results {
-            #expect(r.outcome == .pass || r.outcome == .skip, "\(r.name): \(r.outcome) \(r.note)\n\(r.differences.prefix(8).map(\.description).joined(separator: "\n"))")
-            if r.outcome == .skip { #expect(r.note.contains("P3"), "\(r.name) skipped: \(r.note)") }
+            let diffs = r.differences.filter { !(concurrentAnswers.contains(r.name) && $0.path == "run.outputs.answer") }
+            #expect(r.outcome != .error && r.outcome != .skip && diffs.isEmpty,
+                    "\(r.name): \(r.outcome) \(r.note)\n\(diffs.prefix(8).map(\.description).joined(separator: "\n"))")
         }
-        // Only the container cases (iteration, loop: phase P3) are skipped.
-        #expect(results.filter { $0.outcome == .skip }.count == 7)
     }
 
     /// The editor's path: a sample imported into a document and exported again runs exactly as the file itself.
@@ -64,6 +67,11 @@ struct RuntimeEngineTests {
         final class Attempts: Sendable {
             let counts = Mutex<[String: Int]>([:])
             func next(_ id: String) -> Int { counts.withLock { $0[id, default: 0] += 1; return $0[id]! } }
+            /// Nodes running at once (`echo` nodes): now and at most.
+            let gauge = Mutex<(now: Int, max: Int)>((0, 0))
+            func enter() { gauge.withLock { $0.now += 1; $0.max = max($0.max, $0.now) } }
+            func leave() { gauge.withLock { $0.now -= 1 } }
+            var maxConcurrent: Int { gauge.withLock { $0.max } }
         }
 
         func run(_ context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws {
@@ -78,6 +86,18 @@ struct RuntimeEngineTests {
                 } else {
                     await emit(.completed(NodeRunResult(status: .succeeded, outputs: ["value": value, "attempt": .int(n)])))
                 }
+            case "echo":
+                // Outputs the value at `read` (an iteration's item); fails when it equals `fail_on`.
+                let selector = (data["read"]?.array ?? []).compactMap(\.string)
+                let v = context.pool.get(selector)?.value ?? .null
+                attempts.enter()
+                if let ms = data["sleep_ms"]?.int { try? await Task.sleep(for: .milliseconds(ms)) }
+                attempts.leave()
+                if let bad = data["fail_on"], bad == v {
+                    await emit(.completed(NodeRunResult(status: .failed, inputs: ["v": v], error: "bad \(PythonText.str(v))", errorType: "TestError")))
+                    return
+                }
+                await emit(.completed(NodeRunResult(status: .succeeded, inputs: ["v": v], outputs: ["value": v])))
             case "wait":
                 while !context.isAborted() { try await Task.sleep(for: .milliseconds(5)) }
                 throw CancellationError()
@@ -136,7 +156,7 @@ struct RuntimeEngineTests {
             }
         }
         func status(_ id: String) -> String? { finishedNodes.last { $0.0 == id }?.1 }
-        var started: [String] { events.compactMap { if case .node(.started(_, let id, _, _, _)) = $0 { return id }; return nil } }
+        var started: [String] { events.compactMap { if case .node(.started(_, let id, _, _, _, _)) = $0 { return id }; return nil } }
         var text: String {
             events.compactMap { if case .node(.streamChunk(_, _, _, let c, _)) = $0 { return c }; return nil }.joined()
         }
@@ -197,14 +217,14 @@ struct RuntimeEngineTests {
         #expect(r.started.filter { $0 == "join" }.count == 1 && r.status("join") == "succeeded")
         // The three branches overlap: all three started before the first of them finished.
         func position(_ match: (GraphEngineEvent) -> Bool) -> Int { r.events.firstIndex(where: match) ?? -1 }
-        let lastStart = ["a", "b", "c"].map { id in position { if case .node(.started(_, let n, _, _, _)) = $0 { return n == id }; return false } }.max()!
+        let lastStart = ["a", "b", "c"].map { id in position { if case .node(.started(_, let n, _, _, _, _)) = $0 { return n == id }; return false } }.max()!
         let firstEnd = ["a", "b", "c"].map { id in position { if case .node(.succeeded(_, let n, _, _, _)) = $0 { return n == id }; return false } }.min()!
         #expect(lastStart < firstEnd, "branches ran one after another")
         // One worker: one after another, same result.
         let serial = try await Self.run(nodes, edges, config: GraphEngineConfig(maxWorkers: 1))
         #expect(serial.status("join") == "succeeded")
         let serialFirstEnd = serial.events.firstIndex { if case .node(.succeeded(_, "a", _, _, _)) = $0 { return true }; return false } ?? -1
-        let serialStartB = serial.events.firstIndex { if case .node(.started(_, "b", _, _, _)) = $0 { return true }; return false } ?? -1
+        let serialStartB = serial.events.firstIndex { if case .node(.started(_, "b", _, _, _, _)) = $0 { return true }; return false } ?? -1
         #expect(serialFirstEnd < serialStartB)
     }
 

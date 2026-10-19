@@ -16,7 +16,12 @@ extension Routes {
     /// The node types a draft run supports (`system-features`' `workflow_runtime.draft_run`).
     static var draftRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes }
 
-    static var singleRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes.filter { !NodeType.startTypes.contains($0) } }
+    /// Iteration and loop nodes run alone through their own endpoints (`.../draft/iteration|loop/nodes/{node}/run`, protocol
+    /// 1.15); their start nodes and the loop end have no single run (as in Dify's editor).
+    static var singleRunNodeTypes: [String] {
+        let helpers: Set<String> = [NodeType.iterationStart, NodeType.loopStart, NodeType.loopEnd]
+        return BuiltinNodeFactory.supportedTypes.filter { !NodeType.startTypes.contains($0) && !helpers.contains($0) }
+    }
 
     /// A model runtime is configured (`COLLAB_PLUGIN_DAEMON_URL`).
     var runtimeConfigured: Bool { !config.pluginDaemonURL.isEmpty }

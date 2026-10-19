@@ -2,6 +2,7 @@
 // (run, _dispatch, _build_run_failed_event). See ../NOTICE.md.
 
 import Foundation
+import Synchronization
 
 /// What a node may use while it runs. The pool is the run's values as the node sees them.
 public struct NodeRunContext: Sendable {
@@ -65,6 +66,16 @@ public protocol RuntimeNode: Sendable {
 
     /// `_extract_variable_selector_to_variable_mapping`: `"<node id>.<key>"` -> selector, for the single-step run.
     func variableMapping(graph: GraphConfig) -> [(key: String, selector: [String])]
+
+    /// `_resume_container_events`: a container node (iteration, loop) that suspended with `.awaitContainer` continues with
+    /// `result` (more rounds, or the outcome); it emits events as `run` does. Other nodes throw.
+    func resume(_ result: ContainerResult, startAt: Date, context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws
+}
+
+/// A node resumed that does not support it (graphon's `TypeError`).
+public struct ContainerResumeUnsupported: Error, CustomStringConvertible, Sendable {
+    public var nodeId: String
+    public var description: String { "Node \(nodeId) does not support container resume" }
 }
 
 extension RuntimeNode {
@@ -75,6 +86,9 @@ extension RuntimeNode {
     public var streamingTemplate: ResponseTemplate? { nil }
     public var streamingTextSelector: [String] { [id, "answer"] }
     public func variableMapping(graph: GraphConfig) -> [(key: String, selector: [String])] { [] }
+    public func resume(_ result: ContainerResult, startAt: Date, context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws {
+        throw ContainerResumeUnsupported(nodeId: id)
+    }
 }
 
 /// Creates nodes from graph configs (graphon's `NodeFactory`, Dify's `DifyNodeFactory`).
@@ -144,6 +158,7 @@ public struct BuiltinNodeFactory: NodeFactory {
         NodeType.start, NodeType.end, NodeType.answer, NodeType.llm, NodeType.ifElse, NodeType.variableAggregator,
         NodeType.legacyVariableAggregator, NodeType.variableAssigner, NodeType.templateTransform, NodeType.code,
         NodeType.httpRequest, NodeType.listOperator, NodeType.parameterExtractor, NodeType.questionClassifier,
+        NodeType.iteration, NodeType.iterationStart, NodeType.loop, NodeType.loopStart, NodeType.loopEnd,
     ]
 
     public func createNode(_ config: NodeConfig, graph: GraphConfig) async throws -> any RuntimeNode {
@@ -165,46 +180,102 @@ public struct BuiltinNodeFactory: NodeFactory {
         case NodeType.listOperator: return try await makeListOperator(config, graph: graph)
         case NodeType.parameterExtractor: return try await makeParameterExtractor(config, graph: graph)
         case NodeType.questionClassifier: return try await makeQuestionClassifier(config, graph: graph)
+        case NodeType.iteration: return try IterationNode(id: config.id, data: config.data)
+        case NodeType.iterationStart: return try ContainerStartNode(id: config.id, data: config.data, nodeType: NodeType.iterationStart)
+        case NodeType.loop: return try LoopNode(id: config.id, data: config.data, graph: graph)
+        case NodeType.loopStart: return try ContainerStartNode(id: config.id, data: config.data, nodeType: NodeType.loopStart)
+        case NodeType.loopEnd: return try ContainerStartNode(id: config.id, data: config.data, nodeType: NodeType.loopEnd)
         default: throw UnsupportedNodeType(nodeType: config.type)
         }
     }
 }
 
-/// `Node.run()`: the started event, the node's events (stream chunks as they come), and the succeeded or failed event.
+/// `Node.run()`: the started event, the node's events (stream chunks as they come), and the succeeded or failed event; and
+/// `Node.resume_container()` for container nodes. A container node that suspends (`.awaitContainer`) ends its task with
+/// `onAwait` instead of a result.
 public enum NodeRunner {
+    public typealias AwaitHandler = @Sendable (ContainerRequest, Date) async -> Void
+
     public static func run(_ node: any RuntimeNode, executionId: String, context: NodeRunContext,
-                           emit: @escaping @Sendable (GraphNodeEvent) async -> Void) async {
+                           emit: @escaping @Sendable (GraphNodeEvent) async -> Void, onAwait: AwaitHandler? = nil) async {
         let startAt = Date()
-        await emit(.started(executionId: executionId, nodeId: node.id, nodeType: node.nodeType, title: node.title, startAt: startAt))
+        await emit(.started(executionId: executionId, nodeId: node.id, nodeType: node.nodeType, title: node.title, startAt: startAt, scope: .root))
+        let state = SuspendState()
         do {
             try await node.run(context) { event in
-                switch event {
-                case .streamChunk(let selector, let chunk, let isFinal):
-                    await emit(.streamChunk(executionId: executionId, nodeId: node.id, selector: selector, chunk: chunk, isFinal: isFinal))
-                case .streamReasoning(_, let chunk, let isFinal):
-                    await emit(.reasoningChunk(executionId: executionId, nodeId: node.id, selector: [node.id, "reasoning_content"],
-                                               chunk: chunk, isFinal: isFinal))
-                case .retrieverResource(let resources, let context):
-                    await emit(.retrieverResource(executionId: executionId, nodeId: node.id, resources: resources, context: context))
-                case .variableUpdated(let selector, let value):
-                    await emit(.variableUpdated(executionId: executionId, nodeId: node.id, selector: selector, value: value))
-                case .completed(let result):
-                    switch result.status {
-                    case .succeeded:
-                        await emit(.succeeded(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: result))
-                    case .failed:
-                        await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: result,
-                                           error: result.error))
-                    default:
-                        let r = NodeRunResult(status: .failed, error: "Node \(node.id) does not support status \(result.status.rawValue)",
-                                              errorType: "WorkflowNodeError")
-                        await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
-                    }
-                }
+                await forward(event, node: node, executionId: executionId, startAt: startAt, state: state, emit: emit, onAwait: onAwait)
             }
         } catch {
+            if state.suspended { return }
             let r = NodeRunResult(status: .failed, error: "\(error)", errorType: "WorkflowNodeError")
             await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
+        }
+    }
+
+    /// `resume_container(result, started_at)`: no started event; errors become a failed result.
+    public static func resume(_ node: any RuntimeNode, executionId: String, startAt: Date, result: ContainerResult, context: NodeRunContext,
+                              emit: @escaping @Sendable (GraphNodeEvent) async -> Void, onAwait: AwaitHandler? = nil) async {
+        let state = SuspendState()
+        do {
+            try await node.resume(result, startAt: startAt, context: context) { event in
+                await forward(event, node: node, executionId: executionId, startAt: startAt, state: state, emit: emit, onAwait: onAwait)
+            }
+        } catch {
+            if state.suspended { return }
+            let r = NodeRunResult(status: .failed, error: "\(error)", errorType: "WorkflowNodeError")
+            await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
+        }
+    }
+
+    /// Whether the node suspended (later events are dropped: graphon's worker stops reading the generator).
+    final class SuspendState: Sendable {
+        private let flag = Mutex(false)
+        var suspended: Bool { flag.withLock { $0 } }
+        func suspend() { flag.withLock { $0 = true } }
+    }
+
+    static func forward(_ event: NodeEvent, node: any RuntimeNode, executionId: String, startAt: Date, state: SuspendState,
+                        emit: @Sendable (GraphNodeEvent) async -> Void, onAwait: AwaitHandler?) async {
+        if state.suspended { return }
+        switch event {
+        case .streamChunk(let selector, let chunk, let isFinal):
+            await emit(.streamChunk(executionId: executionId, nodeId: node.id, selector: selector, chunk: chunk, isFinal: isFinal))
+        case .streamReasoning(_, let chunk, let isFinal):
+            await emit(.reasoningChunk(executionId: executionId, nodeId: node.id, selector: [node.id, "reasoning_content"],
+                                       chunk: chunk, isFinal: isFinal))
+        case .retrieverResource(let resources, let context):
+            await emit(.retrieverResource(executionId: executionId, nodeId: node.id, resources: resources, context: context))
+        case .variableUpdated(let selector, let value):
+            await emit(.variableUpdated(executionId: executionId, nodeId: node.id, selector: selector, value: value))
+        case .containerStarted(let kind, let at, let inputs, let metadata):
+            await emit(.containerStarted(executionId: executionId, nodeId: node.id, kind: kind, startAt: at, inputs: inputs, metadata: metadata))
+        case .containerNext(let kind, let index, let pre):
+            await emit(.containerNext(executionId: executionId, nodeId: node.id, kind: kind, index: index, preOutput: pre))
+        case .containerCompleted(let kind, let at, let inputs, let outputs, let metadata, let steps, let error):
+            await emit(.containerCompleted(executionId: executionId, nodeId: node.id, kind: kind, startAt: at, inputs: inputs, outputs: outputs,
+                                           metadata: metadata, steps: steps, error: error))
+        case .awaitContainer(let request):
+            state.suspend()
+            if let onAwait {
+                await onAwait(request, startAt)
+            } else {
+                // Outside the engine (a single-step run) nothing can run the child frames.
+                let r = NodeRunResult(status: .failed, error: "container await request emitted outside the graph engine",
+                                      errorType: "RuntimeError")
+                await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
+            }
+        case .completed(let result):
+            switch result.status {
+            case .succeeded:
+                await emit(.succeeded(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: result))
+            case .failed:
+                await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: result,
+                                   error: result.error))
+            default:
+                let r = NodeRunResult(status: .failed, error: "Node \(node.id) does not support status \(result.status.rawValue)",
+                                      errorType: "WorkflowNodeError")
+                await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
+            }
         }
     }
 }

@@ -43,6 +43,14 @@ Everything is Python standard library only (`python3 -I`), no virtual environmen
   memory, always down).
 * `perf_draft_run.py` (`session.sh ... perf`): a 20-node draft run on dify-sf (LLM nodes on the stub, code and templates in
   the sandbox, two parallel branches), timed per run, with the server container's memory.
+* `perf_iteration.py` (`session.sh ... perf`): a 100-round iteration with parallel 10 on dify-sf (per round an LLM node on
+  the stub and a code node in the sandbox), timed per run, with the server container's memory.
+* `cases/`: dify-sf's own live cases (`"fixture": "local/<file>"` in `traces/cases.json`, no golden): parallel iterations
+  with the error handle modes, nested iterations with LLM nodes, loops with loop variables / break conditions / loop end,
+  retries in a terminated iteration. Cases may also run iteration / loop single runs (`containers`) and compare the inner
+  executions of parallel iterations as multisets (`unordered`: their rounds start in any order).
+* `session.sh ... client`: the client's `ServerRunService` and run handlers against stack P (a Flutter test in the client
+  checkout, `DIFYSF_CLIENT_DIR`).
 
 ## Running
 
@@ -81,7 +89,8 @@ other floats are rounded to 12 significant digits (Python repr vs Swift); keys a
 starts of a node (`<node>#<n>`).
 
 Comparison (`runtrace.compare`): run result equal; the same executions with equal status, inputs, process_data,
-outputs, error; each text stream and the whole streamed answer equal; LLM requests equal; and order by branch: for
+outputs, error; each container's iteration / loop events equal in order; each text stream and the whole streamed answer
+equal; LLM requests equal; and order by branch: for
 two executions whose nodes are graph ancestor and descendant, "the first finished before the second started" must
 agree. The total order of parallel branches is not compared.
 

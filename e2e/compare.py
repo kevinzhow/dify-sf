@@ -42,6 +42,8 @@ from dify import STUB_MODEL, STUB_PROVIDER, DifyConsole, stub_credentials  # noq
 from e2ehttp import HTTPError, Session  # noqa: E402
 
 FIXTURES = os.path.join(REPO, "server", "Tests", "CollabTests", "Fixtures", "dify")
+# dify-sf's own live cases (fixture "local/<file>"): iteration / loop shapes Dify's samples do not cover.
+LOCAL_FIXTURES = os.path.join(E2E, "cases")
 MODEL_NODES = ("llm", "question-classifier", "parameter-extractor")
 DIFYREF_URL = os.environ.get("DIFYREF_URL", "http://127.0.0.1:%s" % os.environ.get("DIFYREF_API_PORT", "15001"))
 LLMSTUB_URL = os.environ.get("LLMSTUB_URL", "http://127.0.0.1:%s" % os.environ.get("LLMSTUB_PORT", "18000"))
@@ -117,6 +119,27 @@ class DifySF:
     def run_node(self, app_id, node_id, inputs, query=""):
         return self.s.post(f"/v1/apps/{app_id}/workflows/draft/nodes/{node_id}/run", {"inputs": inputs, "query": query})
 
+    def run_container(self, app_id, kind, node_id, inputs):
+        try:
+            for line in self.s.stream("POST", f"/v1/apps/{app_id}/workflows/draft/{kind}/nodes/{node_id}/run", {"inputs": inputs}, timeout=300):
+                try:
+                    yield json.loads(line)
+                except ValueError:
+                    continue
+        except HTTPError as error:
+            # Dify emits pre-execution invalid_param as an SSE error; protocol 1.15 answers HTTP 400 instead.
+            # Adapt that documented transport difference only. Preserve the actual HTTP response in the raw trace;
+            # code/message/status remain compared (including rejected negative cases).
+            try:
+                body = json.loads(error.body)
+                detail = body.get("error") or {}
+            except (ValueError, AttributeError):
+                raise error
+            if error.status != 400 or not isinstance(detail, dict) or detail.get("code") != "invalid_param":
+                raise
+            yield {"event": "error", "status": error.status, "code": detail["code"], "message": detail.get("message"),
+                   "_http_status": error.status, "_http_body": body}
+
     def delete_app(self, app_id):
         try:
             self.s.delete(f"/v1/apps/{app_id}")
@@ -141,8 +164,24 @@ def save(outdir, name, side, trace, raw=None):
                 f.write(json.dumps(e, ensure_ascii=False) + "\n")
 
 
-def compare_traces(a, b):
-    diffs = tr.compare(a, b)
+def _without_assigner_selection(trace):
+    """Assigner v2 echoes editor config as inputs; only its top-level selection flag is view state.
+
+    Other nodes can have an actual user input named selected. Keep those, nested values and older assigner
+    versions, and leave the saved trace untouched for inspection.
+    """
+    trace = copy.deepcopy(trace)
+    for event in trace.get("events", []):
+        inputs = event.get("inputs")
+        if (event.get("event") == "node_finished" and event.get("node_type") == "assigner"
+                and isinstance(inputs, dict) and inputs.get("type") == "assigner"
+                and str(inputs.get("version")) == "2"):
+            inputs.pop("selected", None)
+    return trace
+
+
+def compare_traces(a, b, unordered=()):
+    diffs = tr.compare(_without_assigner_selection(a), _without_assigner_selection(b), unordered=unordered)
     ra, rb = a.get("llm_requests"), b.get("llm_requests")
     if ra is not None and rb is not None:
         tr.deep_diff(ra, rb, "llm_requests", diffs)
@@ -186,7 +225,10 @@ def main():
             continue
         entry = {"case": name, "comparisons": {}}
         t0 = time.time()
-        text = open(os.path.join(FIXTURES, case["fixture"]), encoding="utf-8").read()
+        fixture = case["fixture"]
+        path = os.path.join(LOCAL_FIXTURES, fixture[len("local/"):]) if fixture.startswith("local/") else os.path.join(FIXTURES, fixture)
+        text = open(path, encoding="utf-8").read()
+        unordered = tuple(case.get("unordered") or ())
         app_id = dify.import_yaml(text)
         sf_app = None
         try:
@@ -210,8 +252,9 @@ def main():
             entry["dify_status"] = fin.get("status")
             if args.self:
                 again = dify_run("dify2")
-                entry["comparisons"]["dify~dify"] = compare_traces(ref, again)
+                entry["comparisons"]["dify~dify"] = compare_traces(ref, again, unordered)
             if sf_error:
+                entry["error"] = sf_error
                 entry["comparisons"]["dify~dify-sf"] = sf_error
             elif sf:
                 dsl = {"version": "0.6.0", "kind": "app",
@@ -233,11 +276,40 @@ def main():
                     t = tr.from_sse(name, "dify-sf", raw, edges)
                     t["llm_requests"] = stub.requests()
                     save(args.out, name, "difysf", t, raw)
-                    entry["comparisons"]["dify~dify-sf"] = compare_traces(ref, t)
+                    entry["comparisons"]["dify~dify-sf"] = compare_traces(ref, t, unordered)
                 except LookupError:
                     pass
                 except HTTPError as e:
+                    if e.status != 404:
+                        raise
                     entry["comparisons"]["dify~dify-sf"] = f"dify-sf: draft run unavailable (HTTP {e.status})"
+            for single in case.get("containers") or []:
+                # Iteration / loop single runs (SSE on both sides).
+                kind, node = single["kind"], single["node"]
+                label = f"{kind} {node}"
+                stub.reset()
+                raw = list(dify.run_container(app_id, kind, node, single.get("inputs") or {}))
+                a = tr.from_sse(name, "dify", raw, edges)
+                a["llm_requests"] = stub.requests()
+                save(args.out, f"{name}.{kind}-{node}", "dify", a, raw)
+                if args.self:
+                    stub.reset()
+                    raw2 = list(dify.run_container(app_id, kind, node, single.get("inputs") or {}))
+                    a2 = tr.from_sse(name, "dify2", raw2, edges)
+                    a2["llm_requests"] = stub.requests()
+                    entry["comparisons"][f"{label}: dify~dify"] = compare_traces(a, a2, unordered)
+                if sf and sf_app and not sf_error:
+                    try:
+                        stub.reset()
+                        raw2 = list(sf.run_container(sf_app, kind, node, single.get("inputs") or {}))
+                        b = tr.from_sse(name, "dify-sf", raw2, edges)
+                        b["llm_requests"] = stub.requests()
+                        save(args.out, f"{name}.{kind}-{node}", "difysf", b, raw2)
+                        entry["comparisons"][f"{label}: dify~dify-sf"] = compare_traces(a, b, unordered)
+                    except HTTPError as e:
+                        if e.status != 404:
+                            raise
+                        entry["comparisons"][f"{label}: dify~dify-sf"] = f"dify-sf: {kind} single run unavailable (HTTP {e.status})"
             for single in case.get("single") or []:
                 node = single["node"]
                 r = dify.run_node(app_id, node, single.get("inputs") or {}, single.get("query", ""))
@@ -250,6 +322,8 @@ def main():
                         save(args.out, f"{name}.node-{node}", "difysf", b, [r2])
                         entry["comparisons"][f"node {node}: dify~dify-sf"] = tr.compare(a, b)
                     except HTTPError as e:
+                        if e.status != 404:
+                            raise
                         entry["comparisons"][f"node {node}: dify~dify-sf"] = f"dify-sf: single-node run unavailable (HTTP {e.status})"
         except Exception as e:  # noqa: BLE001
             entry["error"] = f"{type(e).__name__}: {e}"
@@ -260,6 +334,9 @@ def main():
                     sf.delete_app(sf_app)
         entry["seconds"] = round(time.time() - t0, 1)
         bad = [k for k, v in entry["comparisons"].items() if isinstance(v, list) and v]
+        # With --difysf, a Dify self-check alone is reference coverage, not a passing cross-runtime comparison.
+        ran = [k for k, v in entry["comparisons"].items() if isinstance(v, list)
+               and (not args.difysf or k.endswith("~dify-sf"))]
         if entry.get("error"):
             failures += 1
             print(f"ERROR {name}  {entry['error']}")
@@ -271,11 +348,9 @@ def main():
                 print(tr.format_diffs(entry["comparisons"][k], sides[0], sides[1]))
         else:
             notes = "; ".join(f"{k}: {v}" for k, v in entry["comparisons"].items() if isinstance(v, str))
-            ran = [k for k, v in entry["comparisons"].items() if isinstance(v, list)]
             print(f"{'PASS' if ran else 'REF '}  {name}  dify={entry.get('dify_status')}  compared: {', '.join(ran) or '-'}"
                   + (f"  ({notes})" if notes else ""))
-        entry["result"] = "error" if entry.get("error") else ("diff" if bad else ("pass" if any(
-            isinstance(v, list) for v in entry["comparisons"].values()) else "reference-only"))
+        entry["result"] = "error" if entry.get("error") else ("diff" if bad else ("pass" if ran else "reference-only"))
         report.append(entry)
     with open(os.path.join(args.out, "report.json"), "w") as f:
         f.write(json.dumps(report, ensure_ascii=False, indent=1, sort_keys=True) + "\n")

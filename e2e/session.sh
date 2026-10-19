@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # One differential-test session from start to stop; the stacks are always taken down at the end (also on failure).
 #
-#   e2e/session.sh [ref] [ours] [compare] [self] [difysf] [perf] [conformance]
+#   e2e/session.sh [ref] [ours] [compare] [self] [difysf] [perf] [client] [conformance]
 #     ref         stack R (Dify 1.17.1) + llmstub; setup_ref.py (account, plugin, stub model, probe run)
 #     ours        stack P (dify-sf, profile runtime); setup_ours.py (plugin into dify-sf's daemon, invoke via daemon;
 #                 with ref also through Dify's daemon)
 #     compare     e2e/compare.py over the live cases (needs ref); `self` adds Dify-vs-Dify, `difysf` adds Dify-vs-dify-sf
 #                 (needs ours)
-#     perf        a 20-node draft run on stack P, timed, with the server's memory (needs ours; e2e/perf_draft_run.py)
+#     perf        a 20-node draft run and a 100-round iteration (parallel 10) on stack P, timed, with the server's memory
+#                 (needs ours; e2e/perf_draft_run.py, e2e/perf_iteration.py)
+#     client      the editor's ServerRunService against stack P (needs ours and DIFYSF_CLIENT_DIR; flutter on PATH; takes
+#                 stack R down first when it is up)
 #     conformance the client conformance test against stack P's server (needs ours and DIFYSF_CLIENT_DIR, a checkout of
 #                 dify-sf-client; dart on PATH)
 # Memory of every container is measured after each phase (e2e/.out/mem.tsv). Needs DIFY_DOCKER_DIR for ref. On a
@@ -55,7 +58,20 @@ fi
 if want perf; then
   step "perf: 20-node draft run on stack P"; $PY "$E2E/perf_draft_run.py" 2>&1 | tee "$OUT/perf.log"
   [ "${PIPESTATUS[0]}" = 0 ] || status=1
+  step "perf: 100-round iteration (parallel 10) on stack P"; $PY "$E2E/perf_iteration.py" 2>&1 | tee "$OUT/perf-iteration.log"
+  [ "${PIPESTATUS[0]}" = 0 ] || status=1
   "$STACK" mem after-perf
+fi
+if want client; then
+  # The editor's run service against stack P (protocol 1.15: a draft run with an iteration and a loop). Stack R is not
+  # needed: it goes first, to leave memory for the Flutter test.
+  want ref && { step "stack R down (before the client test)"; "$STACK" ref-down || true; }
+  step "client: ServerRunService against stack P"
+  ( cd "${DIFYSF_CLIENT_DIR:?}/app" && \
+    DIFYSF_RUNTIME_URL="http://127.0.0.1:${DIFYSF_P_PORT:-18080}" \
+    DIFYSF_EMAIL="${DIFYSF_EMAIL:-e2e-owner@example.test}" DIFYSF_PASSWORD="${DIFYSF_PASSWORD:-E2e-throwaway-1}" \
+      flutter test --no-pub test/workflow_editor/run/server_runtime_e2e_test.dart 2>&1 | tail -40 ) || status=1
+  "$STACK" mem after-client
 fi
 if want conformance; then
   step "client conformance against stack P"

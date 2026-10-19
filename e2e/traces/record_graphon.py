@@ -190,6 +190,8 @@ def main():
         for case in cases:
             if args.only and args.only not in case["name"]:
                 continue
+            if case.get("golden") is False:  # dify-sf's own live cases (e2e/cases): no graphon golden
+                continue
             try:
                 traces = [run_case(runner, case) for _ in range(args.repeat)]
                 stable = all(tr.dumps(t) == tr.dumps(traces[0]) for t in traces[1:])

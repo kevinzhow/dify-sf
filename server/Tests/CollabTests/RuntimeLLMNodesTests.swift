@@ -169,7 +169,7 @@ struct RuntimeQuestionClassifierTests {
         var started: [String] = []
         var outputs = JSONObject()
         for await e in GraphEngine(graph: g).run(pool: try pool([(["start", "q"], "help"), (["start", "topic"], "dns")])) {
-            if case .node(.started(_, let n, _, _, _)) = e { started.append(n) }
+            if case .node(.started(_, let n, _, _, _, _)) = e { started.append(n) }
             if case .runSucceeded(let s) = e { outputs = s.outputs }
         }
         #expect(started == ["start", "qc", "b"])

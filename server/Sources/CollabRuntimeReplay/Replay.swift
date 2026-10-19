@@ -54,9 +54,8 @@ public enum Replay {
         public var trace: JSONValue?
     }
 
-    /// Node types not run yet by the engine (P3: containers).
-    public static let unsupportedTypes: Set<String> = [NodeType.iteration, NodeType.loop, NodeType.iterationStart, NodeType.loopStart,
-                                                      NodeType.loopEnd]
+    /// Node types not run yet by the engine.
+    public static let unsupportedTypes: Set<String> = []
 
     /// Replays one golden (`dify-sf-trace/1` with `meta`) against `fixturesDir`.
     public static func replay(golden: JSONValue, fixturesDir: URL, maxWorkers: Int = 1) async -> Result {
@@ -73,7 +72,7 @@ public enum Replay {
             let real = types.subtracting(MockNodeFactory.mockedTypes).sorted()
             let mocked = types.intersection(MockNodeFactory.mockedTypes).sorted()
             if let blocked = types.intersection(unsupportedTypes).sorted().first {
-                return Result(name: name, outcome: .skip, note: "\(blocked) node (containers: phase P3)", differences: [], realTypes: real,
+                return Result(name: name, outcome: .skip, note: "\(blocked) node (not supported yet)", differences: [], realTypes: real,
                               mockedTypes: mocked, trace: nil)
             }
             var outputs: [String: JSONObject] = [:]

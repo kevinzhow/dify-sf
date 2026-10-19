@@ -117,5 +117,14 @@ class DifyConsole:
             except ValueError:
                 continue
 
+    def run_container(self, app_id, kind, node_id, inputs, timeout=300):
+        """Yields the decoded SSE events of an iteration / loop single run (kind: iteration | loop)."""
+        path = f"/console/api/apps/{app_id}/workflows/draft/{kind}/nodes/{node_id}/run"
+        for line in self.s.stream("POST", path, {"inputs": inputs}, timeout=timeout):
+            try:
+                yield json.loads(line)
+            except ValueError:
+                continue
+
     def run_node(self, app_id, node_id, inputs, query=""):
         return self.api("POST", f"/apps/{app_id}/workflows/draft/nodes/{node_id}/run", {"inputs": inputs, "query": query})

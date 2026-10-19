@@ -87,8 +87,6 @@ extension Routes {
         // One consistent read: the document at seq N, rendered as Dify's workflow.
         let (seq, workflow) = try await draftWorkflow(a.id, viewer: p.id)
         let runId = UUID().uuidString.lowercased()
-        // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
-        let taskId = runId
         let prepared: PreparedRun
         do {
             prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs, services: runtimeServices(appId: a.id),
@@ -97,27 +95,36 @@ extension Routes {
             throw preparationError(error)
         }
 
+        return try await startRun(appId: a.id, principal: p, seq: seq, workflow: workflow, runId: runId, graph: prepared.graph,
+                                  pool: prepared.pool, workflowInputs: prepared.workflowInputs, nodeTriggeredFrom: "workflow-run")
+    }
+
+    /// Records the run (`workflow_runs`, `debugging`), starts it in its own task and answers its SSE stream.
+    func startRun(appId: String, principal p: Principal, seq: Int, workflow: JSONValue, runId: String, graph: RuntimeGraph, pool: VariablePool,
+                  workflowInputs: JSONObject, nodeTriggeredFrom: String) async throws -> Response {
+        // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
+        let taskId = runId
         let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
-        var stored = StoredWorkflowRun(id: runId, docId: a.id, docSeq: seq, workflowId: a.id, type: "workflow", triggeredFrom: "debugging",
+        var stored = StoredWorkflowRun(id: runId, docId: appId, docSeq: seq, workflowId: appId, type: "workflow", triggeredFrom: "debugging",
                                        version: "draft", graph: (workflow["graph"] ?? .null).compactJSON(),
-                                       inputs: JSONValue.object(prepared.workflowInputs).compactJSON(), status: "running", createdBy: p.id,
+                                       inputs: JSONValue.object(workflowInputs).compactJSON(), status: "running", createdBy: p.id,
                                        createdAt: Date())
         stored.createdByName = p.account.name
         do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
 
         let channel = RunChannel()
         let commands = GraphEngineCommands()
-        await runs.add(taskId, WorkflowRunRegistry.Active(appId: a.id, runId: runId, commands: commands))
-        let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: a.id, graph: prepared.graph, account: account,
-                                       inputs: prepared.workflowInputs, startedAt: stored.createdAt)
-        let engine = GraphEngine(graph: prepared.graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
-                                                                                 maxSteps: config.runtimeMaxSteps,
-                                                                                 maxTimeSeconds: config.runtimeMaxTimeSeconds),
-                                 commands: commands, userId: p.id, appId: a.id)
+        await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands))
+        let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
+                                       inputs: workflowInputs, startedAt: stored.createdAt)
+        let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
+                                                                        maxSteps: config.runtimeMaxSteps,
+                                                                        maxTimeSeconds: config.runtimeMaxTimeSeconds),
+                                 commands: commands, userId: p.id, appId: appId)
         let routes = self
-        let execution = RunExecution(routes: routes, appId: a.id, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
-                                     channel: channel, encoder: encoder)
-        Task.detached { await execution.run(engine: engine, pool: prepared.pool) }
+        let execution = RunExecution(routes: routes, appId: appId, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
+                                     channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom)
+        Task.detached { await execution.run(engine: engine, pool: pool) }
 
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
@@ -209,7 +216,7 @@ extension Routes {
         guard let id = req.parameters.get("run") else { return rawJSON(["data": []]) }
         let list: [StoredNodeExecution]
         do { list = try await store.nodeExecutions(doc: a.id, run: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
-        return rawJSON(["data": .array(list.map(Self.executionJSON))])
+        return rawJSON(["data": .array(list.flatMap(RetryHistory.traces))])
     }
 
     static func epochSeconds(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
@@ -279,9 +286,11 @@ final class RunExecution: Sendable {
     let createdBy: String
     let channel: RunChannel
     let encoderBox: Mutex<RunStreamEncoder>
+    /// The node executions' `triggered_from` (Dify: `workflow-run`; an iteration or loop single run: `single-step`).
+    let triggeredFrom: String
 
     init(routes: Routes, appId: String, docSeq: Int, runId: String, taskId: String, createdBy: String, channel: RunChannel,
-         encoder: RunStreamEncoder) {
+         encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run") {
         self.routes = routes
         self.appId = appId
         self.docSeq = docSeq
@@ -290,6 +299,17 @@ final class RunExecution: Sendable {
         self.createdBy = createdBy
         self.channel = channel
         encoderBox = Mutex(encoder)
+        self.triggeredFrom = triggeredFrom
+    }
+
+    /// A started node not finished yet (for its record and the end of the run).
+    struct Running: Sendable {
+        var nodeId: String
+        var nodeType: String
+        var title: String
+        var startAt: Date
+        var index: Int
+        var scope: NodeScope
     }
 
     func run(engine: GraphEngine, pool: VariablePool) async {
@@ -303,21 +323,35 @@ final class RunExecution: Sendable {
             }
         }
         var index = 0
-        var running: [String: (nodeId: String, nodeType: String, title: String, startAt: Date, index: Int)] = [:]
+        var running: [String: Running] = [:]
+        // `_append_retry_history`: the failed attempts of a node execution, kept in its process data.
+        var retries: [String: [JSONValue]] = [:]
         for await event in engine.run(pool: pool) {
             let frames = encoderBox.withLock { $0.encode(event) }
             for f in frames { await channel.publish(Self.sse(f)) }
             switch event {
-            case .node(.started(let x, let nodeId, let type, let title, let startAt)):
+            case .node(.started(let x, let nodeId, let type, let title, let startAt, let scope)):
                 index += 1
-                running[x] = (nodeId, type, title, startAt, index)
+                running[x] = Running(nodeId: nodeId, nodeType: type, title: title, startAt: startAt, index: index, scope: scope)
+            case .node(.retry(let x, let nodeId, let startAt, let r, let error, let retryIndex)):
+                let now = Date()
+                let type = running[x]?.nodeType ?? ""
+                retries[x, default: []].append([
+                    "retry_index": .int(retryIndex), "inputs": .object(r.inputs), "process_data": .object(r.processData),
+                    "outputs": .object(type == NodeType.start ? r.inputs : r.outputs), "error": .string(r.error.isEmpty ? error : r.error),
+                    "elapsed_time": .double(max(now.timeIntervalSince(startAt), 0)), "execution_metadata": .object(r.metadata),
+                    "created_at": .int(Int(startAt.timeIntervalSince1970.rounded(.down))), "finished_at": .int(Int(now.timeIntervalSince1970.rounded(.down))),
+                ])
+                _ = nodeId
             case .node(.succeeded(let x, let nodeId, _, let finishedAt, let r)):
-                await persist(x, nodeId, running.removeValue(forKey: x), "succeeded", r, error: nil, finishedAt: finishedAt)
+                await persist(x, nodeId, running.removeValue(forKey: x), "succeeded", r, error: nil, finishedAt: finishedAt,
+                              retries: retries.removeValue(forKey: x))
             case .node(.failed(let x, let nodeId, _, let finishedAt, let r, let error)):
-                await persist(x, nodeId, running.removeValue(forKey: x), "failed", r, error: error.isEmpty ? r.error : error, finishedAt: finishedAt)
+                await persist(x, nodeId, running.removeValue(forKey: x), "failed", r, error: error.isEmpty ? r.error : error, finishedAt: finishedAt,
+                              retries: retries.removeValue(forKey: x))
             case .node(.exception(let x, let nodeId, _, let finishedAt, let r, let error)):
                 await persist(x, nodeId, running.removeValue(forKey: x), "exception", r, error: error.isEmpty ? r.error : error,
-                              finishedAt: finishedAt)
+                              finishedAt: finishedAt, retries: retries.removeValue(forKey: x))
             case .runSucceeded(let s), .runPartialSucceeded(let s):
                 let status: String = { if case .runSucceeded = event { return "succeeded" }; return "partial-succeeded" }()
                 await finish(status: status, error: nil, stats: s, started: started, running: running)
@@ -335,33 +369,39 @@ final class RunExecution: Sendable {
 
     static func sse(_ payload: JSONValue) -> String { "data: " + payload.compactJSON() + "\n\n" }
 
-    /// A node execution as Dify's persistence layer stores it (start node outputs = its inputs).
-    func persist(_ executionId: String, _ nodeId: String, _ start: (nodeId: String, nodeType: String, title: String, startAt: Date, index: Int)?,
-                 _ status: String, _ r: NodeRunResult, error: String?, finishedAt: Date) async {
+    /// A node execution as Dify's persistence layer stores it (start node outputs = its inputs; failed attempts before a
+    /// retry in `process_data.__dify_retry_history`). Nodes inside an iteration or loop save no draft variables (but the
+    /// variable assigner's conversation variables).
+    func persist(_ executionId: String, _ nodeId: String, _ start: Running?, _ status: String, _ r: NodeRunResult, error: String?,
+                 finishedAt: Date, retries: [JSONValue]? = nil) async {
         let startAt = start?.startAt ?? finishedAt
         let nodeType = start?.nodeType ?? ""
         let outputs = nodeType == NodeType.start ? r.inputs : r.outputs
+        var processData = r.processData
+        if let retries, !retries.isEmpty { processData[RetryHistory.key] = .array(retries) }
         let e = StoredNodeExecution(
-            id: executionId, docId: appId, workflowRunId: runId, triggeredFrom: "workflow-run", docSeq: docSeq, index: start?.index ?? 0,
+            id: executionId, docId: appId, workflowRunId: runId, triggeredFrom: triggeredFrom, docSeq: docSeq, index: start?.index ?? 0,
             predecessorNodeId: nil, nodeId: nodeId, nodeType: nodeType, title: start?.title ?? "",
-            inputs: JSONValue.object(r.inputs).compactJSON(), processData: JSONValue.object(r.processData).compactJSON(),
+            inputs: JSONValue.object(r.inputs).compactJSON(), processData: JSONValue.object(processData).compactJSON(),
             outputs: JSONValue.object(outputs).compactJSON(), status: status, error: error.flatMap { $0.isEmpty ? nil : $0 },
             elapsedTime: max(finishedAt.timeIntervalSince(startAt), 0), executionMetadata: JSONValue.object(r.metadata).compactJSON(),
             createdBy: createdBy, createdAt: startAt, finishedAt: finishedAt)
         do { try await routes.store.upsertNodeExecution(e) } catch {
             routes.logger.error("run \(runId): storing node execution \(executionId) failed: \(error)")
         }
+        let enclosing = (start?.scope ?? NodeScope(metadata: r.metadata)).containerId
+        if enclosing != nil && nodeType != NodeType.variableAssigner { return }
         await routes.saveRunDraftVariables(appId: appId, userId: createdBy, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType, executionId: executionId,
                                            status: status, result: r)
     }
 
     func finish(status: String, error: String?, stats: GraphRunStats, started: ContinuousClock.Instant,
-                running: [String: (nodeId: String, nodeType: String, title: String, startAt: Date, index: Int)]) async {
+                running: [String: Running]) async {
         let now = Date()
         // `_fail_running_node_executions`: nodes still running when the run ends.
         for (x, s) in running {
             let e = StoredNodeExecution(
-                id: x, docId: appId, workflowRunId: runId, triggeredFrom: "workflow-run", docSeq: docSeq, index: s.index, predecessorNodeId: nil,
+                id: x, docId: appId, workflowRunId: runId, triggeredFrom: triggeredFrom, docSeq: docSeq, index: s.index, predecessorNodeId: nil,
                 nodeId: s.nodeId, nodeType: s.nodeType, title: s.title, inputs: nil, processData: nil, outputs: nil, status: "failed",
                 error: error ?? "", elapsedTime: max(now.timeIntervalSince(s.startAt), 0), executionMetadata: nil, createdBy: createdBy,
                 createdAt: s.startAt, finishedAt: now)
@@ -378,6 +418,48 @@ final class RunExecution: Sendable {
     }
 }
 
+/// Dify's retry history (`core/app/workflow/retry_history.py`, `services/workflow_node_execution_trace_service.py`): the
+/// failed attempts before a retry are kept in the execution's process data; the node-executions list shows each as its
+/// own trace (`status` `retry`, id `<execution>:retry:<n>`, `retry_index`) before the execution, whose process data
+/// loses the key.
+enum RetryHistory {
+    static let key = "__dify_retry_history"
+
+    static func traces(_ e: StoredNodeExecution) -> [JSONValue] {
+        guard case .object(var terminal) = Routes.executionJSON(e) else { return [] }
+        guard case .object(var processData)? = terminal["process_data"], let raw = processData[key] else { return [.object(terminal)] }
+        processData[key] = nil
+        terminal["process_data"] = .object(processData)
+        var seen = Set<Int>()
+        var attempts: [JSONObject] = []
+        for a in raw.array ?? [] {
+            guard case .object(let o) = a, let i = o["retry_index"]?.int, i > 0, !seen.contains(i) else { continue }
+            seen.insert(i)
+            attempts.append(o)
+        }
+        attempts.sort { ($0["retry_index"]?.int ?? 0) < ($1["retry_index"]?.int ?? 0) }
+        let terminalMetadata = terminal["execution_metadata"]?.object ?? [:]
+        var out: [JSONValue] = attempts.map { a in
+            var t = terminal
+            let index = a["retry_index"]?.int ?? 0
+            t["id"] = .string("\(e.id):retry:\(index)")
+            t["inputs"] = a["inputs"] ?? .null
+            t["process_data"] = a["process_data"] ?? .null
+            t["outputs"] = a["outputs"] ?? .null
+            t["status"] = "retry"
+            t["error"] = a["error"] ?? .null
+            t["elapsed_time"] = a["elapsed_time"] ?? .null
+            t["execution_metadata"] = .object(terminalMetadata.merging(a["execution_metadata"]?.object ?? [:]))
+            t["created_at"] = a["created_at"] ?? .null
+            t["finished_at"] = a["finished_at"] ?? .null
+            t["retry_index"] = .int(index)
+            return .object(t)
+        }
+        out.append(.object(terminal))
+        return out
+    }
+}
+
 enum SingleStepRunSeconds {
     static func of(_ d: Duration) -> Double { Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18 }
 }
@@ -391,7 +473,13 @@ struct RunStreamEncoder: Sendable {
     let account: JSONValue
     let inputs: JSONObject
     let startedAt: Date
-    var snapshots: [String: (title: String, startAt: Date)] = [:]
+    /// `_NodeSnapshot`s of started nodes.
+    struct Snapshot: Sendable {
+        var title: String
+        var startAt: Date
+        var scope: NodeScope
+    }
+    var snapshots: [String: Snapshot] = [:]
 
     init(taskId: String, runId: String, workflowId: String, graph: RuntimeGraph, account: JSONValue, inputs: JSONObject, startedAt: Date) {
         self.taskId = taskId
@@ -412,6 +500,27 @@ struct RunStreamEncoder: Sendable {
 
     func nodeType(_ id: String) -> String { graph.nodes[id]?.nodeType ?? "" }
 
+    /// Iteration and loop nodes have no node_started / node_finished / node_retry frames (Dify's converter drops them; their
+    /// iteration_* / loop_* frames stand for them).
+    func isContainer(_ nodeId: String) -> Bool {
+        let t = nodeType(nodeId)
+        return t == NodeType.iteration || t == NodeType.loop
+    }
+
+    func title(_ nodeId: String) -> String { graph.nodes[nodeId]?.title ?? "" }
+
+    static func scopeFields(_ scope: NodeScope) -> (JSONValue, JSONValue) {
+        (scope.iterationId.map(JSONValue.string) ?? .null, scope.loopId.map(JSONValue.string) ?? .null)
+    }
+
+    /// `_merge_metadata`: the result's metadata with the started node's iteration / loop id; null when empty.
+    static func mergedMetadata(_ metadata: JSONObject, _ snap: Snapshot?) -> JSONValue {
+        var m = metadata
+        if let i = snap?.scope.iterationId { m[MetadataKey.iterationId] = .string(i) }
+        if let l = snap?.scope.loopId { m[MetadataKey.loopId] = .string(l) }
+        return m.isEmpty ? .null : .object(m)
+    }
+
     mutating func encode(_ event: GraphEngineEvent) -> [JSONValue] {
         switch event {
         case .runStarted:
@@ -419,12 +528,14 @@ struct RunStreamEncoder: Sendable {
                                                   "created_at": Self.ts(startedAt), "reason": "initial"])]
         case .node(let e):
             switch e {
-            case .started(let x, let nodeId, let type, let title, let startAt):
-                snapshots[x] = (title, startAt)
+            case .started(let x, let nodeId, let type, let title, let startAt, let scope):
+                if isContainer(nodeId) { return [] }
+                snapshots[x] = Snapshot(title: title, startAt: startAt, scope: scope)
+                let (iterationId, loopId) = Self.scopeFields(scope)
                 return [envelope("node_started", [
                     "id": .string(x), "node_id": .string(nodeId), "node_type": .string(type), "title": .string(title), "index": 1,
                     "predecessor_node_id": .null, "inputs": .null, "inputs_truncated": false, "created_at": Self.ts(startAt), "extras": [:],
-                    "iteration_id": .null, "loop_id": .null, "agent_strategy": .null,
+                    "iteration_id": iterationId, "loop_id": loopId, "agent_strategy": .null,
                 ])]
             case .streamChunk(_, _, let selector, let chunk, _):
                 return [envelope("text_chunk", ["text": .string(chunk), "from_variable_selector": .array(selector.map(JSONValue.string))])]
@@ -433,23 +544,55 @@ struct RunStreamEncoder: Sendable {
                 return [envelope("reasoning_chunk", ["message_id": .null, "reasoning": .string(chunk), "node_id": .string(nodeId),
                                                      "is_final": .bool(isFinal)])]
             case .succeeded(let x, let nodeId, let startAt, let finishedAt, let r):
-                return [finished(x, nodeId, "succeeded", r, error: nil, startAt: startAt, finishedAt: finishedAt)]
+                if isContainer(nodeId) { return [] }
+                var frames: [JSONValue] = []
+                // WorkflowBasedAppRunner: an answer inside an iteration or loop streams its answer when it succeeds.
+                if nodeType(nodeId) == NodeType.answer, !e.scope.isRoot, case .string(let answer)? = r.outputs["answer"], !answer.isEmpty {
+                    frames.append(envelope("text_chunk", ["text": .string(answer), "from_variable_selector": [.string(nodeId), "answer"]]))
+                }
+                frames.append(finished(x, nodeId, "succeeded", r, error: nil, startAt: startAt, finishedAt: finishedAt))
+                return frames
             case .failed(let x, let nodeId, let startAt, let finishedAt, let r, let error):
+                if isContainer(nodeId) { return [] }
                 return [finished(x, nodeId, "failed", r, error: error.isEmpty ? (r.error.isEmpty ? "Unknown error" : r.error) : error,
                                  startAt: startAt, finishedAt: finishedAt)]
             case .exception(let x, let nodeId, let startAt, let finishedAt, let r, let error):
+                if isContainer(nodeId) { return [] }
                 return [finished(x, nodeId, "exception", r, error: error.isEmpty ? (r.error.isEmpty ? "Unknown error" : r.error) : error,
                                  startAt: startAt, finishedAt: finishedAt)]
             case .retry(let x, let nodeId, let startAt, let r, let error, let retryIndex):
+                if isContainer(nodeId) { return [] }
                 let snap = snapshots[x]
                 let now = Date()
+                let (iterationId, loopId) = Self.scopeFields(e.scope)
                 return [envelope("node_retry", [
                     "id": .string(x), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)), "title": .string(snap?.title ?? ""),
                     "index": 1, "predecessor_node_id": .null, "inputs": .object(r.inputs), "inputs_truncated": false,
                     "process_data": .object(r.processData), "process_data_truncated": false, "outputs": .object(projected(nodeId, r)),
                     "outputs_truncated": false, "status": "retry", "error": .string(error), "elapsed_time": .double(now.timeIntervalSince(startAt)),
-                    "execution_metadata": r.metadata.isEmpty ? .null : .object(r.metadata), "created_at": Self.ts(snap?.startAt ?? startAt),
-                    "finished_at": Self.ts(now), "files": [], "iteration_id": .null, "loop_id": .null, "retry_index": .int(retryIndex),
+                    "execution_metadata": Self.mergedMetadata(r.metadata, snap), "created_at": Self.ts(snap?.startAt ?? startAt),
+                    "finished_at": Self.ts(now), "files": [], "iteration_id": iterationId, "loop_id": loopId, "retry_index": .int(retryIndex),
+                ])]
+            case .containerStarted(_, let nodeId, let kind, _, let inputs, let metadata):
+                return [envelope("\(kind.rawValue)_started", [
+                    "id": .string(nodeId), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)), "title": .string(title(nodeId)),
+                    "created_at": Self.ts(Date()), "extras": [:], "metadata": .object(metadata), "inputs": .object(inputs), "inputs_truncated": false,
+                ])]
+            case .containerNext(_, let nodeId, let kind, let index, _):
+                var data: JSONObject = ["id": .string(nodeId), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)),
+                                        "title": .string(title(nodeId)), "index": .int(index), "created_at": Self.ts(Date())]
+                // `pre_loop_output` is sent empty (Dify: "not utilized by the frontend").
+                if kind == .loop { data["pre_loop_output"] = [:] }
+                data["extras"] = [:]
+                return [envelope("\(kind.rawValue)_next", .object(data))]
+            case .containerCompleted(_, let nodeId, let kind, let startAt, let inputs, let outputs, let metadata, let steps, let error):
+                let now = Date()
+                return [envelope("\(kind.rawValue)_completed", [
+                    "id": .string(nodeId), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)), "title": .string(title(nodeId)),
+                    "outputs": .object(outputs), "outputs_truncated": false, "created_at": Self.ts(now), "extras": [:], "inputs": .object(inputs),
+                    "inputs_truncated": false, "status": .string(error == nil ? "succeeded" : "failed"), "error": .null,
+                    "elapsed_time": .double(now.timeIntervalSince(startAt)), "total_tokens": .int(metadata[MetadataKey.totalTokens]?.int ?? 0),
+                    "execution_metadata": .object(metadata), "finished_at": Self.ts(now), "steps": .int(steps),
                 ])]
             case .retrieverResource, .variableUpdated:
                 return []
@@ -470,13 +613,14 @@ struct RunStreamEncoder: Sendable {
                            finishedAt: Date) -> JSONValue {
         let snap = snapshots.removeValue(forKey: x)
         let start = snap?.startAt ?? startAt
+        let (iterationId, loopId) = Self.scopeFields(NodeScope(metadata: r.metadata))
         return envelope("node_finished", [
             "id": .string(x), "node_id": .string(nodeId), "node_type": .string(nodeType(nodeId)), "title": .string(snap?.title ?? ""),
             "index": snap == nil ? 0 : 1, "predecessor_node_id": .null, "inputs": .object(r.inputs), "inputs_truncated": false,
             "process_data": .object(r.processData), "process_data_truncated": false, "outputs": .object(projected(nodeId, r)),
             "outputs_truncated": false, "status": .string(status), "error": error.map(JSONValue.string) ?? .null,
-            "elapsed_time": .double(finishedAt.timeIntervalSince(start)), "execution_metadata": r.metadata.isEmpty ? .null : .object(r.metadata),
-            "created_at": Self.ts(start), "finished_at": Self.ts(finishedAt), "files": [], "iteration_id": .null, "loop_id": .null,
+            "elapsed_time": .double(finishedAt.timeIntervalSince(start)), "execution_metadata": Self.mergedMetadata(r.metadata, snap),
+            "created_at": Self.ts(start), "finished_at": Self.ts(finishedAt), "files": [], "iteration_id": iterationId, "loop_id": loopId,
         ])
     }
 

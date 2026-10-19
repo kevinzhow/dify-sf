@@ -1,5 +1,5 @@
 {
-  "_doc": "Run cases over Dify's 24 sample workflows (server/Tests/CollabTests/Fixtures/dify). inputs/query feed the start node (query = sys.query for chatflows). mock: per node id, the outputs Dify's mock node returns instead of its defaults (graphon goldens only). live: false = not run against a live stack (needs a tool plugin, the internet or another missing service); live runs rewrite every LLM / question classifier / parameter extractor node to the stub model. single: nodes also run alone (single-node run) with these inputs.",
+  "_doc": "Run cases over Dify's 24 sample workflows (server/Tests/CollabTests/Fixtures/dify). inputs/query feed the start node (query = sys.query for chatflows). mock: per node id, the outputs Dify's mock node returns instead of its defaults (graphon goldens only). live: false = not run against a live stack (needs a tool plugin, the internet or another missing service); live runs rewrite every LLM / question classifier / parameter extractor node to the stub model. single: nodes also run alone (single-node run) with these inputs. containers: iteration / loop single runs (kind, node, inputs; SSE on both sides). unordered: container nodes whose inner executions are compared as multisets (parallel iterations). golden: false = no graphon golden (fixture local/<file>: dify-sf's own live cases in e2e/cases).",
   "cases": [
     {"name": "answer_end_with_text", "fixture": "answer_end_with_text.yml", "query": "hello"},
     {"name": "array_iteration_formatting", "fixture": "array_iteration_formatting_workflow.yml",
@@ -22,11 +22,13 @@
     {"name": "end_node_without_value_type_field", "fixture": "end_node_without_value_type_field_workflow.yml", "inputs": {"query": "pass me through"}},
     {"name": "http_request_with_json_tool", "fixture": "http_request_with_json_tool_workflow.yml", "inputs": {"url": "http://llmstub:8000/echo/json"},
      "live": false, "_why_not_live": "needs the json_process tool plugin"},
-    {"name": "increment_loop_with_break_condition", "fixture": "increment_loop_with_break_condition_workflow.yml"},
+    {"name": "increment_loop_with_break_condition", "fixture": "increment_loop_with_break_condition_workflow.yml",
+     "containers": [{"kind": "loop", "node": "1754827949615", "inputs": {}}]},
     {"name": "iteration_flatten_output_disabled", "fixture": "iteration_flatten_output_disabled_workflow.yml",
      "mock": {"code_node": {"result": [1, 2, 3]}}},
     {"name": "iteration_flatten_output_enabled", "fixture": "iteration_flatten_output_enabled_workflow.yml",
-     "mock": {"code_node": {"result": [1, 2, 3]}}},
+     "mock": {"code_node": {"result": [1, 2, 3]}},
+     "containers": [{"kind": "iteration", "node": "iteration_node", "inputs": {"iteration_node.input_selector": [5, 6]}}]},
     {"name": "loop_contains_answer", "fixture": "loop_contains_answer.yml", "query": "go"},
     {"name": "multilingual_parallel_llm_streaming", "fixture": "multilingual_parallel_llm_streaming_workflow.yml", "query": "Hello"},
     {"name": "response_stream_filter_issue_170", "fixture": "response_stream_filter_issue_170_workflow.yml", "query": "Write a poem"},
@@ -39,6 +41,17 @@
     {"name": "test_complex_branch.other", "fixture": "test_complex_branch.yml", "query": "anything else"},
     {"name": "test_streaming_conversation_variables", "fixture": "test_streaming_conversation_variables.yml", "query": "set it"},
     {"name": "test_streaming_conversation_variables_v1_overwrite", "fixture": "test_streaming_conversation_variables_v1_overwrite.yml", "query": "overwrite"},
-    {"name": "update_conversation_variable_in_iteration", "fixture": "update-conversation-variable-in-iteration.yml", "query": "iterate"}
+    {"name": "update_conversation_variable_in_iteration", "fixture": "update-conversation-variable-in-iteration.yml", "query": "iterate"},
+    {"name": "local.iteration_modes_parallel", "fixture": "local/iteration_modes_parallel.yml", "golden": false, "unordered": ["iter_a"],
+     "containers": [{"kind": "iteration", "node": "iter_b", "inputs": {"iter_b.input_selector": [4, 9]}}]},
+    {"name": "local.iteration_nested_llm", "fixture": "local/iteration_nested_llm.yml", "golden": false, "inputs": {"topic": "rivers"},
+     "unordered": ["inner"], "containers": [
+       {"kind": "iteration", "node": "outer", "inputs": {"outer.input_selector": [{"letters": ["x", "y"]}], "inner.llm.llm.#start.topic#": "rivers"}},
+       {"kind": "iteration", "node": "inner", "inputs": {"inner.input_selector": ["x", "y"], "llm.llm.#start.topic#": "rivers"}}]},
+    {"name": "local.loop_variables_break_end.1", "fixture": "local/loop_variables_break_end.yml", "golden": false, "inputs": {"base": 1}},
+    {"name": "local.loop_variables_break_end.0", "fixture": "local/loop_variables_break_end.yml", "golden": false, "inputs": {"base": 0},
+     "containers": [{"kind": "loop", "node": "loop", "inputs": {"loop.total": 1}}]},
+    {"name": "local.loop_variables_break_end.100", "fixture": "local/loop_variables_break_end.yml", "golden": false, "inputs": {"base": 100}},
+    {"name": "local.iteration_retry_terminated", "fixture": "local/iteration_retry_terminated.yml", "golden": false}
   ]
 }

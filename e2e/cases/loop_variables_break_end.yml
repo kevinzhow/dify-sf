@@ -1,0 +1,111 @@
+# dify-sf live case: a loop with a loop variable from the start node. Each round adds 2 to `total`; a loop-end node ends
+# the loop when `total` = 5 (an if-else inside the loop); the break condition `total` >= 8 ends it otherwise; with a
+# start value >= 8 it ends before the first round.
+app:
+  mode: workflow
+  name: loop_variables_break_end
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  description: ''
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.3.1
+dependencies: []
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: loop, targetHandle: target, type: custom, data: {sourceType: start, targetType: loop, isInIteration: false, isInLoop: false}}
+    - {id: e2, source: loopstart, sourceHandle: source, target: add, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: loop-start, targetType: assigner, isInIteration: false, isInLoop: true, loop_id: loop}}
+    - {id: e3, source: add, sourceHandle: source, target: check, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: assigner, targetType: if-else, isInIteration: false, isInLoop: true, loop_id: loop}}
+    - {id: e4, source: check, sourceHandle: 'five', target: stop, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: if-else, targetType: loop-end, isInIteration: false, isInLoop: true, loop_id: loop}}
+    - {id: e5, source: loop, sourceHandle: source, target: end, targetHandle: target, type: custom, data: {sourceType: loop, targetType: end, isInIteration: false, isInLoop: false}}
+    nodes:
+    - id: start
+      type: custom
+      position: {x: 0, y: 0}
+      data:
+        type: start
+        title: Start
+        desc: ''
+        variables:
+        - {variable: base, label: base, type: number, required: true}
+    - id: loop
+      type: custom
+      position: {x: 300, y: 0}
+      width: 700
+      height: 250
+      zIndex: 1
+      data:
+        type: loop
+        title: Loop
+        desc: ''
+        start_node_id: loopstart
+        loop_count: 10
+        logical_operator: and
+        break_conditions:
+        - {id: b1, variable_selector: [loop, total], comparison_operator: ≥, value: '8', varType: number}
+        loop_variables:
+        - {id: v1, label: total, var_type: number, value_type: variable, value: [start, base]}
+        - {id: v2, label: tag, var_type: string, value_type: constant, value: run}
+        width: 700
+        height: 250
+    - id: loopstart
+      type: custom-loop-start
+      parentId: loop
+      position: {x: 24, y: 68}
+      draggable: false
+      selectable: false
+      zIndex: 1002
+      data: {type: loop-start, title: '', desc: '', isInLoop: true}
+    - id: add
+      type: custom
+      parentId: loop
+      position: {x: 128, y: 68}
+      zIndex: 1002
+      data:
+        type: assigner
+        title: Add two
+        desc: ''
+        version: '2'
+        isInIteration: false
+        isInLoop: true
+        loop_id: loop
+        items:
+        - {input_type: constant, operation: +=, value: 2, variable_selector: [loop, total], write_mode: over-write}
+    - id: check
+      type: custom
+      parentId: loop
+      position: {x: 400, y: 68}
+      zIndex: 1002
+      data:
+        type: if-else
+        title: Five?
+        desc: ''
+        isInIteration: false
+        isInLoop: true
+        loop_id: loop
+        cases:
+        - case_id: five
+          logical_operator: and
+          conditions:
+          - {id: c1, variable_selector: [loop, total], comparison_operator: '=', value: '5', varType: number}
+    - id: stop
+      type: custom
+      parentId: loop
+      position: {x: 600, y: 68}
+      zIndex: 1002
+      data: {type: loop-end, title: Stop, desc: '', isInIteration: false, isInLoop: true, loop_id: loop}
+    - id: end
+      type: custom
+      position: {x: 1100, y: 0}
+      data:
+        type: end
+        title: End
+        desc: ''
+        outputs:
+        - {variable: total, value_selector: [loop, total], value_type: number}
+        - {variable: rounds, value_selector: [loop, loop_round], value_type: number}
+        - {variable: tag, value_selector: [loop, tag], value_type: string}

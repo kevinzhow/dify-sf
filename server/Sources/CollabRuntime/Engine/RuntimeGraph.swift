@@ -39,8 +39,9 @@ public struct RuntimeGraph: Sendable {
     public func outgoing(_ id: String) -> [Edge] { (outEdges[id] ?? []).compactMap { edges[$0] } }
     public func incoming(_ id: String) -> [Edge] { (inEdges[id] ?? []).compactMap { edges[$0] } }
 
-    /// `Graph.init(graph_config, node_factory, root_node_id)`.
-    public static func build(_ config: GraphConfig, rootId: String, factory: any NodeFactory) async throws -> RuntimeGraph {
+    /// `Graph.init(graph_config, node_factory, root_node_id, skip_validation)`.
+    public static func build(_ config: GraphConfig, rootId: String, factory: any NodeFactory, skipValidation: Bool = false) async throws
+        -> RuntimeGraph {
         guard !config.nodes.isEmpty else { throw GraphConfig.Invalid(description: "Graph must have at least one node") }
         guard config.node(rootId) != nil else { throw GraphConfig.Invalid(description: "Root node id \(rootId) not found in the graph") }
 
@@ -99,7 +100,7 @@ public struct RuntimeGraph: Sendable {
         let graph = RuntimeGraph(config: config, nodes: nodes, nodeIds: nodeIds, edges: edges, edgeIds: edgeIds, inEdges: inEdges,
                                  outEdges: outEdges, rootId: rootId, executionTypes: types, initiallySkippedNodes: skippedNodes,
                                  initiallySkippedEdges: skippedEdges)
-        try graph.validate()
+        if !skipValidation { try graph.validate() }
         return graph
     }
 

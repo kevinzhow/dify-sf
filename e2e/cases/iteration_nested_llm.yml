@@ -1,0 +1,159 @@
+# dify-sf live case: an iteration in an iteration. `outer` (sequential) over two objects containing ["a", "b"] and ["c"]; inside it `inner`
+# (parallel, 2 at a time) asks the stub LLM about each letter, then a template (Jinja2 in the sandbox) joins the round's
+# index with the answers. Covers item / index variables, nesting, LLM usage of containers and flattening.
+app:
+  mode: workflow
+  name: iteration_nested_llm
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  description: ''
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.3.1
+dependencies: []
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: code, targetHandle: target, type: custom, data: {sourceType: start, targetType: code, isInIteration: false, isInLoop: false}}
+    - {id: e2, source: code, sourceHandle: source, target: outer, targetHandle: target, type: custom, data: {sourceType: code, targetType: iteration, isInIteration: false, isInLoop: false}}
+    - {id: e3, source: outerstart, sourceHandle: source, target: inner, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: iteration-start, targetType: iteration, isInIteration: true, isInLoop: false, iteration_id: outer}}
+    - {id: e4, source: innerstart, sourceHandle: source, target: llm, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: iteration-start, targetType: llm, isInIteration: true, isInLoop: false, iteration_id: inner}}
+    - {id: e5, source: inner, sourceHandle: source, target: tpl, targetHandle: target, type: custom, zIndex: 1002, data: {sourceType: iteration, targetType: template-transform, isInIteration: true, isInLoop: false, iteration_id: outer}}
+    - {id: e6, source: outer, sourceHandle: source, target: end, targetHandle: target, type: custom, data: {sourceType: iteration, targetType: end, isInIteration: false, isInLoop: false}}
+    nodes:
+    - id: start
+      type: custom
+      position: {x: 0, y: 0}
+      data:
+        type: start
+        title: Start
+        desc: ''
+        variables:
+        - {variable: topic, label: topic, type: text-input, required: true, max_length: 48}
+    - id: code
+      type: custom
+      position: {x: 300, y: 0}
+      data:
+        type: code
+        title: Groups
+        desc: ''
+        code_language: python3
+        code: |
+          def main() -> dict:
+              return {"groups": [{"letters": ["a", "b"]}, {"letters": ["c"]}]}
+        variables: []
+        outputs:
+          groups: {type: 'array[object]', children: null}
+    - id: outer
+      type: custom
+      position: {x: 600, y: 0}
+      width: 900
+      height: 300
+      zIndex: 1
+      data:
+        type: iteration
+        title: Outer
+        desc: ''
+        start_node_id: outerstart
+        iterator_selector: [code, groups]
+        output_selector: [tpl, output]
+        output_type: array[string]
+        is_parallel: false
+        parallel_nums: 10
+        error_handle_mode: terminated
+        flatten_output: true
+        width: 900
+        height: 300
+    - id: outerstart
+      type: custom-iteration-start
+      parentId: outer
+      position: {x: 24, y: 68}
+      draggable: false
+      selectable: false
+      zIndex: 1002
+      data: {type: iteration-start, title: '', desc: '', isInIteration: true}
+    - id: inner
+      type: custom
+      parentId: outer
+      position: {x: 128, y: 68}
+      width: 400
+      height: 200
+      zIndex: 1002
+      data:
+        type: iteration
+        title: Inner
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: outer
+        start_node_id: innerstart
+        iterator_selector: [outer, item, letters]
+        output_selector: [llm, text]
+        output_type: array[string]
+        is_parallel: true
+        parallel_nums: 2
+        error_handle_mode: terminated
+        flatten_output: true
+        width: 400
+        height: 200
+    - id: innerstart
+      type: custom-iteration-start
+      parentId: inner
+      position: {x: 24, y: 68}
+      draggable: false
+      selectable: false
+      zIndex: 1003
+      data: {type: iteration-start, title: '', desc: '', isInIteration: true}
+    - id: llm
+      type: custom
+      parentId: inner
+      position: {x: 128, y: 68}
+      zIndex: 1003
+      data:
+        type: llm
+        title: Ask
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: inner
+        model:
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+          name: stub-chat
+          mode: chat
+          completion_params: {temperature: 0}
+        prompt_template:
+        - role: system
+          text: Answer in one line.
+        - role: user
+          text: 'Letter {{#inner.item#}} about {{#start.topic#}}'
+        context: {enabled: false, variable_selector: []}
+        vision: {enabled: false}
+        variables: []
+    - id: tpl
+      type: custom
+      parentId: outer
+      position: {x: 600, y: 68}
+      zIndex: 1002
+      data:
+        type: template-transform
+        title: Join
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: outer
+        template: '{{ i }}: {{ answers | join(" / ") }}'
+        variables:
+        - {variable: i, value_selector: [outer, index]}
+        - {variable: answers, value_selector: [inner, output]}
+    - id: end
+      type: custom
+      position: {x: 1600, y: 0}
+      data:
+        type: end
+        title: End
+        desc: ''
+        outputs:
+        - {variable: lines, value_selector: [outer, output], value_type: 'array[string]'}

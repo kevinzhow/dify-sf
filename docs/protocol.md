@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.14
+# dify-sf collaboration protocol, version 1.15
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,24 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.15 (additive; clients older than 1.15 are unaffected): **iterations and loops** (section 2, "Iterations and loops
+  (1.15)"), and the rest of Dify's error handling around them.
+  * Node types `iteration`, `iteration-start`, `loop`, `loop-start` and `loop-end` run in draft runs (graphs with them were
+    refused with `unsupported_node_type`): sequential and parallel iterations (`parallel_nums`), `error_handle_mode`
+    (`terminated`, `continue-on-error`, `remove-abnormal-output`), `flatten_output`, the `item` / `index` variables,
+    loops with loop variables, break conditions and loop-end nodes, nesting; retries, error strategies, stop and the
+    execution limits inside them.
+  * The draft run's stream gains Dify's `iteration_started`, `iteration_next`, `iteration_completed`, `loop_started`,
+    `loop_next`, `loop_completed` events; nodes inside a container carry its id in `iteration_id` / `loop_id` and in
+    `execution_metadata` (with `iteration_index` / `loop_index`); the container nodes themselves have no `node_started` /
+    `node_finished` frames (as Dify); an answer inside a container streams its answer when it finishes.
+  * `POST /v1/apps/{app}/workflows/draft/iteration/nodes/{node}/run` and `.../draft/loop/nodes/{node}/run` (edit; workflow
+    apps) `{"inputs": {...}}`: Dify's iteration / loop single run, the same SSE stream; recorded as a debugging run. The
+    plain single node run refuses these nodes as Dify does (`400 invalid_param`).
+  * Retried attempts are kept (Dify's retry history): `GET .../workflow-runs/{run}/node-executions` lists each failed
+    attempt before its execution (`status` `retry`, `retry_index`).
+  * `system-features`' `workflow_runtime`: `protocol_version` `1.15`; `draft_run` adds the five types, `single_node_run`
+    adds `iteration` and `loop` (run through their own endpoints).
 * 1.14 (additive; clients older than 1.14 are unaffected): **whole draft runs** (section 2, "Draft runs (1.14)"), the
   workflow runtime's engine and the node types Dify's workflows use most, **draft variables** ("Draft variables (1.14)").
   * `POST /v1/apps/{app}/workflows/draft/run` (edit; workflow apps) `{"inputs": {...}, "files": []}`: Dify's draft run, an
@@ -21,7 +39,7 @@ section 9 describes the same algorithm in prose.
   * Node types (draft runs and single node runs): `start`, `end`, `answer`, `llm`, `if-else`, `variable-aggregator`
     (and the legacy `variable-assigner`), `assigner` (variable assigner v1 / v2), `template-transform`, `code`,
     `http-request`, `list-operator`, `parameter-extractor`, `question-classifier`; error strategies (fail branch, default
-    value), retries, execution limits. Iteration and loop (P3), human input (P4), files (P5), tools, knowledge and agents
+    value), retries, execution limits. Iteration and loop (1.15), human input (P4), files (P5), tools, knowledge and agents
     are not run yet: a graph with them is refused (`unsupported_node_type`).
   * Draft variables: Dify's `/workflows/draft/variables...`, `/nodes/{node}/variables`, `/conversation-variables`,
     `/system-variables`, `/environment-variables`; single node runs read missing values from them.
@@ -350,6 +368,7 @@ with a role that is not enough, `403 forbidden` (section "Accounts").
 | POST | `/v1/apps/{app}/workflows/draft/run` | edit | 1.14: a draft run, Dify's SSE events ("Draft runs"). |
 | POST | `/v1/apps/{app}/workflow-runs/tasks/{task}/stop` | edit | 1.14: stop a draft run. |
 | GET | `/v1/apps/{app}/workflow-runs`, `.../workflow-runs/{run}`, `.../workflow-runs/{run}/node-executions` | member | 1.14: run history, a run, its node executions ("Draft runs"). |
+| POST | `/v1/apps/{app}/workflows/draft/iteration/nodes/{node}/run`, `.../draft/loop/nodes/{node}/run` | edit | 1.15: an iteration / loop single run, Dify's SSE events ("Iterations and loops"). |
 | GET, PATCH, PUT, DELETE | `/v1/apps/{app}/workflows/draft/variables...`, `.../draft/nodes/{node}/variables`, `.../draft/{conversation,system,environment}-variables` | edit | 1.14: draft variables ("Draft variables"). |
 | GET | `/v1/apps/{app}/chat-conversations...`, `/v1/apps/{app}/chat-messages` | edit | 1.11: chat logs (empty until a runtime exists). |
 | POST | `/v1/apps/{app}/feedbacks` | member | 1.11: a member's like / dislike of a message in the logs ("Overview statistics and logs"). |
@@ -1174,7 +1193,64 @@ executions oldest first, in the single node run's shape (1.13).
 **Deviations from Dify.** Chatflow debug runs (`/advanced-chat/workflows/draft/run`, conversations, messages, memory)
 come with P6. Files are not supported (P5). Values are never offloaded (`*_truncated` false). Dify's `index` of a
 `node_started` / `node_finished` frame is always 1 (its FIXME); dify-sf sends the same. A run's `task_id` is its run id.
-Node executions are stored when they end (Dify also stores the start), and retried attempts are not kept as history.
+Node executions are stored when they end (Dify also stores the start). (1.15: retried attempts are kept as Dify keeps
+them; iteration and loop nodes run: "Iterations and loops".)
+
+### Iterations and loops (1.15)
+
+Iteration and loop nodes are graphon 0.7.0's containers: the container node only suspends; the engine runs each round in
+a child **frame** (the whole graph from the container's start node, with its own node and edge states) whose tasks share
+the run's ready queue and workers, then resumes the container with more rounds or its outcome.
+
+* **Iteration** (`iterator_selector` must be a list; null or empty completes at once with `output` `[]`): round *i* runs on
+  a copy of the pool with `{iteration}.item` and `{iteration}.index`; `is_parallel` runs up to `parallel_nums` rounds at
+  once (else one); `output` collects each round's `output_selector` value in index order; with `flatten_output` (default)
+  a list of lists becomes one list. A round with a failed node (no error strategy, retries exhausted): `terminated`
+  (default) lets running rounds finish, starts no new one and fails the iteration with the first error;
+  `continue-on-error` puts `null` in its place; `remove-abnormal-output` leaves it out. Outputs `output`; `inputs`
+  `{iterator_selector}`; `execution_metadata` `{total_tokens, total_price, currency, iteration_duration_map}`.
+* **Loop**: the loop variables (`constant`, or `variable` = a selector) are written to `{loop}.{label}`; each round runs on
+  the loop's own pool (values of the nodes inside are cleared first); after a round the loop ends when a loop-end node ran
+  in it, the `break_conditions` hold (`logical_operator`), or `loop_count` rounds ran; break conditions that hold before
+  the first round end it with no round. Outputs: the loop variables and `loop_round`; `inputs` `{loop_count, <variables>}`;
+  `execution_metadata` `{total_tokens, total_price, currency, loop_duration_map, loop_variable_map}`.
+* A container's LLM usage is its rounds' (in `total_tokens`); `total_steps` and the run's own outputs count only nodes
+  outside containers, while the execution limits count every node start. A failure inside a round counts in
+  `exceptions_count`; so does the container's own failure. Answers inside a container add to `outputs.answer` (the last
+  iteration round's; every loop round's). Containers nest (a loop in an iteration, ...).
+* **Stream** (Dify 1.17.1's): `iteration_started` / `loop_started` `{id (the node id), node_id, node_type, title,
+  created_at, extras, metadata ({iteration_length} / {loop_length}), inputs, inputs_truncated}`; `iteration_next`
+  `{id, node_id, node_type, title, index, created_at, extras}` before each round (an iteration's first rounds at once; a
+  loop's from round 1: none before round 0) and `loop_next` with `pre_loop_output` `{}`; `iteration_completed` /
+  `loop_completed` `{id, node_id, node_type, title, outputs, outputs_truncated, created_at, extras, inputs,
+  inputs_truncated, status (succeeded | failed), error (null), elapsed_time, total_tokens, execution_metadata (a loop's
+  with `completed_reason`: loop_break | loop_completed | error), finished_at, steps (the list's length / loop_count)}`.
+  The container nodes have no `node_started` / `node_finished` / `node_retry` frames; nodes inside have `iteration_id` /
+  `loop_id` (the innermost container of each kind) and those plus `iteration_index` / `loop_index` in
+  `execution_metadata`; the rounds' start nodes are not sent. An answer node inside a container sends its answer as a
+  `text_chunk` when it finishes.
+* **Records**: every node execution, the containers' and each round's, is stored (`index` in start order); nodes inside a
+  container save no draft variables (but a variable assigner's conversation variables), as Dify.
+* **Retry history**: each failed attempt before a retry is kept in the execution's `process_data.__dify_retry_history`;
+  `GET .../workflow-runs/{run}/node-executions` lists it as its own entries before the execution (`id`
+  `{execution}:retry:{n}`, `status` `retry`, `retry_index` n, the attempt's inputs, outputs, error, times), whose
+  `process_data` then omits the key.
+
+**`POST /v1/apps/{app}/workflows/draft/iteration/nodes/{node}/run`** and **`.../draft/loop/nodes/{node}/run`** (edit;
+workflow apps) `{"inputs": {...}}` (`inputs` required: `400 invalid_param` "inputs is required"): Dify's iteration / loop
+single run. The graph is the container, the nodes whose `data.iteration_id` / `data.loop_id` is it, and its start node,
+rooted at the container; the pool has the default system variables, the environment, the draft variables the nodes read
+and `inputs` keyed as Dify's mapping (`{iteration}.input_selector` for the list; `{node}.{key}` of the inner nodes'
+references; `{loop}.{label}` for variable loop variables). Errors before streaming as a draft run (`400 invalid_param`
+for a missing input or a node of the other kind, `404 not_found` for an unknown node). The answer is a draft run's
+stream; it is recorded as a debugging run (run history) whose node executions are `single-step`. The plain single node
+run (`.../draft/nodes/{node}/run`) refuses iteration and loop nodes: `400 invalid_param` "Loop and Iteration nodes must use
+their engine-backed debug endpoints".
+
+**Deviations from Dify.** graphon builds every node again for each round; dify-sf builds the graph once (same
+semantics; a node's model is prepared once). The loop node's first loop-variable values are written by the engine when
+the loop starts its rounds (graphon's node writes them while it runs). graphon's dispatcher sleeps the retry interval;
+dify-sf waits without blocking other nodes.
 
 ### Draft variables (1.14)
 

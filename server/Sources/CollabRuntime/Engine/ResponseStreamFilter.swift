@@ -88,7 +88,7 @@ struct ResponseStreamFilter {
             return [event] + activateInitialSessions(state)
         case .node(let e):
             switch e {
-            case .started(let x, let nodeId, _, _, _):
+            case .started(let x, let nodeId, _, _, _, _):
                 nodeExecutionIds[nodeId] = x
                 return [event]
             case .streamChunk(let x, let nodeId, let selector, let chunk, let isFinal):
