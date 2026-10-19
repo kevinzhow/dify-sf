@@ -119,7 +119,7 @@ class VersionHistoryFilterItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: hovered ? DifyColors.stateBaseHover : null,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
-          boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+          boxShadow: difyFocusRing(focused),
         ),
         child: Row(
           spacing: 4,
@@ -543,7 +543,7 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
               builder: (context, hovered, focused) => Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
-                  boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                  boxShadow: difyFocusRing(focused),
                 ),
               ),
             ),

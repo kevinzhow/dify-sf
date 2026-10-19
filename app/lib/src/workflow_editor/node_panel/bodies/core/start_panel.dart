@@ -345,7 +345,7 @@ class _Handle extends StatelessWidget {
             decoration: BoxDecoration(
               color: pressed ? DifyColors.stateBaseHover : null,
               borderRadius: BorderRadius.circular(DifyRadius.md),
-              boxShadow: focusNode.hasFocus ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+              boxShadow: difyFocusRing(focusNode.hasFocus),
             ),
             child: Center(child: RemixIcon('draggable', size: 12, color: DifyColors.textTertiary)),
           ),

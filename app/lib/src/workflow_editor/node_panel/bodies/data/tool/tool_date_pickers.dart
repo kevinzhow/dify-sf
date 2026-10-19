@@ -131,7 +131,7 @@ class _ToolDatePickerState extends State<ToolDatePicker> {
                         ? DifyColors.stateBaseHover
                         : DifyColors.componentsInputBgNormal,
                     borderRadius: BorderRadius.circular(DifyRadius.lg),
-                    boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                    boxShadow: difyFocusRing(focused),
                   ),
                   child: Row(
                     spacing: 2,
@@ -282,7 +282,7 @@ class _RangeEndState extends State<_RangeEnd> {
                 decoration: BoxDecoration(
                   color: (hovered && !w.readOnly) || c.isOpen ? DifyColors.stateBaseHover : null,
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
-                  boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                  boxShadow: difyFocusRing(focused),
                 ),
                 child: DifyText(
                   shown.isNotEmpty ? shown : w.placeholder,

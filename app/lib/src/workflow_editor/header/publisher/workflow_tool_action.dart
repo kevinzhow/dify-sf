@@ -156,7 +156,7 @@ class _ManageInTools extends StatelessWidget {
         decoration: BoxDecoration(
           color: hovered ? DifyColors.componentsButtonTertiaryBgHover : null,
           borderRadius: BorderRadius.circular(DifyRadius.md),
-          boxShadow: focused && !disabled ? publisherFocusRing : null,
+          boxShadow: difyFocusRing(focused && !disabled),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

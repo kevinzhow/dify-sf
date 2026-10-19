@@ -761,7 +761,7 @@ class _HeaderButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: on ? (destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 1)] : null,
+          boxShadow: difyFocusRing(focused, width: 1),
         ),
         child: IconTheme.merge(
           data: IconThemeData(color: color),

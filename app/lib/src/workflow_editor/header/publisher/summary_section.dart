@@ -206,7 +206,7 @@ class PublisherSummarySection extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(DifyRadius.sm),
-                        boxShadow: focused ? publisherFocusRing : null,
+                        boxShadow: difyFocusRing(focused),
                       ),
                       child: RemixIcon(
                         'edit-line',
@@ -227,7 +227,7 @@ class PublisherSummarySection extends StatelessWidget {
                         return Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(DifyRadius.sm),
-                            boxShadow: focused ? publisherFocusRing : null,
+                            boxShadow: difyFocusRing(focused),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,

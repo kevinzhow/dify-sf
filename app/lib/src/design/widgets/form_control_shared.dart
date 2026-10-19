@@ -42,6 +42,9 @@ class _DifyControlState extends State<DifyControl> {
   );
 }
 
-/// `focus-visible:ring-2 focus-visible:ring-state-accent-solid`.
-List<BoxShadow>? difyFocusRing(bool focused) =>
-    focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null;
+/// `focus-visible:ring-2 focus-visible:ring-state-accent-solid` ([width] 1: `ring-1`); null when not [focused].
+List<BoxShadow>? difyFocusRing(bool focused, {double width = 2}) =>
+    focused ? [difyFocusRingShadow(width: width)] : null;
+
+/// The ring's shadow alone, for a list that holds other shadows too.
+BoxShadow difyFocusRingShadow({double width = 2}) => BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: width);

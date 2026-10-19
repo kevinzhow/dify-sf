@@ -469,7 +469,7 @@ class _ModerationSettingModalState extends State<ModerationSettingModal> {
                     decoration: BoxDecoration(
                       color: hovered ? DifyColors.stateBaseHover : null,
                       borderRadius: BorderRadius.circular(DifyRadius.lg),
-                      boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                      boxShadow: difyFocusRing(focused),
                     ),
                     child: Center(
                       child: RemixIcon(
@@ -562,7 +562,7 @@ class _ProviderOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(DifyRadius.xl),
           boxShadow: [
             if (selected || hovered) ...DifyShadows.xs,
-            if (focused) BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2),
+            if (focused) difyFocusRingShadow(),
           ],
         ),
         child: Column(

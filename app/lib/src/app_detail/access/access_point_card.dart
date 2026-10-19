@@ -253,7 +253,7 @@ class AccessPointCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: DifyColors.backgroundSectionBurn,
           borderRadius: BorderRadius.circular(DifyRadius.xl),
-          boxShadow: highlighted ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+          boxShadow: difyFocusRing(highlighted),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

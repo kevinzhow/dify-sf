@@ -616,9 +616,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                             decoration: BoxDecoration(
                               color: w.pressed ? DifyColors.stateAccentHover : null,
                               borderRadius: BorderRadius.circular(DifyRadius.md),
-                              boxShadow: _handleFocused
-                                  ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
-                                  : null,
+                              boxShadow: difyFocusRing(_handleFocused),
                             ),
                             child: Center(
                               child: RemixIcon('draggable', size: 16, color: DifyColors.textQuaternary),

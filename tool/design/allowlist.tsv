@@ -1,29 +1,19 @@
 # rule	path (under app/lib/src)	max_count	reason    -- see tool/design/README.md
-box-shadow	app_detail/access/access_point_card.dart	3	todo:step3
+box-shadow	app_detail/access/access_point_card.dart	2	todo:step3
 box-shadow	app_detail/annotations/annotation_list.dart	1	todo:step3
 box-shadow	app_detail/app_detail_page.dart	1	todo:step3
 box-shadow	app_detail/overview/app_chart_canvas.dart	1	legit:echarts tooltip shadow
 box-shadow	cards/model_chip.dart	2	todo:step3
-box-shadow	workflow_editor/canvas_plus/node_resizers.dart	1	todo:step3
 box-shadow	workflow_editor/code_editor/code_editor.dart	2	todo:step3
 box-shadow	workflow_editor/comments/comment_icon.dart	2	legit:panel-bg ring around avatars
-box-shadow	workflow_editor/comments/comment_thread.dart	1	todo:step3
-box-shadow	workflow_editor/features/conversation_opener.dart	3	todo:step3
-box-shadow	workflow_editor/features/moderation.dart	2	todo:step3
+box-shadow	workflow_editor/features/conversation_opener.dart	2	todo:step3
 box-shadow	workflow_editor/header/online_users.dart	2	legit:panel-bg ring around avatars
-box-shadow	workflow_editor/header/publisher/suggested_action.dart	1	todo:step3
 box-shadow	workflow_editor/header/publisher/workflow_tool_action.dart	2	todo:step3
-box-shadow	workflow_editor/node_panel/bodies/core/start_panel.dart	1	todo:step3
-box-shadow	workflow_editor/node_panel/bodies/data/tool/tool_date_pickers.dart	2	todo:step3
 box-shadow	workflow_editor/node_panel/bodies/entry/data_source/data_source_auth.dart	2	todo:step3
 box-shadow	workflow_editor/node_panel/bodies/entry/knowledge_base/kb_widgets.dart	1	todo:step3
-box-shadow	workflow_editor/panel_fields/file_upload_setting.dart	1	todo:step3
-box-shadow	workflow_editor/panel_fields/form_controls.dart	1	todo:step3
-box-shadow	workflow_editor/panel_fields/var_list.dart	1	todo:step3
 box-shadow	workflow_editor/prompt_editor/prompt_editor_panel.dart	2	todo:step3
 box-shadow	workflow_editor/run/ui/log_widgets.dart	2	todo:step3
 box-shadow	workflow_editor/run/ui/status.dart	4	todo:step3
-box-shadow	workflow_editor/version_history/version_history_panel.dart	2	todo:step3
 color-literal	app_detail/logs/log_widgets.dart	1	legit:transparent
 color-literal	app_detail/overview/app_chart.dart	2	todo:step4
 color-literal	app_detail/overview/app_chart_utils.dart	18	dify-hardcoded:web/app/components/app/overview/app-chart-utils.ts

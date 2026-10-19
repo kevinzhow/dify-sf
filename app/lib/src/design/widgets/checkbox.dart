@@ -46,7 +46,7 @@ class DifyCheckboxBox extends StatelessWidget {
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(4),
         boxShadow: focused
-            ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
+            ? [difyFocusRingShadow()]
             : [BoxShadow(color: DifyColors.shadowShadow3, offset: Offset(0, 1), blurRadius: 2)],
       ),
       child: !on

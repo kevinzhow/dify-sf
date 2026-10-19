@@ -329,7 +329,7 @@ class _SelectBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: hovered || open || focused ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal,
         borderRadius: BorderRadius.circular(large ? 10 : 8),
-        boxShadow: focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+        boxShadow: difyFocusRing(focused),
       ),
       child: Row(
         spacing: 2,

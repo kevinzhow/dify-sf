@@ -403,7 +403,7 @@ class _SortHandleState extends State<_SortHandle> {
               decoration: BoxDecoration(
                 color: widget.pressed ? DifyColors.stateBaseHover : null,
                 borderRadius: BorderRadius.circular(DifyRadius.md),
-                boxShadow: _focused ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)] : null,
+                boxShadow: difyFocusRing(_focused),
               ),
               child: Center(child: RemixIcon('draggable', size: 12, color: DifyColors.textTertiary)),
             ),

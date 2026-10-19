@@ -299,7 +299,7 @@ class _UploadMethodRadioGroupState extends State<UploadMethodRadioGroup> {
                               ),
                               boxShadow: [
                                 if (checked || hovered) ...DifyShadows.xs,
-                                if (focused) BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2),
+                                if (focused) difyFocusRingShadow(),
                               ],
                             ),
                             child: ExcludeSemantics(

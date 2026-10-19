@@ -10,6 +10,7 @@ import '../../canvas/canvas_graph.dart';
 import '../../cards/bodies/note_body.dart'
     show NoteResizeGlyph, isNoteCard, noteMinHeight, noteMinWidth, noteResizeButton;
 import '../../design/dify_tokens.g.dart';
+import '../../design/widgets/widgets.dart' show difyFocusRing;
 import '../../editor/editor_controller.dart';
 import '../../editor/undo_manager.dart' show HistoryEvent;
 import '../../i18n/dify_i18n.dart';
@@ -282,9 +283,7 @@ class _NodeResizerState extends State<_NodeResizer> {
                   decoration: BoxDecoration(
                     color: _hovered ? DifyColors.stateBaseHover : null,
                     borderRadius: BorderRadius.circular(DifyRadius.md),
-                    boxShadow: _focus.hasFocus
-                        ? [BoxShadow(color: DifyColors.stateAccentSolid, spreadRadius: 2)]
-                        : null,
+                    boxShadow: difyFocusRing(_focus.hasFocus),
                   ),
                   alignment: Alignment.center,
                   // A hovered note's card draws the glyph itself.

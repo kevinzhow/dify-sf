@@ -11,7 +11,6 @@ import '../../../design/widgets/widgets.dart';
 typedef PublisherLinkHandler = void Function(String link, {required bool external});
 
 /// `focus-visible:ring-2 ring-state-accent-solid`.
-List<BoxShadow> get publisherFocusRing => [BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid)];
 
 /// A native `<button>` or `<a>` of the publisher: hover and focus-visible tracking, Enter / Space / tap activation,
 /// and its accessible name ([label]), description ([hint]) and role (a link when [link] is set). With a [label] the
@@ -168,7 +167,7 @@ class SuggestedAction extends StatelessWidget {
           decoration: BoxDecoration(
             color: active ? DifyColors.stateBaseHover : const Color(0x00000000),
             borderRadius: radius,
-            boxShadow: focused && (!disabled || focusableWhenDisabled) ? publisherFocusRing : null,
+            boxShadow: difyFocusRing(focused && (!disabled || focusableWhenDisabled)),
           ),
           child: Row(
             spacing: 8,
@@ -235,7 +234,7 @@ class SuggestedAction extends StatelessWidget {
                     left: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
                   ),
                   borderRadius: const BorderRadius.horizontal(right: Radius.circular(DifyRadius.lg)),
-                  boxShadow: focused && !disabled ? publisherFocusRing : null,
+                  boxShadow: difyFocusRing(focused && !disabled),
                 ),
                 alignment: Alignment.center,
                 child: IconTheme.merge(
