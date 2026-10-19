@@ -65,8 +65,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [App-level pages outside the editor](#app-pages) | 15 | 8 | 6 | 4 | 2 | 35 |
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
-| [i18n, design tokens & UI primitives](#design) | 5 | 1 | 1 | 1 |  | 8 |
-| **Total** | **176** | **47** | **36** | **17** | **13** | **289** |
+| [i18n, design tokens & UI primitives](#design) | 5 | 2 | 1 | 1 |  | 9 |
+| **Total** | **176** | **48** | **36** | **17** | **13** | **290** |
 
 <a id="canvas"></a>
 
@@ -686,6 +686,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | UI in Dify's 24 languages (Dify's own translation files), language chosen at sign-in or with ?lang= / --lang | ported |  | `app/test/i18n_test.dart` |
 | Design tokens: colours, typography, shadows, radii, gradients; Dify icons | ported |  | visual `canvas-basic-llm` |
+| Original SVG icons: bitmap patterns, Gaussian blur, drop shadows and inner shadows | partial | The pinned Flutter vector stack renders bitmap patterns and the blur/blend/composite graphs used by common icons, including alpha masks. Five icons retain their unfiltered appearance because morphology, turbulence, displacement and component transfer are deferred. Text pattern bounds and pattern viewBox are unsupported; existing nonsquare preserveAspectRatio=none icons still differ from Chromium when contained in a square. CanvasKit antialiasing differs from Chromium; the pinned compiler also corrects opacity quantization, with minor per-icon threshold changes recorded in the full comparison artifacts. | `app/test/provider_icon_render_test.dart`, `third_party/flutter_vector_graphics/packages/vector_graphics/test/filters/dify_extensions_test.dart`, `tool/visual/svg_inventory.py` |
 | Dark theme: light / dark / system (remembered, system follows the OS), Appearance submenu in the account menu, theme selector on the sign-in pages, ?theme= / --theme | ported |  | spec `base/theme-selector.spec.tsx`, spec `header/account-dropdown`, `app/test/dark_theme_test.dart` |
 | Toasts | ported |  | spec `packages/dify-ui/src/toast`, visual `toast-publish`, `app/test/toast_wiring_test.dart` |
 | dify-ui primitives with ported specs: button, icon button, kbd, tooltip, popover, context menu, dropdown menu | ported |  | spec `packages/dify-ui/src/button`, spec `packages/dify-ui/src/icon-button`, spec `packages/dify-ui/src/kbd`, spec `packages/dify-ui/src/tooltip`, spec `packages/dify-ui/src/popover`, spec `packages/dify-ui/src/context-menu`, spec `packages/dify-ui/src/dropdown-menu`, `app/test/design_widgets_test.dart` |

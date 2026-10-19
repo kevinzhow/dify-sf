@@ -712,29 +712,26 @@ packages:
     source: hosted
     version: "1.1.0"
   vector_graphics:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: vector_graphics
-      sha256: "9d0e3b9cb16542ad660daee871e726a10d13a93b7b5391677c3160e8f5e83935"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.3"
+      path: "../third_party/flutter_vector_graphics/packages/vector_graphics"
+      relative: true
+    source: path
+    version: "1.3.0"
   vector_graphics_codec:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: vector_graphics_codec
-      sha256: "99fd9fbd34d9f9a32efd7b6a6aae14125d8237b10403b422a6a6dfeac2806146"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.13"
+      path: "../third_party/flutter_vector_graphics/packages/vector_graphics_codec"
+      relative: true
+    source: path
+    version: "1.2.0"
   vector_graphics_compiler:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: vector_graphics_compiler
-      sha256: a8e2c19796144da2f81bcc96dad1bb19c4677b561c452081b97ee737b9faed65
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.2"
+      path: "../third_party/flutter_vector_graphics/packages/vector_graphics_compiler"
+      relative: true
+    source: path
+    version: "1.4.0"
   vector_math:
     dependency: "direct main"
     description:

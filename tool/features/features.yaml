@@ -2298,6 +2298,14 @@ features:
   status: ported
   evidence: [visual:canvas-basic-llm]
   ours: [app/lib/src/design/dify_tokens.g.dart, app/lib/src/design/dify_palette.dart, app/lib/src/design/dify_type_tw.dart, app/lib/src/design/dify_run_status.dart, app/lib/src/design/dify_icon.dart, tool/gen_dify_tokens.py, tool/gen_dify_icons.py]
+- id: design.svg-effects
+  area: design
+  title: 'Original SVG icons: bitmap patterns, Gaussian blur, drop shadows and inner shadows'
+  dify: [web/public, web/app/components/base/icons]
+  status: partial
+  reason: 'The pinned Flutter vector stack renders bitmap patterns and the blur/blend/composite graphs used by common icons, including alpha masks. Five icons retain their unfiltered appearance because morphology, turbulence, displacement and component transfer are deferred. Text pattern bounds and pattern viewBox are unsupported; existing nonsquare preserveAspectRatio=none icons still differ from Chromium when contained in a square. CanvasKit antialiasing differs from Chromium; the pinned compiler also corrects opacity quantization, with minor per-icon threshold changes recorded in the full comparison artifacts.'
+  evidence: [app/test/provider_icon_render_test.dart, third_party/flutter_vector_graphics/packages/vector_graphics/test/filters/dify_extensions_test.dart, tool/visual/svg_inventory.py]
+  ours: [third_party/flutter_vector_graphics/PATCHES.md, third_party/flutter_vector_graphics/packages, app/pubspec.yaml, tool/visual/render_svg_inventory.dart, tool/visual/svg_gallery.dart]
 - id: design.dark-theme
   area: design
   title: 'Dark theme: light / dark / system (remembered, system follows the OS), Appearance submenu in the account menu, theme selector on the sign-in pages, ?theme= / --theme'

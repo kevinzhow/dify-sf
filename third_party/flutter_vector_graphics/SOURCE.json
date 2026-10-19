@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/flutter/packages",
+  "pullRequest": 12988,
+  "commit": "e6d2f2ea018c5169b4ef80198e7d02073edef3ef",
+  "blurResearch": {
+    "pullRequest": 11909,
+    "commit": "6ec752fe45ed02accf34a914a7bd9806b7c8dd30",
+    "use": "Gaussian blur parameters and validation; AST duplication approach not copied"
+  },
+  "packages": [
+    "vector_graphics",
+    "vector_graphics_codec",
+    "vector_graphics_compiler"
+  ]
+}
