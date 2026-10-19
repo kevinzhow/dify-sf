@@ -3,6 +3,8 @@ library;
 
 import 'package:collab_client/collab_client.dart';
 
+import '../workflow_editor/run/server_run_service.dart' show ServerWorkflowRuntime;
+
 import 'access/access_point_page.dart';
 import 'annotations/annotations_page.dart';
 import 'detail_page_slot.dart';
@@ -17,11 +19,21 @@ const Map<AppDetailPageId, AppDetailPageBuilder> registeredAppDetailPages = {
 };
 
 /// The APIs of a signed-in session on a real server, by type ([AppDetailContext.service]): one entry per API, for
-/// example `AccessApi: HttpAccessApi(server, auth: auth)`. Tests and the demo pass their own map (fakes).
-Map<Type, Object> httpAppDetailServices(Uri server, TokenProvider auth) => {
+/// example `AccessApi: HttpAccessApi(server, auth: auth)`. Tests and the demo pass their own map (fakes). The editor's
+/// [ServerWorkflowRuntime] only when the server's [features] announce a workflow runtime (protocol 1.13).
+Map<Type, Object> httpAppDetailServices(
+  Uri server,
+  TokenProvider auth, {
+  SystemFeatures features = SystemFeatures.none,
+}) => {
   AccessApi: HttpAccessApi(server, auth: auth),
   VersionsApi: HttpVersionsApi(server, auth: auth),
   AnnotationsApi: HttpAnnotationsApi(server, auth: auth),
   StatsApi: HttpStatsApi(server, auth: auth),
   LogsApi: HttpLogsApi(server, auth: auth),
+  if (features.workflowRuntime case final runtime?)
+    ServerWorkflowRuntime: ServerWorkflowRuntime(
+      api: HttpWorkflowRunApi(server, auth: auth),
+      singleNodeRun: runtime.singleNodeRun,
+    ),
 };

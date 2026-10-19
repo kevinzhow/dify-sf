@@ -17,6 +17,7 @@ import '../session_factory.dart';
 import '../workflow/workspace_models.dart';
 import '../workflow_editor/dify_editor.dart';
 import '../workflow_editor/dsl/update_dsl_modal.dart' show WorkflowImport;
+import '../workflow_editor/run/server_run_service.dart' show ServerWorkflowRuntime;
 import 'notice_overlay.dart';
 import 'editor_controller.dart';
 
@@ -38,6 +39,7 @@ class EditorPage extends StatefulWidget {
     this.openModelProviderSettings,
     this.isAppDeleted,
     this.versions,
+    this.serverRuntime,
     this.appName,
     this.onImportAvailable,
     this.onAppChanged,
@@ -57,6 +59,11 @@ class EditorPage extends StatefulWidget {
   /// Publishing and versions (protocol 1.11); null: the app detail page's `VersionsApi` service when the editor is one
   /// of its pages, else none (the publisher publishes nothing, the version history shows the draft alone).
   final VersionsApi? versions;
+
+  /// The server's workflow runtime (protocol 1.13): single runs of the node types it runs go to the server; null: the
+  /// app detail page's `ServerWorkflowRuntime` service when the editor is one of its pages (present when the server has a
+  /// runtime), else none (the mock runtime alone).
+  final ServerWorkflowRuntime? serverRuntime;
 
   /// Protocol 1.10: whether the app (= this document) was deleted (`GET /v1/apps/{id}` answers 404). Asked when the
   /// document cannot be opened or its connection keeps failing (at most every 5 s); a deleted app closes the editor
@@ -480,6 +487,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         null => null,
       },
       versions: widget.versions ?? AppDetailContext.maybeOf(context)?.service<VersionsApi>(),
+      // Protocol 1.13: the server's runtime (when it has one) runs the node types it can; the mock the rest.
+      serverRuntime: widget.serverRuntime ?? AppDetailContext.maybeOf(context)?.service<ServerWorkflowRuntime>(),
       publisher: _publisherHost(context),
     );
   }

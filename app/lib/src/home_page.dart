@@ -288,7 +288,7 @@ class _HomePageState extends State<HomePage> {
     if (widget.backendFor != null) return const {};
     final uri = Uri.tryParse(auth.server);
     if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) return const {};
-    return httpAppDetailServices(uri, auth.session);
+    return httpAppDetailServices(uri, auth.session, features: auth.systemFeatures);
   }
 
   Widget _appDetail(AppInfo app, String path) {

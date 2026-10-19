@@ -38,3 +38,4 @@ export 'src/transport/http_transport.dart';
 export 'src/transport/sse_parser.dart';
 export 'src/store/platform_store.dart';
 export 'src/versions_api.dart';
+export 'src/workflow_run_api.dart';

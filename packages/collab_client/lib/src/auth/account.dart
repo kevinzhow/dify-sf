@@ -274,6 +274,7 @@ final class SystemFeatures {
     this.enableEmailCodeLogin = false,
     this.isAllowRegister = false,
     this.enableChangeEmail = false,
+    this.workflowRuntime,
   });
 
   factory SystemFeatures.fromJson(Object? json) {
@@ -284,6 +285,7 @@ final class SystemFeatures {
       enableEmailCodeLogin: m['enable_email_code_login'] == true,
       isAllowRegister: m['is_allow_register'] == true,
       enableChangeEmail: m['enable_change_email'] == true,
+      workflowRuntime: WorkflowRuntimeFeatures.fromJson(m['workflow_runtime']),
     );
   }
 
@@ -298,6 +300,34 @@ final class SystemFeatures {
   /// Dify's `enable_change_email` (1.12): the account page offers changing the email (dify-sf: only with mail). Older
   /// servers do not say, which is false.
   final bool enableChangeEmail;
+
+  /// dify-sf only (1.13, `workflow_runtime`): what the server's workflow runtime runs; null when it has none (older
+  /// servers, or no plugin daemon configured).
+  final WorkflowRuntimeFeatures? workflowRuntime;
+}
+
+/// `system-features`' `workflow_runtime` (protocol 1.13): `{"protocol_version": "1.13", "single_node_run": ["llm"]}`.
+final class WorkflowRuntimeFeatures {
+  const WorkflowRuntimeFeatures({required this.protocolVersion, this.singleNodeRun = const {}});
+
+  /// Null when [json] is not an object (the member is absent).
+  static WorkflowRuntimeFeatures? fromJson(Object? json) {
+    if (json is! Map<String, Object?>) return null;
+    return WorkflowRuntimeFeatures(
+      protocolVersion: json['protocol_version'] is String ? json['protocol_version']! as String : '',
+      singleNodeRun: {
+        if (json['single_node_run'] case final List<Object?> types)
+          for (final t in types)
+            if (t is String) t,
+      },
+    );
+  }
+
+  /// The runtime's protocol version (`1.13`).
+  final String protocolVersion;
+
+  /// The node types `POST .../workflows/draft/nodes/{node}/run` runs on the server (`llm` in 1.13).
+  final Set<String> singleNodeRun;
 }
 
 /// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password. Also the answer of

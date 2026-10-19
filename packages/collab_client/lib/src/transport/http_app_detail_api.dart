@@ -12,6 +12,7 @@ import '../client/replace.dart';
 import '../client/transport.dart';
 import '../monitor_api.dart';
 import '../versions_api.dart';
+import '../workflow_run_api.dart';
 
 /// The app detail pages' APIs (protocol 1.11) against a real server at [baseUrl]: [HttpAccessApi], [HttpAnnotationsApi],
 /// [HttpVersionsApi], [HttpStatsApi], [HttpLogsApi]. Pass the signed-in user's `auth`: every request carries its bearer
@@ -553,4 +554,27 @@ class HttpLogsApi extends HttpConsoleApi implements LogsApi {
         ok: const [200],
         body: {'message_id': messageId, 'rating': rating, 'content': content},
       );
+}
+
+/// [WorkflowRunApi] against a real server (protocol 1.13). A single run waits for the model, so the default per-request
+/// timeout is 10 minutes (the server's plugin daemon bound) instead of the console's 20 seconds.
+class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
+  HttpWorkflowRunApi(super.baseUrl, {super.client, super.auth, super.timeout = const Duration(minutes: 10)});
+
+  String _node(String appId, String nodeId) =>
+      '${HttpConsoleApi._app(appId)}/workflows/draft/nodes/${HttpConsoleApi._seg(nodeId)}';
+
+  @override
+  Future<Map<String, Object?>> singleNodeRun(String appId, String nodeId, Map<String, Object?> body) async =>
+      HttpConsoleApi._map((await _send('POST', '${_node(appId, nodeId)}/run', ok: const [200], body: body)).json);
+
+  @override
+  Future<Map<String, Object?>?> nodeLastRun(String appId, String nodeId) async {
+    try {
+      return HttpConsoleApi._map((await _send('GET', '${_node(appId, nodeId)}/last-run', ok: const [200])).json);
+    } on TransportException catch (e) {
+      if (e.statusCode == 404 && e.code == 'not_found') return null;
+      rethrow;
+    }
+  }
 }

@@ -38,6 +38,7 @@ import 'run/mock_run_service.dart';
 import 'run/run_graph.dart';
 import 'run/run_scope.dart';
 import 'run/run_service.dart';
+import 'run/server_run_service.dart';
 import 'run/ui/run_panels.dart';
 import 'store/app_registers_sync.dart';
 import 'store/store.dart';
@@ -125,6 +126,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.meta = const DocMeta(),
     this.variableInspectServices = VariableInspectServices.none,
     this.runService,
+    this.serverRuntime,
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
     this.user,
@@ -188,6 +190,11 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// The run/debug backend; null: the mock runtime over the document (dify-sf has no runtime yet).
   final WorkflowRunService? runService;
 
+  /// The server's workflow runtime (protocol 1.13); null: none (older servers, the demo, tests). With [runService]
+  /// null, single runs (and last runs) of the node types it runs go to the server for the app
+  /// [EditorController.docId]; the mock runtime keeps everything else, the variable inspect panel included.
+  final ServerWorkflowRuntime? serverRuntime;
+
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
   /// disposed with it). Either way the comments UI finds it with [CommentsScope.of].
   final CommentsStore? commentsStore;
@@ -219,8 +226,24 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   /// values of its runs, unless inspect services were given.
   MockWorkflowRunService? _mockRuns;
 
+  /// The mock with the server's single runs ([DifyWorkflowEditor.serverRuntime]), for that runtime.
+  ServerRunService? _serverRuns;
+
   WorkflowRunService _runService(BuildContext context, CanvasController canvas) {
     if (widget.runService case final s?) return s;
+    final mock = _mockService(context, canvas);
+    final runtime = widget.serverRuntime;
+    if (runtime == null) return mock;
+    if (_serverRuns case final s? when identical(s.runtime, runtime) && s.appId == controller.docId) return s;
+    return _serverRuns = ServerRunService(
+      runtime: runtime,
+      appId: controller.docId,
+      fallback: mock,
+      nodeTypeOf: (id) => controller.doc.nodes[id]?.type,
+    );
+  }
+
+  MockWorkflowRunService _mockService(BuildContext context, CanvasController canvas) {
     final store = WorkflowStoreScope.of(context);
     final user = widget.user;
     return _mockRuns ??= MockWorkflowRunService(
@@ -238,7 +261,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   VariableInspectServices _inspectServices(BuildContext context, CanvasController canvas) {
     final given = widget.variableInspectServices;
     if (!identical(given, VariableInspectServices.none) || widget.runService != null) return given;
-    return (_runService(context, canvas) as MockWorkflowRunService).inspectServices;
+    return _mockService(context, canvas).inspectServices;
   }
 
   /// The comments store this editor created (when none was passed in), tied to the controller's session.
