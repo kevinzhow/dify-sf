@@ -34,7 +34,30 @@ class DifyButtonLook {
 
   /// `backdrop-blur-*` in CSS px (the blur's standard deviation).
   final double blur;
+
+  DifyButtonLook copyWith({Color? background, Color? ring, double? blur}) => DifyButtonLook(
+    foreground: foreground,
+    background: background ?? this.background,
+    ring: ring ?? this.ring,
+    shadows: shadows,
+    insetShadows: insetShadows,
+    blur: blur ?? this.blur,
+  );
 }
+
+/// A call site's classes over a button's look in one state (`className` merged after the variant's), given whether
+/// it is hovered; not applied while disabled.
+typedef DifyButtonRestyle = DifyButtonLook Function(DifyButtonLook look, bool hovered);
+
+/// The dark theme's glass on the workflow header's buttons (features-trigger.tsx, version-history-button.tsx,
+/// header-in-restoring.tsx: `bg-white/10 inset-ring-black/5 backdrop-blur-xs` when `theme === 'dark'`; the
+/// variable buttons' open state, `border-black/5 bg-white/10 backdrop-blur-xs`, drawn as the same inset ring). The
+/// variant's `hover:` colours still win while hovered. Null in the light theme or when not [on].
+DifyButtonRestyle? difyDarkGlass({bool on = true}) => DifyColors.isDark && on
+    ? (look, hovered) => hovered
+          ? look.copyWith(blur: 4)
+          : look.copyWith(background: const Color(0x1AFFFFFF), ring: const Color(0x0D000000), blur: 4)
+    : null;
 
 // `shadow-xs shadow-shadow-shadow-3`: Tailwind's shadow colour utility replaces the colour of shadow-xs.
 List<BoxShadow> get _xs3 => [for (final s in DifyShadows.xs) s.copyWith(color: DifyColors.shadowShadow3)];

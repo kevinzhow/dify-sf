@@ -198,8 +198,8 @@ class _ChatQuestionState extends State<ChatQuestion> {
               boxShadow: DifyShadows.lg,
             )
           : BoxDecoration(
-              // `bg-background-gradient-bg-fill-chat-bubble-bg-3` (manual-light.css).
-              color: const Color(0xFFE1EFFE),
+              // `bg-background-gradient-bg-fill-chat-bubble-bg-3` (web/themes/manual-*.css).
+              color: DifyColors.backgroundGradientBgFillChatBubbleBg3,
               borderRadius: BorderRadius.circular(DifyRadius.xxl),
             ),
       child: Column(

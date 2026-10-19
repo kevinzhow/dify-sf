@@ -50,7 +50,7 @@ String _tr(String key) => DifyI18n.tr('run-log', key);
 };
 
 /// StatusContainer: `rounded-lg border px-3 py-2.5 system-xs-regular break-all` in the status's colours, with the
-/// light theme's inset shadows, the 2 px line pattern and the top-left highlight. [copyContent] adds a copy button at
+/// theme's inset shadows, the 2 px line pattern and the top-left highlight (highlight.svg / highlight-dark.svg). [copyContent] adds a copy button at
 /// the top right (shown on hover, as Dify's `group-hover`; always on touch).
 class StatusContainer extends StatefulWidget {
   const StatusContainer({super.key, required this.status, required this.child, this.copyContent});
@@ -76,8 +76,14 @@ class _StatusContainerState extends State<StatusContainer> {
         color: look?.bg,
         borderRadius: r,
         border: Border.all(color: look?.border ?? DifyColors.workflowDisplayDisabledBorder1),
+        // `0_1px_2px_0_rgba(9,9,11,0.05),0_0_0_1px_rgba(0,0,0,0.05)`; dark: rgba(0,0,0,0.1) and rgba(24,24,27,0.95).
         boxShadow: look == null
             ? null
+            : DifyColors.isDark
+            ? const [
+                BoxShadow(offset: Offset(0, 1), blurRadius: 1.7321, color: Color(0x1A000000)),
+                BoxShadow(spreadRadius: 1, color: Color(0xF218181B)),
+              ]
             : const [
                 BoxShadow(offset: Offset(0, 1), blurRadius: 1.7321, color: Color(0x0D09090B)),
                 BoxShadow(spreadRadius: 1, color: Color(0x0D000000)),
@@ -85,7 +91,7 @@ class _StatusContainerState extends State<StatusContainer> {
       ),
       foregroundDecoration: null,
       child: CustomPaint(
-        painter: look == null ? null : _StatusBackgroundPainter(look.line, look.glow),
+        painter: look == null ? null : _StatusBackgroundPainter(look.line, look.glow, dark: DifyColors.isDark),
         child: DefaultTextStyle.merge(
           style: difyStyle(DifyType.systemXsRegular, look?.text ?? DifyColors.textPrimary),
           child: widget.child,
@@ -112,9 +118,11 @@ class _StatusContainerState extends State<StatusContainer> {
 /// The status box's background art, painted inside its padding box: the inset glow (`inset 0 2px 24px <colour>`, the
 /// white top-left `inset 2px 2px 0` and the dark `inset 0 1px 3px`), the line pattern (0.5 px lines every 2 px at
 /// 15 % of the status colour) and the highlight (237 x 50, white 12 % → 50 % at half opacity, clipped to 65 % width).
+/// [dark]: Dify's dark set (glow at 25 %, white inset 12 %, dark inset 40 %, highlight white 3 % → 5 %).
 class _StatusBackgroundPainter extends CustomPainter {
-  _StatusBackgroundPainter(this.line, this.glow);
+  _StatusBackgroundPainter(this.line, this.glow, {required this.dark});
   final Color line, glow;
+  final bool dark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -141,9 +149,9 @@ class _StatusBackgroundPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
-    inset(const Offset(0, 2), 24, glow);
-    inset(const Offset(0, 1), 3, const Color(0x1F000000));
-    inset(const Offset(2, 2), 0, const Color(0x80FFFFFF));
+    inset(const Offset(0, 2), 24, dark ? glow.withValues(alpha: 0.25) : glow);
+    inset(const Offset(0, 1), 3, dark ? const Color(0x66000000) : const Color(0x1F000000));
+    inset(const Offset(2, 2), 0, dark ? const Color(0x1FFFFFFF) : const Color(0x80FFFFFF));
     // highlight.svg at the top left, `w-[65%] h-12.5`, no repeat.
     canvas
       ..save()
@@ -160,7 +168,9 @@ class _StatusBackgroundPainter extends CustomPainter {
       h,
       Paint()
         ..shader = LinearGradient(
-          colors: const [Color(0x0FFFFFFF), Color(0x40FFFFFF)],
+          colors: dark
+              ? const [Color.fromRGBO(255, 255, 255, 0.015), Color.fromRGBO(255, 255, 255, 0.025)]
+              : const [Color(0x0FFFFFFF), Color(0x40FFFFFF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ).createShader(Rect.fromLTWH(box.left, box.top, 168, 23)),
@@ -171,7 +181,7 @@ class _StatusBackgroundPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_StatusBackgroundPainter old) => old.line != line || old.glow != glow;
+  bool shouldRepaint(_StatusBackgroundPainter old) => old.line != line || old.glow != glow || old.dark != dark;
 }
 
 /// `animate-pulse` (opacity 1 → 0.5 → 1, 2 s) around [child].

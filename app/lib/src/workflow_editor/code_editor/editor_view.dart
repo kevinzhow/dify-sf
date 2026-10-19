@@ -23,6 +23,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../design/dify_tokens.g.dart' show DifyColors;
 import 'document.dart';
 import 'editing.dart';
 import 'language.dart';
@@ -50,7 +51,8 @@ class CodeEditorMetrics {
     maxDigitWidth = [for (var d = 0; d < 10; d++) width('$d')].reduce(math.max);
   }
 
-  factory CodeEditorMetrics.of(TargetPlatform platform) => _cache[platform] ??= () {
+  /// The platform's metrics, the text in the current theme's foreground (vs / vs-dark).
+  factory CodeEditorMetrics.of(TargetPlatform platform) => _cache[(platform, DifyColors.isDark)] ??= () {
     final (String family, List<String> fallback, double size, double ratio) = switch (platform) {
       TargetPlatform.macOS || TargetPlatform.iOS => ('Menlo', const ['Monaco', 'Courier New', 'monospace'], 12.0, 1.5),
       TargetPlatform.windows => ('Consolas', const ['Courier New', 'monospace'], 14.0, 1.35),
@@ -80,7 +82,7 @@ class CodeEditorMetrics {
     return CodeEditorMetrics._(style, strut, lineHeight, platform == TargetPlatform.linux);
   }();
 
-  static final _cache = <TargetPlatform, CodeEditorMetrics>{};
+  static final _cache = <(TargetPlatform, bool), CodeEditorMetrics>{};
 
   final TextStyle style;
   final StrutStyle strut;
@@ -136,7 +138,10 @@ class _CodeController extends TextEditingController {
       final tokens = doc.tokensOf(i);
       final cached = _lineSpans[tokens];
       final levels = [for (final b in doc.bracketsOf(i)) b.level];
-      if (cached != null && cached.text == lines[i] && listEquals(cached.levels, levels)) {
+      if (cached != null &&
+          cached.text == lines[i] &&
+          cached.dark == DifyColors.isDark &&
+          listEquals(cached.levels, levels)) {
         children.add(cached.span);
         continue;
       }
@@ -165,7 +170,7 @@ class _CodeController extends TextEditingController {
       final tokenStyle = _style(ts.foreground, ts);
       final end = t + 1 < tokens.length ? tokens[t + 1].offset : text.length;
       var at = tokens[t].offset;
-      if (t == 0 && at > 0) add(0, _style(VsTheme.foreground, const TokenStyle(VsTheme.foreground)));
+      if (t == 0 && at > 0) add(0, _style(VsTheme.foreground, TokenStyle(VsTheme.foreground)));
       add(at, tokenStyle);
       while (b < brackets.length && brackets[b].column < end) {
         final br = brackets[b++];
@@ -179,7 +184,7 @@ class _CodeController extends TextEditingController {
         at = br.column + 1;
       }
     }
-    if (tokens.isEmpty) add(0, _style(VsTheme.foreground, const TokenStyle(VsTheme.foreground)));
+    if (tokens.isEmpty) add(0, _style(VsTheme.foreground, TokenStyle(VsTheme.foreground)));
     final cuts = <int>{
       for (final r in runs) r.$1,
       if (underline != null) ...[underline.$1.clamp(0, text.length), underline.$2.clamp(0, text.length)],
@@ -204,10 +209,13 @@ class _CodeController extends TextEditingController {
 }
 
 class _LineSpan {
-  _LineSpan(this.text, this.levels, this.span);
+  _LineSpan(this.text, this.levels, this.span) : dark = DifyColors.isDark;
   final String text;
   final List<int> levels;
   final TextSpan span;
+
+  /// The theme its colours are from.
+  final bool dark;
 }
 
 class _GestureDelegate implements TextSelectionGestureDetectorBuilderDelegate {
@@ -288,7 +296,7 @@ class CodeEditorViewState extends State<CodeEditorView> {
   final _hovering = ValueNotifier<bool>(false);
   bool _bypassFormatter = false;
   String _lastText = '';
-  late CodeEditorMetrics _metrics;
+  CodeEditorMetrics get _metrics => CodeEditorMetrics.of(defaultTargetPlatform);
   double _viewportHeight = 0;
   final _layout = _LineLayout();
 
@@ -311,7 +319,6 @@ class CodeEditorViewState extends State<CodeEditorView> {
   @override
   void initState() {
     super.initState();
-    _metrics = CodeEditorMetrics.of(defaultTargetPlatform);
     _reset(widget.value);
     _focus.addListener(_onFocus);
     _focus.onKeyEvent = _onKey;

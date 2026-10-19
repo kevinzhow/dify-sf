@@ -1,6 +1,7 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
+import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
 
 /// How cards look and where their handles are; [DifyCards] is Dify's.
@@ -44,8 +45,8 @@ class CanvasSpinners extends InheritedWidget {
 
 /// BlockIcon background by node type (block-icon.tsx).
 Color blockColor(String type) => switch (type) {
-  'start' || 'start-placeholder' => const Color(0xFF085AFC),
-  'llm' || 'agent' || 'agent-v2' => const Color(0xFF6172F3),
+  'start' || 'start-placeholder' => DifyColors.utilColorsBlueBrandBlueBrand500,
+  'llm' || 'agent' || 'agent-v2' => DifyColors.utilColorsIndigoIndigo500,
   'code' ||
   'template-transform' ||
   'variable-assigner' ||
@@ -54,12 +55,12 @@ Color blockColor(String type) => switch (type) {
   'assigner' ||
   'parameter-extractor' ||
   'trigger-webhook' ||
-  'trigger-plugin' => const Color(0xFF2E90FA),
-  'end' || 'answer' || 'loop-end' || 'knowledge-index' => const Color(0xFFF79009),
-  'if-else' || 'iteration' || 'loop' || 'list-operator' || 'human-input' => const Color(0xFF06AED4),
-  'http-request' || 'trigger-schedule' => const Color(0xFF875BF7),
-  'knowledge-retrieval' || 'question-classifier' || 'document-extractor' => const Color(0xFF17B26A),
-  'datasource' => const Color(0xFF828DAD),
+  'trigger-plugin' => DifyColors.utilColorsBlueBlue500,
+  'end' || 'answer' || 'loop-end' || 'knowledge-index' => DifyColors.utilColorsWarningWarning500,
+  'if-else' || 'iteration' || 'loop' || 'list-operator' || 'human-input' => DifyColors.utilColorsCyanCyan500,
+  'http-request' || 'trigger-schedule' => DifyColors.utilColorsVioletViolet500,
+  'knowledge-retrieval' || 'question-classifier' || 'document-extractor' => DifyColors.utilColorsGreenGreen500,
+  'datasource' => DifyColors.componentsIconBgMidnightSolid,
   _ => const Color(0xFF828DAD),
 };
 

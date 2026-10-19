@@ -42,6 +42,7 @@ class DifyButton extends StatelessWidget {
     this.focusNode,
     this.semanticLabel,
     this.paddingX,
+    this.restyle,
   }) : assert(variant != DifyButtonVariant.plain, 'Button has no plain variant');
 
   final Widget child;
@@ -60,6 +61,9 @@ class DifyButton extends StatelessWidget {
   /// A call site's `px-*` over the size's padding.
   final double? paddingX;
 
+  /// A call site's classes over the variant's look ([difyDarkGlass]).
+  final DifyButtonRestyle? restyle;
+
   @override
   Widget build(BuildContext context) {
     final off = disabled || loading;
@@ -72,7 +76,9 @@ class DifyButton extends StatelessWidget {
       focusNode: focusNode,
       semanticLabel: semanticLabel,
       builder: (context, hovered, focused) {
-        final look = difyButtonLook(variant, tone, hovered: hovered, disabled: off);
+        final base = difyButtonLook(variant, tone, hovered: hovered, disabled: off);
+        // `data-disabled:` colours win over a call site's classes.
+        final look = off ? base : restyle?.call(base, hovered) ?? base;
         return DifyButtonSurface(
           look: look,
           radius: size.radius,

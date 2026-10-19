@@ -143,6 +143,7 @@ class FeaturesTrigger extends StatelessWidget {
                   store.setShowFeaturesPanel(!store.showFeaturesPanel.value);
                 },
                 leading: RemixIcon('apps-2-add-line', size: 16, color: DifyColors.componentsButtonSecondaryText),
+                restyle: difyDarkGlass(),
                 child: Text(DifyI18n.tr('workflow', 'common.features')),
               ),
             AppPublisher(

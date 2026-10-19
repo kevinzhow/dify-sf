@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/widgets.dart';
 
+import '../../design/dify_tokens.g.dart' show DifyColors;
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart' show I18nText, languageOfLocale, renderI18nObject;
 import '../store/workflow_store.dart' show DifyJson;
@@ -197,6 +198,10 @@ class ToolProvider {
   final I18nText label;
   final String type;
   final ProviderIcon icon, iconDark;
+
+  /// The icon the selector shows (tool/tool.tsx, tool/action-item.tsx, trigger-plugin/item.tsx): `icon_dark` in the
+  /// dark theme when the provider has one.
+  ProviderIcon get themedIcon => DifyColors.isDark && iconDark != null && iconDark != '' ? iconDark : icon;
   final String? pluginId, pluginUniqueIdentifier;
   final bool isTeamAuthorization;
   final DifyJson? meta;

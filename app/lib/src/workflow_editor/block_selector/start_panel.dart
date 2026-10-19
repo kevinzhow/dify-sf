@@ -552,7 +552,7 @@ class _TriggerPluginItemState extends State<TriggerPluginItem> {
                 },
                 child: Row(
                   children: [
-                    SelectorBlockIcon(type: 'trigger-plugin', toolIcon: p.icon),
+                    SelectorBlockIcon(type: 'trigger-plugin', toolIcon: p.themedIcon),
                     const SizedBox(width: 8),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 200),
@@ -620,7 +620,7 @@ class TriggerPluginActionItem extends StatelessWidget {
     return PreviewCardTrigger(
       preview: (_) => BlockPreviewContent(
         type: 'trigger-plugin',
-        toolIcon: provider.icon,
+        toolIcon: provider.themedIcon,
         title: label,
         description: description,
         titleStyle: DifyType.systemSmRegular,

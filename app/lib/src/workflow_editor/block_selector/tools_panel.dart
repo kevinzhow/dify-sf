@@ -692,7 +692,7 @@ class _ToolProviderRowState extends State<ToolProviderRow> {
       opacity: mcpBlocked ? 0.3 : 1,
       child: Row(
         children: [
-          SelectorBlockIcon(type: 'tool', toolIcon: p.icon),
+          SelectorBlockIcon(type: 'tool', toolIcon: p.themedIcon),
           const SizedBox(width: 8),
           Flexible(
             child: ConstrainedBox(
@@ -839,7 +839,7 @@ class ToolActionItem extends StatelessWidget {
     return PreviewCardTrigger(
       preview: (_) => BlockPreviewContent(
         type: 'tool',
-        toolIcon: provider.icon,
+        toolIcon: provider.themedIcon,
         title: label,
         description: description,
         titleStyle: DifyType.systemSmRegular,

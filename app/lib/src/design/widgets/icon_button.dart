@@ -30,6 +30,7 @@ class DifyIconButton extends StatelessWidget {
     this.size = DifyIconButtonSize.md,
     this.disabled = false,
     this.focusNode,
+    this.restyle,
   });
 
   /// `aria-label`.
@@ -42,6 +43,9 @@ class DifyIconButton extends StatelessWidget {
   final bool disabled;
   final FocusNode? focusNode;
 
+  /// A call site's classes over the variant's look ([difyDarkGlass]).
+  final DifyButtonRestyle? restyle;
+
   @override
   Widget build(BuildContext context) => DifyPressable(
     onPressed: onPressed,
@@ -49,7 +53,10 @@ class DifyIconButton extends StatelessWidget {
     focusNode: focusNode,
     semanticLabel: label,
     builder: (context, hovered, focused) => DifyButtonSurface(
-      look: difyButtonLook(variant, tone, hovered: hovered, disabled: disabled),
+      look: switch (difyButtonLook(variant, tone, hovered: hovered, disabled: disabled)) {
+        // `data-disabled:` colours win over a call site's classes.
+        final look => disabled ? look : restyle?.call(look, hovered) ?? look,
+      },
       radius: size.radius,
       focused: focused,
       child: SizedBox.square(

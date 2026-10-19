@@ -215,6 +215,7 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
             DifyButton(
               variant: DifyButtonVariant.primary,
               disabled: !canRestore,
+              restyle: difyDarkGlass(),
               onPressed: () => _restore(store, data),
               child: Text(_tr('common.restore')),
             ),
@@ -225,6 +226,7 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
                   ..isRestoring.value = false
                   ..setShowWorkflowVersionHistoryPanel(false);
               },
+              restyle: difyDarkGlass(),
               semanticLabel: _tr('common.exitVersions'),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

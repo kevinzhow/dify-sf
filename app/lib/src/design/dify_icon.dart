@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'dify_tokens.g.dart';
+
 /// Icons decoded ahead of time, so widgets draw them in their first frame. Cards on the canvas are captured right
 /// after they first paint; an icon still loading then would be missing from the capture.
 abstract final class IconCache {
@@ -119,7 +121,11 @@ class DifyLogo extends StatelessWidget {
     child: SizedBox(
       width: size.width,
       height: size.height,
-      child: SvgPicture.asset('assets/brand/logo.svg'),
+      // dify-logo.tsx: `[html[data-theme=dark]_&]:brightness-0 invert`, a white silhouette in the dark theme.
+      child: SvgPicture.asset(
+        'assets/brand/logo.svg',
+        colorFilter: DifyColors.isDark ? const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn) : null,
+      ),
     ),
   );
 }

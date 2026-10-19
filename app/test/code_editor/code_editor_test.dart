@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/dify_theme_mode.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/editor_view.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/monarch/vs_theme.dart';
@@ -73,6 +75,23 @@ void main() {
     expect(spans, contains(('(', VsTheme.bracketColors[0])));
     expect(spans, contains(('"x"', const Color(0xFFA31515))));
     expect(spans.map((s) => s.$1).join(), 'def f(a):\n    return "x"');
+  });
+
+  testWidgets('the dark theme colours with vs-dark (code-editor/index.tsx), also an editor already shown', (t) async {
+    addTearDown(() => DifyColors.useDark(false));
+    await t.pumpWidget(_host(const DifyCodeEditor(language: CodeLanguage.python3, value: 'def f(a):\n    return "x"')));
+    expect(_spans(t), contains(('def', const Color(0xFF0000FF))));
+    await DifyTheme.apply(true);
+    await t.pump();
+    final spans = _spans(t);
+    expect(spans, contains(('def', const Color(0xFF569CD6))));
+    expect(spans, contains(('"x"', const Color(0xFFCE9178))));
+    expect(spans, contains(('(', const Color(0xFFFFD700))));
+    expect(MonacoTheme.vsDark.match('comment.python').foreground, const Color(0xFF608B4E));
+    expect(VsTheme.foreground, const Color(0xFFD4D4D4));
+    await DifyTheme.apply(false);
+    await t.pump();
+    expect(_spans(t), contains(('def', const Color(0xFF0000FF))));
   });
 
   testWidgets('typing goes through Monaco\'s enter and auto-closing rules and reports changes', (t) async {

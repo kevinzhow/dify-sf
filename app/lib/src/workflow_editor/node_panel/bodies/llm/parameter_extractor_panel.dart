@@ -4,6 +4,7 @@ library;
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../../design/dify_tokens.g.dart';
 import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../../workflow/var_types.dart';
@@ -155,7 +156,7 @@ class _ParameterExtractorPanelState extends State<ParameterExtractorPanel> with 
                               language: services.models.language,
                               onImport: (list) => produceInputs((d) => d['parameters'] = list),
                             ),
-                            Container(width: 1, height: 12, color: const Color(0x14101828)),
+                            Container(width: 1, height: 12, color: DifyColors.dividerRegular),
                             AddExtractParameterButton(onSave: _addParam),
                           ],
                         ),
