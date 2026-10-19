@@ -7,6 +7,10 @@ import '../css_metrics.dart';
 import '../dify_tokens.g.dart';
 import 'emoji_catalog.dart';
 
+/// The plain emoji fallback used by AppIcon and API-provided agent/tool icons. Keep its line box independent
+/// of inherited body text; callers that intentionally inherit line height can pass null.
+TextStyle difyEmojiTextStyle(double size, {double? lineHeight = 1}) => TextStyle(fontSize: size, height: lineHeight);
+
 /// AppIcon's sizes (`appIconVariants`): box, radius, emoji font size.
 enum DifyAppIconSize {
   xs(16, DifyRadius.sm, 12),
@@ -85,7 +89,7 @@ class DifyAppIcon extends StatelessWidget {
           : Text(
               nativeEmoji(icon),
               textScaler: TextScaler.noScaling,
-              style: TextStyle(fontSize: size.fontSize, height: 1),
+              style: difyEmojiTextStyle(size.fontSize),
             ),
     );
     if (onTap == null) return ExcludeSemantics(child: tile);

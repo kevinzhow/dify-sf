@@ -45,6 +45,8 @@ export 'tab_slider_plain.dart';
 export 'table.dart';
 export 'tabs.dart';
 export 'tag_input.dart';
+export '../dify_palette.dart';
+export '../dify_type_tw.dart';
 export 'text.dart';
 export 'textarea.dart';
 export 'toast.dart';
