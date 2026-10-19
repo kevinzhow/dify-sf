@@ -744,7 +744,15 @@ class DefaultValue extends StatelessWidget {
             style: difyStyle(DifyType.bodyXsRegular, DifyColors.textTertiary),
           ),
         ),
-        for (final f in forms) _DefaultValueRow(form: f, onFormChange: onFormChange, jsonEditor: jsonEditor),
+        // `space-y-1` between the `py-1` rows.
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            for (final f in forms) _DefaultValueRow(form: f, onFormChange: onFormChange, jsonEditor: jsonEditor),
+          ],
+        ),
       ],
     ),
   );

@@ -1024,7 +1024,8 @@ class _ChatInputAreaState extends State<ChatInputArea> {
           disabled: widget.readonly || !canSend,
           semanticLabel: _tc('operation.send'),
           onPressed: _send,
-          child: RemixIcon('send-plane-2-fill', size: 16, color: DifyColors.componentsButtonPrimaryText),
+          // The button's text colour (disabled: components-button-primary-text-disabled).
+          child: const RemixIcon('send-plane-2-fill', size: 16),
         ),
       ),
     );
@@ -1117,7 +1118,9 @@ class EditableTextHost extends StatelessWidget {
             placeholder,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+            // The textarea has no placeholder class: preflight.css's `textarea::placeholder` gray-400 (#98a2b3, the
+            // same in both themes).
+            style: style.copyWith(color: const Color(0xFF98A2B3)),
           ),
         ),
       Semantics(

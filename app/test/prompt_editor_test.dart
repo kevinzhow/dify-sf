@@ -1,6 +1,8 @@
 // Behaviour of the prompt editor beyond Dify's own specs (test/dify_spec/prompt_editor): atomic blocks, clipboard,
 // undo, typed tokens, the Editor chrome.
+import 'package:dify_sf_app/src/cards/card_kit.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/editor_view.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/form_content.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_chips.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor_panel.dart';
@@ -9,6 +11,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/prompt_editor/harness.dart';
+import 'dify_spec/workflow/nodes_panel/data/human_input_test_kit.dart' show pumpComponent;
+import 'support/app_fonts.dart';
 
 void main() {
   group('PromptEditorController', () {
@@ -167,6 +171,41 @@ void main() {
       await t.pump();
       expect(find.bySemanticsLabel('share.chat.expand'), findsOneWidget);
       expect(find.byType(DifyPromptEditor), findsOneWidget);
+    });
+  });
+
+  group('DifyPromptEditor lines', () {
+    // Human input form content (form-content.tsx): a 24 px line keeps its height around a variable chip next to a
+    // form field, whose line is the field's 48 px (`pt-3`, the 32 px chip, `pb-1`), as in Chrome.
+    testWidgets('a chip keeps its line next to a form field', (t) async {
+      final family = cardFontFamily;
+      addTearDown(() => cardFontFamily = family);
+      await useAppFonts();
+      Future<double> chipTop({required bool fields}) async {
+        await pumpComponent(
+          t,
+          DifyPromptEditor(
+            key: ValueKey(fields),
+            value: '## Draft\n\n{{#llm1.text#}}\n\nNote:\n\n{{#\$output.note#}}',
+            workflowVariableBlock: testVarBlock,
+            hitlInputBlock: HitlInputBlockConfig(
+              show: fields,
+              nodeId: 'n',
+              onFormInputItemRemove: (_) {},
+              onFormInputItemRename: (_, _) {},
+            ),
+          ),
+        );
+        return t.getTopLeft(find.byType(VariableLabel).first).dy - t.getTopLeft(find.byType(EditableText)).dy;
+      }
+
+      // Without fields the strut is forced: every line is 24 px.
+      final forced = await chipTop(fields: false);
+      expect(forced, inInclusiveRange(48, 72 - 18));
+      expect(await chipTop(fields: true), closeTo(forced, 0.01));
+      final top = t.getTopLeft(find.byType(EditableText)).dy;
+      expect(t.getTopLeft(find.byType(InputFieldChip)).dy - top, 6 * 24 + 12);
+      expect(t.getSize(find.byType(EditableText)).height, 6 * 24 + 48);
     });
   });
 }

@@ -236,8 +236,15 @@ class PromptEditorController extends TextEditingController {
   /// px-0.5`), when [PromptBlockSet.variableValue].
   TextStyle? variableValueStyle;
 
+  /// The line height when the editor's strut alone gives it (not forced: a line with a form field grows, as in
+  /// Chrome). The text then carries no height of its own: Flutter gives a line with an inline block the text's
+  /// leading once more over the strut (5 px in a 24 px line of 14 px text), where Chrome's line keeps its height.
+  double? strutLineHeight;
+
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
+    final strutLine = strutLineHeight;
+    if (strutLine != null && style != null) style = _withoutHeight(style);
     final t = text;
     final composing = withComposing && value.isComposingRangeValid ? value.composing : TextRange.empty;
     final children = <InlineSpan>[];
@@ -294,7 +301,7 @@ class PromptEditorController extends TextEditingController {
             child: CssMiddle(
               key: ValueKey((c, seen[c] = (seen[c] ?? 0) + 1)),
               fontSize: style?.fontSize ?? 14,
-              lineHeight: (style?.height ?? 0) * (style?.fontSize ?? 14),
+              lineHeight: strutLine ?? (style?.height ?? 0) * (style?.fontSize ?? 14),
               child: chipBuilder!(context, block, i),
             ),
           ),
@@ -305,6 +312,34 @@ class PromptEditorController extends TextEditingController {
     return TextSpan(style: style, children: children);
   }
 }
+
+/// [s] with no `height` (TextStyle cannot unset one by copyWith or merge).
+TextStyle _withoutHeight(TextStyle s) => TextStyle(
+  inherit: s.inherit,
+  color: s.color,
+  backgroundColor: s.backgroundColor,
+  fontSize: s.fontSize,
+  fontWeight: s.fontWeight,
+  fontStyle: s.fontStyle,
+  letterSpacing: s.letterSpacing,
+  wordSpacing: s.wordSpacing,
+  textBaseline: s.textBaseline,
+  leadingDistribution: s.leadingDistribution,
+  locale: s.locale,
+  foreground: s.foreground,
+  background: s.background,
+  shadows: s.shadows,
+  fontFeatures: s.fontFeatures,
+  fontVariations: s.fontVariations,
+  decoration: s.decoration,
+  decorationColor: s.decorationColor,
+  decorationStyle: s.decorationStyle,
+  decorationThickness: s.decorationThickness,
+  debugLabel: s.debugLabel,
+  fontFamily: s.fontFamily,
+  fontFamilyFallback: s.fontFamilyFallback,
+  overflow: s.overflow,
+);
 
 /// The lines whose height the editor keeps fixed (a forced strut): an inline chip fits in them.
 const chipFitsLineHeight = 20.0;

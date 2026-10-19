@@ -969,6 +969,11 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
     final lineHeight = w.lineHeight ?? (w.compact ? 20.0 : 24.0);
     // The strut in the text's own font: another font's ascent and descent would make lines taller than CSS's.
     final family = DefaultTextStyle.of(context).style.fontFamily ?? cardFontFamily;
+    // A form field (a 48 px line) makes its line taller, as in Chrome: the strut is not forced then, and the lines
+    // take their height from the strut alone (PromptEditorController.strutLineHeight).
+    final hitl = w.hitlInputBlock?.show ?? false;
+    final forcedStrut = lineHeight >= chipFitsLineHeight && !hitl;
+    controller.strutLineHeight = hitl ? lineHeight : null;
     final style = TextStyle(
       fontFamily: family,
       fontSize: fontSize,
@@ -1004,8 +1009,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
             fontSize: fontSize,
             height: lineHeight / fontSize,
             leadingDistribution: TextLeadingDistribution.even,
-            // A form field (a 48 px line) makes its line taller, as in Chrome.
-            forceStrutHeight: lineHeight >= chipFitsLineHeight && !(w.hitlInputBlock?.show ?? false),
+            forceStrutHeight: forcedStrut,
           ),
           cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
