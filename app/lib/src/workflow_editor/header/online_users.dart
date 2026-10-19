@@ -11,10 +11,7 @@ import 'header_widgets.dart';
 
 /// collaboration/utils/user-color.ts `getUserColor`: a stable colour per user id (a JS string hash, mod 11).
 Color getUserColor(String id) {
-  const colors = [
-    Color(0xFF155AEF), Color(0xFF0BA5EC), Color(0xFF444CE7), Color(0xFF7839EE), Color(0xFF4CA30D), //
-    Color(0xFF0E9384), Color(0xFFDD2590), Color(0xFFFF4405), Color(0xFFD92D20), Color(0xFFF79009), Color(0xFF828DAD),
-  ];
+  final colors = DifyUserColors.all;
   var hash = 0;
   for (final c in id.codeUnits) {
     hash = ((hash << 5) - hash + c).toSigned(32);
@@ -38,7 +35,7 @@ class UserAvatar extends StatelessWidget {
     height: 24,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: color ?? const Color(0xFF155AEF),
+      color: color ?? DifyColors.primary600, // AvatarRoot `bg-primary-600`
       boxShadow: ring ? [BoxShadow(color: DifyColors.componentsPanelBg, spreadRadius: 1)] : null,
     ),
     clipBehavior: Clip.antiAlias,
@@ -46,7 +43,7 @@ class UserAvatar extends StatelessWidget {
     child: url == null || url!.isEmpty
         ? Text(
             name.isEmpty ? '' : name[0].toUpperCase(),
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFFFFFFFF)),
+            style: difyTextStyle(DifyTw.text10Medium, DifyTailwind.white), // AvatarFallback sm
           )
         : Image.network(url!, width: 24, height: 24, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox()),
   );
@@ -186,12 +183,8 @@ class _OnlineUsersState extends State<OnlineUsers> with SingleTickerProviderStat
                         alignment: Alignment.center,
                         child: Text(
                           '+$remaining',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            height: 12 / 10,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFFFFFFF),
-                          ),
+                          // `text-2xs leading-3 font-semibold text-white uppercase`
+                          style: difyTextStyle(DifyType.system2xsSemiboldUppercase, DifyTailwind.white),
                         ),
                       ),
                       const _Chevron(),
@@ -307,7 +300,7 @@ class _ChevronPainter extends CustomPainter {
       ..lineTo(14.78 * k, 8.22 * k)
       ..lineTo(10 * k, 13.06 * k)
       ..close();
-    canvas.drawPath(p, Paint()..color = const Color(0xFF667085));
+    canvas.drawPath(p, Paint()..color = DifyColors.gray500); // text-gray-500
   }
 
   @override

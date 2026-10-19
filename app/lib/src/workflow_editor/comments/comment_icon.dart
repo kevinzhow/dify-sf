@@ -16,12 +16,6 @@ import '../header/online_users.dart' show getUserColor;
 import '../store/workflow_store_scope.dart';
 import 'workflow_comment.dart';
 
-/// `bg-primary-600`, the Avatar fallback's colour.
-const primary600 = Color(0xFF155AEF);
-
-/// `primary-500`.
-const primary500 = Color(0xFF2970FF);
-
 /// dify-ui's Avatar: the initial on [color] (`bg-primary-600` unless given), `font-medium text-white` at
 /// [fontSize] (Dify's `sm` 10 px; the comment UI widens `sm` avatars with `size-8`).
 class CommentAvatar extends StatelessWidget {
@@ -34,12 +28,12 @@ class CommentAvatar extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: size,
     height: size,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: color ?? primary600),
+    decoration: BoxDecoration(shape: BoxShape.circle, color: color ?? DifyColors.primary600),
     alignment: Alignment.center,
     child: Text(
       name.isEmpty ? '' : name.characters.first.toUpperCase(),
       maxLines: 1,
-      style: TextStyle(fontSize: fontSize, height: 1, fontWeight: FontWeight.w500, color: const Color(0xFFFFFFFF)),
+      style: TextStyle(fontSize: fontSize, height: 1, fontWeight: FontWeight.w500, color: DifyTailwind.white),
     ),
   );
 }
@@ -72,13 +66,13 @@ class UserAvatarList extends StatelessWidget {
         ),
       if (showCount && remaining > 0)
         DecoratedBox(
-          decoration: _ring.copyWith(color: const Color(0xFF667085)),
+          decoration: _ring.copyWith(color: DifyColors.gray500),
           child: SizedBox.square(
             dimension: 24,
             child: Center(
               child: Text(
                 '+$remaining',
-                style: const TextStyle(fontSize: 10, height: 1, color: Color(0xFFFFFFFF)),
+                style: difyTextStyle(DifyTw.text2xsLeadingNone, DifyTailwind.white),
               ),
             ),
           ),
@@ -465,9 +459,9 @@ class _PinBody extends StatelessWidget {
       decoration: BoxDecoration(
         color: DifyColors.componentsPanelBg,
         borderRadius: _radius,
-        border: Border.all(color: active ? primary500 : DifyColors.componentsPanelBorder),
+        border: Border.all(color: active ? DifyColors.primary500 : DifyColors.componentsPanelBorder),
         // The ring under the box shows outside it only.
-        boxShadow: active ? const [BoxShadow(color: primary500, spreadRadius: 1)] : null,
+        boxShadow: active ? [BoxShadow(color: DifyColors.primary500, spreadRadius: 1)] : null,
       ),
       alignment: Alignment.center,
       child: Transform.translate(

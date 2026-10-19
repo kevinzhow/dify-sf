@@ -599,20 +599,25 @@ class _OpenAINotConfigured extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontSize: 12, height: 18 / 12, fontWeight: FontWeight.w500, color: Color(0xFF344054));
+    // `text-xs font-medium text-gray-700`
+    final style = difyTextStyle(DifyType.systemXsMedium, DifyColors.gray700);
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFAEB),
-        border: Border.all(color: const Color(0xFFFEF0C7)),
+        color: DifyModerationColors.openAINotConfiguredBg,
+        border: Border.all(color: DifyModerationColors.openAINotConfiguredBorder),
         borderRadius: BorderRadius.circular(DifyRadius.lg),
       ),
       child: Row(
         children: [
-          const Padding(
-            padding: EdgeInsets.only(right: 4),
-            child: DifyIcon('vender/line/general/info-circle', size: 16, color: Color(0xFFF79009)),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: DifyIcon(
+              'vender/line/general/info-circle',
+              size: 16,
+              color: DifyModerationColors.openAINotConfiguredIcon,
+            ),
           ),
           Flexible(
             child: Wrap(
@@ -625,7 +630,7 @@ class _OpenAINotConfigured extends StatelessWidget {
                     cursor: SystemMouseCursors.click,
                     child: Text(
                       ' ${tc('settings.provider')} ',
-                      style: style.copyWith(color: const Color(0xFF155EEF)),
+                      style: style.copyWith(color: DifyColors.primary600),
                     ),
                   ),
                 ),
@@ -914,12 +919,7 @@ class FormGeneration extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 label,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 20 / 14,
-                  fontWeight: FontWeight.w500,
-                  color: DifyColors.textPrimary,
-                ),
+                style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
               ),
             ),
           ),
@@ -973,7 +973,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                       Expanded(
                         child: Text(
                           tc('apiBasedExtension.selector.placeholder'),
-                          style: TextStyle(fontSize: 14, color: DifyColors.textQuaternary),
+                          style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textQuaternary),
                         ),
                       ),
                       arrow,
@@ -981,7 +981,10 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                   )
                 : Row(
                     children: [
-                      Text('${current['name']}', style: TextStyle(fontSize: 14, color: DifyColors.textPrimary)),
+                      Text(
+                        '${current['name']}',
+                        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary),
+                      ),
                       const Spacer(),
                       SizedBox(
                         width: 270,
@@ -990,7 +993,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                           textAlign: TextAlign.right,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: DifyColors.textQuaternary),
+                          style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textQuaternary),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1024,11 +1027,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                         Expanded(
                           child: Text(
                             tc('apiBasedExtension.selector.title'),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: DifyColors.textTertiary,
-                            ),
+                            style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                           ),
                         ),
                         GestureDetector(
@@ -1040,7 +1039,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                             children: [
                               Text(
                                 tc('apiBasedExtension.selector.manage'),
-                                style: TextStyle(fontSize: 12, color: DifyColors.textAccent),
+                                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent),
                               ),
                               const SizedBox(width: 2),
                               DifyIcon(
@@ -1077,11 +1076,11 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                                   children: [
                                     Text(
                                       '${item['name']}',
-                                      style: TextStyle(fontSize: 14, color: DifyColors.textPrimary),
+                                      style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary),
                                     ),
                                     Text(
                                       '${item['api_endpoint']}',
-                                      style: TextStyle(fontSize: 12, color: DifyColors.textTertiary),
+                                      style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                                     ),
                                   ],
                                 ),
@@ -1109,7 +1108,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                     children: [
                       RemixIcon('add-line', size: 16, color: DifyColors.textAccent),
                       const SizedBox(width: 8),
-                      Text(tc('operation.add'), style: TextStyle(fontSize: 14, color: DifyColors.textAccent)),
+                      Text(tc('operation.add'), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textAccent)),
                     ],
                   ),
                 ),

@@ -100,7 +100,7 @@ class RunningTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = WorkflowStoreScope.of(context);
     final data = WorkflowHeaderScope.of(context);
-    const gray500 = Color(0xFF667085);
+    final gray500 = DifyColors.gray500; // text-gray-500
     return ValueListenableBuilder(
       valueListenable: store.historyWorkflowData,
       builder: (context, history, _) {
@@ -109,25 +109,20 @@ class RunningTitle extends StatelessWidget {
         return SizedBox(
           height: 18,
           child: DefaultTextStyle.merge(
-            style: const TextStyle(fontSize: 12, height: 16 / 12, color: gray500),
+            style: difyTextStyle(DifyType.systemXsRegular, gray500), // text-xs
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const DifyIcon('vender/line/time/clock-play', size: 12, color: gray500),
+                DifyIcon('vender/line/time/clock-play', size: 12, color: gray500),
                 const SizedBox(width: 4),
                 Text(data.isChatMode ? 'Test Chat$id' : 'Test Run$id'),
                 const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('·')),
                 const SizedBox(width: 4),
                 // `h-4.5 rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-2xs font-semibold text-indigo-600`
-                const _ViewOnlyBadge(
-                  border: Color(0xFFA4BCFD),
-                  background: Color(0x7AFFFFFF),
-                  style: TextStyle(
-                    fontSize: 10,
-                    height: 14 / 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF444CE7),
-                  ),
+                _ViewOnlyBadge(
+                  border: DifyColors.indigo300,
+                  background: DifyTailwind.white.withValues(alpha: 0.48),
+                  style: difyTextStyle(DifyTw.text2xsSemiboldLeading14, DifyColors.indigo600),
                 ),
               ],
             ),

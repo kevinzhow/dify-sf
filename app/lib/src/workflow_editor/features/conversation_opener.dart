@@ -328,7 +328,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                         ad('openingStatement.openingQuestion'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w500),
+                        style: DifyType.systemMdMedium.style,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -342,12 +342,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
               ),
               Text(
                 '${_questions.length}/$_maxQuestionNum',
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 18 / 12,
-                  fontWeight: FontWeight.w500,
-                  color: DifyColors.textTertiary,
-                ),
+                style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textTertiary),
               ),
             ],
           ),
@@ -379,11 +374,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
 
   @override
   Widget build(BuildContext context) {
-    final placeholderStyle = TextStyle(
-      fontSize: 14,
-      height: 24 / 14,
-      color: DifyColors.componentsInputTextPlaceholder,
-    );
+    final placeholderStyle = difyTextStyle(DifyTw.textSmLeading24, DifyColors.componentsInputTextPlaceholder);
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -422,7 +413,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Text(
                               ad('openingStatement.editorTitle'),
-                              style: const TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w500),
+                              style: DifyType.systemMdMedium.style,
                             ),
                           ),
                           Container(
@@ -635,7 +626,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                       focusNode: _focus,
                       autofocus: w.autofocus,
                       onChanged: w.onChanged,
-                      style: TextStyle(fontSize: 14, height: 36 / 14, color: DifyColors.textSecondary),
+                      style: difyTextStyle(DifyTw.textSmLeading36, DifyColors.textSecondary),
                       cursorColor: DifyColors.textSecondary,
                       cursorWidth: 1,
                       decoration: InputDecoration(
@@ -643,11 +634,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.only(left: 6, right: 32),
                         hintText: ad('openingStatement.openingQuestionPlaceholder'),
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          height: 36 / 14,
-                          color: DifyColors.componentsInputTextPlaceholder,
-                        ),
+                        hintStyle: difyTextStyle(DifyTw.textSmLeading36, DifyColors.componentsInputTextPlaceholder),
                       ),
                     ),
                   ),
@@ -750,7 +737,7 @@ class ConfirmAddVar extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: const Color.fromRGBO(35, 56, 118, 0.2),
+      color: DifyConfirmAddVarColors.backdrop,
       borderRadius: BorderRadius.circular(DifyRadius.xl),
     ),
     child: Container(
@@ -759,9 +746,19 @@ class ConfirmAddVar extends StatelessWidget {
       decoration: BoxDecoration(
         color: DifyColors.componentsPanelBg,
         borderRadius: BorderRadius.circular(DifyRadius.xl),
-        boxShadow: const [
-          BoxShadow(offset: Offset(0, 12), blurRadius: 16, spreadRadius: -4, color: Color.fromRGBO(16, 24, 40, 0.08)),
-          BoxShadow(offset: Offset(0, 4), blurRadius: 6, spreadRadius: -2, color: Color.fromRGBO(16, 24, 40, 0.03)),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 12),
+            blurRadius: 16,
+            spreadRadius: -4,
+            color: DifyConfirmAddVarColors.shadow,
+          ),
+          BoxShadow(
+            offset: const Offset(0, 4),
+            blurRadius: 6,
+            spreadRadius: -2,
+            color: DifyConfirmAddVarColors.shadowNear,
+          ),
         ],
       ),
       child: Column(
@@ -789,12 +786,7 @@ class ConfirmAddVar extends StatelessWidget {
                   children: [
                     Text(
                       ad('autoAddVar'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 20 / 14,
-                        fontWeight: FontWeight.w500,
-                        color: DifyColors.textPrimary,
-                      ),
+                      style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
                     ),
                     const SizedBox(height: 15),
                     ConstrainedBox(
@@ -849,14 +841,14 @@ class _VarHighlight extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: Color(0xFF155AEF));
+    final style = difyTextStyle(DifyType.systemXsMedium, DifyColors.primary600);
     final dim = style.copyWith(color: style.color!.withValues(alpha: 0.6));
     return Container(
       height: 20,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(21, 94, 239, 0.05),
+        color: DifyConfirmAddVarColors.varHighlightBg,
         borderRadius: BorderRadius.circular(DifyRadius.md),
       ),
       child: Text.rich(
@@ -867,7 +859,7 @@ class _VarHighlight extends StatelessWidget {
             TextSpan(text: '}}', style: dim),
           ],
         ),
-        style: TextStyle(height: 20 / 12, fontSize: 12, leadingDistribution: TextLeadingDistribution.even),
+        style: DifyTw.textXsLeading20.style,
       ),
     );
   }

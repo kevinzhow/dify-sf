@@ -365,7 +365,8 @@ class _StartNodeLimitHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const title = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF));
+    // `text-sm/5 font-semibold text-transparent` under the gradient: the colour is only the mask's alpha.
+    final title = difyTextStyle(DifyType.systemMdSemibold, DifyTailwind.white);
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(
@@ -390,7 +391,7 @@ class _StartNodeLimitHint extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               _w('publishLimit.startNodeDesc'),
-              style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textSecondary),
+              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary), // text-xs/4
             ),
           ),
         ],

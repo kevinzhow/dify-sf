@@ -8,12 +8,15 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
+import '../../design/dify_palette.dart';
 import '../../design/dify_tokens.g.dart';
+import '../../design/dify_type_tw.dart';
 import '../../design/widgets/icon_button.dart';
 import '../../design/widgets/text.dart';
 import '../../i18n/dify_i18n.dart';
@@ -158,13 +161,7 @@ class _DifyCodeEditorState extends State<DifyCodeEditor> {
             left: widget.noWrapper ? 36 : 28,
             child: IgnorePointer(
               child: DefaultTextStyle.merge(
-                style: TextStyle(
-                  fontSize: 13,
-                  height: codeEditorLineHeight / 13,
-                  leadingDistribution: TextLeadingDistribution.even,
-                  fontWeight: FontWeight.w400,
-                  color: DifyColors.componentsInputTextPlaceholder,
-                ),
+                style: difyTextStyle(DifyTw.text13NormalLeading18, DifyColors.componentsInputTextPlaceholder),
                 child: placeholder,
               ),
             ),
@@ -330,9 +327,7 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
     return Container(
       decoration: BoxDecoration(
         color: focus ? DifyColors.componentsInputBgHover : DifyColors.componentsInputBgNormal,
-        border: expanded
-            ? null
-            : Border.all(color: focus ? DifyColors.componentsInputBorderHover : const Color(0x00000000)),
+        border: expanded ? null : Border.all(color: focus ? DifyColors.componentsInputBorderHover : Colors.transparent),
         borderRadius: expanded ? null : BorderRadius.circular(DifyRadius.lg),
       ),
       child: ClipRRect(
@@ -356,9 +351,9 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
   @override
   Widget build(BuildContext context) {
     final inNode = widget.isInNode;
-    const shadow = [
-      BoxShadow(color: Color.fromRGBO(16, 24, 40, 0.05), blurRadius: 12, spreadRadius: -4),
-      BoxShadow(color: Color.fromRGBO(16, 24, 40, 0.03), offset: Offset(0, -3), blurRadius: 6, spreadRadius: -2),
+    final shadow = [
+      BoxShadow(color: DifyToggleExpendColors.shadow, blurRadius: 12, spreadRadius: -4),
+      BoxShadow(color: DifyToggleExpendColors.shadowTop, offset: const Offset(0, -3), blurRadius: 6, spreadRadius: -2),
     ];
     final panelWidth = inNode ? context.getInheritedWidgetOfExactType<WorkflowStoreScope>()?.store.panelWidth : null;
     return OverlayPortal(

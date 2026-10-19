@@ -629,9 +629,9 @@ class RunFileInput extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(right: 12),
-                    child: RemixIcon('file-3-fill', size: 24, color: Color(0xFFBCC0D1)),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: RemixIcon('file-3-fill', size: 24, color: DifyFileTypeColors.code),
                   ),
                   Expanded(
                     child: DifyText(
@@ -708,7 +708,7 @@ class _RunImageUploaderState extends State<RunImageUploader> {
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: DifyColors.textTertiary),
+                style: difyTextStyle(DifyTw.textXs, DifyColors.textTertiary),
               ),
             ),
           ],
@@ -970,12 +970,7 @@ class RunPanelWrap extends StatelessWidget {
                       '${_tw('singleRun.testRun')} $nodeName',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 24 / 16,
-                        fontWeight: FontWeight.w600,
-                        color: DifyColors.textPrimary,
-                      ),
+                      style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                     ),
                   ),
                   const SizedBox(width: 8),

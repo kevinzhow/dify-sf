@@ -731,7 +731,7 @@ class _ConstantFieldState extends State<_ConstantField> {
             readOnly: readonly,
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: onChanged,
-            style: TextStyle(fontSize: 13, color: DifyColors.textSecondary),
+            style: difyTextStyle(DifyTw.text13, DifyColors.textSecondary),
             decoration: const InputDecoration(
               isCollapsed: true,
               border: InputBorder.none,

@@ -183,9 +183,9 @@ Future<CanvasImageExport> captureCanvasImage(
       geometry.size,
       geometry.ratio,
       ColoredBox(
-        color: wholeWorkflow ? const Color(0xFF1A1A1A) : Colors.transparent,
+        color: wholeWorkflow ? DifyImageExportColors.workflowBackground : Colors.transparent,
         child: DefaultTextStyle(
-          style: TextStyle(fontFamily: cardFontFamily, letterSpacing: 0, color: Colors.black),
+          style: difyTextStyle(DifyTw.trackingNormal, DifyTailwind.black).copyWith(fontFamily: cardFontFamily),
           child: renderer.build(context),
         ),
       ),

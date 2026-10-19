@@ -8,6 +8,7 @@ import 'dart:convert';
 
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 
 import '../../../../design/dify_icon.dart';
@@ -1502,7 +1503,7 @@ class _EditCardState extends State<EditCard> {
                   controller: _description,
                   focusNode: _descriptionFocus,
                   style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
-                  cursorColor: const Color(0xFF295EFF),
+                  cursorColor: DifyCaretColors.tagInput,
                   backgroundCursorColor: DifyColors.textTertiary,
                   onChanged: (v) => setState(() => _current = _with(description: v)),
                   onSubmitted: (_) => _descriptionFocus.unfocus(),
@@ -1624,7 +1625,7 @@ class _AutoWidthInput extends StatelessWidget {
             color: focusNode.hasFocus ? DifyColors.componentsInputBgActive : null,
             borderRadius: BorderRadius.circular(5),
             border: Border.all(
-              color: focusNode.hasFocus ? DifyColors.componentsInputBorderActive : const Color(0x00000000),
+              color: focusNode.hasFocus ? DifyColors.componentsInputBorderActive : Colors.transparent,
             ),
           ),
           child: Stack(
@@ -1638,7 +1639,7 @@ class _AutoWidthInput extends StatelessWidget {
                 controller: controller,
                 focusNode: focusNode,
                 style: style,
-                cursorColor: const Color(0xFF295EFF),
+                cursorColor: DifyCaretColors.tagInput,
                 backgroundCursorColor: DifyColors.textTertiary,
                 onChanged: onChanged,
                 onSubmitted: (_) => focusNode.unfocus(),
@@ -1786,7 +1787,7 @@ class _SchemaViewTabsState extends State<SchemaViewTabs> {
                           ? DifyColors.componentsSegmentedControlItemActiveBorder
                           : focused
                           ? DifyColors.stateAccentSolid
-                          : const Color(0x00000000),
+                          : Colors.transparent,
                       width: focused && !active ? 2 : 0.5,
                     ),
                     boxShadow: active ? DifyShadows.xs : null,

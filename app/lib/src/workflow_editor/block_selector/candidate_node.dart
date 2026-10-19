@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
@@ -241,7 +242,7 @@ class _CandidateCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: DifyColors.workflowBlockBg,
         borderRadius: BorderRadius.circular(DifyRadius.nodeCard),
-        border: Border.all(color: const Color(0x00000000)),
+        border: Border.all(color: Colors.transparent),
         boxShadow: DifyShadows.xs,
       ),
       padding: container ? const EdgeInsets.only(top: 13) : const EdgeInsets.all(13),

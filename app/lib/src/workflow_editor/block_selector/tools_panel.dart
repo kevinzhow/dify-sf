@@ -489,8 +489,8 @@ class IndexBar extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: 24,
     child: DecoratedBox(
-      decoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: Color(0x14101828), width: 1)),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: DifyIndexBarColors.line, width: 1)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

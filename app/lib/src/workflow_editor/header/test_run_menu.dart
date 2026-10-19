@@ -218,12 +218,7 @@ class _TestRunMenuState extends State<TestRunMenu> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: Text(
               DifyI18n.tr('workflow', 'common.chooseStartNodeToRun'),
-              style: TextStyle(
-                fontSize: 14,
-                height: 20 / 14,
-                fontWeight: FontWeight.w500,
-                color: DifyColors.textPrimary,
-              ),
+              style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
             ),
           ),
           if (hasUserInput) row(o.userInput!),
@@ -280,11 +275,11 @@ class _RunAllIcon extends StatelessWidget {
     decoration: BoxDecoration(
       color: DifyColors.utilColorsPurplePurple500,
       borderRadius: BorderRadius.circular(DifyRadius.lg),
-      border: Border.all(color: const Color(0x05FFFFFF), width: 0.5),
+      border: Border.all(color: DifyTailwind.white.withValues(alpha: 0.02), width: 0.5), // border-white/2
       boxShadow: DifyShadows.md,
     ),
     alignment: Alignment.center,
-    child: const DifyIcon('vender/workflow/trigger-all', size: 18, color: Color(0xFFFFFFFF)),
+    child: DifyIcon('vender/workflow/trigger-all', size: 18, color: DifyTailwind.white),
   );
 }
 

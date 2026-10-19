@@ -295,7 +295,7 @@ class _MailBodyInputState extends State<MailBodyInput> {
                 ? DifyColors.componentsInputBorderActive
                 : _hovered
                 ? DifyColors.componentsInputBorderHover
-                : const Color(0x00000000),
+                : Colors.transparent,
           ),
           boxShadow: focused ? DifyShadows.xs : null,
         ),
@@ -423,11 +423,7 @@ class Recipient extends StatelessWidget {
                 ),
                 child: Text(
                   workspace.isEmpty ? '' : workspace[0].toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: DifyColors.componentsAvatarShapeFillStop0,
-                  ),
+                  style: difyTextStyle(DifyTw.text14Semibold, DifyColors.componentsAvatarShapeFillStop0),
                 ),
               ),
               Expanded(child: DifyText(label, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
@@ -557,7 +553,7 @@ class _EmailInputState extends State<EmailInput> {
         focusNode: _focus,
         onChanged: (v) => setState(() => _open = v.trim().isNotEmpty),
         style: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
-        cursorColor: const Color(0xFF155EEF),
+        cursorColor: DifyColors.primary600, // caret-primary-600
         cursorWidth: 1,
         decoration: InputDecoration(
           isCollapsed: true,
@@ -592,7 +588,7 @@ class _EmailInputState extends State<EmailInput> {
                     ? DifyColors.componentsInputBorderActive
                     : _hovered && !w.disabled
                     ? DifyColors.componentsInputBorderHover
-                    : const Color(0x00000000),
+                    : Colors.transparent,
               ),
               boxShadow: _focused ? DifyShadows.xs : null,
             ),
@@ -643,35 +639,6 @@ class _EmailInputState extends State<EmailInput> {
   }
 }
 
-/// dify-ui's Avatar: [size] px, round, the image or the name's initial on `bg-primary-600`.
-class HiAvatar extends StatelessWidget {
-  const HiAvatar({super.key, required this.name, this.url, this.size = 24});
-  final String name;
-  final String? url;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    clipBehavior: Clip.antiAlias,
-    alignment: Alignment.center,
-    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF155AEF)),
-    child: url == null || url!.isEmpty
-        ? Text(
-            name.isEmpty ? '' : name[0].toUpperCase(),
-            style: TextStyle(fontSize: size * 0.42, fontWeight: FontWeight.w500, color: const Color(0xFFFFFFFF)),
-          )
-        : Image.network(
-            url!,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const SizedBox(),
-          ),
-  );
-}
-
 /// EmailItem: a 24 px pill with the avatar (or, for a member no longer in the workspace, the destructive warning
 /// icon and style), the email (the current user: their name and "(You)") and the remove icon unless [disabled].
 class EmailItem extends StatelessWidget {
@@ -714,7 +681,7 @@ class EmailItem extends StatelessWidget {
             if (isError)
               RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive)
             else
-              HiAvatar(name: name.isNotEmpty ? name : address, url: avatarUrl, size: 16),
+              DifyAvatar(name: name.isNotEmpty ? name : address, url: avatarUrl, size: DifyAvatarSize.xxs),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500),
               child: Text.rich(
@@ -858,7 +825,7 @@ class _MemberRow extends StatelessWidget {
           children: [
             Opacity(
               opacity: selected ? 0.5 : 1,
-              child: HiAvatar(name: member.name, url: member.avatarUrl),
+              child: DifyAvatar(name: member.name, url: member.avatarUrl, size: DifyAvatarSize.sm),
             ),
             Expanded(
               child: Opacity(

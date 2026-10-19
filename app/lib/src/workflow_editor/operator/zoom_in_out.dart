@@ -9,7 +9,7 @@ import '../store/store.dart';
 import 'action_bar.dart';
 import 'actions.dart';
 
-const _black5 = Color(0x0D000000); // bg-black/5
+Color get _black5 => DifyTailwind.black.withValues(alpha: 0.05); // bg-black/5
 
 /// operator/zoom-in-out.tsx: zoom out, the zoom percentage (opens the zoom menu), zoom in.
 class ZoomInOut extends StatefulWidget {

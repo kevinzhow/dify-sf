@@ -149,7 +149,7 @@ class ContentSwitch extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               '${currentIndex! + 1} /$count',
-              style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textPrimary),
+              style: difyTextStyle(DifyTw.textXs, DifyColors.textPrimary),
             ),
           ),
           arrow(true),
@@ -655,7 +655,7 @@ class _ChatAnswerState extends State<ChatAnswer> {
           content: RegExp(r'^\\\\\S').hasMatch(content) && !RegExp(r'^`.*`$').hasMatch(content)
               ? '`$content`'
               : content,
-          color: item['isError'] == true ? const Color(0xFFF04438) : null,
+          color: item['isError'] == true ? DifyRunStatusColors.error : null,
         ),
       if (allFiles.isNotEmpty)
         Padding(
@@ -824,7 +824,7 @@ class TryToAsk extends StatelessWidget {
         height: 1,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0x00FFFFFF), DifyColors.dividerRegular],
+            colors: [DifyRunDividerColors.transparentWhite, DifyColors.dividerRegular],
             begin: flip ? Alignment.centerRight : Alignment.centerLeft,
             end: flip ? Alignment.centerLeft : Alignment.centerRight,
           ),
@@ -1227,7 +1227,7 @@ class EditableTextHost extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             // The textarea has no placeholder class: preflight.css's `textarea::placeholder` gray-400 (#98a2b3, the
             // same in both themes).
-            style: style.copyWith(color: const Color(0xFF98A2B3)),
+            style: style.copyWith(color: DifyTailwind.gray400),
           ),
         ),
       Semantics(
@@ -1413,7 +1413,7 @@ class _DebugChatState extends State<DebugChat> {
                             ),
                             child: Text(
                               DifyI18n.tr('app-debug', 'operation.stopResponding'),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                              style: DifyTw.textXsNormal.style,
                             ),
                           ),
                         ),

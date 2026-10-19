@@ -265,12 +265,12 @@ class FileTypeItem extends StatefulWidget {
 class _FileTypeItemState extends State<FileTypeItem> {
   bool _hovered = false;
 
-  static const _icons = {
-    'image': ('file-image-fill', Color(0xFF00B2EA)),
-    'document': ('file-text-fill', Color(0xFF6F8BB5)),
-    'audio': ('file-music-fill', Color(0xFFFF3093)),
-    'video': ('file-video-fill', Color(0xFF844FDA)),
-    'custom': ('file-3-fill', Color(0xFFBCC0D1)),
+  static Map<String, (String, Color)> get _icons => {
+    'image': ('file-image-fill', DifyFileTypeColors.image),
+    'document': ('file-text-fill', DifyFileTypeColors.document),
+    'audio': ('file-music-fill', DifyFileTypeColors.audio),
+    'video': ('file-video-fill', DifyFileTypeColors.video),
+    'custom': ('file-3-fill', DifyFileTypeColors.code),
   };
 
   @override

@@ -14,13 +14,14 @@ import 'execution_time_calculator.dart';
 String _t(String key) => DifyI18n.tr('workflow', 'nodes.triggerSchedule.$key');
 
 /// Tailwind's `text-gray-500` (dify-ui styles.css `--color-gray-500`).
-const scheduleGray500 = Color(0xFF667085);
+Color get scheduleGray500 => DifyColors.gray500;
 
 /// The labels above the controls: `mb-2 block text-xs font-medium text-gray-500`.
 class ScheduleLabel extends StatelessWidget {
-  const ScheduleLabel(this.text, {super.key, this.color = scheduleGray500});
+  const ScheduleLabel(this.text, {super.key, this._color});
   final String text;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? scheduleGray500;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -60,7 +61,7 @@ class ModeToggle extends StatelessWidget {
             ),
             Text(
               text,
-              style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary, letterSpacing: 0),
+              style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
             ),
           ],
         ),
@@ -211,7 +212,7 @@ class OnMinuteSelector extends StatelessWidget {
               child: Center(
                 child: Text(
                   '$value',
-                  style: TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled, letterSpacing: 0),
+                  style: difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextFilled),
                 ),
               ),
             ),
@@ -418,14 +419,10 @@ class NextExecutionTimes extends StatelessWidget {
     return frequency is String && frequency.isNotEmpty ? getFormattedExecutionTimes(data, 5, clock) : const [];
   }
 
-  static TextStyle _mono(Color color) => TextStyle(
-    fontFamily: codeEditorFontFamily,
-    fontFamilyFallback: const ['monospace'],
-    fontSize: 12,
-    height: 1.5,
-    letterSpacing: 0.6,
-    color: color,
-  );
+  static TextStyle _mono(Color color) => difyTextStyle(
+    DifyTw.textXsLeading150TrackingWider,
+    color,
+  ).copyWith(fontFamily: codeEditorFontFamily, fontFamilyFallback: const ['monospace']);
 
   @override
   Widget build(BuildContext context) {

@@ -39,7 +39,7 @@ class VarTypePicker extends StatelessWidget {
     width: 120,
     paddingX: 10,
     capitalize: true,
-    textStyle: const TextStyle(fontSize: 13, height: 16 / 13),
+    textStyle: DifyTw.text13Leading16.style,
   );
 }
 
@@ -186,11 +186,9 @@ class _DefaultTriggerState extends State<_DefaultTrigger> {
           children: [
             Text(
               w.uppercase ? w.label.toUpperCase() : w.label,
-              style: TextStyle(
-                fontSize: 14,
-                height: 20 / 14,
-                fontWeight: FontWeight.w600,
-                color: w.noValue ? DifyColors.textTertiary : DifyColors.textSecondary,
+              style: difyTextStyle(
+                DifyType.systemMdSemibold,
+                w.noValue ? DifyColors.textTertiary : DifyColors.textSecondary,
               ),
             ),
             if (!w.readonly)
@@ -242,12 +240,7 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 16 / 13,
-                    fontWeight: FontWeight.w500,
-                    color: DifyColors.textSecondary,
-                  ),
+                  style: difyTextStyle(DifyTw.text13MediumLeading16, DifyColors.textSecondary),
                 ),
               ),
               if (widget.checked) DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textPrimary),

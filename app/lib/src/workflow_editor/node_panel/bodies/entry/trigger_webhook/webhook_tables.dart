@@ -353,7 +353,7 @@ class _InputCellState extends State<_InputCell> {
               focusNode: _focus,
               enabled: !widget.disabled,
               style: style,
-              cursorColor: const Color(0xFF155EEF), // caret-primary-600
+              cursorColor: DifyColors.primary600, // caret-primary-600
               cursorWidth: 1,
               inputFormatters: widget.varName ? [varNameFormatter] : null,
               onChanged: widget.onChanged,
@@ -639,7 +639,7 @@ class _ParagraphInputState extends State<ParagraphInput> {
               maxLines: count,
               keyboardType: TextInputType.multiline,
               style: text,
-              cursorColor: const Color(0xFF155EEF), // caret-primary-600
+              cursorColor: DifyColors.textSecondary, // paragraph-input.tsx: the default caret (text-text-secondary)
               cursorWidth: 1,
               onChanged: widget.onChange,
               decoration: InputDecoration.collapsed(

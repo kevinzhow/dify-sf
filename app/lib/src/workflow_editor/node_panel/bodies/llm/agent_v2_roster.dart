@@ -71,8 +71,11 @@ class AgentAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: _hex(agent['icon_background'], const Color(0xFFFFEAD5)), borderRadius: radius),
-      child: Text(icon ?? '🤖', style: TextStyle(fontSize: size * 0.56, height: 1)),
+      decoration: BoxDecoration(
+        color: _hex(agent['icon_background'], DifyAppIconColors.defaultBackground),
+        borderRadius: radius,
+      ),
+      child: Text(icon ?? '🤖', style: difyEmojiTextStyle(size * 0.56)),
     );
   }
 }
@@ -1214,9 +1217,9 @@ class _SaveInlineAgentToRosterFormState extends State<SaveInlineAgentToRosterFor
                               width: 64,
                               height: 64,
                               alignment: Alignment.center,
-                              color: _hex(_icon['background'], const Color(0xFFF5F3FF)),
+                              color: _hex(_icon['background'], DifyAgentRosterColors.defaultIconBackground),
                               child: _icon['type'] == 'emoji'
-                                  ? Text(jsKey(_icon['icon']), style: const TextStyle(fontSize: 32, height: 1))
+                                  ? Text(jsKey(_icon['icon']), style: difyEmojiTextStyle(32))
                                   : Image.network(jsKey(_icon['url']), width: 64, height: 64, fit: BoxFit.cover),
                             ),
                           ),

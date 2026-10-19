@@ -396,12 +396,7 @@ class _AddButtonState extends State<_AddButton> {
                   widget.label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 16 / 12,
-                    fontWeight: FontWeight.w600,
-                    color: DifyColors.textPlaceholder,
-                  ),
+                  style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPlaceholder),
                 ),
               ),
             ],

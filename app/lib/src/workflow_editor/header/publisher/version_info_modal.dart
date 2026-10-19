@@ -263,13 +263,13 @@ class _DifyTextControlState extends State<DifyTextControl> {
         ? (DifyColors.componentsInputBgActive, DifyColors.componentsInputBorderActive)
         : _hovered
         ? (DifyColors.componentsInputBgHover, DifyColors.componentsInputBorderHover)
-        : (DifyColors.componentsInputBgNormal, const Color(0x00000000));
+        : (DifyColors.componentsInputBgNormal, Colors.transparent);
     final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
     final field = TextField(
       controller: widget.controller,
       focusNode: _focus,
       style: style,
-      cursorColor: const Color(0xFF155EEF), // caret-primary-600
+      cursorColor: DifyColors.primary600, // caret-primary-600
       cursorWidth: 1,
       maxLines: widget.multiline ? null : 1,
       expands: widget.multiline,

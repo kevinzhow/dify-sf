@@ -195,12 +195,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
           ),
           Text(
             '${w.value.length}',
-            style: TextStyle(
-              fontSize: 12,
-              height: 18 / 12,
-              fontWeight: FontWeight.w500,
-              color: DifyColors.textTertiary,
-            ),
+            style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textTertiary),
           ),
           // `<div className="ml-1.25">` around the inline button: the div's text line ends below it.
           if (w.headerExtra != null)
@@ -261,7 +256,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
         decoration: BoxDecoration(
           color: on ? DifyColors.componentsButtonGhostBgHover : null,
           borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: on || hovered ? DifyColors.componentsButtonGhostBgHover : const Color(0x00000000)),
+          border: Border.all(color: on || hovered ? DifyColors.componentsButtonGhostBgHover : Colors.transparent),
         ),
         child: Row(
           spacing: 2,
@@ -431,9 +426,14 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
         decoration: BoxDecoration(
           color: DifyColors.componentsPanelBg,
           borderRadius: BorderRadius.circular(DifyRadius.xl),
-          boxShadow: const [
-            BoxShadow(offset: Offset(0, 0), blurRadius: 12, spreadRadius: -4, color: Color(0x0D101828)),
-            BoxShadow(offset: Offset(0, -3), blurRadius: 6, spreadRadius: -2, color: Color(0x08101828)),
+          boxShadow: [
+            BoxShadow(blurRadius: 12, spreadRadius: -4, color: DifyToggleExpendColors.shadow),
+            BoxShadow(
+              offset: const Offset(0, -3),
+              blurRadius: 6,
+              spreadRadius: -2,
+              color: DifyToggleExpendColors.shadowTop,
+            ),
           ],
         ),
         child: KeyedSubtree(key: _contentKey, child: _content(expand: true)),

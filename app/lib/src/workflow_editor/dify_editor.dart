@@ -466,14 +466,10 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       CommentsScope(
         store: _comments,
         child: DefaultTextStyle(
-          style: TextStyle(
+          style: DifyType.systemMdRegular.style.copyWith(
             fontFamily: cardFontFamily,
-            fontSize: 14,
-            height: 20 / 14,
-            letterSpacing: 0,
             wordSpacing: 0,
             color: DifyColors.textPrimary,
-            leadingDistribution: TextLeadingDistribution.even,
           ),
           // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
           child: ListenableBuilder(
@@ -921,7 +917,7 @@ class SessionBadge extends StatelessWidget {
   /// Whether the session menu is part of this widget.
   final bool menu;
 
-  static TextStyle get _small => TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary);
+  static TextStyle get _small => difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary);
 
   (Color, String) _link(SessionStatus s) => switch (s.link) {
     LinkState.live => (DifyColors.textSuccess, 'Live'),

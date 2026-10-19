@@ -193,7 +193,8 @@ class NodeActionsMenuAbout extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     child: DefaultTextStyle.merge(
-      style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+      // `text-xs`; the description and author lines are `leading-4.5`.
+      style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -203,7 +204,7 @@ class NodeActionsMenuAbout extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: Text(
                 title.toUpperCase(),
-                style: const TextStyle(fontWeight: FontWeight.w500, height: 16 / 12),
+                style: DifyType.systemXsMedium.style,
               ),
             ),
           ),

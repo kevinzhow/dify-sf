@@ -632,7 +632,7 @@ class _VarGroupItemState extends State<VarGroupItem> {
         width: max(name.length, 1) * 8.0 + 10,
         padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
+          color: DifyTailwind.white, // bg-white
           borderRadius: BorderRadius.circular(DifyRadius.lg),
           border: Border.all(color: DifyColors.utilColorsGrayGray300),
         ),

@@ -179,7 +179,7 @@ class _ClassItemState extends State<ClassItem> {
                 controller: _draft,
                 focusNode: _focus,
                 style: style,
-                cursorColor: const Color(0xFF155EEF),
+                cursorColor: DifyColors.textSecondary, // class-item.tsx: the default caret (text-text-secondary)
                 backgroundCursorColor: DifyColors.textTertiary,
               ),
             ),
@@ -441,7 +441,7 @@ class _ClassListState extends State<ClassList> {
               ),
               child: Text(
                 _w('$_p.renameHint'),
-                style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
             );
           },

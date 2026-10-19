@@ -170,7 +170,7 @@ class IfElsePanel extends StatelessWidget {
               title: tw('$_p.else'),
               child: Text(
                 tw('$_p.elseDescription'),
-                style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
               ),
             ),
           ),
@@ -307,22 +307,12 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                       children: [
                         Text(
                           index == 0 ? 'IF' : 'ELIF',
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 16 / 13,
-                            fontWeight: FontWeight.w600,
-                            color: DifyColors.textSecondary,
-                          ),
+                          style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                         ),
                         if (n > 1)
                           Text(
                             'CASE${index + 1}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              height: 12 / 10,
-                              fontWeight: FontWeight.w500,
-                              color: DifyColors.textTertiary,
-                            ),
+                            style: difyTextStyle(DifyType.system2xsMedium, DifyColors.textTertiary),
                           ),
                       ],
                     ),
@@ -628,11 +618,9 @@ class IfElseConditionList extends StatelessWidget {
                             children: [
                               Text(
                                 op.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  height: 12 / 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: DifyColors.textAccentSecondary,
+                                style: difyTextStyle(
+                                  DifyType.system2xsSemiboldUppercase,
+                                  DifyColors.textAccentSecondary,
                                 ),
                               ),
                               const SizedBox(width: 2),
@@ -882,7 +870,7 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
                       options: selectOptions,
                       placeholder: tc('placeholder.select'),
                       paddingX: 8,
-                      textStyle: const TextStyle(fontSize: 12),
+                      textStyle: DifyType.systemXsRegular.style,
                       onChanged: _setValue,
                     ),
                   ),
@@ -1104,7 +1092,7 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
   Widget build(BuildContext context) {
     final w = widget;
     final kind = _capitalize(w.numberVarType.name);
-    final style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.componentsInputTextFilled);
+    final style = difyTextStyle(DifyTw.text13Leading18, DifyColors.componentsInputTextFilled);
     final Widget field;
     if (w.numberVarType == VarKindType.variable) {
       final selector = templateToSelector(w.value);

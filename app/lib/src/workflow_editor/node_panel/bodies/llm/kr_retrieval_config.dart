@@ -215,7 +215,9 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                 Container(
                   height: 1,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [DifyColors.dividerRegular, Color(0x00FFFFFF)]),
+                    gradient: LinearGradient(
+                      colors: [DifyColors.dividerRegular, DifyColors.backgroundGradientMaskTransparent],
+                    ),
                   ),
                 ),
               ],
@@ -351,12 +353,7 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                     Flexible(
                       child: Text(
                         _c('modelProvider.systemReasoningModel.key'),
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 32 / 13,
-                          fontWeight: FontWeight.w500,
-                          color: DifyColors.textPrimary,
-                        ),
+                        style: difyTextStyle(DifyTw.text13MediumLeading32, DifyColors.textPrimary),
                       ),
                     ),
                     DifyInfotip(

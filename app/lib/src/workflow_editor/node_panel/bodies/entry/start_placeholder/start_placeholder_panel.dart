@@ -7,6 +7,7 @@
 /// show the trigger block icon rather than the provider's.
 library;
 
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 
 import '../../../../../design/dify_icon.dart';
@@ -386,7 +387,7 @@ class AllStartBlocks extends StatelessWidget {
                 DifyIcon('vender/line/others/search-menu', size: 32, color: DifyColors.textQuaternary),
                 Text(
                   _wf('nodes.startPlaceholder.noTriggersFound'),
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+                  style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary),
                 ),
                 DifyPressable(
                   semanticLabel: _wf('tabs.requestToCommunity'),
@@ -401,7 +402,7 @@ class AllStartBlocks extends StatelessWidget {
                     ),
                     child: Text(
                       _wf('tabs.requestToCommunity'),
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textAccent),
+                      style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
                     ),
                   ),
                 ),
@@ -459,7 +460,7 @@ class _ConflictBanner extends StatelessWidget {
       gradient: LinearGradient(
         colors: [
           DifyColors.utilColorsBlueLightBlueLight500.withValues(alpha: 0.2 * 0.4),
-          const Color(0x00000000),
+          Colors.transparent,
         ],
       ),
       border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle, width: 0.5)),

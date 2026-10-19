@@ -213,7 +213,11 @@ class _PlusButtonState extends State<_PlusButton> {
           boxShadow: DifyShadows.primaryButton,
         ),
         child: Center(
-          child: DifyIcon('vender/line/general/plus-02', size: 10 * widget.zoom, color: const Color(0xFFFFFFFF)),
+          child: DifyIcon(
+            'vender/line/general/plus-02',
+            size: 10 * widget.zoom,
+            color: DifyColors.componentsButtonPrimaryText,
+          ),
         ),
       ),
     ),

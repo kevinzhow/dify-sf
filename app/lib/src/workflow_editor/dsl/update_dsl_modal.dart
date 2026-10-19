@@ -190,7 +190,7 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
         Row(
           children: [
             Expanded(
-              child: Text(_a('importApp'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+              child: Text(_a('importApp'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
             ),
             DifyIconButton(
               label: DifyI18n.tr('common', 'operation.close'),
@@ -222,7 +222,7 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(_w('common.chooseDSL'), style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(_w('common.chooseDSL'), style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary)),
         const SizedBox(height: 12),
         DifyButton(
           key: const Key('choose-dsl-file'),

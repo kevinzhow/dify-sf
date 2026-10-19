@@ -408,7 +408,7 @@ class ModelSelectorButton extends StatelessWidget {
             configureModelLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 13, height: 20 / 13, color: DifyColors.componentsInputTextPlaceholder),
+            style: difyTextStyle(DifyTw.text13Leading20, DifyColors.componentsInputTextPlaceholder),
           );
     final Widget? badge = isSelected && !disabled && ((!isActive && s.badge != null) || !isModelCompatible)
         ? ModelStatusBadge(
@@ -594,7 +594,7 @@ class _ModelSelectorPopupState extends State<ModelSelectorPopup> {
                         child: Text(
                           status,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                          style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                         ),
                       ),
                     ),
@@ -867,12 +867,7 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
                                 label,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  height: 16 / 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: DifyColors.textTertiary,
-                                ),
+                                style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                               ),
                             ),
                             AnimatedRotation(

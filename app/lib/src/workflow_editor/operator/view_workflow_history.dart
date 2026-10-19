@@ -118,12 +118,7 @@ class _HistoryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(DifyRadius.xl);
-    final rowText = TextStyle(
-      fontSize: 13,
-      height: 18 / 13,
-      fontWeight: FontWeight.w500,
-      color: DifyColors.textSecondary,
-    );
+    final rowText = difyTextStyle(DifyTw.text13MediumLeading18, DifyColors.textSecondary);
     Widget row(
       String text,
       VoidCallback onTap, {
@@ -170,7 +165,7 @@ class _HistoryPanel extends StatelessWidget {
                         Expanded(
                           child: Text(
                             tw('changeHistory.title'),
-                            style: TextStyle(fontSize: 16, height: 1.5, color: DifyColors.textSecondary),
+                            style: difyTextStyle(DifyTw.textBase, DifyColors.textSecondary),
                           ),
                         ),
                         DifyIconButton(
@@ -199,7 +194,7 @@ class _HistoryPanel extends StatelessWidget {
                                   Text(
                                     tw('changeHistory.placeholder'),
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 13, color: DifyColors.textTertiary),
+                                    style: difyTextStyle(DifyTw.text13, DifyColors.textTertiary),
                                   ),
                                 ],
                               ),
@@ -242,19 +237,14 @@ class _HistoryPanel extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: Text(
                               tw('changeHistory.hint').toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                height: 16 / 12,
-                                fontWeight: FontWeight.w500,
-                                color: DifyColors.textTertiary,
-                              ),
+                              style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                             ),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Text(
                               tw('changeHistory.hintText'),
-                              style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                              style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                             ),
                           ),
                         ],

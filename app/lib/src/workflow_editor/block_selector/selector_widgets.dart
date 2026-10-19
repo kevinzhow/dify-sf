@@ -140,11 +140,11 @@ class SelectorBlockIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: type == 'datasource' ? DifyColors.componentsIconBgMidnightSolid : blockColor(type),
         borderRadius: r,
-        border: Border.all(color: const Color(0x05FFFFFF), width: Css.hairline),
+        border: Border.all(color: DifyTailwind.white.withValues(alpha: 0.02), width: Css.hairline),
         boxShadow: shadows,
       ),
       child: Center(
-        child: DifyIcon(blockGlyph(type), size: size.glyph, color: const Color(0xFFFFFFFF)),
+        child: DifyIcon(blockGlyph(type), size: size.glyph, color: DifyTailwind.white),
       ),
     );
   }
@@ -163,7 +163,7 @@ Widget _defaultProviderIcon(ProviderIcon icon, double size) {
     return Container(
       color: _hex(icon['background'] as String?) ?? DifyColors.stateBaseHover,
       alignment: Alignment.center,
-      child: Text('${icon['content'] ?? ''}', style: TextStyle(fontSize: size * 0.6, height: 1)),
+      child: Text('${icon['content'] ?? ''}', style: difyEmojiTextStyle(size * 0.6)),
     );
   }
   if (icon is String && (icon.startsWith('http://') || icon.startsWith('https://'))) {

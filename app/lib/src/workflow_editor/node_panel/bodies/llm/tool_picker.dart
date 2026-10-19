@@ -378,7 +378,7 @@ class _Row extends StatelessWidget {
                 border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
               ),
               child: switch (icon) {
-                {'content': final String emoji} => Text(emoji, style: const TextStyle(fontSize: 12)),
+                {'content': final String emoji} => Text(emoji, style: difyEmojiTextStyle(12, lineHeight: null)),
                 _ => RemixIcon('tools-line', size: 12, color: DifyColors.textTertiary),
               },
             ),

@@ -14,11 +14,6 @@ import '../../workflow/var_types.dart' show VarType;
 import '../panel_fields/var_reference_vars.dart' show VarFullPathPanel;
 import 'prompt_editor_types.dart';
 
-// The legacy palette some blocks still use (dify-ui styles.css).
-const _gray50 = Color(0xFFF9FAFB), _gray100 = Color(0xFFF2F4F7), _gray500 = Color(0xFF667085);
-const _gray700 = Color(0xFF475467), _gray800 = Color(0xFF1D2939), _primary600 = Color(0xFF155EEF);
-const _indigo600 = Color(0xFF444CE7);
-
 TextStyle _xsMedium(Color c) => difyTextStyle(DifyType.systemXsMedium, c);
 
 /// Hover state for a block (`hover:` utilities).
@@ -177,21 +172,23 @@ class _ContextChipState extends State<ContextChip> {
           height: 24,
           padding: const EdgeInsets.only(left: 4, right: 2),
           decoration: BoxDecoration(
-            color: hovered || _open ? const Color(0xFFEBE9FE) : const Color(0xFFF4F3FF),
+            color: hovered || _open ? DifyPromptBlockColors.contextBgHover : DifyPromptBlockColors.contextBg,
             borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: widget.selected ? const Color(0xFF9B8AFB) : const Color(0x00000000)),
+            border: Border.all(
+              color: widget.selected ? DifyPromptBlockColors.contextBorderSelected : Colors.transparent,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const DifyIcon(
+              DifyIcon(
                 'vender/solid/files/file-05',
-                key: Key('file-icon'),
+                key: const Key('file-icon'),
                 size: 14,
-                color: Color(0xFF6938EF),
+                color: DifyPromptBlockColors.context,
               ),
               const SizedBox(width: 4),
-              Text(title, style: _xsMedium(const Color(0xFF6938EF))),
+              Text(title, style: _xsMedium(DifyPromptBlockColors.context)),
               const SizedBox(width: 4),
               if (!c.canNotAddContext)
                 DifyPopover(
@@ -212,20 +209,19 @@ class _ContextChipState extends State<ContextChip> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: _open
-                              ? const Color(0xFF6938EF)
+                              ? DifyPromptBlockColors.context
                               : hovered
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.5),
+                              ? DifyTailwind.white
+                              : DifyTailwind.white.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(DifyRadius.sm),
                           boxShadow: hovered && !_open ? DifyShadows.xs : null,
                         ),
                         child: Text(
                           '${c.datasets.length}',
-                          style: TextStyle(
-                            fontSize: 11,
+                          // `text-[11px] font-semibold`, one line high in the centred 18 px box.
+                          style: DifyTw.text11Semibold.style.copyWith(
                             height: 1,
-                            fontWeight: FontWeight.w600,
-                            color: _open ? Colors.white : const Color(0xFF6938EF),
+                            color: _open ? DifyTailwind.white : DifyPromptBlockColors.context,
                           ),
                         ),
                       ),
@@ -248,21 +244,21 @@ class _ContextModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget box(Widget child, {Color? bg, Color border = _gray100}) => Container(
+    Widget box(Widget child, {Color? bg, Color? border}) => Container(
       width: 24,
       height: 24,
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(DifyRadius.md),
-        border: Border.all(color: border, width: Css.hairline),
+        border: Border.all(color: border ?? DifyColors.gray100, width: Css.hairline),
       ),
       child: Center(child: child),
     );
     return Container(
       width: 360,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: DifyTailwind.white,
         borderRadius: BorderRadius.circular(DifyRadius.xl),
         boxShadow: DifyShadows.lg,
       ),
@@ -279,7 +275,7 @@ class _ContextModal extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
                     DifyI18n.tr('common', 'promptEditor.context.modal.title', {'num': datasets.length}),
-                    style: _xsMedium(_gray500),
+                    style: _xsMedium(DifyColors.gray500),
                   ),
                 ),
                 ConstrainedBox(
@@ -293,21 +289,21 @@ class _ContextModal extends StatelessWidget {
                             child: Row(
                               children: [
                                 box(
-                                  const DifyIcon(
+                                  DifyIcon(
                                     'vender/solid/files/folder',
-                                    key: Key('folder-icon'),
+                                    key: const Key('folder-icon'),
                                     size: 16,
-                                    color: _indigo600,
+                                    color: DifyColors.indigo600,
                                   ),
-                                  bg: const Color(0xFFF5F8FF),
-                                  border: const Color(0xFFEAECF5),
+                                  bg: DifyPromptBlockColors.contextFolderBg,
+                                  border: DifyPromptBlockColors.contextFolderBorder,
                                 ),
                                 Expanded(
                                   child: Text(
                                     d.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 14, height: 20 / 14, color: _gray800),
+                                    style: difyTextStyle(DifyType.systemMdRegular, DifyColors.gray800),
                                   ),
                                 ),
                               ],
@@ -325,18 +321,13 @@ class _ContextModal extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        box(const RemixIcon('add-line', size: 14, color: _primary600)),
+                        box(RemixIcon('add-line', size: 14, color: DifyColors.primary600)),
                         Flexible(
                           child: Text(
                             DifyI18n.tr('common', 'promptEditor.context.modal.add'),
                             softWrap: false,
                             overflow: TextOverflow.visible,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              height: 18 / 13,
-                              fontWeight: FontWeight.w500,
-                              color: _primary600,
-                            ),
+                            style: difyTextStyle(DifyTw.text13MediumLeading18, DifyColors.primary600),
                           ),
                         ),
                       ],
@@ -349,15 +340,15 @@ class _ContextModal extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: _gray50,
+              color: DifyColors.gray50,
               border: Border(
-                top: BorderSide(color: _gray50, width: Css.hairline),
+                top: BorderSide(color: DifyColors.gray50, width: Css.hairline),
               ),
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(DifyRadius.xl)),
             ),
             child: Text(
               DifyI18n.tr('common', 'promptEditor.context.modal.footer'),
-              style: const TextStyle(fontSize: 12, height: 16 / 12, color: _gray500),
+              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.gray500),
             ),
           ),
         ],
@@ -381,7 +372,7 @@ class HistoryChip extends StatefulWidget {
 
 class _HistoryChipState extends State<HistoryChip> {
   bool _open = false;
-  static const _pink = Color(0xFFDD2590);
+  static Color get _pink => DifyPromptBlockColors.history;
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +387,7 @@ class _HistoryChipState extends State<HistoryChip> {
             name,
             softWrap: false,
             overflow: TextOverflow.visible,
-            style: const TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w600, color: _gray700),
+            style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.gray700),
           ),
         ),
         Flexible(
@@ -404,7 +395,7 @@ class _HistoryChipState extends State<HistoryChip> {
             DifyI18n.tr('common', key),
             softWrap: false,
             overflow: TextOverflow.visible,
-            style: const TextStyle(fontSize: 14, height: 20 / 14, color: _gray700),
+            style: difyTextStyle(DifyType.systemMdRegular, DifyColors.gray700),
           ),
         ),
       ],
@@ -416,14 +407,16 @@ class _HistoryChipState extends State<HistoryChip> {
           height: 24,
           padding: const EdgeInsets.only(left: 4, right: 2),
           decoration: BoxDecoration(
-            color: hovered || _open ? const Color(0xFFFCE7F6) : const Color(0xFFFDF2FA),
+            color: hovered || _open ? DifyPromptBlockColors.historyBgHover : DifyPromptBlockColors.historyBg,
             borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: widget.selected ? const Color(0xFFF670C7) : const Color(0x00000000)),
+            border: Border.all(
+              color: widget.selected ? DifyPromptBlockColors.historyBorderSelected : Colors.transparent,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const DifyIcon('vender/solid/general/message-clock-circle', size: 14, color: _pink),
+              DifyIcon('vender/solid/general/message-clock-circle', size: 14, color: _pink),
               const SizedBox(width: 4),
               Text(DifyI18n.tr('common', 'promptEditor.history.item.title'), style: _xsMedium(_pink)),
               const SizedBox(width: 4),
@@ -444,18 +437,18 @@ class _HistoryChipState extends State<HistoryChip> {
                       color: _open
                           ? _pink
                           : hovered
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
+                          ? DifyTailwind.white
+                          : DifyTailwind.white.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(DifyRadius.sm),
                       boxShadow: hovered && !_open ? DifyShadows.xs : null,
                     ),
-                    child: Center(child: RemixIcon('more-fill', size: 12, color: _open ? Colors.white : _pink)),
+                    child: Center(child: RemixIcon('more-fill', size: 12, color: _open ? DifyTailwind.white : _pink)),
                   ),
                 ),
                 content: Container(
                   width: 360,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: DifyTailwind.white,
                     borderRadius: BorderRadius.circular(DifyRadius.xl),
                     boxShadow: DifyShadows.lg,
                   ),
@@ -472,7 +465,7 @@ class _HistoryChipState extends State<HistoryChip> {
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Text(
                                 DifyI18n.tr('common', 'promptEditor.history.modal.title'),
-                                style: _xsMedium(_gray500),
+                                style: _xsMedium(DifyColors.gray500),
                               ),
                             ),
                             roleRow(role.user, 'promptEditor.history.modal.user'),
@@ -484,12 +477,12 @@ class _HistoryChipState extends State<HistoryChip> {
                         onTap: widget.config.onEditRole,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: const BoxDecoration(
-                            border: Border(top: BorderSide(color: Color(0x0D000000))),
+                          decoration: BoxDecoration(
+                            border: Border(top: BorderSide(color: DifyTailwind.black.withValues(alpha: 0.05))),
                           ),
                           child: Text(
                             DifyI18n.tr('common', 'promptEditor.history.modal.edit'),
-                            style: const TextStyle(fontSize: 12, height: 16 / 12, color: _primary600),
+                            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.primary600),
                           ),
                         ),
                       ),
@@ -513,7 +506,7 @@ class QueryChip extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  static const _text = Color(0xFFEC4A0A);
+  static Color get _text => DifyPromptBlockColors.query;
 
   @override
   Widget build(BuildContext context) {
@@ -525,14 +518,14 @@ class QueryChip extends StatelessWidget {
           height: 24,
           padding: const EdgeInsets.only(left: 4, right: 2),
           decoration: BoxDecoration(
-            color: hovered ? const Color(0xFFFFEAD5) : const Color(0xFFFFF6ED),
+            color: hovered ? DifyPromptBlockColors.queryBgHover : DifyPromptBlockColors.queryBg,
             borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: selected ? const Color(0xFFFD853A) : const Color(0x00000000)),
+            border: Border.all(color: selected ? DifyPromptBlockColors.queryAccent : Colors.transparent),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const DifyIcon('vender/solid/users/user-edit-02', size: 14, color: Color(0xFFFD853A)),
+              DifyIcon('vender/solid/users/user-edit-02', size: 14, color: DifyPromptBlockColors.queryAccent),
               const SizedBox(width: 4),
               Text('{{', style: faint),
               Text(DifyI18n.tr('common', 'promptEditor.query.item.title'), style: _xsMedium(_text)),
@@ -674,7 +667,7 @@ class RequestUrlChip extends StatelessWidget {
     color: DifyColors.utilColorsVioletViolet600,
     selected: selected,
     onTap: onTap,
-    hoverBorder: const Color(0xFF7839EE),
+    hoverBorder: DifyPromptBlockColors.requestUrlBorderHover,
     hoverBackground: false,
     padding: const EdgeInsets.symmetric(horizontal: 4),
   );

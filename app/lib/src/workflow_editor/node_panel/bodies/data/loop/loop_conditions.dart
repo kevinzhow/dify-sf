@@ -344,11 +344,9 @@ class ConditionList extends StatelessWidget {
                             children: [
                               Text(
                                 logicalOperator?.toUpperCase() ?? '',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  height: 12 / 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: DifyColors.textAccentSecondary,
+                                style: difyTextStyle(
+                                  DifyType.system2xsSemiboldUppercase,
+                                  DifyColors.textAccentSecondary,
                                 ),
                               ),
                               const SizedBox(width: 2),
@@ -558,7 +556,7 @@ class _ConditionItemState extends State<ConditionItem> {
                 options: selectOptions,
                 placeholder: cm('placeholder.select'),
                 paddingX: 8,
-                textStyle: const TextStyle(fontSize: 12, height: 16 / 12),
+                textStyle: DifyType.systemXsRegular.style,
                 onChanged: _updateValue,
               ),
             ),
@@ -872,7 +870,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
   Widget build(BuildContext context) {
     final w = widget;
     String cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-    final placeholder = TextStyle(fontSize: 13, color: DifyColors.componentsInputTextPlaceholder);
+    final placeholder = difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextPlaceholder);
     return Row(
       children: [
         DifyDropdownMenu(
@@ -978,7 +976,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
                       focusNode: _focus,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.eE+-]'))],
-                      style: TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled),
+                      style: difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextFilled),
                       cursorWidth: 1,
                       decoration: InputDecoration(
                         isCollapsed: true,

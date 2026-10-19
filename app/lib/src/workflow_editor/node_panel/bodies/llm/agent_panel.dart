@@ -535,7 +535,7 @@ class _ProviderIcon extends StatelessWidget {
       child = Container(
         color: _hex(jsStr(i['background'])) ?? DifyColors.stateBaseHover,
         alignment: Alignment.center,
-        child: Text('${i['content'] ?? ''}', style: TextStyle(fontSize: size * 0.6, height: 1)),
+        child: Text('${i['content'] ?? ''}', style: difyEmojiTextStyle(size * 0.6)),
       );
     } else {
       child = ColoredBox(color: DifyColors.stateBaseHover);

@@ -110,18 +110,13 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               // `text-[13px]` on the inherited 1.5 line height.
-                              style: TextStyle(
-                                fontSize: 13,
-                                height: 1.5,
-                                fontWeight: FontWeight.w500,
-                                color: DifyColors.textPrimary,
-                              ),
+                              style: difyTextStyle(DifyTw.text13MediumLeading150, DifyColors.textPrimary),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _cap('${p['type'] ?? ''}'),
-                            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                           ),
                         ],
                       ),
@@ -131,14 +126,14 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                             _w('$_p.addExtractParameterContent.required').toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                           )
                         : const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${p['description'] ?? ''}',
-                    style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                    style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                   ),
                 ],
               ),
@@ -405,7 +400,7 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         _w('$_p.addExtractParameterContent.requiredContent'),
-                        style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                        style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                       ),
                     ),
                     DifySwitch(

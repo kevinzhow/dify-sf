@@ -118,7 +118,7 @@ class _StartPanelState extends State<_StartPanel> {
 
   static Widget _sysType(String text) => Text(
     text,
-    style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+    style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
   );
 }
 
@@ -243,7 +243,7 @@ class _StartVarListState extends State<StartVarList> {
         ),
         child: Text(
           tw('nodes.start.noVarTip'),
-          style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+          style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
         ),
       );
     }
@@ -408,7 +408,7 @@ class _StartVarItemState extends State<StartVarItem> {
     final w = widget;
     final variable = jsKey(w.payload['variable']);
     final label = jsStr(w.payload['label']) ?? '';
-    const medium = TextStyle(fontSize: 13, height: 16 / 13, fontWeight: FontWeight.w500);
+    final medium = DifyType.systemSmMedium.style;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -450,7 +450,7 @@ class _StartVarItemState extends State<StartVarItem> {
                   if (label.isNotEmpty) ...[
                     Text(
                       '·',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textQuaternary),
+                      style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textQuaternary),
                     ),
                     Flexible(
                       child: ConstrainedBox(
@@ -480,7 +480,7 @@ class _StartVarItemState extends State<StartVarItem> {
                     tw('nodes.start.required'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                    style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                   ),
                 ),
               InputVarTypeIcon(type: jsKey(w.payload['type']), size: 14),

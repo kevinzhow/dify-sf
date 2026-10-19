@@ -327,7 +327,7 @@ class _LlmPanelState extends State<LlmPanel> {
             if (prompt.shouldShowContextTip)
               Text(
                 _w('nodes.llm.notSetContextInPromptTip'),
-                style: const TextStyle(fontSize: 12, height: 18 / 12, color: Color(0xFFDC6803)),
+                style: difyTextStyle(DifyTw.textXsLeading18, DifyLlmPanelColors.warningTip),
               ),
           ],
         ),
@@ -631,7 +631,7 @@ class PanelMemorySection extends StatelessWidget {
                 if (!isSnippetFlow && query.isNotEmpty && !query.contains('{{#sys.query#}}'))
                   Text(
                     _w('nodes.llm.sysQueryInUser'),
-                    style: const TextStyle(fontSize: 12, height: 18 / 12, color: Color(0xFFDC6803)),
+                    style: difyTextStyle(DifyTw.textXsLeading18, DifyLlmPanelColors.warningTip),
                   ),
               ],
             ),

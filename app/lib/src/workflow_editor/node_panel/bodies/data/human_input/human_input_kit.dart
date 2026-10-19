@@ -109,7 +109,7 @@ Widget? methodTile(String type, {double iconSize = 14, double padding = 2, bool 
       DifyColors.componentsIconBgBlueSolid,
       RemixIcon('mail-send-fill', size: iconSize, color: DifyColors.textPrimaryOnSurface),
     ),
-    _ => (const Color(0x00000000), const SizedBox.shrink()),
+    _ => (Colors.transparent, const SizedBox.shrink()),
   };
   if (type != DeliveryMethodType.webapp && type != DeliveryMethodType.email) return null;
   return Opacity(

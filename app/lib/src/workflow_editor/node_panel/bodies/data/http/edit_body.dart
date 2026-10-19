@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../../../design/dify_tokens.g.dart';
+import '../../../../../design/widgets/widgets.dart';
 import '../../../../../workflow/dify_json.dart';
 import '../../../../panel_fields/panel_fields.dart';
 import '../../../../prompt_editor/prompt_editor.dart';
@@ -160,7 +161,7 @@ class BodyTypeRadio extends StatelessWidget {
                 ExcludeSemantics(
                   child: Text(
                     label,
-                    style: TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary),
+                    style: difyTextStyle(DifyTw.text13Leading18, DifyColors.textSecondary),
                   ),
                 ),
               ],

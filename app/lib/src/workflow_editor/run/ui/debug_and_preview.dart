@@ -37,16 +37,16 @@ class DebugEmpty extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: DifyIcon('vender/line/communication/chat-bot-slim', size: 48, color: Color(0xFFD0D5DD)),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: DifyIcon('vender/line/communication/chat-bot-slim', size: 48, color: DifyTailwind.gray300),
         ),
         SizedBox(
           width: 256,
           child: Text(
             _tw('common.previewPlaceholder'),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF98A2B3)),
+            style: difyTextStyle(DifyTw.text13, DifyTailwind.gray400),
           ),
         ),
       ],
@@ -686,8 +686,10 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
                                   Expanded(
                                     child: Container(
                                       height: 1,
-                                      decoration: const BoxDecoration(
-                                        gradient: LinearGradient(colors: [Color(0x14101828), Color(0xFFFFFFFF)]),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [DifyRunDividerColors.start, DifyTailwind.white],
+                                        ),
                                       ),
                                     ),
                                   ),

@@ -221,7 +221,7 @@ class _NoteEditorState extends State<NoteEditor> {
             expands: true,
             keyboardType: TextInputType.multiline,
             style: style,
-            cursorColor: const Color(0xFF155EEF), // caret-primary-600
+            cursorColor: DifyColors.primary600, // caret-primary-600
             cursorWidth: 1,
             decoration: const InputDecoration.collapsed(hintText: null),
           ),
@@ -474,12 +474,8 @@ class _LinkEditorState extends State<LinkEditor> {
     },
   );
 
-  TextStyle get _inputStyle => TextStyle(
-    fontFamily: cardFontFamily,
-    fontSize: 13,
-    height: 16 / 13,
-    color: DifyColors.componentsInputTextFilled,
-  );
+  // `text-[13px]` in the 16 px line of the `h-6 p-1` input.
+  TextStyle get _inputStyle => difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
 
   /// `Button variant="ghost" size="small" className="px-2 text-text-tertiary"` with a 12 px icon.
   Widget _ghost(String icon, String label, VoidCallback onPressed) => DifyPressable(

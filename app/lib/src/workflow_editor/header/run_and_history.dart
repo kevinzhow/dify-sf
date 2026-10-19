@@ -87,12 +87,8 @@ class PreviewMode extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 _tr('common.debugAndPreview'),
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 16 / 13,
-                  fontWeight: FontWeight.w500,
-                  color: DifyColors.componentsButtonSecondaryAccentText,
-                ),
+                // `text-[13px] font-medium`, centred in the h-7 button (the 16 px line lays out as the inherited one).
+                style: difyTextStyle(DifyTw.text13MediumLeading16, DifyColors.componentsButtonSecondaryAccentText),
               ),
             ],
           ),

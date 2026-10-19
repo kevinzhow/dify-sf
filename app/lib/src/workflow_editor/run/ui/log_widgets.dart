@@ -808,8 +808,8 @@ class AgentResultPanel extends StatelessWidget {
               ),
               foregroundDecoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(DifyRadius.xl),
-                gradient: const LinearGradient(
-                  colors: [Color(0x1AF79009), Color(0x00FFFFFF)],
+                gradient: LinearGradient(
+                  colors: [DifyRunDividerColors.warningStart, DifyRunDividerColors.transparentWhite],
                 ),
               ),
               child: Row(

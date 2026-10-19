@@ -363,7 +363,7 @@ class _KeyValueInputState extends State<KeyValueInput> {
           padding: const EdgeInsets.only(left: 2, top: 1),
           child: Text(
             w.placeholder,
-            style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textQuaternary),
+            style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textQuaternary),
           ),
         );
       }

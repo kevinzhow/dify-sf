@@ -237,7 +237,7 @@ class _PillState extends State<_Pill> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    final style = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: DifyColors.textTertiary);
+    final style = difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary);
     return Semantics(
       button: !w.readOnly,
       child: MouseRegion(
@@ -339,12 +339,7 @@ class ApiInput extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 2),
                 child: Text(
                   method.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 18 / 12,
-                    fontWeight: FontWeight.w500,
-                    color: DifyColors.textPrimary,
-                  ),
+                  style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textPrimary),
                 ),
               ),
               if (!readonly)

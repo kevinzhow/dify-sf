@@ -282,7 +282,7 @@ class _StyleTile extends StatelessWidget {
         color: hovered ? DifyColors.backgroundSectionBurn : DifyColors.backgroundSection,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
         border: Border.all(
-          color: selected ? DifyColors.componentsOptionCardOptionSelectedBorder : const Color(0x00000000),
+          color: selected ? DifyColors.componentsOptionCardOptionSelectedBorder : Colors.transparent,
           width: 1.5,
         ),
       ),

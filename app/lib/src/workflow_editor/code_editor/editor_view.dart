@@ -18,7 +18,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Scrollbar, ScrollbarTheme, ScrollbarThemeData;
+import 'package:flutter/material.dart' show Colors, Scrollbar, ScrollbarTheme, ScrollbarThemeData;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -446,8 +446,8 @@ class CodeEditorViewState extends State<CodeEditorView> {
           style: m.style,
           strutStyle: m.strut,
           textScaler: TextScaler.noScaling,
-          cursorColor: const Color(0x00000000),
-          backgroundCursorColor: const Color(0x00000000),
+          cursorColor: Colors.transparent,
+          backgroundCursorColor: Colors.transparent,
           showCursor: false,
           maxLines: null,
           keyboardType: TextInputType.multiline,

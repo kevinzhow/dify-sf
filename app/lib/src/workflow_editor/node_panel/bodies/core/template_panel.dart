@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
+import '../../../../design/widgets/widgets.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../../workflow/output_vars.dart' show VarType;
 import '../../../code_editor/code_editor.dart';
@@ -208,12 +209,7 @@ class _JinjaTip extends StatelessWidget {
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 18 / 12,
-                          fontWeight: FontWeight.w400,
-                          color: DifyColors.textTertiary,
-                        ),
+                        style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                       ),
                     ),
                     RemixIcon('question-line', size: 12, color: DifyColors.textTertiary),

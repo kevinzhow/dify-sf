@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -14,7 +15,7 @@ import '../../design/widgets/widgets.dart';
 import '../header/format.dart' as fmt;
 import '../header/online_users.dart' show getUserColor;
 import '../store/workflow_store_scope.dart';
-import 'comment_icon.dart' show CommentAvatar, primary600;
+import 'comment_icon.dart' show CommentAvatar;
 import 'comment_input.dart';
 import 'workflow_comment.dart';
 
@@ -48,7 +49,7 @@ class ThreadMessage extends StatelessWidget {
       spans.add(
         TextSpan(
           text: content.substring(s, e),
-          style: const TextStyle(color: primary600),
+          style: TextStyle(color: DifyColors.primary600),
         ),
       );
       at = e;
@@ -465,12 +466,7 @@ class _CommentThreadState extends State<CommentThread> {
           Expanded(
             child: Text(
               tw('comments.panelTitle').toUpperCase(),
-              style: TextStyle(
-                fontSize: 16,
-                height: 24 / 16,
-                fontWeight: FontWeight.w600,
-                color: DifyColors.textPrimary,
-              ),
+              style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
             ),
           ),
           Row(
@@ -609,7 +605,7 @@ class _CommentThreadState extends State<CommentThread> {
                         child: Center(
                           child: Text(
                             tw('comments.loading'),
-                            style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textTertiary),
+                            style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
                           ),
                         ),
                       ),
@@ -649,7 +645,7 @@ class _ItemState extends State<_Item> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: _hovered ? DifyColors.componentsPanelOnPanelItemBgHover : const Color(0x00000000),
+            color: _hovered ? DifyColors.componentsPanelOnPanelItemBgHover : Colors.transparent,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
           ),
           child: widget.child,
@@ -718,7 +714,7 @@ class _MenuButton extends StatelessWidget {
       decoration: BoxDecoration(color: hovered ? DifyColors.stateBaseHover : null, borderRadius: radius),
       child: Text(
         label,
-        style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
       ),
     ),
   );

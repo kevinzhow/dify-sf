@@ -18,12 +18,12 @@ import 'knowledge_base_logic.dart';
 // ---- OptionCard --------------------------------------------------------------------------------------------------
 
 /// The effect blobs of public/knowledge/option-card-effect-*.svg: a 28 px circle at (26, 26), blurred by 80 px.
-const _effects = {
-  'blue': (Color(0xFF6172F3), 0.5),
-  'blue-light': (Color(0xFF0BA5EC), 0.8),
-  'orange': (Color(0xFFEF6820), 0.8),
-  'purple': (Color(0xFF6938EF), 0.8),
-  'teal': (Color(0xFF0E9384), 0.8),
+Map<String, (Color, double)> get _effects => {
+  'blue': (DifyOptionCardEffectColors.blue, 0.5),
+  'blue-light': (DifyOptionCardEffectColors.blueLight, 0.8),
+  'orange': (DifyOptionCardEffectColors.orange, 0.8),
+  'purple': (DifyOptionCardEffectColors.purple, 0.8),
+  'teal': (DifyOptionCardEffectColors.teal, 0.8),
 };
 
 class _EffectPainter extends CustomPainter {
@@ -553,7 +553,7 @@ class KbTipCard extends StatelessWidget {
                             TextSpan(text: parts.first),
                             TextSpan(
                               text: 'Vision',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: DifyColors.textPrimary),
+                              style: difyTextStyle(DifyTw.fontSemibold, DifyColors.textPrimary),
                             ),
                             TextSpan(text: parts.sublist(1).join('Vision')),
                           ],
@@ -889,11 +889,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
                             renderI18nObject(g.provider.label, w.catalog.language),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: DifyColors.textTertiary,
-                            ),
+                            style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                           ),
                         ),
                         for (final m in g.models) _row(g.provider, m),

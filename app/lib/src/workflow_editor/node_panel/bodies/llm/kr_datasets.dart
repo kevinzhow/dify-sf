@@ -52,7 +52,7 @@ class DatasetIcon extends StatelessWidget {
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: isImage ? null : _hex(info['icon_background'], const Color(0xFFFFEAD5)),
+        color: isImage ? null : _hex(info['icon_background'], DifyAppIconColors.defaultBackground),
         borderRadius: BorderRadius.circular(radius),
       ),
       child: isImage && url != null && url.isNotEmpty
@@ -63,7 +63,7 @@ class DatasetIcon extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const SizedBox(),
             )
-          : Text(jsStr(info['icon']) ?? '', style: TextStyle(fontSize: size >= 24 ? 16 : 12, height: 1)),
+          : Text(jsStr(info['icon']) ?? '', style: difyEmojiTextStyle(size >= 24 ? 16 : 12)),
     );
   }
 }
@@ -504,11 +504,7 @@ class _DatasetOption extends StatelessWidget {
                       '${d['name'] ?? ''}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: DifyColors.textSecondary,
-                      ),
+                      style: difyTextStyle(DifyTw.text13Medium, DifyColors.textSecondary),
                     ),
                   ),
                 ),

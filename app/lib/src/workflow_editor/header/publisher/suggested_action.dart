@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
@@ -165,7 +166,7 @@ class SuggestedAction extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 40),
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: active ? DifyColors.stateBaseHover : const Color(0x00000000),
+            color: active ? DifyColors.stateBaseHover : Colors.transparent,
             borderRadius: radius,
             boxShadow: difyFocusRing(focused && (!disabled || focusableWhenDisabled)),
           ),

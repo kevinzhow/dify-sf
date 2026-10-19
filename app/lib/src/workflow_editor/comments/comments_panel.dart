@@ -223,7 +223,7 @@ class _FilterMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary);
+    final label = difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary);
     Widget option(String text, bool checked, VoidCallback onPressed) => DifyPressable(
       onPressed: onPressed,
       builder: (context, hovered, focused) => Container(
@@ -239,7 +239,7 @@ class _FilterMenu extends StatelessWidget {
         child: Row(
           children: [
             Expanded(child: Text(text, style: label)),
-            if (checked) const RemixIcon('check-line', size: 16, color: Color(0xFF155AEF)),
+            if (checked) RemixIcon('check-line', size: 16, color: DifyColors.primary600),
           ],
         ),
       ),

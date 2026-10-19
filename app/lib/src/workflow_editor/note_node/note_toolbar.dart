@@ -11,9 +11,6 @@ import 'note_editor.dart';
 
 String _tw(String key) => DifyI18n.tr('workflow', key);
 
-/// `text-primary-600`.
-const _primary600 = Color(0xFF155EEF);
-
 /// toolbar/index.tsx: the colour picker, font size, the formatting commands and the "…" menu, in
 /// `inline-flex items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg
 /// p-0.5 shadow-sm`. Taps on it leave the editor focused.
@@ -99,7 +96,7 @@ Widget _swatch(NoteTheme t) => Container(
   decoration: BoxDecoration(
     color: t.title,
     shape: BoxShape.circle,
-    border: Border.all(color: const Color(0x0D000000)),
+    border: Border.all(color: DifyTailwind.black.withValues(alpha: 0.05)),
   ),
 );
 
@@ -134,7 +131,7 @@ class _NoteColorPickerState extends State<NoteColorPicker> {
         height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: hovered || _open ? const Color(0x0D000000) : null,
+          color: hovered || _open ? DifyTailwind.black.withValues(alpha: 0.05) : null,
           borderRadius: BorderRadius.circular(DifyRadius.md),
         ),
         child: _swatch(widget.theme),
@@ -257,13 +254,8 @@ class _NoteFontSizeSelectorState extends State<NoteFontSizeSelector> {
                     const SizedBox(width: 4),
                     Text(
                       noteFontSizeLabel(size),
-                      style: TextStyle(
-                        fontFamily: cardFontFamily,
-                        fontSize: 13,
-                        height: 16 / 13,
-                        fontWeight: FontWeight.w500,
-                        color: color,
-                      ),
+                      // `text-[13px] font-medium` in the button's 16 px line.
+                      style: difyStyle(DifyType.systemSmMedium, color),
                     ),
                   ],
                 ),
@@ -398,7 +390,7 @@ class NoteCommand extends StatelessWidget {
                 type.icon,
                 size: 16,
                 color: active
-                    ? _primary600
+                    ? DifyColors.primary600
                     : hovered
                     ? DifyColors.textAccent
                     : DifyColors.textTertiary,

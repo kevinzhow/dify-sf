@@ -840,7 +840,7 @@ class _MixedVariableTextInputState extends State<MixedVariableTextInput> {
                 ? DifyColors.componentsInputBorderActive
                 : _hovered
                 ? DifyColors.componentsInputBorderHover
-                : const Color(0x00000000),
+                : Colors.transparent,
           ),
           boxShadow: _focused ? DifyShadows.xs : null,
         ),

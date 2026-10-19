@@ -466,7 +466,7 @@ class _AgentAvatar extends StatelessWidget {
       ),
       child: image
           ? BlockSelectorScope.of(context).iconBuilder?.call(context, a.icon, 32) ?? const SizedBox.shrink()
-          : Text(a.icon ?? '', style: const TextStyle(fontSize: 18, height: 1)),
+          : Text(a.icon ?? '', style: difyEmojiTextStyle(18)),
     );
   }
 }

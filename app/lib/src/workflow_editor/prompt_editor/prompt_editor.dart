@@ -990,7 +990,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
         ),
       },
       child: DefaultSelectionStyle(
-        selectionColor: chipSelected ? const Color(0x00000000) : const Color(0xFFB4D5FE),
+        selectionColor: chipSelected ? Colors.transparent : const Color(0xFFB4D5FE),
         child: TextField(
           controller: controller,
           focusNode: focusNode,

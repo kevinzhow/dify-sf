@@ -4,6 +4,7 @@ library;
 
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show Colors;
 
 import '../../../design/dify_icon.dart';
 import '../../../design/dify_tokens.g.dart';
@@ -211,7 +212,7 @@ class _ChatRecordState extends State<ChatRecord> {
       ),
       clipBehavior: Clip.antiAlias,
       child: !_fetched
-          ? const RunLoading(color: Color(0x00000000))
+          ? const RunLoading(color: Colors.transparent)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -222,12 +223,7 @@ class _ChatRecordState extends State<ChatRecord> {
                       Expanded(
                         child: Text(
                           'TEST CHAT${fmt.formatWorkflowRunIdentifier((history?['finished_at'] as num?)?.toInt())}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 24 / 16,
-                            fontWeight: FontWeight.w600,
-                            color: DifyColors.textPrimary,
-                          ),
+                          style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                         ),
                       ),
                       DifyPressable(
@@ -279,9 +275,9 @@ class _ChatRecordUserInputState extends State<ChatRecordUserInput> {
     if (widget.variables.isEmpty) return const SizedBox.shrink();
     return Container(
       decoration: BoxDecoration(
-        color: _expanded ? const Color(0xFFFFFFFF) : DifyColors.componentsPanelOnPanelItemBg,
+        color: _expanded ? DifyTailwind.white : DifyColors.componentsPanelOnPanelItemBg,
         borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: _expanded ? const Color(0x00000000) : DifyColors.componentsPanelBorderSubtle),
+        border: Border.all(color: _expanded ? Colors.transparent : DifyColors.componentsPanelBorderSubtle),
         boxShadow: _expanded ? DifyShadows.xs : null,
       ),
       child: Column(
@@ -306,10 +302,9 @@ class _ChatRecordUserInputState extends State<ChatRecordUserInput> {
                   ),
                   Text(
                     DifyI18n.tr('workflow', 'panel.userInputField').toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _expanded ? DifyColors.textSecondary : DifyColors.textAccentSecondary,
+                    style: difyTextStyle(
+                      DifyTw.text13Semibold,
+                      _expanded ? DifyColors.textSecondary : DifyColors.textAccentSecondary,
                     ),
                   ),
                 ],

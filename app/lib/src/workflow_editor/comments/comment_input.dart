@@ -13,7 +13,7 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../store/workflow_store.dart' show MousePosition;
-import 'comment_icon.dart' show CommentAvatar, primary500, primary600;
+import 'comment_icon.dart' show CommentAvatar;
 import 'workflow_comment.dart';
 
 String _tc(String key) => DifyI18n.tr('common', key);
@@ -75,7 +75,7 @@ class MentionTextController extends TextEditingController {
       spans.add(
         TextSpan(
           text: text.substring(s, e),
-          style: const TextStyle(color: primary600),
+          style: TextStyle(color: DifyColors.primary600),
         ),
       );
       at = e;
@@ -134,13 +134,10 @@ class _MentionInputState extends State<MentionInput> {
   List<String> _mentioned = [];
 
   // TextField takes the Material text theme, not the editor's DefaultTextStyle: the font is set here.
-  static TextStyle get _style => TextStyle(
+  // `body-lg-regular leading-6` (mention-input.tsx).
+  static TextStyle get _style => DifyType.bodyLgRegular.style.copyWith(
     fontFamily: cardFontFamily,
-    fontSize: 15,
     height: 24 / 15,
-    fontWeight: FontWeight.w400,
-    leadingDistribution: TextLeadingDistribution.even,
-    letterSpacing: 0,
     color: DifyColors.textPrimary,
   );
 
@@ -338,7 +335,7 @@ class _MentionInputState extends State<MentionInput> {
             focusNode: _focus,
             enabled: !off,
             style: _style,
-            cursorColor: primary500,
+            cursorColor: DifyColors.primary500,
             cursorWidth: 1,
             minLines: editing ? 4 : 1,
             maxLines: 4,
@@ -521,12 +518,7 @@ class _MentionRowState extends State<_MentionRow> {
                 widget.user.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 20 / 14,
-                  fontWeight: FontWeight.w500,
-                  color: DifyColors.textPrimary,
-                ),
+                style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
               ),
             ),
           ],
@@ -674,7 +666,7 @@ class _CommentInputState extends State<CommentInput> {
                 width: 32,
                 height: 32,
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(color: primary500, borderRadius: _teardrop),
+                decoration: BoxDecoration(color: DifyColors.primary500, borderRadius: _teardrop),
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   clipBehavior: Clip.antiAlias,

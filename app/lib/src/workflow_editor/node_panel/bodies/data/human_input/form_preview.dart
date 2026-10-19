@@ -215,10 +215,11 @@ class FormContentPreview extends StatelessWidget {
         ],
       );
     }
+    // web/app/styles/markdown.css: `.markdown-body h1` 18px, h2 16px, h3-h6 14px over streamdown's `font-semibold`.
     final style = switch (n.tagName) {
-      'h1' => const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
-      'h2' => const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-      'h3' || 'h4' || 'h5' || 'h6' => const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      'h1' => DifyMarkdownHeadingStyles.h1,
+      'h2' => DifyMarkdownHeadingStyles.h2,
+      'h3' || 'h4' || 'h5' || 'h6' => DifyMarkdownHeadingStyles.h3,
       _ => null,
     };
     return Padding(

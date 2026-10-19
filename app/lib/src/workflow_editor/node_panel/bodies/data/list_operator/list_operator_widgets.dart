@@ -73,7 +73,7 @@ class ConditionOperator extends StatelessWidget {
                       selected == null ? wf('nodes.ifElse.select') : labelOf(selected),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: color),
+                      style: difyTextStyle(DifyType.systemXsMedium, color),
                     ),
                   ),
                   RemixIcon('arrow-down-s-line', size: 14, color: color),
@@ -94,7 +94,7 @@ class ConditionOperator extends StatelessWidget {
                 closeOnClick: true,
                 child: Text(
                   labelOf(o),
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+                  style: difyTextStyle(DifyTw.text13Medium, DifyColors.textSecondary),
                 ),
               ),
           ],
@@ -358,7 +358,7 @@ class FilterCondition extends StatelessWidget {
         options: [for (final (v, k) in options) (value: v, label: wf('nodes.ifElse.optionName.$k'))],
         placeholder: 'Select value',
         disabled: readOnly,
-        textStyle: const TextStyle(fontSize: 13, height: 16 / 13),
+        textStyle: DifyType.systemSmRegular.style,
         onChanged: (v) => set('value', v),
       );
     }

@@ -162,7 +162,7 @@ class _InspectTextareaState extends State<InspectTextarea> {
                         ? DifyColors.componentsInputBorderActive
                         : hovered
                         ? DifyColors.componentsInputBorderHover
-                        : const Color(0x00000000),
+                        : Colors.transparent,
                   ),
             boxShadow: focused && !w.bare ? DifyShadows.xs : null,
           ),
@@ -179,7 +179,7 @@ class _InspectTextareaState extends State<InspectTextarea> {
               textAlignVertical: TextAlignVertical.top,
               keyboardType: TextInputType.multiline,
               style: style,
-              cursorColor: const Color(0xFF155EEF),
+              cursorColor: DifyColors.primary600, // caret-primary-600
               cursorWidth: 1,
               decoration: InputDecoration(
                 isCollapsed: true,
@@ -669,21 +669,21 @@ class _FileItem extends StatelessWidget {
   const image = ['jpg', 'jpeg', 'png', 'webp', 'svg'], video = ['mp4', 'mov', 'mpeg', 'webm'];
   const audio = ['mp3', 'm4a', 'wav', 'amr', 'mpga'];
   return switch (ext) {
-    'gif' => ('file-gif-fill', const Color(0xFF00B2EA)),
-    _ when image.contains(ext) => ('file-image-fill', const Color(0xFF00B2EA)),
-    _ when video.contains(ext) => ('file-video-fill', const Color(0xFF844FDA)),
-    _ when audio.contains(ext) => ('file-music-fill', const Color(0xFFFF3093)),
-    'html' => ('file-code-fill', const Color(0xFFBCC0D1)),
-    'pdf' => ('file-pdf-2-fill', const Color(0xFFEA3434)),
-    'md' || 'markdown' || 'mdx' => ('markdown-fill', const Color(0xFF309BEC)),
-    'xlsx' || 'xls' => ('file-excel-fill', const Color(0xFF01AC49)),
-    'docx' || 'doc' => ('file-word-fill', const Color(0xFF2684FF)),
-    'pptx' || 'ppt' => ('file-ppt-2-fill', const Color(0xFFFF650F)),
+    'gif' => ('file-gif-fill', DifyFileTypeColors.image),
+    _ when image.contains(ext) => ('file-image-fill', DifyFileTypeColors.image),
+    _ when video.contains(ext) => ('file-video-fill', DifyFileTypeColors.video),
+    _ when audio.contains(ext) => ('file-music-fill', DifyFileTypeColors.audio),
+    'html' => ('file-code-fill', DifyFileTypeColors.code),
+    'pdf' => ('file-pdf-2-fill', DifyFileTypeColors.pdf),
+    'md' || 'markdown' || 'mdx' => ('markdown-fill', DifyFileTypeColors.markdown),
+    'xlsx' || 'xls' => ('file-excel-fill', DifyFileTypeColors.excel),
+    'docx' || 'doc' => ('file-word-fill', DifyFileTypeColors.word),
+    'pptx' || 'ppt' => ('file-ppt-2-fill', DifyFileTypeColors.ppt),
     'txt' || 'csv' || 'eml' || 'msg' || 'xml' || 'epub' || 'htm' || 'properties' => (
       'file-text-fill',
-      const Color(0xFF6F8BB5),
+      DifyFileTypeColors.document,
     ),
-    _ => ('file-3-fill', const Color(0xFFBCC0D1)),
+    _ => ('file-3-fill', DifyFileTypeColors.code),
   };
 }
 

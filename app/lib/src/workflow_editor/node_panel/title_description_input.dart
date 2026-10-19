@@ -186,7 +186,7 @@ class _DescriptionInputState extends State<DescriptionInput> with _Draft<Descrip
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textPrimary);
+    final style = difyTextStyle(DifyTw.textXsLeading18, DifyColors.textPrimary);
     return Container(
       constraints: const BoxConstraints(maxHeight: 60),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -199,7 +199,7 @@ class _DescriptionInputState extends State<DescriptionInput> with _Draft<Descrip
         controller: controller,
         focusNode: focus,
         style: style,
-        cursorColor: const Color(0xFF295EFF),
+        cursorColor: DifyCaretColors.tagInput,
         cursorWidth: 1,
         minLines: 1,
         maxLines: null,

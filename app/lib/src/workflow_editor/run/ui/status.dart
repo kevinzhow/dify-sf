@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../design/css_metrics.dart';
 import '../../../design/dify_tokens.g.dart';
+import '../../../design/dify_run_status.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../header/format.dart' as fmt;
 import '../../../design/widgets/widgets.dart';
@@ -17,32 +18,32 @@ String _tr(String key) => DifyI18n.tr('run-log', key);
 /// The status look: border, background, line colour (the bg-line-*.svg stroke), text colour, inset glow colour.
 ({Color border, Color bg, Color line, Color text, Color glow})? _look(String status) => switch (status) {
   'succeeded' || 'partial-succeeded' => (
-    border: const Color(0xCC17B26A),
+    border: DifyRunStatusColors.successBorder,
     bg: DifyColors.workflowDisplaySuccessBg,
-    line: const Color(0xFF17B26A),
+    line: DifyRunStatusColors.success,
     text: DifyColors.textSuccess,
-    glow: const Color(0x3317B26A),
+    glow: DifyRunStatusColors.successGlow,
   ),
   'failed' => (
-    border: const Color(0xCCF04438),
+    border: DifyRunStatusColors.errorBorder,
     bg: DifyColors.workflowDisplayErrorBg,
-    line: const Color(0xFFF04438),
+    line: DifyRunStatusColors.error,
     text: DifyColors.textWarning,
-    glow: const Color(0x33F04438),
+    glow: DifyRunStatusColors.errorGlow,
   ),
   'stopped' || 'paused' || 'exception' => (
-    border: const Color(0xCCF79009),
+    border: DifyRunStatusColors.warningBorder,
     bg: DifyColors.workflowDisplayWarningBg,
-    line: const Color(0xFFF79009),
+    line: DifyRunStatusColors.warning,
     text: DifyColors.textDestructive,
-    glow: const Color(0x33F79009),
+    glow: DifyRunStatusColors.warningGlow,
   ),
   'running' => (
-    border: const Color(0xCC0BA5EC),
+    border: DifyRunStatusColors.runningBorder,
     bg: DifyColors.workflowDisplayNormalBg,
-    line: const Color(0xFF0BA5EC),
+    line: DifyRunStatusColors.running,
     text: DifyColors.utilColorsBlueLightBlueLight600,
-    glow: const Color(0x330BA5EC),
+    glow: DifyRunStatusColors.runningGlow,
   ),
   _ => null,
 };
@@ -78,14 +79,8 @@ class _StatusContainerState extends State<StatusContainer> {
         boxShadow: look == null
             ? null
             : DifyColors.isDark
-            ? const [
-                BoxShadow(offset: Offset(0, 1), blurRadius: 1.7321, color: Color(0x1A000000)),
-                BoxShadow(spreadRadius: 1, color: Color(0xF218181B)),
-              ]
-            : const [
-                BoxShadow(offset: Offset(0, 1), blurRadius: 1.7321, color: Color(0x0D09090B)),
-                BoxShadow(spreadRadius: 1, color: Color(0x0D000000)),
-              ],
+            ? DifyRunStatusShadows.dark
+            : DifyRunStatusShadows.light,
       ),
       foregroundDecoration: null,
       child: CustomPaint(
@@ -148,8 +143,8 @@ class _StatusBackgroundPainter extends CustomPainter {
     }
 
     inset(const Offset(0, 2), 24, dark ? glow.withValues(alpha: 0.25) : glow);
-    inset(const Offset(0, 1), 3, dark ? const Color(0x66000000) : const Color(0x1F000000));
-    inset(const Offset(2, 2), 0, dark ? const Color(0x1FFFFFFF) : const Color(0x80FFFFFF));
+    inset(const Offset(0, 1), 3, DifyRunStatusColors.innerShade(dark));
+    inset(const Offset(2, 2), 0, DifyRunStatusColors.innerLight(dark));
     // highlight.svg at the top left, `w-[65%] h-12.5`, no repeat.
     canvas
       ..save()
@@ -166,9 +161,7 @@ class _StatusBackgroundPainter extends CustomPainter {
       h,
       Paint()
         ..shader = LinearGradient(
-          colors: dark
-              ? const [Color.fromRGBO(255, 255, 255, 0.015), Color.fromRGBO(255, 255, 255, 0.025)]
-              : const [Color(0x0FFFFFFF), Color(0x40FFFFFF)],
+          colors: DifyRunStatusColors.highlight(dark),
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ).createShader(Rect.fromLTWH(box.left, box.top, 168, 23)),

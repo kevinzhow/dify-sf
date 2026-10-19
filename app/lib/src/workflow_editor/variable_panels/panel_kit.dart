@@ -450,7 +450,7 @@ class _PlainTextareaState extends State<PlainTextarea> {
                 ? DifyColors.componentsInputBorderActive
                 : _hovered
                 ? DifyColors.componentsInputBorderHover
-                : const Color(0x00000000),
+                : Colors.transparent,
           ),
           boxShadow: focused ? DifyShadows.xs : null,
         ),
@@ -462,7 +462,7 @@ class _PlainTextareaState extends State<PlainTextarea> {
           maxLines: null,
           textAlignVertical: TextAlignVertical.top,
           style: style,
-          cursorColor: const Color(0xFF155EEF),
+          cursorColor: DifyColors.primary600, // caret-primary-600
           cursorWidth: 1,
           decoration: InputDecoration(
             isCollapsed: true,

@@ -84,7 +84,7 @@ class _PromptMenuItemState extends State<PromptMenuItem> {
               w.title,
               softWrap: false,
               overflow: TextOverflow.visible,
-              style: TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary),
+              style: difyTextStyle(DifyTw.text13Leading18, DifyColors.textSecondary),
             ),
           ),
         ],
@@ -148,7 +148,7 @@ class _VariableMenuItemState extends State<VariableMenuItem> {
         after = w.title.substring(m.end);
       }
     }
-    final style = TextStyle(fontSize: 13, height: 18 / 13, color: DifyColors.textSecondary);
+    final style = difyTextStyle(DifyTw.text13Leading18, DifyColors.textSecondary);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
@@ -300,10 +300,12 @@ class NewAgentOutputAction extends StatelessWidget {
 
 /// The icons of the special-block options.
 abstract final class PickerIcons {
-  static const context = DifyIcon('vender/solid/files/file-05', size: 16, color: Color(0xFF6938EF));
-  static const query = DifyIcon('vender/solid/users/user-edit-02', size: 16, color: Color(0xFFFD853A));
+  static DifyIcon get context => DifyIcon('vender/solid/files/file-05', size: 16, color: DifyPromptBlockColors.context);
+  static DifyIcon get query =>
+      DifyIcon('vender/solid/users/user-edit-02', size: 16, color: DifyPromptBlockColors.queryAccent);
   static RemixIcon get requestUrl => RemixIcon('global-line', size: 16, color: DifyColors.utilColorsVioletViolet600);
-  static const history = DifyIcon('vender/solid/general/message-clock-circle', size: 16, color: Color(0xFFDD2590));
+  static DifyIcon get history =>
+      DifyIcon('vender/solid/general/message-clock-circle', size: 16, color: DifyPromptBlockColors.history);
   static DifyIcon get variable =>
       DifyIcon('vender/line/development/brackets-x', size: 14, color: DifyColors.textAccent);
   static DifyIcon get tool => DifyIcon('vender/solid/general/tool-03', size: 14, color: DifyColors.textAccent);
@@ -322,13 +324,13 @@ class PickerAppIcon extends StatelessWidget {
     final bg = background;
     final color = bg != null && bg.startsWith('#') && (bg.length == 7)
         ? Color(0xFF000000 | int.parse(bg.substring(1), radix: 16))
-        : const Color(0xFFFFEAD5);
+        : DifyAppIconColors.defaultBackground;
     return Container(
       width: 14,
       height: 14,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(DifyRadius.sm)),
-      child: Text(icon ?? '', style: const TextStyle(fontSize: 9, height: 1)),
+      child: Text(icon ?? '', style: difyEmojiTextStyle(9)),
     );
   }
 }

@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show Colors;
 
 import '../../../design/css_metrics.dart';
 import '../../../design/dify_icon.dart';
@@ -70,9 +71,7 @@ DifyTab runPanelTab({
   bool disabled = false,
   bool uppercaseStyle = false,
 }) {
-  final style = uppercaseStyle
-      ? DifyType.systemSmSemiboldUppercase.style
-      : const TextStyle(fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w600);
+  final style = uppercaseStyle ? DifyType.systemSmSemiboldUppercase.style : DifyTw.text13SemiboldLeading18.style;
   final color = active ? (uppercaseStyle ? DifyColors.textPrimary : DifyColors.textSecondary) : DifyColors.textTertiary;
   return DifyTab(
     active: active,
@@ -90,7 +89,7 @@ DifyTab runPanelTab({
               width: 2,
               color: active
                   ? (uppercaseStyle ? DifyColors.utilColorsBlueBrandBlueBrand600 : DifyColors.primary600)
-                  : const Color(0x00000000),
+                  : Colors.transparent,
             ),
           ),
           boxShadow: difyFocusRing(focused),
@@ -457,12 +456,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
                         Expanded(
                           child: Text(
                             'Test Run${fmt.formatWorkflowRunIdentifier((result?['finished_at'] as num?)?.toInt(), (result?['status'] as String?) ?? 'Running')}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              height: 24 / 16,
-                              fontWeight: FontWeight.w600,
-                              color: DifyColors.textPrimary,
-                            ),
+                            style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                           ),
                         ),
                         DifyPressable(

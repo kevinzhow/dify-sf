@@ -71,14 +71,14 @@ class SmallBlockIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: blockColor(type),
         borderRadius: BorderRadius.circular(xs ? 5 : DifyRadius.md),
-        border: Border.all(color: const Color(0x05FFFFFF), width: 0.5),
+        border: Border.all(color: DifyTailwind.white.withValues(alpha: 0.02), width: 0.5), // border-white/2
         boxShadow: DifyShadows.xs,
       ),
       child: Center(
         child: DifyIcon(
           type == 'start' ? 'vender/workflow/user-input' : blockGlyph(type),
           size: xs ? 12 : 14,
-          color: const Color(0xFFFFFFFF),
+          color: DifyTailwind.white, // text-white
         ),
       ),
     );
@@ -358,7 +358,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
               child: OverflowBox(
                 minWidth: c.maxWidth + 8,
                 maxWidth: c.maxWidth + 8,
-                child: const ColoredBox(color: Color(0x0D000000)),
+                child: ColoredBox(color: DifyTailwind.black.withValues(alpha: 0.05)),
               ),
             ),
           ),
@@ -379,12 +379,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
             padding: const EdgeInsets.only(top: 8, left: 12),
             child: Text(
               DifyI18n.tr('workflow', 'common.noVar').toUpperCase(),
-              style: TextStyle(
-                fontSize: 12,
-                height: 18 / 12,
-                fontWeight: FontWeight.w500,
-                color: DifyColors.utilColorsGrayGray500,
-              ),
+              style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.gray500), // text-gray-500
             ),
           ),
         if (w.showManageInputField) ManageInputField(onManage: w.onManageInputField ?? () {}),
@@ -631,7 +626,7 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
               const SizedBox(width: 4),
               Text(
                 cssCapitalize(type ?? ''),
-                style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
               if (_hasPanel)
                 GestureDetector(

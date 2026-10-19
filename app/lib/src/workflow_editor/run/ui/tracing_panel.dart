@@ -125,8 +125,10 @@ class _TracingPanelState extends State<TracingPanel> {
                       child: Container(
                         height: 1,
                         margin: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(colors: [Color(0x14101828), Color(0x00FFFFFF)]),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [DifyRunDividerColors.start, DifyRunDividerColors.transparentWhite],
+                          ),
                         ),
                       ),
                     ),

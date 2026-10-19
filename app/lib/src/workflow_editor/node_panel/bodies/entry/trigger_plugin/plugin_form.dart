@@ -7,6 +7,7 @@
 /// fetched dynamic options (the host's options, else the schema's, are shown).
 library;
 
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 
 import '../../../../../design/dify_icon.dart';
@@ -549,7 +550,7 @@ class _MixedVariableTextInputState extends State<MixedVariableTextInput> {
                 ? DifyColors.componentsInputBorderActive
                 : _hovered
                 ? DifyColors.componentsInputBorderHover
-                : const Color(0x00000000),
+                : Colors.transparent,
           ),
           boxShadow: focused ? DifyShadows.xs : null,
         ),

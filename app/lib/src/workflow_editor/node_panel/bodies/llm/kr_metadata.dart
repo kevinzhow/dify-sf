@@ -122,7 +122,7 @@ class _OptionRow extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+        style: difyTextStyle(DifyTw.text13Medium, DifyColors.textSecondary),
       ),
     ),
   );
@@ -609,11 +609,7 @@ class ConditionList extends StatelessWidget {
                       children: [
                         Text(
                           op.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: DifyColors.textAccentSecondary,
-                          ),
+                          style: difyTextStyle(DifyTw.text2xsSemibold, DifyColors.textAccentSecondary),
                         ),
                         const SizedBox(width: 2),
                         RemixIcon('loop-left-line', size: 12, color: DifyColors.textAccentSecondary),

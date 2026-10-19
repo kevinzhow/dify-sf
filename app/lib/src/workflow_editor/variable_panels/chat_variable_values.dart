@@ -14,10 +14,6 @@ import 'app_variables.dart';
 import 'chat_variable_state.dart';
 import 'panel_kit.dart';
 
-/// Tailwind's gray-100 / gray-200.
-const _gray100 = Color(0xFFF2F4F7);
-const _gray200 = Color(0xFFEAECF0);
-
 /// VariableTypeSelector: the type select of the modal (a select on the input colours, its popup [popupWidth]
 /// wide), or [inCell] the compact one of an object row (`py-0.5 px-2`, `system-xs-regular text-text-secondary`,
 /// hover `bg-state-base-hover`).
@@ -98,7 +94,7 @@ class _RowRemoveButtonState extends State<_RowRemoveButton> {
     onExit: (_) => setState(() => _hovered = false),
     child: DecoratedBox(
       decoration: BoxDecoration(
-        color: _hovered ? _gray200 : _gray100,
+        color: _hovered ? DifyColors.gray200 : DifyColors.gray100,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
       ),
       child: RemoveButton(onPressed: widget.onPressed),
@@ -246,15 +242,15 @@ class ObjectValueList extends StatelessWidget {
       alignment: Alignment.centerLeft,
       decoration: last
           ? null
-          : const BoxDecoration(
-              border: Border(right: BorderSide(color: _gray200)),
+          : BoxDecoration(
+              border: Border(right: BorderSide(color: DifyColors.gray200)),
             ),
       child: DifyText(tw(key), DifyType.systemXsMediumUppercase, color: DifyColors.textTertiary),
     );
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        border: Border.all(color: _gray200),
+        border: Border.all(color: DifyColors.gray200),
         borderRadius: BorderRadius.circular(DifyRadius.lg),
       ),
       child: Column(
@@ -350,15 +346,15 @@ class _ObjectValueItemRowState extends State<ObjectValueItemRow> {
   Widget build(BuildContext context) {
     final item = _item;
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: _gray200)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: DifyColors.gray200)),
       ),
       child: Row(
         children: [
           Container(
             width: 120,
-            decoration: const BoxDecoration(
-              border: Border(right: BorderSide(color: _gray200)),
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: DifyColors.gray200)),
             ),
             child: _CellInput(
               value: item.key,
@@ -368,8 +364,8 @@ class _ObjectValueItemRowState extends State<ObjectValueItemRow> {
           ),
           Container(
             width: 96,
-            decoration: const BoxDecoration(
-              border: Border(right: BorderSide(color: _gray200)),
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: DifyColors.gray200)),
             ),
             child: VariableTypeSelector(
               inCell: true,
@@ -485,7 +481,7 @@ class _CellInputState extends State<_CellInput> {
           keyboardType: widget.number ? const TextInputType.numberWithOptions(decimal: true, signed: true) : null,
           style: style,
           maxLines: 1,
-          cursorColor: const Color(0xFF155EEF),
+          cursorColor: DifyColors.primary600, // caret-primary-600
           cursorWidth: 1,
           decoration: InputDecoration(
             isCollapsed: true,

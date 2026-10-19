@@ -152,12 +152,8 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                               padding: const EdgeInsets.only(right: 32),
                               child: Text(
                                 '$label${items.isNotEmpty ? '(${items.length})' : ''}',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  height: 24 / 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: DifyColors.textPrimary,
-                                ),
+                                // `text-base/6 font-semibold`
+                                style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
                               ),
                             ),
                           ),
@@ -177,7 +173,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
                           _tr('panel.checklistDescription'),
-                          style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                          style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                         ),
                       ),
                   ],
@@ -221,7 +217,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                       Text(
                         _tr('panel.checklistResolved'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textTertiary),
+                        style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                       ),
                     ],
                   ),
@@ -247,13 +243,14 @@ class _CountBadge extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 3),
     decoration: BoxDecoration(
       color: DifyColors.textWarningSecondary,
-      border: Border.all(color: const Color(0xFFF2F4F7)),
+      border: Border.all(color: DifyColors.gray100),
       borderRadius: BorderRadius.circular(9),
     ),
     alignment: Alignment.center,
     child: Text(
       '$count',
-      style: const TextStyle(fontSize: 11, height: 1, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+      // Centred in the 18 px badge (one line box of the font size).
+      style: difyTextStyle(DifyTw.text11Semibold, DifyTailwind.white).copyWith(height: 1),
     ),
   );
 }
@@ -280,11 +277,11 @@ class _SmallBlockIcon extends StatelessWidget {
     decoration: BoxDecoration(
       color: blockColor(type),
       borderRadius: BorderRadius.circular(small ? 5 : DifyRadius.md),
-      border: Border.all(color: const Color(0x05FFFFFF), width: 0.5),
+      border: Border.all(color: DifyTailwind.white.withValues(alpha: 0.02), width: 0.5), // border-white/2
       boxShadow: DifyShadows.xs,
     ),
     alignment: Alignment.center,
-    child: DifyIcon(blockGlyph(type), size: small ? 12 : 14, color: const Color(0xFFFFFFFF)),
+    child: DifyIcon(blockGlyph(type), size: small ? 12 : 14, color: DifyTailwind.white),
   );
 }
 
@@ -303,14 +300,14 @@ class _Indicator extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(const Rect.fromLTWH(9.5, 0, 1, 24), Paint()..color = DifyColors.dividerRegular);
-    canvas.drawCircle(const Offset(10, 12), 3.25, Paint()..color = const Color(0xFFF79009));
+    canvas.drawCircle(const Offset(10, 12), 3.25, Paint()..color = DifyChecklistColors.indicatorDot);
     canvas.drawCircle(
       const Offset(10, 12),
       3.25,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5
-        ..color = const Color(0xFFFFFFFF),
+        ..color = DifyChecklistColors.indicatorRing,
     );
   }
 
@@ -352,12 +349,7 @@ class ChecklistNodeGroup extends StatelessWidget {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 20 / 14,
-                      fontWeight: FontWeight.w500,
-                      color: DifyColors.textPrimary,
-                    ),
+                    style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary), // text-sm/5 font-medium
                   ),
                 ),
               ],
@@ -399,7 +391,7 @@ class _ErrorRow extends StatelessWidget {
             message,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textWarning),
+            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textWarning), // text-xs/4
           ),
         ),
         if (goTo)
@@ -414,12 +406,7 @@ class _ErrorRow extends StatelessWidget {
                 children: [
                   Text(
                     _tr('panel.goToFix'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 16 / 12,
-                      fontWeight: FontWeight.w500,
-                      color: DifyColors.textAccent,
-                    ),
+                    style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent), // text-xs/4 font-medium
                   ),
                   RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
                 ],
@@ -493,19 +480,14 @@ class ChecklistPluginGroup extends StatelessWidget {
                     boxShadow: DifyShadows.xs,
                   ),
                   alignment: Alignment.center,
-                  child: const RemixIcon('download-line', size: 14, color: Color(0xFFFFFFFF)),
+                  child: RemixIcon('download-line', size: 14, color: DifyTailwind.white),
                 ),
                 Expanded(
                   child: Text(
                     _tr('nodes.common.pluginsNotInstalled', {'count': items.length}),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 20 / 14,
-                      fontWeight: FontWeight.w500,
-                      color: DifyColors.textPrimary,
-                    ),
+                    style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary), // text-sm/5 font-medium
                   ),
                 ),
                 DifyButton(
@@ -539,7 +521,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                             item.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12, height: 16 / 12, color: DifyColors.textWarning),
+                            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textWarning), // text-xs/4
                           ),
                         ),
                       ],

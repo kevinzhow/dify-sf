@@ -60,10 +60,10 @@ class PresetsParameter extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final List<String>? supportedParameterNames;
 
-  static const _icons = {
-    1: DifyIcon('vender/solid/editor/brush-01', size: 14, color: Color(0xFF6938EF)),
-    2: DifyIcon('vender/solid/FinanceAndECommerce/scales-02', size: 14, color: Color(0xFF444CE7)),
-    3: DifyIcon('vender/solid/general/target-04', size: 14, color: Color(0xFF107569)),
+  static Map<int, DifyIcon> get _icons => {
+    1: DifyIcon('vender/solid/editor/brush-01', size: 14, color: DifyPresetsParameterColors.creative),
+    2: DifyIcon('vender/solid/FinanceAndECommerce/scales-02', size: 14, color: DifyColors.indigo600),
+    3: DifyIcon('vender/solid/general/target-04', size: 14, color: DifyPresetsParameterColors.precise),
   };
 
   @override

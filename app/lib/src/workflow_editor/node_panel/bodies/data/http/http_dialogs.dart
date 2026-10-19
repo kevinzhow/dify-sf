@@ -76,7 +76,7 @@ class _AuthorizationModalState extends State<AuthorizationModal> {
                   ),
               ],
             ),
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DifyColors.textSecondary),
+            style: difyTextStyle(DifyTw.text13Medium, DifyColors.textSecondary),
           ),
         ),
       ),
@@ -314,7 +314,7 @@ class _CurlPanelState extends State<CurlPanel> {
           decoration: BoxDecoration(
             color: focused ? DifyColors.componentsInputBgActive : DifyColors.componentsInputBgNormal,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
-            border: Border.all(color: focused ? DifyColors.componentsInputBorderActive : const Color(0x00000000)),
+            border: Border.all(color: focused ? DifyColors.componentsInputBorderActive : Colors.transparent),
             boxShadow: focused ? DifyShadows.xs : null,
           ),
           child: Semantics(
@@ -325,7 +325,7 @@ class _CurlPanelState extends State<CurlPanel> {
               maxLines: null,
               expands: true,
               style: style,
-              cursorColor: const Color(0xFF155EEF),
+              cursorColor: DifyColors.primary600, // dify-ui Textarea: caret-primary-600
               cursorWidth: 1,
               textAlignVertical: TextAlignVertical.top,
               decoration: InputDecoration(

@@ -177,7 +177,7 @@ class _InputNumberWithSliderState extends State<InputNumberWithSlider> {
                 enabled: !w.readonly,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.eE+-]'))],
-                style: TextStyle(fontSize: 13, color: DifyColors.componentsInputTextFilled),
+                style: difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextFilled),
                 cursorWidth: 1,
                 decoration: const InputDecoration(isCollapsed: true, border: InputBorder.none),
                 onChanged: (s) => w.onChange(double.tryParse(s.trim()) ?? double.nan),
@@ -416,7 +416,7 @@ class InputTypeSelect extends StatelessWidget {
           item.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: trigger ? TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.componentsInputTextFilled) : null,
+          style: trigger ? difyTextStyle(DifyType.systemMdRegular, DifyColors.componentsInputTextFilled) : null,
         ),
       ),
       const SizedBox(width: 8),
@@ -614,8 +614,9 @@ class _OptionInputState extends State<_OptionInput> {
         child: TextField(
           controller: _controller,
           onChanged: widget.onChanged,
-          style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
-          cursorColor: const Color(0xFF155EEF),
+          style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
+          // No caret class: Chrome's caret is the text colour.
+          cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
           decoration: const InputDecoration(
             isCollapsed: true,

@@ -80,9 +80,9 @@ class _FileCard extends StatelessWidget {
               height: 16,
               child: Row(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: RemixIcon('file-3-fill', size: 16, color: Color(0xFFBCC0D1)),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: RemixIcon('file-3-fill', size: 16, color: DifyFileTypeColors.code),
                   ),
                   Flexible(
                     child: DifyText(
@@ -235,10 +235,10 @@ class ResultText extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 128, 16, 8),
               child: DefaultTextStyle.merge(
-                style: const TextStyle(fontSize: 13, height: 18 / 13, color: Color(0xFF667085)),
+                style: difyTextStyle(DifyTw.text13Leading18, DifyTailwind.gray500),
                 child: Column(
                   children: [
-                    const DifyIcon('vender/line/editor/image-indent-left', size: 24, color: Color(0xFF98A2B3)),
+                    DifyIcon('vender/line/editor/image-indent-left', size: 24, color: DifyTailwind.gray400),
                     Padding(padding: const EdgeInsets.only(right: 8), child: Text(tr('resultEmpty.title'))),
                     Text.rich(
                       TextSpan(
@@ -253,7 +253,7 @@ class ResultText extends StatelessWidget {
                                 cursor: SystemMouseCursors.click,
                                 child: Text(
                                   tr('resultEmpty.link'),
-                                  style: const TextStyle(fontSize: 13, height: 18 / 13, color: Color(0xFF155EEF)),
+                                  style: difyTextStyle(DifyTw.text13Leading18, DifyTailwind.primary600),
                                 ),
                               ),
                             ),
@@ -377,7 +377,7 @@ class _ReasoningPanelState extends State<ReasoningPanel> {
                     const SizedBox(width: 8),
                     Text(
                       label,
-                      style: TextStyle(fontWeight: FontWeight.w700, color: DifyColors.textSecondary),
+                      style: difyTextStyle(DifyTw.fontBold, DifyColors.textSecondary),
                     ),
                   ],
                 ),

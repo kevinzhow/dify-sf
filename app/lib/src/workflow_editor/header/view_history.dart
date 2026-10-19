@@ -106,12 +106,8 @@ class _ViewHistoryState extends State<ViewHistory> {
           const SizedBox(width: 4),
           Text(
             _tr('common.showRunHistory'),
-            style: TextStyle(
-              fontSize: 13,
-              height: 16 / 13,
-              fontWeight: FontWeight.w500,
-              color: DifyColors.componentsButtonSecondaryText,
-            ),
+            // `text-[13px] font-medium`, centred in the h-8 button (the 16 px line lays out as the inherited one).
+            style: difyTextStyle(DifyTw.text13MediumLeading16, DifyColors.componentsButtonSecondaryText),
           ),
         ],
       ),
@@ -190,12 +186,10 @@ class _HistoryPanel extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _tr('common.runHistory'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 24 / 16,
-                        fontWeight: FontWeight.w600,
-                        color: DifyColors.textPrimary,
-                      ),
+                      style: difyTextStyle(
+                        DifyType.systemXlSemibold,
+                        DifyColors.textPrimary,
+                      ), // text-base font-semibold
                     ),
                   ),
                   HeaderCloseButton(onPressed: onClose, label: DifyI18n.tr('common', 'operation.close')),
@@ -222,7 +216,7 @@ class _HistoryPanel extends StatelessWidget {
                               Text(
                                 _tr('common.notRunning'),
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 13, height: 16 / 13, color: DifyColors.textQuaternary),
+                                style: difyTextStyle(DifyTw.text13Leading16, DifyColors.textQuaternary), // text-[13px]
                               ),
                             ],
                           ),
@@ -279,16 +273,20 @@ class _HistoryRow extends StatelessWidget {
     final icon = chatMode
         ? null
         : switch (status) {
-            WorkflowRunningStatus.stopped || WorkflowRunningStatus.paused => const DifyIcon(
+            WorkflowRunningStatus.stopped || WorkflowRunningStatus.paused => DifyIcon(
               'vender/line/alertsAndFeedback/alert-triangle',
               size: 14,
-              color: Color(0xFFF79009),
+              color: DifyViewHistoryColors.stopped,
             ),
-            WorkflowRunningStatus.failed => const RemixIcon('error-warning-line', size: 14, color: Color(0xFFF04438)),
-            WorkflowRunningStatus.succeeded => const RemixIcon(
+            WorkflowRunningStatus.failed => RemixIcon(
+              'error-warning-line',
+              size: 14,
+              color: DifyViewHistoryColors.failed,
+            ),
+            WorkflowRunningStatus.succeeded => RemixIcon(
               'checkbox-circle-line',
               size: 14,
-              color: Color(0xFF12B76A),
+              color: DifyViewHistoryColors.succeeded,
             ),
             _ => null,
           };
@@ -315,16 +313,14 @@ class _HistoryRow extends StatelessWidget {
                 children: [
                   Text(
                     'Test ${chatMode ? 'Chat' : 'Run'}${f.formatWorkflowRunIdentifier(finishedAt, status ?? 'Running')}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 18 / 13,
-                      fontWeight: FontWeight.w500,
-                      color: selected ? DifyColors.textAccent : DifyColors.textPrimary,
+                    style: difyTextStyle(
+                      DifyTw.text13MediumLeading18,
+                      selected ? DifyColors.textAccent : DifyColors.textPrimary,
                     ),
                   ),
                   Text(
                     '$author ·${f.formatTimeFromNow(((finishedAt ?? 0) != 0 ? finishedAt! : createdAt) * 1000)}',
-                    style: TextStyle(fontSize: 12, height: 18 / 12, color: DifyColors.textTertiary),
+                    style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary), // text-xs leading-4.5
                   ),
                 ],
               ),

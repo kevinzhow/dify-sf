@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
 import '../../cards/node_helpers.dart' show isTriggerNode;
+import '../../design/dify_tokens.g.dart';
 import '../store/store.dart';
 
 /// A node as the helplines see it: React Flow's `position`, `width`, `height`, and whether it is inside an
@@ -118,7 +119,7 @@ class HelpLine extends StatelessWidget {
   final CanvasController canvas;
 
   /// `bg-primary-300`.
-  static const color = Color(0xFF84ADFF);
+  static Color get color => DifyColors.primary300;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +140,7 @@ class HelpLine extends StatelessWidget {
                   top: view.toScreen(Offset(h.left, h.top)).dy,
                   width: h.width * zoom,
                   height: 1,
-                  child: const ColoredBox(color: color),
+                  child: ColoredBox(color: color),
                 ),
               if (v != null)
                 Positioned(
@@ -148,7 +149,7 @@ class HelpLine extends StatelessWidget {
                   top: view.toScreen(Offset(v.left, v.top)).dy,
                   width: 1,
                   height: v.height * zoom,
-                  child: const ColoredBox(color: color),
+                  child: ColoredBox(color: color),
                 ),
             ],
           );

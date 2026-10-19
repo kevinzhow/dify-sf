@@ -211,12 +211,7 @@ class _FollowUpSettingModalState extends State<FollowUpSettingModal> {
                 padding: const EdgeInsets.only(right: 32),
                 child: Text(
                   ad('${m}title'),
-                  style: TextStyle(
-                    fontSize: 20,
-                    height: 28 / 20,
-                    fontWeight: FontWeight.w600,
-                    color: DifyColors.textPrimary,
-                  ),
+                  style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary),
                 ),
               ),
               const SizedBox(height: 24),
