@@ -1,7 +1,6 @@
 // dify-spec: web/app/components/base/form/components/base/__tests__/base-field.spec.tsx
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/settings/form/base_form.dart';
-import 'package:dify_sf_app/src/settings/settings_kit.dart' show SettingsRadioDot;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -358,7 +357,7 @@ void main() {
         ),
       );
       expect(find.text('Option 1'), findsOneWidget);
-      expect(find.byType(SettingsRadioDot), findsOneWidget);
+      expect(find.byType(DifyRadioControl), findsOneWidget);
       expect(find.bySemanticsLabel('UI Radio'), findsOneWidget);
     });
 

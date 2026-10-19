@@ -15,7 +15,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
 import '../../workflow/model_catalog.dart' show renderI18nObject;
-import '../settings_kit.dart' show SettingsRadioDot;
 
 // ---- types.ts -----------------------------------------------------------------------------------------------------
 
@@ -796,26 +795,17 @@ class BaseField extends StatelessWidget {
           ),
         );
       case FormTypeEnum.boolean:
-        Widget item(bool v, String text) => DifyPressable(
-          key: ValueKey('form-boolean-${s.name}-$v'),
-          semanticLabel: text,
-          onPressed: isDisabled ? null : () => form.handleChange(s.name, v),
-          builder: (context, hovered, _) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SettingsRadioDot(checked: value == v, hovered: hovered, disabled: isDisabled),
-              const SizedBox(width: 6),
-              Text(text, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)),
-            ],
-          ),
-        );
-        control = Semantics(
-          container: true,
+        // RadioGroup<boolean> `w-fit gap-3` of Radios in FieldLabels (`flex items-center gap-1.5`).
+        control = DifyRadioGroup<bool>(
           label: shownLabel,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [item(true, 'True'), const SizedBox(width: 12), item(false, 'False')],
-          ),
+          value: value is bool ? value : null,
+          disabled: isDisabled,
+          spacing: 12,
+          onValueChange: (v) => form.handleChange(s.name, v),
+          children: [
+            for (final (v, text) in const [(true, 'True'), (false, 'False')])
+              DifyRadio<bool>(key: ValueKey('form-boolean-${s.name}-$v'), value: v, label: text),
+          ],
         );
       default:
         control = null;
@@ -931,7 +921,7 @@ class _RadioCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (showRadio) ...[
-                SettingsRadioDot(checked: selected, hovered: hovered, disabled: disabled),
+                DifyRadioControl(checked: selected, disabled: disabled),
                 const SizedBox(width: 8),
               ],
               Flexible(

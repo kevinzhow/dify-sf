@@ -400,22 +400,12 @@ class ModelProviderListSkeleton extends StatelessWidget {
   );
 }
 
+/// ModelProviderCardSkeleton: the `rounded-xl border-[0.5px] p-4 shadow-xs` card around an `h-24` SkeletonContainer:
+/// the icon (`size-10 rounded-lg`), name (`h-4 w-2/5`) and subtitle (`h-3 w-1/4`), the button (`h-8 w-24 rounded-lg`),
+/// then (`mt-4 gap-2`) two lines (`h-3`, full and `w-3/4`), all pulsing. The content is taller than `h-24` and, as in
+/// the browser, overflows it (into the card's padding).
 class _CardSkeleton extends StatelessWidget {
   const _CardSkeleton();
-
-  static Widget _bar({double? width, required double height, double radius = DifyRadius.sm, double? factor}) {
-    final bar = Opacity(
-      opacity: 0.2,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(color: DifyColors.textQuaternary, borderRadius: BorderRadius.circular(radius)),
-      ),
-    );
-    return factor == null
-        ? bar
-        : FractionallySizedBox(widthFactor: factor, alignment: AlignmentDirectional.centerStart, child: bar);
-  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -426,30 +416,39 @@ class _CardSkeleton extends StatelessWidget {
       border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
       boxShadow: DifyShadows.xs,
     ),
-    child: SizedBox(
+    child: const SizedBox(
       height: 96,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            spacing: 8,
-            children: [
-              _bar(width: 40, height: 40, radius: DifyRadius.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: 4,
-                  children: [_bar(height: 16, factor: 0.4), _bar(height: 12, factor: 0.25)],
+      child: OverflowBox(
+        alignment: Alignment.topCenter,
+        maxHeight: double.infinity,
+        child: DifySkeletonContainer(
+          children: [
+            DifySkeletonRow(
+              children: [
+                DifySkeletonRectangle(width: 40, height: 40, radius: DifyRadius.lg, pulse: true),
+                Expanded(
+                  child: DifySkeletonContainer(
+                    children: [
+                      DifySkeletonRectangle(widthFactor: 0.4, height: 16, pulse: true),
+                      DifySkeletonRectangle(widthFactor: 0.25, height: 12, pulse: true),
+                    ],
+                  ),
                 ),
+                DifySkeletonRectangle(width: 96, height: 32, radius: DifyRadius.lg, pulse: true),
+              ],
+            ),
+            Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: DifySkeletonContainer(
+                gap: 8,
+                children: [
+                  DifySkeletonRectangle(height: 12, pulse: true),
+                  DifySkeletonRectangle(widthFactor: 0.75, height: 12, pulse: true),
+                ],
               ),
-              _bar(width: 96, height: 32, radius: DifyRadius.lg),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _bar(height: 12),
-          const SizedBox(height: 8),
-          _bar(height: 12, factor: 0.75),
-        ],
+            ),
+          ],
+        ),
       ),
     ),
   );

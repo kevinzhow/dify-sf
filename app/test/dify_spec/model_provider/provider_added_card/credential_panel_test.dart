@@ -1,10 +1,9 @@
 // dify-spec: web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/credential-panel.spec.tsx
 import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot, DifyStatusDotStatus;
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/settings/model_provider/provider_added_card.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_selector.dart'
-    show StatusDot, StatusDotKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -54,7 +53,7 @@ Future<void> render(WidgetTester t, Json provider) => renderSettings(
   env: envOf(RecordingModelsApi()),
 );
 
-StatusDotKind dot(WidgetTester t) => t.widget<StatusDot>(find.byType(StatusDot)).status;
+DifyStatusDotStatus dot(WidgetTester t) => t.widget<DifyStatusDot>(find.byType(DifyStatusDot)).status;
 Color? labelColor(WidgetTester t) => t.widget<Text>(find.byKey(const ValueKey('credential-panel-label'))).style?.color;
 CardVariant variant(WidgetTester t) => t.widget<ModelAuthDropdown>(find.byType(ModelAuthDropdown)).state.variant;
 bool destructive(WidgetTester t) => t.widget<SystemQuotaCard>(find.byType(SystemQuotaCard)).destructive;
@@ -65,7 +64,7 @@ void main() {
     group('Status label variants', () {
       testWidgets('should show green indicator for api-active (custom priority + authorized)', (t) async {
         await render(t, createProvider());
-        expect(dot(t), StatusDotKind.success);
+        expect(dot(t), DifyStatusDotStatus.success);
         expect(find.text('test-credential'), findsOneWidget);
       });
 
@@ -80,7 +79,7 @@ void main() {
           t,
         ) async {
           await render(t, createProvider(customConfiguration: badKey));
-          expect(dot(t), StatusDotKind.error);
+          expect(dot(t), DifyStatusDotStatus.error);
           expect(find.text('Bad Key'), findsOneWidget);
         },
       );

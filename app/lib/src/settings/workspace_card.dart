@@ -34,22 +34,6 @@ class WorkspaceListItem {
   final int? lastOpenedAt;
 }
 
-/// The skeleton's bars: `animate-pulse rounded bg-text-quaternary opacity-20`.
-class _SkeletonBar extends StatelessWidget {
-  const _SkeletonBar({required this.width, required this.height, this.radius = DifyRadius.sm});
-  final double width, height, radius;
-
-  @override
-  Widget build(BuildContext context) => Opacity(
-    opacity: 0.2,
-    child: Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(color: DifyColors.textQuaternary, borderRadius: BorderRadius.circular(radius)),
-    ),
-  );
-}
-
 /// WorkspaceCard: until the workspace's name is known, the skeleton; then the card (`rounded-xl border
 /// border-components-card-border bg-components-card-bg shadow-xs`) whose trigger (`py-1.5 pr-3 pl-1.5`, `sm`
 /// workspace avatar, the name `max-w-30 system-sm-medium`, `i-ri-expand-up-down-line`; named "NAME Open workspace
@@ -254,14 +238,20 @@ class _WorkspaceCardSkeleton extends StatelessWidget {
       child: const Row(
         spacing: 6,
         children: [
-          _SkeletonBar(width: 24, height: 24, radius: DifyRadius.lg),
+          DifySkeletonRectangle(width: 24, height: 24, radius: DifyRadius.lg, margin: EdgeInsets.zero, pulse: true),
           Expanded(
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: _SkeletonBar(width: 128, height: 16),
+              child: DifySkeletonRectangle(
+                width: 128,
+                height: 16,
+                radius: DifyRadius.sm,
+                margin: EdgeInsets.zero,
+                pulse: true,
+              ),
             ),
           ),
-          _SkeletonBar(width: 16, height: 16),
+          DifySkeletonRectangle(width: 16, height: 16, radius: DifyRadius.sm, margin: EdgeInsets.zero, pulse: true),
         ],
       ),
     ),

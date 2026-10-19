@@ -2,14 +2,9 @@
 /// and the radio control.
 library;
 
-import 'dart:async';
-
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/widgets.dart';
 
-import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
-import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/app_locale.dart';
 import '../i18n/dify_i18n.dart';
@@ -78,11 +73,10 @@ class SettingsDialogCloseButton extends StatelessWidget {
   );
 }
 
-/// dify-ui's AlertDialog with a title, a description and Cancel / Confirm (destructive primary): `w-120 rounded-2xl
-/// border-[0.5px] shadow-lg`; the text in `flex flex-col gap-2 px-6 pt-6 pb-4` (title `title-2xl-semi-bold`,
-/// truncated; description `system-md-regular text-text-tertiary`, wrapping), actions `p-6 gap-2`. [onConfirm] runs
-/// with Confirm disabled (and Cancel too with [lockCancelWhileBusy]); the dialog closes when it completes (true) and
-/// stays open when it throws. An empty [description] is left out; [confirmLabel] defaults to "Confirm".
+/// dify-ui's AlertDialog with a title, a description and Cancel / Confirm (destructive primary) as the members page
+/// uses it ([showDifyConfirm]; a click outside closes it too). [onConfirm] runs with Confirm disabled (and Cancel too
+/// with [lockCancelWhileBusy]); the dialog closes when it completes (true) and stays open when it throws. An empty
+/// [description] is left out; [confirmLabel] defaults to "Confirm".
 Future<bool> showSettingsAlert(
   BuildContext context, {
   required String title,
@@ -90,167 +84,15 @@ Future<bool> showSettingsAlert(
   required Future<void> Function() onConfirm,
   String? confirmLabel,
   bool lockCancelWhileBusy = false,
-}) async {
-  final ok = await showGeneralDialog<bool>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
-    barrierColor: DifyColors.backgroundOverlay,
-    transitionDuration: difyTransitionDuration,
-    transitionBuilder: (context, animation, _, child) {
-      final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-      return FadeTransition(
-        opacity: a,
-        child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-      );
-    },
-    pageBuilder: (context, _, _) => _AlertDialog(
-      title: title,
-      description: description,
-      onConfirm: onConfirm,
-      confirmLabel: confirmLabel,
-      lockCancelWhileBusy: lockCancelWhileBusy,
-    ),
-  );
-  return ok ?? false;
-}
-
-class _AlertDialog extends StatefulWidget {
-  const _AlertDialog({
-    required this.title,
-    required this.description,
-    required this.onConfirm,
-    this.confirmLabel,
-    this.lockCancelWhileBusy = false,
-  });
-  final String title, description;
-  final Future<void> Function() onConfirm;
-  final String? confirmLabel;
-  final bool lockCancelWhileBusy;
-
-  @override
-  State<_AlertDialog> createState() => _AlertDialogState();
-}
-
-class _AlertDialogState extends State<_AlertDialog> {
-  bool _busy = false;
-
-  Future<void> _confirm() async {
-    setState(() => _busy = true);
-    try {
-      await widget.onConfirm();
-      if (mounted) Navigator.of(context).pop(true);
-    } on Object {
-      // The caller reported it (Dify's request layer toasts the server's message).
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Material(
-        type: MaterialType.transparency,
-        child: Semantics(
-          container: true,
-          scopesRoute: true,
-          namesRoute: true,
-          explicitChildNodes: true,
-          label: widget.title,
-          child: Container(
-            key: const ValueKey('alert-dialog'),
-            width: 480,
-            decoration: BoxDecoration(
-              color: DifyColors.componentsPanelBg,
-              borderRadius: BorderRadius.circular(DifyRadius.xxl),
-              border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-              boxShadow: DifyShadows.lg,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 8,
-                    children: [
-                      Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                      ),
-                      if (widget.description.isNotEmpty)
-                        Text(
-                          widget.description,
-                          style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
-                        ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      DifyButton(
-                        key: const ValueKey('alert-cancel'),
-                        disabled: widget.lockCancelWhileBusy && _busy,
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: Text(stc(context, 'operation.cancel')),
-                      ),
-                      DifyButton(
-                        key: const ValueKey('alert-confirm'),
-                        variant: DifyButtonVariant.primary,
-                        tone: DifyButtonTone.destructive,
-                        disabled: _busy,
-                        onPressed: () => unawaited(_confirm()),
-                        child: Text(widget.confirmLabel ?? stc(context, 'operation.confirm')),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-/// dify-ui's RadioControl: `size-4 rounded-full border border-components-radio-border shadow-xs`, checked a 5 px
-/// `border-components-radio-border-checked` ring; hover darkens the border.
-class SettingsRadioDot extends StatelessWidget {
-  const SettingsRadioDot({super.key, required this.checked, this.hovered = false, this.disabled = false});
-
-  final bool checked, hovered, disabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color border;
-    if (disabled) {
-      border = checked ? DifyColors.componentsRadioBorderCheckedDisabled : DifyColors.componentsRadioBorderDisabled;
-    } else if (checked) {
-      border = hovered ? DifyColors.componentsRadioBorderCheckedHover : DifyColors.componentsRadioBorderChecked;
-    } else {
-      border = hovered ? DifyColors.componentsRadioBorderHover : DifyColors.componentsRadioBorder;
-    }
-    return Container(
-      width: 16,
-      height: 16,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: disabled ? DifyColors.componentsRadioBgDisabled : DifyColors.componentsRadioBg,
-        border: Border.all(color: border, width: checked ? 5 : 1),
-        boxShadow: [for (final s in DifyShadows.xs) s.copyWith(color: DifyColors.shadowShadow3)],
-      ),
-    );
-  }
-}
+}) => showDifyConfirm(
+  context,
+  title: title,
+  description: description,
+  onConfirm: onConfirm,
+  confirmLabel: confirmLabel,
+  lockCancelWhileBusy: lockCancelWhileBusy,
+  dismissible: true,
+  surfaceKey: const ValueKey('alert-dialog'),
+  cancelKey: const ValueKey('alert-cancel'),
+  confirmKey: const ValueKey('alert-confirm'),
+);

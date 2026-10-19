@@ -251,7 +251,7 @@ class _RoleRadioState extends State<_RoleRadio> {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: SettingsRadioDot(checked: w.checked, hovered: _hovered, disabled: w.disabled),
+            child: DifyRadioControl(checked: w.checked, disabled: w.disabled, hovered: false),
           ),
           Expanded(
             child: Column(

@@ -19,7 +19,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart' show Json;
-import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
 import 'model_auth.dart';
 import 'model_list.dart';
 import 'model_provider_env.dart';
@@ -371,7 +370,10 @@ class CredentialPanel extends StatelessWidget {
             )
           : Row(
               children: [
-                StatusDot(status: destructive ? StatusDotKind.error : StatusDotKind.success),
+                DifyStatusDot(
+                  size: DifyStatusDotSize.small,
+                  status: destructive ? DifyStatusDotStatus.error : DifyStatusDotStatus.success,
+                ),
                 const SizedBox(width: 4),
                 Flexible(
                   child: DifyTooltip(

@@ -1,9 +1,8 @@
 // dify-spec: web/app/components/header/account-setting/model-provider-page/model-auth/authorized/__tests__/credential-item.spec.tsx
 import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot, DifyStatusDotStatus;
 import 'package:dify_sf_app/src/settings/model_provider/model_auth.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
-import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_selector.dart'
-    show StatusDot, StatusDotKind;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -26,14 +25,14 @@ Future<void> render(WidgetTester t, Widget item) async {
 
 Finder get editButton => find.byKey(const ValueKey('credential-edit-cred-1'));
 Finder get deleteButton => find.byKey(const ValueKey('credential-delete-cred-1'));
-StatusDotKind dotStatus(WidgetTester t) => t.widget<StatusDot>(find.byType(StatusDot)).status;
+DifyStatusDotStatus dotStatus(WidgetTester t) => t.widget<DifyStatusDot>(find.byType(DifyStatusDot)).status;
 
 void main() {
   group('CredentialItem', () {
     testWidgets('should render credential text and indicator', (t) async {
       await render(t, const CredentialItem(credential: credential));
       expect(find.text('Test API Key'), findsOneWidget);
-      expect(find.byType(StatusDot), findsOneWidget);
+      expect(find.byType(DifyStatusDot), findsOneWidget);
     });
 
     testWidgets('should render enterprise badge for enterprise credential', (t) async {
@@ -73,13 +72,13 @@ void main() {
           credential: Credential(credentialId: 'cred-1', credentialName: 'Test API Key', notAllowedToUse: true),
         ),
       );
-      expect(dotStatus(t), StatusDotKind.error);
+      expect(dotStatus(t), DifyStatusDotStatus.error);
       expect(find.text('common.modelProvider.card.unavailable'), findsOneWidget);
     });
 
     testWidgets('should render available credential with success indicator', (t) async {
       await render(t, const CredentialItem(credential: credential));
-      expect(dotStatus(t), StatusDotKind.success);
+      expect(dotStatus(t), DifyStatusDotStatus.success);
     });
 
     testWidgets('should call onEdit and onDelete from action buttons', (t) async {

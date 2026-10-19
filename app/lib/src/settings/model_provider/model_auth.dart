@@ -16,7 +16,6 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart';
-import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
 import '../form/base_form.dart';
 import '../settings_kit.dart' show showSettingsAlert;
 import 'model_modal.dart';
@@ -406,7 +405,10 @@ class _CredentialItemState extends State<CredentialItem> {
                           ),
                           const SizedBox(width: 6),
                         ],
-                        StatusDot(status: unavailable ? StatusDotKind.error : StatusDotKind.success),
+                        DifyStatusDot(
+                          size: DifyStatusDotSize.small,
+                          status: unavailable ? DifyStatusDotStatus.error : DifyStatusDotStatus.success,
+                        ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: ExcludeSemantics(
@@ -1206,7 +1208,7 @@ class _CredentialSelectorState extends State<CredentialSelector> {
                         if (!selected.addNewCredential)
                           const Padding(
                             padding: EdgeInsets.only(left: 4, right: 8),
-                            child: _MediumSuccessDot(),
+                            child: DifyStatusDot(),
                           ),
                         Flexible(
                           child: Text(
@@ -1308,20 +1310,4 @@ class _CredentialSelectorState extends State<CredentialSelector> {
       ),
     );
   }
-}
-
-/// StatusDot success, medium (`size-2 rounded-[3px] border`).
-class _MediumSuccessDot extends StatelessWidget {
-  const _MediumSuccessDot();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 8,
-    height: 8,
-    decoration: BoxDecoration(
-      color: DifyColors.componentsBadgeStatusLightSuccessBg,
-      borderRadius: BorderRadius.circular(3),
-      border: Border.all(color: DifyColors.componentsBadgeStatusLightSuccessBorderInner),
-    ),
-  );
 }

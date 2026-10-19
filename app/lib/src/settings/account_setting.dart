@@ -7,7 +7,7 @@ library;
 
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart' show Material, MaterialType;
+import 'package:flutter/material.dart' show Colors, Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -76,18 +76,13 @@ Future<void> showAccountSetting(
   BuildContext context, {
   required WorkspaceMembers members,
   AccountSettingTab tab = AccountSettingTab.members,
-}) => showGeneralDialog<void>(
-  context: context,
+}) => showDifyDialog<void>(
+  context,
   // Escape closes it (the content covers the transparent backdrop, so nothing else can be clicked outside).
-  barrierDismissible: true,
   barrierLabel: 'Dismiss',
-  barrierColor: const Color(0x00000000),
-  transitionDuration: difyTransitionDuration,
-  transitionBuilder: (context, animation, _, child) => FadeTransition(
-    opacity: CurvedAnimation(parent: animation, curve: difyTransitionCurve),
-    child: child,
-  ),
-  pageBuilder: (context, _, _) => AccountSetting(members: members, initialTab: tab),
+  barrierColor: Colors.transparent,
+  transition: DifyDialogTransition.fade,
+  builder: (context) => AccountSetting(members: members, initialTab: tab),
 );
 
 /// AccountSetting in MenuDialog: the whole screen on `bg-background-sidenav-bg backdrop-blur-md`, the close button

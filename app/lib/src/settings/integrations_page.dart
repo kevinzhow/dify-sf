@@ -9,7 +9,7 @@ library;
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart' show Material, MaterialType;
+import 'package:flutter/material.dart' show Colors, Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -36,17 +36,12 @@ Future<void> showIntegrationsSetting(
   BuildContext context, {
   required ModelProviderEnv env,
   IntegrationSection section = IntegrationSection.provider,
-}) => showGeneralDialog<void>(
-  context: context,
-  barrierDismissible: true,
+}) => showDifyDialog<void>(
+  context,
   barrierLabel: 'Dismiss',
-  barrierColor: const Color(0x00000000),
-  transitionDuration: difyTransitionDuration,
-  transitionBuilder: (context, animation, _, child) => FadeTransition(
-    opacity: CurvedAnimation(parent: animation, curve: difyTransitionCurve),
-    child: child,
-  ),
-  pageBuilder: (context, _, _) => ModelProviderScope(
+  barrierColor: Colors.transparent,
+  transition: DifyDialogTransition.fade,
+  builder: (context) => ModelProviderScope(
     env: env,
     child: IntegrationsSettingModal(section: section),
   ),

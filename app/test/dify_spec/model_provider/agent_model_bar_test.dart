@@ -1,5 +1,6 @@
 // dify-spec: web/app/components/workflow/nodes/agent/components/__tests__/model-bar.spec.tsx
 import 'package:dify_sf_app/src/cards/model_chip.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot;
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,7 +52,7 @@ void main() {
 
       expect(selector(t), 'no-model:0');
       expect(t.widget<ModelChip>(find.byType(ModelChip)).disabled, isTrue);
-      expect(find.byType(ErrorStatusDot), findsOneWidget);
+      expect(find.byType(DifyStatusDot), findsOneWidget);
       expect(srOnly(ModelBar.notSelected), findsOneWidget);
     });
 
@@ -59,14 +60,14 @@ void main() {
       await render(t, ModelBar(value: (provider: 'openai', model: 'gpt-4o'), catalog: catalog));
 
       expect(selector(t), 'openai/gpt-4o:1');
-      expect(find.byType(ErrorStatusDot), findsNothing);
+      expect(find.byType(DifyStatusDot), findsNothing);
     });
 
     testWidgets('should show a warning tooltip when the selected model is not installed', (t) async {
       await render(t, ModelBar(value: (provider: 'openai', model: 'gpt-4.1'), catalog: catalog));
 
       expect(selector(t), 'openai/gpt-4.1:1');
-      expect(find.byType(ErrorStatusDot), findsOneWidget);
+      expect(find.byType(DifyStatusDot), findsOneWidget);
       expect(srOnly(ModelBar.notInstalled), findsOneWidget);
     });
   });
