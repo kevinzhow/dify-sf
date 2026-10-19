@@ -308,7 +308,7 @@ void main() {
         await renderCard(t, testApp(), api: api);
         await _openDelete(t);
         expect(find.byType(DeleteAppDialog), findsOneWidget);
-        expect(find.byType(StudioAlertSurface), findsOneWidget);
+        expect(find.byType(DifyAlertDialogContent), findsOneWidget);
       });
 
       testWidgets('should autofill the app name for delete confirmation', (t) async {

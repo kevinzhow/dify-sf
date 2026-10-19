@@ -43,122 +43,6 @@ String accessPointStatusLabel(AccessPointStatus status) => switch (status) {
   AccessPointStatus.unsupported => _t('deployments', 'studio.accessPoint.notSupported'),
 };
 
-/// dify-ui's StatusDot (`size-2 rounded-[3px] border`, the status indicator shadow); [skeleton] is
-/// StatusDotSkeleton (`bg-text-primary opacity-30`, pulsing).
-class AccessPointStatusDot extends StatelessWidget {
-  const AccessPointStatusDot({super.key, this.success = false, this.skeleton = false});
-
-  final bool success, skeleton;
-
-  @override
-  Widget build(BuildContext context) {
-    if (skeleton) {
-      return _Pulse(
-        child: Opacity(
-          opacity: 0.3,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: DifyColors.textPrimary, borderRadius: BorderRadius.circular(3)),
-          ),
-        ),
-      );
-    }
-    final (bg, border, halo, blur) = success
-        ? (
-            DifyColors.componentsBadgeStatusLightSuccessBg,
-            DifyColors.componentsBadgeStatusLightSuccessBorderInner,
-            DifyColors.componentsBadgeStatusLightSuccessHalo,
-            (y: 2.0, blur: 6.0),
-          )
-        : (
-            DifyColors.componentsBadgeStatusLightDisabledBg,
-            DifyColors.componentsBadgeStatusLightDisabledBorderInner,
-            DifyColors.componentsBadgeStatusLightDisabledHalo,
-            (y: 1.0, blur: 2.0),
-          );
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(offset: Offset(0, blur.y), blurRadius: blur.blur, color: halo),
-          BoxShadow(spreadRadius: 1, color: DifyColors.componentsBadgeStatusLightBorderOuter),
-        ],
-      ),
-    );
-  }
-}
-
-/// `animate-pulse` (opacity 1 -> 0.5 -> 1 over 2 s).
-class _Pulse extends StatefulWidget {
-  const _Pulse({required this.child});
-  final Widget child;
-
-  @override
-  State<_Pulse> createState() => _PulseState();
-}
-
-class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => FadeTransition(
-    opacity: _c.drive(
-      TweenSequence([
-        TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.5), weight: 1),
-        TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.0), weight: 1),
-      ]).chain(CurveTween(curve: const Cubic(0.4, 0, 0.6, 1))),
-    ),
-    child: widget.child,
-  );
-}
-
-/// A pulsing `h-2 rounded-full bg-text-quaternary` bar ([opacity] 0.2 or 0.1), [widthFactor] of its row.
-class AccessPointSkeletonBar extends StatelessWidget {
-  const AccessPointSkeletonBar({
-    super.key,
-    this.widthFactor = 0.42,
-    this.width,
-    this.height = 8,
-    this.opacity = 0.2,
-    this.radius,
-  });
-  final double widthFactor, height, opacity;
-
-  /// A fixed width instead of [widthFactor].
-  final double? width;
-  final double? radius;
-
-  @override
-  Widget build(BuildContext context) {
-    final bar = _Pulse(
-      child: Opacity(
-        opacity: opacity,
-        child: Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: DifyColors.textQuaternary,
-            borderRadius: BorderRadius.circular(radius ?? height / 2),
-          ),
-        ),
-      ),
-    );
-    if (width != null) return Align(alignment: Alignment.centerLeft, child: bar);
-    return FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: widthFactor, child: bar);
-  }
-}
-
 /// AccessPointCard: a `min-h-68 rounded-xl bg-background-section-burn p-1` section (`ring-2 ring-state-accent-solid`
 /// when [highlighted]) named [title]: the header (icon, title and description truncated with their full text as
 /// tooltip, the status dot and label, the switch while the point is disabled or in service and changeable), then the
@@ -297,7 +181,12 @@ class AccessPointCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           spacing: 4,
                           children: [
-                            AccessPointStatusDot(success: enabled, skeleton: busy),
+                            if (busy)
+                              const DifyPulse(child: DifyStatusDotSkeleton())
+                            else
+                              DifyStatusDot(
+                                status: enabled ? DifyStatusDotStatus.success : DifyStatusDotStatus.disabled,
+                              ),
                             Text(
                               difyTransform(DifyType.systemXsSemiboldUppercase, statusLabel),
                               semanticsLabel: statusLabel,
@@ -420,7 +309,12 @@ class AccessPointEndpoint extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: loading
-                        ? const AccessPointSkeletonBar()
+                        ? const DifySkeletonRectangle(
+                            widthFactor: 0.42,
+                            radius: 4,
+                            margin: EdgeInsets.zero,
+                            pulse: true,
+                          )
                         : Text(
                             value,
                             maxLines: 1,

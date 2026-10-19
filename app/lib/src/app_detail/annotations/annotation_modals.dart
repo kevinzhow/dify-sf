@@ -666,58 +666,54 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
   Widget _hitTable() {
     final dateFormat = _t('appLog', 'dateTimeFormat');
     final head = difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary);
-    final cell = difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary);
-    Widget h(String key, {int flex = 1}) => Expanded(
-      flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 12),
-        child: Text(difyTransform(DifyType.systemXsMediumUppercase, _a(key)), maxLines: 1, style: head),
-      ),
+    Widget h(String key) => Text(
+      difyTransform(DifyType.systemXsMediumUppercase, _a(key)),
+      maxLines: 1,
+      softWrap: false,
+      style: head,
     );
-    Widget c(String text, {int flex = 1}) => Expanded(
-      flex: flex,
-      child: Padding(
+    // `max-w-62.5 truncate p-3 pr-2` (query, match, response), `p-3 pr-2` (the rest); no cell wraps.
+    Widget c(String text, {bool truncate = false}) {
+      final t = Text(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis);
+      return Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-        child: Text(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: cell),
-      ),
-    );
+        child: truncate ? ConstrainedBox(constraints: const BoxConstraints(maxWidth: 250), child: t) : t,
+      );
+    }
+
+    const pl3 = EdgeInsets.fromLTRB(12, 6, 0, 6);
     final totalPages = _total == 0 ? 1 : (_total / appPageLimit).ceil().clamp(1, 1 << 30);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 28,
-          decoration: BoxDecoration(
-            color: DifyColors.backgroundSectionBurn,
-            borderRadius: BorderRadius.circular(DifyRadius.lg),
-          ),
-          child: Row(
-            children: [
-              h('hitHistoryTable.query', flex: 2),
-              h('hitHistoryTable.match', flex: 2),
-              h('hitHistoryTable.response', flex: 2),
-              h('hitHistoryTable.source'),
-              h('hitHistoryTable.score'),
-              h('hitHistoryTable.time', flex: 2),
-            ],
-          ),
+        DifyTable(
+          columns: [
+            DifyTableColumn(
+              width: 20,
+              headerPadding: const EdgeInsets.only(left: 8, right: 4),
+              header: h('hitHistoryTable.query'),
+            ),
+            DifyTableColumn(headerPadding: pl3, header: h('hitHistoryTable.match')),
+            DifyTableColumn(headerPadding: pl3, header: h('hitHistoryTable.response')),
+            DifyTableColumn(headerPadding: pl3, header: h('hitHistoryTable.source')),
+            DifyTableColumn(headerPadding: pl3, header: h('hitHistoryTable.score')),
+            DifyTableColumn(width: 160, headerPadding: pl3, header: h('hitHistoryTable.time')),
+          ],
+          rows: [
+            for (final hit in _hits)
+              DifyTableRow(
+                nowrap: true,
+                cells: [
+                  c(hit.question ?? '', truncate: true),
+                  c(hit.match ?? '', truncate: true),
+                  c(hit.response ?? '', truncate: true),
+                  c(hit.source ?? ''),
+                  c((hit.score ?? 0) != 0 ? hit.score!.toStringAsFixed(2) : '-'),
+                  c((widget.formatTime ?? AccountTime.of(context).formatTime)(hit.createdAt ?? 0, dateFormat)),
+                ],
+              ),
+          ],
         ),
-        for (final hit in _hits)
-          Container(
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-            ),
-            child: Row(
-              children: [
-                c(hit.question ?? '', flex: 2),
-                c(hit.match ?? '', flex: 2),
-                c(hit.response ?? '', flex: 2),
-                c(hit.source ?? ''),
-                c((hit.score ?? 0) != 0 ? hit.score!.toStringAsFixed(2) : '-'),
-                c((widget.formatTime ?? AccountTime.of(context).formatTime)(hit.createdAt ?? 0, dateFormat), flex: 2),
-              ],
-            ),
-          ),
         if (_total > appPageLimit)
           DifyPagination(
             page: _currPage + 1,

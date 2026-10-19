@@ -249,7 +249,7 @@ class WorkflowLogsState extends State<WorkflowLogs> {
                 WorkflowLogFilter(queryParams: _query, setQueryParams: _setQuery),
                 Expanded(
                   child: total == null
-                      ? const LogLoading()
+                      ? const DifyLoading(key: ValueKey('logs-loading'), app: true)
                       : total > 0
                       ? SingleChildScrollView(
                           child: WorkflowAppLogList(
@@ -367,28 +367,28 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
 
   Widget _status(String? status) => switch (status) {
     'succeeded' => LogStatusLabel(
-      dot: StatusDotKind.success,
+      dot: DifyStatusDotStatus.success,
       text: 'Success',
       color: DifyColors.utilColorsGreenGreen600,
     ),
-    'failed' => LogStatusLabel(dot: StatusDotKind.error, text: 'Failure', color: DifyColors.utilColorsRedRed600),
+    'failed' => LogStatusLabel(dot: DifyStatusDotStatus.error, text: 'Failure', color: DifyColors.utilColorsRedRed600),
     'stopped' => LogStatusLabel(
-      dot: StatusDotKind.warning,
+      dot: DifyStatusDotStatus.warning,
       text: 'Stop',
       color: DifyColors.utilColorsWarningWarning600,
     ),
     'paused' => LogStatusLabel(
-      dot: StatusDotKind.warning,
+      dot: DifyStatusDotStatus.warning,
       text: 'Pending',
       color: DifyColors.utilColorsWarningWarning600,
     ),
     'running' => LogStatusLabel(
-      dot: StatusDotKind.normal,
+      dot: DifyStatusDotStatus.normal,
       text: 'Running',
       color: DifyColors.utilColorsBlueLightBlueLight600,
     ),
     'partial-succeeded' => LogStatusLabel(
-      dot: StatusDotKind.success,
+      dot: DifyStatusDotStatus.success,
       text: 'Partial Success',
       color: DifyColors.utilColorsGreenGreen600,
     ),
@@ -398,11 +398,11 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
   @override
   Widget build(BuildContext context) {
     final app = widget.app;
-    if (widget.logs == null || app == null) return const LogLoading();
+    if (widget.logs == null || app == null) return const DifyLoading(key: ValueKey('logs-loading'), app: true);
     final isWorkflow = app.mode == AppModes.workflow;
-    final columns = <LogColumn>[
-      (header: null, width: 20),
-      (
+    final columns = <DifyTableColumn>[
+      DifyTableColumn(header: null, width: 20),
+      DifyTableColumn(
         header: DifyPressable(
           key: const ValueKey('workflow-log-sort'),
           semanticLabel: _l('table.header.startTime'),
@@ -436,25 +436,41 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
         ),
         width: 180,
       ),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))), width: null),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.runtime'))), width: null),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.tokens'))), width: null),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.user'))), width: null),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
+        width: null,
+      ),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.runtime'))),
+        width: null,
+      ),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.tokens'))),
+        width: null,
+      ),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.user'))),
+        width: null,
+      ),
       if (isWorkflow)
-        (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.triggered_from'))), width: null),
+        DifyTableColumn(
+          header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.triggered_from'))),
+          width: null,
+        ),
     ];
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: LogTable(
+      child: DifyTable(
+        headerKey: const ValueKey('log-table-header'),
         columns: columns,
         rows: [
-          for (final log in _sorted) _row(log, columns, isWorkflow),
+          for (final log in _sorted) _row(log, isWorkflow),
         ],
       ),
     );
   }
 
-  LogTableRow _row(Json log, List<LogColumn> columns, bool isWorkflow) {
+  DifyTableRow _row(Json log, bool isWorkflow) {
     final run = (log['workflow_run'] as Json?) ?? const {};
     final endUser = switch ((log['created_by_end_user'], log['created_by_account'])) {
       (final Json u, _) => '${u['session_id']}',
@@ -464,9 +480,8 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
     final id = '${log['id']}';
     final elapsed = ((run['elapsed_time'] as num?) ?? 0).toDouble();
     final trigger = _triggers.putIfAbsent(id, () => FocusNode(debugLabel: 'log $id'));
-    return LogTableRow(
+    return DifyTableRow(
       key: ValueKey('workflow-log-row-$id'),
-      columns: columns,
       selected: _current == id,
       onTap: () => _open(log),
       cells: [

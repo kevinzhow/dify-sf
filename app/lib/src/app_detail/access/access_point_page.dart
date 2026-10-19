@@ -503,28 +503,16 @@ class EnvironmentTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = _t('workflow', 'nodes.common.memories.builtIn');
     return Semantics(
       key: const ValueKey('access-point-environment-tabs'),
       container: true,
       label: _t('deployments', 'studio.environments'),
-      child: Semantics(
-        selected: true,
-        button: true,
-        label: label,
-        excludeSemantics: true,
-        child: Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: DifyColors.stateBaseActive,
-            borderRadius: BorderRadius.circular(DifyRadius.lg),
-          ),
-          child: Center(
-            widthFactor: 1,
-            child: Text(label, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
-          ),
-        ),
+      // dify-sf has the built-in environment only: its tab is always the active one.
+      child: DifyTab(
+        style: DifyTabStyle.pill,
+        label: _t('workflow', 'nodes.common.memories.builtIn'),
+        active: true,
+        onPressed: () {},
       ),
     );
   }

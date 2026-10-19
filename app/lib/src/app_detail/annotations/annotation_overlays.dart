@@ -8,7 +8,6 @@ import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
@@ -117,57 +116,14 @@ class AnnotationAlertDialog extends StatelessWidget {
   Widget build(BuildContext context) => ControlledOverlay(
     open: open,
     onClose: onCancel,
-    builder: (context) => Center(
-      child: Semantics(
-        container: true,
-        scopesRoute: true,
-        namesRoute: true,
-        explicitChildNodes: true,
-        label: title,
-        child: Container(
-          key: const ValueKey('annotation-alert-dialog'),
-          width: 480,
-          decoration: BoxDecoration(
-            color: DifyColors.componentsPanelBg,
-            borderRadius: BorderRadius.circular(DifyRadius.xxl),
-            border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-            boxShadow: DifyShadows.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    DifyButton(onPressed: onCancel, child: Text(_c('operation.cancel'))),
-                    DifyButton(
-                      variant: DifyButtonVariant.primary,
-                      tone: DifyButtonTone.destructive,
-                      loading: loading,
-                      onPressed: onConfirm,
-                      child: Text(confirmLabel ?? _c('operation.confirm')),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    builder: (context) => DifyAlertDialog(
+      surfaceKey: const ValueKey('annotation-alert-dialog'),
+      title: title,
+      cancelLabel: _c('operation.cancel'),
+      confirmLabel: confirmLabel ?? _c('operation.confirm'),
+      confirmLoading: loading,
+      onCancel: onCancel,
+      onConfirm: onConfirm,
     ),
   );
 }
@@ -201,39 +157,16 @@ class AnnotationDialog extends StatelessWidget {
   Widget build(BuildContext context) => ControlledOverlay(
     open: open,
     onClose: onClose,
-    builder: (context) {
-      final box = LayoutBuilder(
-        builder: (context, c) => ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: (c.maxWidth - 32).clamp(0, width), maxHeight: c.maxHeight * 0.8),
-          child: Semantics(
-            container: true,
-            scopesRoute: true,
-            namesRoute: true,
-            explicitChildNodes: true,
-            label: label,
-            child: Container(
-              width: width,
-              padding: padding,
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBg,
-                borderRadius: BorderRadius.circular(radius),
-                boxShadow: DifyShadows.xl,
-              ),
-              child: SingleChildScrollView(child: child),
-            ),
-          ),
-        ),
-      );
-      return top == null
-          ? Center(child: box)
-          : Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.only(top: top!),
-                child: box,
-              ),
-            );
-    },
+    builder: (context) => DifyDialogSurface(
+      label: label,
+      width: width,
+      padding: padding,
+      radius: radius,
+      top: top,
+      namesRoute: true,
+      scrollable: true,
+      child: child,
+    ),
   );
 }
 
@@ -274,51 +207,40 @@ class AnnotationDrawer extends StatelessWidget {
             right: 8,
             bottom: 12,
             width: width.clamp(0, c.maxWidth - 16).toDouble(),
-            child: Semantics(
-              container: true,
-              scopesRoute: true,
-              namesRoute: true,
-              explicitChildNodes: true,
+            child: DifyDrawerPopup(
+              key: const ValueKey('annotation-drawer'),
               label: label,
-              child: Container(
-                key: const ValueKey('annotation-drawer'),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: DifyColors.componentsPanelBg,
-                  borderRadius: BorderRadius.circular(DifyRadius.xl),
-                  border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-                  boxShadow: DifyShadows.xl,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 24, right: 20),
-                        child: SizedBox(
-                          height: 24,
-                          child: Row(
-                            children: [
-                              Expanded(child: title),
-                              DifyIconButton(
-                                label: _c('operation.close'),
-                                size: DifyIconButtonSize.md,
-                                icon: const RemixIcon('close-line', size: 16),
-                                onPressed: onClose,
-                              ),
-                            ],
-                          ),
+              scopesRoute: true,
+              borderRadius: BorderRadius.circular(DifyRadius.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 24, right: 20),
+                      child: SizedBox(
+                        height: 24,
+                        child: Row(
+                          children: [
+                            Expanded(child: title),
+                            DifyIconButton(
+                              label: _c('operation.close'),
+                              size: DifyIconButtonSize.md,
+                              icon: const RemixIcon('close-line', size: 16),
+                              onPressed: onClose,
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    Expanded(child: SingleChildScrollView(child: body)),
-                    ?footer,
-                  ],
-                ),
+                  ),
+                  Expanded(child: SingleChildScrollView(child: body)),
+                  ?footer,
+                ],
               ),
             ),
           ),

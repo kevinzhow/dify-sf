@@ -4,12 +4,9 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Material, MaterialType;
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/app_icon_picker.dart';
@@ -553,45 +550,6 @@ class _DuplicateAppModalState extends State<DuplicateAppModal> {
   }
 }
 
-/// dify-ui's AlertDialogContent: `w-120 rounded-2xl border-[0.5px] border-components-panel-border
-/// bg-components-panel-bg shadow-lg`, closed only by its actions (and Escape).
-class StudioAlertSurface extends StatelessWidget {
-  const StudioAlertSurface({super.key, required this.child, this.label});
-
-  final Widget child;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 480, maxHeight: MediaQuery.sizeOf(context).height - 32),
-        child: Material(
-          type: MaterialType.transparency,
-          child: Semantics(
-            container: true,
-            role: SemanticsRole.alertDialog,
-            explicitChildNodes: true,
-            label: label,
-            child: Container(
-              width: 480,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBg,
-                borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-                boxShadow: DifyShadows.lg,
-              ),
-              child: SingleChildScrollView(child: child),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 /// The app card's delete AlertDialog: the title, the warning, "To confirm, type `<name>` in the box below" with an
 /// input and its Fill button; Confirm stays disabled until the input matches [appName]. [onConfirm] runs while the
 /// dialog shows its loading state; it closes on success (true).
@@ -628,102 +586,64 @@ class _DeleteAppDialogState extends State<DeleteAppDialog> {
     final parts = label.split(RegExp(r'</?appName>'));
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => _deleting ? null : widget.onClose()},
-      child: StudioAlertSurface(
-        label: _a('deleteAppConfirmTitle'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
-                children: [
-                  Text(
-                    _a('deleteAppConfirmTitle'),
-                    style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                  ),
-                  Text(
-                    _a('deleteAppConfirmContent'),
-                    style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: 4,
-                      children: [
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              for (final (i, p) in parts.indexed)
-                                TextSpan(
-                                  text: p,
-                                  style: i == 1 && parts.length == 3
-                                      ? difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)
-                                      : null,
-                                ),
-                            ],
-                          ),
-                          style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
-                        ),
-                        DifyInput(
-                          key: const ValueKey('delete-app-input'),
-                          value: _input,
-                          placeholder: _a('deleteAppConfirmInputPlaceholder'),
-                          semanticLabel: label.replaceAll(RegExp(r'</?appName>'), ''),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => unawaited(_submit()),
-                          onChanged: (v) => setState(() => _input = v),
-                          trailing: Padding(
-                            padding: const EdgeInsets.only(right: 7),
-                            child: DifyButton(
-                              key: const ValueKey('delete-app-fill'),
-                              variant: DifyButtonVariant.tertiary,
-                              size: DifyButtonSize.small,
-                              paddingX: 10,
-                              semanticLabel: _c('operation.fill'),
-                              onPressed: () => setState(() => _input = widget.appName),
-                              child: Text(_c('operation.fill')),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+      child: DifyAlertDialog(
+        title: _a('deleteAppConfirmTitle'),
+        titleMaxLines: null,
+        description: _a('deleteAppConfirmContent'),
+        extra: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 4,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    for (final (i, p) in parts.indexed)
+                      TextSpan(
+                        text: p,
+                        style: i == 1 && parts.length == 3
+                            ? difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)
+                            : null,
+                      ),
+                  ],
+                ),
+                style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  DifyButton(
-                    key: const ValueKey('delete-app-cancel'),
-                    disabled: _deleting,
-                    semanticLabel: _c('operation.cancel'),
-                    onPressed: widget.onClose,
-                    child: Text(_c('operation.cancel')),
+              DifyInput(
+                key: const ValueKey('delete-app-input'),
+                value: _input,
+                placeholder: _a('deleteAppConfirmInputPlaceholder'),
+                semanticLabel: label.replaceAll(RegExp(r'</?appName>'), ''),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => unawaited(_submit()),
+                onChanged: (v) => setState(() => _input = v),
+                trailing: Padding(
+                  padding: const EdgeInsets.only(right: 7),
+                  child: DifyButton(
+                    key: const ValueKey('delete-app-fill'),
+                    variant: DifyButtonVariant.tertiary,
+                    size: DifyButtonSize.small,
+                    paddingX: 10,
+                    semanticLabel: _c('operation.fill'),
+                    onPressed: () => setState(() => _input = widget.appName),
+                    child: Text(_c('operation.fill')),
                   ),
-                  DifyButton(
-                    key: const ValueKey('delete-app-confirm'),
-                    variant: DifyButtonVariant.primary,
-                    tone: DifyButtonTone.destructive,
-                    disabled: _mismatch,
-                    loading: _deleting,
-                    semanticLabel: _c('operation.confirm'),
-                    onPressed: () => unawaited(_submit()),
-                    child: Text(_c('operation.confirm')),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        cancelKey: const ValueKey('delete-app-cancel'),
+        confirmKey: const ValueKey('delete-app-confirm'),
+        semanticButtonLabels: true,
+        cancelLabel: _c('operation.cancel'),
+        confirmLabel: _c('operation.confirm'),
+        cancelDisabled: _deleting,
+        confirmDisabled: _mismatch,
+        confirmLoading: _deleting,
+        onCancel: widget.onClose,
+        onConfirm: () => unawaited(_submit()),
       ),
     );
   }
@@ -752,81 +672,45 @@ class DSLConfirmModal extends StatelessWidget {
     final medium = difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => confirmLoading ? null : onCancel()},
-      child: StudioAlertSurface(
-        label: _a('newApp.appCreateDSLErrorTitle'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: DifyAlertDialog(
+        title: _a('newApp.appCreateDSLErrorTitle'),
+        titleMaxLines: null,
+        extra: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 8,
+            Text(_a('newApp.appCreateDSLErrorPart1'), style: body),
+            Text(_a('newApp.appCreateDSLErrorPart2'), style: body),
+            const SizedBox(height: 20),
+            Text.rich(
+              TextSpan(
                 children: [
-                  Text(
-                    _a('newApp.appCreateDSLErrorTitle'),
-                    style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_a('newApp.appCreateDSLErrorPart1'), style: body),
-                      Text(_a('newApp.appCreateDSLErrorPart2'), style: body),
-                      const SizedBox(height: 20),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: _a('newApp.appCreateDSLErrorPart3')),
-                            TextSpan(text: importedVersion, style: medium),
-                          ],
-                        ),
-                        style: body,
-                      ),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: _a('newApp.appCreateDSLErrorPart4')),
-                            TextSpan(text: systemVersion, style: medium),
-                          ],
-                        ),
-                        style: body,
-                      ),
-                    ],
-                  ),
+                  TextSpan(text: _a('newApp.appCreateDSLErrorPart3')),
+                  TextSpan(text: importedVersion, style: medium),
                 ],
               ),
+              style: body,
             ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
+            Text.rich(
+              TextSpan(
                 children: [
-                  DifyButton(
-                    key: const ValueKey('dsl-confirm-cancel'),
-                    variant: DifyButtonVariant.secondary,
-                    disabled: confirmLoading,
-                    semanticLabel: _a('newApp.Cancel'),
-                    onPressed: onCancel,
-                    child: Text(_a('newApp.Cancel')),
-                  ),
-                  DifyButton(
-                    key: const ValueKey('dsl-confirm-confirm'),
-                    variant: DifyButtonVariant.primary,
-                    tone: DifyButtonTone.destructive,
-                    disabled: confirmDisabled,
-                    loading: confirmLoading,
-                    semanticLabel: _a('newApp.Confirm'),
-                    onPressed: onConfirm,
-                    child: Text(_a('newApp.Confirm')),
-                  ),
+                  TextSpan(text: _a('newApp.appCreateDSLErrorPart4')),
+                  TextSpan(text: systemVersion, style: medium),
                 ],
               ),
+              style: body,
             ),
           ],
         ),
+        cancelKey: const ValueKey('dsl-confirm-cancel'),
+        confirmKey: const ValueKey('dsl-confirm-confirm'),
+        semanticButtonLabels: true,
+        cancelLabel: _a('newApp.Cancel'),
+        confirmLabel: _a('newApp.Confirm'),
+        cancelDisabled: confirmLoading,
+        confirmDisabled: confirmDisabled,
+        confirmLoading: confirmLoading,
+        onCancel: onCancel,
+        onConfirm: onConfirm,
       ),
     );
   }

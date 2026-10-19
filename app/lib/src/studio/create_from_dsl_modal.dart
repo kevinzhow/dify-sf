@@ -231,38 +231,16 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
   Widget _tabButton(String value, String label) {
     final active = _tab == value;
     final node = _tabNodes[value]!..skipTraversal = !active;
-    return Semantics(
-      selected: active,
-      child: DifyPressable(
-        key: ValueKey('dsl-tab-$value'),
-        focusNode: node,
-        semanticLabel: label,
-        disabled: _importing,
-        onPressed: () {
-          setState(() => _tab = value);
-          node.requestFocus();
-        },
-        builder: (context, hovered, focused) => Opacity(
-          opacity: _importing && !active ? 0.3 : 1,
-          child: Container(
-            padding: const EdgeInsets.only(top: 10, bottom: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: active ? DifyColors.componentsTabActive : const Color(0x00000000), width: 2),
-              ),
-            ),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: difyTextStyle(
-                DifyType.systemMdSemibold,
-                active ? DifyColors.textPrimary : DifyColors.textTertiary,
-              ),
-            ),
-          ),
-        ),
-      ),
+    return DifyTab(
+      key: ValueKey('dsl-tab-$value'),
+      label: label,
+      active: active,
+      focusNode: node,
+      disabled: _importing,
+      onPressed: () {
+        setState(() => _tab = value);
+        node.requestFocus();
+      },
     );
   }
 

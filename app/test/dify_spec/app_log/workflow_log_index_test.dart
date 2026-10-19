@@ -66,7 +66,7 @@ void main() {
         source.workflowLogsAnswer = mockLogsResponse([], 0);
         await renderLogs(t);
         expect(find.text('app-log.table.empty.element.title'), findsOneWidget);
-        expect(find.byType(LogTable), findsNothing);
+        expect(find.byType(DifyTable), findsNothing);
       });
     });
 
@@ -135,7 +135,7 @@ void main() {
           for (var i = 0; i < appPageLimit; i++) mockWorkflowLog(id: 'log-$i'),
         ], appPageLimit + 10);
         await renderLogs(t);
-        expect(find.byType(LogTable), findsOneWidget);
+        expect(find.byType(DifyTable), findsOneWidget);
         expect(find.byType(DifyPagination), findsOneWidget);
       });
     });
@@ -144,7 +144,7 @@ void main() {
       testWidgets('should render List component when data is available', (t) async {
         source.workflowLogsAnswer = mockLogsResponse([mockWorkflowLog()], 1);
         await renderLogs(t);
-        expect(find.byType(LogTable), findsOneWidget);
+        expect(find.byType(DifyTable), findsOneWidget);
       });
 
       testWidgets('should display log data in table', (t) async {

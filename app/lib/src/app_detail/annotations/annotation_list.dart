@@ -75,46 +75,49 @@ class _AnnotationListState extends State<AnnotationList> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        LayoutBuilder(
-          builder: (context, box) {
-            final widths = annotationColumnWidths(
-              box.maxWidth,
-              widget.list,
-              created,
-              base: DefaultTextStyle.of(context).style,
-            );
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _HeaderRow(
-                    widths: widths,
-                    selectAll: DifyCheckbox(
-                      checked: all,
-                      indeterminate: selected > 0 && !all,
-                      label: _t('common', 'operation.selectAll'),
-                      onChanged: (_) => widget.onSelectedIdsChange(all ? const [] : ids),
-                    ),
+        SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 8),
+          child: DifyTable(
+            columns: [
+              DifyTableColumn(
+                width: _checkW,
+                headerPadding: const EdgeInsets.symmetric(horizontal: 8),
+                header: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: DifyCheckbox(
+                    checked: all,
+                    indeterminate: selected > 0 && !all,
+                    label: _t('common', 'operation.selectAll'),
+                    onChanged: (_) => widget.onSelectedIdsChange(all ? const [] : ids),
                   ),
-                  for (final (i, item) in widget.list.indexed)
-                    _Row(
-                      key: ValueKey('annotation-row-${item.id}'),
-                      item: item,
-                      widths: widths,
-                      checked: widget.selectedIds.contains(item.id),
-                      createdAt: created[i],
-                      onChecked: (v) => _toggle(item.id, v),
-                      onView: () => widget.onView(item),
-                      onRemove: () => setState(() {
-                        _currId = item.id;
-                        _showConfirmDelete = true;
-                      }),
-                    ),
-                ],
+                ),
               ),
-            );
-          },
+              DifyTableColumn(
+                width: 20,
+                headerPadding: const EdgeInsets.only(left: 8, right: 4),
+                header: _headerText('table.header.question'),
+              ),
+              DifyTableColumn(headerPadding: _headPadding, header: _headerText('table.header.answer')),
+              DifyTableColumn(headerPadding: _headPadding, header: _headerText('table.header.createdAt')),
+              DifyTableColumn(headerPadding: _headPadding, header: _headerText('table.header.hits')),
+              DifyTableColumn(
+                width: _actionsW,
+                headerPadding: _headPadding,
+                header: _headerText('table.header.actions'),
+              ),
+            ],
+            rows: [
+              for (final (i, item) in widget.list.indexed)
+                _row(
+                  item,
+                  createdAt: created[i],
+                  onRemove: () => setState(() {
+                    _currId = item.id;
+                    _showConfirmDelete = true;
+                  }),
+                ),
+            ],
+          ),
         ),
         if (widget.selectedIds.isNotEmpty)
           Positioned(
@@ -143,126 +146,24 @@ class _AnnotationListState extends State<AnnotationList> {
 /// The fixed columns: the checkbox `w-12`, the actions `w-24`.
 const _checkW = 48.0, _actionsW = 96.0;
 
-/// The table's column widths as the browser's automatic table layout makes them: the checkbox and actions columns
-/// fixed; the question column (`w-5` in the header) as wide as its widest cell; the answer, created-at and hits
-/// columns their widest cell plus a share of the remaining width in proportion to it. Question and answer cells
-/// count at most `max-w-62.5` of text.
-List<double> annotationColumnWidths(
-  double width,
-  List<Annotation> list,
-  List<String> created, {
-  TextStyle base = const TextStyle(),
-}) {
-  double measure(String s, DifyTextStyle st) => (TextPainter(
-    text: TextSpan(text: difyTransform(st, s), style: base.merge(st.style)),
-    textDirection: TextDirection.ltr,
-    maxLines: 1,
-  )..layout()).width;
-  double head(String key, double padding) =>
-      measure(_t('appAnnotation', key), DifyType.systemXsMediumUppercase) + padding;
-  double cells(Iterable<String> texts, {double cap = double.infinity}) => texts.fold(
-    0.0,
-    (m, s) => [
-      m,
-      [measure(s, DifyType.systemSmRegular), cap].reduce((a, b) => a < b ? a : b) + 20,
-    ].reduce((a, b) => a > b ? a : b),
-  );
-  final question = [
-    head('table.header.question', 12),
-    cells([for (final i in list) i.question], cap: 250),
-  ].reduce((a, b) => a > b ? a : b);
-  final auto = [
-    [
-      head('table.header.answer', 12),
-      cells([for (final i in list) i.answer], cap: 250),
-    ].reduce((a, b) => a > b ? a : b),
-    [head('table.header.createdAt', 12), cells(created)].reduce((a, b) => a > b ? a : b),
-    [
-      head('table.header.hits', 12),
-      cells([for (final i in list) '${i.hitCount}']),
-    ].reduce((a, b) => a > b ? a : b),
-  ];
-  final sum = auto.reduce((a, b) => a + b);
-  final rest = width - _checkW - question - _actionsW;
-  final scale = sum <= 0 ? 1.0 : rest / sum;
-  return [_checkW, question, for (final w in auto) w * scale, _actionsW];
-}
+/// The header cells' `pl-3` (the row is `h-7`: [DifyTable.headerHeight]).
+const _headPadding = EdgeInsets.only(left: 12);
 
-class _HeaderRow extends StatelessWidget {
-  const _HeaderRow({required this.selectAll, required this.widths});
-  final Widget selectAll;
-  final List<double> widths;
+/// A header cell's text (`whitespace-nowrap`).
+Widget _headerText(String key) => Text(
+  difyTransform(DifyType.systemXsMediumUppercase, _t('appAnnotation', key)),
+  maxLines: 1,
+  softWrap: false,
+  overflow: TextOverflow.clip,
+  style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
+);
 
-  @override
-  Widget build(BuildContext context) {
-    Widget cell(String key, {double? width, EdgeInsets padding = const EdgeInsets.only(left: 12)}) {
-      final text = Padding(
-        padding: padding,
-        child: Text(
-          difyTransform(DifyType.systemXsMediumUppercase, _t('appAnnotation', key)),
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.clip,
-          style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
-        ),
-      );
-      return SizedBox(width: width, child: text);
-    }
-
-    return Container(
-      height: 28,
-      decoration: BoxDecoration(
-        color: DifyColors.backgroundSectionBurn,
-        borderRadius: BorderRadius.circular(DifyRadius.lg),
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: widths[0],
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Align(alignment: AlignmentDirectional.centerStart, child: selectAll),
-            ),
-          ),
-          cell('table.header.question', width: widths[1], padding: const EdgeInsets.only(left: 8, right: 4)),
-          cell('table.header.answer', width: widths[2]),
-          cell('table.header.createdAt', width: widths[3]),
-          cell('table.header.hits', width: widths[4]),
-          cell('table.header.actions', width: widths[5]),
-        ],
-      ),
-    );
-  }
-}
-
-class _Row extends StatefulWidget {
-  const _Row({
-    super.key,
-    required this.item,
-    required this.widths,
-    required this.checked,
-    required this.createdAt,
-    required this.onChecked,
-    required this.onView,
-    required this.onRemove,
-  });
-
-  final Annotation item;
-  final List<double> widths;
-  final bool checked;
-  final String createdAt;
-  final ValueChanged<bool> onChecked;
-  final VoidCallback onView, onRemove;
-
-  @override
-  State<_Row> createState() => _RowState();
-}
-
-class _RowState extends State<_Row> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
+/// AnnotationTableRow: `cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover`, a click
+/// opens the annotation; the checkbox (`w-12 px-2`) and the actions (`w-24 p-3 pr-2`: edit, remove) stop it. The
+/// question and answer cells are `max-w-62.5 truncate p-3 pr-2` (the full text as their `title`), the others
+/// `p-3 pr-2`; no cell wraps.
+extension on _AnnotationListState {
+  DifyTableRow _row(Annotation item, {required String createdAt, required VoidCallback onRemove}) {
     final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary);
     Widget text(String s) => Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
@@ -271,75 +172,54 @@ class _RowState extends State<_Row> {
         child: Text(s, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style),
       ),
     );
-    final item = widget.item;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onView,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _hovered ? DifyColors.backgroundDefaultHover : null,
-            border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-          ),
-          child: Row(
-            children: [
-              // The checkbox cell stops the row's click.
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {},
-                child: SizedBox(
-                  width: widget.widths[0],
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: DifyCheckbox(checked: widget.checked, label: item.question, onChanged: widget.onChecked),
-                    ),
-                  ),
-                ),
+    return DifyTableRow(
+      key: ValueKey('annotation-row-${item.id}'),
+      nowrap: true,
+      onTap: () => widget.onView(item),
+      cells: [
+        // The checkbox cell stops the row's click.
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {},
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: DifyCheckbox(
+                checked: widget.selectedIds.contains(item.id),
+                label: item.question,
+                onChanged: (v) => _toggle(item.id, v),
               ),
-              SizedBox(
-                width: widget.widths[1],
-                child: _CellTitle(message: item.question, child: text(item.question)),
-              ),
-              SizedBox(
-                width: widget.widths[2],
-                child: _CellTitle(message: item.answer, child: text(item.answer)),
-              ),
-              SizedBox(width: widget.widths[3], child: text(widget.createdAt)),
-              SizedBox(width: widget.widths[4], child: text('${item.hitCount}')),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {},
-                child: SizedBox(
-                  width: widget.widths[5],
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-                    child: Row(
-                      spacing: 4,
-                      children: [
-                        DifyIconButton(
-                          label: _t('appDebug', 'feature.annotation.edit'),
-                          icon: RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
-                          onPressed: widget.onView,
-                        ),
-                        DifyIconButton(
-                          label: _t('appDebug', 'feature.annotation.remove'),
-                          icon: RemixIcon('delete-bin-line', size: 16, color: DifyColors.textTertiary),
-                          onPressed: widget.onRemove,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        _CellTitle(message: item.question, child: text(item.question)),
+        _CellTitle(message: item.answer, child: text(item.answer)),
+        text(createdAt),
+        text('${item.hitCount}'),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {},
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+            child: Row(
+              spacing: 4,
+              children: [
+                DifyIconButton(
+                  label: _t('appDebug', 'feature.annotation.edit'),
+                  icon: RemixIcon('edit-line', size: 16, color: DifyColors.textTertiary),
+                  onPressed: () => widget.onView(item),
+                ),
+                DifyIconButton(
+                  label: _t('appDebug', 'feature.annotation.remove'),
+                  icon: RemixIcon('delete-bin-line', size: 16, color: DifyColors.textTertiary),
+                  onPressed: onRemove,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

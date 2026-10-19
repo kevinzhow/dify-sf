@@ -46,7 +46,7 @@ void main() {
     },
   );
 
-  Finder rows() => find.byType(LogTableRow);
+  Finder rows() => find.byType(DifyTableRow);
 
   testWidgets('workflow logs: mock rows, the run drawer with the real run panel, replay opens the editor', (t) async {
     final source = MockAppLogsSource(now: DateTime(2026, 10, 19, 12));

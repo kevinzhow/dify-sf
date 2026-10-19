@@ -3,7 +3,6 @@
 library;
 
 import 'package:collab_client/collab_client.dart' show AppModes;
-import 'package:flutter/semantics.dart' show SemanticsRole;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart' show SvgPicture;
 
@@ -12,10 +11,6 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
-import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDotKind;
-import 'auto_table.dart';
-
-export '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
 
 String _l(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('app-log', key, params);
 String _c(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
@@ -262,7 +257,7 @@ class _LogSortState extends State<LogSort> {
 /// An uppercase status label with its dot (`inline-flex items-center gap-1 system-xs-semibold-uppercase`).
 class LogStatusLabel extends StatelessWidget {
   const LogStatusLabel({super.key, required this.dot, required this.text, required this.color});
-  final StatusDotKind dot;
+  final DifyStatusDotStatus dot;
   final String text;
   final Color color;
 
@@ -271,7 +266,7 @@ class LogStatusLabel extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     spacing: 4,
     children: [
-      LogStatusDot(status: dot),
+      DifyStatusDot(status: dot),
       Flexible(
         child: Text(
           difyTransform(DifyType.systemXsSemiboldUppercase, text),
@@ -280,54 +275,6 @@ class LogStatusLabel extends StatelessWidget {
       ),
     ],
   );
-}
-
-/// dify-ui's StatusDot at its default size (`size-2 rounded-[3px] border`, the `shadow-status-indicator-*` halo and
-/// outer ring).
-class LogStatusDot extends StatelessWidget {
-  const LogStatusDot({super.key, required this.status});
-  final StatusDotKind status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (bg, border, shadow) = switch (status) {
-      StatusDotKind.success => (
-        DifyColors.componentsBadgeStatusLightSuccessBg,
-        DifyColors.componentsBadgeStatusLightSuccessBorderInner,
-        DifyShadows.statusIndicatorGreenShadow,
-      ),
-      StatusDotKind.error => (
-        DifyColors.componentsBadgeStatusLightErrorBg,
-        DifyColors.componentsBadgeStatusLightErrorBorderInner,
-        DifyShadows.statusIndicatorRedShadow,
-      ),
-      StatusDotKind.warning => (
-        DifyColors.componentsBadgeStatusLightWarningBg,
-        DifyColors.componentsBadgeStatusLightWarningBorderInner,
-        DifyShadows.statusIndicatorWarningShadow,
-      ),
-      StatusDotKind.normal => (
-        DifyColors.componentsBadgeStatusLightNormalBg,
-        DifyColors.componentsBadgeStatusLightNormalBorderInner,
-        DifyShadows.statusIndicatorBlueShadow,
-      ),
-      StatusDotKind.disabled => (
-        DifyColors.componentsBadgeStatusLightDisabledBg,
-        DifyColors.componentsBadgeStatusLightDisabledBorderInner,
-        DifyShadows.statusIndicatorGrayShadow,
-      ),
-    };
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: border),
-        boxShadow: shadow,
-      ),
-    );
-  }
 }
 
 /// The unread mark (`size-1.5 rounded-sm bg-util-colors-blue-blue-500` in `p-3 pr-0.5`).
@@ -349,129 +296,12 @@ class LogUnreadDot extends StatelessWidget {
   );
 }
 
-/// base/loading (`type="app"`: centred in the remaining height).
-class LogLoading extends StatelessWidget {
-  const LogLoading({super.key});
-
-  @override
-  Widget build(BuildContext context) => Center(
-    key: const ValueKey('logs-loading'),
-    child: DifySpinner(color: DifyColors.utilColorsBlueBrandBlueBrand600, size: 24),
-  );
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 // Table
 // ---------------------------------------------------------------------------------------------------------------------
 
-/// A table column: its header (null: the empty unread column) and its width (`w-*` on its cells; null: automatic).
-typedef LogColumn = ({Widget? header, double? width});
-
-/// The logs' `<table>` (`w-full min-w-110`, automatic table layout: [AutoTableScope]): the header row
-/// (`system-xs-medium-uppercase text-text-tertiary` on `bg-background-section-burn`, `rounded-lg` ends, `py-1.5 pl-3`,
-/// `whitespace-nowrap`), and rows with a bottom divider that highlight on hover and while selected.
-class LogTable extends StatelessWidget {
-  const LogTable({super.key, required this.columns, required this.rows, this.minWidth = 440});
-
-  final List<LogColumn> columns;
-  final List<LogTableRow> rows;
-  final double minWidth;
-
-  static Widget cellsRow(List<LogColumn> columns, List<Widget> cells, {bool nowrap = false}) =>
-      AutoTableCells(nowrap: nowrap, children: cells);
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final width = constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
-      final table = SizedBox(
-        width: width,
-        child: AutoTableScope(
-          fixed: [for (final c in columns) c.width],
-          child: Semantics(
-            container: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Semantics(
-                  container: true,
-                  child: Container(
-                    key: const ValueKey('log-table-header'),
-                    decoration: BoxDecoration(
-                      color: DifyColors.backgroundSectionBurn,
-                      borderRadius: BorderRadius.circular(DifyRadius.lg),
-                    ),
-                    child: DefaultTextStyle.merge(
-                      style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
-                      child: cellsRow(columns, nowrap: true, [
-                        for (final c in columns)
-                          c.header == null
-                              ? const SizedBox(height: 28)
-                              : Padding(padding: const EdgeInsets.fromLTRB(12, 6, 0, 6), child: c.header),
-                      ]),
-                    ),
-                  ),
-                ),
-                ...rows,
-              ],
-            ),
-          ),
-        ),
-      );
-      if (width == constraints.maxWidth) return table;
-      return SingleChildScrollView(scrollDirection: Axis.horizontal, child: table);
-    },
-  );
-}
-
-/// A table row: hover and [selected] backgrounds (`hover:bg-background-default-hover`), the bottom divider, a click
-/// anywhere that is not a button opens the row ([onTap]).
-class LogTableRow extends StatefulWidget {
-  const LogTableRow({
-    super.key,
-    required this.columns,
-    required this.cells,
-    required this.onTap,
-    this.selected = false,
-  });
-
-  final List<LogColumn> columns;
-  final List<Widget> cells;
-  final VoidCallback onTap;
-  final bool selected;
-
-  @override
-  State<LogTableRow> createState() => _LogTableRowState();
-}
-
-class _LogTableRowState extends State<LogTableRow> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    selected: widget.selected,
-    child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _hover || widget.selected ? DifyColors.backgroundDefaultHover : null,
-            border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-          ),
-          child: DefaultTextStyle.merge(
-            style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
-            child: LogTable.cellsRow(widget.columns, widget.cells),
-          ),
-        ),
-      ),
-    ),
-  );
-}
+// The logs' table is DifyTable (`w-full min-w-110`, automatic layout) with DifyTableRow rows (opened by a click,
+// selected while their drawer is open).
 
 /// A cell's `p-3 pr-2`.
 Widget logCell(Widget child) => Padding(
@@ -505,57 +335,30 @@ class LogDrawerTrigger extends StatelessWidget {
 // Drawer
 // ---------------------------------------------------------------------------------------------------------------------
 
-/// dify-ui's Drawer from the right as the logs open it: modal, no backdrop colour on desktop, the popup
-/// `top-16 right-2 bottom-3` (`bottom-4` for conversations), at most [maxWidth] wide, `rounded-xl` with a panel border.
-/// Escape and a click outside close it; [builder] gets the close callback. Resolves when it is closed.
+/// dify-ui's Drawer from the right as the logs open it ([showDifyDrawer]): modal, no backdrop colour on desktop, the
+/// popup `top-16 right-2 bottom-3` (`bottom-4` for conversations), at most [maxWidth] wide, `rounded-xl` with a panel
+/// border. Escape and a click outside close it; [builder] gets the close callback. Resolves when it is closed.
 Future<void> showLogDrawer(
   BuildContext context, {
   required Widget Function(BuildContext context, VoidCallback close) builder,
   double maxWidth = 600,
   double bottom = 12,
   bool bordered = true,
-}) => showGeneralDialog<void>(
-  context: context,
-  barrierDismissible: true,
+}) => showDifyDrawer<void>(
+  context,
+  insets: EdgeInsets.fromLTRB(8, 64, 8, bottom),
+  maxWidth: maxWidth,
+  backdrop: false,
   barrierLabel: _c('operation.close'),
-  barrierColor: const Color(0x00000000),
-  transitionDuration: const Duration(milliseconds: 200),
-  transitionBuilder: (context, animation, _, child) => SlideTransition(
-    position: Tween(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-    child: child,
-  ),
-  pageBuilder: (dialogContext, _, _) => SafeArea(
-    child: Padding(
-      padding: EdgeInsets.fromLTRB(8, 64, 8, bottom),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Semantics(
-            key: const ValueKey('log-drawer'),
-            role: SemanticsRole.dialog,
-            scopesRoute: true,
-            explicitChildNodes: true,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBg,
-                borderRadius: BorderRadius.circular(DifyRadius.xl),
-                border: bordered ? Border.all(color: DifyColors.componentsPanelBorder) : null,
-                boxShadow: DifyShadows.xl,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: DefaultTextStyle(
-                style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
-                child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop()),
-              ),
-            ),
-          ),
-        ),
-      ),
+  builder: (context, close) => DifyDrawerPopup(
+    key: const ValueKey('log-drawer'),
+    width: double.infinity,
+    scopesRoute: true,
+    borderRadius: BorderRadius.circular(DifyRadius.xl),
+    border: bordered ? Border.all(color: DifyColors.componentsPanelBorder) : const Border(),
+    child: DefaultTextStyle(
+      style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
+      child: builder(context, close),
     ),
   ),
 );
@@ -729,12 +532,12 @@ class LogVarPanel extends StatefulWidget {
 class _LogVarPanelState extends State<LogVarPanel> {
   bool _collapsed = false;
 
-  void _preview(String url) => showGeneralDialog<void>(
-    context: context,
-    barrierDismissible: true,
+  void _preview(String url) => showDifyDialog<void>(
+    context,
     barrierLabel: _c('operation.close'),
-    barrierColor: DifyColors.backgroundOverlay,
-    pageBuilder: (ctx, _, _) => Stack(
+    transition: DifyDialogTransition.linearFade,
+    transitionDuration: const Duration(milliseconds: 200),
+    builder: (ctx) => Stack(
       key: const ValueKey('var-panel-image-preview'),
       children: [
         Center(child: Image.network(url, errorBuilder: (_, _, _) => const SizedBox(width: 64, height: 64))),

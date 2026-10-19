@@ -8,8 +8,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:collab_client/collab_client.dart';
-import 'package:flutter/material.dart' show Material, MaterialType;
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart' show Colors, Material, MaterialType;
 import 'package:flutter/widgets.dart';
 
 import '../design/dify_icon.dart';
@@ -24,81 +23,73 @@ String _a(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('
 /// Shows [child] in CreateAppDialogShell: the whole window (`p-4`) over the blurred overlay backdrop, a
 /// `rounded-2xl border-effects-highlight bg-background-default-subtle` box with the close button at the top right.
 Future<T?> showCreateAppDialogShell<T>(BuildContext context, {required String title, required WidgetBuilder builder}) =>
-    showGeneralDialog<T>(
-      context: context,
-      barrierDismissible: true,
+    showDifyDialog<T>(
+      context,
       barrierLabel: title,
-      barrierColor: const Color(0x00000000),
-      transitionDuration: const Duration(milliseconds: 150),
-      transitionBuilder: (context, animation, _, child) => FadeTransition(opacity: animation, child: child),
-      pageBuilder: (context, _, _) => CallbackShortcuts(
-        bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.pop(context)},
-        child: FocusScope(
-          autofocus: true,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                  child: ColoredBox(color: DifyColors.backgroundOverlayBackdrop),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: Semantics(
-                    container: true,
-                    scopesRoute: true,
-                    namesRoute: true,
-                    explicitChildNodes: true,
-                    label: title,
-                    child: Container(
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: DifyColors.backgroundDefaultSubtle,
-                        borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                        border: Border.all(color: DifyColors.effectsHighlight),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned.fill(child: builder(context)),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: DifyPressable(
-                              key: const ValueKey('create-app-shell-close'),
-                              semanticLabel: 'Close',
-                              onPressed: () => Navigator.pop(context),
-                              builder: (context, hovered, focused) => Container(
-                                width: 36,
-                                height: 36,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: hovered
-                                      ? DifyColors.componentsButtonTertiaryBgHover
-                                      : DifyColors.componentsButtonTertiaryBg,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
-                                ),
-                                child: RemixIcon(
-                                  'close-large-line',
-                                  size: 14,
-                                  color: DifyColors.componentsButtonTertiaryText,
-                                ),
-                              ),
+      barrierColor: Colors.transparent,
+      transition: DifyDialogTransition.linearFade,
+      builder: (context) => Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+              child: ColoredBox(color: DifyColors.backgroundOverlayBackdrop),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Semantics(
+                container: true,
+                scopesRoute: true,
+                namesRoute: true,
+                explicitChildNodes: true,
+                label: title,
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: DifyColors.backgroundDefaultSubtle,
+                    borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                    border: Border.all(color: DifyColors.effectsHighlight),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: builder(context)),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: DifyPressable(
+                          key: const ValueKey('create-app-shell-close'),
+                          semanticLabel: 'Close',
+                          onPressed: () => Navigator.pop(context),
+                          builder: (context, hovered, focused) => Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: hovered
+                                  ? DifyColors.componentsButtonTertiaryBgHover
+                                  : DifyColors.componentsButtonTertiaryBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+                            ),
+                            child: RemixIcon(
+                              'close-large-line',
+                              size: 14,
+                              color: DifyColors.componentsButtonTertiaryText,
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
 

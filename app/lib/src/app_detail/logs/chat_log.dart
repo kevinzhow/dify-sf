@@ -317,7 +317,7 @@ class ChatLogsState extends State<ChatLogs> {
                 ),
                 Expanded(
                   child: total == null
-                      ? const LogLoading()
+                      ? const DifyLoading(key: ValueKey('logs-loading'), app: true)
                       : total > 0
                       ? SingleChildScrollView(
                           child: ConversationList(
@@ -439,21 +439,25 @@ Widget? chatflowStatusCell(Map<String, Object?>? statusCount) {
   if (statusCount == null) return null;
   int n(String k) => (statusCount[k] as num?)?.toInt() ?? 0;
   if (n('paused') > 0) {
-    return LogStatusLabel(dot: StatusDotKind.warning, text: 'Pending', color: DifyColors.utilColorsWarningWarning600);
+    return LogStatusLabel(
+      dot: DifyStatusDotStatus.warning,
+      text: 'Pending',
+      color: DifyColors.utilColorsWarningWarning600,
+    );
   }
   if (n('partial_success') + n('failed') == 0) {
-    return LogStatusLabel(dot: StatusDotKind.success, text: 'Success', color: DifyColors.utilColorsGreenGreen600);
+    return LogStatusLabel(dot: DifyStatusDotStatus.success, text: 'Success', color: DifyColors.utilColorsGreenGreen600);
   }
   if (n('failed') == 0) {
     return LogStatusLabel(
-      dot: StatusDotKind.success,
+      dot: DifyStatusDotStatus.success,
       text: 'Partial Success',
       color: DifyColors.utilColorsGreenGreen600,
     );
   }
   final failed = n('failed');
   return LogStatusLabel(
-    dot: StatusDotKind.error,
+    dot: DifyStatusDotStatus.error,
     text: '$failed ${failed > 1 ? 'Failures' : 'Failure'}',
     color: DifyColors.utilColorsRedRed600,
   );
@@ -561,10 +565,10 @@ class _ConversationListState extends State<ConversationList> {
   @override
   Widget build(BuildContext context) {
     final logs = widget.logs;
-    if (logs == null) return const LogLoading();
-    final columns = <LogColumn>[
-      (header: null, width: 20),
-      (
+    if (logs == null) return const DifyLoading(key: ValueKey('logs-loading'), app: true);
+    final columns = <DifyTableColumn>[
+      DifyTableColumn(header: null, width: 20),
+      DifyTableColumn(
         header: Text(
           difyTransform(
             DifyType.systemXsMediumUppercase,
@@ -573,10 +577,16 @@ class _ConversationListState extends State<ConversationList> {
         ),
         width: 160,
       ),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.endUser'))), width: null),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.endUser'))),
+        width: null,
+      ),
       if (_isChatflow)
-        (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))), width: 160),
-      (
+        DifyTableColumn(
+          header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
+          width: 160,
+        ),
+      DifyTableColumn(
         header: Text(
           difyTransform(
             DifyType.systemXsMediumUppercase,
@@ -585,16 +595,29 @@ class _ConversationListState extends State<ConversationList> {
         ),
         width: null,
       ),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.userRate'))), width: null),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.adminRate'))), width: null),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.updatedTime'))), width: 160),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.time'))), width: 160),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.userRate'))),
+        width: null,
+      ),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.adminRate'))),
+        width: null,
+      ),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.updatedTime'))),
+        width: 160,
+      ),
+      DifyTableColumn(
+        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.time'))),
+        width: 160,
+      ),
     ];
     final format = _l('dateTimeFormat');
     final time = AccountTime.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: LogTable(
+      child: DifyTable(
+        headerKey: const ValueKey('log-table-header'),
         columns: columns,
         rows: [
           for (final log in (logs['data'] as List? ?? const []).cast<Json>())
@@ -607,9 +630,8 @@ class _ConversationListState extends State<ConversationList> {
                 noOutputLabel: _l('table.empty.noOutput'),
               );
               final trigger = _triggers.putIfAbsent(id, () => FocusNode(debugLabel: 'conversation $id'));
-              return LogTableRow(
+              return DifyTableRow(
                 key: ValueKey('chat-log-row-$id'),
-                columns: columns,
                 selected: _current == id,
                 onTap: () => _open(id),
                 cells: [

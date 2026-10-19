@@ -10,7 +10,6 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../design/dify_tokens.g.dart';
 import '../design/widgets/app_icon_picker.dart' show UploadAppIcon;
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
@@ -430,58 +429,19 @@ class _ExportWarningDialogState extends State<ExportWarningDialog> {
     final exporting = widget.actions.isExporting;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => exporting ? null : widget.onClose()},
-      child: StudioAlertSurface(
-        label: _t('workflow', 'sidebar.exportWarning'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
-                children: [
-                  Text(
-                    _t('workflow', 'sidebar.exportWarning'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                  ),
-                  Text(
-                    _t('workflow', 'sidebar.exportWarningDesc'),
-                    style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  DifyButton(
-                    key: const ValueKey('export-warning-cancel'),
-                    disabled: exporting,
-                    semanticLabel: _t('common', 'operation.cancel'),
-                    onPressed: widget.onClose,
-                    child: Text(_t('common', 'operation.cancel')),
-                  ),
-                  DifyButton(
-                    key: const ValueKey('export-warning-confirm'),
-                    variant: DifyButtonVariant.primary,
-                    loading: exporting,
-                    semanticLabel: exporting ? _t('common', 'operation.exporting') : _t('common', 'operation.confirm'),
-                    onPressed: () => unawaited(widget.actions.handleConfirmExport()),
-                    child: Text(exporting ? _t('common', 'operation.exporting') : _t('common', 'operation.confirm')),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+      child: DifyAlertDialog(
+        title: _t('workflow', 'sidebar.exportWarning'),
+        description: _t('workflow', 'sidebar.exportWarningDesc'),
+        cancelKey: const ValueKey('export-warning-cancel'),
+        confirmKey: const ValueKey('export-warning-confirm'),
+        semanticButtonLabels: true,
+        cancelLabel: _t('common', 'operation.cancel'),
+        cancelDisabled: exporting,
+        onCancel: widget.onClose,
+        confirmTone: DifyButtonTone.normal,
+        confirmLoading: exporting,
+        confirmLabel: exporting ? _t('common', 'operation.exporting') : _t('common', 'operation.confirm'),
+        onConfirm: () => unawaited(widget.actions.handleConfirmExport()),
       ),
     );
   }

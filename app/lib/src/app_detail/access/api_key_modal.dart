@@ -212,10 +212,10 @@ class _CloseButton extends StatelessWidget {
   );
 }
 
-/// ApiKeyTable: `border-y border-divider-subtle`, a sticky `system-xs-semibold-uppercase text-text-tertiary` header
-/// (Secret key `w-64 px-6`, Created and Last used `w-48 px-3`, the actions `w-24 px-6`) and one row per key: the
-/// masked key (`font-mono`), the times (appLog's `dateTimeFormat`; "Never" when unused), copy and (with
-/// [canManage]) delete.
+/// ApiKeyTable ([DifyTable], `table-fixed`): `border-y border-divider-subtle`, a sticky
+/// `system-xs-semibold-uppercase text-text-tertiary` header (Secret key `w-64 px-6`, Created and Last used `w-48 px-3`,
+/// the actions `w-24 px-6`) and one row per key: the masked key (`font-mono`), the times (appLog's `dateTimeFormat`;
+/// "Never" when unused), copy and (with [canManage]) delete.
 class ApiKeyTable extends StatelessWidget {
   const ApiKeyTable({super.key, required this.apiKeys, required this.canManage, required this.onDeleteRequest});
 
@@ -223,19 +223,9 @@ class ApiKeyTable extends StatelessWidget {
   final bool canManage;
   final ValueChanged<String> onDeleteRequest;
 
-  /// `table-fixed` with `w-64`, `w-48`, `w-48`, `w-24` columns: the browser's fixed layout stretches them all in
-  /// proportion to fill the table's width.
-  static const _secret = 256.0, _time = 192.0, _actions = 96.0;
-
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, box) {
-      final scale = box.maxWidth.isFinite ? box.maxWidth / (_secret + 2 * _time + _actions) : 1.0;
-      return _table(_secret * scale, _time * scale, AccountTime.of(context));
-    },
-  );
-
-  Widget _table(double secretWidth, double timeWidth, AccountTime time) {
+  Widget build(BuildContext context) {
+    final time = AccountTime.of(context);
     final head = difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textTertiary);
     final cell = difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary);
     final format = _t('appLog', 'dateTimeFormat');
@@ -247,123 +237,74 @@ class ApiKeyTable extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       style: head,
     );
-    Widget row({required List<Widget> cells, required bool header, bool last = false}) => Container(
-      decoration: BoxDecoration(
-        color: header ? DifyColors.componentsPanelBg : null,
-        border: last ? null : Border(bottom: BorderSide(color: DifyColors.dividerRegular)),
+    const px6 = EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        px3 = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    // `table-fixed` with `w-64`, `w-48`, `w-48`, `w-24` columns: the browser's fixed layout stretches them all in
+    // proportion to fill the table's width.
+    return DifyTable(
+      layout: DifyTableLayout.fixed,
+      minWidth: 0,
+      scrollBody: true,
+      headerStyle: DifyType.systemXsSemiboldUppercase,
+      headerHeight: 32,
+      headerDecoration: BoxDecoration(
+        color: DifyColors.componentsPanelBg,
+        border: Border(bottom: BorderSide(color: DifyColors.dividerRegular)),
       ),
-      child: Row(children: cells),
-    );
-    return Container(
       decoration: BoxDecoration(
         border: Border.symmetric(horizontal: BorderSide(color: DifyColors.dividerSubtle)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            container: true,
-            child: row(
-              header: true,
-              cells: [
-                SizedBox(
-                  width: secretWidth,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    child: headText(_t('appApi', 'apiKeyModal.secretKey')),
-                  ),
-                ),
-                SizedBox(
-                  width: timeWidth,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: headText(_t('appApi', 'apiKeyModal.created')),
-                  ),
-                ),
-                SizedBox(
-                  width: timeWidth,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: headText(_t('appApi', 'apiKeyModal.lastUsed')),
-                  ),
-                ),
-                // The actions column's header is only for screen readers ("Settings").
-                Expanded(
-                  child: Semantics(
-                    label: _t('common', 'operation.settings'),
-                    child: const SizedBox(height: 32),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final (i, key) in apiKeys.indexed)
-                    row(
-                      header: false,
-                      last: i == apiKeys.length - 1,
-                      cells: [
-                        SizedBox(
-                          width: secretWidth,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                            child: text(
-                              maskApiKeyToken(key.token),
-                              cell.copyWith(fontFamily: monoFontFamily),
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: timeWidth,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: text(time.formatTime(key.createdAt ?? 0, format), cell),
-                          ),
-                        ),
-                        SizedBox(
-                          width: timeWidth,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: text(
-                              key.lastUsedAt != null && key.lastUsedAt != 0
-                                  ? time.formatTime(key.lastUsedAt!, format)
-                                  : _t('appApi', 'never'),
-                              cell,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              spacing: 4,
-                              children: [
-                                DifyCopyFeedback(content: key.token),
-                                if (canManage)
-                                  DifyIconButton(
-                                    label: '${_t('common', 'operation.delete')} ${maskApiKeyToken(key.token)}',
-                                    icon: const RemixIcon('delete-bin-line', size: 16),
-                                    onPressed: () => onDeleteRequest(key.id),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
+      columns: [
+        DifyTableColumn(width: 256, headerPadding: px6, header: headText(_t('appApi', 'apiKeyModal.secretKey'))),
+        DifyTableColumn(width: 192, headerPadding: px3, header: headText(_t('appApi', 'apiKeyModal.created'))),
+        DifyTableColumn(width: 192, headerPadding: px3, header: headText(_t('appApi', 'apiKeyModal.lastUsed'))),
+        // The actions column's header is only for screen readers ("Settings").
+        DifyTableColumn(
+          width: 96,
+          headerPadding: EdgeInsets.zero,
+          header: Semantics(label: _t('common', 'operation.settings'), child: const SizedBox(height: 32)),
+        ),
+      ],
+      rows: [
+        for (final (i, key) in apiKeys.indexed)
+          DifyTableRow(
+            hoverable: false,
+            dividerColor: DifyColors.dividerRegular,
+            divider: i != apiKeys.length - 1,
+            cells: [
+              Padding(
+                padding: px6,
+                child: text(maskApiKeyToken(key.token), cell.copyWith(fontFamily: monoFontFamily)),
               ),
-            ),
+              Padding(padding: px3, child: text(time.formatTime(key.createdAt ?? 0, format), cell)),
+              Padding(
+                padding: px3,
+                child: text(
+                  key.lastUsedAt != null && key.lastUsedAt != 0
+                      ? time.formatTime(key.lastUsedAt!, format)
+                      : _t('appApi', 'never'),
+                  cell,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  spacing: 4,
+                  children: [
+                    DifyCopyFeedback(content: key.token),
+                    if (canManage)
+                      DifyIconButton(
+                        label: '${_t('common', 'operation.delete')} ${maskApiKeyToken(key.token)}',
+                        icon: const RemixIcon('delete-bin-line', size: 16),
+                        onPressed: () => onDeleteRequest(key.id),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+      ],
     );
   }
 }

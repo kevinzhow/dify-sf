@@ -4,6 +4,7 @@ import 'package:dify_sf_app/src/app_detail/logs/log_widgets.dart';
 import 'package:dify_sf_app/src/app_detail/logs/logs_data.dart';
 import 'package:dify_sf_app/src/app_detail/logs/workflow_log.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:dify_sf_app/src/design/widgets/table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,7 +43,7 @@ void main() {
     );
   }
 
-  Finder rows() => find.byWidgetPredicate((w) => w is LogTableRow);
+  Finder rows() => find.byWidgetPredicate((w) => w is DifyTableRow);
   bool drawerOpen() => find.byKey(const ValueKey('log-drawer')).evaluate().isNotEmpty;
 
   group('WorkflowAppLogList', () {
@@ -59,7 +60,7 @@ void main() {
 
       testWidgets('should render table when data is available', (t) async {
         await renderList(t, mockLogsResponse([mockWorkflowLog()]));
-        expect(find.byType(LogTable), findsOneWidget);
+        expect(find.byType(DifyTable), findsOneWidget);
       });
 
       testWidgets('should render all table headers', (t) async {
@@ -227,10 +228,10 @@ void main() {
 
       testWidgets('should highlight selected row', (t) async {
         await renderList(t, mockLogsResponse([mockWorkflowLog()]));
-        expect(t.widget<LogTableRow>(rows().first).selected, isFalse);
+        expect(t.widget<DifyTableRow>(rows().first).selected, isFalse);
         await t.tap(rows().first);
         await settle(t);
-        expect(t.widget<LogTableRow>(rows().first).selected, isTrue);
+        expect(t.widget<DifyTableRow>(rows().first).selected, isTrue);
       });
     });
 
@@ -316,7 +317,7 @@ void main() {
     group('Empty State', () {
       testWidgets('should render empty table when logs data is empty', (t) async {
         await renderList(t, mockLogsResponse([]));
-        expect(find.byType(LogTable), findsOneWidget);
+        expect(find.byType(DifyTable), findsOneWidget);
         expect(find.byKey(const ValueKey('log-table-header')), findsOneWidget);
         expect(rows(), findsNothing);
       });

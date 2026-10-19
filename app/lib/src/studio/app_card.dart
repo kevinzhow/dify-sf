@@ -585,71 +585,53 @@ class _Operations {
 int appGridColumns(double width, {double gap = 10, double min = 288}) =>
     width <= min ? 1 : ((width + gap) / (min + gap)).floor().clamp(1, 1 << 20);
 
-/// AppCardSkeleton: a card's frame with the icon, title and description placeholders, pulsing.
+/// AppCardSkeleton (apps/app-card-skeleton.tsx): the `h-40 overflow-hidden rounded-xl border-[0.5px] p-4 shadow-xs`
+/// card with a SkeletonContainer: the icon (`size-10 rounded-lg`), title (`h-4 w-2/3`) and subtitle (`h-3 w-1/3`)
+/// beside it, then (`mt-4 gap-2`) two description lines (`h-3`, full and `w-4/5`), all pulsing.
 class AppCardSkeleton extends StatelessWidget {
   const AppCardSkeleton({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    Widget bar(double? width, double height, {double? fraction}) => FractionallySizedBox(
-      alignment: AlignmentDirectional.centerStart,
-      widthFactor: fraction,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: DifyColors.textQuaternary.withValues(alpha: DifyColors.textQuaternary.a * 0.2),
-          borderRadius: BorderRadius.circular(DifyRadius.sm),
-        ),
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: Container(
+      height: 160,
+      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: DifyColors.componentsCardBg,
+        borderRadius: BorderRadius.circular(DifyRadius.xl),
+        border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
+        boxShadow: DifyShadows.xs,
       ),
-    );
-    return ExcludeSemantics(
-      child: Container(
-        height: 160,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsCardBg,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsCardBorder, width: Css.hairline),
-          boxShadow: DifyShadows.xs,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              spacing: 8,
+      child: const DifySkeletonContainer(
+        children: [
+          DifySkeletonRow(
+            children: [
+              DifySkeletonRectangle(width: 40, height: 40, radius: DifyRadius.lg, pulse: true),
+              Expanded(
+                child: DifySkeletonContainer(
+                  children: [
+                    DifySkeletonRectangle(widthFactor: 2 / 3, height: 16, pulse: true),
+                    DifySkeletonRectangle(widthFactor: 1 / 3, height: 12, pulse: true),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: DifySkeletonContainer(
+              gap: 8,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: DifyColors.textQuaternary.withValues(alpha: DifyColors.textQuaternary.a * 0.2),
-                    borderRadius: BorderRadius.circular(DifyRadius.lg),
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 4,
-                    children: [
-                      bar(null, 16, fraction: 2 / 3),
-                      bar(null, 12, fraction: 1 / 3),
-                    ],
-                  ),
-                ),
+                DifySkeletonRectangle(height: 12, pulse: true),
+                DifySkeletonRectangle(widthFactor: 0.8, height: 12, pulse: true),
               ],
             ),
-            const SizedBox(height: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 8,
-              children: [bar(null, 12, fraction: 1), bar(null, 12, fraction: 0.8)],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// A row of semantics-only text (Dify's `sr-only` status).

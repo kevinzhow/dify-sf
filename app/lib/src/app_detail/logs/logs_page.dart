@@ -6,6 +6,7 @@ import 'package:collab_client/collab_client.dart' show AppInfo, AppModes;
 import 'package:flutter/widgets.dart';
 
 import '../../design/dify_tokens.g.dart';
+import '../../design/widgets/widgets.dart' show DifyLoading;
 import '../../open_url.dart';
 import '../app_permission.dart' show appRedirectionPath;
 import '../detail_page_slot.dart';
@@ -49,7 +50,10 @@ class LogAnnotation extends StatelessWidget {
         container: true,
         liveRegion: true,
         label: 'status',
-        child: ColoredBox(color: DifyColors.backgroundBody, child: const LogLoading()),
+        child: ColoredBox(
+          color: DifyColors.backgroundBody,
+          child: const DifyLoading(key: ValueKey('logs-loading'), app: true),
+        ),
       );
     }
     final isWorkflow = a.mode == AppModes.workflow;

@@ -115,9 +115,9 @@ class TriggerAccessPointCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: 16,
                   children: [
-                    AccessPointSkeletonBar(width: 96),
-                    AccessPointSkeletonBar(widthFactor: 1, height: 40, opacity: 0.1, radius: 8),
-                    AccessPointSkeletonBar(widthFactor: 1, height: 40, opacity: 0.1, radius: 8),
+                    DifySkeletonRectangle(width: 96, radius: 4, margin: EdgeInsets.zero, pulse: true),
+                    DifySkeletonRectangle(height: 40, opacity: 0.1, radius: 8, margin: EdgeInsets.zero, pulse: true),
+                    DifySkeletonRectangle(height: 40, opacity: 0.1, radius: 8, margin: EdgeInsets.zero, pulse: true),
                   ],
                 ),
               ),

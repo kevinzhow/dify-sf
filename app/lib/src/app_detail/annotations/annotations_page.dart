@@ -18,7 +18,7 @@ import '../../workflow/workspace_models.dart';
 import '../../auth/account_time.dart';
 import '../access/access_point_utils.dart' show difyDocLink;
 import '../detail_page_slot.dart';
-import '../logs/log_widgets.dart' show LogLoading, LogPageTitle;
+import '../logs/log_widgets.dart' show LogPageTitle;
 import 'annotation_list.dart';
 import 'annotation_modals.dart';
 import 'annotation_types.dart';
@@ -465,7 +465,7 @@ class AnnotationsPageState extends State<AnnotationsPage> {
                         ),
                         Expanded(
                           child: _isLoading
-                              ? const LogLoading()
+                              ? const DifyLoading(key: ValueKey('logs-loading'), app: true)
                               : _total > 0
                               ? AnnotationList(
                                   list: _list,
