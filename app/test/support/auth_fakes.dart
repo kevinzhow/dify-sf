@@ -25,6 +25,15 @@ class RecordingAuthApi implements AuthApi {
   /// The workspace's name in invitation checks.
   String workspaceName = 'Acme';
 
+  /// Forgot password: whether the server sends mail, the token a sent code answers, the right code and the token it
+  /// answers, and errors to throw instead (by call name: `sendResetCode`, `checkResetCode`, `resetPassword`,
+  /// `resetPasswordLink`).
+  bool emailSetup = false;
+  String resetToken = 'reset-token';
+  String resetCode = '123456';
+  String verifiedToken = 'verified-token';
+  final failures = <String, TransportException>{};
+
   Account addAccount({
     required String email,
     String name = 'User',
@@ -175,6 +184,52 @@ class RecordingAuthApi implements AuthApi {
 
   @override
   Future<void> removeMember(String accessToken, String memberId) => throw UnimplementedError();
+
+  Future<void> _maybeFail(String name) async {
+    final e = failures[name];
+    if (e != null) throw e;
+  }
+
+  @override
+  Future<SystemFeatures> systemFeatures() async {
+    await _call('systemFeatures');
+    return SystemFeatures(isEmailSetup: emailSetup);
+  }
+
+  @override
+  Future<String> sendResetCode({required String email, String? language}) async {
+    await _call('sendResetCode', {'email': email, 'language': language});
+    await _maybeFail('sendResetCode');
+    return resetToken;
+  }
+
+  @override
+  Future<ResetCodeCheck> checkResetCode({required String email, required String code, required String token}) async {
+    await _call('checkResetCode', {'email': email, 'code': code, 'token': token});
+    await _maybeFail('checkResetCode');
+    if (code != resetCode) {
+      throw const TransportException('Email code is invalid or expired.', statusCode: 400, code: 'email_code_error');
+    }
+    return ResetCodeCheck(isValid: true, email: email.toLowerCase(), token: verifiedToken);
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+    required String passwordConfirm,
+  }) async {
+    await _call('resetPassword', {'token': token, 'new_password': newPassword, 'password_confirm': passwordConfirm});
+    await _maybeFail('resetPassword');
+  }
+
+  @override
+  Future<PasswordResetLink> resetPasswordLink(String accessToken, String memberId) async {
+    await _call('resetPasswordLink', {'member': memberId});
+    if (sessions[accessToken] == null) throw _unauthorized;
+    await _maybeFail('resetPasswordLink');
+    return PasswordResetLink(url: '/reset-password/set-password?token=link-$memberId');
+  }
 
   /// The names of the calls made, in order.
   List<String> get callNames => [for (final c in calls) c.$1];

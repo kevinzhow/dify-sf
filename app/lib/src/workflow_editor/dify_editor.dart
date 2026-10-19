@@ -6,12 +6,15 @@ import 'package:flutter/material.dart';
 import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart' show CanvasDefaults;
 import '../cards/card_kit.dart';
+import '../cards/provider_icon_image.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/toast.dart';
 import '../editor/editor_controller.dart';
 import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
+import '../workflow/workspace_models.dart';
 import 'context_menu/context_menu.dart';
+import 'features/features_services.dart' show FeaturesServices;
 import 'features/workflow_features.dart';
 import 'header/checklist/use_checklist.dart' as checklist;
 import 'header/editor_header_binding.dart';
@@ -24,6 +27,7 @@ import 'dsl/update_dsl_modal.dart';
 import 'operator/image_export.dart';
 import 'hooks/use_locate_node.dart';
 import 'hooks/use_tool_icon.dart';
+import 'node_panel/bodies/llm/group_host.dart';
 import 'node_panel/node_panel.dart';
 import 'note_node/note_node.dart';
 import 'operator/operator.dart';
@@ -103,7 +107,17 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.onImportDsl,
     this.pickDslFile,
     this.saveImage,
+    this.models,
+    this.openModelProviderSettings,
   });
+
+  /// The workspace's model providers and models (the model selector, parameter rules, default models, the checklist's
+  /// "Configure a model", OpenAI moderation); null: an empty workspace (no server).
+  final WorkspaceModels? models;
+
+  /// Opens the model provider settings (Dify's settings destination `provider`); refetching the models afterwards is
+  /// the caller's. Null: the selector has no "Model Provider Settings" footer.
+  final VoidCallback? openModelProviderSettings;
 
   /// What the signed-in user may do (read-only for members without the edit role).
   final WorkflowAccessControl access;
@@ -185,8 +199,16 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       (_ownComments ??= CommentsStore.forSession(controller.session, accountId: widget.user?.id));
 
   @override
+  void initState() {
+    super.initState();
+    // Dialog routes opened from the editor are outside its icon scope.
+    if (widget.models case final models?) ProviderIconScope.fallback = models.icons;
+  }
+
+  @override
   void didUpdateWidget(DifyWorkflowEditor old) {
     super.didUpdateWidget(old);
+    if (widget.models case final models? when old.models != models) ProviderIconScope.fallback = models.icons;
     if (old.controller.session != controller.session || widget.commentsStore != null) {
       _ownComments?.dispose();
       _ownComments = null;
@@ -352,149 +374,194 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     );
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
     // spacing would widen every label).
-    return CommentsScope(
-      store: _comments,
-      child: DefaultTextStyle(
-        style: TextStyle(
-          fontFamily: cardFontFamily,
-          fontSize: 14,
-          height: 20 / 14,
-          letterSpacing: 0,
-          wordSpacing: 0,
-          color: DifyColors.textPrimary,
-          leadingDistribution: TextLeadingDistribution.even,
-        ),
-        // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
-        child: ListenableBuilder(
-          listenable: controller,
-          builder: (context, child) => BlockSelectorScope(
-            data: BlockSelectorData(
-              chatMode: meta.isChatflow,
-              nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
-            ),
-            child: child!,
+    return _withModels(
+      CommentsScope(
+        store: _comments,
+        child: DefaultTextStyle(
+          style: TextStyle(
+            fontFamily: cardFontFamily,
+            fontSize: 14,
+            height: 20 / 14,
+            letterSpacing: 0,
+            wordSpacing: 0,
+            color: DifyColors.textPrimary,
+            leadingDistribution: TextLeadingDistribution.even,
           ),
-          child: OperatorShortcuts(
-            history: controller.undo,
-            options: options,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                WorkflowEditor(
-                  controller: controller,
-                  menuOptions: menuOptions,
-                  canEdit: widget.access.canEdit,
-                  header: (context, canvas) => _BoundHeader(
+          // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, child) => BlockSelectorScope(
+              data: BlockSelectorData(
+                chatMode: meta.isChatflow,
+                nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
+              ),
+              child: child!,
+            ),
+            child: OperatorShortcuts(
+              history: controller.undo,
+              options: options,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  WorkflowEditor(
                     controller: controller,
-                    canvas: canvas,
-                    meta: meta,
-                    access: widget.access,
-                    user: widget.user,
-                    session: (anchor) => SessionBadge(
+                    menuOptions: menuOptions,
+                    canEdit: widget.access.canEdit,
+                    header: (context, canvas) => _BoundHeader(
                       controller: controller,
-                      serverLabel: serverLabel,
-                      actions: actions,
-                      anchor: anchor,
-                      pill: false,
+                      models: widget.models,
+                      canvas: canvas,
+                      meta: meta,
+                      access: widget.access,
+                      user: widget.user,
+                      session: (anchor) => SessionBadge(
+                        controller: controller,
+                        serverLabel: serverLabel,
+                        actions: actions,
+                        anchor: anchor,
+                        pill: false,
+                      ),
+                      left: _OfflinePill(controller: controller),
                     ),
-                    left: _OfflinePill(controller: controller),
-                  ),
-                  // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
-                  overlay: (context, canvas) {
-                    _inner = context;
-                    _canvas = canvas;
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
-                        // Iteration, loop and note resize controls (node-resizer.tsx).
-                        NodeResizers(controller: controller, canvas: canvas, options: menuOptions),
-                        // Selected container children grow their container (useNodeResizeObserver).
-                        ContainerChildSizeObserver(controller: controller, canvas: canvas, options: menuOptions),
-                        // The selected note, edited in place (drawn by the canvas in the notes' layer).
-                        LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
-                        // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
-                        CommentLayer(canvas: canvas),
-                        CandidateNode(canvas: canvas, onPlace: _place),
-                        if (widget.locateNodeId != null)
-                          LocateNodeOnOpen(controller: controller, canvas: canvas, nodeId: widget.locateNodeId),
-                      ],
-                    );
-                  },
-                  control: workflowControlBuilder(options),
-                  // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
-                  // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
-                  // preview; run state is local view state).
-                  scope: (context, canvas, child) => VariableInspectHost(
-                    services: _inspectServices(context, canvas),
-                    nodes: () => controller.doc.nodes.values,
-                    onViewNode: (nodeId) {
-                      WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
-                      controller.selectNode(nodeId);
+                    // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
+                    overlay: (context, canvas) {
+                      _inner = context;
+                      _canvas = canvas;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
+                          // Iteration, loop and note resize controls (node-resizer.tsx).
+                          NodeResizers(controller: controller, canvas: canvas, options: menuOptions),
+                          // Selected container children grow their container (useNodeResizeObserver).
+                          ContainerChildSizeObserver(controller: controller, canvas: canvas, options: menuOptions),
+                          // The selected note, edited in place (drawn by the canvas in the notes' layer).
+                          LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
+                          // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
+                          CommentLayer(canvas: canvas),
+                          CandidateNode(canvas: canvas, onPlace: _place),
+                          if (widget.locateNodeId != null)
+                            LocateNodeOnOpen(controller: controller, canvas: canvas, nodeId: widget.locateNodeId),
+                        ],
+                      );
                     },
-                    onStop: () => _runHost.currentState?.emitWorkflowStop(),
-                    child: Builder(
-                      builder: (context) => WorkflowRunHost(
-                        key: _runHost,
-                        controller: controller,
-                        canvas: canvas,
-                        service: _runService(context, canvas),
-                        isChatMode: () => widget.meta.isChatflow,
-                        fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
-                        child: child,
-                      ),
-                    ),
-                  ),
-                  operator: workflowOperatorBuilder(
-                    controller,
-                    options,
-                    const VariableInspectTrigger(),
-                    const VariableInspectPanel(),
-                  ),
-                  // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
-                  // variable panels.
-                  panels: (context, canvas) => WorkflowPanels(
-                    controller: controller,
-                    canvas: canvas,
-                    options: menuOptions,
-                    others: [
-                      // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
-                      RunPanels(controller: controller, isChatMode: meta.isChatflow, canRun: widget.access.canRun),
-                      VariablePanels(
-                        controller: controller,
-                        isChatMode: meta.isChatflow,
-                        storeSecret: controller.storeSecret,
-                      ),
-                      // The comment list, in comment mode.
-                      CommentsPanel(canvas: canvas),
-                      // While browsing versions (no version service yet: the current draft alone).
-                      VersionHistoryPanelHost(
-                        data: VersionHistoryPanelData(
-                          currentUserId: widget.user?.id ?? controller.session.clientId,
-                          canImportExportDsl: widget.access.canImportExportDsl,
+                    control: workflowControlBuilder(options),
+                    // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
+                    // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
+                    // preview; run state is local view state).
+                    scope: (context, canvas, child) => VariableInspectHost(
+                      services: _inspectServices(context, canvas),
+                      nodes: () => controller.doc.nodes.values,
+                      onViewNode: (nodeId) {
+                        WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                        controller.selectNode(nodeId);
+                      },
+                      onStop: () => _runHost.currentState?.emitWorkflowStop(),
+                      child: Builder(
+                        builder: (context) => WorkflowRunHost(
+                          key: _runHost,
+                          controller: controller,
+                          canvas: canvas,
+                          service: _runService(context, canvas),
+                          isChatMode: () => widget.meta.isChatflow,
+                          fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
+                          child: child,
                         ),
                       ),
-                    ],
+                    ),
+                    operator: workflowOperatorBuilder(
+                      controller,
+                      options,
+                      const VariableInspectTrigger(),
+                      const VariableInspectPanel(),
+                    ),
+                    // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
+                    // variable panels.
+                    panels: (context, canvas) => WorkflowPanels(
+                      controller: controller,
+                      canvas: canvas,
+                      options: menuOptions,
+                      others: [
+                        // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
+                        RunPanels(controller: controller, isChatMode: meta.isChatflow, canRun: widget.access.canRun),
+                        VariablePanels(
+                          controller: controller,
+                          isChatMode: meta.isChatflow,
+                          storeSecret: controller.storeSecret,
+                        ),
+                        // The comment list, in comment mode.
+                        CommentsPanel(canvas: canvas),
+                        // While browsing versions (no version service yet: the current draft alone).
+                        VersionHistoryPanelHost(
+                          data: VersionHistoryPanelData(
+                            currentUserId: widget.user?.id ?? controller.session.clientId,
+                            canImportExportDsl: widget.access.canImportExportDsl,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // The Features drawer (chatflows open it from the header), over everything with its backdrop.
+                    modal: (context, canvas) => Stack(
+                      children: [
+                        if (widget.models case final models?)
+                          ListenableBuilder(
+                            listenable: models,
+                            builder: (context, _) => WorkflowFeatures(
+                              controller: controller,
+                              isChatMode: meta.isChatflow,
+                              services: _featuresServices(),
+                            ),
+                          )
+                        else
+                          WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
+                        ImportDslHost(
+                          appMode: meta.appMode,
+                          onImport: widget.onImportDsl,
+                          pickFile: widget.pickDslFile,
+                          onBackup: widget.onExportDsl == null ? null : _exportDsl,
+                        ),
+                      ],
+                    ),
                   ),
-                  // The Features drawer (chatflows open it from the header), over everything with its backdrop.
-                  modal: (context, canvas) => Stack(
-                    children: [
-                      WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
-                      ImportDslHost(
-                        appMode: meta.appMode,
-                        onImport: widget.onImportDsl,
-                        pickFile: widget.pickDslFile,
-                        onBackup: widget.onExportDsl == null ? null : _exportDsl,
-                      ),
-                    ],
-                  ),
-                ),
-                NoticeOverlay(controller: controller),
-              ],
+                  NoticeOverlay(controller: controller),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// The model-node panels' services from the workspace's models (rebuilt when they change).
+  Widget _withModels(Widget child) {
+    final models = widget.models;
+    if (models == null) return child;
+    return ListenableBuilder(
+      listenable: models,
+      builder: (context, child) => LlmGroupScope(
+        services: LlmGroupServices(
+          models: models.catalog,
+          defaultModels: models.defaultModelsMap,
+          parameterRules: models.parameterRules,
+          openModelProviderSettings: widget.openModelProviderSettings,
+          refreshModels: () => unawaited(models.refreshModelLists()),
+        ),
+        child: ProviderIconScope(source: models.icons, child: child!),
+      ),
+      child: child,
+    );
+  }
+
+  /// The features panel's services: the model providers (OpenAI moderation) and the settings destination.
+  FeaturesServices _featuresServices() {
+    final models = widget.models;
+    if (models == null) return FeaturesServices.empty;
+    final open = widget.openModelProviderSettings;
+    return FeaturesServices(
+      modelProviders: models.providerDetails ?? const [],
+      modelProvidersLoading: models.providerDetails == null,
+      openAccountSettings: open == null ? null : (destination) => destination == 'provider' ? open() : null,
     );
   }
 }
@@ -509,9 +576,11 @@ class _BoundHeader extends StatefulWidget {
     this.left,
     this.access = WorkflowAccessControl.full,
     this.user,
+    this.models,
   });
   final EditorController controller;
   final CanvasController canvas;
+  final WorkspaceModels? models;
   final DocMeta meta;
   final WorkflowAccessControl access;
   final EditorUser? user;
@@ -534,6 +603,22 @@ class _BoundHeaderState extends State<_BoundHeader> {
   /// one user). dify-sf has no presence of others yet.
   final _users = ValueNotifier<List<OnlineUser>>(const []);
 
+  /// The providers the checklist last saw: it is recomputed when they change.
+  List<Json>? _providers;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.models?.addListener(_modelsChanged);
+  }
+
+  void _modelsChanged() {
+    final providers = widget.models?.summary;
+    if (identical(providers, _providers)) return;
+    _providers = providers;
+    _binding?.refreshChecklist();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -542,13 +627,15 @@ class _BoundHeaderState extends State<_BoundHeader> {
     _binding ??= EditorHeaderBinding(
       controller: widget.controller,
       store: store,
-      // The app's model catalog is an empty workspace (see ModelCatalog), so LLM nodes need a model configured. The
-      // variables are the document's (it is recomputed on every change of the document).
+      // The workspace's providers (empty while loading or without a server, as Dify's query default), so LLM nodes
+      // of other providers need a model configured. The variables are the document's (it is recomputed on every change
+      // of the document).
       checklistEnv: () => checklist.ChecklistEnv(
         appMode: widget.meta.appMode,
+        language: widget.models?.language ?? 'en_US',
         environmentVariables: widget.controller.appLists.environmentVariables,
         conversationVariables: widget.controller.appLists.conversationVariables,
-        modelProviders: const [],
+        modelProviders: [for (final p in widget.models?.summary ?? const <Json>[]) '${p['provider']}'],
         // useGetToolIcon: the store's tool collections, else the icon the node was created with.
         toolIcon: (n) => getToolIcon(store)(n.data),
       ),
@@ -567,6 +654,10 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   void didUpdateWidget(_BoundHeader old) {
     super.didUpdateWidget(old);
+    if (old.models != widget.models) {
+      old.models?.removeListener(_modelsChanged);
+      widget.models?.addListener(_modelsChanged);
+    }
     if (!identical(old.meta, widget.meta)) _storeVariables(refreshChecklist: true);
   }
 
@@ -584,6 +675,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
 
   @override
   void dispose() {
+    widget.models?.removeListener(_modelsChanged);
     _variables?.dispose();
     _binding?.dispose();
     _users.dispose();

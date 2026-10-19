@@ -5524,3 +5524,306 @@ web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.ts
 web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should set default tips when delivery_methods is empty
 web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should show tips correctly based on delivery methods
 web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx :: HumanInputFormList > Delivery Methods Config > should show debug mode tip if WebApp is disabled
+web/app/components/base/form/__tests__/index.spec.tsx :: form index exports > should submit values through the generated app form
+web/app/components/base/form/__tests__/index.spec.tsx :: form index exports > should render components created with withForm
+web/app/components/base/form/components/__tests__/label.spec.tsx :: Label > should render the label text
+web/app/components/base/form/components/__tests__/label.spec.tsx :: Label > should focus related input when users click the label
+web/app/components/base/form/components/__tests__/label.spec.tsx :: Label > should show optional text when the field is not required
+web/app/components/base/form/components/__tests__/label.spec.tsx :: Label > should show required marker when the field is required
+web/app/components/base/form/components/__tests__/label.spec.tsx :: Label > should show tooltip content on hover
+web/app/components/base/form/components/__tests__/label.spec.tsx :: Label > should hide optional text when required is true
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > associates the visible label, description and required state for %s
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > focuses the $type trigger from its label and supports keyboard selection (multiple: $multiple)
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render text input and propagate changes
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render only options that satisfy show_on conditions
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should not render current select value when it is filtered out by show_on conditions
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render dynamic select loading state
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should update value when users click a radio option
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > associates $type validation and description with the named control
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should show validation message when field state has an error
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render description and help link when provided
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render secret input with password type
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render number input with number type
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render translated object label content
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render dynamic options and allow selecting one
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should preserve multiple dynamic select values
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should update boolean field when users choose false
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render warning message when field state has a warning
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render infotip when tooltip content is provided
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render checkbox list and handle changes
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should handle dynamic select error state
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should handle dynamic select no data state
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render radio buttons in vertical layout when length >= 3
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should render radio UI when showRadioUI is true
+web/app/components/base/form/components/base/__tests__/base-field.spec.tsx :: BaseField > should return empty string for null content in getTranslatedContent
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should render nothing when no schemas are provided
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should render fields with default values from schema
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should hide conditional fields when show_on conditions are not met
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should prevent default submit behavior when preventDefaultSubmit is true
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should expose ref API for updating values and field states
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should derive warning status when setFields receives warnings only
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should use formFromProps if provided
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle setFields with explicit validateStatus
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle setFields with no value change
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should use default values from schema when defaultValues prop is missing
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle submit without preventDefaultSubmit
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should render nothing if field name does not match schema in renderField
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle undefined formSchemas
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle empty array formSchemas
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle preventDefaultSubmit
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle missing onSubmit prop
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should call onChange when field value changes
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle setFields with no status, errors, or warnings
+web/app/components/base/form/components/base/__tests__/base-form.spec.tsx :: BaseForm > should handle schema without show_on in showOnValues
+web/app/components/base/form/components/base/__tests__/validation-accessibility.spec.tsx :: BaseForm validation accessibility > shows client validation again after editing clears a server error
+web/app/components/base/form/components/base/__tests__/validation-accessibility.spec.tsx :: BaseForm validation accessibility > focuses the invalid field in the submitting form and associates the error until corrected
+web/app/components/base/form/components/base/__tests__/validation-accessibility.spec.tsx :: BaseForm validation accessibility > skips hidden field errors and focuses the first visible invalid field in schema order
+web/app/components/base/form/components/field/__tests__/checkbox.spec.tsx :: CheckboxField > should toggle on when unchecked users click the checkbox
+web/app/components/base/form/components/field/__tests__/checkbox.spec.tsx :: CheckboxField > should toggle off when checked users click the label
+web/app/components/base/form/components/field/__tests__/file-types.spec.tsx :: FileTypesField > should render the label and available type options
+web/app/components/base/form/components/field/__tests__/file-types.spec.tsx :: FileTypesField > should keep only custom when users choose custom types
+web/app/components/base/form/components/field/__tests__/file-types.spec.tsx :: FileTypesField > should remove custom and add selected standard type
+web/app/components/base/form/components/field/__tests__/file-types.spec.tsx :: FileTypesField > should remove custom when users click custom again
+web/app/components/base/form/components/field/__tests__/file-types.spec.tsx :: FileTypesField > should remove a selected standard type when users click it again
+web/app/components/base/form/components/field/__tests__/file-types.spec.tsx :: FileTypesField > should update custom extensions when users type custom extension values
+web/app/components/base/form/components/field/__tests__/file-uploader.spec.tsx :: FileUploaderField > should render existing uploaded file name
+web/app/components/base/form/components/field/__tests__/file-uploader.spec.tsx :: FileUploaderField > should update field value when users remove a file
+web/app/components/base/form/components/field/__tests__/number-input.spec.tsx :: NumberInputField > should render current number value
+web/app/components/base/form/components/field/__tests__/number-input.spec.tsx :: NumberInputField > should update value when users click increment
+web/app/components/base/form/components/field/__tests__/number-input.spec.tsx :: NumberInputField > should reset field value when users clear the input
+web/app/components/base/form/components/field/__tests__/number-input.spec.tsx :: NumberInputField > should clamp out-of-range edits before updating field state
+web/app/components/base/form/components/field/__tests__/number-slider.spec.tsx :: NumberSliderField > should render description when provided
+web/app/components/base/form/components/field/__tests__/number-slider.spec.tsx :: NumberSliderField > should update value when users interact with slider
+web/app/components/base/form/components/field/__tests__/options.spec.tsx :: OptionsField > should render label and options control
+web/app/components/base/form/components/field/__tests__/options.spec.tsx :: OptionsField > should update options when users apply changes
+web/app/components/base/form/components/field/__tests__/select.spec.tsx :: SelectField > should render selected value
+web/app/components/base/form/components/field/__tests__/select.spec.tsx :: SelectField > should render the option label when selected value is an empty string
+web/app/components/base/form/components/field/__tests__/select.spec.tsx :: SelectField > should update value when users select another option
+web/app/components/base/form/components/field/__tests__/text-area.spec.tsx :: TextAreaField > should render current value
+web/app/components/base/form/components/field/__tests__/text-area.spec.tsx :: TextAreaField > should update value when users type
+web/app/components/base/form/components/field/__tests__/text-area.spec.tsx :: TextAreaField > should keep form writeback when external props contain onValueChange
+web/app/components/base/form/components/field/__tests__/text.spec.tsx :: TextField > should render current value
+web/app/components/base/form/components/field/__tests__/text.spec.tsx :: TextField > should update value when users type
+web/app/components/base/form/components/field/__tests__/upload-method.spec.tsx :: UploadMethodField > lets keyboard users choose both methods and saves the existing array representation
+web/app/components/base/form/components/field/__tests__/upload-method.spec.tsx :: UploadMethodField > lets users select a card by its visible label and saves only URL upload
+web/app/components/base/form/components/field/input-type-select/__tests__/hooks.spec.tsx :: useInputTypeOptions > should include file options when supportFile is true
+web/app/components/base/form/components/field/input-type-select/__tests__/hooks.spec.tsx :: useInputTypeOptions > should exclude file options when supportFile is false
+web/app/components/base/form/components/field/input-type-select/__tests__/index.spec.tsx :: InputTypeSelectField > should render label and selected option
+web/app/components/base/form/components/field/input-type-select/__tests__/index.spec.tsx :: InputTypeSelectField > should update value when users choose another input type
+web/app/components/base/form/components/field/input-type-select/__tests__/types.spec.ts :: InputTypeEnum > should accept valid input types
+web/app/components/base/form/components/field/input-type-select/__tests__/types.spec.ts :: InputTypeEnum > should reject invalid input types
+web/app/components/base/form/components/form/__tests__/actions.spec.tsx :: Actions > should disable submit button when form cannot submit
+web/app/components/base/form/components/form/__tests__/actions.spec.tsx :: Actions > should keep the pending submit button focusable when canSubmit includes submitting state
+web/app/components/base/form/components/form/__tests__/actions.spec.tsx :: Actions > should call form submit when users click submit button
+web/app/components/base/form/components/form/__tests__/actions.spec.tsx :: Actions > should render custom actions when provided
+web/app/components/base/form/form-scenarios/auth/__tests__/index.spec.tsx :: AuthForm > should render configured fields
+web/app/components/base/form/form-scenarios/auth/__tests__/index.spec.tsx :: AuthForm > should use provided default values
+web/app/components/base/form/form-scenarios/auth/__tests__/index.spec.tsx :: AuthForm > should render nothing when no schema is provided
+web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx :: BaseField > should render a text input field when configured as text input
+web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx :: BaseField > should render a number input when configured as number input
+web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx :: BaseField > should render a checkbox when configured as checkbox
+web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx :: BaseField > should render paragraph and select fields based on configuration
+web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx :: BaseField > should render file uploader when configured as file
+web/app/components/base/form/form-scenarios/base/__tests__/field.spec.tsx :: BaseField > should not render when show conditions are not met
+web/app/components/base/form/form-scenarios/base/__tests__/utils.spec.ts :: base scenario schema generator > should validate required text fields with max length
+web/app/components/base/form/form-scenarios/base/__tests__/utils.spec.ts :: base scenario schema generator > should validate number bounds
+web/app/components/base/form/form-scenarios/base/__tests__/utils.spec.ts :: base scenario schema generator > should allow optional fields to be undefined or null
+web/app/components/base/form/form-scenarios/base/__tests__/utils.spec.ts :: base scenario schema generator > should validate required checkbox values as booleans
+web/app/components/base/form/form-scenarios/base/__tests__/utils.spec.ts :: base scenario schema generator > should fallback to any schema for unsupported field types
+web/app/components/base/form/form-scenarios/base/__tests__/utils.spec.ts :: base scenario schema generator > should ignore numeric and text constraints for non-applicable field types
+web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx :: InputField > should render text input field by default
+web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx :: InputField > should render number slider field when configured
+web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx :: InputField > should render select field with options when configured
+web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx :: InputField > should render upload method field when configured
+web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx :: InputField > should hide the field when show conditions are not met
+web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx :: InputField > should render remaining field types and fallback for unsupported type
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should return true when form has no errors
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should notify and return false when visible field has errors (show_on: []) for $fieldName
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should ignore hidden field errors and return true
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should notify when field is shown and has errors
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should notify with first error when multiple fields have errors
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should notify when multiple conditions all match
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should ignore error when one of multiple conditions does not match
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should handle field with error when schema is not found
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should handle field with multiple errors and notify only first one
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should return true when all visible fields have no errors
+web/app/components/base/form/hooks/__tests__/use-check-validated.spec.ts :: useCheckValidated > should properly evaluate show_on conditions with different values
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should return raw values when validation check is disabled
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should return transformed values when validation passes and transform is requested
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should return empty values when validation fails
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should return raw values when validation passes but no transformation is requested
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should return raw values when validation passes and transformation is undefined
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should handle empty form values when validation check is disabled
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should handle null form values gracefully
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should call transform with correct arguments when transformation is requested
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should return validation failure before attempting transformation
+web/app/components/base/form/hooks/__tests__/use-get-form-values.spec.ts :: useGetFormValues > should handle complex nested values with validation check disabled
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should create required validators when field is required without custom validators
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should keep existing validators when custom validators are provided
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should fallback to field name when label is a react element
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should translate object labels and skip validators for non-required fields
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should return undefined when value is truthy (onMount, onChange, onBlur)
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should handle null/missing labels correctly
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should handle onChange message with fallback to name
+web/app/components/base/form/hooks/__tests__/use-get-validators.spec.ts :: useGetValidators > should handle onBlur message specifically
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should mask only selected truthy values in transformFormSchemasSecretInput
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should mask pristine secret input fields from form state
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should keep value unchanged when secret input is not pristine
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should not mask when secret name is not in the values object
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should not mask falsy values like 0 or null
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should return empty object when form values are undefined
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should handle fieldMeta being undefined
+web/app/components/base/form/utils/secret-input/__tests__/index.spec.ts :: secret input utilities > should skip non-secretInput schema types entirely
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > defaults to the model provider section when no query is provided
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > does not replace the document title when embedded in a modal
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > reconciles the route title with client branding
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the model provider section from the section query
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > orders sidebar items to match the integrations setting menu
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > anchors step-by-step tour targets inside stable sidebar rows
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > keeps sidebar item icons outlined when the item is active
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders plugin category sections from the section query
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > opens the %s marketplace path from integrations
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > passes marketplace platform paths to external marketplace callbacks
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders migrated legacy setting sections
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > hides the plugin debug action when debug permission is unavailable
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders existing pages from route sections
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the MCP route as read-only without mcp.manage
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the %s route as read-only without tool.manage
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > remounts the tools section content when the route section changes
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > keeps existing category-only tools URLs functional
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > toggles the tools submenu from the keyboard without other nav items closing it
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > keeps custom, workflow, and MCP tool entries visible without manage permissions
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > opens tools to the tools plugin page when the parent tools nav is clicked
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > keeps the tools disclosure independent from route section changes
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the tools header for tool sections
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > aligns model provider headers to the unified content frame
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > aligns plugin category headers to the unified content frame
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the mcp header for the mcp section
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the custom tool header for the custom tool section
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the %s header with a docs link
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the custom endpoint header with toolbar and docs link
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the %s header with a docs link
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders the workflow as tool header with a docs link
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders an unbordered header for %s
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > renders plugin update settings action in the category toolbar for %s
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > opens the integrations marketplace path from the install dropdown marketplace action
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > hides the install action and category installs when install permission is unavailable
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > hides the debug action when debug permission is unavailable
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > hides plugin update settings action when permission management is unavailable
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > opens the sidebar plugin permissions quick settings and updates permissions
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > hides the sidebar plugin permissions quick settings when permission management is unavailable
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > uses the no-action sidebar spacing when install permission is unavailable
+web/app/components/integrations/__tests__/page.spec.tsx :: IntegrationsPage > keeps the integrations sidebar expanded without a collapse control
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > sets drop install availability for %s
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > uses the Figma panel background for scoped integration categories
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > passes the marketplace action to the plugins panel
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > disables drop install when local packages are restricted
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > disables panel and drop installs when install permission is unavailable
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > keeps marketplace install params while install permission is loading
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > clears marketplace install params when install permission is unavailable after loading
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > opens the local package installer for supported dropped files
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > opens the marketplace installer from package id query params
+web/app/components/integrations/__tests__/plugin-category-page.spec.tsx :: PluginCategoryPage > ignores dropped files when install permission is unavailable
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > maps integration sections to canonical paths
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > maps integration sections to marketplace platform paths
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > resolves slug %j
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > preserves query params when redirecting legacy custom tool route
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > preserves marketplace install query params when redirecting nested marketplace callbacks
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > preserves marketplace install query params when redirecting model and data source callbacks
+web/app/components/integrations/__tests__/routes.spec.ts :: integration routes > builds legacy /tools redirect for search params %j
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: getToolType > returns correct ToolType for "%s"
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > renders all four tabs
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > keeps custom and workflow tabs visible without tool.manage
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > keeps MCP tab visible without mcp.manage
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > renders %s category read-only without tool.manage
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > switches tab when clicked
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > hides category tabs when controlled by route category
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > resets current provider when switching to a different tab
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Tab Navigation > does not reset provider when clicking the already active tab
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Layout > uses default content inset outside compact integrations layout
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Layout > uses compact content inset when rendered by integrations layout
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Layout > uses a two-column grid in compact integrations pages
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > shows only builtin collections by default
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > filters by search keyword
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > filters by search keyword matching label
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > filters search within the current route category
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > filters collections by tag
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > restores all collections when tag filter is cleared
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > does not apply hidden tag filters on non-tools tabs
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > clears search with clear button
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > shows label filter for the built-in tools page
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > hides label filter for the %s tool page
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > renders search input
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > shows the plugin update settings action in the tools toolbar
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > hides the tools update settings action when permission management is unavailable
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Filtering > hides plugin update settings on the %s tool page
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > keeps custom creation in the empty card when there are no API tools
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > moves custom creation into the toolbar when API tools exist
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > uses responsive grid columns for custom tool cards
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > anchors the Swagger API tour target to the first custom tool card
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > shows custom API card author and label tags from collection labels
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > shows card skeletons instead of custom create card while tool providers are loading
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Custom Tab > uses labeled integrations skeletons in compact custom tool pages
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > shows workflow collections
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > uses a three-column responsive grid in compact integrations pages
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > anchors the Workflow as Tool tour target to the first workflow card
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > does not show the built-in badge on workflow cards
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > shows workflow card author and label tags from collection labels
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > shows empty state when no workflow collections exist
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > anchors the Workflow as Tool tour target to the bounded empty state when no workflow collections exist
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > does not show workflow empty state when search has no matches
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > shows card skeletons instead of empty state while tool providers are loading
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Workflow Tab > uses labeled integrations skeletons in compact workflow pages
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > shows empty component when no builtin collections
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > shows card skeletons instead of empty component while tool providers are loading
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > uses compact integrations skeletons for built-in tools in compact pages
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > renders collection that has no labels property
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > maps plugin collection identity to the shared card payload
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > keeps non-plugin collections out of the marketplace icon path
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > shows only the built-in source label on integrations tool cards
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Builtin Tab Empty State > falls back to the collection name when plugin_id has no package segment
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > MCP Tab > uses database provider IDs from the management list
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > MCP Tab > renders MCPList component
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > MCP Tab > renders MCP list read-only without mcp.manage
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > MCP Tab > keeps MCP creation in the empty card when there are no MCP servers
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > MCP Tab > moves MCP creation into the toolbar when MCP servers exist
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > MCP Tab > passes compact content inset to MCPList when rendered by integrations layout
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Provider Detail > opens provider detail when a non-plugin collection is clicked
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Provider Detail > closes provider detail when close button is clicked
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Plugin Detail Panel > shows plugin detail panel when collection with plugin_id is selected
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Plugin Detail Panel > calls invalidateInstalledPluginList on plugin update
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Plugin Detail Panel > clears current provider on plugin panel close
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Marketplace > shows marketplace when enable_marketplace is true and on builtin tab
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Marketplace > passes compact content inset to marketplace when rendered by integrations layout
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Marketplace > does not show marketplace when enable_marketplace is false
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Marketplace > does not initialize marketplace hook outside builtin tools
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Marketplace > scrolls to marketplace panel on arrow click
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Scroll Handling > delegates scroll events to marketplace handleScroll
+web/app/components/integrations/__tests__/tool-provider-list.spec.tsx :: ProviderList > Scroll Handling > updates marketplace arrow visibility on scroll
+web/app/reset-password/__tests__/page.spec.tsx :: ResetPasswordPage > labels the email field and submits it with Enter
+web/app/reset-password/__tests__/page.spec.tsx :: ResetPasswordPage > keeps one associated error when an invalid email is cleared
+web/app/reset-password/check-code/__tests__/page.spec.tsx :: ResetPasswordCheckCodePage > labels the one-time code field and submits it with Enter
+web/app/reset-password/check-code/__tests__/page.spec.tsx :: ResetPasswordCheckCodePage > associates an incomplete code error with the field
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > reconciles the initial route title with client branding
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > supports password reveal and native form submission
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > revalidates the confirmation field when the password changes
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > Post-reset navigation > should preserve redirect_url when the user returns to sign in manually
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > Post-reset navigation > should preserve redirect_url when the countdown returns to sign in automatically
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > Post-reset navigation > should preserve the activation redirect when an invite token is present
+web/app/reset-password/set-password/__tests__/page.spec.tsx :: Reset Password Set Password Page > Post-reset navigation > should return to plain sign in when no redirect target is present
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > uses the loading title while the token is being verified
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is valid > renders the password form
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is valid > submits with T2 (from validity response), NOT T1 (from URL)
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is valid > uses the success title after the password is changed
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is valid > keeps one associated error when an invalid password is cleared
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is valid > revalidates the confirmation field when the password changes
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is valid > prevents duplicate submissions while the password is changing
+web/app/forgot-password/ChangePasswordForm.spec.tsx :: ChangePasswordForm > when token is invalid > shows invalid token state and no form
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should render form after loading
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should show validation error when email is empty
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should reject an email that only passes native validation
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should send the reset email and show a sign-in link after confirmation
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should submit when form is submitted
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should disable submit while request is in flight
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should keep form state when request fails
+web/app/forgot-password/ForgotPasswordForm.spec.tsx :: ForgotPasswordForm > should redirect to init when status is not started

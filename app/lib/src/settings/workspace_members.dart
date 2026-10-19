@@ -43,13 +43,35 @@ class WorkspaceRole {
 }
 
 /// The Dify permission keys a role has in dify-sf. Dify projects its legacy roles onto its whole permission catalog
-/// (apps, knowledge, plugins, ...); dify-sf enforces only these (docs/protocol.md "Accounts and roles"): owners and
-/// admins manage members, editors and up edit workflows (and import them), everybody views them.
+/// (apps, knowledge, plugins, ...); dify-sf enforces only these (docs/protocol.md "Accounts and roles", "Model
+/// providers"), in Dify's order (rbac_service.py `_LEGACY_WORKSPACE_*_KEYS`): owners and admins manage members and the
+/// model providers (credentials, model settings, default models), editors and normal members use the configured
+/// credentials, editors and up edit workflows (and import them), everybody views them.
 const _difySfPermissionKeys = <String, List<String>>{
-  AccountRole.owner: ['workspace.member.manage', 'app.acl.view_layout', 'app.acl.edit', 'app.acl.import_export_dsl'],
-  AccountRole.admin: ['workspace.member.manage', 'app.acl.view_layout', 'app.acl.edit', 'app.acl.import_export_dsl'],
-  AccountRole.editor: ['app.acl.view_layout', 'app.acl.edit', 'app.acl.import_export_dsl'],
-  AccountRole.normal: ['app.acl.view_layout'],
+  AccountRole.owner: [
+    'workspace.member.manage',
+    'plugin.plugin_preferences',
+    'plugin.model_config',
+    'credential.use',
+    'credential.create',
+    'credential.manage',
+    'app.acl.view_layout',
+    'app.acl.edit',
+    'app.acl.import_export_dsl',
+  ],
+  AccountRole.admin: [
+    'workspace.member.manage',
+    'plugin.plugin_preferences',
+    'plugin.model_config',
+    'credential.use',
+    'credential.create',
+    'credential.manage',
+    'app.acl.view_layout',
+    'app.acl.edit',
+    'app.acl.import_export_dsl',
+  ],
+  AccountRole.editor: ['credential.use', 'app.acl.view_layout', 'app.acl.edit', 'app.acl.import_export_dsl'],
+  AccountRole.normal: ['credential.use', 'app.acl.view_layout'],
   AccountRole.datasetOperator: ['app.acl.view_layout'],
 };
 

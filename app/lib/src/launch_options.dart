@@ -6,6 +6,7 @@ class LaunchOptions {
     this.server,
     this.doc,
     this.invite,
+    this.resetToken,
     this.volatile = false,
     this.demo = false,
     this.view,
@@ -14,13 +15,16 @@ class LaunchOptions {
   });
 
   /// The web build's URL query as options; [path] `/activate` (Dify's invitation link `/activate?token=…`) or `#/activate`
-  /// makes `token` the invitation.
+  /// makes `token` the invitation, `/reset-password/set-password` (an admin's reset link) the reset token.
   factory LaunchOptions.fromQuery(Map<String, String> q, {String path = '', String fragment = ''}) => LaunchOptions(
     server: q['server'],
     doc: q['doc'],
     invite: path.endsWith('/activate') || fragment.startsWith('/activate')
         ? (q['token'] ?? Uri.parse(fragment).queryParameters['token'])
         : q['invite'],
+    resetToken: path.endsWith('/reset-password/set-password') || fragment.startsWith('/reset-password/set-password')
+        ? (q['token'] ?? Uri.parse(fragment).queryParameters['token'])
+        : null,
     volatile: q['volatile'] == '1',
     demo: q['demo'] == '1',
     view: q['view'],
@@ -32,6 +36,7 @@ class LaunchOptions {
     String? server;
     String? doc;
     String? invite;
+    String? resetToken;
     var volatile = false;
     var demo = false;
     String? view;
@@ -46,6 +51,8 @@ class LaunchOptions {
           doc = value();
         case '--invite':
           invite = inviteToken(value());
+        case '--reset-link':
+          resetToken = inviteToken(value());
         case '--volatile':
           volatile = true;
         case '--demo':
@@ -62,6 +69,7 @@ class LaunchOptions {
       server: server,
       doc: doc,
       invite: invite,
+      resetToken: resetToken,
       volatile: volatile,
       demo: demo,
       view: view,
@@ -70,7 +78,7 @@ class LaunchOptions {
     );
   }
 
-  /// The token of an invitation link (`…/activate?email=…&token=…`), or [arg] itself when it is not a link.
+  /// The token of an invitation or reset link (`…?email=…&token=…`), or [arg] itself when it is not a link.
   static String? inviteToken(String? arg) {
     if (arg == null) return null;
     final uri = Uri.tryParse(arg);
@@ -82,6 +90,10 @@ class LaunchOptions {
 
   /// An invitation to accept (Dify's `/activate?token=`): `--invite <link or token>` on desktop.
   final String? invite;
+
+  /// An admin's password reset link to open (`/reset-password/set-password?token=`): `--reset-link <link or token>` on
+  /// desktop.
+  final String? resetToken;
   final bool volatile;
   final bool demo;
 

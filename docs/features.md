@@ -31,7 +31,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: User Input (start)](#node-start) | 4 |  |  |  |  | 4 |
 | [Node: Output (end)](#node-end) | 2 |  |  |  |  | 2 |
 | [Node: Answer](#node-answer) | 1 |  |  |  |  | 1 |
-| [Node: LLM](#node-llm) | 3 | 2 |  |  |  | 5 |
+| [Node: LLM](#node-llm) | 4 | 1 |  |  |  | 5 |
 | [Node: Knowledge Retrieval](#node-knowledge-retrieval) |  | 2 |  |  |  | 2 |
 | [Node: Question Classifier](#node-question-classifier) | 1 | 1 |  |  |  | 2 |
 | [Node: Parameter Extractor](#node-parameter-extractor) | 1 |  |  |  |  | 1 |
@@ -50,7 +50,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: Human Input](#node-human-input) | 2 |  | 1 |  |  | 3 |
 | [Nodes: triggers & workflow start](#node-triggers) | 3 | 2 | 1 |  |  | 6 |
 | [Nodes: knowledge pipeline (data source, knowledge base)](#node-pipeline) |  | 2 | 1 |  |  | 3 |
-| [Variables (environment, conversation, system) & variable picker](#variables) | 4 | 1 |  |  |  | 5 |
+| [Variables (environment, conversation, system) & variable picker](#variables) | 5 |  |  |  |  | 5 |
 | [Features panel](#features) | 4 | 3 |  | 1 |  | 8 |
 | [Variable inspect](#variable-inspect) | 2 |  |  |  |  | 2 |
 | [Run & debug](#run) | 9 | 1 | 2 |  |  | 12 |
@@ -60,13 +60,13 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Organize (auto layout)](#organize) | 2 |  |  |  |  | 2 |
 | [Undo / redo & change history](#history) | 2 |  | 1 |  |  | 3 |
 | [Version history](#versions) |  | 1 | 1 |  |  | 2 |
-| [Accounts, sign-in & members](#accounts) | 6 |  | 8 | 1 |  | 15 |
-| [Settings tabs & workspace](#settings) | 1 | 1 | 4 | 2 |  | 8 |
+| [Accounts, sign-in & members](#accounts) | 7 |  | 7 | 1 | 1 | 16 |
+| [Settings tabs & workspace](#settings) | 2 | 3 | 5 | 3 |  | 13 |
 | [App-level pages outside the editor](#app-pages) |  | 2 | 4 |  |  | 6 |
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 4 | 1 | 2 | 1 |  | 8 |
-| **Total** | **148** | **41** | **38** | **11** | **10** | **248** |
+| **Total** | **152** | **41** | **38** | **12** | **11** | **254** |
 
 <a id="canvas"></a>
 
@@ -96,7 +96,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Loading a draft: preprocess nodes and edges (initialNodes / initialEdges) | n/a | dify-sf never builds a graph from Dify JSON in the client; documents come from the server's DSL import (CollabDSL) and arrive as collaboration snapshots. | spec `workflow/utils/workflow-init.spec.ts` |
 | Read-only workflow preview canvas (templates, Explore, generator) | partial | The preview's components are ported for the parts the editor reuses; the pages that show a standalone read-only preview (template details, Explore try-app, workflow generator) do not exist in dify-sf. | spec `workflow/workflow-preview`, spec `workflow/workflow-preview/components`, spec `workflow/workflow-preview/components/nodes`, spec `workflow/workflow-preview/components/nodes/loop` |
 | Go to anything: command palette node search | not ported | outside current scope (owner to decide); dify-sf has no goto-anything palette. | spec `workflow/hooks/use-workflow-search.spec.tsx` |
-| Workflow generator (generate a graph from a prompt) | not ported | Needs a model provider service (no LLM runtime in dify-sf). | spec `workflow/workflow-generator` |
+| Workflow generator (generate a graph from a prompt) | not ported | Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon). | spec `workflow/workflow-generator` |
 | Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier) | dify-sf only | dify-sf's own Scene renderer with culling, overview captures and a skeleton tier; Dify renders every node as DOM. | `docs/results` |
 
 <a id="node-chrome"></a>
@@ -205,7 +205,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Header: Test Run button, Running / Listening state with Stop, test run menu (User Input, triggers, Run all) | ported | Deviation: Runs are served by the mock runtime (see Run & debug). | spec `workflow/hooks/use-dynamic-test-run-options.spec.tsx`, visual `run-input` |
 | Header: run history popover | ported | Deviation: Lists the runs of the mock runtime in this session (no run storage on the server). | visual `run-history` |
 | Header: conversation / environment / system variable buttons, Features button | ported |  | spec `workflow-app/components/workflow-header`, visual `var-env` |
-| Checklist: warning count, groups, Go to fix, publish blocked while items remain | ported | Deviation: The model catalog is always empty (no model provider service), so every LLM-type node reports 'Configure a model'; Agent v2 inline-agent checks are left out (they need Dify's agent composer service). | spec `workflow/header/checklist`, spec `workflow/hooks/use-checklist.spec.ts`, visual `toast-publish` |
+| Checklist: warning count, groups, Go to fix, publish blocked while items remain | ported | Deviation: 'Configure a model' follows the workspace's model providers (protocol 1.9; empty while loading or without a server, as Dify's query default); Agent v2 inline-agent checks are left out (they need Dify's agent composer service). | spec `workflow/header/checklist`, spec `workflow/hooks/use-checklist.spec.ts`, visual `toast-publish` |
 | Publish button and panel (publish / update, version name, Mod+Shift+P) | partial | The publisher UI and checks are ported, but dify-sf's server has no published versions yet (no publishWorkflow service), so publishing records nothing. | spec `app/app-publisher`, visual `toast-publish` |
 | Publish panel actions: Open web app, Access Point, Embed, API, Workflow as Tool, Publish to Marketplace | not ported | outside current scope (owner to decide); dify-sf has no web apps, access points, service API, workflow tools or marketplace. | spec `app/app-publisher` |
 | Publish: enterprise multi-environment deployment tabs | not ported | Enterprise feature (deployment API); dify-sf has the built-in publisher only. | spec `app/app-publisher/environment-tabs` |
@@ -239,7 +239,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Prompt editor blocks: context, query, history, current, error message, last run, request URL, variable value | ported |  | spec `base/prompt-editor/plugins/context-block`, spec `base/prompt-editor/plugins/query-block`, spec `base/prompt-editor/plugins/history-block`, spec `base/prompt-editor/plugins/current-block`, spec `base/prompt-editor/plugins/error-message-block`, spec `base/prompt-editor/plugins/last-run-block`, spec `base/prompt-editor/plugins/request-url-block`, spec `base/prompt-editor/plugins/variable-block`, spec `base/prompt-editor/plugins/variable-value-block`, spec `base/prompt-editor/plugins/workflow-variable-block` |
 | Prompt editor blocks: human input field, agent output | ported |  | spec `base/prompt-editor/plugins/hitl-input-block`, spec `base/prompt-editor/plugins/agent-output-block` |
 | Prompt editor: roster references (skills, files, tools) of the agent console | not ported | Only used by Dify's Agent v2 console (orchestrate prompt), which dify-sf does not have (taken from the host). | spec `base/prompt-editor/plugins/roster-reference-block` |
-| Prompt / code / JSON schema generator (AI generate) | not ported | Needs a model provider service (no LLM runtime); the generator buttons are drawn but disabled because no generator service is passed. |  |
+| Prompt / code / JSON schema generator (AI generate) | not ported | Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon). The generator buttons are drawn but disabled because no generator service is passed. |  |
 | Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome | ported | Deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs theme (identical token colours), not an embedded Monaco. | spec `workflow/nodes/_base/components/editor`, spec `workflow/nodes/_base/components/editor/code-editor`, `app/test/code_editor` |
 
 <a id="node-start"></a>
@@ -277,10 +277,10 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | LLM card: model chip | ported |  | spec `workflow/nodes/llm`, visual `canvas-basic-llm` |
-| LLM panel: model selector and model parameters | partial | Needs a model provider service; the selector and parameter popover are ported but the workspace catalog is always empty ('No Model Provider configured'), and the model's parameter rules are never loaded. Marketplace / AI-credit sections and the credential dropdown are not ported. | spec `header/account-setting/model-provider-page/model-selector`, spec `header/account-setting/model-provider-page/model-parameter-modal`, spec `header/account-setting/model-provider-page/model-name`, visual `panel-llm` |
+| LLM panel: model selector and model parameters | partial | The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) and the popup's per-provider credential dropdown are not ported. | spec `header/account-setting/model-provider-page/model-selector`, spec `header/account-setting/model-provider-page/model-parameter-modal`, spec `header/account-setting/model-provider-page/model-name`, visual `panel-llm` |
 | LLM panel: context, prompt messages (system / user / assistant), Jinja, vision, memory | ported |  | spec `workflow/nodes/llm/components`, spec `workflow/nodes/llm/hooks`, visual `panel-llm` |
 | LLM panel: structured output (JSON schema visual / code editor), reasoning format | ported |  | spec `workflow/nodes/llm/components/json-schema-config-modal`, spec `workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card` |
-| Model status: credential / quota / incompatible warnings, trial credits | partial | The status derivation is ported and tested, but without a model provider service every model is unconfigured. | spec `header/account-setting/model-provider-page`, spec `workflow/model-provider-fixtures.spec.ts` |
+| Model status: credential / quota / incompatible warnings, trial credits | ported | Deviation: Statuses come from the workspace's providers (protocol 1.9); the trial-credit states never show (Dify Cloud only; dify-sf is self-hosted). | spec `header/account-setting/model-provider-page`, spec `workflow/model-provider-fixtures.spec.ts` |
 
 <a id="node-knowledge-retrieval"></a>
 
@@ -289,7 +289,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Knowledge Retrieval card: selected knowledge bases | partial | Lists only datasets whose details are known; dify-sf has no knowledge base service, so the card shows none. | spec `workflow/nodes/knowledge-retrieval`, visual `canvas-retrieval-human` |
-| Knowledge Retrieval panel: query variable, knowledge list, retrieval settings, metadata filtering | partial | The panel is ported, but the Select Knowledge dialog has nothing to list (no knowledge base / dataset service in dify-sf) and rerank / embedding models need a model provider service. | spec `workflow/nodes/knowledge-retrieval/hooks`, visual `panel-knowledge-retrieval` |
+| Knowledge Retrieval panel: query variable, knowledge list, retrieval settings, metadata filtering | partial | The panel is ported, but the Select Knowledge dialog has nothing to list (no knowledge base / dataset service in dify-sf). | spec `workflow/nodes/knowledge-retrieval/hooks`, visual `panel-knowledge-retrieval` |
 
 <a id="node-question-classifier"></a>
 
@@ -298,7 +298,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Question Classifier card: model and classes with branch handles | partial | Class names are truncated at 50 characters as in Dify, but the hover popover with the full name is not ported yet. | spec `workflow/nodes/question-classifier`, visual `canvas-classify-extract` |
-| Question Classifier panel: input, model, classes (add / rename / reorder / remove), instructions, memory | ported | Deviation: Model choice is limited by the empty model catalog (see LLM model selector). | spec `workflow/nodes/question-classifier/components`, visual `panel-question-classifier` |
+| Question Classifier panel: input, model, classes (add / rename / reorder / remove), instructions, memory | ported |  | spec `workflow/nodes/question-classifier/components`, visual `panel-question-classifier` |
 
 <a id="node-parameter-extractor"></a>
 
@@ -306,7 +306,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Parameter Extractor card and panel: input, model, parameters, instructions, reasoning mode | ported | Deviation: Model choice is limited by the empty model catalog (see LLM model selector). | spec `workflow/nodes/parameter-extractor`, spec `workflow/nodes/parameter-extractor/components`, spec `workflow/nodes/parameter-extractor/components/extract-parameter`, visual `panel-parameter-extractor` |
+| Parameter Extractor card and panel: input, model, parameters, instructions, reasoning mode | ported |  | spec `workflow/nodes/parameter-extractor`, spec `workflow/nodes/parameter-extractor/components`, spec `workflow/nodes/parameter-extractor/components/extract-parameter`, visual `panel-parameter-extractor` |
 
 <a id="node-if-else"></a>
 
@@ -444,7 +444,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Knowledge pipeline (RAG pipeline) apps | not ported | outside current scope (owner to decide); dify-sf edits workflows and chatflows only (no knowledge bases, data source plugins or indexing). | spec `workflow/utils/data-source.spec.ts` |
 | Data Source node card and panel; empty data source placeholder | partial | Card and panel are ported (they render if a document contains the node), but data sources are plugins with credentials (no plugin service) and dify-sf has no knowledge pipelines, so the block selector never offers them. | spec `workflow/nodes/data-source`, spec `workflow/nodes/data-source/hooks`, spec `workflow/nodes/data-source-empty`, spec `workflow/block-selector/data-sources.spec.tsx` |
-| Knowledge Base (index) node card and panel: chunk structure, embedding, retrieval settings | partial | Panel ported; only reachable in knowledge pipelines (not in dify-sf), the embedding / rerank models need a model provider service, and the card shows English labels and treats a configured embedding model as available. | spec `workflow/nodes/knowledge-base`, spec `workflow/nodes/knowledge-base/components`, spec `workflow/nodes/knowledge-base/components/chunk-structure`, spec `workflow/nodes/knowledge-base/components/chunk-structure/instruction`, spec `workflow/nodes/knowledge-base/components/retrieval-setting`, spec `workflow/nodes/knowledge-base/hooks` |
+| Knowledge Base (index) node card and panel: chunk structure, embedding, retrieval settings | partial | Panel ported; only reachable in knowledge pipelines (not in dify-sf), and the card shows English labels and treats a configured embedding model as available. | spec `workflow/nodes/knowledge-base`, spec `workflow/nodes/knowledge-base/components`, spec `workflow/nodes/knowledge-base/components/chunk-structure`, spec `workflow/nodes/knowledge-base/components/chunk-structure/instruction`, spec `workflow/nodes/knowledge-base/components/retrieval-setting`, spec `workflow/nodes/knowledge-base/hooks` |
 
 <a id="variables"></a>
 
@@ -456,7 +456,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Environment variables panel: list, add / edit modal (string, number, secret), delete, rename propagates to nodes | ported | Deviation: Variables live in the collaborative document (protocol 1.7 $app registers, item by item); secret values are stored server-side through POST /secrets and the document holds only a mask and a reference. | spec `workflow/panel/env-panel`, visual `var-env`, `app/test/variable_panels_test.dart` |
 | Conversation variables panel (chatflow): list, add / edit modal (8 types, JSON or form values) | ported | Deviation: Stored in the collaborative document ($app registers). | spec `workflow/panel/chat-variable-panel`, spec `workflow/panel/chat-variable-panel/components`, visual `var-conversation` |
 | System variables panel (read-only) | ported |  | spec `workflow/panel/global-variable-panel`, visual `var-system` |
-| LLM model environment variables (an environment variable holding a model; LLM nodes may use it) | partial | The model-typed environment variable, its value field and the LLM node's switch to it are ported, but picking a model needs a model provider service (the catalog is empty). | spec `workflow/panel/env-panel` |
+| LLM model environment variables (an environment variable holding a model; LLM nodes may use it) | ported |  | spec `workflow/panel/env-panel` |
 
 <a id="features"></a>
 
@@ -469,8 +469,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Conversation opener: opening statement and suggested questions | ported | Deviation: The opener modal writes to the document once on Save (as Dify), not on every keystroke. | spec `base/features/new-feature-panel/conversation-opener` |
 | Follow-up (suggested questions after answer), citations, speech to text | ported |  | spec `base/features/new-feature-panel` |
 | File upload / image upload settings | ported | Deviation: The system's upload limits (fileUploadConfig) are Dify's fallbacks; dify-sf has no upload service and does not store the system limits in the document. | spec `base/features/new-feature-panel/file-upload`, spec `base/features/new-feature-panel/image-upload` |
-| Text to speech: language, voice, autoplay, audition | partial | Settings are ported; voices and the audition button need a TTS model provider service (none: no voices, no audition). | spec `base/features/new-feature-panel/text-to-speech` |
-| Content moderation: keywords, OpenAI moderation, API extension | partial | Keywords work; OpenAI moderation needs a configured OpenAI model provider and API-based extensions need the extension service (Add extension dialog not ported). | spec `base/features/new-feature-panel/moderation` |
+| Text to speech: language, voice, autoplay, audition | partial | Settings are ported; the voices and the audition call the app's TTS model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon). | spec `base/features/new-feature-panel/text-to-speech` |
+| Content moderation: keywords, OpenAI moderation, API extension | partial | Keywords and OpenAI moderation (with OpenAI configured in the workspace's model providers) work; API-based extensions need the extension service (Add extension dialog not ported). | spec `base/features/new-feature-panel/moderation` |
 | Annotation reply | n/a | Only offered outside workflows (chat / agent apps); the workflow editor's Features panel never shows it (and it needs Dify's annotation backend). | spec `base/features/new-feature-panel/annotation-reply`, spec `base/features/new-feature-panel/annotation-reply/score-slider` |
 
 <a id="variable-inspect"></a>
@@ -572,7 +572,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Sign in with email and password | ported | Deviation: Accounts live on dify-sf's server (protocol 1.8, bearer tokens, PBKDF2 like Dify). | spec `web/app/signin`, visual `page-signin`, `app/test/auth_test.dart` |
 | Sign in with an email code (and Turnstile) | not ported | Owner decided: email + password only for now, third-party later (2026-10-18); dify-sf has no mail server. | spec `web/app/signin/check-code`, spec `web/app/signin/components` |
 | Social (GitHub / Google) and SSO sign-in, OAuth redirects | not ported | Owner decided: email + password only for now, third-party later (2026-10-18). | spec `web/app/signin/utils` |
-| Forgot / reset password | not ported | dify-sf has no mail server; the 'Forgot your password?' link is disabled as in Dify without mail. |  |
+| Forgot / reset password: email code, check code, set a new password (the sign-in link enabled when mail is set up) | ported | Deviation: Mail is the dify-sf server's own SMTP configuration (GET /v1/system-features is_email_setup); without it the link is disabled as in Dify, and owners and admins hand out reset links instead (accounts.reset-link). Dify's legacy /forgot-password page (a reset link by mail) is not ported: the sign-in leads to /reset-password. | spec `web/app/reset-password`, spec `web/app/reset-password/check-code`, spec `web/app/reset-password/set-password`, spec `web/app/forgot-password`, `app/test/forgot_password_test.dart` |
+| Members page: an owner's or admin's one-time password reset link for a member (servers without mail) | dify-sf only | Dify's community edition resets passwords from its command line (flask reset-password); dify-sf hands out a one-time link instead, like its invitation links (nobody sets or sees another member's password; the owner's only by the owner). | `app/test/members_reset_link_test.dart` |
 | Sign up | not ported | Accounts come from the install page and invitations (Dify's is_allow_register off). |  |
 | Invitation links: activate, invite sign-in, invite settings (name, password, language) | ported | Deviation: Invitations are links shown to the inviter (no mail server); only new accounts are invited. | spec `web/app/signin/invite-settings`, visual `page-activate-expired`, visual `page-signin-invite`, visual `page-invite-settings` |
 | Account menu: account card, log out | ported |  | spec `header/account-dropdown`, visual `nav-main` |
@@ -590,11 +591,16 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Settings dialog (sidebar of tabs) | partial | Only the Members tab exists; the other tabs need server features dify-sf does not have (see below). | spec `header/account-setting` |
+| Settings dialog (sidebar of tabs) | partial | Only the Members tab exists; the other tabs need server features dify-sf does not have (see below). Model providers live in the Integrations settings modal, as in Dify 1.17.1. | spec `header/account-setting` |
 | Main nav workspace card and menu (workspace settings, invite members, switcher) | ported | Deviation: One workspace per server; no plan badge, credits or upgrade action. | spec `main-nav/components`, visual `nav-workspace-menu` |
-| Model providers settings (provider cards, credentials, system models, load balancing) | not ported | outside current scope (owner to decide); needs a model provider service. Only the parts the node panels use (model selector, parameters, status) are ported. | spec `header/account-setting/model-provider-page/provider-added-card`, spec `header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown`, spec `header/account-setting/model-provider-page/model-auth`, spec `header/account-setting/model-provider-page/model-auth/authorized`, spec `header/account-setting/model-provider-page/model-auth/hooks`, spec `header/account-setting/model-provider-page/model-modal`, spec `header/account-setting/model-provider-page/system-model-selector` |
-| Plugins (install, update, permissions) and marketplace | not ported | outside current scope (owner to decide); dify-sf has no plugin daemon or marketplace. | spec `workflow/plugin-dependency`, spec `workflow/store/plugin-dependency-store.spec.ts` |
-| Integrations: tools (built-in, MCP, custom, workflow tools), data sources, triggers, agent strategies, API extensions, custom endpoints | not ported | outside current scope (owner to decide). |  |
+| Model Provider page: provider cards, API keys (several per provider, switching, the hidden-secret round trip), custom models and their credentials, model list with enable / disable, default system models | ported | Deviation: dify-sf's catalog is a curated set of Dify's official provider plugins (protocol 1.9); the encrypted-key note names the server's AES-256-GCM instead of PKCS1_OAEP. Members without plugin.plugin_preferences / credential.manage see the cards only, as in Dify. Plugin metadata, auto-update settings and the marketplace section need plugins (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)). | spec `header/account-setting/model-provider-page`, spec `header/account-setting/model-provider-page/provider-added-card`, spec `header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown`, spec `header/account-setting/model-provider-page/model-auth`, spec `header/account-setting/model-provider-page/model-auth/authorized`, spec `header/account-setting/model-provider-page/model-auth/hooks`, spec `header/account-setting/model-provider-page/model-modal`, spec `header/account-setting/model-provider-page/system-model-selector` |
+| Legacy model-modal Form (the credential form of agent strategies, tool settings and plugin endpoints) | not ported | Not used by the model provider credential modal (which renders base/form's AuthForm); to port with the agent strategy and tool forms. | spec `header/account-setting/model-provider-page/model-modal/Form.spec.tsx`, spec `header/account-setting/model-provider-page/model-modal/Input.spec.tsx` |
+| Model load balancing (credential pools, cooldowns, the model Config dialog) | not ported | later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon) | spec `header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.spec.tsx`, spec `header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.spec.tsx` |
+| AI credits, quota panel and provider usage priority | n/a | Dify Cloud only; dify-sf is self-hosted | spec `header/account-setting/model-provider-page/provider-added-card/quota-panel.spec.tsx` |
+| Credential forms (base/form: BaseForm, BaseField, the auth scenario, untouched secrets sent as [__HIDDEN__]) | partial | Text, secret, number, select, radio, checkbox and boolean fields are ported; dynamic selects need trigger plugins (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), and useAppForm's field components and the input-field scenario serve Dify's knowledge pipeline forms (no knowledge base service in dify-sf). | spec `base/form`, spec `base/form/components`, spec `base/form/components/base`, spec `base/form/components/field`, spec `base/form/components/field/input-type-select`, spec `base/form/components/form`, spec `base/form/form-scenarios/auth`, spec `base/form/form-scenarios/base`, spec `base/form/form-scenarios/input-field`, spec `base/form/hooks`, spec `base/form/utils/secret-input` |
+| Plugins (install, update, permissions) and marketplace | not ported | later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon) | spec `workflow/plugin-dependency`, spec `workflow/store/plugin-dependency-store.spec.ts` |
+| Integrations settings modal and page (sidebar, section header with docs link), opened by the main nav and the model selector | partial | Only the Model Provider section exists; the other sections and the plugin actions are listed under the next entry. dify-sf opens it as the settings modal (no /integrations route), also from the main nav. | spec `integrations` |
+| Integrations: tools (built-in, MCP, custom, workflow tools), data sources, triggers, agent strategies, API extensions, custom endpoints | not ported | outside current scope (owner to decide); tools, triggers, agent strategies and extensions are plugins. |  |
 | Billing, plans, credits, education | n/a | dify-sf has no billing plans, seats, credits or licenses (Dify Cloud / enterprise). |  |
 | Preferences tab: language, theme, time zone | not ported | dify-sf cannot store account settings yet; the UI language is chosen on the sign-in page or with ?lang= / --lang. | spec `header/account-setting/update-setting-dialog-form.spec.tsx` |
 | Customization (branding) and workflow log archives tabs | n/a | Enterprise / cloud features; dify-sf has no branding and no run logs. |  |

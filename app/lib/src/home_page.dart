@@ -13,6 +13,7 @@ import 'design/dify_icon.dart';
 import 'design/dify_theme.dart';
 import 'design/dify_tokens.g.dart';
 import 'design/widgets/toast.dart';
+import 'design/widgets/widgets.dart' show DifyPressable, difyTextStyle;
 import 'editor/editor_controller.dart';
 import 'editor/editor_page.dart';
 import 'i18n/app_locale.dart';
@@ -20,13 +21,15 @@ import 'i18n/dify_i18n.dart';
 import 'launch_options.dart';
 import 'session_factory.dart';
 import 'settings.dart';
+import 'settings/integrations_page.dart';
 import 'settings/workspace_card.dart';
 import 'settings/workspace_members.dart';
+import 'workflow/workspace_models.dart';
 
 /// Start screen (signed in): mode and the document to open or create, in Dify's main navigation frame (the logo at
 /// the top, the account menu at the bottom of the sidebar). The server is the one signed in to.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.settings, this.backendFor, this.launch});
+  const HomePage({super.key, required this.settings, this.backendFor, this.launch, this.modelsApiFor});
 
   final AppSettings settings;
 
@@ -35,6 +38,10 @@ class HomePage extends StatefulWidget {
 
   /// Test hook: supplies the backend instead of an HTTP one.
   final Backend Function(Uri url)? backendFor;
+
+  /// The model providers API of a session (protocol 1.9); by default the server's over HTTP (none for the demo, nor
+  /// with a test [backendFor]).
+  final ModelProvidersApi? Function(AuthController auth)? modelsApiFor;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -58,10 +65,34 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _doc.dispose();
+    _models?.dispose();
     super.dispose();
   }
 
   AuthController? get _auth => AuthScope.read(context);
+
+  /// The workspace's model providers and models for the signed-in session (the editors' model selector, the
+  /// integrations settings).
+  WorkspaceModels? _models;
+  AuthController? _modelsAuth;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = AuthScope.of(context);
+    if (_models == null || _modelsAuth != auth) {
+      _models?.dispose();
+      _modelsAuth = auth;
+      _models = WorkspaceModels((widget.modelsApiFor ?? _defaultModelsApi)(auth));
+    }
+  }
+
+  ModelProvidersApi? _defaultModelsApi(AuthController auth) {
+    if (widget.backendFor != null) return null;
+    final uri = Uri.tryParse(auth.server);
+    if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) return null;
+    return HttpModelProvidersApi(uri, auth: auth.session);
+  }
 
   Backend _backend() {
     final auth = _auth;
@@ -154,6 +185,10 @@ class _HomePageState extends State<HomePage> {
           extraActions: extra,
           // The launch's `node_id` belongs to the launch's document.
           locateNodeId: id == widget.launch?.doc ? widget.launch?.nodeId : null,
+          models: demo ? null : _models,
+          openModelProviderSettings: demo || _models == null
+              ? null
+              : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
         ),
       ),
     );
@@ -167,7 +202,7 @@ class _HomePageState extends State<HomePage> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (account != null) MainNavFrame(account: account),
+          if (account != null) MainNavFrame(account: account, models: _models),
           Expanded(child: _form(context)),
         ],
       ),
@@ -258,11 +293,14 @@ class _HomePageState extends State<HomePage> {
 
 /// Dify's main navigation (main-nav/index.tsx) as far as dify-sf has it: the `w-62` sidebar on
 /// `bg-background-body` with the Dify logo at the top (`pt-3 pr-2 pb-2 pl-4`), the workspace card under it (`p-2`;
-/// its menu opens the workspace settings) and the account section at the bottom (`py-3 pr-1 pl-3`). Dify's search,
-/// navigation links, web apps and help menu are not part of dify-sf.
+/// its menu opens the workspace settings), the Integrations link (the model providers) and the account section at the
+/// bottom (`py-3 pr-1 pl-3`). Dify's search, its other navigation links, web apps and help menu are not part of dify-sf.
 class MainNavFrame extends StatefulWidget {
-  const MainNavFrame({super.key, required this.account});
+  const MainNavFrame({super.key, required this.account, this.models});
   final Account account;
+
+  /// The workspace's models: the Integrations link opens their settings (no link without them).
+  final WorkspaceModels? models;
 
   @override
   State<MainNavFrame> createState() => _MainNavFrameState();
@@ -309,6 +347,17 @@ class _MainNavFrameState extends State<MainNavFrame> {
           padding: const EdgeInsets.all(8),
           child: WorkspaceCard(members: _members!),
         ),
+        if (widget.models case final models?)
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: MainNavLink(
+              key: const ValueKey('main-nav-integrations'),
+              label: DifyI18n.tr('common', 'mainNav.integrations'),
+              icon: 'vender/main-nav/integrations-v2',
+              activeIcon: 'vender/main-nav/integrations-v2-active',
+              onTap: () => showModelProviderSettings(context, models: models, role: _members!.myRole),
+            ),
+          ),
         const Spacer(),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
@@ -420,4 +469,49 @@ class _ImportDslDialogState extends State<_ImportDslDialog> {
       ],
     );
   }
+}
+
+/// main-nav/components/nav-link.tsx: `h-8 rounded-[10px] px-2 py-1.5 gap-2`, the 20 px icon and the label
+/// (`system-md-medium text-components-main-nav-nav-button-text`, hover `bg-components-main-nav-nav-button-bg-hover`).
+/// dify-sf's links open settings rather than pages, so none is ever the current page.
+class MainNavLink extends StatelessWidget {
+  const MainNavLink({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+    required this.onTap,
+  });
+
+  final String label, icon, activeIcon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => DifyPressable(
+    semanticLabel: label,
+    onPressed: onTap,
+    builder: (context, hovered, focused) => Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: hovered ? DifyColors.componentsMainNavNavButtonBgHover : DifyColors.componentsMainNavNavButtonBg,
+        borderRadius: BorderRadius.circular(10),
+        border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+      ),
+      child: Row(
+        spacing: 8,
+        children: [
+          DifyIcon(icon, size: 20, color: DifyColors.componentsMainNavNavButtonText),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: difyTextStyle(DifyType.systemMdMedium, DifyColors.componentsMainNavNavButtonText),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

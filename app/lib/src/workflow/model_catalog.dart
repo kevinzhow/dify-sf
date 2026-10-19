@@ -173,7 +173,12 @@ class ProviderWithModels {
 
 /// A stored provider credential (Credential / CredentialConfiguration).
 class Credential {
-  const Credential({required this.credentialId, this.credentialName, this.notAllowedToUse});
+  const Credential({
+    required this.credentialId,
+    this.credentialName,
+    this.notAllowedToUse,
+    this.fromEnterprise = false,
+  });
 
   factory Credential.fromJson(Object? json) {
     final m = _m(json);
@@ -181,12 +186,26 @@ class Credential {
       credentialId: _s(m['credential_id']),
       credentialName: _sOrNull(m['credential_name']),
       notAllowedToUse: m['not_allowed_to_use'] is bool ? m['not_allowed_to_use']! as bool : null,
+      fromEnterprise: m['from_enterprise'] == true,
     );
   }
 
   final String credentialId;
   final String? credentialName;
   final bool? notAllowedToUse;
+
+  /// Managed by the enterprise admin (never in dify-sf).
+  final bool fromEnterprise;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Credential && other.credentialId == credentialId && other.credentialName == credentialName;
+
+  @override
+  int get hashCode => Object.hash(credentialId, credentialName);
+
+  @override
+  String toString() => 'Credential($credentialId, $credentialName)';
 }
 
 /// A provider's `custom_configuration` (the summary's has `current_credential_usable`; ModelProvider's does not).

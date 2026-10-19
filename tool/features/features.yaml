@@ -239,7 +239,7 @@ features:
   title: 'Workflow generator (generate a graph from a prompt)'
   dify: [web/app/components/workflow/workflow-generator]
   status: not_ported
-  reason: Needs a model provider service (no LLM runtime in dify-sf).
+  reason: "Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
   evidence: ['spec:web/app/components/workflow/workflow-generator']
   ours: []
 - id: canvas.performance
@@ -698,7 +698,7 @@ features:
   title: 'Checklist: warning count, groups, Go to fix, publish blocked while items remain'
   dify: [web/app/components/workflow/header/checklist, web/app/components/workflow/hooks/use-checklist.ts]
   status: ported
-  deviation: The model catalog is always empty (no model provider service), so every LLM-type node reports 'Configure a model'; Agent v2 inline-agent checks are left out (they need Dify's agent composer service).
+  deviation: "'Configure a model' follows the workspace's model providers (protocol 1.9; empty while loading or without a server, as Dify's query default); Agent v2 inline-agent checks are left out (they need Dify's agent composer service)."
   evidence: ['spec:web/app/components/workflow/header/checklist', 'spec:web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts', visual:toast-publish]
   ours: [app/lib/src/workflow_editor/header/checklist/use_checklist.dart, app/lib/src/workflow_editor/header/checklist/checklist.dart]
 - id: header.publish
@@ -856,7 +856,7 @@ features:
   title: 'Prompt / code / JSON schema generator (AI generate)'
   dify: [web/app/components/workflow/nodes/llm/components/prompt-generator-btn.tsx, web/app/components/workflow/nodes/_base/components/code-generator-button.tsx]
   status: not_ported
-  reason: Needs a model provider service (no LLM runtime); the generator buttons are drawn but disabled because no generator service is passed.
+  reason: "Calls a model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon). The generator buttons are drawn but disabled because no generator service is passed."
   evidence: []
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart]
 - id: editors.code-editor
@@ -933,9 +933,9 @@ features:
   title: 'LLM panel: model selector and model parameters'
   dify: [web/app/components/header/account-setting/model-provider-page/model-selector, web/app/components/header/account-setting/model-provider-page/model-parameter-modal]
   status: partial
-  reason: Needs a model provider service; the selector and parameter popover are ported but the workspace catalog is always empty ('No Model Provider configured'), and the model's parameter rules are never loaded. Marketplace / AI-credit sections and the credential dropdown are not ported.
+  reason: "The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) and the popup's per-provider credential dropdown are not ported."
   evidence: ['spec:web/app/components/header/account-setting/model-provider-page/model-selector', 'spec:web/app/components/header/account-setting/model-provider-page/model-parameter-modal', 'spec:web/app/components/header/account-setting/model-provider-page/model-name', visual:panel-llm]
-  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/model_selector.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart, app/lib/src/workflow/model_catalog.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/model_selector.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart, app/lib/src/workflow/model_catalog.dart, app/lib/src/workflow/workspace_models.dart, app/lib/src/workflow_editor/dify_editor.dart]
 - id: node-llm.prompt
   area: node-llm
   title: 'LLM panel: context, prompt messages (system / user / assistant), Jinja, vision, memory'
@@ -954,8 +954,8 @@ features:
   area: node-llm
   title: 'Model status: credential / quota / incompatible warnings, trial credits'
   dify: [web/app/components/header/account-setting/model-provider-page/hooks.ts, web/app/components/header/account-setting/model-provider-page/utils.ts]
-  status: partial
-  reason: The status derivation is ported and tested, but without a model provider service every model is unconfigured.
+  status: ported
+  deviation: "Statuses come from the workspace's providers (protocol 1.9); the trial-credit states never show (Dify Cloud only; dify-sf is self-hosted)."
   evidence: ['spec:web/app/components/header/account-setting/model-provider-page', 'spec:web/app/components/workflow/__tests__/model-provider-fixtures.spec.ts']
   ours: [app/lib/src/workflow/model_catalog.dart]
 
@@ -972,7 +972,7 @@ features:
   title: 'Knowledge Retrieval panel: query variable, knowledge list, retrieval settings, metadata filtering'
   dify: [web/app/components/workflow/nodes/knowledge-retrieval/panel.tsx, web/app/components/workflow/nodes/knowledge-retrieval/hooks]
   status: partial
-  reason: The panel is ported, but the Select Knowledge dialog has nothing to list (no knowledge base / dataset service in dify-sf) and rerank / embedding models need a model provider service.
+  reason: The panel is ported, but the Select Knowledge dialog has nothing to list (no knowledge base / dataset service in dify-sf).
   evidence: ['spec:web/app/components/workflow/nodes/knowledge-retrieval/hooks', visual:panel-knowledge-retrieval]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/knowledge_retrieval_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/kr_datasets.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/kr_metadata.dart]
 
@@ -989,7 +989,6 @@ features:
   title: 'Question Classifier panel: input, model, classes (add / rename / reorder / remove), instructions, memory'
   dify: [web/app/components/workflow/nodes/question-classifier/panel.tsx, web/app/components/workflow/nodes/question-classifier/components]
   status: ported
-  deviation: Model choice is limited by the empty model catalog (see LLM model selector).
   evidence: ['spec:web/app/components/workflow/nodes/question-classifier/components', visual:panel-question-classifier]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/question_classifier_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/qc_class_list.dart]
 
@@ -998,7 +997,6 @@ features:
   title: 'Parameter Extractor card and panel: input, model, parameters, instructions, reasoning mode'
   dify: [web/app/components/workflow/nodes/parameter-extractor]
   status: ported
-  deviation: Model choice is limited by the empty model catalog (see LLM model selector).
   evidence: ['spec:web/app/components/workflow/nodes/parameter-extractor', 'spec:web/app/components/workflow/nodes/parameter-extractor/components', 'spec:web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter', visual:panel-parameter-extractor]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/parameter_extractor_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/pe_params.dart]
 
@@ -1257,7 +1255,7 @@ features:
   title: 'Knowledge Base (index) node card and panel: chunk structure, embedding, retrieval settings'
   dify: [web/app/components/workflow/nodes/knowledge-base]
   status: partial
-  reason: Panel ported; only reachable in knowledge pipelines (not in dify-sf), the embedding / rerank models need a model provider service, and the card shows English labels and treats a configured embedding model as available.
+  reason: Panel ported; only reachable in knowledge pipelines (not in dify-sf), and the card shows English labels and treats a configured embedding model as available.
   evidence: ['spec:web/app/components/workflow/nodes/knowledge-base', 'spec:web/app/components/workflow/nodes/knowledge-base/components', 'spec:web/app/components/workflow/nodes/knowledge-base/components/chunk-structure', 'spec:web/app/components/workflow/nodes/knowledge-base/components/chunk-structure/instruction', 'spec:web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting', 'spec:web/app/components/workflow/nodes/knowledge-base/hooks']
   ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/knowledge_base/knowledge_base_panel.dart]
 
@@ -1296,8 +1294,7 @@ features:
   area: variables
   title: 'LLM model environment variables (an environment variable holding a model; LLM nodes may use it)'
   dify: [web/app/components/workflow/llm-environment-variable.ts, web/app/components/workflow/llm-environment-variable-value-field.tsx]
-  status: partial
-  reason: The model-typed environment variable, its value field and the LLM node's switch to it are ported, but picking a model needs a model provider service (the catalog is empty).
+  status: ported
   evidence: ['spec:web/app/components/workflow/panel/env-panel']
   ours: [app/lib/src/workflow_editor/variable_panels/env_variable_modal.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart]
 
@@ -1346,7 +1343,7 @@ features:
   title: 'Text to speech: language, voice, autoplay, audition'
   dify: [web/app/components/base/features/new-feature-panel/text-to-speech]
   status: partial
-  reason: 'Settings are ported; voices and the audition button need a TTS model provider service (none: no voices, no audition).'
+  reason: "Settings are ported; the voices and the audition call the app's TTS model (no model invocation in dify-sf): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
   evidence: ['spec:web/app/components/base/features/new-feature-panel/text-to-speech']
   ours: [app/lib/src/workflow_editor/features/text_to_speech.dart]
 - id: features.moderation
@@ -1354,7 +1351,7 @@ features:
   title: 'Content moderation: keywords, OpenAI moderation, API extension'
   dify: [web/app/components/base/features/new-feature-panel/moderation]
   status: partial
-  reason: Keywords work; OpenAI moderation needs a configured OpenAI model provider and API-based extensions need the extension service (Add extension dialog not ported).
+  reason: Keywords and OpenAI moderation (with OpenAI configured in the workspace's model providers) work; API-based extensions need the extension service (Add extension dialog not ported).
   evidence: ['spec:web/app/components/base/features/new-feature-panel/moderation']
   ours: [app/lib/src/workflow_editor/features/moderation.dart]
 - id: features.annotation-reply
@@ -1665,12 +1662,20 @@ features:
   ours: []
 - id: accounts.forgot-password
   area: accounts
-  title: 'Forgot / reset password'
-  dify: [web/app/forgot-password, web/app/reset-password]
-  status: not_ported
-  reason: dify-sf has no mail server; the 'Forgot your password?' link is disabled as in Dify without mail.
-  evidence: []
-  ours: [app/lib/src/auth/signin_page.dart]
+  title: 'Forgot / reset password: email code, check code, set a new password (the sign-in link enabled when mail is set up)'
+  dify: [web/app/reset-password, web/app/forgot-password, web/app/signin/components/mail-and-password-auth.tsx]
+  status: ported
+  deviation: "Mail is the dify-sf server's own SMTP configuration (GET /v1/system-features is_email_setup); without it the link is disabled as in Dify, and owners and admins hand out reset links instead (accounts.reset-link). Dify's legacy /forgot-password page (a reset link by mail) is not ported: the sign-in leads to /reset-password."
+  evidence: ['spec:web/app/reset-password', 'spec:web/app/reset-password/check-code', 'spec:web/app/reset-password/set-password', 'spec:web/app/forgot-password', app/test/forgot_password_test.dart]
+  ours: [app/lib/src/auth/reset_password_page.dart, app/lib/src/auth/signin_page.dart, app/lib/src/auth/auth_controller.dart]
+- id: accounts.reset-link
+  area: accounts
+  title: "Members page: an owner's or admin's one-time password reset link for a member (servers without mail)"
+  dify: [web/app/components/header/account-setting/members-page/member-menu.tsx, api/commands/account.py]
+  status: dify_sf_only
+  reason: "Dify's community edition resets passwords from its command line (flask reset-password); dify-sf hands out a one-time link instead, like its invitation links (nobody sets or sees another member's password; the owner's only by the owner)."
+  evidence: [app/test/members_reset_link_test.dart]
+  ours: [app/lib/src/settings/members/member_menu.dart, app/lib/src/settings/members/reset_link_modal.dart]
 - id: accounts.signup
   area: accounts
   title: 'Sign up'
@@ -1756,7 +1761,7 @@ features:
   title: 'Settings dialog (sidebar of tabs)'
   dify: [web/app/components/header/account-setting/index.tsx, web/app/components/header/account-setting/constants.ts]
   status: partial
-  reason: Only the Members tab exists; the other tabs need server features dify-sf does not have (see below).
+  reason: Only the Members tab exists; the other tabs need server features dify-sf does not have (see below). Model providers live in the Integrations settings modal, as in Dify 1.17.1.
   evidence: ['spec:web/app/components/header/account-setting']
   ours: [app/lib/src/settings/account_setting.dart]
 - id: settings.workspace-card
@@ -1769,26 +1774,66 @@ features:
   ours: [app/lib/src/settings/workspace_card.dart]
 - id: settings.model-providers
   area: settings
-  title: 'Model providers settings (provider cards, credentials, system models, load balancing)'
-  dify: [web/app/components/header/account-setting/model-provider-page]
+  title: 'Model Provider page: provider cards, API keys (several per provider, switching, the hidden-secret round trip), custom models and their credentials, model list with enable / disable, default system models'
+  dify: [web/app/components/header/account-setting/model-provider-page/index.tsx, web/app/components/header/account-setting/model-provider-page/model-provider-page-body.tsx, web/app/components/header/account-setting/model-provider-page/provider-added-card, web/app/components/header/account-setting/model-provider-page/model-auth, web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx, web/app/components/header/account-setting/model-provider-page/system-model-selector]
+  status: ported
+  deviation: "dify-sf's catalog is a curated set of Dify's official provider plugins (protocol 1.9); the encrypted-key note names the server's AES-256-GCM instead of PKCS1_OAEP. Members without plugin.plugin_preferences / credential.manage see the cards only, as in Dify. Plugin metadata, auto-update settings and the marketplace section need plugins (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon))."
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page', 'spec:web/app/components/header/account-setting/model-provider-page/provider-added-card', 'spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/authorized', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/hooks', 'spec:web/app/components/header/account-setting/model-provider-page/model-modal', 'spec:web/app/components/header/account-setting/model-provider-page/system-model-selector']
+  ours: [app/lib/src/settings/model_provider/model_provider_page.dart, app/lib/src/settings/model_provider/provider_added_card.dart, app/lib/src/settings/model_provider/model_list.dart, app/lib/src/settings/model_provider/model_auth.dart, app/lib/src/settings/model_provider/model_modal.dart, app/lib/src/settings/model_provider/system_model_selector.dart, app/lib/src/workflow/workspace_models.dart]
+- id: settings.model-providers-legacy-form
+  area: settings
+  title: "Legacy model-modal Form (the credential form of agent strategies, tool settings and plugin endpoints)"
+  dify: [web/app/components/header/account-setting/model-provider-page/model-modal/Form.tsx, web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx]
   status: not_ported
-  reason: outside current scope (owner to decide); needs a model provider service. Only the parts the node panels use (model selector, parameters, status) are ported.
-  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/provider-added-card', 'spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/authorized', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/hooks', 'spec:web/app/components/header/account-setting/model-provider-page/model-modal', 'spec:web/app/components/header/account-setting/model-provider-page/system-model-selector']
+  reason: Not used by the model provider credential modal (which renders base/form's AuthForm); to port with the agent strategy and tool forms.
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/model-modal/__tests__/Form.spec.tsx', 'spec:web/app/components/header/account-setting/model-provider-page/model-modal/__tests__/Input.spec.tsx']
   ours: []
+- id: settings.model-providers-load-balancing
+  area: settings
+  title: 'Model load balancing (credential pools, cooldowns, the model Config dialog)'
+  dify: [web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.tsx, web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx]
+  status: not_ported
+  reason: "later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)"
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/model-load-balancing-modal.spec.tsx', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/switch-credential-in-load-balancing.spec.tsx']
+  ours: []
+- id: settings.model-providers-credits
+  area: settings
+  title: 'AI credits, quota panel and provider usage priority'
+  dify: [web/app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx, web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/usage-priority-section.tsx]
+  status: not_applicable
+  reason: "Dify Cloud only; dify-sf is self-hosted"
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/quota-panel.spec.tsx']
+  ours: []
+- id: settings.credential-forms
+  area: settings
+  title: 'Credential forms (base/form: BaseForm, BaseField, the auth scenario, untouched secrets sent as [__HIDDEN__])'
+  dify: [web/app/components/base/form]
+  status: partial
+  reason: "Text, secret, number, select, radio, checkbox and boolean fields are ported; dynamic selects need trigger plugins (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), and useAppForm's field components and the input-field scenario serve Dify's knowledge pipeline forms (no knowledge base service in dify-sf)."
+  evidence: ['spec:web/app/components/base/form', 'spec:web/app/components/base/form/components', 'spec:web/app/components/base/form/components/base', 'spec:web/app/components/base/form/components/field', 'spec:web/app/components/base/form/components/field/input-type-select', 'spec:web/app/components/base/form/components/form', 'spec:web/app/components/base/form/form-scenarios/auth', 'spec:web/app/components/base/form/form-scenarios/base', 'spec:web/app/components/base/form/form-scenarios/input-field', 'spec:web/app/components/base/form/hooks', 'spec:web/app/components/base/form/utils/secret-input']
+  ours: [app/lib/src/settings/form/base_form.dart]
 - id: settings.plugins
   area: settings
   title: 'Plugins (install, update, permissions) and marketplace'
   dify: [web/app/components/plugins, web/app/(commonLayout)/plugins, web/app/(commonLayout)/marketplace]
   status: not_ported
-  reason: outside current scope (owner to decide); dify-sf has no plugin daemon or marketplace.
+  reason: "later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)"
   evidence: ['spec:web/app/components/workflow/plugin-dependency', 'spec:web/app/components/workflow/store/__tests__/plugin-dependency-store.spec.ts']
   ours: []
+- id: settings.integrations-modal
+  area: settings
+  title: 'Integrations settings modal and page (sidebar, section header with docs link), opened by the main nav and the model selector'
+  dify: [web/app/components/integrations/index.tsx, web/app/components/integrations/modal.tsx, web/app/components/integrations/section-renderer.tsx]
+  status: partial
+  reason: Only the Model Provider section exists; the other sections and the plugin actions are listed under the next entry. dify-sf opens it as the settings modal (no /integrations route), also from the main nav.
+  evidence: ['spec:web/app/components/integrations']
+  ours: [app/lib/src/settings/integrations_page.dart, app/lib/src/home_page.dart]
 - id: settings.integrations
   area: settings
   title: 'Integrations: tools (built-in, MCP, custom, workflow tools), data sources, triggers, agent strategies, API extensions, custom endpoints'
   dify: [web/app/components/integrations, web/app/components/tools]
   status: not_ported
-  reason: outside current scope (owner to decide).
+  reason: outside current scope (owner to decide); tools, triggers, agent strategies and extensions are plugins.
   evidence: []
   ours: []
 - id: settings.billing

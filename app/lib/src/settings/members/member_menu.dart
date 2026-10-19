@@ -1,5 +1,5 @@
 /// members-page/member-menu.tsx with one role per member: a manager's actions on another member (edit the role,
-/// remove from the team, behind a confirmation).
+/// remove from the team, behind a confirmation), plus dify-sf's password reset link.
 library;
 
 import 'dart:async';
@@ -13,6 +13,7 @@ import '../../design/widgets/widgets.dart';
 import '../settings_kit.dart';
 import '../workspace_members.dart';
 import 'assign_roles_modal.dart';
+import 'reset_link_modal.dart';
 
 /// The message of a refused request, as Dify's request layer toasts it (the server's message).
 String requestErrorMessage(Object e) => e is TransportException ? e.message : '$e';
@@ -25,6 +26,9 @@ String requestErrorMessage(Object e) => e is TransportException ? e.message : '$
 /// Edit Role opens the AssignRolesModal; its confirmation calls [onUpdateRole] and toasts "Modified successfully".
 /// Remove asks first (AlertDialog "Remove NAME from team"); its confirmation calls [onRemove] (the dialog stays
 /// open on failure). Failures toast the server's message.
+///
+/// dify-sf: with [onResetPasswordLink], "Reset password link" (before the separator) asks the server for a one-time link
+/// that lets the member set a new password and shows it to copy (the ResetLinkModal); there is no mail to send it.
 class MemberMenu extends StatefulWidget {
   const MemberMenu({
     super.key,
@@ -32,6 +36,8 @@ class MemberMenu extends StatefulWidget {
     required this.isCurrentUser,
     required this.onUpdateRole,
     required this.onRemove,
+    this.onResetPasswordLink,
+    this.invitationOrigin,
     this.roles,
   });
 
@@ -39,6 +45,10 @@ class MemberMenu extends StatefulWidget {
   final bool isCurrentUser;
   final Future<void> Function(String role) onUpdateRole;
   final Future<void> Function() onRemove;
+  final Future<PasswordResetLink> Function()? onResetPasswordLink;
+
+  /// The origin a relative reset link is completed with (see [InvitationLink.origin]).
+  final String? invitationOrigin;
 
   /// The roles Edit Role offers ([legacyWorkspaceRoles] by default).
   final List<WorkspaceRole>? roles;
@@ -69,6 +79,18 @@ class _MemberMenuState extends State<MemberMenu> {
     } on Object catch (e) {
       toast.error(requestErrorMessage(e));
     }
+  }
+
+  Future<void> _resetLink() async {
+    final PasswordResetLink link;
+    try {
+      link = await widget.onResetPasswordLink!();
+    } on Object catch (e) {
+      toast.error(requestErrorMessage(e));
+      return;
+    }
+    if (!mounted) return;
+    await showResetLinkModal(context, widget.member, link, origin: widget.invitationOrigin);
   }
 
   Future<void> _remove() async {
@@ -120,6 +142,12 @@ class _MemberMenuState extends State<MemberMenu> {
             key: const ValueKey('member-edit-role'),
             onSelect: () => unawaited(_editRole()),
             child: Text(stc(context, 'members.editRole'), style: itemStyle),
+          ),
+        if (_canAssign && widget.onResetPasswordLink != null)
+          DifyMenuItem(
+            key: const ValueKey('member-reset-password-link'),
+            onSelect: () => unawaited(_resetLink()),
+            child: Text('Reset password link', style: itemStyle),
           ),
         if (_canAssign && _canRemove) const DifyMenuSeparator(),
         if (_canRemove)

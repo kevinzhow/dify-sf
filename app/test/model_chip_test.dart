@@ -4,6 +4,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/cards/bodies/llm_bodies.dart';
 import 'package:dify_sf_app/src/cards/card_kit.dart';
 import 'package:dify_sf_app/src/cards/model_chip.dart';
+import 'package:dify_sf_app/src/cards/provider_icon_image.dart';
 import 'package:dify_sf_app/src/cards/node_body.dart';
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
@@ -19,7 +20,7 @@ final _png = Uint8List.fromList(const [
   0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
   0x42, 0x60, 0x82,
 ]);
-ImageProvider _image(String url) => MemoryImage(_png);
+final _icons = CachedProviderIconSource((_) async => ModelProviderIcon(bytes: _png, contentType: 'image/png'));
 
 const _gpt = ModelItem(
   model: 'gpt-4o',
@@ -216,7 +217,14 @@ void main() {
 
     testWidgets('provider icon, and OpenaiYellow for o-models', (t) async {
       final c = _catalog([_gpt, _with(_gpt, model: 'o3')], icon: const {'en_US': 'https://x/icon.png'});
-      await _pump(t, ModelChip(value: _value, models: c.textGenerationModelList, catalog: c, image: _image));
+      await _pump(
+        t,
+        ProviderIconScope(
+          source: _icons,
+          child: ModelChip(value: _value, models: c.textGenerationModelList, catalog: c),
+        ),
+      );
+      await t.pump();
       expect(find.byType(Image), findsOneWidget);
       expect(t.getSize(find.byType(Image)), const Size(16, 16));
       expect(t.getSize(find.byType(ModelIcon)), const Size(20, 20));
@@ -226,7 +234,6 @@ void main() {
           value: (provider: 'langgenius/openai/openai', model: 'o3'),
           models: c.textGenerationModelList,
           catalog: c,
-          image: _image,
         ),
       );
       expect(_dify('public/llm/openai-yellow'), findsOneWidget);

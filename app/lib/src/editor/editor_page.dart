@@ -9,6 +9,7 @@ import '../auth/auth_controller.dart';
 import '../design/widgets/toast.dart';
 import '../online_events.dart';
 import '../session_factory.dart';
+import '../workflow/workspace_models.dart';
 import '../workflow_editor/dify_editor.dart';
 import 'notice_overlay.dart';
 import 'editor_controller.dart';
@@ -27,7 +28,15 @@ class EditorPage extends StatefulWidget {
     this.account,
     this.refreshAccount,
     this.locateNodeId,
+    this.models,
+    this.openModelProviderSettings,
   });
+
+  /// The workspace's model providers and models (protocol 1.9), loaded when the editor opens; null: none (the demo).
+  final WorkspaceModels? models;
+
+  /// Opens the model provider settings (Dify's settings destination `provider`).
+  final Future<void> Function(BuildContext context)? openModelProviderSettings;
 
   final Backend backend;
   final String docId;
@@ -85,6 +94,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _stopOnlineListener = listenForOnline(() => _controller?.reconnectNow());
     unawaited(_open());
+    // The editor's model services: providers, model lists and default models, fresh for this document.
+    if (widget.models case final models?) unawaited(models.load());
   }
 
   /// Coming back to the window is the best "the network may be back" hint a pure-Flutter app gets.
@@ -383,6 +394,11 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       locateNodeId: widget.locateNodeId,
       onExportDsl: (includeSecret) => _exportDifyDsl(context, includeSecret: includeSecret),
       onImportDsl: widget.backend.supportsDifyDsl ? _importDifyDsl : null,
+      models: widget.models,
+      openModelProviderSettings: switch (widget.openModelProviderSettings) {
+        final open? => () => unawaited(open(context)),
+        null => null,
+      },
       user: switch (_account) {
         final a? => EditorUser(id: a.id, name: a.name, avatarUrl: a.avatarUrl),
         null => null,

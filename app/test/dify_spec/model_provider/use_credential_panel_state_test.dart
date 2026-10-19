@@ -249,7 +249,7 @@ void main() {
       (CardVariant.apiRequiredAdd, false),
       (CardVariant.apiRequiredConfigure, false),
     ]) {
-      test('should return ${variant.value} for variant $expected', () {
+      test('should return %s for variant %s', () {
         expect(isDestructiveVariant(variant), expected);
       });
     }

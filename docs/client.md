@@ -10,9 +10,11 @@ packages/collab_client/        pure Dart, no Flutter
   lib/src/model/               Value, Op, FieldKey, RejectReason, Document (validate/apply), Templates
   lib/src/wire/                protocol messages (JSON), stream events
   lib/src/client/              ClientMachine (pure state machine), CollabSession (driver), stores, transport interface
-  lib/src/transport/           HttpTransport (POST + hand-written SSE), SseParser, DocsApi
+  lib/src/transport/           HttpTransport (POST + hand-written SSE), SseParser, DocsApi, HttpModelProvidersApi
+  lib/src/providers/           ModelProvidersApi (protocol 1.9: model providers, credentials, default models, rules)
   lib/src/store/               FileStore (VM), LocalStorageStore (web), platform factory
-  lib/src/testing/             FakeServer, FakeTransport/FakeNetwork, HttpFakeServer (real sockets), RandomEditor
+  lib/src/testing/             FakeServer, FakeTransport/FakeNetwork, HttpFakeServer (real sockets), RandomEditor,
+                               FakeModelProvidersApi (+ a fixture cut from the server's vendored provider definitions)
   lib/src/storm/               StormRunner + ledger (the library behind bin/storm.dart)
   bin/storm.dart               the headless CLI
   test/                        unit, scenario, randomized, HTTP, storm and conformance tests
@@ -134,7 +136,9 @@ cd packages/collab_client && dart analyze && dart test
 SIM_RUNS=1000 dart test test/random_test.dart          # bigger randomized run (default 40 per profile)
 SIM_SEED=17 SIM_PROFILE=chaos dart test test/random_test.dart   # reproduce one run
 
-# conformance against a real server (skipped when DIFYSF_URL is unset)
+# conformance against a real server (skipped when DIFYSF_URL is unset); the model provider test serves a stub provider on
+# DIFYSF_STUB_HOST (default 127.0.0.1) that the server must reach, or set DIFYSF_MODELS_VALIDATE=false for a server
+# started with COLLAB_MODELS_VALIDATE=false
 DIFYSF_URL=http://127.0.0.1:8080 dart test test/conformance_test.dart
 
 # headless storm: N clients in one process, ledger as JSON

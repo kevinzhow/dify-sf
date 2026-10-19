@@ -170,11 +170,12 @@ class _AuthTextFieldState extends State<AuthTextField> {
           height: reveal != null && w.revealButtonSize == DifyIconButtonSize.lg ? 34 : null,
         );
         final note = f.error ?? (f.invalid ? null : w.description);
-        return Column(
+        final trailing = w.labelTrailing;
+        final column = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 4,
           children: [
-            if (w.labelTrailing == null)
+            if (trailing == null)
               Align(alignment: AlignmentDirectional.centerStart, child: label)
             else
               Row(
@@ -182,10 +183,21 @@ class _AuthTextFieldState extends State<AuthTextField> {
                 children: [
                   label,
                   const Spacer(),
-                  Padding(padding: const EdgeInsets.only(top: 4), child: w.labelTrailing),
+                  // In the DOM the trailing link follows the input (it is only drawn at the label's end): it comes
+                  // after the input and its buttons in the tab order, not before them as reading order would put it.
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(2),
+                    child: Padding(padding: const EdgeInsets.only(top: 4), child: trailing),
+                  ),
                 ],
               ),
-            input,
+            if (trailing == null)
+              input
+            else
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(1),
+                child: FocusTraversalGroup(child: input),
+              ),
             if (note != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
@@ -200,6 +212,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
               ),
           ],
         );
+        return trailing == null ? column : FocusTraversalGroup(policy: OrderedTraversalPolicy(), child: column);
       },
     );
   }

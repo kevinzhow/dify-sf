@@ -7,6 +7,7 @@ import 'auth/auth_api.dart';
 import 'auth/auth_controller.dart';
 import 'auth/install_page.dart';
 import 'auth/invite_settings_page.dart';
+import 'auth/reset_password_page.dart';
 import 'auth/signin_page.dart';
 import 'auth/unreachable_page.dart';
 import 'auth/widgets/auth_widgets.dart';
@@ -14,8 +15,8 @@ import 'launch_options.dart';
 import 'settings.dart';
 
 /// The app's pages by the signed-in state (Dify's routing around the console): the install page until the server
-/// has an owner, the sign-in, activation and invitation pages while signed out, and [home] (with the editors it
-/// opens) while signed in. Signing out, or a session the server no longer accepts, closes every page above the
+/// has an owner, the sign-in, activation, invitation and password reset pages while signed out, and [home] (with the
+/// editors it opens) while signed in. Signing out, or a session the server no longer accepts, closes every page above the
 /// home page and shows the sign-in page.
 class AppRoot extends StatefulWidget {
   const AppRoot({
@@ -57,19 +58,21 @@ class _AppRootState extends State<AppRoot> {
   @override
   void initState() {
     super.initState();
-    if (widget.auth == null) _connect(widget.settings.serverUrl, activate: widget.launch?.invite);
+    if (widget.auth == null) {
+      _connect(widget.settings.serverUrl, activate: widget.launch?.invite, reset: widget.launch?.resetToken);
+    }
     _shown = _auth.route;
     widget.auth?.addListener(_routeChanged);
   }
 
   /// A controller for [server] (a new one when the server changes), started.
-  void _connect(String server, {String? activate}) {
+  void _connect(String server, {String? activate, String? reset}) {
     _own?.removeListener(_routeChanged);
     _own?.dispose();
     final api = (widget.authApiFor ?? defaultAuthApiFor)(Uri.parse(server));
     _own = AuthController.on(server: server, api: api, store: widget.tokenStore ?? TokenStore.platform())
       ..addListener(_routeChanged);
-    unawaited(_own!.start(activateToken: activate));
+    unawaited(_own!.start(activateToken: activate, resetToken: reset));
   }
 
   Future<void> _changeServer(String server) async {
@@ -110,6 +113,9 @@ class _AppRootState extends State<AppRoot> {
       SignInRoute() => SignInPage(key: ValueKey(route), route: route),
       ActivateRoute(:final token) => ActivatePage(key: ValueKey(token), token: token),
       InviteSettingsRoute(:final inviteToken) => InviteSettingsPage(inviteToken: inviteToken),
+      ResetPasswordRoute() => ResetPasswordPage(route: route),
+      ResetPasswordCheckCodeRoute(:final token) => ResetPasswordCheckCodePage(key: ValueKey(token), route: route),
+      ResetPasswordSetRoute(:final token) => ResetPasswordSetPage(key: ValueKey(token), route: route),
       HomeRoute() => Builder(builder: widget.home),
     };
     return AuthScope(controller: _auth, child: page);

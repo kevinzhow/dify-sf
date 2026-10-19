@@ -1,7 +1,7 @@
 /// web/app/signin (Dify 1.17.1) with email + password as the only sign-in method: normal-form.tsx and
 /// components/mail-and-password-auth.tsx as Dify renders them when email codes, SSO and social login are off, sign-up
-/// is not allowed, mail is not set up (the "Forgot your password?" link is disabled) and branding is off (community
-/// edition: the terms line, the install hint and the copyright show).
+/// is not allowed and branding is off (community edition: the terms line, the install hint and the copyright show).
+/// "Forgot your password?" opens the reset pages when the server sends mail, and is disabled otherwise.
 library;
 
 import 'dart:async';
@@ -110,7 +110,7 @@ class _NormalFormState extends State<NormalForm> {
           // `mt-6 flex flex-col gap-3`: the social and SSO buttons' place, empty here.
           const SizedBox(height: 24),
           if (!_inviteError) ...[
-            MailAndPasswordAuth(route: route, invite: _invite),
+            MailAndPasswordAuth(route: route, invite: _invite, isEmailSetup: auth.isEmailSetup),
             // split.tsx `mt-4 mb-5`: a 1 px gradient line, transparent at both ends. CSS collapses its margins with
             // the button's `mb-2` above and the terms line's `mt-2` below: 16 and 20 px in all.
             Container(
@@ -231,13 +231,14 @@ class _NoLoginMethod extends StatelessWidget {
 }
 
 /// components/mail-and-password-auth.tsx: email (disabled and prefilled on an invitation), password with the
-/// visibility button and the disabled "Forgot your password?" link (no mail server), and "Sign in".
+/// visibility button and the "Forgot your password?" link (disabled and out of the tab order without mail), and
+/// "Sign in".
 class MailAndPasswordAuth extends StatefulWidget {
   const MailAndPasswordAuth({super.key, required this.route, this.invite, this.isEmailSetup = false});
   final SignInRoute route;
   final InvitationCheck? invite;
 
-  /// `systemFeatures.is_email_setup`: dify-sf sends no mail, so the reset link is disabled.
+  /// `systemFeatures.is_email_setup`: without mail the reset link is disabled.
   final bool isEmailSetup;
 
   @override
@@ -336,16 +337,10 @@ class _MailAndPasswordAuthState extends State<MailAndPasswordAuth> {
             revealButtonSize: DifyIconButtonSize.lg,
             autofillHints: const [AutofillHints.password],
             onSubmitted: (_) => _submit(),
-            labelTrailing: ExcludeFocus(
-              excluding: !widget.isEmailSetup,
-              child: Semantics(
-                link: true,
-                enabled: widget.isEmailSetup,
-                child: Text(
-                  tLogin(context, 'forget'),
-                  style: difyTextStyle(DifyType.systemXsRegular, forgetColor),
-                ),
-              ),
+            labelTrailing: _ForgetLink(
+              enabled: widget.isEmailSetup,
+              style: difyTextStyle(DifyType.systemXsRegular, forgetColor),
+              onTap: () => AuthScope.read(context)?.go(ResetPasswordRoute(inviteToken: widget.route.inviteToken)),
             ),
           ),
           const SizedBox(height: 12),
@@ -363,4 +358,71 @@ class _MailAndPasswordAuthState extends State<MailAndPasswordAuth> {
       ),
     );
   }
+}
+
+/// The "Forgot your password?" `<Link>` (`/reset-password`, keeping the invitation): focusable and tappable with mail;
+/// without it `pointer-events-none`, `tabIndex={-1}` and `aria-disabled`.
+class _ForgetLink extends StatefulWidget {
+  const _ForgetLink({required this.enabled, required this.style, required this.onTap});
+  final bool enabled;
+  final TextStyle style;
+  final VoidCallback onTap;
+
+  @override
+  State<_ForgetLink> createState() => _ForgetLinkState();
+}
+
+class _ForgetLinkState extends State<_ForgetLink> {
+  final _focus = FocusNode(debugLabel: 'forget-password');
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.enabled;
+    final text = Text(tLogin(context, 'forget'), style: widget.style);
+    return FocusableActionDetector(
+      key: const ValueKey('signin-forget'),
+      focusNode: _focus,
+      enabled: enabled,
+      descendantsAreFocusable: false,
+      mouseCursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      onShowFocusHighlight: (v) => setState(() => _focused = v),
+      shortcuts: const {SingleActivator(LogicalKeyboardKey.enter): ActivateIntent()},
+      actions: {ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) => widget.onTap())},
+      child: Semantics(
+        link: true,
+        enabled: enabled,
+        label: tLogin(context, 'forget'),
+        onTap: enabled ? widget.onTap : null,
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: enabled ? widget.onTap : null,
+          // `focus-visible:ring-2 focus-visible:ring-state-accent-solid` around the `rounded-sm` link (outside it).
+          child: CustomPaint(foregroundPainter: _focused ? const _FocusRing() : null, child: text),
+        ),
+      ),
+    );
+  }
+}
+
+class _FocusRing extends CustomPainter {
+  const _FocusRing();
+
+  @override
+  void paint(Canvas canvas, Size size) => canvas.drawRRect(
+    RRect.fromRectAndRadius((Offset.zero & size).inflate(1), const Radius.circular(DifyRadius.sm + 1)),
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = DifyColors.stateAccentSolid,
+  );
+
+  @override
+  bool shouldRepaint(_FocusRing old) => false;
 }

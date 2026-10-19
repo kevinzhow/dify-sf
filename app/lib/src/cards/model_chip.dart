@@ -8,11 +8,7 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../workflow/model_catalog.dart';
 import 'card_kit.dart';
-
-/// How a provider icon URL is loaded (the console serves them; tests substitute an in-memory image).
-typedef ProviderIconImage = ImageProvider Function(String url);
-
-ImageProvider _networkImage(String url) => NetworkImage(url);
+import 'provider_icon_image.dart';
 
 /// Remix icon per model feature (model-selector/feature-icon.tsx).
 const featureIcons = {
@@ -111,7 +107,6 @@ class ModelIcon extends StatelessWidget {
     this.iconSmall,
     this.modelName,
     this.language = 'en_US',
-    this.image = _networkImage,
   });
 
   /// The provider's id (`provider.provider`) and `icon_small`; both null without a provider.
@@ -119,7 +114,6 @@ class ModelIcon extends StatelessWidget {
   final I18nText? iconSmall;
   final String? modelName;
   final String language;
-  final ProviderIconImage image;
 
   @override
   Widget build(BuildContext context) {
@@ -134,15 +128,7 @@ class ModelIcon extends StatelessWidget {
       return SizedBox.square(
         dimension: 20,
         child: Center(
-          child: SizedBox.square(
-            dimension: 16,
-            child: Image(
-              image: image(url),
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
-          ),
+          child: ProviderIconImage(url, width: 16, height: 16),
         ),
       );
     }
@@ -177,8 +163,14 @@ class ModelName extends StatelessWidget {
     this.showContextSize = false,
     this.showFeatures = false,
     this.showFeaturesLabel = false,
+    this.nameType = DifyType.systemSmRegular,
+    this.nameColor = DifyColors.componentsInputTextFilled,
   });
   final ModelItem? modelItem;
+
+  /// The name's type and colour (a call site's `system-md-regular text-text-secondary`).
+  final DifyTextStyle nameType;
+  final Color nameColor;
   final String language;
   final bool lineThrough;
   final bool showModelType;
@@ -203,7 +195,12 @@ class ModelName extends StatelessWidget {
     // `truncate overflow-hidden`; the badge group is a flex item even when empty, so the gap is always there.
     return TruncatedRow(
       gap: 2,
-      lead: ModelText(renderI18nObject(item.label, language), lineThrough: lineThrough),
+      lead: ModelText(
+        renderI18nObject(item.label, language),
+        lineThrough: lineThrough,
+        type: nameType,
+        color: nameColor,
+      ),
       trail: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -216,10 +213,17 @@ class ModelName extends StatelessWidget {
 
 /// A model name in `system-sm-regular text-components-input-text-filled`, cut with an ellipsis.
 class ModelText extends StatelessWidget {
-  const ModelText(this.text, {super.key, this.lineThrough = false, this.color = DifyColors.componentsInputTextFilled});
+  const ModelText(
+    this.text, {
+    super.key,
+    this.lineThrough = false,
+    this.color = DifyColors.componentsInputTextFilled,
+    this.type = DifyType.systemSmRegular,
+  });
   final String text;
   final bool lineThrough;
   final Color color;
+  final DifyTextStyle type;
 
   @override
   Widget build(BuildContext context) => Text(
@@ -227,7 +231,7 @@ class ModelText extends StatelessWidget {
     maxLines: 1,
     softWrap: false,
     overflow: TextOverflow.ellipsis,
-    style: difyStyle(DifyType.systemSmRegular, color).copyWith(
+    style: difyStyle(type, color).copyWith(
       decoration: lineThrough ? TextDecoration.lineThrough : null,
       decorationColor: color,
     ),
@@ -380,7 +384,6 @@ class ModelSelectorTrigger extends StatelessWidget {
     this.showModelMeta = true,
     this.isModelCompatible = true,
     this.language = 'en_US',
-    this.image = _networkImage,
   });
 
   final ProviderWithModels? currentProvider;
@@ -394,7 +397,6 @@ class ModelSelectorTrigger extends StatelessWidget {
   final bool showModelMeta;
   final bool isModelCompatible;
   final String language;
-  final ProviderIconImage image;
 
   /// `data-[size=small]:h-6`, whatever the state.
   static const height = 24.0;
@@ -453,7 +455,6 @@ class ModelSelectorTrigger extends StatelessWidget {
             iconSmall: isSelected ? currentProvider!.iconSmall : resolvedProvider?.iconSmall,
             modelName: isSelected ? currentModel!.model : defaultModel?.model,
             language: language,
-            image: image,
           );
 
     final Widget name = isSelected
@@ -533,7 +534,6 @@ class ModelChip extends StatelessWidget {
     this.showDeprecatedWarnIcon = true,
     this.showModelMeta = true,
     this.modelPredicate,
-    this.image = _networkImage,
   });
 
   final DefaultModel? value;
@@ -544,7 +544,6 @@ class ModelChip extends StatelessWidget {
   final bool showDeprecatedWarnIcon;
   final bool showModelMeta;
   final bool Function(ProviderWithModels provider, ModelItem model)? modelPredicate;
-  final ProviderIconImage image;
 
   static const height = ModelSelectorTrigger.height;
 
@@ -565,7 +564,6 @@ class ModelChip extends StatelessWidget {
           ? modelPredicate?.call(currentProvider, currentModel) ?? true
           : true,
       language: catalog.language,
-      image: image,
     );
   }
 
@@ -577,12 +575,11 @@ class ModelChip extends StatelessWidget {
 /// surface without the deprecated badge, looked up in every model type's list, with an error StatusDot at the top
 /// right (`-top-0.5 -right-0.5`) when no model is selected or the model is not installed.
 class ModelBar extends StatelessWidget {
-  const ModelBar({super.key, this.value, this.catalog = ModelCatalog.empty, this.image = _networkImage});
+  const ModelBar({super.key, this.value, this.catalog = ModelCatalog.empty});
 
   /// `{provider, model}`; null for a required model parameter that is not set.
   final DefaultModel? value;
   final ModelCatalog catalog;
-  final ProviderIconImage image;
 
   static const height = ModelSelectorTrigger.height;
   static const notSelected = 'Model not selected';
@@ -606,7 +603,6 @@ class ModelBar extends StatelessWidget {
             catalog: catalog,
             surface: ModelSelectorSurface.workflow,
             showDeprecatedWarnIcon: false,
-            image: image,
           ),
           if (warn != null) const Positioned(top: -2, right: -2, child: ErrorStatusDot()),
         ],

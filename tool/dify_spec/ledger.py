@@ -2,7 +2,7 @@
 
   python3 tool/dify_spec/ledger.py <dify source root> [--write]
 
-Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page, dify-ui, sign-in / install / activate pages, account dropdown, account setting and members page, main nav workspace card, workflow-app run hooks, the chat's human input forms) as
+Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page and the integrations page that hosts it, base/form, dify-ui, sign-in / install / activate / reset-password pages, account dropdown, account setting and members page, main nav workspace card, workflow-app run hooks, the chat's human input forms) as
 `<spec path> :: <describe> > ... > <it>`, and checks which are ported: a ported case is a Dart test under
 app/test/dify_spec/ whose full name (group names joined with ' > ' and the test name) equals the Dify case name, in a
 file that names the spec in a `// dify-spec: <spec path>` line. Cases that cannot apply are listed with a reason in
@@ -24,7 +24,9 @@ ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setti
          'web/app/components/workflow-app/hooks/__tests__/use-workflow-run-utils.spec.ts',
          'web/app/components/workflow-app/hooks/__tests__/use-workflow-start-run.spec.tsx',
          'web/app/components/base/chat/chat/answer/human-input-content',
-         'web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx']
+         'web/app/components/base/chat/chat/answer/__tests__/human-input-form-list.spec.tsx',
+         'web/app/components/base/form', 'web/app/components/integrations',
+         'web/app/reset-password', 'web/app/forgot-password']
 CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|concurrent|todo))*\(\s*(['"`])(.*?)\3''')
 
 

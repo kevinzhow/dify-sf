@@ -4,8 +4,8 @@ import 'package:flutter/widgets.dart';
 
 import 'auth_api.dart';
 
-/// The pages before the editor, as Dify routes them (web/app/install, signin, activate, signin/invite-settings) and
-/// the home page behind them.
+/// The pages before the editor, as Dify routes them (web/app/install, signin, activate, signin/invite-settings,
+/// reset-password) and the home page behind them.
 sealed class AuthRoute {
   const AuthRoute();
 }
@@ -47,6 +47,28 @@ final class InviteSettingsRoute extends AuthRoute {
   final String inviteToken;
 }
 
+/// `/reset-password`: the email the code goes to (Dify's reset-password/page.tsx). [inviteToken]: the invitation sign-in
+/// the user came from (Dify keeps the sign-in page's query through the flow), where the success page leads back.
+final class ResetPasswordRoute extends AuthRoute {
+  const ResetPasswordRoute({this.inviteToken});
+  final String? inviteToken;
+}
+
+/// `/reset-password/check-code?email=&token=`: the code from the mail.
+final class ResetPasswordCheckCodeRoute extends AuthRoute {
+  const ResetPasswordCheckCodeRoute({required this.email, required this.token, this.inviteToken});
+  final String email;
+  final String token;
+  final String? inviteToken;
+}
+
+/// `/reset-password/set-password?token=`: the new password, with the token of a right code or of an admin's reset link.
+final class ResetPasswordSetRoute extends AuthRoute {
+  const ResetPasswordSetRoute({required this.token, this.inviteToken});
+  final String token;
+  final String? inviteToken;
+}
+
 /// Signed in: the home page (and the editors opened from it).
 final class HomeRoute extends AuthRoute {
   const HomeRoute();
@@ -84,6 +106,11 @@ class AuthController extends ChangeNotifier {
   AuthRoute _route = const StartingRoute();
   Account? _account;
   bool _disposed = false;
+  SystemFeatures _features = SystemFeatures.none;
+
+  /// Dify's `leftTime` in local storage: the resend countdown the check-code page starts from (milliseconds), set when
+  /// a code was sent.
+  int? countdownLeftMs;
 
   /// The password typed on an invitation's sign-in page, sent with the activation (protocol 1.8 activates with the
   /// new account's name and password at once; Dify asks for them on two pages).
@@ -99,6 +126,12 @@ class AuthController extends ChangeNotifier {
 
   bool get hasInvitePassword => _invitePassword != null;
 
+  /// The server's system features (`GET /v1/system-features`), read by [start].
+  SystemFeatures get systemFeatures => _features;
+
+  /// Dify's `systemFeatures.is_email_setup`: "Forgot your password?" works.
+  bool get isEmailSetup => _features.isEmailSetup;
+
   void go(AuthRoute route) {
     if (_disposed) return;
     _route = route;
@@ -106,8 +139,9 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Where to begin: the install page until the server has an owner, an invitation link when the app was opened with
-  /// one ([activateToken]), the home page for a stored session that still works, else the sign-in page.
-  Future<void> start({String? activateToken}) async {
+  /// one ([activateToken]), the new password page for a reset link ([resetToken]), the home page for a stored session
+  /// that still works, else the sign-in page.
+  Future<void> start({String? activateToken, String? resetToken}) async {
     go(const StartingRoute());
     final String step;
     try {
@@ -117,7 +151,13 @@ class AuthController extends ChangeNotifier {
       return;
     }
     if (step != SetupStatus.finished) return go(const InstallRoute());
+    try {
+      _features = await api.systemFeatures();
+    } on Object {
+      _features = SystemFeatures.none;
+    }
     if (activateToken != null && activateToken.isNotEmpty) return go(ActivateRoute(activateToken));
+    if (resetToken != null && resetToken.isNotEmpty) return go(ResetPasswordSetRoute(token: resetToken));
     final bool restored;
     try {
       restored = await session.restore();
@@ -177,6 +217,17 @@ class AuthController extends ChangeNotifier {
     _invitePassword = null;
     await _signedIn(a);
   }
+
+  /// `POST /v1/forgot-password`: mails a code; the token for [checkResetCode].
+  Future<String> sendResetCode(String email, {String? language}) => api.sendResetCode(email: email, language: language);
+
+  /// `POST /v1/forgot-password/validity`.
+  Future<ResetCodeCheck> checkResetCode({required String email, required String code, required String token}) =>
+      api.checkResetCode(email: email, code: code, token: token);
+
+  /// `POST /v1/forgot-password/resets`.
+  Future<void> resetPassword({required String token, required String newPassword, required String passwordConfirm}) =>
+      api.resetPassword(token: token, newPassword: newPassword, passwordConfirm: passwordConfirm);
 
   Future<void> _signedIn(Account a) async {
     _account = a;

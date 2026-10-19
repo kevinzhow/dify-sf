@@ -24,7 +24,7 @@ void main() {
     });
 
     for (final deploymentEdition in const ['COMMUNITY', 'ENTERPRISE']) {
-      test('returns false outside Cloud when deployment edition is $deploymentEdition', () {
+      test('returns false outside Cloud when deployment edition is %s', () {
         expect(providerSupportsCredits(makeProvider(), ['langgenius/openai/openai'], deploymentEdition), isFalse);
       });
     }

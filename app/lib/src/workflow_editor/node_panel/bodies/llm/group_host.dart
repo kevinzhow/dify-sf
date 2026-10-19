@@ -28,6 +28,7 @@ class LlmGroupServices {
     this.nodesDefaultConfigs = const {},
     this.toast = difyToast,
     this.openModelProviderSettings,
+    this.refreshModels,
     this.flowType,
     this.fetchDatasets,
     this.fetchDatasetPage,
@@ -76,6 +77,10 @@ class LlmGroupServices {
 
   /// The model selector footer's "Model Provider Settings" (and the empty state's "Configure").
   final VoidCallback? openModelProviderSettings;
+
+  /// Refetches the workspace's providers and model lists: called when a model selector opens (Dify's model list
+  /// queries refetch when the selector mounts them), so a model added elsewhere shows up.
+  final VoidCallback? refreshModels;
 
   /// `configsMap.flowType` (`appFlow`, `ragPipeline`, `snippet`).
   final String? flowType;

@@ -82,12 +82,15 @@ class SettingsDialogCloseButton extends StatelessWidget {
 /// dify-ui's AlertDialog with a title, a description and Cancel / Confirm (destructive primary): `w-120 rounded-2xl
 /// border-[0.5px] shadow-lg`; the text in `flex flex-col gap-2 px-6 pt-6 pb-4` (title `title-2xl-semi-bold`,
 /// truncated; description `system-md-regular text-text-tertiary`, wrapping), actions `p-6 gap-2`. [onConfirm] runs
-/// with Confirm disabled; the dialog closes when it completes (true) and stays open when it throws.
+/// with Confirm disabled (and Cancel too with [lockCancelWhileBusy]); the dialog closes when it completes (true) and
+/// stays open when it throws. An empty [description] is left out; [confirmLabel] defaults to "Confirm".
 Future<bool> showSettingsAlert(
   BuildContext context, {
   required String title,
-  required String description,
+  String description = '',
   required Future<void> Function() onConfirm,
+  String? confirmLabel,
+  bool lockCancelWhileBusy = false,
 }) async {
   final ok = await showGeneralDialog<bool>(
     context: context,
@@ -102,15 +105,29 @@ Future<bool> showSettingsAlert(
         child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
       );
     },
-    pageBuilder: (context, _, _) => _AlertDialog(title: title, description: description, onConfirm: onConfirm),
+    pageBuilder: (context, _, _) => _AlertDialog(
+      title: title,
+      description: description,
+      onConfirm: onConfirm,
+      confirmLabel: confirmLabel,
+      lockCancelWhileBusy: lockCancelWhileBusy,
+    ),
   );
   return ok ?? false;
 }
 
 class _AlertDialog extends StatefulWidget {
-  const _AlertDialog({required this.title, required this.description, required this.onConfirm});
+  const _AlertDialog({
+    required this.title,
+    required this.description,
+    required this.onConfirm,
+    this.confirmLabel,
+    this.lockCancelWhileBusy = false,
+  });
   final String title, description;
   final Future<void> Function() onConfirm;
+  final String? confirmLabel;
+  final bool lockCancelWhileBusy;
 
   @override
   State<_AlertDialog> createState() => _AlertDialogState();
@@ -168,10 +185,11 @@ class _AlertDialogState extends State<_AlertDialog> {
                         overflow: TextOverflow.ellipsis,
                         style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                       ),
-                      Text(
-                        widget.description,
-                        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
-                      ),
+                      if (widget.description.isNotEmpty)
+                        Text(
+                          widget.description,
+                          style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
+                        ),
                     ],
                   ),
                 ),
@@ -184,6 +202,7 @@ class _AlertDialogState extends State<_AlertDialog> {
                     children: [
                       DifyButton(
                         key: const ValueKey('alert-cancel'),
+                        disabled: widget.lockCancelWhileBusy && _busy,
                         onPressed: () => Navigator.of(context).pop(false),
                         child: Text(stc(context, 'operation.cancel')),
                       ),
@@ -193,7 +212,7 @@ class _AlertDialogState extends State<_AlertDialog> {
                         tone: DifyButtonTone.destructive,
                         disabled: _busy,
                         onPressed: () => unawaited(_confirm()),
-                        child: Text(stc(context, 'operation.confirm')),
+                        child: Text(widget.confirmLabel ?? stc(context, 'operation.confirm')),
                       ),
                     ],
                   ),

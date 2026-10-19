@@ -17,7 +17,10 @@ export 'package:collab_client/collab_client.dart'
         InvitationResult,
         Member,
         MemoryTokenStore,
+        PasswordResetLink,
+        ResetCodeCheck,
         SetupStatus,
+        SystemFeatures,
         TokenStore,
         TransportException;
 
@@ -97,4 +100,24 @@ class OfflineAuthApi implements AuthApi {
     String? interfaceLanguage,
     String? timezone,
   }) async => _offline();
+
+  @override
+  Future<SystemFeatures> systemFeatures() async => SystemFeatures.none;
+
+  @override
+  Future<String> sendResetCode({required String email, String? language}) async => _offline();
+
+  @override
+  Future<ResetCodeCheck> checkResetCode({required String email, required String code, required String token}) async =>
+      _offline();
+
+  @override
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+    required String passwordConfirm,
+  }) async => _offline();
+
+  @override
+  Future<PasswordResetLink> resetPasswordLink(String accessToken, String memberId) async => _offline();
 }

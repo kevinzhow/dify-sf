@@ -17,12 +17,16 @@ Future<(RecordingAuthApi, AuthController)> _render(
   SignInRoute route = const SignInRoute(),
   String? signedInAs,
   String? inviteEmail,
+  bool emailSetup = false,
 }) async {
   final api = RecordingAuthApi()
     ..addAccount(email: _invitee)
-    ..addAccount(email: 'current@example.com');
+    ..addAccount(email: 'current@example.com')
+    ..emailSetup = emailSetup;
   if (inviteEmail != null) api.invitations['invite-token'] = (email: inviteEmail, role: 'normal');
   final auth = await authOn(api, signedInAs: signedInAs);
+  // The system features (`is_email_setup`) are read when the app starts.
+  if (emailSetup) await auth.start();
   auth.go(route);
   await renderAuth(t, auth, bareForm(NormalForm(route: route)));
   return (api, auth);
@@ -80,10 +84,11 @@ void main() {
       expect(t.widget<EditableText>(byLabel('login.password')).obscureText, isFalse);
     });
 
-    // Dify's case turns mail on (`is_email_setup`), which makes "Forgot your password?" the next stop; dify-sf has no
-    // mail server, and Dify then takes the link out of the tab order (`tabIndex={-1}`), as here.
+    Widget? focusedIn<T extends Widget>() =>
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<T>();
+
     testWidgets('keeps credential inputs together before secondary password actions in the tab order', (t) async {
-      await _render(t);
+      await _render(t, emailSetup: true);
       await t.tap(byLabel('login.email'));
       await t.pump();
       await t.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -91,13 +96,34 @@ void main() {
       expect(hasFocus(t, 'login.password'), isTrue);
       await t.sendKeyEvent(LogicalKeyboardKey.tab);
       await t.pump();
-      Widget? focusedIn<T extends Widget>() =>
-          FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<T>();
       expect(focusedIn<DifyIconButton>()?.key, const ValueKey('reveal-password'));
-      // The disabled reset link is skipped: the next stop is "Sign in".
       await t.sendKeyEvent(LogicalKeyboardKey.tab);
       await t.pump();
+      expect(focusedIn<FocusableActionDetector>()?.key, const ValueKey('signin-forget'));
+      expect(find.bySemanticsLabel('login.forget'), findsOneWidget);
+    });
+
+    // dify-sf: without mail Dify takes the disabled link out of the tab order (`tabIndex={-1}`).
+    testWidgets('skips the disabled reset link without mail', (t) async {
+      final (_, auth) = await _render(t);
+      await t.tap(byLabel('login.email'));
+      await t.pump();
+      for (var i = 0; i < 3; i++) {
+        await t.sendKeyEvent(LogicalKeyboardKey.tab);
+        await t.pump();
+      }
       expect(focusedIn<DifyButton>()?.key, const ValueKey('signin-submit'));
+      await t.tap(find.text('login.forget'));
+      await t.pump();
+      expect(auth.route, isA<SignInRoute>());
+    });
+
+    // dify-sf: with mail the link opens the reset pages (`/reset-password?{searchParams}`, the invitation kept).
+    testWidgets('opens the reset pages from the link with mail', (t) async {
+      final (_, auth) = await _render(t, emailSetup: true, route: _invite, inviteEmail: _invitee);
+      await t.tap(find.text('login.forget'));
+      await t.pump();
+      expect(auth.route, isA<ResetPasswordRoute>().having((r) => r.inviteToken, 'invite', 'invite-token'));
     });
 
     testWidgets('associates input validation errors with the invalid credential field', (t) async {

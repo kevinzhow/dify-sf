@@ -186,6 +186,7 @@ class _ModelSelectorRootState extends State<ModelSelectorRoot> {
 
   void _setOpen(bool open) {
     if (widget.disabled && open) return;
+    if (open && !_open) LlmGroupScope.of(context).refreshModels?.call();
     setState(() {
       _open = open;
       if (!open) _input = '';

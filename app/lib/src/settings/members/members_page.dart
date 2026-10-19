@@ -23,7 +23,8 @@ import 'member_row.dart';
 /// MembersPage: the workspace header (`2xl` workspace avatar, the name, "N Member(s)", the primary "Add" button
 /// for managers) and the member table (NAME, LAST ACTIVE, ROLE). Managers (owners and admins: Dify's
 /// `workspace.member.manage`) invite (the InviteModal, then the InvitedModal with the links), change roles and remove
-/// members (each row's menu, or Edit in the member's details); everybody opens a member's details.
+/// members (each row's menu, or Edit in the member's details) and hand out password reset links (dify-sf: the row's
+/// menu); everybody opens a member's details.
 ///
 /// Dify's owner-only "edit workspace" pencil and ownership transfer are not offered: dify-sf's server has neither.
 /// It has no billing plans either, so the header counts members the way Dify's community edition does.
@@ -225,6 +226,8 @@ class _MembersPageState extends State<MembersPage> {
                     roles: widget.roles,
                     onUpdateRole: (role) => _m.updateRole(a.id, role),
                     onRemove: () => _m.remove(a.id),
+                    onResetPasswordLink: () => _m.auth.session.resetPasswordLink(a.id),
+                    invitationOrigin: widget.invitationOrigin,
                   )
                 : null,
           ),
