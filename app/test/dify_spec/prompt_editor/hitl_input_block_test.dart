@@ -764,7 +764,14 @@ void main() {
         );
         expect(find.text('chunk'), findsOneWidget);
         expect(t.widget<VariableLabel>(find.byType(VariableLabel)).errorMsg, isNull);
-        expect(find.byType(DifyTooltip), findsNothing);
+        // The variable's own name tooltip is part of the label; what a RAG variable must not get is the full-path
+        // preview, which is a DifyTooltip carrying a VarFullPathPanel.
+        expect(find.byType(DifyTooltip), findsOneWidget, reason: 'the name tooltip stays');
+        expect(
+          t.widgetList<DifyTooltip>(find.byType(DifyTooltip)).where((tip) => tip.content is VarFullPathPanel),
+          isEmpty,
+          reason: 'no full-path preview for a RAG variable',
+        );
         expect(calls, 0);
       });
 

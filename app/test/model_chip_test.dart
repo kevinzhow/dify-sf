@@ -8,7 +8,7 @@ import 'package:dify_sf_app/src/cards/provider_icon_image.dart';
 import 'package:dify_sf_app/src/cards/node_body.dart';
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
-import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot;
+import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot, DifyTooltip;
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,7 +121,7 @@ void main() {
       expect(_dify('vender/other/group'), findsOneWidget);
       expect(_bg(t), DifyColors.componentsInputBgDisabled);
       expect(find.text('CHAT'), findsNothing);
-      expect(find.byType(Tooltip), findsNothing);
+      expect(find.byType(DifyTooltip), findsNothing, reason: 'no trigger tooltip for this chip');
       // The badge: dimm background, warning border, 22 px.
       final badge = t.widget<Container>(
         find.descendant(of: find.byType(ModelStatusBadge), matching: find.byType(Container)).first,
