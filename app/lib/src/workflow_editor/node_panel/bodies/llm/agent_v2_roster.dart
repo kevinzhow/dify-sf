@@ -15,6 +15,7 @@ import '../../../../cards/card_kit.dart';
 import '../../../../design/dify_icon.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
+import '../../../../design/widgets/app_icon_picker.dart';
 import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/dify_json.dart';
 import '../../../panel_fields/panel_fields.dart';
@@ -1098,6 +1099,7 @@ Future<void> showSaveInlineAgentToRosterDialog(
   required Json initialAgent,
   required Future<String?> Function(Json body) save,
   required ValueChanged<String> onSaved,
+  UploadAppIcon? uploadIcon,
 }) => showDifyDialog<void>(
   context,
   dismissible: false,
@@ -1106,6 +1108,7 @@ Future<void> showSaveInlineAgentToRosterDialog(
     width: 520,
     child: SaveInlineAgentToRosterForm(
       initialAgent: initialAgent,
+      uploadIcon: uploadIcon,
       save: save,
       onDone: (id) {
         Navigator.of(ctx).pop();
@@ -1134,9 +1137,18 @@ class _EscapeCloses extends StatelessWidget {
 
 /// The dialog's form (SaveInlineAgentToRosterFormSession): its values are taken from [initialAgent] once.
 class SaveInlineAgentToRosterForm extends StatefulWidget {
-  const SaveInlineAgentToRosterForm({super.key, required this.initialAgent, required this.save, required this.onDone});
+  const SaveInlineAgentToRosterForm({
+    super.key,
+    required this.initialAgent,
+    required this.save,
+    required this.onDone,
+    this.uploadIcon,
+    this.pickIconFile,
+  });
   final Json initialAgent;
   final Future<String?> Function(Json body) save;
+  final UploadAppIcon? uploadIcon;
+  final Future<IconFile?> Function()? pickIconFile;
 
   /// Closes the dialog: the saved agent id, or null for Cancel.
   final void Function(String? agentId) onDone;
@@ -1149,9 +1161,22 @@ class _SaveInlineAgentToRosterFormState extends State<SaveInlineAgentToRosterFor
   late String _name = '';
   late String _role = jsStr(widget.initialAgent['role']) ?? '';
   late String _description = jsStr(widget.initialAgent['description']) ?? '';
-  late final Json _icon = createAgentIconSelection(widget.initialAgent);
+  late Json _icon = createAgentIconSelection(widget.initialAgent);
   bool _pending = false;
   bool _nameMissing = false;
+
+  Future<void> _changeIcon() async {
+    if (_pending) return;
+    final selection = await showAppIconPicker(
+      context,
+      initialEmoji: _icon['type'] == 'emoji'
+          ? (icon: jsKey(_icon['icon']), background: jsStr(_icon['background']))
+          : null,
+      upload: widget.uploadIcon,
+      pickFile: widget.pickIconFile,
+    );
+    if (mounted && selection != null) setState(() => _icon = selection);
+  }
 
   Future<void> _submit() async {
     if (_pending) return;
@@ -1212,10 +1237,10 @@ class _SaveInlineAgentToRosterFormState extends State<SaveInlineAgentToRosterFor
                       crossAxisAlignment: CrossAxisAlignment.start,
                       spacing: 16,
                       children: [
-                        Semantics(
-                          button: true,
-                          label: _a('roster.saveToRosterForm.changeIcon'),
-                          child: ClipOval(
+                        DifyPressable(
+                          semanticLabel: _a('roster.saveToRosterForm.changeIcon'),
+                          onPressed: _pending ? null : _changeIcon,
+                          builder: (context, hovered, focused) => ClipOval(
                             child: Container(
                               width: 64,
                               height: 64,

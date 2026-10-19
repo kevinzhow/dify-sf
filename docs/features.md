@@ -26,14 +26,14 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Keyboard shortcuts & clipboard](#shortcuts) | 6 |  |  | 1 |  | 7 |
 | [Control bar & operator bar](#operator) | 4 | 2 |  |  |  | 6 |
 | [Header, checklist & publish](#header) | 5 | 3 | 2 |  |  | 10 |
-| [Node panel shell & shared fields](#node-panel) | 7 | 2 | 1 |  | 1 | 11 |
+| [Node panel shell & shared fields](#node-panel) | 8 | 1 | 1 |  | 1 | 11 |
 | [Prompt editor & code editor](#editors) | 4 |  | 2 |  |  | 6 |
 | [Node: User Input (start)](#node-start) | 4 |  |  |  |  | 4 |
 | [Node: Output (end)](#node-end) | 2 |  |  |  |  | 2 |
 | [Node: Answer](#node-answer) | 1 |  |  |  |  | 1 |
 | [Node: LLM](#node-llm) | 4 | 1 |  |  |  | 5 |
 | [Node: Knowledge Retrieval](#node-knowledge-retrieval) |  | 2 |  |  |  | 2 |
-| [Node: Question Classifier](#node-question-classifier) | 1 | 1 |  |  |  | 2 |
+| [Node: Question Classifier](#node-question-classifier) | 2 |  |  |  |  | 2 |
 | [Node: Parameter Extractor](#node-parameter-extractor) | 1 |  |  |  |  | 1 |
 | [Node: IF/ELSE](#node-if-else) | 1 | 1 |  |  |  | 2 |
 | [Node: Code](#node-code) | 1 |  |  |  |  | 1 |
@@ -46,7 +46,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: Loop & Exit Loop](#node-loop) | 2 |  |  |  |  | 2 |
 | [Node: Doc Extractor](#node-doc-extractor) | 1 |  |  |  |  | 1 |
 | [Node: List Operator](#node-list-operator) | 1 |  |  |  |  | 1 |
-| [Node: Agent (v1 and v2)](#node-agent) |  | 3 |  |  |  | 3 |
+| [Node: Agent (v1 and v2)](#node-agent) |  | 4 |  |  |  | 4 |
 | [Node: Human Input](#node-human-input) | 2 |  | 1 |  |  | 3 |
 | [Nodes: triggers & workflow start](#node-triggers) | 3 | 2 | 1 |  |  | 6 |
 | [Nodes: knowledge pipeline (data source, knowledge base)](#node-pipeline) |  | 2 | 1 |  |  | 3 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 1 | 1 | 1 |  | 8 |
-| **Total** | **153** | **41** | **37** | **12** | **11** | **254** |
+| **Total** | **155** | **40** | **37** | **12** | **11** | **255** |
 
 <a id="canvas"></a>
 
@@ -219,8 +219,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Node panel: Dify BasePanel (resize, title and description, close, docs link) | ported |  | spec `workflow/nodes/_base/components/workflow-panel`, spec `workflow/panel/panel-width.spec.ts`, spec `workflow/panel/panel-width-integration.spec.tsx`, visual `panel-llm` |
 | Right panel host: node panel, variable panels, run panels, panel exclusivity | ported |  | spec `workflow/panel`, spec `workflow/hooks/use-workflow-panel-interactions.spec.tsx` |
-| Node panel: SETTINGS / LAST RUN tabs, Last Run result | partial | Last Run fetching, status and result views are implemented. Losing a running status while opening a form does not yet mark it paused; log details currently cover the Last Run tab rather than the full settings panel. Remaining integration cases are recorded in tool/dify_spec/todo.tsv. Deviation: Last runs come from the mock runtime (no run storage on the server). | spec `workflow/nodes/_base/components/workflow-panel/last-run`, visual `run-last-run` |
-| Node panel: single-run input form (Run this step) | partial | Generic input forms run against the mock runtime. Node-specific query and vision forms for Parameter Extractor and Question Classifier are still missing; DataSource pipeline custom forms and Human Input generated-form preview are not wired. Deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired. | spec `workflow/nodes/_base/components/before-run-form`, spec `workflow/nodes/_base/hooks`, visual `run-single` |
+| Node panel: SETTINGS / LAST RUN tabs, Last Run result | ported | Deviation: Last runs come from the mock runtime (no run storage on the server). | spec `workflow/nodes/_base/components/workflow-panel/last-run`, visual `run-last-run`, `app/test/dify_spec/workflow/node_panel/workflow_panel_test.dart` |
+| Node panel: single-run input form (Run this step) | partial | Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired. Deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired. | spec `workflow/nodes/_base/components/before-run-form`, spec `workflow/nodes/_base/hooks`, visual `run-single` |
 | Node panel: retry on failure settings | ported |  | spec `workflow/nodes/_base/components/retry` |
 | Node panel: error handling (none, default value, fail branch) | ported |  | spec `workflow/nodes/_base/components/error-handle` |
 | Node panel: Next step section (branches, add / change / delete next node) | ported |  | spec `workflow/nodes/_base/components/next-step` |
@@ -297,7 +297,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Question Classifier card: model and classes with branch handles | partial | Class names are truncated at 50 characters as in Dify, but the hover popover with the full name is not ported yet. | spec `workflow/nodes/question-classifier`, visual `canvas-classify-extract` |
+| Question Classifier card: model and classes with branch handles | ported |  | spec `workflow/nodes/question-classifier`, visual `canvas-classify-extract`, `app/test/workflow_editor/class_name_canvas_test.dart` |
 | Question Classifier panel: input, model, classes (add / rename / reorder / remove), instructions, memory | ported |  | spec `workflow/nodes/question-classifier/components`, visual `panel-question-classifier` |
 
 <a id="node-parameter-extractor"></a>
@@ -411,7 +411,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Agent card: strategy, model and tools | partial | Model and tool parameters are recognised by their values and tools get placeholder icons (no tool lists); the Agent v2 card has no roster detail (no agent console service). | spec `workflow/nodes/agent` |
 | Agent (v1) panel: agent strategy selector and its parameters, memory, output | partial | The panel is ported, but agent strategies are plugins: with no plugin service there are no strategies to pick. | spec `workflow/nodes/agent`, spec `workflow/nodes/agent/components`, spec `workflow/block-selector/tool-picker.spec.tsx` |
-| Agent v2 panel: roster binding, inline agent, output variables | partial | The node panel and save-inline-agent dialog are implemented, but the save dialog has no icon picker. The inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service. | spec `workflow/nodes/agent-v2`, spec `workflow/nodes/agent-v2/components`, spec `workflow/nodes/agent-v2/components/agent-output-variables` |
+| Agent v2 panel: roster binding, inline agent, output variables | partial | The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image icons still need a server upload endpoint; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service. Deviation: The picker reuses the original emoji catalog and palette. Search currently filters the grid with name/keyword substrings; Emoji Mart fuzzy ranking and keeping the category grid visible during search are not reproduced. | spec `workflow/nodes/agent-v2`, spec `workflow/nodes/agent-v2/components`, spec `workflow/nodes/agent-v2/components/agent-output-variables` |
+| Agent icon picker: image selection, square crop and upload | partial | File selection and square cropping are implemented with an injectable upload callback. The server has no file-upload endpoint; the default app path shows the Dify upload-failure message and retains the selected image, without generating a fake file ID. | `app/test/design/app_icon_picker_test.dart`, `app/test/dify_spec/workflow/nodes_panel/llm/agent_v2_misc_test.dart` |
 
 <a id="node-human-input"></a>
 

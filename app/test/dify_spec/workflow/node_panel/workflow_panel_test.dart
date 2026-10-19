@@ -1,8 +1,8 @@
 // dify-spec: web/app/components/workflow/nodes/_base/components/workflow-panel/__tests__/index.spec.tsx
 //
 // BasePanel with dify-sf's node panel: a document in an in-memory session instead of mocked hooks. The plugin auth,
-// trigger subscription, data source and unfinished last-run integration cases are listed in the ledger (see
-// not_applicable.tsv); a single run is handed to the panel's hooks.
+// trigger subscription and data source cases are listed in the ledger (see not_applicable.tsv). Last Run tests
+// below use the real run host, store updates and log detail state.
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/editor/undo_manager.dart';
 import 'package:dify_sf_app/src/workflow_editor/context_menu/context_menu.dart';
@@ -14,6 +14,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'harness.dart';
+
+import 'package:dify_sf_app/src/workflow_editor/run/ui/node_run_ui.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/log_widgets.dart';
 
 import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/before_run_form.dart';
@@ -71,6 +74,54 @@ void main() {
   }
 
   group('workflow-panel index', () {
+    testWidgets('should render the special result panel when logs request it', (t) async {
+      await start(t);
+      h.store.setInitShowLastRunTab(true);
+      await render(t, runtime: true);
+      final logs = t.widget<LastRunView>(find.byType(LastRunView)).logs!;
+      logs.handleShowRetryResultList(const []);
+      await settle(t);
+      expect(find.byType(SpecialResultPanel), findsOneWidget);
+      expect(find.byKey(const ValueKey('title-node-1')), findsNothing);
+      expect(find.text('WORKFLOW.DEBUG.SETTINGSTAB'), findsNothing);
+      logs.setShowRetryDetailFalse();
+      await settle(t);
+      expect(find.byKey(const ValueKey('title-node-1')), findsOneWidget);
+      expect(find.byType(LastRunView), findsOneWidget);
+      await h.dispose(t);
+    });
+
+    testWidgets('should render the plain tab layout and allow last-run status updates', (t) async {
+      await start(t);
+      await render(t, runtime: true);
+      await t.tap(find.text('WORKFLOW.DEBUG.LASTRUNTAB'));
+      await settle(t);
+      t.widget<LastRunView>(find.byType(LastRunView)).updateNodeRunningStatus!('succeeded');
+      await settle(t);
+      expect(h.store.nodeRunDataOf('node-1')['_singleRunningStatus'], 'succeeded');
+      expect(find.byKey(const ValueKey('title-node-1')), findsOneWidget);
+      await h.dispose(t);
+    });
+
+    testWidgets('should mark the last run as paused after a running single-run completes', (t) async {
+      await start(t);
+      h.store.setInitShowLastRunTab(true);
+      await render(t, runtime: true);
+      final c = WorkflowRunScope.of(t.element(find.byType(WorkflowNodePanel))).singleRunOf('node-1');
+      c.isRunAfterSingleRun = true;
+      c.setNodeRunning();
+      await settle(t);
+      expect(c.isPaused, isFalse);
+      h.store.setNodeRunData('node-1', {'_singleRunningStatus': null, '_isSingleRun': true});
+      await settle(t);
+      expect(c.isPaused, isTrue);
+      expect(t.widget<LastRunView>(find.byType(LastRunView)).isPaused, isTrue);
+      await t.tap(find.text('WORKFLOW.DEBUG.SETTINGSTAB'));
+      await settle(t);
+      expect(c.isPaused, isFalse);
+      await h.dispose(t);
+    });
+
     testWidgets('should render the settings panel and wire title, description, run, and close actions', (t) async {
       await start(t, canvas: 1200);
       await render(t);

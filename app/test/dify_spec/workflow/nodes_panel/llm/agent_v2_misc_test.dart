@@ -6,6 +6,7 @@
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_v2_logic.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_bodies.dart' show isAgentV2NodeData;
+import 'package:dify_sf_app/src/design/widgets/app_icon_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,7 @@ const _inlineAgent = {
 
 void main() {
   setUp(useDifyTestTranslator);
+  setUp(() async => EmojiCatalog.load());
 
   group('agent/default', () {
     test('requires a roster agent id', () {
@@ -272,6 +274,71 @@ void main() {
       );
       await t.pump();
     }
+
+    testWidgets('initializes the icon picker from the inline agent and submits changed icon fields', (t) async {
+      final r = await renderDialog(t);
+      await t.tap(find.bySemanticsLabel('agent-v-2.roster.saveToRosterForm.changeIcon'));
+      await t.pumpAndSettle();
+      expect(t.widget<AppIconPicker>(find.byType(AppIconPicker)).initialEmoji, (icon: '🤖', background: '#F5F3FF'));
+      await t.enterText(
+        find.descendant(of: find.byKey(const ValueKey('icon-emoji-search')), matching: find.byType(EditableText)),
+        'brain',
+      );
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const ValueKey('icon-emoji-brain')));
+      await t.tap(find.byKey(const ValueKey('icon-color-#E0F2FE')));
+      await t.tap(find.text('app.iconPicker.ok'));
+      await t.pumpAndSettle();
+      await typeName(t, 'Changed Agent');
+      await t.tap(find.text('common.operation.save'));
+      await t.pumpAndSettle();
+      expect(r.bodies.single, containsPair('icon', '🧠'));
+      expect(r.bodies.single, containsPair('icon_background', '#E0F2FE'));
+      expect(r.bodies.single, containsPair('icon_type', 'emoji'));
+    });
+
+    testWidgets('keeps one source snapshot while open and uses the latest agent after reopening', (t) async {
+      var source = <String, Object?>{..._inlineAgent};
+      late StateSetter refresh;
+      final bodies = <Map<String, Object?>>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              refresh = setState;
+              return TextButton(
+                child: const Text('open'),
+                onPressed: () => showSaveInlineAgentToRosterDialog(
+                  context,
+                  initialAgent: source,
+                  save: (body) async {
+                    bodies.add(body);
+                    return 'saved';
+                  },
+                  onSaved: (_) {},
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await t.tap(find.text('open'));
+      await t.pumpAndSettle();
+      await typeName(t, 'Snapshot');
+      refresh(() => source = {..._inlineAgent, 'role': 'Updated role', 'icon': '🧠'});
+      await t.pump();
+      await t.tap(find.text('common.operation.save'));
+      await t.pumpAndSettle();
+      expect(bodies.single, containsPair('role', 'Tender Analyst'));
+      expect(bodies.single, containsPair('icon', '🤖'));
+      await t.tap(find.text('open'));
+      await t.pumpAndSettle();
+      await typeName(t, 'Reopened');
+      await t.tap(find.text('common.operation.save'));
+      await t.pumpAndSettle();
+      expect(bodies.last, containsPair('role', 'Updated role'));
+      expect(bodies.last, containsPair('icon', '🧠'));
+    });
 
     testWidgets('initializes the roster name empty while keeping the other inline agent metadata', (t) async {
       final r = await renderDialog(t);

@@ -4,6 +4,8 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
 import '../../design/css_metrics.dart';
+import '../../canvas/node_card.dart';
+import '../class_name_popover.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../workflow/model_catalog.dart';
@@ -226,6 +228,32 @@ class QuestionClassifierBody extends NodeBody {
     return h + 4 + 4;
   }
 
+  /// Body-local rectangles shared by the rendered topics and the live canvas overlay (including Scene cards).
+  static List<({Rect rect, String text})> topicBoxes(BodyContext ctx) {
+    var y = 4 + (_model(ctx['model']) != null ? 24.0 : 0) + 8;
+    return [
+      for (final (i, c) in _classes(ctx).indexed)
+        () {
+          final rect = Rect.fromLTWH(
+            12 + 5,
+            y + 3 + textHeight(_label(c, i), _labelStyle, _textWidth) + 2,
+            _textWidth,
+            _topicHeight(c, ctx),
+          );
+          y += _rowHeight(c, i, ctx) + 2;
+          return (rect: rect, text: _str(c.entries['name']));
+        }(),
+    ];
+  }
+
+  Widget _topicWidget(BuildContext context, VMap c, BodyContext ctx) {
+    final text = InlineVarText(_topic(c), ctx, breakAll: false, truncate: true).build();
+    final name = _str(c.entries['name']);
+    return name.length > 50 && !CanvasCardControls.overlaid(context)
+        ? ClassNamePopover(text: name, ctx: ctx, child: text)
+        : text;
+  }
+
   @override
   Map<String, double> sources(BodyContext ctx) {
     final out = <String, double>{};
@@ -265,7 +293,7 @@ class QuestionClassifierBody extends NodeBody {
                   const SizedBox(height: 2),
                   SizedBox(
                     height: _topicHeight(c, ctx),
-                    child: InlineVarText(_topic(c), ctx, breakAll: false, truncate: true).build(),
+                    child: _topicWidget(context, c, ctx),
                   ),
                 ],
               ),

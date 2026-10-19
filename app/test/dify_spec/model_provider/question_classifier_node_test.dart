@@ -5,6 +5,8 @@ import 'package:dify_sf_app/src/cards/card_kit.dart';
 import 'package:dify_sf_app/src/cards/model_chip.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:dify_sf_app/src/cards/class_name_popover.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const textGenerationModelList = [
@@ -31,6 +33,38 @@ Node createData({List<VMap>? classes}) => Node(
 
 void main() {
   group('question-classifier/node', () {
+    testWidgets('returns nothing when neither model nor classes are configured and truncates long class names', (
+      t,
+    ) async {
+      const body = QuestionClassifierBody();
+      final empty = BodyContext(const Node(id: 'empty', type: 'question-classifier', title: ''), (_) => null);
+      expect(body.height(empty), 0);
+      expect(body.sources(empty), isEmpty);
+      const title = 'A very long question topic that must be truncated but fully readable when hovered';
+      final ctx = BodyContext(createData(classes: [createTopic(name: title)]), (_) => null);
+      await t.pumpWidget(
+        MaterialApp(
+          home: Material(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: 238, child: Builder(builder: (c) => body.build(c, ctx))),
+            ),
+          ),
+        ),
+      );
+      final full = find.byWidgetPredicate(
+        (w) => w is RichText && w.text.toPlainText().replaceAll('\u200B', '') == title,
+      );
+      expect(full, findsNothing);
+      final mouse = await t.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(t.getCenter(find.byType(ClassNamePopover)));
+      await t.pumpAndSettle();
+      expect(full, findsNWidgets(2));
+      await mouse.removePointer();
+      await t.pumpWidget(const SizedBox());
+    });
+
     testWidgets('renders the selected model and output handles for each class', (t) async {
       final node = createData(
         classes: [

@@ -3,7 +3,7 @@
 /// the editor's [SingleRunController]s.
 ///
 /// The single-run forms are built from the variables the node's config references (Dify builds them per node type
-/// with `getInputVars`; the Start node uses its variables): one "Inputs" form of `#node.var#` text inputs. Values
+/// with `getInputVars`; Start uses its variables, PE/QC have query and optional vision forms). Values
 /// held as inspect variables count as set, so a node whose references all have values runs at once.
 library;
 
@@ -16,6 +16,9 @@ import '../../../i18n/dify_i18n.dart';
 import '../../../workflow/dify_json.dart' show difyDataOf;
 import '../../header/header_widgets.dart' show Spinning;
 import '../../node_panel/last_run.dart' as no_data;
+import '../../node_panel/bodies/llm/group_host.dart';
+import '../../node_panel/bodies/llm/model_common.dart' as models;
+import '../forms/query_vision_single_run.dart';
 import '../../store/workflow_store.dart';
 import '../../store/workflow_store_scope.dart';
 import '../run_scope.dart';
@@ -103,7 +106,23 @@ List<RunFormProps> singleRunFormsOf(
   required ValueChanged<Map<String, Object?>> onChange,
   bool isChatMode = false,
   List<DifyJson> Function(List<DifyJson> variables)? toVarInputs,
+  List<DifyJson> Function(List<String>)? getInputVars,
+  DifyJson? Function(List<String>)? resolveVisionInput,
+  bool isVisionModel = false,
+  DifyJson Function()? currentValues,
 }) {
+  if (const {'parameter-extractor', 'question-classifier'}.contains(node.type)) {
+    return QueryVisionSingleRunParams(
+      nodeType: node.type,
+      payload: difyDataOf(node),
+      values: values,
+      onChange: onChange,
+      getInputVars: getInputVars ?? (_) => const [],
+      isVisionModel: isVisionModel,
+      resolveVisionInput: resolveVisionInput ?? (_) => null,
+      currentValues: currentValues,
+    ).forms;
+  }
   // code / template-transform use-single-run-form-params: one form (no label) over the input variables, each named
   // and labelled by its own name (toVarInputs).
   if (toVarInputs != null && const {'code', 'template-transform'}.contains(node.type)) {
@@ -191,6 +210,10 @@ List<Map<String, Object?>> existVarValuesInForms(List<RunFormProps> forms, Workf
 
 /// The selector a code / template-transform input variable is set from (`getDependentVar`), if any.
 List<String>? _dependentVar(Node node, String variable) {
+  if (const {'parameter-extractor', 'question-classifier'}.contains(node.type)) {
+    final selector = queryVisionDependentVar(node.type, difyDataOf(node), variable);
+    return selector == null || selector.isEmpty ? null : selector;
+  }
   if (!const {'code', 'template-transform'}.contains(node.type) || variable.startsWith('#')) return null;
   for (final v in (difyDataOf(node)['variables'] as List? ?? const [])) {
     if (v is Map && v['variable'] == variable && v['value_selector'] is List) {
@@ -211,6 +234,23 @@ List<RunFormProps> filteredExistVarForms(List<RunFormProps> forms, List<Map<Stri
       RunFormProps(label: f.label, inputs: inputs, values: f.values, onChange: f.onChange),
 ];
 
+bool _visionModel(BuildContext context, Node node) {
+  final model = models.modelOf(difyDataOf(node)['model']);
+  return models.isVisionModel(LlmGroupScope.of(context), model.provider, model.name);
+}
+
+DifyJson? _visionInput(SingleRunController controller, List<String> selector) {
+  final input = controller.varSelectorsToVarInputs([selector]).firstOrNull;
+  return input != null && const {InputVarType.singleFile, InputVarType.multiFiles}.contains(input['type'])
+      ? input
+      : null;
+}
+
+/// Custom run forms (workflow-panel/helpers.tsx). Data sources need a pipeline host; all other nodes use the
+/// generic before-run form. A host may provide the data-source form without coupling the editor to a pipeline.
+Widget? getCustomRunForm({required String nodeType, Widget Function()? dataSourceForm}) =>
+    nodeType == 'datasource' ? dataSourceForm?.call() : null;
+
 /// handleSingleRun: runs [node] at once when nothing needs filling (switching the panel to Last Run), else opens the
 /// before-run form. False without a run scope (no runtime).
 bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
@@ -229,6 +269,9 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
     onChange: (_) {},
     isChatMode: scope.run.isChatMode(),
     toVarInputs: c.toVarInputs,
+    getInputVars: c.getFormInputVars,
+    isVisionModel: _visionModel(context, node),
+    resolveVisionInput: (selector) => _visionInput(c, selector),
   );
   final missing = filteredExistVarForms(forms, existVarValuesInForms(forms, store, node));
   if (missing.isEmpty) {
@@ -246,9 +289,10 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
 /// The single-run form over the node panel (BasePanel's `shouldRenderSingleRunPanel`): shown while the node's
 /// `_isSingleRun` is on; Start Run runs with the values (handleRunWithParams) and switches to Last Run.
 class NodeSingleRunOverlay extends StatefulWidget {
-  const NodeSingleRunOverlay({super.key, required this.node, required this.doc});
+  const NodeSingleRunOverlay({super.key, required this.node, required this.doc, this.dataSourceForm});
   final Node node;
   final Document doc;
+  final Widget Function()? dataSourceForm;
 
   @override
   State<NodeSingleRunOverlay> createState() => _NodeSingleRunOverlayState();
@@ -267,6 +311,8 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
       valueListenable: store.nodeRunData,
       builder: (context, _, _) {
         if (!c.isShowSingleRun) return const SizedBox.shrink();
+        final custom = getCustomRunForm(nodeType: widget.node.type, dataSourceForm: widget.dataSourceForm);
+        if (custom != null) return Positioned.fill(child: custom);
         final forms = singleRunFormsOf(
           widget.node,
           widget.doc,
@@ -274,6 +320,10 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
           onChange: (v) => setState(() => _values = v),
           isChatMode: scope.run.isChatMode(),
           toVarInputs: c.toVarInputs,
+          getInputVars: c.getFormInputVars,
+          isVisionModel: _visionModel(context, widget.node),
+          resolveVisionInput: (selector) => _visionInput(c, selector),
+          currentValues: () => _values,
         );
         if (forms.isEmpty) return const SizedBox.shrink();
         final exist = existVarValuesInForms(forms, store, widget.node);
@@ -476,10 +526,17 @@ class _LastRunViewState extends State<LastRunView> with WidgetsBindingObserver {
 
 /// [LastRunView] over the node's [SingleRunController] (the no-data state without a run host).
 class NodeLastRun extends StatefulWidget {
-  const NodeLastRun({super.key, required this.nodeId, required this.canSingleRun, required this.onSingleRun});
+  const NodeLastRun({
+    super.key,
+    required this.nodeId,
+    required this.canSingleRun,
+    required this.onSingleRun,
+    this.logs,
+  });
   final String nodeId;
   final bool canSingleRun;
   final VoidCallback onSingleRun;
+  final RunLogs? logs;
 
   @override
   State<NodeLastRun> createState() => _NodeLastRunState();
@@ -488,7 +545,7 @@ class NodeLastRun extends StatefulWidget {
 class _NodeLastRunState extends State<NodeLastRun> {
   SingleRunController? _c;
   WorkflowStore? _store;
-  final _logs = RunLogs();
+  late final _logs = widget.logs ?? RunLogs();
   bool _fetchedOnce = false;
 
   @override
@@ -502,7 +559,7 @@ class _NodeLastRunState extends State<NodeLastRun> {
   void dispose() {
     // handleTabClicked: leaving the tab ends the "after a single run" view.
     _c?.isRunAfterSingleRun = false;
-    _logs.dispose();
+    if (widget.logs == null) _logs.dispose();
     super.dispose();
   }
 

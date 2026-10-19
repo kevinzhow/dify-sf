@@ -15,6 +15,7 @@ import 'bodies/llm_bodies.dart';
 import 'bodies/note_body.dart';
 import 'card_chrome.dart';
 import 'card_kit.dart';
+import 'class_name_popover.dart';
 import 'node_body.dart';
 import '../workflow_editor/canvas_plus/iteration_add_block.dart';
 import '../workflow_editor/canvas_plus/aggregator_controls.dart';
@@ -30,6 +31,22 @@ class DifyCards extends CardSpec {
 
   @override
   List<({Rect rect, Widget child})> controls(BuildContext context, CanvasNode node, CanvasGraph graph) {
+    if (node.type == 'question-classifier') {
+      final ctx = DifyCards.context(node.node.value, (id) => graph[id]?.node.value, graph.startNode);
+      return [
+        for (final (i, topic) in QuestionClassifierBody.topicBoxes(ctx).indexed)
+          if (topic.text.length > 50)
+            (
+              rect: topic.rect.shift(node.rect.topLeft + const Offset(1, 45)),
+              child: ClassNamePopover(
+                key: ValueKey('class-topic-${node.id}-$i'),
+                text: topic.text,
+                ctx: ctx,
+                child: const SizedBox.expand(),
+              ),
+            ),
+      ];
+    }
     if (node.type == 'variable-aggregator' || node.type == 'variable-assigner') {
       final ctx = DifyCards.context(node.node.value, (id) => graph[id]?.node.value, graph.startNode);
       return [

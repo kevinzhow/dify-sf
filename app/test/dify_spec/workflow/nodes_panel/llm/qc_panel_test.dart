@@ -21,6 +21,8 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/question_c
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/config_prompt.dart' show PromptEditorEnv;
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:dify_sf_app/src/cards/class_name_popover.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -379,6 +381,34 @@ void main() {
 
   group('question-classifier path', () {
     group('Path Integration', () {
+      testWidgets(
+        'should render the node when only classes are set and return null when both model and classes are missing',
+        (t) async {
+          const fullName = 'A long classification rule whose full name needs more than fifty characters to display';
+          final data = difyNode('qc', 'question-classifier', {
+            'classes': [topic(name: fullName)],
+          });
+          final ctx = BodyContext(data, (_) => null);
+          const body = QuestionClassifierBody();
+          await pumpComponent(t, Builder(builder: (context) => SizedBox(width: 238, child: body.build(context, ctx))));
+          expect(find.byType(ModelChip), findsNothing);
+          expect(body.sources(ctx).keys, ['topic-1']);
+          final mouse = await t.createGesture(kind: PointerDeviceKind.mouse);
+          await mouse.addPointer(location: Offset.zero);
+          await mouse.moveTo(t.getCenter(find.byType(ClassNamePopover)));
+          await t.pumpAndSettle();
+          expect(
+            find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().replaceAll('\u200B', '') == fullName),
+            findsNWidgets(2),
+          );
+          await mouse.removePointer();
+          final empty = BodyContext(difyNode('empty', 'question-classifier', {}), (_) => null);
+          await pumpComponent(t, Builder(builder: (context) => body.build(context, empty)));
+          expect(body.height(empty), 0);
+          expect(find.byType(ClassNamePopover), findsNothing);
+        },
+      );
+
       testWidgets('should render advanced settings and memory config', (t) async {
         final instructions = <String>[];
         final memories = <Map<String, Object?>?>[];

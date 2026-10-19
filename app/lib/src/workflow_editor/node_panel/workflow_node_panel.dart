@@ -23,6 +23,10 @@ import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
 import '../panel_fields/panel_fields.dart';
 import '../run/run_scope.dart';
+import '../run/forms/node_panel_run_state.dart';
+import '../run/single_run.dart';
+import '../run/ui/run_logs.dart';
+import '../run/ui/log_widgets.dart';
 import '../run/ui/node_run_ui.dart';
 import '../store/store.dart';
 import 'node_panel_bodies.dart';
@@ -98,6 +102,30 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     store.workflowCanvasWidth,
     store.otherPanelWidth,
   ]);
+  final _logs = RunLogs();
+  final _runState = NodePanelRunState();
+  SingleRunController? _singleRun;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _singleRun = WorkflowRunScope.maybeOf(context)?.singleRunOf(widget.node.id);
+    _syncRunState();
+  }
+
+  void _syncRunState() {
+    _runState.update(store.nodeRunData.value[widget.node.id] ?? const {});
+    _singleRun?.isPaused = _runState.isPaused;
+  }
+
+  void _selectTab(NodePanelTab tab, {bool clicked = false}) {
+    if (_tab == tab) return;
+    _runState.tabChanged();
+    _singleRun?.isPaused = false;
+    if (clicked) _singleRun?.isRunAfterSingleRun = false;
+    setState(() => _tab = tab);
+  }
+
   bool _dragging = false;
   double _dragFrom = 0;
 
@@ -107,6 +135,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     store.initShowLastRunTab.addListener(_showLastRunTab);
     store.pendingSingleRun.addListener(_pendingSingleRun);
     _widthInputs.addListener(_compress);
+    store.nodeRunData.addListener(_syncRunState);
     // The store may not notify while the tree builds.
     scheduleMicrotask(() {
       if (!mounted) return;
@@ -121,6 +150,8 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     store.initShowLastRunTab.removeListener(_showLastRunTab);
     store.pendingSingleRun.removeListener(_pendingSingleRun);
     _widthInputs.removeListener(_compress);
+    store.nodeRunData.removeListener(_syncRunState);
+    _logs.dispose();
     super.dispose();
   }
 
@@ -128,7 +159,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
 
   void _showLastRunTab() {
     if (!store.initShowLastRunTab.value) return;
-    if (mounted) setState(() => _tab = NodePanelTab.lastRun);
+    if (mounted) _selectTab(NodePanelTab.lastRun);
     store.setInitShowLastRunTab(false);
   }
 
@@ -209,6 +240,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                 nodeId: widget.node.id,
                 canSingleRun: canRunBySingle(widget.node.type, isChildNode: parentIdOf(widget.node) != null),
                 onSingleRun: () => widget.actions.runStep(widget.node.id),
+                logs: _logs,
               ),
             },
           ),
@@ -227,8 +259,18 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
       child: Stack(
         fit: StackFit.passthrough,
         children: [
-          panel,
-          NodeSingleRunOverlay(node: widget.node, doc: widget.actions.doc),
+          ListenableBuilder(
+            listenable: _logs,
+            builder: (context, _) => _logs.showSpecialResultPanel
+                ? SingleChildScrollView(child: SpecialResultPanel(logs: _logs))
+                : Stack(
+                    fit: StackFit.passthrough,
+                    children: [
+                      panel,
+                      NodeSingleRunOverlay(node: widget.node, doc: widget.actions.doc),
+                    ],
+                  ),
+          ),
         ],
       ),
     );
@@ -372,7 +414,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                     child: _Tab(
                       label: _tw(key).toUpperCase(),
                       active: _tab == tab,
-                      onTap: () => setState(() => _tab = tab),
+                      onTap: () => _selectTab(tab, clicked: true),
                     ),
                   ),
               ],

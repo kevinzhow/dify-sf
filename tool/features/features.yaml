@@ -753,17 +753,16 @@ features:
   area: node-panel
   title: 'Node panel: SETTINGS / LAST RUN tabs, Last Run result'
   dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/last-run]
-  status: partial
-  reason: 'Last Run fetching, status and result views are implemented. Losing a running status while opening a form does not yet mark it paused; log details currently cover the Last Run tab rather than the full settings panel. Remaining integration cases are recorded in tool/dify_spec/todo.tsv.'
+  status: ported
   deviation: Last runs come from the mock runtime (no run storage on the server).
-  evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel/last-run', visual:run-last-run]
-  ours: [app/lib/src/workflow_editor/node_panel/last_run.dart]
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel/last-run', visual:run-last-run, app/test/dify_spec/workflow/node_panel/workflow_panel_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/last_run.dart, app/lib/src/workflow_editor/node_panel/workflow_node_panel.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart, app/lib/src/workflow_editor/run/forms/node_panel_run_state.dart]
 - id: node-panel.single-run-form
   area: node-panel
   title: 'Node panel: single-run input form (Run this step)'
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: partial
-  reason: 'Generic input forms run against the mock runtime. Node-specific query and vision forms for Parameter Extractor and Question Classifier are still missing; DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
+  reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms run against the mock runtime, with typed instruction references and inspected-value filtering. DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
   deviation: Single runs go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
@@ -980,9 +979,8 @@ features:
   area: node-question-classifier
   title: 'Question Classifier card: model and classes with branch handles'
   dify: [web/app/components/workflow/nodes/question-classifier/node.tsx]
-  status: partial
-  reason: Class names are truncated at 50 characters as in Dify, but the hover popover with the full name is not ported yet.
-  evidence: ['spec:web/app/components/workflow/nodes/question-classifier', visual:canvas-classify-extract]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/question-classifier', visual:canvas-classify-extract, app/test/workflow_editor/class_name_canvas_test.dart]
   ours: [app/lib/src/cards/bodies/llm_bodies.dart]
 - id: node-question-classifier.panel
   area: node-question-classifier
@@ -1161,9 +1159,19 @@ features:
   title: 'Agent v2 panel: roster binding, inline agent, output variables'
   dify: [web/app/components/workflow/nodes/agent-v2]
   status: partial
-  reason: 'The node panel and save-inline-agent dialog are implemented, but the save dialog has no icon picker. The inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
+  reason: 'The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image icons still need a server upload endpoint; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
+  deviation: 'The picker reuses the original emoji catalog and palette. Search currently filters the grid with name/keyword substrings; Emoji Mart fuzzy ranking and keeping the category grid visible during search are not reproduced.'
   evidence: ['spec:web/app/components/workflow/nodes/agent-v2', 'spec:web/app/components/workflow/nodes/agent-v2/components', 'spec:web/app/components/workflow/nodes/agent-v2/components/agent-output-variables']
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart]
+
+- id: node-agent.image-icon
+  area: node-agent
+  title: 'Agent icon picker: image selection, square crop and upload'
+  dify: [web/app/components/base/app-icon-picker/index.tsx, web/app/components/base/app-icon-picker/ImageInput.tsx]
+  status: partial
+  reason: 'File selection and square cropping are implemented with an injectable upload callback. The server has no file-upload endpoint; the default app path shows the Dify upload-failure message and retains the selected image, without generating a fake file ID.'
+  evidence: [app/test/design/app_icon_picker_test.dart, app/test/dify_spec/workflow/nodes_panel/llm/agent_v2_misc_test.dart]
+  ours: [app/lib/src/design/widgets/app_icon_picker.dart, app/lib/src/design/widgets/emoji_catalog.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart]
 
 - id: node-human-input.card
   area: node-human-input
