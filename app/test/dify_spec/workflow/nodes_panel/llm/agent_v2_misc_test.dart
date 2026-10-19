@@ -145,9 +145,7 @@ void main() {
       q.dispose();
     });
 
-    testWidgets('retries five times and stops polling when loading the copied inline agent composer fails', (
-      t,
-    ) async {
+    testWidgets('retries five times and stops polling when loading the copied inline agent composer fails', (t) async {
       var calls = 0;
       final q = InlineAgentQuery(
         fetch: () async {
@@ -285,7 +283,7 @@ void main() {
         'brain',
       );
       await t.pumpAndSettle();
-      await t.tap(find.byKey(const ValueKey('icon-emoji-brain')));
+      await t.tap(find.byKey(const ValueKey('icon-search-brain')));
       await t.tap(find.byKey(const ValueKey('icon-color-#E0F2FE')));
       await t.tap(find.text('app.iconPicker.ok'));
       await t.pumpAndSettle();
@@ -343,9 +341,8 @@ void main() {
     testWidgets('initializes the roster name empty while keeping the other inline agent metadata', (t) async {
       final r = await renderDialog(t);
       expect(find.bySemanticsLabel('agent-v-2.roster.saveToRosterDialog.title'), findsWidgets);
-      EditableText field(String key) => t.widget<EditableText>(
-        find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText)),
-      );
+      EditableText field(String key) =>
+          t.widget<EditableText>(find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText)));
       expect(field('roster-name').controller.text, '');
       expect(field('roster-role').controller.text, 'Tender Analyst');
       expect(field('roster-description').controller.text, 'Drafts tender clarifications.');

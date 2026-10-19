@@ -5,6 +5,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import 'emoji_search.dart';
+
 class IconEmoji {
   const IconEmoji(this.id, this.native, this.name, this.keywords);
   final String id, native, name;
@@ -18,14 +20,15 @@ class IconEmojiCategory {
 }
 
 class EmojiCatalog {
-  EmojiCatalog._(this.categories, this.emojis);
+  EmojiCatalog._(this.categories, this.emojis, this._search);
+  final EmojiSearchIndex _search;
   final List<IconEmojiCategory> categories;
   final Map<String, IconEmoji> emojis;
   static Future<EmojiCatalog>? _cached;
   static EmojiCatalog? _loaded;
   static EmojiCatalog? get loaded => _loaded;
   static Future<EmojiCatalog> load() => _cached ??= rootBundle.loadString('assets/emoji/native.json').then((data) {
-    final json = jsonDecode(data) as Map;
+    final json = (jsonDecode(data) as Map).cast<String, Object?>();
     final emojis = <String, IconEmoji>{};
     (json['emojis'] as Map).forEach((id, value) {
       final v = value as Map;
@@ -33,23 +36,20 @@ class EmojiCatalog {
         for (final k in v['keywords'] as List? ?? const []) '$k',
       ]);
     });
-    return _loaded = EmojiCatalog._([
-      for (final c in json['categories'] as List)
-        IconEmojiCategory('${c['id']}', [
-          for (final id in c['emojis'] as List)
-            if (emojis[id] != null) emojis[id]!,
-        ]),
-    ], emojis);
+    return _loaded = EmojiCatalog._(
+      [
+        for (final c in json['categories'] as List)
+          IconEmojiCategory('${c['id']}', [
+            for (final id in c['emojis'] as List)
+              if (emojis[id] != null) emojis[id]!,
+          ]),
+      ],
+      emojis,
+      EmojiSearchIndex(json),
+    );
   });
 
-  List<IconEmoji> search(String query) {
-    final terms = query.trim().toLowerCase().split(RegExp(r'\s+'));
-    return [
-      for (final e in emojis.values)
-        if (terms.every((term) => '${e.id} ${e.name} ${e.native} ${e.keywords.join(' ')}'.toLowerCase().contains(term)))
-          e,
-    ];
-  }
+  List<IconEmoji> search(String query) => [for (final id in _search.search(query)) emojis[id]!];
 }
 
 /// Dify emoji-picker/constants.ts.

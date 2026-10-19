@@ -1157,12 +1157,11 @@ features:
 - id: node-agent.panel-v2
   area: node-agent
   title: 'Agent v2 panel: roster binding, inline agent, output variables'
-  dify: [web/app/components/workflow/nodes/agent-v2]
+  dify: [web/app/components/workflow/nodes/agent-v2, web/app/components/base/emoji-picker/Inner.tsx, web/utils/emoji.ts]
   status: partial
   reason: 'The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image icons still need a server upload endpoint; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
-  deviation: 'The picker reuses the original emoji catalog and palette. Search currently filters the grid with name/keyword substrings; Emoji Mart fuzzy ranking and keeping the category grid visible during search are not reproduced.'
-  evidence: ['spec:web/app/components/workflow/nodes/agent-v2', 'spec:web/app/components/workflow/nodes/agent-v2/components', 'spec:web/app/components/workflow/nodes/agent-v2/components/agent-output-variables']
-  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart]
+  evidence: ['spec:web/app/components/workflow/nodes/agent-v2', 'spec:web/app/components/workflow/nodes/agent-v2/components', 'spec:web/app/components/workflow/nodes/agent-v2/components/agent-output-variables', app/test/design/emoji_search_test.dart, app/test/design/app_icon_picker_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart, app/lib/src/design/widgets/emoji_search.dart]
 
 - id: node-agent.image-icon
   area: node-agent

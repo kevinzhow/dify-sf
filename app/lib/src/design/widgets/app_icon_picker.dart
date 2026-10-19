@@ -136,10 +136,7 @@ class _AppIconPickerState extends State<AppIconPicker> {
       final topLeft = MatrixUtils.transformPoint(Matrix4.inverted(_transform.value), Offset.zero) / baseScale;
       final size = (_cropSize / (_transform.value.getMaxScaleOnAxis() * baseScale))
           .round()
-          .clamp(
-            1,
-            math.min(decoded.width, decoded.height),
-          )
+          .clamp(1, math.min(decoded.width, decoded.height))
           .toInt();
       final cropped = image.copyCrop(
         decoded,
@@ -160,13 +157,13 @@ class _AppIconPickerState extends State<AppIconPicker> {
     }
   }
 
-  Widget _emojiButton(IconEmoji emoji) => Tooltip(
+  Widget _emojiButton(IconEmoji emoji, {bool search = false}) => Tooltip(
     message: emoji.name,
     child: Semantics(
       label: emoji.native,
       selected: _emoji == emoji.native,
       child: InkWell(
-        key: ValueKey('icon-emoji-${emoji.id}'),
+        key: ValueKey('icon-${search ? 'search' : 'emoji'}-${emoji.id}'),
         borderRadius: BorderRadius.circular(8),
         onTap: () => setState(() {
           _emoji = emoji.native;
@@ -177,8 +174,11 @@ class _AppIconPickerState extends State<AppIconPicker> {
     ),
   );
 
-  Widget _grid(List<IconEmoji> emojis) => SliverGrid(
-    delegate: SliverChildBuilderDelegate((context, i) => _emojiButton(emojis[i]), childCount: emojis.length),
+  Widget _grid(List<IconEmoji> emojis, {bool search = false}) => SliverGrid(
+    delegate: SliverChildBuilderDelegate(
+      (context, i) => _emojiButton(emojis[i], search: search),
+      childCount: emojis.length,
+    ),
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 8,
       mainAxisSpacing: 4,
@@ -210,21 +210,33 @@ class _AppIconPickerState extends State<AppIconPicker> {
           Expanded(
             child: CustomScrollView(
               slivers: [
-                if (_query.isNotEmpty)
-                  SliverPadding(padding: const EdgeInsets.all(12), sliver: _grid(data.search(_query))),
-                if (_query.isEmpty)
-                  for (final category in data.categories) ...[
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                      sliver: SliverToBoxAdapter(
-                        child: Text(
-                          category.id.toUpperCase(),
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textPrimary),
-                        ),
+                if (_query.isNotEmpty) ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        'Search',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textPrimary),
                       ),
                     ),
-                    SliverPadding(padding: const EdgeInsets.symmetric(horizontal: 12), sliver: _grid(category.emojis)),
-                  ],
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    sliver: _grid(data.search(_query), search: true),
+                  ),
+                ],
+                for (final category in data.categories) ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        category.id.toUpperCase(),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textPrimary),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(padding: const EdgeInsets.symmetric(horizontal: 12), sliver: _grid(category.emojis)),
+                ],
               ],
             ),
           ),

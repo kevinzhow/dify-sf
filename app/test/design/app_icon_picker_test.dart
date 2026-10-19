@@ -60,12 +60,40 @@ void main() {
       'brain',
     );
     await t.pumpAndSettle();
-    await t.tap(find.byKey(const ValueKey('icon-emoji-brain')));
+    await t.tap(find.byKey(const ValueKey('icon-search-brain')));
     await t.tap(find.byKey(const ValueKey('icon-color-#E0F2FE')));
     await t.tap(find.text(tr('ok')));
     await t.pumpAndSettle();
     expect(selected, {'type': 'emoji', 'icon': '🧠', 'background': '#E0F2FE'});
     expect(find.byType(AppIconPicker), findsNothing);
+  });
+
+  testWidgets('search results precede the complete category grid and clearing search restores its first row', (
+    t,
+  ) async {
+    await open(t, result: (_) {});
+    final search = find.descendant(
+      of: find.byKey(const ValueKey('icon-emoji-search')),
+      matching: find.byType(EditableText),
+    );
+    await t.enterText(search, 'brain');
+    await t.pumpAndSettle();
+    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('PEOPLE'), findsOneWidget);
+    expect(find.byKey(const ValueKey('icon-search-brain')), findsOneWidget);
+    expect(find.byKey(const ValueKey('icon-emoji-grinning')), findsOneWidget);
+    expect(
+      t.getTopLeft(find.byKey(const ValueKey('icon-search-brain'))).dy,
+      lessThan(t.getTopLeft(find.byKey(const ValueKey('icon-emoji-grinning'))).dy),
+    );
+    await t.enterText(search, 'xyznevermatches');
+    await t.pumpAndSettle();
+    expect(find.text('PEOPLE'), findsOneWidget);
+    expect(find.byKey(const ValueKey('icon-emoji-grinning')), findsOneWidget);
+    await t.enterText(search, '');
+    await t.pumpAndSettle();
+    expect(find.text('Search'), findsNothing);
+    expect(find.byKey(const ValueKey('icon-emoji-grinning')), findsOneWidget);
   });
 
   testWidgets('cancel preserves the source icon without emitting an edit', (t) async {
