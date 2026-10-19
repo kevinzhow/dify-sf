@@ -95,7 +95,11 @@ public struct SMTPMailSender: MailSender {
             connectionTimeOut: .seconds(Int64(max(1, config.timeoutSeconds))),
             credentials: credentials,
             featureFlags: [.useESMTP, .base64EncodeAllMessages, .maximumBase64LineLength76])
-        mailer = Mailer(group: MultiThreadedEventLoopGroup.singleton, configuration: configuration)
+        // No connection limit: with one (swift-smtp's default, 2) the Mailer holds a DispatchSemaphore that it signals from a
+        // `[weak self]` callback after each send; a Mailer released before that callback runs (a sender is made per request
+        // and dropped once the send is handed off) is deallocated with the semaphore below its initial value, and libdispatch
+        // kills the process ("Semaphore object deallocated while in use"). Mail volume here is tiny and rate-limited.
+        mailer = Mailer(group: MultiThreadedEventLoopGroup.singleton, configuration: configuration, maxConnections: nil)
         sender = Email.Contact(name: from.name.map(Self.headerText), emailAddress: from.address)
     }
 
