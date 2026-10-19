@@ -1,0 +1,160 @@
+{
+ "case": "test_streaming_conversation_variables",
+ "edges": [
+  [
+   "1755316734941",
+   "1755316749068"
+  ],
+  [
+   "1755316749068",
+   "answer"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1755316734941#1",
+   "node_id": "1755316734941",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1755316734941#1",
+   "inputs": {
+    "query": "set it"
+   },
+   "node_id": "1755316734941",
+   "node_type": "start",
+   "outputs": {
+    "conversation.str": "default",
+    "query": "set it",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "set it",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1755316749068#1",
+   "node_id": "1755316749068",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1755316749068",
+   "selector": [
+    "conversation",
+    "str"
+   ],
+   "value": "set it"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "conversation",
+    "str"
+   ],
+   "text": "set it"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1755316749068#1",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "items": [
+     {
+      "input_type": "variable",
+      "operation": "over-write",
+      "value": [
+       "sys",
+       "query"
+      ],
+      "variable_selector": [
+       "conversation",
+       "str"
+      ]
+     }
+    ],
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1755316749068",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "str",
+      "new_value": "set it",
+      "selector": [
+       "conversation",
+       "str"
+      ],
+      "value_type": "string"
+     }
+    ],
+    "str": "set it"
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "answer#1",
+   "node_id": "answer",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "answer#1",
+   "inputs": {},
+   "node_id": "answer",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "set it",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "set it",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "test_streaming_conversation_variables.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "set it",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

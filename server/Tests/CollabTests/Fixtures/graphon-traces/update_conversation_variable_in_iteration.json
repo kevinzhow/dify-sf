@@ -1,0 +1,466 @@
+{
+ "case": "update_conversation_variable_in_iteration",
+ "edges": [
+  [
+   "1759032354471",
+   "1759032363865"
+  ],
+  [
+   "1759032363865",
+   "1759032379989"
+  ],
+  [
+   "1759032379989start",
+   "1759032394460"
+  ],
+  [
+   "1759032379989",
+   "1759032410331"
+  ],
+  [
+   "1759032394460",
+   "1759032476318"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032354471#1",
+   "node_id": "1759032354471",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032354471#1",
+   "inputs": {
+    "query": "iterate"
+   },
+   "node_id": "1759032354471",
+   "node_type": "start",
+   "outputs": {
+    "conversation.answer": "",
+    "query": "iterate",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "iterate",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032363865#1",
+   "node_id": "1759032363865",
+   "node_type": "code"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032363865#1",
+   "inputs": {},
+   "node_id": "1759032363865",
+   "node_type": "code",
+   "outputs": {
+    "result": [
+     1,
+     2,
+     3
+    ]
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032379989#1",
+   "node_id": "1759032379989",
+   "node_type": "iteration"
+  },
+  {
+   "event": "iteration_started",
+   "inputs": {
+    "iterator_selector": [
+     1,
+     2,
+     3
+    ]
+   },
+   "node_id": "1759032379989"
+  },
+  {
+   "event": "iteration_next",
+   "index": 0,
+   "node_id": "1759032379989"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032394460#1",
+   "in": "1759032379989",
+   "node_id": "1759032394460",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1759032394460",
+   "selector": [
+    "conversation",
+    "answer"
+   ],
+   "value": "iterate"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032394460#1",
+   "in": "1759032379989",
+   "inputs": {
+    "default_value": null,
+    "desc": null,
+    "error_strategy": null,
+    "isInIteration": true,
+    "isInLoop": false,
+    "items": [
+     {
+      "input_type": "variable",
+      "operation": "over-write",
+      "value": [
+       "sys",
+       "query"
+      ],
+      "variable_selector": [
+       "conversation",
+       "answer"
+      ]
+     }
+    ],
+    "iteration_id": "1759032379989",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1759032394460",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "answer",
+      "new_value": "iterate",
+      "selector": [
+       "conversation",
+       "answer"
+      ],
+      "value_type": "string"
+     }
+    ],
+    "answer": "iterate"
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032476318#1",
+   "in": "1759032379989",
+   "node_id": "1759032476318",
+   "node_type": "code"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032476318#1",
+   "in": "1759032379989",
+   "inputs": {},
+   "node_id": "1759032476318",
+   "node_type": "code",
+   "outputs": {
+    "result": "mocked_result"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "iteration_next",
+   "index": 1,
+   "node_id": "1759032379989"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032394460#2",
+   "in": "1759032379989",
+   "node_id": "1759032394460",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1759032394460",
+   "selector": [
+    "conversation",
+    "answer"
+   ],
+   "value": "iterate"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032394460#2",
+   "in": "1759032379989",
+   "inputs": {
+    "default_value": null,
+    "desc": null,
+    "error_strategy": null,
+    "isInIteration": true,
+    "isInLoop": false,
+    "items": [
+     {
+      "input_type": "variable",
+      "operation": "over-write",
+      "value": [
+       "sys",
+       "query"
+      ],
+      "variable_selector": [
+       "conversation",
+       "answer"
+      ]
+     }
+    ],
+    "iteration_id": "1759032379989",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1759032394460",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "answer",
+      "new_value": "iterate",
+      "selector": [
+       "conversation",
+       "answer"
+      ],
+      "value_type": "string"
+     }
+    ],
+    "answer": "iterate"
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032476318#2",
+   "in": "1759032379989",
+   "node_id": "1759032476318",
+   "node_type": "code"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032476318#2",
+   "in": "1759032379989",
+   "inputs": {},
+   "node_id": "1759032476318",
+   "node_type": "code",
+   "outputs": {
+    "result": "mocked_result"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "iteration_next",
+   "index": 2,
+   "node_id": "1759032379989"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032394460#3",
+   "in": "1759032379989",
+   "node_id": "1759032394460",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1759032394460",
+   "selector": [
+    "conversation",
+    "answer"
+   ],
+   "value": "iterate"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032394460#3",
+   "in": "1759032379989",
+   "inputs": {
+    "default_value": null,
+    "desc": null,
+    "error_strategy": null,
+    "isInIteration": true,
+    "isInLoop": false,
+    "items": [
+     {
+      "input_type": "variable",
+      "operation": "over-write",
+      "value": [
+       "sys",
+       "query"
+      ],
+      "variable_selector": [
+       "conversation",
+       "answer"
+      ]
+     }
+    ],
+    "iteration_id": "1759032379989",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1759032394460",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "answer",
+      "new_value": "iterate",
+      "selector": [
+       "conversation",
+       "answer"
+      ],
+      "value_type": "string"
+     }
+    ],
+    "answer": "iterate"
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032476318#3",
+   "in": "1759032379989",
+   "node_id": "1759032476318",
+   "node_type": "code"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032476318#3",
+   "in": "1759032379989",
+   "inputs": {},
+   "node_id": "1759032476318",
+   "node_type": "code",
+   "outputs": {
+    "result": "mocked_result"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "iteration_completed",
+   "node_id": "1759032379989",
+   "outputs": {
+    "output": [
+     "mocked_result",
+     "mocked_result",
+     "mocked_result"
+    ]
+   },
+   "status": "succeeded",
+   "steps": 3
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032379989#1",
+   "inputs": {
+    "iterator_selector": [
+     1,
+     2,
+     3
+    ]
+   },
+   "node_id": "1759032379989",
+   "node_type": "iteration",
+   "outputs": {
+    "output": [
+     "mocked_result",
+     "mocked_result",
+     "mocked_result"
+    ]
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759032410331#1",
+   "node_id": "1759032410331",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759032410331#1",
+   "inputs": {},
+   "node_id": "1759032410331",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "update-conversation-variable-in-iteration.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "iterate",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

@@ -4,3 +4,6 @@
 /bench/storm/results/
 /bench/chaos/results/
 /server/.swiftpm/
+/e2e/.cache/
+/e2e/.out/
+__pycache__/

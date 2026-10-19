@@ -1,0 +1,185 @@
+{
+ "case": "multilingual_parallel_llm_streaming",
+ "edges": [
+  [
+   "1754336720803",
+   "1754339718571"
+  ],
+  [
+   "1754336720803",
+   "1754339725656"
+  ],
+  [
+   "1754339718571",
+   "answer"
+  ],
+  [
+   "1754339725656",
+   "answer"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754336720803#1",
+   "node_id": "1754336720803",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754336720803#1",
+   "inputs": {
+    "query": "Hello"
+   },
+   "node_id": "1754336720803",
+   "node_type": "start",
+   "outputs": {
+    "query": "Hello",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "Hello",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754339718571#1",
+   "node_id": "1754339718571",
+   "node_type": "llm"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754339725656",
+    "text"
+   ],
+   "text": "This is a mocked LLM response"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754339718571",
+    "text"
+   ],
+   "text": "This is a mocked LLM response"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754339718571#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "1754339718571",
+   "node_type": "llm",
+   "outputs": {
+    "finish_reason": "stop",
+    "text": "This is a mocked LLM response",
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "process_data": {
+    "finish_reason": "stop",
+    "model_mode": "chat",
+    "model_name": "mock_model",
+    "model_provider": "mock_provider",
+    "prompts": [],
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754339725656#1",
+   "node_id": "1754339725656",
+   "node_type": "llm"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754339725656#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "1754339725656",
+   "node_type": "llm",
+   "outputs": {
+    "finish_reason": "stop",
+    "text": "This is a mocked LLM response",
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "process_data": {
+    "finish_reason": "stop",
+    "model_mode": "chat",
+    "model_name": "mock_model",
+    "model_provider": "mock_provider",
+    "prompts": [],
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "answer#1",
+   "node_id": "answer",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "answer#1",
+   "inputs": {},
+   "node_id": "answer",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "This is a mocked LLM responseThis is a mocked LLM response",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "This is a mocked LLM responseThis is a mocked LLM response",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "multilingual_parallel_llm_streaming_workflow.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "Hello",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

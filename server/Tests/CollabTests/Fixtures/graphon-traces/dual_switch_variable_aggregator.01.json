@@ -1,0 +1,325 @@
+{
+ "case": "dual_switch_variable_aggregator.01",
+ "edges": [
+  [
+   "1754405559643",
+   "1754405563693"
+  ],
+  [
+   "1754405559643",
+   "1754405599173"
+  ],
+  [
+   "1754405563693",
+   "1754405621378"
+  ],
+  [
+   "1754405563693",
+   "1754405636857"
+  ],
+  [
+   "1754405599173",
+   "1754405668235"
+  ],
+  [
+   "1754405599173",
+   "1754405680809"
+  ],
+  [
+   "1754405621378",
+   "1754405693104"
+  ],
+  [
+   "1754405636857",
+   "1754405693104"
+  ],
+  [
+   "1754405668235",
+   "1754405693104"
+  ],
+  [
+   "1754405680809",
+   "1754405693104"
+  ],
+  [
+   "1754405693104",
+   "1754405725407"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405559643#1",
+   "node_id": "1754405559643",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405559643#1",
+   "inputs": {
+    "query": "",
+    "switch1": 0,
+    "switch2": 1
+   },
+   "node_id": "1754405559643",
+   "node_type": "start",
+   "outputs": {
+    "query": "",
+    "switch1": 0,
+    "switch2": 1,
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405563693#1",
+   "node_id": "1754405563693",
+   "node_type": "if-else"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405563693#1",
+   "inputs": {
+    "conditions": [
+     {
+      "actual_value": 0,
+      "comparison_operator": "=",
+      "expected_value": "1"
+     }
+    ]
+   },
+   "node_id": "1754405563693",
+   "node_type": "if-else",
+   "outputs": {
+    "result": false,
+    "selected_case_id": "false"
+   },
+   "process_data": {
+    "condition_results": [
+     {
+      "final_result": false,
+      "group": {
+       "case_id": "true",
+       "conditions": [
+        {
+         "comparison_operator": "=",
+         "sub_variable_condition": null,
+         "value": "1",
+         "variable_selector": [
+          "1754405559643",
+          "switch1"
+         ]
+        }
+       ],
+       "logical_operator": "and"
+      },
+      "results": [
+       false
+      ]
+     }
+    ]
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405599173#1",
+   "node_id": "1754405599173",
+   "node_type": "if-else"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405599173#1",
+   "inputs": {
+    "conditions": [
+     {
+      "actual_value": 1,
+      "comparison_operator": "=",
+      "expected_value": "1"
+     }
+    ]
+   },
+   "node_id": "1754405599173",
+   "node_type": "if-else",
+   "outputs": {
+    "result": true,
+    "selected_case_id": "true"
+   },
+   "process_data": {
+    "condition_results": [
+     {
+      "final_result": true,
+      "group": {
+       "case_id": "true",
+       "conditions": [
+        {
+         "comparison_operator": "=",
+         "sub_variable_condition": null,
+         "value": "1",
+         "variable_selector": [
+          "1754405559643",
+          "switch2"
+         ]
+        }
+       ],
+       "logical_operator": "and"
+      },
+      "results": [
+       true
+      ]
+     }
+    ]
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405636857#1",
+   "node_id": "1754405636857",
+   "node_type": "template-transform"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405636857#1",
+   "inputs": {},
+   "node_id": "1754405636857",
+   "node_type": "template-transform",
+   "outputs": {
+    "output": "switch 1 off"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405668235#1",
+   "node_id": "1754405668235",
+   "node_type": "template-transform"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405668235#1",
+   "inputs": {},
+   "node_id": "1754405668235",
+   "node_type": "template-transform",
+   "outputs": {
+    "output": "switch 2 on"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405693104#1",
+   "node_id": "1754405693104",
+   "node_type": "variable-aggregator"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754405693104",
+    "Group1",
+    "output"
+   ],
+   "text": "switch 1 off"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754405725407",
+    "answer"
+   ],
+   "text": "\n"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754405693104",
+    "Group2",
+    "output"
+   ],
+   "text": "switch 2 on"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405693104#1",
+   "inputs": {
+    "output": "switch 2 on"
+   },
+   "node_id": "1754405693104",
+   "node_type": "variable-aggregator",
+   "outputs": {
+    "Group1": {
+     "output": "switch 1 off"
+    },
+    "Group2": {
+     "output": "switch 2 on"
+    }
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754405725407#1",
+   "node_id": "1754405725407",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754405725407#1",
+   "inputs": {
+    "group1": "switch 1 off",
+    "group2": "switch 2 on"
+   },
+   "node_id": "1754405725407",
+   "node_type": "end",
+   "outputs": {
+    "group1": "switch 1 off",
+    "group2": "switch 2 on"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "group1": "switch 1 off",
+    "group2": "switch 2 on"
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "dual_switch_variable_aggregator_workflow.yml",
+  "inputs": {
+   "switch1": 0,
+   "switch2": 1
+  },
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

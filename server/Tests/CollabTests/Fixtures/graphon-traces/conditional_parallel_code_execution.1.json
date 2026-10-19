@@ -1,0 +1,241 @@
+{
+ "case": "conditional_parallel_code_execution.1",
+ "edges": [
+  [
+   "1754230715804",
+   "1754230718377"
+  ],
+  [
+   "1754230718377",
+   "1754230738434"
+  ],
+  [
+   "1754230718377",
+   "17542307611100"
+  ],
+  [
+   "1754230718377",
+   "17542307611100"
+  ],
+  [
+   "1754230718377",
+   "17542307643480"
+  ],
+  [
+   "1754230738434",
+   "1754230796033"
+  ],
+  [
+   "17542307611100",
+   "1754230796033"
+  ],
+  [
+   "17542307643480",
+   "1754230796033"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754230715804#1",
+   "node_id": "1754230715804",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754230715804#1",
+   "inputs": {
+    "query": "",
+    "switch": 1
+   },
+   "node_id": "1754230715804",
+   "node_type": "start",
+   "outputs": {
+    "query": "",
+    "switch": 1,
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754230718377#1",
+   "node_id": "1754230718377",
+   "node_type": "if-else"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754230718377#1",
+   "inputs": {
+    "conditions": [
+     {
+      "actual_value": 1,
+      "comparison_operator": "=",
+      "expected_value": "1"
+     }
+    ]
+   },
+   "node_id": "1754230718377",
+   "node_type": "if-else",
+   "outputs": {
+    "result": true,
+    "selected_case_id": "true"
+   },
+   "process_data": {
+    "condition_results": [
+     {
+      "final_result": true,
+      "group": {
+       "case_id": "true",
+       "conditions": [
+        {
+         "comparison_operator": "=",
+         "sub_variable_condition": null,
+         "value": "1",
+         "variable_selector": [
+          "1754230715804",
+          "switch"
+         ]
+        }
+       ],
+       "logical_operator": "and"
+      },
+      "results": [
+       true
+      ]
+     }
+    ]
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754230738434#1",
+   "node_id": "1754230738434",
+   "node_type": "code"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754230738434",
+    "result"
+   ],
+   "text": "mocked_result"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754230796033",
+    "answer"
+   ],
+   "text": "\n"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "17542307611100",
+    "result"
+   ],
+   "text": "mocked_result"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754230796033",
+    "answer"
+   ],
+   "text": "\n"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754230738434#1",
+   "inputs": {},
+   "node_id": "1754230738434",
+   "node_type": "code",
+   "outputs": {
+    "result": "mocked_result"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "17542307611100#1",
+   "node_id": "17542307611100",
+   "node_type": "code"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "17542307611100#1",
+   "inputs": {},
+   "node_id": "17542307611100",
+   "node_type": "code",
+   "outputs": {
+    "result": "mocked_result"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754230796033#1",
+   "node_id": "1754230796033",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754230796033#1",
+   "inputs": {
+    "1": "mocked_result",
+    "2": "mocked_result",
+    "3": null
+   },
+   "node_id": "1754230796033",
+   "node_type": "end",
+   "outputs": {
+    "1": "mocked_result",
+    "2": "mocked_result",
+    "3": null
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "1": "mocked_result",
+    "2": "mocked_result",
+    "3": null
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "conditional_parallel_code_execution_workflow.yml",
+  "inputs": {
+   "switch": 1
+  },
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

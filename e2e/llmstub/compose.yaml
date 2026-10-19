@@ -1,0 +1,31 @@
+# The deterministic stub LLM (llmstub.py) as its own small compose project, on the shared network `difysf_e2e`
+# under the name `llmstub`, so Dify's plugin daemon (stack R) and dify-sf's (stack P) reach the same instance at
+# http://llmstub:8000/v1. Runs on the plugin daemon image (already needed by both stacks; it has python3), standard
+# library only. Started and stopped by e2e/stack.sh.
+name: difysf-llmstub
+
+services:
+  llmstub:
+    image: langgenius/dify-plugin-daemon:0.6.10-local
+    entrypoint: ["python3", "-I", "/stub/llmstub.py"]
+    command: []
+    environment:
+      LLMSTUB_PORT: "8000"
+      LLMSTUB_SCRIPT: /stub/script.json
+    volumes:
+      - ./llmstub.py:/stub/llmstub.py:ro
+      - ./script.json:/stub/script.json:ro
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.1
+    restart: "no"
+    ports:
+      - "127.0.0.1:${LLMSTUB_PORT:-18000}:8000"
+    networks:
+      e2e:
+        aliases: [llmstub]
+
+networks:
+  e2e:
+    name: difysf_e2e
+    external: true

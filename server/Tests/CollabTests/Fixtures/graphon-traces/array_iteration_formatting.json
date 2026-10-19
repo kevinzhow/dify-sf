@@ -1,0 +1,282 @@
+{
+ "case": "array_iteration_formatting",
+ "edges": [
+  [
+   "1754683427386",
+   "1754683442688"
+  ],
+  [
+   "1754683442688",
+   "1754683430480"
+  ],
+  [
+   "1754683430480start",
+   "1754683458843"
+  ],
+  [
+   "1754683430480",
+   "1754683480778"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683427386#1",
+   "node_id": "1754683427386",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683427386#1",
+   "inputs": {
+    "query": ""
+   },
+   "node_id": "1754683427386",
+   "node_type": "start",
+   "outputs": {
+    "query": "",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683442688#1",
+   "node_id": "1754683442688",
+   "node_type": "code"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683442688#1",
+   "inputs": {},
+   "node_id": "1754683442688",
+   "node_type": "code",
+   "outputs": {
+    "result": [
+     1,
+     2,
+     3
+    ]
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683430480#1",
+   "node_id": "1754683430480",
+   "node_type": "iteration"
+  },
+  {
+   "event": "iteration_started",
+   "inputs": {
+    "iterator_selector": [
+     1,
+     2,
+     3
+    ]
+   },
+   "node_id": "1754683430480"
+  },
+  {
+   "event": "iteration_next",
+   "index": 0,
+   "node_id": "1754683430480"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683458843#1",
+   "in": "1754683430480",
+   "node_id": "1754683458843",
+   "node_type": "template-transform"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683458843#1",
+   "in": "1754683430480",
+   "inputs": {
+    "arg1": 1
+   },
+   "node_id": "1754683458843",
+   "node_type": "template-transform",
+   "outputs": {
+    "output": "output: 1"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "iteration_next",
+   "index": 1,
+   "node_id": "1754683430480"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683458843#2",
+   "in": "1754683430480",
+   "node_id": "1754683458843",
+   "node_type": "template-transform"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683458843#2",
+   "in": "1754683430480",
+   "inputs": {
+    "arg1": 2
+   },
+   "node_id": "1754683458843",
+   "node_type": "template-transform",
+   "outputs": {
+    "output": "output: 2"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "iteration_next",
+   "index": 2,
+   "node_id": "1754683430480"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683458843#3",
+   "in": "1754683430480",
+   "node_id": "1754683458843",
+   "node_type": "template-transform"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683458843#3",
+   "in": "1754683430480",
+   "inputs": {
+    "arg1": 3
+   },
+   "node_id": "1754683458843",
+   "node_type": "template-transform",
+   "outputs": {
+    "output": "output: 3"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "iteration_completed",
+   "node_id": "1754683430480",
+   "outputs": {
+    "output": [
+     "output: 1",
+     "output: 2",
+     "output: 3"
+    ]
+   },
+   "status": "succeeded",
+   "steps": 3
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754683430480",
+    "output"
+   ],
+   "text": "- output: 1\n- output: 2\n- output: 3"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683430480#1",
+   "inputs": {
+    "iterator_selector": [
+     1,
+     2,
+     3
+    ]
+   },
+   "node_id": "1754683430480",
+   "node_type": "iteration",
+   "outputs": {
+    "output": [
+     "output: 1",
+     "output: 2",
+     "output: 3"
+    ]
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754683480778#1",
+   "node_id": "1754683480778",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754683480778#1",
+   "inputs": {
+    "output": [
+     "output: 1",
+     "output: 2",
+     "output: 3"
+    ]
+   },
+   "node_id": "1754683480778",
+   "node_type": "end",
+   "outputs": {
+    "output": [
+     "output: 1",
+     "output: 2",
+     "output: 3"
+    ]
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "output": [
+     "output: 1",
+     "output: 2",
+     "output: 3"
+    ]
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "array_iteration_formatting_workflow.yml",
+  "inputs": {},
+  "mock": {
+   "1754683442688": {
+    "result": [
+     1,
+     2,
+     3
+    ]
+   }
+  },
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

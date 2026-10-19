@@ -1,0 +1,426 @@
+{
+ "case": "increment_loop_with_break_condition",
+ "edges": [
+  [
+   "1754827922555",
+   "1754827949615"
+  ],
+  [
+   "1754827949615start",
+   "1754827988715"
+  ],
+  [
+   "1754827949615",
+   "1754828005059"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754827922555#1",
+   "node_id": "1754827922555",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754827922555#1",
+   "inputs": {
+    "query": ""
+   },
+   "node_id": "1754827922555",
+   "node_type": "start",
+   "outputs": {
+    "query": "",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754827949615#1",
+   "node_id": "1754827949615",
+   "node_type": "loop"
+  },
+  {
+   "event": "loop_started",
+   "inputs": {
+    "loop_count": 10,
+    "num": 1
+   },
+   "node_id": "1754827949615"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754827988715#1",
+   "in": "1754827949615",
+   "node_id": "1754827988715",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754827988715",
+   "selector": [
+    "1754827949615",
+    "num"
+   ],
+   "value": 2
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754827988715#1",
+   "in": "1754827949615",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "isInIteration": false,
+    "isInLoop": true,
+    "items": [
+     {
+      "input_type": "constant",
+      "operation": "+=",
+      "value": 1,
+      "variable_selector": [
+       "1754827949615",
+       "num"
+      ]
+     }
+    ],
+    "loop_id": "1754827949615",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1754827988715",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "num",
+      "new_value": 2,
+      "selector": [
+       "1754827949615",
+       "num"
+      ],
+      "value_type": "integer"
+     }
+    ],
+    "num": 2
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "loop_next",
+   "index": 1,
+   "node_id": "1754827949615"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754827988715#2",
+   "in": "1754827949615",
+   "node_id": "1754827988715",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754827988715",
+   "selector": [
+    "1754827949615",
+    "num"
+   ],
+   "value": 3
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754827988715#2",
+   "in": "1754827949615",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "isInIteration": false,
+    "isInLoop": true,
+    "items": [
+     {
+      "input_type": "constant",
+      "operation": "+=",
+      "value": 1,
+      "variable_selector": [
+       "1754827949615",
+       "num"
+      ]
+     }
+    ],
+    "loop_id": "1754827949615",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1754827988715",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "num",
+      "new_value": 3,
+      "selector": [
+       "1754827949615",
+       "num"
+      ],
+      "value_type": "integer"
+     }
+    ],
+    "num": 3
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "loop_next",
+   "index": 2,
+   "node_id": "1754827949615"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754827988715#3",
+   "in": "1754827949615",
+   "node_id": "1754827988715",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754827988715",
+   "selector": [
+    "1754827949615",
+    "num"
+   ],
+   "value": 4
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754827988715#3",
+   "in": "1754827949615",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "isInIteration": false,
+    "isInLoop": true,
+    "items": [
+     {
+      "input_type": "constant",
+      "operation": "+=",
+      "value": 1,
+      "variable_selector": [
+       "1754827949615",
+       "num"
+      ]
+     }
+    ],
+    "loop_id": "1754827949615",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1754827988715",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "num",
+      "new_value": 4,
+      "selector": [
+       "1754827949615",
+       "num"
+      ],
+      "value_type": "integer"
+     }
+    ],
+    "num": 4
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "loop_next",
+   "index": 3,
+   "node_id": "1754827949615"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754827988715#4",
+   "in": "1754827949615",
+   "node_id": "1754827988715",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754827988715",
+   "selector": [
+    "1754827949615",
+    "num"
+   ],
+   "value": 5
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754827988715#4",
+   "in": "1754827949615",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "isInIteration": false,
+    "isInLoop": true,
+    "items": [
+     {
+      "input_type": "constant",
+      "operation": "+=",
+      "value": 1,
+      "variable_selector": [
+       "1754827949615",
+       "num"
+      ]
+     }
+    ],
+    "loop_id": "1754827949615",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1754827988715",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "num",
+      "new_value": 5,
+      "selector": [
+       "1754827949615",
+       "num"
+      ],
+      "value_type": "integer"
+     }
+    ],
+    "num": 5
+   },
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "loop_completed",
+   "node_id": "1754827949615",
+   "outputs": {
+    "loop_round": 4,
+    "num": 5
+   },
+   "status": "succeeded",
+   "steps": 10
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754827949615",
+    "num"
+   ],
+   "text": "5"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754827949615#1",
+   "inputs": {
+    "loop_count": 10,
+    "num": 1
+   },
+   "node_id": "1754827949615",
+   "node_type": "loop",
+   "outputs": {
+    "loop_round": 4,
+    "num": 5
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754828005059#1",
+   "node_id": "1754828005059",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754828005059#1",
+   "inputs": {
+    "num": 5
+   },
+   "node_id": "1754828005059",
+   "node_type": "end",
+   "outputs": {
+    "num": 5
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "num": 5
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "increment_loop_with_break_condition_workflow.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

@@ -1,0 +1,142 @@
+{
+ "case": "test_streaming_conversation_variables_v1_overwrite",
+ "edges": [
+  [
+   "start",
+   "assigner"
+  ],
+  [
+   "assigner",
+   "answer"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "start#1",
+   "node_id": "start",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "start#1",
+   "inputs": {
+    "query": "overwrite"
+   },
+   "node_id": "start",
+   "node_type": "start",
+   "outputs": {
+    "conversation.conv_var": "default",
+    "query": "overwrite",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "overwrite",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "assigner#1",
+   "node_id": "assigner",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "assigner",
+   "selector": [
+    "conversation",
+    "conv_var"
+   ],
+   "value": "overwrite"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "answer",
+    "answer"
+   ],
+   "text": "Current Value Of `conv_var` is:"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "conversation",
+    "conv_var"
+   ],
+   "text": "overwrite"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "assigner#1",
+   "inputs": {
+    "value": "overwrite"
+   },
+   "node_id": "assigner",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "conv_var",
+      "new_value": "overwrite",
+      "selector": [
+       "conversation",
+       "conv_var"
+      ],
+      "value_type": "string"
+     }
+    ]
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "answer#1",
+   "node_id": "answer",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "answer#1",
+   "inputs": {},
+   "node_id": "answer",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "Current Value Of `conv_var` is:overwrite",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "Current Value Of `conv_var` is:overwrite",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "test_streaming_conversation_variables_v1_overwrite.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "overwrite",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

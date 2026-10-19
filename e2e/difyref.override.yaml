@@ -1,0 +1,97 @@
+# Reference stack R for the differential tests: Dify 1.17.1's own docker-compose.yaml plus this override.
+#
+#   e2e/stack.sh ref-up      (never run Dify's compose without -f: its directory may hold a local override of its own)
+#
+# Only the services the comparison needs (no web, nginx, worker_beat, vector store, api_websocket, agent_*), each with
+# a memory and CPU cap (containers are not inside the caller's cgroup; the caps are the only limit), named volumes of
+# this project instead of Dify's ./volumes bind mounts (so a session never touches another Dify instance's data), and
+# every published port bound to 127.0.0.1. Relative paths resolve against Dify's docker directory (the project directory).
+#
+# Sum of the caps: 384+64+1024+1228+1024+256+128 MiB = 4.0 GiB (+ llmstub 64 MiB in its own project), 4 CPUs.
+
+x-ref-secret: &ref-secret
+  # A fixed key for this throw-away test stack only (api and worker must agree on it).
+  SECRET_KEY: difyref-local-test-only-secret-key-0001
+  CELERY_WORKER_AMOUNT: "1"
+
+services:
+  init_permissions:
+    volumes: !override
+      - ref_app_storage:/app/api/storage
+
+  db_postgres:
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 0.5
+    volumes: !override
+      - ref_db:/var/lib/postgresql/data
+
+  redis:
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.2
+    volumes: !override
+      - ref_redis:/data
+
+  api:
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    cpus: 1
+    environment:
+      <<: *ref-secret
+    volumes: !override
+      - ref_app_storage:/app/api/storage
+    ports:
+      - "127.0.0.1:${DIFYREF_API_PORT:-15001}:5001"
+
+  worker:
+    mem_limit: 1228m
+    memswap_limit: 1228m
+    cpus: 1
+    environment:
+      <<: *ref-secret
+    volumes: !override
+      - ref_app_storage:/app/api/storage
+
+  plugin_daemon:
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    cpus: 0.8
+    environment:
+      # Building a plugin's virtual environment downloads its wheels from PyPI the first time (cached in the volume).
+      PYTHON_ENV_INIT_TIMEOUT: "600"
+      PLUGIN_INSTALL_TIMEOUT: "900"
+    volumes: !override
+      - ref_plugin_storage:/app/storage
+    ports: !override
+      - "127.0.0.1:${DIFYREF_DAEMON_PORT:-15002}:5002"
+    networks:
+      - ssrf_proxy_network
+      - default
+      - e2e
+
+  sandbox:
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.3
+    volumes: !override
+      - ref_sandbox_deps:/dependencies
+      - ./volumes/sandbox/conf:/conf:ro
+
+  ssrf_proxy:
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.1
+
+networks:
+  # Shared with llmstub and with dify-sf's own plugin daemon (created by stack.sh).
+  e2e:
+    name: difysf_e2e
+    external: true
+
+volumes:
+  ref_db:
+  ref_redis:
+  ref_app_storage:
+  ref_plugin_storage:
+  ref_sandbox_deps:

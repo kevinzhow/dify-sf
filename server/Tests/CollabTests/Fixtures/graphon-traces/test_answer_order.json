@@ -1,0 +1,179 @@
+{
+ "case": "test_answer_order",
+ "edges": [
+  [
+   "1759052466526",
+   "1759052469368"
+  ],
+  [
+   "1759052439553",
+   "1759052580454"
+  ],
+  [
+   "1759052580454",
+   "1759052466526"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1759052466526",
+    "answer"
+   ],
+   "text": "--- answer 1 ---\n\nfoo\n"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759052439553#1",
+   "node_id": "1759052439553",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759052439553#1",
+   "inputs": {
+    "query": "order please"
+   },
+   "node_id": "1759052439553",
+   "node_type": "start",
+   "outputs": {
+    "query": "order please",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "order please",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759052580454#1",
+   "node_id": "1759052580454",
+   "node_type": "llm"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759052580454#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "1759052580454",
+   "node_type": "llm",
+   "outputs": {
+    "finish_reason": "stop",
+    "text": "This is a mocked LLM response",
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "process_data": {
+    "finish_reason": "stop",
+    "model_mode": "chat",
+    "model_name": "mock_model",
+    "model_provider": "mock_provider",
+    "prompts": [],
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759052466526#1",
+   "node_id": "1759052466526",
+   "node_type": "answer"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1759052469368",
+    "answer"
+   ],
+   "text": "--- answer 2 ---\n\n"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1759052580454",
+    "text"
+   ],
+   "text": "This is a mocked LLM response"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1759052469368",
+    "answer"
+   ],
+   "text": "\n"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759052466526#1",
+   "inputs": {},
+   "node_id": "1759052466526",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "--- answer 1 ---\n\nfoo\n",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1759052469368#1",
+   "node_id": "1759052469368",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1759052469368#1",
+   "inputs": {},
+   "node_id": "1759052469368",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "--- answer 2 ---\n\nThis is a mocked LLM response\n",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "--- answer 1 ---\n\nfoo\n--- answer 2 ---\n\nThis is a mocked LLM response\n",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "test-answer-order.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "order please",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

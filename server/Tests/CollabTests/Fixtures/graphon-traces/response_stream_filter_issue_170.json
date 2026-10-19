@@ -1,0 +1,197 @@
+{
+ "case": "response_stream_filter_issue_170",
+ "edges": [
+  [
+   "start",
+   "llm"
+  ],
+  [
+   "llm",
+   "dufu"
+  ],
+  [
+   "dufu",
+   "answer"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "answer",
+    "answer"
+   ],
+   "text": "# Du Fu\n\n"
+  },
+  {
+   "event": "node_started",
+   "exec": "start#1",
+   "node_id": "start",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "start#1",
+   "inputs": {
+    "query": "Write a poem"
+   },
+   "node_id": "start",
+   "node_type": "start",
+   "outputs": {
+    "query": "Write a poem",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "Write a poem",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "llm#1",
+   "node_id": "llm",
+   "node_type": "llm"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "llm#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "llm",
+   "node_type": "llm",
+   "outputs": {
+    "finish_reason": "stop",
+    "text": "This is a mocked LLM response",
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "process_data": {
+    "finish_reason": "stop",
+    "model_mode": "chat",
+    "model_name": "mock_model",
+    "model_provider": "mock_provider",
+    "prompts": [],
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "dufu#1",
+   "node_id": "dufu",
+   "node_type": "llm"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "dufu",
+    "text"
+   ],
+   "text": "This is a mocked LLM response"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "answer",
+    "answer"
+   ],
+   "text": "\n\n# Li Bai\n\n"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "llm",
+    "text"
+   ],
+   "text": "This is a mocked LLM response"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "dufu#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "dufu",
+   "node_type": "llm",
+   "outputs": {
+    "finish_reason": "stop",
+    "text": "This is a mocked LLM response",
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "process_data": {
+    "finish_reason": "stop",
+    "model_mode": "chat",
+    "model_name": "mock_model",
+    "model_provider": "mock_provider",
+    "prompts": [],
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "answer#1",
+   "node_id": "answer",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "answer#1",
+   "inputs": {},
+   "node_id": "answer",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "# Du Fu\n\nThis is a mocked LLM response\n\n# Li Bai\n\nThis is a mocked LLM response",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "# Du Fu\n\nThis is a mocked LLM response\n\n# Li Bai\n\nThis is a mocked LLM response",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "response_stream_filter_issue_170_workflow.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "Write a poem",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

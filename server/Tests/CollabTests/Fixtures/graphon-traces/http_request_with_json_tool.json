@@ -1,0 +1,171 @@
+{
+ "case": "http_request_with_json_tool",
+ "edges": [
+  [
+   "start_node",
+   "http_node"
+  ],
+  [
+   "http_node",
+   "tool_node"
+  ],
+  [
+   "tool_node",
+   "end_node"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "start_node#1",
+   "node_id": "start_node",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "start_node#1",
+   "inputs": {
+    "query": "",
+    "url": "http://llmstub:8000/echo/json"
+   },
+   "node_id": "start_node",
+   "node_type": "start",
+   "outputs": {
+    "query": "",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>",
+    "url": "http://llmstub:8000/echo/json"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "http_node#1",
+   "node_id": "http_node",
+   "node_type": "http-request"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "http_node",
+    "status_code"
+   ],
+   "text": "200"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "end_node",
+    "answer"
+   ],
+   "text": "\n"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "http_node#1",
+   "inputs": {
+    "method": "GET",
+    "url": "http://mock.url"
+   },
+   "node_id": "http_node",
+   "node_type": "http-request",
+   "outputs": {
+    "body": "mocked response",
+    "headers": {},
+    "status_code": 200
+   },
+   "process_data": {
+    "request_method": "GET",
+    "request_url": "http://mock.url"
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "tool_node#1",
+   "node_id": "tool_node",
+   "node_type": "tool"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "tool_node",
+    "result"
+   ],
+   "text": "mocked tool output"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "tool_node#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "tool_node",
+   "node_type": "tool",
+   "outputs": {
+    "result": "mocked tool output"
+   },
+   "process_data": {
+    "tool_name": "mock_tool",
+    "tool_parameters": {}
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "end_node#1",
+   "node_id": "end_node",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "end_node#1",
+   "inputs": {
+    "parsed_data": "mocked tool output",
+    "status_code": 200
+   },
+   "node_id": "end_node",
+   "node_type": "end",
+   "outputs": {
+    "parsed_data": "mocked tool output",
+    "status_code": 200
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "parsed_data": "mocked tool output",
+    "status_code": 200
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "http_request_with_json_tool_workflow.yml",
+  "inputs": {
+   "url": "http://llmstub:8000/echo/json"
+  },
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

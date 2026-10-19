@@ -1,5 +1,8 @@
 # Local development stack: Postgres + the collab server. Everything is bound to localhost only.
 #   docker compose up --build
+# With the runtime services (Dify's plugin daemon for models and tools, its Redis, the code sandbox and the SSRF proxy;
+# see docs/runtime-services.md):
+#   COLLAB_PLUGIN_DAEMON_URL=http://plugin_daemon:5002 docker compose --profile runtime up --build
 services:
   postgres:
     image: postgres:15-alpine
@@ -20,6 +23,7 @@ services:
       retries: 30
 
   server:
+    image: dify-sf-server
     mem_limit: 1536m
     cpus: 2
     build:
@@ -42,8 +46,127 @@ services:
       COLLAB_SECRETS_KEY: ${COLLAB_SECRETS_KEY:-ZGlmeS1zZi1sb2NhbC1kZXZlbG9wbWVudC1rZXktMDE=}
       # Check provider credentials with one request to the provider before saving (false for servers without internet).
       COLLAB_MODELS_VALIDATE: ${COLLAB_MODELS_VALIDATE:-true}
+      # The runtime services (profile `runtime`). The plugin daemon is used only when its URL is set: with the profile,
+      # COLLAB_PLUGIN_DAEMON_URL=http://plugin_daemon:5002 (empty = no model runtime; see docs/runtime-services.md).
+      COLLAB_PLUGIN_DAEMON_URL: ${COLLAB_PLUGIN_DAEMON_URL:-}
+      COLLAB_PLUGIN_DAEMON_KEY: ${COLLAB_PLUGIN_DAEMON_KEY:-dify-sf-local-plugin-daemon-key}
+      COLLAB_SANDBOX_URL: http://sandbox:8194
+      COLLAB_SANDBOX_KEY: ${COLLAB_SANDBOX_KEY:-dify-sf-local-sandbox-key}
+      COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
+    # Lets the server reach a service on the host (e.g. the client conformance test's stub model provider, served by
+    # the test process: DIFYSF_STUB_HOST=host.docker.internal).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:${COLLAB_PORT:-8080}:8080"
+    networks:
+      - default
+      - ssrf_proxy_network   # to reach the sandbox
+
+  # ---- profile `runtime`: Dify's peripheral services, called over HTTP (docs/runtime-services.md) ----
+
+  # Runs model and tool plugins (one Python process per plugin). Its database `dify_plugin` lives in the Postgres above
+  # (the daemon creates it on first start); installed plugins and their virtual environments live in `plugin_storage`.
+  plugin_daemon:
+    profiles: [runtime]
+    image: langgenius/dify-plugin-daemon:0.6.10-local
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    cpus: 1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: collab
+      DB_PASSWORD: collab
+      DB_DATABASE: dify_plugin
+      DB_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${COLLAB_REDIS_PASSWORD:-dify-sf-local-redis}
+      SERVER_PORT: "5002"
+      SERVER_KEY: ${COLLAB_PLUGIN_DAEMON_KEY:-dify-sf-local-plugin-daemon-key}
+      # Backwards invocation (plugin -> LLM/tool/app/file) is not implemented by dify-sf yet; LLM-only providers do not use it.
+      DIFY_INNER_API_URL: http://server:8080
+      DIFY_INNER_API_KEY: ${COLLAB_PLUGIN_INNER_API_KEY:-dify-sf-local-inner-api-key}
+      PLUGIN_REMOTE_INSTALLING_ENABLED: "false"
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      FORCE_VERIFYING_SIGNATURE: "true"
+      # The first install of a plugin downloads its Python wheels (PyPI or PIP_MIRROR_URL); later starts reuse them.
+      PYTHON_ENV_INIT_TIMEOUT: "600"
+      PLUGIN_INSTALL_TIMEOUT: "900"
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+    volumes:
+      - plugin_storage:/app/storage
+    ports:
+      - "127.0.0.1:${COLLAB_PLUGIN_DAEMON_PORT:-5002}:5002"
+
+  # Only for the plugin daemon (the server itself needs no Redis).
+  redis:
+    profiles: [runtime]
+    image: redis:6-alpine
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.2
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${COLLAB_REDIS_PASSWORD:-dify-sf-local-redis}", "--maxmemory", "48mb", "--save", ""]
+
+  # Python / Node.js / Jinja2 execution for code and template nodes. Only on the internal network; its egress goes
+  # through ssrf_proxy.
+  sandbox:
+    profiles: [runtime]
+    image: langgenius/dify-sandbox:0.2.15
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+    environment:
+      API_KEY: ${COLLAB_SANDBOX_KEY:-dify-sf-local-sandbox-key}
+      GIN_MODE: release
+      WORKER_TIMEOUT: "15"
+      ENABLE_NETWORK: "true"
+      HTTP_PROXY: http://ssrf_proxy:3128
+      HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+    volumes:
+      - ./docker/sandbox/config.yaml:/conf/config.yaml:ro
+      - sandbox_dependencies:/dependencies
+    networks:
+      - ssrf_proxy_network
+
+  # Forward proxy refusing private destinations (SSRF protection) for the sandbox and HTTP request nodes.
+  ssrf_proxy:
+    profiles: [runtime]
+    image: ubuntu/squid:latest
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.2
+    restart: unless-stopped
+    volumes:
+      - ./docker/ssrf_proxy/squid.conf:/etc/squid/squid.conf:ro
+    networks:
+      - ssrf_proxy_network
+      - default
+
+networks:
+  # The sandbox's only network: no route out except through ssrf_proxy.
+  ssrf_proxy_network:
+    internal: true
 
 volumes:
   pgdata:
+  plugin_storage:
+  sandbox_dependencies:

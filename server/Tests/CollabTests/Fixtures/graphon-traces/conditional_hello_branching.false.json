@@ -1,0 +1,151 @@
+{
+ "case": "conditional_hello_branching.false",
+ "edges": [
+  [
+   "1754154032319",
+   "1754217359748"
+  ],
+  [
+   "1754217359748",
+   "1754154034161"
+  ],
+  [
+   "1754217359748",
+   "1754217363584"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754154032319#1",
+   "node_id": "1754154032319",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754154032319#1",
+   "inputs": {
+    "query": "goodbye"
+   },
+   "node_id": "1754154032319",
+   "node_type": "start",
+   "outputs": {
+    "query": "goodbye",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754217359748#1",
+   "node_id": "1754217359748",
+   "node_type": "if-else"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754154032319",
+    "query"
+   ],
+   "text": "goodbye"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754217359748#1",
+   "inputs": {
+    "conditions": [
+     {
+      "actual_value": "goodbye",
+      "comparison_operator": "contains",
+      "expected_value": "hello"
+     }
+    ]
+   },
+   "node_id": "1754217359748",
+   "node_type": "if-else",
+   "outputs": {
+    "result": false,
+    "selected_case_id": "false"
+   },
+   "process_data": {
+    "condition_results": [
+     {
+      "final_result": false,
+      "group": {
+       "case_id": "true",
+       "conditions": [
+        {
+         "comparison_operator": "contains",
+         "sub_variable_condition": null,
+         "value": "hello",
+         "variable_selector": [
+          "1754154032319",
+          "query"
+         ]
+        }
+       ],
+       "logical_operator": "and"
+      },
+      "results": [
+       false
+      ]
+     }
+    ]
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754217363584#1",
+   "node_id": "1754217363584",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754217363584#1",
+   "inputs": {
+    "false": "goodbye"
+   },
+   "node_id": "1754217363584",
+   "node_type": "end",
+   "outputs": {
+    "false": "goodbye"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "false": "goodbye"
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "conditional_hello_branching_workflow.yml",
+  "inputs": {
+   "query": "goodbye"
+  },
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

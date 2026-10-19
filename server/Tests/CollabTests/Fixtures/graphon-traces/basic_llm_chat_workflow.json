@@ -1,0 +1,133 @@
+{
+ "case": "basic_llm_chat_workflow",
+ "edges": [
+  [
+   "start_node",
+   "llm_node"
+  ],
+  [
+   "llm_node",
+   "end_node"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "start_node#1",
+   "node_id": "start_node",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "start_node#1",
+   "inputs": {
+    "query": "Tell me about Dify"
+   },
+   "node_id": "start_node",
+   "node_type": "start",
+   "outputs": {
+    "query": "Tell me about Dify",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "llm_node#1",
+   "node_id": "llm_node",
+   "node_type": "llm"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "llm_node",
+    "text"
+   ],
+   "text": "This is a mocked LLM response"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "llm_node#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "llm_node",
+   "node_type": "llm",
+   "outputs": {
+    "finish_reason": "stop",
+    "text": "This is a mocked LLM response",
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "process_data": {
+    "finish_reason": "stop",
+    "model_mode": "chat",
+    "model_name": "mock_model",
+    "model_provider": "mock_provider",
+    "prompts": [],
+    "usage": {
+     "completion_tokens": 5,
+     "prompt_tokens": 10,
+     "total_tokens": 15
+    }
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "end_node#1",
+   "node_id": "end_node",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "end_node#1",
+   "inputs": {
+    "answer": "This is a mocked LLM response"
+   },
+   "node_id": "end_node",
+   "node_type": "end",
+   "outputs": {
+    "answer": "This is a mocked LLM response"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "This is a mocked LLM response"
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "basic_llm_chat_workflow.yml",
+  "inputs": {
+   "query": "Tell me about Dify"
+  },
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

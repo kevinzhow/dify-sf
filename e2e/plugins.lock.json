@@ -1,0 +1,13 @@
+{
+  "_doc": "Plugin packages the e2e stacks install (both Dify's and dify-sf's plugin daemon), pinned. Downloaded once from the Dify marketplace into e2e/.cache/plugins/ (git-ignored) and checked against sha256; installs then use the cached file. Signed by langgenius (the daemons run with FORCE_VERIFYING_SIGNATURE=true).",
+  "plugins": [
+    {
+      "id": "langgenius/openai_api_compatible",
+      "version": "0.0.68",
+      "unique_identifier": "langgenius/openai_api_compatible:0.0.68@ba61c5eccb814be7364117c0bec3710a51e09b20f31e37243e747a00f9377969",
+      "file": "langgenius-openai_api_compatible-0.0.68.difypkg",
+      "sha256": "3e134cc200b86edb905fc9b43cd5525741005f3004bacfa49c63601f7b271705",
+      "runner": "python 3.12, dify-plugin 0.10.2, openai 3.17.0"
+    }
+  ]
+}

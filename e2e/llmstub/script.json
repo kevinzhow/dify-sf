@@ -1,0 +1,6 @@
+{
+  "rules": [
+    {"match": "[[stub:fail]]", "status": 500, "error": "scripted failure"},
+    {"match": "[[stub:fixed]]", "reply": "This is the fixed stub answer."}
+  ]
+}

@@ -1,0 +1,433 @@
+{
+ "case": "search_dify_from_2023_to_2025",
+ "edges": [
+  [
+   "1754979518055",
+   "1754979524910"
+  ],
+  [
+   "1754979524910start",
+   "1754979561786"
+  ],
+  [
+   "1754979561786",
+   "1754979613854"
+  ],
+  [
+   "1754979524910",
+   "1754979638585"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979518055#1",
+   "node_id": "1754979518055",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979518055#1",
+   "inputs": {
+    "query": "dify"
+   },
+   "node_id": "1754979518055",
+   "node_type": "start",
+   "outputs": {
+    "query": "dify",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "dify",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979524910#1",
+   "node_id": "1754979524910",
+   "node_type": "loop"
+  },
+  {
+   "event": "loop_started",
+   "inputs": {
+    "loop_count": 10,
+    "res": [],
+    "year": 2023
+   },
+   "node_id": "1754979524910"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979561786#1",
+   "in": "1754979524910",
+   "node_id": "1754979561786",
+   "node_type": "tool"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979561786#1",
+   "in": "1754979524910",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "1754979561786",
+   "node_type": "tool",
+   "outputs": {
+    "files": [],
+    "json": [],
+    "text": "mocked search result"
+   },
+   "process_data": {
+    "tool_name": "mock_tool",
+    "tool_parameters": {}
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979613854#1",
+   "in": "1754979524910",
+   "node_id": "1754979613854",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754979613854",
+   "selector": [
+    "1754979524910",
+    "year"
+   ],
+   "value": 2024
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754979613854",
+   "selector": [
+    "1754979524910",
+    "res"
+   ],
+   "value": [
+    "mocked search result"
+   ]
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979613854#1",
+   "in": "1754979524910",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "isInIteration": false,
+    "isInLoop": true,
+    "items": [
+     {
+      "input_type": "constant",
+      "operation": "+=",
+      "value": 1,
+      "variable_selector": [
+       "1754979524910",
+       "year"
+      ]
+     },
+     {
+      "input_type": "variable",
+      "operation": "append",
+      "value": [
+       "1754979561786",
+       "text"
+      ],
+      "variable_selector": [
+       "1754979524910",
+       "res"
+      ]
+     }
+    ],
+    "loop_id": "1754979524910",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1754979613854",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "year",
+      "new_value": 2024,
+      "selector": [
+       "1754979524910",
+       "year"
+      ],
+      "value_type": "integer"
+     },
+     {
+      "name": "res",
+      "new_value": [
+       "mocked search result"
+      ],
+      "selector": [
+       "1754979524910",
+       "res"
+      ],
+      "value_type": "array[any]"
+     }
+    ],
+    "res": [
+     "mocked search result"
+    ],
+    "year": 2024
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "loop_next",
+   "index": 1,
+   "node_id": "1754979524910"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979561786#2",
+   "in": "1754979524910",
+   "node_id": "1754979561786",
+   "node_type": "tool"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979561786#2",
+   "in": "1754979524910",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "1754979561786",
+   "node_type": "tool",
+   "outputs": {
+    "files": [],
+    "json": [],
+    "text": "mocked search result"
+   },
+   "process_data": {
+    "tool_name": "mock_tool",
+    "tool_parameters": {}
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979613854#2",
+   "in": "1754979524910",
+   "node_id": "1754979613854",
+   "node_type": "assigner"
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754979613854",
+   "selector": [
+    "1754979524910",
+    "year"
+   ],
+   "value": 2025
+  },
+  {
+   "event": "variable_updated",
+   "node_id": "1754979613854",
+   "selector": [
+    "1754979524910",
+    "res"
+   ],
+   "value": [
+    "mocked search result",
+    "mocked search result"
+   ]
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979613854#2",
+   "in": "1754979524910",
+   "inputs": {
+    "default_value": null,
+    "desc": "",
+    "error_strategy": null,
+    "isInIteration": false,
+    "isInLoop": true,
+    "items": [
+     {
+      "input_type": "constant",
+      "operation": "+=",
+      "value": 1,
+      "variable_selector": [
+       "1754979524910",
+       "year"
+      ]
+     },
+     {
+      "input_type": "variable",
+      "operation": "append",
+      "value": [
+       "1754979561786",
+       "text"
+      ],
+      "variable_selector": [
+       "1754979524910",
+       "res"
+      ]
+     }
+    ],
+    "loop_id": "1754979524910",
+    "retry_config": {
+     "max_retries": 0,
+     "retry_enabled": false,
+     "retry_interval": 0
+    },
+    "selected": false,
+    "title": "Variable Assigner",
+    "type": "assigner",
+    "version": "2"
+   },
+   "node_id": "1754979613854",
+   "node_type": "assigner",
+   "outputs": {},
+   "process_data": {
+    "__updated_variables": [
+     {
+      "name": "year",
+      "new_value": 2025,
+      "selector": [
+       "1754979524910",
+       "year"
+      ],
+      "value_type": "integer"
+     },
+     {
+      "name": "res",
+      "new_value": [
+       "mocked search result",
+       "mocked search result"
+      ],
+      "selector": [
+       "1754979524910",
+       "res"
+      ],
+      "value_type": "array[any]"
+     }
+    ],
+    "res": [
+     "mocked search result",
+     "mocked search result"
+    ],
+    "year": 2025
+   },
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "loop_completed",
+   "node_id": "1754979524910",
+   "outputs": {
+    "loop_round": 2,
+    "res": [
+     "mocked search result",
+     "mocked search result"
+    ],
+    "year": 2025
+   },
+   "status": "succeeded",
+   "steps": 10
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754979524910",
+    "res"
+   ],
+   "text": "- mocked search result\n- mocked search result"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979524910#1",
+   "inputs": {
+    "loop_count": 10,
+    "res": [],
+    "year": 2023
+   },
+   "node_id": "1754979524910",
+   "node_type": "loop",
+   "outputs": {
+    "loop_round": 2,
+    "res": [
+     "mocked search result",
+     "mocked search result"
+    ],
+    "year": 2025
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754979638585#1",
+   "node_id": "1754979638585",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754979638585#1",
+   "inputs": {},
+   "node_id": "1754979638585",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "- mocked search result\n- mocked search result",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "- mocked search result\n- mocked search result",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "search_dify_from_2023_to_2025.yml",
+  "inputs": {},
+  "mock": {
+   "1754979561786": {
+    "files": [],
+    "json": [],
+    "text": "mocked search result"
+   }
+  },
+  "query": "dify",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

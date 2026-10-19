@@ -1,0 +1,20 @@
+# dify-sf's own stack (stack P) in a differential-test session: docker-compose.yml with profile `runtime` plus this
+# file. Puts the server and its plugin daemon on the shared network `difysf_e2e`, where llmstub (and Dify's stack R)
+# live, so a model provider configured with endpoint_url http://llmstub:8000/v1 works from both. Used by e2e/stack.sh.
+services:
+  server:
+    environment:
+      COLLAB_PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+    networks:
+      - default
+      - ssrf_proxy_network
+      - e2e
+  plugin_daemon:
+    networks:
+      - default
+      - e2e
+
+networks:
+  e2e:
+    name: difysf_e2e
+    external: true

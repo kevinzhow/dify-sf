@@ -1,0 +1,105 @@
+{
+ "case": "answer_end_with_text",
+ "edges": [
+  [
+   "1755077165531",
+   "answer"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "answer",
+    "answer"
+   ],
+   "text": "prefix"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "sys",
+    "query"
+   ],
+   "text": "hello"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "answer",
+    "answer"
+   ],
+   "text": "suffix"
+  },
+  {
+   "event": "node_started",
+   "exec": "1755077165531#1",
+   "node_id": "1755077165531",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1755077165531#1",
+   "inputs": {
+    "query": "hello"
+   },
+   "node_id": "1755077165531",
+   "node_type": "start",
+   "outputs": {
+    "query": "hello",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "hello",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "answer#1",
+   "node_id": "answer",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "answer#1",
+   "inputs": {},
+   "node_id": "answer",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "prefixhellosuffix",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "prefixhellosuffix",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "answer_end_with_text.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "hello",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

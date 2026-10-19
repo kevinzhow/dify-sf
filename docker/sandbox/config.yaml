@@ -1,0 +1,15 @@
+# dify-sandbox 0.2.15 settings for the runtime profile; the environment in docker-compose.yml overrides the key, port,
+# timeout, network switch and proxy.
+app:
+  port: 8194
+  debug: false
+  key: dify-sandbox
+max_workers: 4
+max_requests: 50
+worker_timeout: 15
+enable_network: true
+allowed_syscalls:
+proxy:
+  socks5: ''
+  http: ''
+  https: ''

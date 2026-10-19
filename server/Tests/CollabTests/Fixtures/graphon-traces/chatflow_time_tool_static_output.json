@@ -1,0 +1,140 @@
+{
+ "case": "chatflow_time_tool_static_output",
+ "edges": [
+  [
+   "1754336720803",
+   "1754336729904"
+  ],
+  [
+   "1754336729904",
+   "1754336733947"
+  ],
+  [
+   "1754336733947",
+   "answer"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754336720803#1",
+   "node_id": "1754336720803",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754336720803#1",
+   "inputs": {
+    "query": "1"
+   },
+   "node_id": "1754336720803",
+   "node_type": "start",
+   "outputs": {
+    "query": "1",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "1",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754336729904#1",
+   "node_id": "1754336729904",
+   "node_type": "tool"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754336729904#1",
+   "inputs": {
+    "mock": "inputs"
+   },
+   "node_id": "1754336729904",
+   "node_type": "tool",
+   "outputs": {
+    "result": "mocked tool output"
+   },
+   "process_data": {
+    "tool_name": "mock_tool",
+    "tool_parameters": {}
+   },
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754336733947#1",
+   "node_id": "1754336733947",
+   "node_type": "template-transform"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754336733947",
+    "output"
+   ],
+   "text": "hello, dify!"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754336733947#1",
+   "inputs": {},
+   "node_id": "1754336733947",
+   "node_type": "template-transform",
+   "outputs": {
+    "output": "hello, dify!"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "answer#1",
+   "node_id": "answer",
+   "node_type": "answer"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "answer#1",
+   "inputs": {},
+   "node_id": "answer",
+   "node_type": "answer",
+   "outputs": {
+    "answer": "hello, dify!",
+    "files": []
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "answer": "hello, dify!",
+    "files": []
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "chatflow_time_tool_static_output_workflow.yml",
+  "inputs": {},
+  "mock": {},
+  "query": "1",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}

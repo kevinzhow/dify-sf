@@ -1,0 +1,91 @@
+{
+ "case": "simple_passthrough",
+ "edges": [
+  [
+   "1754154032319",
+   "1754154034161"
+  ]
+ ],
+ "events": [
+  {
+   "event": "workflow_started"
+  },
+  {
+   "event": "text_chunk",
+   "selector": [
+    "1754154032319",
+    "query"
+   ],
+   "text": "plain text"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754154032319#1",
+   "node_id": "1754154032319",
+   "node_type": "start"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754154032319#1",
+   "inputs": {
+    "query": "plain text"
+   },
+   "node_id": "1754154032319",
+   "node_type": "start",
+   "outputs": {
+    "query": "plain text",
+    "sys.app_id": "<volatile>",
+    "sys.files": [],
+    "sys.query": "",
+    "sys.user_id": "<volatile>",
+    "sys.workflow_id": "<volatile>"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "event": "node_started",
+   "exec": "1754154034161#1",
+   "node_id": "1754154034161",
+   "node_type": "end"
+  },
+  {
+   "error": null,
+   "event": "node_finished",
+   "exec": "1754154034161#1",
+   "inputs": {
+    "query": "plain text"
+   },
+   "node_id": "1754154034161",
+   "node_type": "end",
+   "outputs": {
+    "query": "plain text"
+   },
+   "process_data": {},
+   "status": "succeeded"
+  },
+  {
+   "error": null,
+   "event": "workflow_finished",
+   "exceptions_count": 0,
+   "outputs": {
+    "query": "plain text"
+   },
+   "status": "succeeded"
+  }
+ ],
+ "meta": {
+  "engine": "graphon==0.7.0 (dify-api 1.17.1 image)",
+  "fixture": "simple_passthrough_workflow.yml",
+  "inputs": {
+   "query": "plain text"
+  },
+  "mock": {},
+  "query": "",
+  "repeats_identical": true,
+  "workers": 1
+ },
+ "schema": "dify-sf-trace/1",
+ "source": "graphon-0.7.0+dify-1.17.1-mock"
+}
