@@ -54,6 +54,33 @@ List<double> valueAxisTicks(double max) {
   return ticks;
 }
 
+/// The width ECharts measures for a number label (`containLabel` makes room for the widest y label): Dify sets no
+/// font, so the canvas measures ECharts' default `12px sans-serif`, which browsers resolve to Helvetica / Arial (or a
+/// metric-compatible font such as Liberation Sans): digits 0.556 em, `,` and `.` 0.278 em, `-` 0.333 em. Null for other
+/// text (measured with the chart's own font).
+double? echartsNumberWidth(String text) {
+  var em = 0.0;
+  for (final c in text.codeUnits) {
+    em += switch (c) {
+      >= 0x30 && <= 0x39 => 0.556,
+      0x2C || 0x2E || 0x20 => 0.278,
+      0x2D => 0.333,
+      _ => double.nan,
+    };
+  }
+  return em.isNaN ? null : em * _labelFontSize;
+}
+
+/// LineView's area default `opacity: 0.7` (areaStyle sets none in Dify), applied to the gradient's colours.
+Color _areaOpacity(Color c) => c.withValues(alpha: c.a * 0.7);
+
+/// zrender's `subPixelOptimize` for a 1 px line (`positiveOrNegative: true`): the position doubled and rounded, then
+/// moved to the nearest half pixel at or after it, so the line covers whole pixels.
+double echartsCrisp(double v) {
+  final d = (v * 2).roundToDouble();
+  return d % 2 != 0 ? d / 2 : (d + 1) / 2;
+}
+
 /// The value axis's label of [v] (ECharts' `addCommas` on the rounded value).
 String valueAxisLabel(double v) => toLocaleString(v, maxFraction: 10);
 
@@ -83,7 +110,7 @@ class ChartLayout {
     final yTop = ticks.last;
     double measure(String s) => _painter(s, labelStyle).width;
     final yLabels = [for (final t in ticks) valueAxisLabel(t)];
-    final yLabelWidth = yLabels.map(measure).fold(0.0, math.max);
+    final yLabelWidth = yLabels.map((t) => echartsNumberWidth(t) ?? measure(t)).fold(0.0, math.max);
     final texts = [for (final r in rows) o.formatXLabel('${r['date'] ?? ''}')];
     final widths = texts.map(measure).toList();
     final g = o.grid;
@@ -188,7 +215,7 @@ class AppChartPainter extends CustomPainter {
     // ECharts draws into its container: what overflows it (the edge date labels) is cut off.
     canvas.clipRect(Offset.zero & size);
     final p = l.plot;
-    double crisp(double v) => v.roundToDouble() + 0.5;
+    final crisp = echartsCrisp;
     final thin = Paint()
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
@@ -244,7 +271,7 @@ class AppChartPainter extends CustomPainter {
           ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [c0, c1],
+            colors: [_areaOpacity(c0), _areaOpacity(c1)],
           ).createShader(bounds.height < 1 ? bounds.inflate(0.5) : bounds),
       );
       final line = Path()..moveTo(run.first.dx, run.first.dy);

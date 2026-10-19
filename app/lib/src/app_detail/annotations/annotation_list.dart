@@ -12,7 +12,7 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../../workflow_editor/header/format.dart' as fmt;
+import '../../auth/account_time.dart';
 import '../../workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox;
 import 'annotation_overlays.dart';
 import 'confirm_modals.dart';
@@ -33,7 +33,7 @@ class AnnotationList extends StatefulWidget {
     required this.selectedIds,
     required this.onSelectedIdsChange,
     required this.onBatchDelete,
-    this.formatTime = fmt.formatTime,
+    this.formatTime,
   });
 
   final List<Annotation> list;
@@ -42,7 +42,9 @@ class AnnotationList extends StatefulWidget {
   final List<String> selectedIds;
   final ValueChanged<List<String>> onSelectedIdsChange;
   final Future<void> Function() onBatchDelete;
-  final AnnotationTimeFormatter formatTime;
+
+  /// Null: the account's time zone ([AccountTime.of], Dify's `useTimestamp`).
+  final AnnotationTimeFormatter? formatTime;
 
   @override
   State<AnnotationList> createState() => _AnnotationListState();
@@ -67,7 +69,10 @@ class _AnnotationListState extends State<AnnotationList> {
     final selected = ids.where(widget.selectedIds.contains).length;
     final all = ids.isNotEmpty && selected == ids.length;
     final dateFormat = _t('appLog', 'dateTimeFormat');
-    final created = [for (final item in widget.list) widget.formatTime(item.createdAt, dateFormat)];
+    final created = [
+      for (final item in widget.list)
+        (widget.formatTime ?? AccountTime.of(context).formatTime)(item.createdAt, dateFormat),
+    ];
     return Stack(
       fit: StackFit.expand,
       children: [

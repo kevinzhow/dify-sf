@@ -12,7 +12,7 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
-import '../../workflow_editor/header/format.dart' as fmt;
+import '../../auth/account_time.dart';
 import '../../workflow_editor/panel_fields/controls.dart' show DifyBadge;
 import '../../workflow_editor/panel_fields/form_controls.dart' show DifyCheckbox, DifyTextarea;
 import '../logs/log_widgets.dart' show LogPagination;
@@ -437,7 +437,7 @@ class EditAnnotationModal extends StatefulWidget {
     this.createdAt,
     this.onlyEditResponse = false,
     this.toast,
-    this.formatTime = fmt.formatTime,
+    this.formatTime,
   });
 
   final bool isShow;
@@ -458,7 +458,9 @@ class EditAnnotationModal extends StatefulWidget {
   })
   editAnnotation;
   final AnnotationToast? toast;
-  final AnnotationTimeFormatter formatTime;
+
+  /// Null: the account's time zone ([AccountTime.of], Dify's `useTimestamp`).
+  final AnnotationTimeFormatter? formatTime;
 
   @override
   State<EditAnnotationModal> createState() => _EditAnnotationModalState();
@@ -530,7 +532,9 @@ class _EditAnnotationModalState extends State<EditAnnotationModal> {
       footer: AnnotationDrawerFooter(
         leading: _removeThisCache(() => setState(() => _showModal = true)),
         trailing: createdAt != null && createdAt != 0
-            ? _createdAt(w.formatTime(createdAt, _t('appLog', 'dateTimeFormat')))
+            ? _createdAt(
+                (w.formatTime ?? AccountTime.of(context).formatTime)(createdAt, _t('appLog', 'dateTimeFormat')),
+              )
             : null,
       ),
     );
@@ -649,7 +653,7 @@ class ViewAnnotationModal extends StatefulWidget {
     required this.onSave,
     required this.onRemove,
     required this.fetchHitHistory,
-    this.formatTime = fmt.formatTime,
+    this.formatTime,
   });
 
   final bool isShow;
@@ -660,7 +664,9 @@ class ViewAnnotationModal extends StatefulWidget {
 
   /// `fetchHitHistoryList(appId, id, {page, limit: 10})`.
   final Future<AnnotationListPage<AnnotationHitHistory>> Function(String annotationId, int page) fetchHitHistory;
-  final AnnotationTimeFormatter formatTime;
+
+  /// Null: the account's time zone ([AccountTime.of], Dify's `useTimestamp`).
+  final AnnotationTimeFormatter? formatTime;
 
   @override
   State<ViewAnnotationModal> createState() => _ViewAnnotationModalState();
@@ -773,7 +779,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
                 c(hit.response ?? '', flex: 2),
                 c(hit.source ?? ''),
                 c((hit.score ?? 0) != 0 ? hit.score!.toStringAsFixed(2) : '-'),
-                c(widget.formatTime(hit.createdAt ?? 0, dateFormat), flex: 2),
+                c((widget.formatTime ?? AccountTime.of(context).formatTime)(hit.createdAt ?? 0, dateFormat), flex: 2),
               ],
             ),
           ),
@@ -864,7 +870,9 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
           ? null
           : AnnotationDrawerFooter(
               leading: _removeThisCache(() => setState(() => _showModal = true)),
-              trailing: _createdAt(w.formatTime(w.item.createdAt, _t('appLog', 'dateTimeFormat'))),
+              trailing: _createdAt(
+                (w.formatTime ?? AccountTime.of(context).formatTime)(w.item.createdAt, _t('appLog', 'dateTimeFormat')),
+              ),
             ),
     );
   }

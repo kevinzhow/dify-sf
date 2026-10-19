@@ -5,8 +5,12 @@ library;
 String _two(int n) => n.toString().padLeft(2, '0');
 
 /// `formatTime(seconds, 'HH:mm:ss')` in local time (dayjs tokens `HH`, `hh`, `mm`, `ss`, `YYYY`, `MM`, `DD`, `A`).
-String formatTime(int seconds, String format) {
-  final d = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+/// The account's time zone (Dify's `useTimestamp`): `AccountTime.of(context).formatTime` (auth/account_time.dart).
+String formatTime(int seconds, String format) =>
+    formatDateFields(DateTime.fromMillisecondsSinceEpoch(seconds * 1000), format);
+
+/// [d]'s fields as they read (local or UTC alike) in a dayjs [format] (the tokens of [formatTime]).
+String formatDateFields(DateTime d, String format) {
   return format
       .replaceAll('YYYY', '${d.year}')
       .replaceAll('MM', _two(d.month))

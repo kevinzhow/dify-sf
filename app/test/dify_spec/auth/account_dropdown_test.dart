@@ -81,8 +81,7 @@ void main() {
             .decoration,
         isA<BoxDecoration>().having((d) => d.color, 'color', DifyColors.stateBaseHover),
       );
-      // Dify's Preferences entry is not shown (dify-sf has no preferences dialog); Appearance is.
-      expect(find.text('common.settings.preferences'), findsNothing);
+      expect(find.text('common.settings.preferences'), findsOneWidget);
       expect(find.text('common.account.appearanceLabel'), findsOneWidget);
     });
 
@@ -113,6 +112,35 @@ void main() {
         // closeOnClick: the whole menu closed.
         expect(find.text('current@example.com'), findsNothing);
       }
+    });
+
+    testWidgets('opens preferences from the account menu', (t) async {
+      final opened = <String>[];
+      await renderAuth(
+        t,
+        await authOn(RecordingAuthApi()),
+        _atBottom(
+          AccountDropdown(
+            account: _profile,
+            onOpenPreferences: () => opened.add('preferences'),
+            trigger: (context, ariaLabel, open, toggle) => Semantics(
+              button: true,
+              label: ariaLabel,
+              child: GestureDetector(
+                key: const ValueKey('composed-trigger'),
+                onTap: toggle,
+                child: const Text('Current account'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.byKey(const ValueKey('composed-trigger')));
+      await settleAuth(t, 3);
+      await t.tap(find.text('common.settings.preferences'));
+      await settleAuth(t, 3);
+      // `setSettingsDestination('preferences')`.
+      expect(opened, ['preferences']);
     });
 
     testWidgets('logs out and redirects to sign in', (t) async {

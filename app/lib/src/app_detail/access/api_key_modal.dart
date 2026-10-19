@@ -14,7 +14,7 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../settings/settings_kit.dart' show showSettingsAlert;
 import '../../workflow_editor/code_editor/editor_view.dart' show codeEditorFontFamily;
-import '../../workflow_editor/header/format.dart' show formatTime;
+import '../../auth/account_time.dart';
 import '../../workflow_editor/panel_fields/controls.dart' show DifyInput;
 import '../../workflow_editor/panel_fields/dialog.dart';
 import '../../workflow_editor/variable_inspect/panel.dart' show CopyFeedback;
@@ -234,11 +234,11 @@ class ApiKeyTable extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
       final scale = box.maxWidth.isFinite ? box.maxWidth / (_secret + 2 * _time + _actions) : 1.0;
-      return _table(_secret * scale, _time * scale);
+      return _table(_secret * scale, _time * scale, AccountTime.of(context));
     },
   );
 
-  Widget _table(double secretWidth, double timeWidth) {
+  Widget _table(double secretWidth, double timeWidth, AccountTime time) {
     final head = difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textTertiary);
     final cell = difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary);
     final format = _t('appLog', 'dateTimeFormat');
@@ -326,7 +326,7 @@ class ApiKeyTable extends StatelessWidget {
                           width: timeWidth,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: text(formatTime(key.createdAt ?? 0, format), cell),
+                            child: text(time.formatTime(key.createdAt ?? 0, format), cell),
                           ),
                         ),
                         SizedBox(
@@ -335,7 +335,7 @@ class ApiKeyTable extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: text(
                               key.lastUsedAt != null && key.lastUsedAt != 0
-                                  ? formatTime(key.lastUsedAt!, format)
+                                  ? time.formatTime(key.lastUsedAt!, format)
                                   : _t('appApi', 'never'),
                               cell,
                             ),

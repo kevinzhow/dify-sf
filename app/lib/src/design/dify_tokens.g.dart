@@ -3095,6 +3095,76 @@ abstract final class DifyShadows {
   static const n3xl = [
     BoxShadow(offset: Offset(0, 32), blurRadius: 54.5596, spreadRadius: -12, color: Color.fromARGB(36, 16, 24, 40)),
   ];
+  static List<BoxShadow> get statusIndicatorGreenShadow => [
+    BoxShadow(
+      offset: Offset(0, 2),
+      blurRadius: 4.3301,
+      spreadRadius: 0,
+      color: DifyColors.componentsBadgeStatusLightSuccessHalo,
+    ),
+    BoxShadow(
+      offset: Offset(0, 0),
+      blurRadius: 0,
+      spreadRadius: 1,
+      color: DifyColors.componentsBadgeStatusLightBorderOuter,
+    ),
+  ];
+  static List<BoxShadow> get statusIndicatorWarningShadow => [
+    BoxShadow(
+      offset: Offset(0, 2),
+      blurRadius: 4.3301,
+      spreadRadius: 0,
+      color: DifyColors.componentsBadgeStatusLightWarningHalo,
+    ),
+    BoxShadow(
+      offset: Offset(0, 0),
+      blurRadius: 0,
+      spreadRadius: 1,
+      color: DifyColors.componentsBadgeStatusLightBorderOuter,
+    ),
+  ];
+  static List<BoxShadow> get statusIndicatorRedShadow => [
+    BoxShadow(
+      offset: Offset(0, 2),
+      blurRadius: 4.3301,
+      spreadRadius: 0,
+      color: DifyColors.componentsBadgeStatusLightErrorHalo,
+    ),
+    BoxShadow(
+      offset: Offset(0, 0),
+      blurRadius: 0,
+      spreadRadius: 1,
+      color: DifyColors.componentsBadgeStatusLightBorderOuter,
+    ),
+  ];
+  static List<BoxShadow> get statusIndicatorBlueShadow => [
+    BoxShadow(
+      offset: Offset(0, 2),
+      blurRadius: 4.3301,
+      spreadRadius: 0,
+      color: DifyColors.componentsBadgeStatusLightNormalHalo,
+    ),
+    BoxShadow(
+      offset: Offset(0, 0),
+      blurRadius: 0,
+      spreadRadius: 1,
+      color: DifyColors.componentsBadgeStatusLightBorderOuter,
+    ),
+  ];
+  static List<BoxShadow> get statusIndicatorGrayShadow => [
+    BoxShadow(
+      offset: Offset(0, 1),
+      blurRadius: 0.866,
+      spreadRadius: 0,
+      color: DifyColors.componentsBadgeStatusLightDisabledHalo,
+    ),
+    BoxShadow(
+      offset: Offset(0, 0),
+      blurRadius: 0,
+      spreadRadius: 1,
+      color: DifyColors.componentsBadgeStatusLightBorderOuter,
+    ),
+  ];
 }
 
 /// Dify gradients (`--color-*: linear-gradient(...)` in themes/light.css, dark.css and web/themes/manual-*.css)

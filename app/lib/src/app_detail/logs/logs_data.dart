@@ -7,7 +7,7 @@
 library;
 
 import 'package:collab_client/collab_client.dart'
-    show AnnotationsApi, AppInfo, ChatConversationQuery, LogsApi, TransportException, WorkflowLogQuery;
+    show AnnotationsApi, AppInfo, ChatConversationQuery, LogsApi, WorkflowLogQuery;
 
 import '../detail_page_slot.dart';
 
@@ -99,8 +99,7 @@ AppLogsSource appLogsSourceOf(AppDetailContext detail) {
   return const EmptyAppLogsSource();
 }
 
-/// [AppLogsSource] over collab_client's [LogsApi] (protocol 1.11). dify-sf has no feedback endpoint yet (no
-/// runtime messages to rate): [updateFeedback] fails with `501`, which the drawer shows as Dify's failure toast.
+/// [AppLogsSource] over collab_client's [LogsApi] (protocol 1.11).
 class LogsApiSource implements AppLogsSource {
   LogsApiSource(this.logs, {this.annotations});
 
@@ -167,8 +166,12 @@ class LogsApiSource implements AppLogsSource {
   Future<Json> annotationsCount(String appId) async => {'count': await annotations?.count(appId) ?? 0};
 
   @override
-  Future<void> updateFeedback(String appId, Json body) async =>
-      throw TransportException('dify-sf has no message feedback yet', statusCode: 501, code: 'not_implemented');
+  Future<void> updateFeedback(String appId, Json body) => logs.updateFeedback(
+    appId,
+    messageId: '${body['message_id']}',
+    rating: _str(body['rating']),
+    content: _str(body['content']),
+  );
 
   @override
   Future<void> deleteAnnotation(String appId, String annotationId) async => annotations?.delete(appId, annotationId);

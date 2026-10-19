@@ -19,6 +19,7 @@ import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../features/features_store.dart' show buildInitialFeatures, featureEnabled;
 import '../../header/header_widgets.dart' show Spinning;
+import '../../panel_fields/dialog.dart' show DifyDialogSurface, showDifyDialog;
 import '../../panel_fields/form_controls.dart' show DifyTextarea;
 import '../../store/workflow_store.dart' show DifyJson;
 import '../run_types.dart' show WorkflowRunningStatus;
@@ -509,10 +510,28 @@ class _ChatAnswerState extends State<ChatAnswer> {
   /// The admin feedback set here until the item is rebuilt from the server (`adminFeedbackOverride`).
   Map<String, Object?>? _adminOverride;
 
-  Future<void> _feedback(Future<bool> Function(String, Map<String, Object?>) onFeedback, String? rating) async {
-    final next = {'rating': rating, 'content': null};
-    if (await onFeedback('${widget.item['id']}', next) && mounted) setState(() => _adminOverride = next);
+  Future<bool> _feedback(
+    Future<bool> Function(String, Map<String, Object?>) onFeedback,
+    String? rating, [
+    String? content,
+  ]) async {
+    final next = {'rating': rating, 'content': rating == null ? null : content};
+    final ok = await onFeedback('${widget.item['id']}', next);
+    if (ok && mounted) setState(() => _adminOverride = next);
+    return ok;
   }
+
+  /// The dislike: operation.tsx's "Provide Feedback" dialog asks what went wrong first; Submit saves the dislike with
+  /// that text (the dialog stays open when saving fails), Cancel saves nothing.
+  void _dislike(Future<bool> Function(String, Map<String, Object?>) onFeedback) => showDifyDialog<void>(
+    context,
+    builder: (dialog) => ChatFeedbackDialog(
+      onCancel: () => Navigator.of(dialog).pop(),
+      onSubmit: (content) async {
+        if (await _feedback(onFeedback, 'dislike', content) && dialog.mounted) Navigator.of(dialog).pop();
+      },
+    ),
+  );
 
   /// operation.tsx's admin feedback bar: the user's rating (read-only) and the admin's.
   Widget? _feedbackBar(ChatContext? ctx, bool isOpening) {
@@ -551,10 +570,12 @@ class _ChatAnswerState extends State<ChatAnswer> {
             );
     }
 
+    Widget tip(Map? feedback, String label, Widget child) =>
+        DifyTooltip(content: Text(ChatAnswerFeedback.tooltip(feedback, label)), child: child);
     return _ActionBar(
       children: [
         if (userRating != null) ...[
-          pressed(userRating, userLabel),
+          tip(user, userLabel, pressed(userRating, userLabel)),
           Container(
             width: 0.5,
             height: 12,
@@ -563,17 +584,25 @@ class _ChatAnswerState extends State<ChatAnswer> {
           ),
         ],
         if (adminRating != null)
-          pressed(adminRating, adminLabel, onPressed: () => _feedback(onFeedback, null))
+          tip(admin, adminLabel, pressed(adminRating, adminLabel, onPressed: () => _feedback(onFeedback, null)))
         else ...[
-          DifyIconButton(
-            label: '$adminLabel: $like',
-            icon: const RemixIcon('thumb-up-line', size: 16),
-            onPressed: () => _feedback(onFeedback, 'like'),
+          tip(
+            admin,
+            adminLabel,
+            DifyIconButton(
+              label: '$adminLabel: $like',
+              icon: const RemixIcon('thumb-up-line', size: 16),
+              onPressed: () => _feedback(onFeedback, 'like'),
+            ),
           ),
-          DifyIconButton(
-            label: '$adminLabel: $dislike',
-            icon: const RemixIcon('thumb-down-line', size: 16),
-            onPressed: () => _feedback(onFeedback, 'dislike'),
+          tip(
+            admin,
+            adminLabel,
+            DifyIconButton(
+              label: '$adminLabel: $dislike',
+              icon: const RemixIcon('thumb-down-line', size: 16),
+              onPressed: () => _dislike(onFeedback),
+            ),
           ),
         ],
       ],
@@ -1476,5 +1505,110 @@ class _MeasureHeightState extends State<_MeasureHeight> {
       if (mounted && box != null && box.hasSize) widget.onHeight(box.size.height);
     });
     return widget.child;
+  }
+}
+
+/// operation.tsx's feedback helpers.
+abstract final class ChatAnswerFeedback {
+  /// operation.tsx `buildFeedbackTooltip`: the label, else "label: Like|Dislike", with " - content" when there is some.
+  static String tooltip(Map? feedback, String label) {
+    final rating = feedback?['rating'];
+    if (rating == null) return label;
+    final r = DifyI18n.tr('app-log', rating == 'like' ? 'detail.operation.like' : 'detail.operation.dislike');
+    final text = '${feedback?['content'] ?? ''}'.trim();
+    return text.isEmpty ? '$label: $r' : '$label: $r - $text';
+  }
+}
+
+/// operation.tsx's feedback dialog (DialogContent `p-0`): "Provide Feedback" with its subtitle and close button
+/// (`p-6 pr-14 pb-3`), the "Feedback Content" textarea (4 rows, `px-6 py-3`), Cancel and Submit (`p-6 pt-5`).
+class ChatFeedbackDialog extends StatefulWidget {
+  const ChatFeedbackDialog({super.key, required this.onSubmit, required this.onCancel});
+
+  final Future<void> Function(String content) onSubmit;
+  final VoidCallback onCancel;
+
+  @override
+  State<ChatFeedbackDialog> createState() => _ChatFeedbackDialogState();
+}
+
+class _ChatFeedbackDialogState extends State<ChatFeedbackDialog> {
+  String _content = '';
+
+  @override
+  Widget build(BuildContext context) {
+    String c(String key) => DifyI18n.tr('common', key);
+    return DifyDialogSurface(
+      label: c('feedback.title'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 56, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DifyText(c('feedback.title'), DifyType.title2xlSemiBold, color: DifyColors.textPrimary),
+                    const SizedBox(height: 4),
+                    DifyText(c('feedback.subtitle'), DifyType.systemXsRegular, color: DifyColors.textTertiary),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 20,
+                right: 20,
+                child: DifyIconButton(
+                  key: const ValueKey('chat-feedback-close'),
+                  label: c('operation.close'),
+                  size: DifyIconButtonSize.lg,
+                  icon: const RemixIcon('close-line', size: 16),
+                  onPressed: widget.onCancel,
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: DifyText(c('feedback.content'), DifyType.systemSmSemibold, color: DifyColors.textSecondary),
+                ),
+                DifyTextarea(
+                  key: const ValueKey('chat-feedback-content'),
+                  value: _content,
+                  minHeight: 96,
+                  semanticLabel: c('feedback.content'),
+                  placeholder: c('feedback.placeholder'),
+                  onChanged: (v) => setState(() => _content = v),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                DifyButton(onPressed: widget.onCancel, child: Text(c('operation.cancel'))),
+                DifyButton(
+                  key: const ValueKey('chat-feedback-submit'),
+                  variant: DifyButtonVariant.primary,
+                  onPressed: () => widget.onSubmit(_content),
+                  child: Text(c('operation.submit')),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

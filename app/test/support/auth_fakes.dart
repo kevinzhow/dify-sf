@@ -161,8 +161,26 @@ class RecordingAuthApi implements AuthApi {
     return _session(addAccount(email: i.email, name: name, password: password, role: i.role));
   }
 
+  Account _me(String accessToken) {
+    final id = sessions[accessToken];
+    if (id == null) throw _unauthorized;
+    return accounts.values.firstWhere((a) => a.account.id == id).account;
+  }
+
+  void _replace(Account a) {
+    final key = accounts.keys.firstWhere((k) => accounts[k]!.account.id == a.id);
+    final password = accounts.remove(key)!.password;
+    accounts[a.email.toLowerCase()] = (account: a, password: password);
+  }
+
   @override
-  Future<Account> updateName(String accessToken, String name) => throw UnimplementedError();
+  Future<Account> updateName(String accessToken, String name) async {
+    await _call('updateName', {'name': name});
+    await _maybeFail('updateName');
+    final a = _me(accessToken).copyWith(name: name.trim());
+    _replace(a);
+    return a;
+  }
 
   @override
   Future<void> updatePassword(
@@ -170,7 +188,78 @@ class RecordingAuthApi implements AuthApi {
     required String password,
     required String newPassword,
     required String repeatNewPassword,
-  }) => throw UnimplementedError();
+  }) async {
+    await _call('updatePassword', {
+      'password': password,
+      'new_password': newPassword,
+      'repeat_new_password': repeatNewPassword,
+    });
+    await _maybeFail('updatePassword');
+    _me(accessToken);
+  }
+
+  @override
+  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone}) async {
+    await _call('updateProfile', {'name': ?name, 'interface_language': ?interfaceLanguage, 'timezone': ?timezone});
+    await _maybeFail('updateProfile');
+    final a = _me(accessToken).copyWith(name: name, interfaceLanguage: interfaceLanguage, timezone: timezone);
+    _replace(a);
+    return a;
+  }
+
+  /// Change email: the tokens the steps answer, the right code, and whether an address is taken.
+  String changeCode = '123456';
+  final takenEmails = <String>{};
+
+  @override
+  Future<String> sendChangeEmailCode(
+    String accessToken, {
+    required String email,
+    String? language,
+    String? phase,
+    String? token,
+  }) async {
+    await _call('sendChangeEmailCode', {'email': email, 'language': ?language, 'phase': ?phase, 'token': ?token});
+    await _maybeFail('sendChangeEmailCode');
+    return phase == 'new_email' ? 'new-email-token' : 'old-email-token';
+  }
+
+  @override
+  Future<ResetCodeCheck> checkChangeEmailCode(
+    String accessToken, {
+    required String email,
+    required String code,
+    required String token,
+  }) async {
+    await _call('checkChangeEmailCode', {'email': email, 'code': code, 'token': token});
+    await _maybeFail('checkChangeEmailCode');
+    if (code != changeCode) {
+      throw const TransportException('Email code is invalid or expired.', statusCode: 400, code: 'email_code_error');
+    }
+    return ResetCodeCheck(isValid: true, email: email.toLowerCase(), token: '$token-verified');
+  }
+
+  @override
+  Future<Account> changeEmail(String accessToken, {required String newEmail, required String token}) async {
+    await _call('changeEmail', {'new_email': newEmail, 'token': token});
+    await _maybeFail('changeEmail');
+    final a = _me(accessToken).copyWith(email: newEmail.toLowerCase());
+    _replace(a);
+    return a;
+  }
+
+  @override
+  Future<void> checkEmailUnique(String accessToken, String email) async {
+    await _call('checkEmailUnique', {'email': email});
+    await _maybeFail('checkEmailUnique');
+    if (takenEmails.contains(email.toLowerCase()) || accounts.containsKey(email.toLowerCase())) {
+      throw const TransportException(
+        'A user with this email already exists.',
+        statusCode: 400,
+        code: 'email_already_in_use',
+      );
+    }
+  }
 
   @override
   Future<List<Member>> members(String accessToken) => throw UnimplementedError();
@@ -193,7 +282,7 @@ class RecordingAuthApi implements AuthApi {
   @override
   Future<SystemFeatures> systemFeatures() async {
     await _call('systemFeatures');
-    return SystemFeatures(isEmailSetup: emailSetup);
+    return SystemFeatures(isEmailSetup: emailSetup, enableChangeEmail: emailSetup);
   }
 
   @override

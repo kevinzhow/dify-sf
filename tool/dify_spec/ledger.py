@@ -2,7 +2,7 @@
 
   python3 tool/dify_spec/ledger.py <dify source root> [--write]
 
-Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page and the integrations page that hosts it, base/form, dify-ui, sign-in / install / activate / reset-password pages, account dropdown, account setting and members page, main nav workspace card, workflow-app run hooks, the chat's human input forms, the theme selector, the Studio app list with its create / import / duplicate / edit-info
+Lists every test case in Dify's specs for the parts we port (workflow editor, model provider page and the integrations page that hosts it, base/form, dify-ui, sign-in / install / activate / reset-password pages, account dropdown, account page, account setting with its members and preferences pages, main nav workspace card, workflow-app run hooks, the chat's human input forms, the theme selector, the Studio app list with its create / import / duplicate / edit-info
 dialogs and their primitives) as
 `<spec path> :: <describe> > ... > <it>`, and checks which are ported: a ported case is a Dart test under
 app/test/dify_spec/ whose full name (group names joined with ' > ' and the test name) equals the Dify case name, in a
@@ -43,7 +43,10 @@ ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setti
          'web/app/components/app-sidebar/app-info', 'web/app/components/app-sidebar/nav-link',
          'web/app/components/detail-sidebar', 'web/app/(commonLayout)/app/(appDetailLayout)',
          'web/app/components/app/log', 'web/app/components/app/workflow-log', 'web/app/components/app/log-annotation',
-         'web/utils/permission.spec.ts', 'web/utils/app-redirection.spec.ts']
+         'web/utils/permission.spec.ts', 'web/utils/app-redirection.spec.ts',
+         # Account page and Preferences (protocol 1.12).
+         'web/app/account/(commonLayout)', 'web/app/components/header/account-setting/preference-page',
+         'web/app/components/header/account-setting/collapse']
 CALL = re.compile(r'''^(\s*)(describe|it|test)(?:\.(?:each\([^)]*\)|skip|only|concurrent|todo))*\(\s*(['"`])(.*?)\3''')
 
 

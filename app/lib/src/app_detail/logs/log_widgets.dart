@@ -15,8 +15,9 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../open_url.dart';
-import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
+import '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDotKind;
 import '../../workflow_editor/panel_fields/controls.dart' show DifyInput, DifySegmentedControl;
+import 'auto_table.dart';
 
 export '../../workflow_editor/node_panel/bodies/llm/model_selector.dart' show StatusDot, StatusDotKind;
 
@@ -247,16 +248,14 @@ class _LogChipState extends State<LogChip> {
                         ),
                       Flexible(
                         fit: widget.minWidth == null ? FlexFit.loose : FlexFit.tight,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            trigger,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: difyTextStyle(
-                              DifyType.systemSmRegular,
-                              hasValue ? DifyColors.textSecondary : DifyColors.textTertiary,
-                            ),
+                        // `first-line:p-1`: ::first-line takes no padding, so none.
+                        child: Text(
+                          trigger,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: difyTextStyle(
+                            DifyType.systemSmRegular,
+                            hasValue ? DifyColors.textSecondary : DifyColors.textTertiary,
                           ),
                         ),
                       ),
@@ -791,7 +790,7 @@ class LogStatusLabel extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     spacing: 4,
     children: [
-      StatusDot(status: dot),
+      LogStatusDot(status: dot),
       Flexible(
         child: Text(
           difyTransform(DifyType.systemXsSemiboldUppercase, text),
@@ -800,6 +799,54 @@ class LogStatusLabel extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// dify-ui's StatusDot at its default size (`size-2 rounded-[3px] border`, the `shadow-status-indicator-*` halo and
+/// outer ring).
+class LogStatusDot extends StatelessWidget {
+  const LogStatusDot({super.key, required this.status});
+  final StatusDotKind status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, border, shadow) = switch (status) {
+      StatusDotKind.success => (
+        DifyColors.componentsBadgeStatusLightSuccessBg,
+        DifyColors.componentsBadgeStatusLightSuccessBorderInner,
+        DifyShadows.statusIndicatorGreenShadow,
+      ),
+      StatusDotKind.error => (
+        DifyColors.componentsBadgeStatusLightErrorBg,
+        DifyColors.componentsBadgeStatusLightErrorBorderInner,
+        DifyShadows.statusIndicatorRedShadow,
+      ),
+      StatusDotKind.warning => (
+        DifyColors.componentsBadgeStatusLightWarningBg,
+        DifyColors.componentsBadgeStatusLightWarningBorderInner,
+        DifyShadows.statusIndicatorWarningShadow,
+      ),
+      StatusDotKind.normal => (
+        DifyColors.componentsBadgeStatusLightNormalBg,
+        DifyColors.componentsBadgeStatusLightNormalBorderInner,
+        DifyShadows.statusIndicatorBlueShadow,
+      ),
+      StatusDotKind.disabled => (
+        DifyColors.componentsBadgeStatusLightDisabledBg,
+        DifyColors.componentsBadgeStatusLightDisabledBorderInner,
+        DifyShadows.statusIndicatorGrayShadow,
+      ),
+    };
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: border),
+        boxShadow: shadow,
+      ),
+    );
+  }
 }
 
 /// The unread mark (`size-1.5 rounded-sm bg-util-colors-blue-blue-500` in `p-3 pr-0.5`).
@@ -836,12 +883,12 @@ class LogLoading extends StatelessWidget {
 // Table
 // ---------------------------------------------------------------------------------------------------------------------
 
-/// A table column: its header (null: the empty unread column), its width (null: flexible with [flex]) and whether the
-/// header row's corner is rounded there.
-typedef LogColumn = ({Widget? header, double? width, int flex});
+/// A table column: its header (null: the empty unread column) and its width (`w-*` on its cells; null: automatic).
+typedef LogColumn = ({Widget? header, double? width});
 
-/// The logs' `<table>`: the header row (`system-xs-medium-uppercase text-text-tertiary` on `bg-background-section-burn`,
-/// `rounded-lg` ends, `py-1.5 pl-3`), and rows with a bottom divider that highlight on hover and while selected.
+/// The logs' `<table>` (`w-full min-w-110`, automatic table layout: [AutoTableScope]): the header row
+/// (`system-xs-medium-uppercase text-text-tertiary` on `bg-background-section-burn`, `rounded-lg` ends, `py-1.5 pl-3`,
+/// `whitespace-nowrap`), and rows with a bottom divider that highlight on hover and while selected.
 class LogTable extends StatelessWidget {
   const LogTable({super.key, required this.columns, required this.rows, this.minWidth = 440});
 
@@ -849,13 +896,8 @@ class LogTable extends StatelessWidget {
   final List<LogTableRow> rows;
   final double minWidth;
 
-  static Widget cellsRow(List<LogColumn> columns, List<Widget> cells, {EdgeInsets? padding}) => Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      for (final (i, c) in columns.indexed)
-        if (c.width != null) SizedBox(width: c.width, child: cells[i]) else Expanded(flex: c.flex, child: cells[i]),
-    ],
-  );
+  static Widget cellsRow(List<LogColumn> columns, List<Widget> cells, {bool nowrap = false}) =>
+      AutoTableCells(nowrap: nowrap, children: cells);
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -863,32 +905,35 @@ class LogTable extends StatelessWidget {
       final width = constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
       final table = SizedBox(
         width: width,
-        child: Semantics(
-          container: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                container: true,
-                child: Container(
-                  key: const ValueKey('log-table-header'),
-                  decoration: BoxDecoration(
-                    color: DifyColors.backgroundSectionBurn,
-                    borderRadius: BorderRadius.circular(DifyRadius.lg),
-                  ),
-                  child: DefaultTextStyle.merge(
-                    style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
-                    child: cellsRow(columns, [
-                      for (final c in columns)
-                        c.header == null
-                            ? const SizedBox(height: 28)
-                            : Padding(padding: const EdgeInsets.fromLTRB(12, 6, 0, 6), child: c.header),
-                    ]),
+        child: AutoTableScope(
+          fixed: [for (final c in columns) c.width],
+          child: Semantics(
+            container: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  container: true,
+                  child: Container(
+                    key: const ValueKey('log-table-header'),
+                    decoration: BoxDecoration(
+                      color: DifyColors.backgroundSectionBurn,
+                      borderRadius: BorderRadius.circular(DifyRadius.lg),
+                    ),
+                    child: DefaultTextStyle.merge(
+                      style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
+                      child: cellsRow(columns, nowrap: true, [
+                        for (final c in columns)
+                          c.header == null
+                              ? const SizedBox(height: 28)
+                              : Padding(padding: const EdgeInsets.fromLTRB(12, 6, 0, 6), child: c.header),
+                      ]),
+                    ),
                   ),
                 ),
-              ),
-              ...rows,
-            ],
+                ...rows,
+              ],
+            ),
           ),
         ),
       );

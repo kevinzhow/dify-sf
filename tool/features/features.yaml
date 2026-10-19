@@ -1701,7 +1701,7 @@ features:
   ours: [app/lib/src/auth/activate_page.dart, app/lib/src/auth/invite_settings_page.dart]
 - id: accounts.dropdown
   area: accounts
-  title: 'Account menu: account card, Appearance (light / dark / system), log out'
+  title: 'Account menu: account card, Account page link, Preferences, Appearance (light / dark / system), log out'
   dify: [web/app/components/header/account-dropdown, web/app/components/main-nav/components/account-section.tsx]
   status: ported
   evidence: ['spec:web/app/components/header/account-dropdown', visual:nav-main]
@@ -1755,11 +1755,35 @@ features:
   ours: []
 - id: accounts.account-page
   area: accounts
-  title: 'Account page: profile, avatar, change password, delete account'
-  dify: [web/app/account]
+  title: "Account page: header (Home, avatar menu), profile card, rename, reset password, the account's apps"
+  dify: ['web/app/account/(commonLayout)/page.tsx', 'web/app/account/(commonLayout)/header.tsx', 'web/app/account/(commonLayout)/avatar.tsx', 'web/app/account/(commonLayout)/account-page/index.tsx', web/app/components/header/account-setting/collapse]
+  status: ported
+  deviation: "Protocol 1.8 / 1.12 (PUT /v1/account/name, PUT /v1/account/password, GET /v1/apps). Every dify-sf account that can sign in has a password, so the page always offers Reset password (Dify's is_password_set). Dify Cloud's education badge is not shown."
+  evidence: ['spec:web/app/components/header/account-setting/collapse', app/test/account_page_test.dart]
+  ours: [app/lib/src/account/account_page.dart, app/lib/src/account/account_dialogs.dart, app/lib/src/design/widgets/collapse.dart]
+- id: accounts.change-email
+  area: accounts
+  title: 'Account page: change the email with codes to the current and the new address'
+  dify: ['web/app/account/(commonLayout)/account-page/email-change-modal.tsx', api/controllers/console/workspace/account.py]
+  status: ported
+  deviation: "Protocol 1.12 (/v1/account/change-email...), Dify's tokens, expiry and limits. Offered only when the server sends mail (enable_change_email = mail configured; Dify CE shows it whenever ENABLE_CHANGE_EMAIL, default on). check-email-unique needs a signed-in member (Dify's is public)."
+  evidence: [app/test/account_page_test.dart, packages/collab_client/test/support/account_settings_scenario.dart]
+  ours: [app/lib/src/account/email_change_modal.dart]
+- id: accounts.avatar-upload
+  area: accounts
+  title: 'Account page: upload, crop and remove the avatar'
+  dify: ['web/app/account/(commonLayout)/account-page/AvatarWithEdit.tsx', 'web/app/account/(commonLayout)/account-page/avatar-image.ts']
   status: not_ported
-  reason: outside current scope (owner to decide).
-  evidence: []
+  reason: dify-sf's server has no file storage; avatars are Dify's initial fallback (as Dify with DISABLE_UPLOAD_IMAGE_AS_ICON).
+  evidence: ['spec:web/app/account/(commonLayout)/account-page']
+  ours: []
+- id: accounts.delete-account
+  area: accounts
+  title: 'Account page: delete the account (email code, feedback)'
+  dify: ['web/app/account/(commonLayout)/delete-account']
+  status: not_applicable
+  reason: Dify Cloud only (shown when deployment_edition is CLOUD); dify-sf mirrors the community edition.
+  evidence: ['spec:web/app/account/(commonLayout)/delete-account/components']
   ours: []
 
 # ---------------------------------------------------------------- settings
@@ -1768,7 +1792,7 @@ features:
   title: 'Settings dialog (sidebar of tabs)'
   dify: [web/app/components/header/account-setting/index.tsx, web/app/components/header/account-setting/constants.ts]
   status: partial
-  reason: Only the Members tab exists; the other tabs need server features dify-sf does not have (see below). Model providers live in the Integrations settings modal, as in Dify 1.17.1.
+  reason: Members and Preferences exist; the other tabs need server features dify-sf does not have (see below). Model providers live in the Integrations settings modal, as in Dify 1.17.1.
   evidence: ['spec:web/app/components/header/account-setting']
   ours: [app/lib/src/settings/account_setting.dart]
 - id: settings.workspace-card
@@ -1853,10 +1877,26 @@ features:
   ours: []
 - id: settings.preferences
   area: settings
-  title: 'Preferences tab: language, theme, time zone'
-  dify: [web/app/components/header/account-setting/__tests__/update-setting-dialog-form.spec.tsx]
+  title: 'Preferences tab: appearance, display language, time zone'
+  dify: [web/app/components/header/account-setting/preference-page]
+  status: ported
+  deviation: "Protocol 1.12 (PATCH /v1/account/profile: interface_language, timezone). The appearance stays the app's own setting, as next-themes keeps it in the browser."
+  evidence: ['spec:web/app/components/header/account-setting/preference-page', 'spec:web/app/components/header/account-setting/__tests__/index.spec.tsx']
+  ours: [app/lib/src/settings/preference_page.dart, app/lib/src/settings/account_setting.dart]
+- id: settings.account-timezone
+  area: settings
+  title: "Times in the account's time zone (useTimestamp: logs, annotations, keys; the schedule trigger's zone)"
+  dify: [web/hooks/use-timestamp.ts]
+  status: partial
+  reason: "AccountTime (account zone, else the system's; exact offsets in browsers, Dify's standard offsets with the common DST rules on desktop) and the schedule trigger read it; the app detail pages (logs, annotations, API keys) still format in the system's zone until they call AccountTime."
+  evidence: [app/test/account_page_test.dart]
+  ours: [app/lib/src/auth/account_time.dart, app/lib/src/timezone_offset.dart]
+- id: settings.update-setting-dialog
+  area: settings
+  title: 'Plugin update settings dialog (auto-update strategy, time zone link to Preferences)'
+  dify: [web/app/components/header/account-setting/update-setting-dialog.tsx]
   status: not_ported
-  reason: dify-sf cannot store account settings yet; the UI language is chosen on the sign-in page or with ?lang= / --lang.
+  reason: Plugin auto-update settings need plugins (no plugin service in dify-sf).
   evidence: ['spec:web/app/components/header/account-setting/__tests__/update-setting-dialog-form.spec.tsx']
   ours: []
 - id: settings.custom-archives
@@ -1979,8 +2019,8 @@ features:
   title: 'App info in the sidebar: icon, name, mode; menu with Edit info, Duplicate, Export DSL (saved-version warning, secrets), Import DSL over the app, Delete'
   dify: [web/app/components/app-sidebar/app-info]
   status: ported
-  deviation: "No app_meta_update collaboration event yet: other members see a rename on their next app read. Switch to Workflow Orchestrate applies to chat / completion apps, which dify-sf does not have."
-  evidence: ['spec:web/app/components/app-sidebar/app-info', app/test/app_detail_test.dart]
+  deviation: "Live updates come from the server, not from peers: Dify's editors emit app_meta_update to each other after Edit Info; dify-sf's server sends event: app on the document's stream after any change to the app (protocol 1.11 amendment), and the open editor refetches the app, so the sidebar, window title and editor header follow (as in Dify, only while the app's editor has been opened). Switch to Workflow Orchestrate applies to chat / completion apps, which dify-sf does not have."
+  evidence: ['spec:web/app/components/app-sidebar/app-info', app/test/app_detail_test.dart, packages/collab_client/test/app_events_test.dart]
   ours: [app/lib/src/app_detail/app_info_actions.dart, app/lib/src/app_detail/app_sidebar.dart]
 - id: app-pages.overview-charts
   area: app-pages
@@ -2018,7 +2058,7 @@ features:
   title: 'Chatflow logs: filters, conversation table, pagination, conversation drawer (transcript, variables, feedback)'
   dify: [web/app/components/app/log]
   status: partial
-  reason: "dify-sf has no runtime: no conversations exist until web-app or API traffic does, so the list shows Dify's empty state (demos and tests use mock conversations); admin feedback has no server endpoint yet (Dify's failure toast), the transcript has no add / edit annotation buttons and a dislike sends no comment."
+  reason: "dify-sf has no runtime: no conversations exist until web-app or API traffic does, so the list shows Dify's empty state (demos and tests use mock conversations); admin feedback is real (POST /feedbacks, a dislike asks for a comment first, as Dify) but has no messages to rate until a runtime exists; the transcript has no add / edit annotation buttons."
   evidence: ['spec:web/app/components/app/log', app/test/app_detail_logs_test.dart, visual:app-logs-empty]
   ours: [app/lib/src/app_detail/logs/chat_log.dart, app/lib/src/app_detail/logs/list_utils.dart, app/lib/src/app_detail/logs/logs_data.dart, app/lib/src/app_detail/logs/log_widgets.dart]
 - id: app-pages.deploy

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart'
-    show AppInfoAccess, DocMeta, LinkState, ReplaceResult, TransportException, VersionsApi;
+    show AppEvent, AppInfoAccess, DocMeta, LinkState, ReplaceResult, TransportException, VersionsApi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -39,7 +39,12 @@ class EditorPage extends StatefulWidget {
     this.versions,
     this.appName,
     this.onImportAvailable,
+    this.onAppChanged,
   });
+
+  /// The app changed on the server (protocol 1.11 `event: app`, Dify's `app_meta_update`: renamed, new icon, site or
+  /// switches), or the stream reconnected and may have missed such a notice: the host refetches the app.
+  final VoidCallback? onAppChanged;
 
   /// The app's name as the app detail page shows it (it follows renames there); null: the document's.
   final String? appName;
@@ -206,6 +211,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         _opened = opened;
         _controller = controller;
       });
+      await _appEvents?.cancel();
+      _appEvents = session.appEvents.listen((_) => widget.onAppChanged?.call());
       if (widget.backend.supportsDifyDsl) widget.onImportAvailable?.call(_importDifyDsl);
       unawaited(_loadMeta(gen));
     } on Object catch (e) {
@@ -273,8 +280,12 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     await _open();
   }
 
+  /// The session's app notices ([EditorPage.onAppChanged]).
+  StreamSubscription<AppEvent>? _appEvents;
+
   @override
   void dispose() {
+    unawaited(_appEvents?.cancel());
     widget.onImportAvailable?.call(null);
     WidgetsBinding.instance.removeObserver(this);
     _stopOnlineListener?.call();

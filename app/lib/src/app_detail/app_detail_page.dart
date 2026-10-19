@@ -32,7 +32,7 @@ String _c(String key) => DifyI18n.tr('common', key);
 
 /// What the shell gives the editor page.
 class AppDetailEditorHost {
-  AppDetailEditorHost._(this.app, this._registerImport, this.navigate);
+  AppDetailEditorHost._(this.app, this._registerImport, this.navigate, this.refreshApp);
 
   /// The open app (its name follows renames from the sidebar).
   final ValueListenable<AppInfo> app;
@@ -40,6 +40,10 @@ class AppDetailEditorHost {
 
   /// Switches page (the publisher's Access Point action, for example).
   final void Function(AppDetailPageId page, {Map<String, String> query}) navigate;
+
+  /// Re-reads the app (`GET /v1/apps/{id}`) into [app], the sidebar's and the editor header's shared app info: the
+  /// editor calls it on its stream's app notices (protocol 1.11 `event: app`, Dify's `app_meta_update`).
+  final Future<void> Function() refreshApp;
 
   /// The editor's "replace the workflow with a DSL file", once its session is up (null again when it closes): the
   /// sidebar's Import DSL runs through it.
@@ -273,15 +277,20 @@ class AppDetailPageState extends State<AppDetailPage> {
     services: widget.services,
   );
 
-  late final _editorHost = AppDetailEditorHost._(_app!, (import) {
-    _editorImport = import;
-    if (import != null) {
-      for (final w in _importWaiters) {
-        w.complete(import);
+  late final _editorHost = AppDetailEditorHost._(
+    _app!,
+    (import) {
+      _editorImport = import;
+      if (import != null) {
+        for (final w in _importWaiters) {
+          w.complete(import);
+        }
+        _importWaiters.clear();
       }
-      _importWaiters.clear();
-    }
-  }, navigate);
+    },
+    navigate,
+    refreshApp,
+  );
 
   /// The editor's import, waiting for the editor if it is still opening (it opens offstage when never shown).
   Future<ReplaceResult> _importDsl(String yaml, {bool confirm = false}) async {

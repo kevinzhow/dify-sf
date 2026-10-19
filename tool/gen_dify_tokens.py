@@ -9,7 +9,8 @@ Re-run when the Dify baseline moves.
 
 Colours and gradients are getters over one global switch (DifyColors.useDark, set by DifyTheme): every token is a
 getter, also those equal in both themes, so a token that starts to differ in a later Dify does not break `const` call
-sites. Shadows, typography and radii are the same in both themes and stay `const`.
+sites. Shadows, typography and radii are the same in both themes and stay `const`, except shadows made of theme colours
+(the status indicators'), which are getters too.
 """
 import re, subprocess, sys
 from pathlib import Path
@@ -145,7 +146,7 @@ def flutter_blur(css):
     # Emit the blurRadius that gives CSS's sigma (sigma below 0.5 can't be expressed: the smallest positive radius).
     if css <= 0: return 0
     return round(max(1e-3, (css / 2 - 0.5) / 0.57735), 4)
-def shadows(value):
+def shadows(value, theme=False):
     items = []
     for part in re.split(r',(?![^()]*\))', value):
         p = part.strip()
@@ -156,7 +157,11 @@ def shadows(value):
         col = col.strip()
         m2 = re.fullmatch(r'rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)', col)
         c = f'Color.fromARGB({round(float(m2.group(4)) * 255)}, {m2.group(1)}, {m2.group(2)}, {m2.group(3)})' if m2 else color(col)
-        if c is None: continue
+        if c is None:
+            # A theme colour (`var(--color-*)`, e.g. the status indicators' halos): its DifyColors getter.
+            mv = re.fullmatch(r'var\(--color-([a-z0-9-]+)\)', col)
+            if not mv or not theme: continue
+            c = f'DifyColors.{camel(mv.group(1))}'
         items.append(f'BoxShadow(offset: Offset({float(x):g}, {float(y):g}), blurRadius: {flutter_blur(float(blur)):g}, spreadRadius: {float(spread):g}, color: {c})')
     return items
 out.append('/// Dify shadows (`--shadow-*` in packages/dify-ui/src/styles/styles.css; inset parts left out). Blur radii are\n/// converted so Flutter blurs as much as the browser does.')
@@ -165,6 +170,9 @@ for name, value in re.findall(r'--shadow-([a-z0-9-]+):\s*([^;]+);', styles):
     s = shadows(value)
     if s:
         out.append(f'  static const {camel(name)} = [{", ".join(s)}];')
+    elif t := shadows(value, theme=True):
+        # Made of theme colours only (the status indicators'): a getter (it follows DifyColors.useDark).
+        out.append(f'  static List<BoxShadow> get {camel(name)} => [{", ".join(t)}];')
 out.append('}')
 out.append('')
 # Gradients (`--color-*: linear-gradient(...)`, themes/{light,dark}.css and web/themes/manual-{light,dark}.css).

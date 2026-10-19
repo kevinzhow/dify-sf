@@ -1,7 +1,7 @@
 /// header/account-setting (index.tsx, menu-dialog.tsx, constants.ts): the full-screen "Settings" dialog with its
-/// sidebar of tabs. dify-sf has the Members tab; Dify's other tabs need what dify-sf's server does not have (RBAC
-/// roles and permission sets, billing, customization, log archives: none of them show in Dify's community edition
-/// either) or account settings it cannot store yet (Preferences: language, theme, time zone). A tab is an
+/// sidebar of tabs. dify-sf has the Members tab and, in the user group, Preferences (appearance, language, time zone;
+/// protocol 1.12); Dify's other tabs need what dify-sf's server does not have (RBAC roles and permission sets, billing,
+/// customization, log archives: none of them show in Dify's community edition either). A tab is an
 /// [AccountSettingTab] with its [AccountSettingItem].
 library;
 
@@ -15,14 +15,15 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import 'members/members_page.dart';
+import 'preference_page.dart';
 import 'settings_kit.dart';
 import 'workspace_members.dart';
 
 /// `ACCOUNT_SETTING_TAB`, as far as dify-sf has the tabs.
-enum AccountSettingTab { members }
+enum AccountSettingTab { members, preferences }
 
 /// The sidebar groups (`menuItems`): the workspace group (labelled "WORKSPACE") and the user group (below a
-/// divider; Dify's Preferences, later dify-sf's own account settings).
+/// divider: Preferences).
 enum AccountSettingGroup { workspace, user }
 
 /// One tab: its sidebar entry (name, icon, active icon), the content header (title, else the name; description)
@@ -58,6 +59,15 @@ final accountSettingItems = <AccountSettingItem>[
     icon: 'group-2-line',
     activeIcon: 'group-2-fill',
     page: (context, members) => MembersPage(members: members),
+  ),
+  AccountSettingItem(
+    tab: AccountSettingTab.preferences,
+    group: AccountSettingGroup.user,
+    name: (context) => stc(context, 'settings.preferences'),
+    title: (context) => stc(context, 'account.general'),
+    icon: 'equalizer-2-line',
+    activeIcon: 'equalizer-2-fill',
+    page: (context, _) => const PreferencePage(),
   ),
 ];
 

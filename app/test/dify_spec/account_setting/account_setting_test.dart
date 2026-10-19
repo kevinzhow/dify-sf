@@ -1,8 +1,8 @@
 // dify-spec: web/app/components/header/account-setting/__tests__/index.spec.tsx
 //
 // dify-sf's account setting has the Members tab (Dify's community edition without RBAC, billing, customization or
-// archives also shows only Members in its workspace group); Preferences is not offered yet (no server storage for
-// the language, theme and time zone).
+// archives also shows only Members in its workspace group) and Preferences (protocol 1.12).
+import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/settings/account_setting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -94,6 +94,23 @@ void main() {
         expect(r.tabs, [AccountSettingTab.members]);
         // The sidebar entry and the content's title.
         expect(find.text('common.settings.members'), findsNWidgets(2));
+      });
+
+      testWidgets('should switch the preferences icon when the tab is active', (t) async {
+        final r = await _render(t);
+        RemixIcon icon() => t.widget<RemixIcon>(
+          find.descendant(
+            of: find.byKey(const ValueKey('account-setting-tab-preferences')),
+            matching: find.byType(RemixIcon),
+          ),
+        );
+        expect(button('common.settings.preferences'), findsOneWidget);
+        expect(icon().name, 'equalizer-2-line');
+        await tapButton(t, 'common.settings.preferences');
+        expect(icon().name, 'equalizer-2-fill');
+        expect(r.tabs, [AccountSettingTab.preferences]);
+        // The tab's title is Dify's `account.general`.
+        expect(find.text('common.account.general'), findsOneWidget);
       });
     });
 

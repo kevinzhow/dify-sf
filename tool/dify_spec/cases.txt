@@ -6778,3 +6778,19 @@ web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > calls re
 web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > calls redirection function with workflow path when app ACL can access layout
 web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > calls redirection function with configuration path for chat mode with layout access
 web/utils/app-redirection.spec.ts :: app-redirection > getRedirection > works with different redirection functions
+web/app/account/(commonLayout)/account-page/__tests__/AvatarWithEdit.spec.tsx :: AvatarWithEdit > uploads the bounded crop for a static avatar
+web/app/account/(commonLayout)/account-page/__tests__/AvatarWithEdit.spec.tsx :: AvatarWithEdit > keeps the existing original-file upload path for animated avatars
+web/app/account/(commonLayout)/account-page/__tests__/avatar-image.spec.ts :: avatar image > getBoundedAvatarImageSize > downsamples a large square crop to 256 pixels
+web/app/account/(commonLayout)/account-page/__tests__/avatar-image.spec.ts :: avatar image > getBoundedAvatarImageSize > does not upscale a crop that is already within the bound
+web/app/account/(commonLayout)/account-page/__tests__/avatar-image.spec.ts :: avatar image > draws the selected crop into a bounded high-quality canvas
+web/app/account/(commonLayout)/account-page/__tests__/avatar-image.spec.ts :: avatar image > matches the file extension to the browser output type
+web/app/account/(commonLayout)/delete-account/components/__tests__/check-email.spec.tsx :: CheckEmail > submits with Enter only after the account email matches
+web/app/account/(commonLayout)/delete-account/components/__tests__/feed-back.spec.tsx :: FeedBack > labels and submits the optional feedback field through the form
+web/app/account/(commonLayout)/delete-account/components/__tests__/verify-email.spec.tsx :: VerifyEmail > submits a complete verification code through the form
+web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx :: PreferencePage - Rendering > should render default language and timezone labels
+web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx :: PreferencePage - Rendering > should render placeholders when the current locale or timezone is unsupported
+web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx :: PreferencePage - Interactions > should show success toast when language updates
+web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx :: PreferencePage - Interactions > should show error toast when language update fails
+web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx :: PreferencePage - Interactions > should show success toast when timezone updates
+web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx :: PreferencePage - Interactions > should show error toast when timezone update fails
+web/app/components/header/account-setting/collapse/__tests__/index.spec.tsx :: Collapse > toggles its items and reports the selected item

@@ -17,7 +17,7 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../studio/search_input.dart';
-import '../../workflow_editor/header/format.dart' show formatTime;
+import '../../auth/account_time.dart';
 import '../../workflow_editor/run/ui/run_panel.dart';
 import '../../workflow_editor/store/workflow_store_scope.dart';
 import 'log_widgets.dart';
@@ -402,7 +402,7 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
     if (widget.logs == null || app == null) return const LogLoading();
     final isWorkflow = app.mode == AppModes.workflow;
     final columns = <LogColumn>[
-      (header: null, width: 20, flex: 0),
+      (header: null, width: 20),
       (
         header: DifyPressable(
           key: const ValueKey('workflow-log-sort'),
@@ -436,18 +436,13 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
           ),
         ),
         width: 180,
-        flex: 0,
       ),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))), width: null, flex: 2),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.runtime'))), width: null, flex: 2),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.tokens'))), width: null, flex: 2),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.user'))), width: null, flex: 3),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))), width: null),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.runtime'))), width: null),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.tokens'))), width: null),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.user'))), width: null),
       if (isWorkflow)
-        (
-          header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.triggered_from'))),
-          width: null,
-          flex: 3,
-        ),
+        (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.triggered_from'))), width: null),
     ];
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -480,7 +475,7 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
         logCell(
           LogDrawerTrigger(
             focusNode: trigger,
-            text: formatTime(((log['created_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
+            text: AccountTime.of(context).formatTime(((log['created_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
             onPressed: () => _open(log),
           ),
         ),

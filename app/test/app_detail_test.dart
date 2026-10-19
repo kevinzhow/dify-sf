@@ -253,6 +253,23 @@ void main() {
     await _done(t);
   });
 
+  testWidgets(
+    'a rename by another member reaches the open editor\'s stream (event: app): sidebar, title and header follow',
+    (t) async {
+      final w = await _workspace();
+      final a = w.api.seed(name: 'Support triage');
+      await _pump(t, w);
+      await _open(t, 'Support triage');
+      expect(find.byType(EditorPage), findsOneWidget);
+      await w.owner.asAccount('someone-else', role: AccountRole.admin).update(a.id, name: 'Renamed elsewhere');
+      await settle(t, 1500);
+      expect(t.widget<Text>(find.byKey(const ValueKey('app-info-name'))).data, 'Renamed elsewhere');
+      expect(t.title, contains('Renamed elsewhere'));
+      expect(t.widget<EditorPage>(find.byType(EditorPage)).appName, 'Renamed elsewhere');
+      await _done(t);
+    },
+  );
+
   testWidgets('an app that is gone when opened goes back to the Studio', (t) async {
     final w = await _workspace();
     final a = w.api.seed(name: 'Support triage');

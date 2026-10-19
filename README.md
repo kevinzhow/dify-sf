@@ -8,14 +8,14 @@ branch.
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-284 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+289 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
-| ported | 173 |
-| partial | 45 |
+| ported | 176 |
+| partial | 46 |
 | not ported | 37 |
-| n/a | 16 |
+| n/a | 17 |
 | dify-sf only | 13 |
 
 Per area, with the reason for everything not ported: [docs/features.md](docs/features.md).
@@ -45,3 +45,14 @@ evidence path, visual case or spec does not exist, a Dify spec directory known t
 (`tool/dify_spec/cases.txt`) is named by no feature, or a generated file is stale. When the server repository is
 checked out next to this one (`../dify-sf`), its README's block is regenerated and checked too (or pass
 `--readme <path>`).
+
+## Design-system check
+
+UI is built from `app/lib/src/design/` first. Run this next to `tool/features/gen.py --check` (CI / before merging):
+
+```sh
+python3 tool/design/check.py               # fails on a new literal colour, raw TextStyle, Material widget, ... outside design/
+python3 tool/design/check.py --update      # after removing hits: tighten tool/design/allowlist.tsv (never raises a count)
+```
+
+Rules, exceptions and the reason vocabulary: [`tool/design/README.md`](tool/design/README.md).

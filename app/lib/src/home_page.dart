@@ -7,8 +7,10 @@ import 'package:flutter/material.dart';
 import 'app_detail/app_detail_page.dart';
 import 'app_detail/detail_page_slot.dart';
 import 'app_detail/detail_pages.dart';
+import 'account/account_page.dart';
 import 'app_root.dart';
 import 'auth/account_dropdown.dart';
+import 'auth/account_time.dart';
 import 'auth/auth_api.dart';
 import 'auth/auth_controller.dart';
 import 'cards/card_kit.dart' show cardFontFamily;
@@ -32,6 +34,7 @@ import 'settings/workspace_card.dart';
 import 'settings/workspace_members.dart';
 import 'studio/studio_page.dart';
 import 'workflow/workspace_models.dart';
+import 'workflow_editor/node_panel/bodies/entry/trigger_schedule/schedule_host.dart';
 
 /// Start screen (signed in), in Dify's main navigation frame (the logo at the top, the account menu at the bottom of
 /// the sidebar): the Studio (the workspace's apps, protocol 1.10) when the server has apps, else the developer form
@@ -234,24 +237,30 @@ class _HomePageState extends State<HomePage> {
     final account = demo && signedIn != null ? signedIn.copyWith(role: AccountRole.owner) : signedIn;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => EditorPage(
-          backend: backend,
-          docId: id,
-          account: account,
-          // Re-read after the server refuses edits (403: the role was changed); the demo has no server rights.
-          refreshAccount: demo ? null : _auth?.session.account,
-          displayName: account == null ? null : normalizeDisplayName(account.name),
-          journaled: _journaled,
-          create: create,
-          extraActions: extra,
-          // The launch's `node_id` belongs to the launch's document.
-          locateNodeId: id == widget.launch?.doc ? widget.launch?.nodeId : null,
-          models: demo ? null : _models,
-          openModelProviderSettings: demo || _models == null
-              ? null
-              : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
-          // Protocol 1.10: a deleted app's document answers 404 `app_deleted`; the editor goes back to the Studio.
-          isAppDeleted: apps == null ? null : () => _appDeleted(apps, id),
+        // The schedule trigger reads the account's time zone (Dify's `userProfile.timezone`).
+        builder: (_) => Builder(
+          builder: (context) => ScheduleHost(
+            profileTimezone: accountTimezone(context),
+            child: EditorPage(
+              backend: backend,
+              docId: id,
+              account: account,
+              // Re-read after the server refuses edits (403: the role was changed); the demo has no server rights.
+              refreshAccount: demo ? null : _auth?.session.account,
+              displayName: account == null ? null : normalizeDisplayName(account.name),
+              journaled: _journaled,
+              create: create,
+              extraActions: extra,
+              // The launch's `node_id` belongs to the launch's document.
+              locateNodeId: id == widget.launch?.doc ? widget.launch?.nodeId : null,
+              models: demo ? null : _models,
+              openModelProviderSettings: demo || _models == null
+                  ? null
+                  : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
+              // Protocol 1.10: a deleted app's document answers 404 `app_deleted`; the editor goes back to the Studio.
+              isAppDeleted: apps == null ? null : () => _appDeleted(apps, id),
+            ),
+          ),
         ),
       ),
     );
@@ -301,21 +310,25 @@ class _HomePageState extends State<HomePage> {
       ),
       editor: (context, host) => ValueListenableBuilder(
         valueListenable: host.app,
-        builder: (context, info, _) => EditorPage(
-          backend: backend,
-          docId: app.id,
-          account: account,
-          refreshAccount: auth.session.account,
-          displayName: account == null ? null : normalizeDisplayName(account.name),
-          journaled: _journaled,
-          create: false,
-          appName: info.name,
-          onImportAvailable: host.registerImport,
-          models: _models,
-          openModelProviderSettings: _models == null
-              ? null
-              : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
-          isAppDeleted: () => _appDeleted(apps, app.id),
+        builder: (context, info, _) => ScheduleHost(
+          profileTimezone: accountTimezone(context),
+          child: EditorPage(
+            backend: backend,
+            docId: app.id,
+            account: account,
+            refreshAccount: auth.session.account,
+            displayName: account == null ? null : normalizeDisplayName(account.name),
+            journaled: _journaled,
+            create: false,
+            appName: info.name,
+            onImportAvailable: host.registerImport,
+            onAppChanged: () => unawaited(host.refreshApp()),
+            models: _models,
+            openModelProviderSettings: _models == null
+                ? null
+                : (context) => showModelProviderSettings(context, models: _models!, role: account?.role),
+            isAppDeleted: () => _appDeleted(apps, app.id),
+          ),
         ),
       ),
     );
@@ -333,7 +346,7 @@ class _HomePageState extends State<HomePage> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (account != null) MainNavFrame(account: account, models: _models, members: _members),
+          if (account != null) MainNavFrame(account: account, models: _models, members: _members, apps: apps),
           Expanded(
             child: apps == null || account == null
                 ? _form(context)
@@ -440,8 +453,11 @@ class _HomePageState extends State<HomePage> {
 /// its menu opens the workspace settings), the Integrations link (the model providers) and the account section at the
 /// bottom (`py-3 pr-1 pl-3`). Dify's search, its other navigation links, web apps and help menu are not part of dify-sf.
 class MainNavFrame extends StatefulWidget {
-  const MainNavFrame({super.key, required this.account, this.models, this.members});
+  const MainNavFrame({super.key, required this.account, this.models, this.members, this.apps});
   final Account account;
+
+  /// The session's apps: the Account page lists them ("Account's data").
+  final AppsApi? apps;
 
   /// The workspace's members, when the page shares them (the Studio); else the frame keeps its own.
   final WorkspaceMembers? members;
@@ -517,7 +533,15 @@ class _MainNavFrameState extends State<MainNavFrame> {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
           child: Row(
-            children: [Flexible(child: AccountSection(account: widget.account))],
+            children: [
+              Flexible(
+                child: AccountSection(
+                  account: widget.account,
+                  members: _members,
+                  onOpenAccount: () => unawaited(openAccountPage(context, apps: widget.apps)),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -551,6 +575,8 @@ Widget buildApp(
               ..useLocalAccount(const Account(id: 'demo-user', email: '', name: 'You', role: AccountRole.owner)))
           : null);
   final navigatorKey = GlobalKey<NavigatorState>();
+  // The session for every page, also those pushed over the home page (AppRoot publishes its controller here).
+  final authRelay = ValueNotifier<AuthController?>(session);
   return ListenableBuilder(
     listenable: appTheme,
     builder: (context, _) => MaterialApp(
@@ -571,6 +597,7 @@ Widget buildApp(
         auth: session,
         authApiFor: authApiFor,
         tokenStore: tokenStore,
+        authRelay: authRelay,
         home: (_) => HomePage(
           settings: settings,
           backendFor: backendFor,
@@ -586,15 +613,19 @@ Widget buildApp(
         theme: appTheme,
         child: AppLocaleScope(
           locale: appLocale,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              child!,
-              DefaultTextStyle(
-                style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
-                child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
-              ),
-            ],
+          child: ValueListenableBuilder<AuthController?>(
+            valueListenable: authRelay,
+            builder: (context, auth, page) => auth == null ? page! : AuthScope(controller: auth, child: page!),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                child!,
+                DefaultTextStyle(
+                  style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
+                  child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
+                ),
+              ],
+            ),
           ),
         ),
       ),

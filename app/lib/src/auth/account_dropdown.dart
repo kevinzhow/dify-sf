@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../account/account_page.dart';
 import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_theme_mode.dart';
@@ -12,6 +13,8 @@ import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/app_locale.dart';
 import '../i18n/dify_i18n.dart';
+import '../settings/account_setting.dart';
+import '../settings/workspace_members.dart';
 import 'auth_api.dart';
 import 'auth_controller.dart';
 
@@ -20,15 +23,43 @@ String _tc(BuildContext context, String key) {
   return DifyI18n.tr('common', key);
 }
 
+/// Opens the account setting on Preferences (Dify's `setSettingsDestination('preferences')`): with [members] when the
+/// page shares them, else with its own for the session (released when the dialog closes).
+Future<void> openPreferences(BuildContext context, {WorkspaceMembers? members}) async {
+  if (members != null) {
+    return showAccountSetting(context, members: members, tab: AccountSettingTab.preferences);
+  }
+  final auth = AuthScope.read(context);
+  if (auth == null) return;
+  final own = WorkspaceMembers(auth);
+  try {
+    await showAccountSetting(context, members: own, tab: AccountSettingTab.preferences);
+  } finally {
+    own.dispose();
+  }
+}
+
 /// AccountDropdown: [trigger] (given the accessible name "Account" and whether the menu is open) opens the menu
 /// `top-start`, 6 px away, 4 px along, `w-60` on the blurred panel background without padding. Logging out signs out
-/// ([onLogout]; by default the [AuthScope]'s controller, which brings the sign-in page back).
+/// ([onLogout]; by default the [AuthScope]'s controller, which brings the sign-in page back). "Account" opens the
+/// Account page ([onOpenAccount]; [openAccountPage] by default), "Preferences" the account setting's Preferences
+/// ([onOpenPreferences]; [openPreferences] with [members] by default).
 class AccountDropdown extends StatelessWidget {
-  const AccountDropdown({super.key, required this.trigger, required this.account, this.onLogout});
+  const AccountDropdown({
+    super.key,
+    required this.trigger,
+    required this.account,
+    this.onLogout,
+    this.onOpenAccount,
+    this.onOpenPreferences,
+    this.members,
+  });
 
   final Widget Function(BuildContext context, String ariaLabel, bool open, VoidCallback toggle) trigger;
   final Account account;
   final Future<void> Function()? onLogout;
+  final VoidCallback? onOpenAccount, onOpenPreferences;
+  final WorkspaceMembers? members;
 
   @override
   Widget build(BuildContext context) => DifyDropdownMenu(
@@ -42,19 +73,39 @@ class AccountDropdown extends StatelessWidget {
       MainNavMenuContent(
         account: account,
         onLogout: onLogout ?? () async => AuthScope.read(context)?.signOut(),
+        onOpenAccount: onOpenAccount ?? () => unawaited(openAccountPage(context)),
+        onOpenPreferences: onOpenPreferences ?? () => unawaited(openPreferences(context, members: members)),
       ),
     ],
   );
 }
 
-/// main-nav-menu-content.tsx: the account card (name, email, the `lg` avatar on a `rounded-xl` gradient), the
-/// Appearance submenu (light / dark / system, [AppThemeScope]'s choice), then "Log out". Dify's Account page link and
-/// Preferences are not shown: dify-sf has no account page or preferences dialog yet.
+/// main-nav-menu-content.tsx: the account card (name, email, the `lg` avatar on a `rounded-xl` gradient), the group
+/// with "Account" (`i-ri-account-circle-line`, the `i-ri-arrow-right-up-line` link indicator), "Preferences"
+/// (`i-ri-equalizer-2-line`) and the Appearance submenu (light / dark / system, [AppThemeScope]'s choice), then "Log
+/// out". Items are `mx-0 h-8 gap-1 px-3 py-1`.
 class MainNavMenuContent extends StatelessWidget {
-  const MainNavMenuContent({super.key, required this.account, required this.onLogout});
+  const MainNavMenuContent({
+    super.key,
+    required this.account,
+    required this.onLogout,
+    this.onOpenAccount,
+    this.onOpenPreferences,
+  });
 
   final Account account;
   final Future<void> Function() onLogout;
+  final VoidCallback? onOpenAccount, onOpenPreferences;
+
+  Widget _label(BuildContext context, String key) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 4),
+    child: Text(
+      _tc(context, key),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => Column(
@@ -102,12 +153,35 @@ class MainNavMenuContent extends StatelessWidget {
           ),
         ),
       ),
-      // DropdownMenuGroup `p-1` with the Appearance submenu.
-      if (AppThemeScope.of(context) case final theme?)
-        Padding(
-          padding: const EdgeInsets.all(4),
-          child: AppearanceSubmenu(theme: theme),
+      // DropdownMenuGroup `p-1`: Account, Preferences, the Appearance submenu.
+      Padding(
+        padding: const EdgeInsets.all(4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifyMenuItem(
+              key: const ValueKey('account-open-account'),
+              marginX: 0,
+              paddingX: 12,
+              semanticLabel: _tc(context, 'account.account'),
+              onSelect: onOpenAccount,
+              leading: RemixIcon('account-circle-line', size: 16, color: DifyColors.textTertiary),
+              trailing: RemixIcon('arrow-right-up-line', size: 14, color: DifyColors.textTertiary),
+              child: _label(context, 'account.account'),
+            ),
+            DifyMenuItem(
+              key: const ValueKey('account-open-preferences'),
+              marginX: 0,
+              paddingX: 12,
+              semanticLabel: _tc(context, 'settings.preferences'),
+              onSelect: onOpenPreferences,
+              leading: RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
+              child: _label(context, 'settings.preferences'),
+            ),
+            if (AppThemeScope.of(context) case final theme?) AppearanceSubmenu(theme: theme),
+          ],
         ),
+      ),
       // DropdownMenuSeparator `my-0! bg-divider-subtle`.
       Container(height: 1, color: DifyColors.dividerSubtle),
       Padding(
@@ -188,16 +262,31 @@ class AppearanceSubmenu extends StatelessWidget {
 /// py-1 pr-4 pl-1 system-md-medium text-components-main-nav-text`, hover / open `bg-state-base-hover`); [compact]
 /// shows only the avatar (`p-1`). Its accessible name is the name and "Account".
 class AccountSection extends StatelessWidget {
-  const AccountSection({super.key, required this.account, this.compact = false, this.onLogout});
+  const AccountSection({
+    super.key,
+    required this.account,
+    this.compact = false,
+    this.onLogout,
+    this.members,
+    this.onOpenAccount,
+  });
 
   final Account account;
   final bool compact;
   final Future<void> Function()? onLogout;
 
+  /// The workspace's members the page shares (Preferences opens the account setting with them).
+  final WorkspaceMembers? members;
+
+  /// Opens the Account page ([openAccountPage] by default).
+  final VoidCallback? onOpenAccount;
+
   @override
   Widget build(BuildContext context) => AccountDropdown(
     account: account,
     onLogout: onLogout,
+    members: members,
+    onOpenAccount: onOpenAccount,
     trigger: (context, ariaLabel, open, toggle) => _AccountTrigger(
       account: account,
       compact: compact,

@@ -40,7 +40,12 @@ Object? _or(Iterable<Object? Function()> values) {
 /// `getFormattedChatList`: each message as a question item (`question-<id>`) and an answer item (the message id),
 /// the answer with the user's and the admin's feedback, the prompt log, `more` (time in [format], tokens, latency),
 /// citations and the annotation (a hit's or the message's own).
-List<Json> getFormattedChatList(List<Json> messages, String conversationId, String format) {
+List<Json> getFormattedChatList(
+  List<Json> messages,
+  String conversationId,
+  String format, {
+  String Function(int seconds, String format) timeFormatter = formatTime,
+}) {
   final out = <Json>[];
   for (final item in messages) {
     final inputs = (item['inputs'] as Map?)?.cast<String, Object?>() ?? const {};
@@ -79,7 +84,7 @@ List<Json> getFormattedChatList(List<Json> messages, String conversationId, Stri
       'conversationId': conversationId,
       'input': {'inputs': inputs, 'query': item['query']},
       'more': {
-        'time': formatTime(((item['created_at'] as num?) ?? 0).toInt(), format),
+        'time': timeFormatter(((item['created_at'] as num?) ?? 0).toInt(), format),
         'tokens': ((item['answer_tokens'] as num?) ?? 0) + ((item['message_tokens'] as num?) ?? 0),
         'latency': ((item['provider_response_latency'] as num?) ?? 0).toStringAsFixed(2),
       },

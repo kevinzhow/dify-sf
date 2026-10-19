@@ -15,7 +15,7 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart';
-import '../../workflow_editor/header/format.dart' as fmt;
+import '../../auth/account_time.dart';
 import '../../workflow_editor/panel_fields/controls.dart' show DifySwitch, DifySwitchSize;
 import '../access/access_point_utils.dart' show difyDocLink;
 import '../detail_page_slot.dart';
@@ -124,7 +124,7 @@ class AnnotationsPage extends StatefulWidget {
     this.pickCsv = pickAnnotationCsv,
     this.debounce = const Duration(milliseconds: 500),
     this.jobPollInterval = const Duration(seconds: 2),
-    this.formatTime = fmt.formatTime,
+    this.formatTime,
     this.configParamModal,
     this.viewModal,
   });
@@ -145,7 +145,9 @@ class AnnotationsPage extends StatefulWidget {
 
   /// `ensureJobCompleted`'s `sleep(2000)`.
   final Duration jobPollInterval;
-  final AnnotationTimeFormatter formatTime;
+
+  /// Null: the account's time zone ([AccountTime.of], Dify's `useTimestamp`).
+  final AnnotationTimeFormatter? formatTime;
 
   /// Replace the setup modal and the view drawer (Dify's page tests mock them).
   final Widget Function(AnnotationConfigParamModal modal)? configParamModal;

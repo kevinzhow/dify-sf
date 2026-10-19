@@ -28,6 +28,7 @@ class AppRoot extends StatefulWidget {
     this.auth,
     this.authApiFor,
     this.tokenStore,
+    this.authRelay,
   });
 
   final AppSettings settings;
@@ -46,6 +47,10 @@ class AppRoot extends StatefulWidget {
   final AuthApi Function(Uri server)? authApiFor;
   final TokenStore? tokenStore;
 
+  /// Where the current controller is published for the [AuthScope] above the navigator (buildApp's), so that pages
+  /// pushed over the home page (the Account page, app detail pages, dialogs) see the session too.
+  final ValueNotifier<AuthController?>? authRelay;
+
   @override
   State<AppRoot> createState() => _AppRootState();
 }
@@ -63,6 +68,16 @@ class _AppRootState extends State<AppRoot> {
     }
     _shown = _auth.route;
     widget.auth?.addListener(_routeChanged);
+    _publish();
+  }
+
+  /// Hands the controller to [AppRoot.authRelay] after this frame (its listeners build above this widget).
+  void _publish() {
+    final relay = widget.authRelay;
+    if (relay == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) relay.value = _auth;
+    });
   }
 
   /// A controller for [server] (a new one when the server changes), started.
@@ -73,6 +88,7 @@ class _AppRootState extends State<AppRoot> {
     _own = AuthController.on(server: server, api: api, store: widget.tokenStore ?? TokenStore.platform())
       ..addListener(_routeChanged);
     unawaited(_own!.start(activateToken: activate, resetToken: reset));
+    if (mounted) _publish();
   }
 
   Future<void> _changeServer(String server) async {

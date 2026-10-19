@@ -17,7 +17,7 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../studio/search_input.dart';
-import '../../workflow_editor/header/format.dart' show formatTime;
+import '../../auth/account_time.dart';
 import '../../workflow_editor/run/ui/chat.dart' show ChatAnswer, ChatContext, ChatQuestion;
 import '../access/access_point_utils.dart' show difyDocLink;
 import 'list_utils.dart';
@@ -564,7 +564,7 @@ class _ConversationListState extends State<ConversationList> {
     final logs = widget.logs;
     if (logs == null) return const LogLoading();
     final columns = <LogColumn>[
-      (header: null, width: 20, flex: 0),
+      (header: null, width: 20),
       (
         header: Text(
           difyTransform(
@@ -572,16 +572,11 @@ class _ConversationListState extends State<ConversationList> {
             _l(_isChatMode ? 'table.header.summary' : 'table.header.input'),
           ),
         ),
-        width: null,
-        flex: 4,
+        width: 160,
       ),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.endUser'))), width: null, flex: 3),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.endUser'))), width: null),
       if (_isChatflow)
-        (
-          header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
-          width: null,
-          flex: 3,
-        ),
+        (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))), width: 160),
       (
         header: Text(
           difyTransform(
@@ -590,26 +585,14 @@ class _ConversationListState extends State<ConversationList> {
           ),
         ),
         width: null,
-        flex: 2,
       ),
-      (
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.userRate'))),
-        width: null,
-        flex: 2,
-      ),
-      (
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.adminRate'))),
-        width: null,
-        flex: 2,
-      ),
-      (
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.updatedTime'))),
-        width: 180,
-        flex: 0,
-      ),
-      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.time'))), width: 180, flex: 0),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.userRate'))), width: null),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.adminRate'))), width: null),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.updatedTime'))), width: 160),
+      (header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.time'))), width: 160),
     ];
     final format = _l('dateTimeFormat');
+    final time = AccountTime.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: LogTable(
@@ -638,11 +621,11 @@ class _ConversationListState extends State<ConversationList> {
                   logCell(_value(row.rightValue, row.isRightEmpty)),
                   logCell(_rating(log['user_feedback_stats'] as Map?)),
                   logCell(_rating(log['admin_feedback_stats'] as Map?)),
-                  logCell(Text(formatTime(((log['updated_at'] as num?) ?? 0).toInt(), format))),
+                  logCell(Text(time.formatTime(((log['updated_at'] as num?) ?? 0).toInt(), format))),
                   logCell(
                     LogDrawerTrigger(
                       focusNode: trigger,
-                      text: formatTime(((log['created_at'] as num?) ?? 0).toInt(), format),
+                      text: time.formatTime(((log['created_at'] as num?) ?? 0).toInt(), format),
                       onPressed: () => _open(id),
                     ),
                   ),
@@ -792,7 +775,12 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
         });
         return;
       }
-      final next = getFormattedChatList(data, _id, _l('dateTimeFormat'));
+      final next = getFormattedChatList(
+        data,
+        _id,
+        _l('dateTimeFormat'),
+        timeFormatter: AccountTime.read(context).formatTime,
+      );
       setState(() {
         if (data.isNotEmpty) _varValues = (data.last['inputs'] as Map?)?.cast<String, Object?>() ?? const {};
         _hasMore = res['has_more'] == true;
@@ -933,7 +921,8 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
                         )
                       else
                         Text(
-                          formatTime(((widget.detail['created_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
+                          AccountTime.of(context)
+                              .formatTime(((widget.detail['created_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
                           style: difyTextStyle(DifyType.system2xsRegularUppercase, DifyColors.textSecondary),
                         ),
                     ],

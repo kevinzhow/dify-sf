@@ -7,6 +7,7 @@ import 'package:dify_sf_app/src/app_detail/detail_page_slot.dart';
 import 'package:dify_sf_app/src/app_detail/logs/log_widgets.dart';
 import 'package:dify_sf_app/src/app_detail/logs/logs_data.dart';
 import 'package:dify_sf_app/src/app_detail/logs/logs_page.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/chat.dart' show ChatAnswerFeedback, ChatFeedbackDialog;
 import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +79,46 @@ void main() {
     await settle(t);
     // The mock's first answer already has the admin's like: the pressed button clears it (rating null).
     expect(source.feedbackCalls.single, {'message_id': 'message-1-0', 'rating': null});
+  });
+
+  testWidgets('chatflow logs: a dislike asks what went wrong first (Provide Feedback), Cancel saves nothing', (
+    t,
+  ) async {
+    final source = MockAppLogsSource(now: DateTime(2026, 10, 19, 12));
+    await renderPage(
+      t,
+      detailFor(app('advanced-chat'), services: {AppLogsSource: source}, query: {'conversation_id': 'conversation-0'}),
+    );
+    Future<void> dislike() async {
+      final b = buttonMatching('app-log.table.header.adminRate: app-log.detail.operation.dislike');
+      final node = b.evaluate().first;
+      node.owner!.performAction(node.id, SemanticsAction.tap);
+      await settle(t);
+    }
+
+    await dislike();
+    expect(find.byType(ChatFeedbackDialog), findsOneWidget);
+    expect(find.text('common.feedback.title'), findsOneWidget);
+    await t.tap(find.text('common.operation.cancel'));
+    await settle(t);
+    expect(find.byType(ChatFeedbackDialog), findsNothing);
+    expect(source.feedbackCalls, isEmpty);
+
+    await dislike();
+    await t.enterText(
+      find.descendant(of: find.byKey(const ValueKey('chat-feedback-content')), matching: find.byType(EditableText)),
+      'wrong answer',
+    );
+    await t.tap(find.byKey(const ValueKey('chat-feedback-submit')));
+    await settle(t);
+    expect(find.byType(ChatFeedbackDialog), findsNothing);
+    expect(source.feedbackCalls.single, {'message_id': 'message-0-0', 'rating': 'dislike', 'content': 'wrong answer'});
+    // The pressed dislike now shows the admin's feedback with its text (operation.tsx buildFeedbackTooltip).
+    expect(buttonMatching('app-log.table.header.adminRate: app-log.detail.operation.dislike'), findsWidgets);
+    expect(
+      ChatAnswerFeedback.tooltip({'rating': 'dislike', 'content': 'wrong answer'}, 'Admin'),
+      'Admin: app-log.detail.operation.dislike - wrong answer',
+    );
   });
 
   testWidgets('empty logs: "Is anyone there?" links test to the editor and share to Access Point', (t) async {

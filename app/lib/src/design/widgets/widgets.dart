@@ -4,6 +4,7 @@ library;
 export 'avatar.dart';
 export 'button.dart';
 export 'button_style.dart';
+export 'collapse.dart';
 export 'divider.dart';
 export 'floating.dart';
 export 'icon_button.dart';

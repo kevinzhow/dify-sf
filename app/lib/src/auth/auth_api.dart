@@ -74,6 +74,38 @@ class OfflineAuthApi implements AuthApi {
   }) async => _offline();
 
   @override
+  Future<Account> updateProfile(
+    String accessToken, {
+    String? name,
+    String? interfaceLanguage,
+    String? timezone,
+  }) async => _offline();
+
+  @override
+  Future<String> sendChangeEmailCode(
+    String accessToken, {
+    required String email,
+    String? language,
+    String? phase,
+    String? token,
+  }) async => _offline();
+
+  @override
+  Future<ResetCodeCheck> checkChangeEmailCode(
+    String accessToken, {
+    required String email,
+    required String code,
+    required String token,
+  }) async => _offline();
+
+  @override
+  Future<Account> changeEmail(String accessToken, {required String newEmail, required String token}) async =>
+      _offline();
+
+  @override
+  Future<void> checkEmailUnique(String accessToken, String email) async => _offline();
+
+  @override
   Future<List<Member>> members(String accessToken) async => _offline();
 
   @override
