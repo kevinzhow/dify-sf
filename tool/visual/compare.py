@@ -287,17 +287,23 @@ def run_our_steps(page, steps, box, log=()):
 
 
 def add_routes(page, case, side):
-    for r in (case.get('page') or {}).get('routes', []):
+    for r in [*case.get('routes', []), *(case.get('page') or {}).get('routes', [])]:
         if r.get('side', 'both') not in (side, 'both'):
             continue
-        page.route(r['url'], canned(r.get('method', 'GET'), json.dumps(r['json'])))
+        if 'bodyFile' in r:
+            body = (ROOT / r['bodyFile']).read_bytes()
+        elif 'jsonFile' in r:
+            body = (ROOT / r['jsonFile']).read_bytes()
+        else:
+            body = json.dumps(r['json'])
+        page.route(r['url'], canned(r.get('method', 'GET'), body, r.get('contentType', 'application/json')))
 
 
-def canned(method, body):
+def canned(method, body, content_type='application/json'):
     """A route handler answering [method] requests with the JSON [body] (others go through)."""
     def handler(route):
         if route.request.method == method:
-            route.fulfill(status=200, content_type='application/json', body=body)
+            route.fulfill(status=200, content_type=content_type, body=body)
         else:
             route.continue_()
     return handler

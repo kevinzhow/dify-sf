@@ -825,8 +825,8 @@ features:
   title: 'Prompt editor: inline variable chips, { and / variable picker, Jinja mode, shortcuts popup'
   dify: [web/app/components/base/prompt-editor]
   status: ported
-  deviation: A plain-text controller with block characters instead of Lexical nodes (same visible behaviour; Lexical internals are n/a in the ledger).
-  evidence: ['spec:web/app/components/base/prompt-editor', 'spec:web/app/components/base/prompt-editor/plugins', 'spec:web/app/components/base/prompt-editor/plugins/component-picker-block', 'spec:web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin', 'spec:web/app/components/base/prompt-editor/plugins/draggable-plugin', 'spec:web/app/components/base/prompt-editor/plugins/custom-text', app/test/prompt_editor_test.dart]
+  deviation: A plain-text controller with block characters instead of Lexical nodes (Lexical internals are n/a in the ledger). CSS inline line-box extents retain fractional height for surrounding controls; the native text engine still rounds its internal line advances.
+  evidence: ['spec:web/app/components/base/prompt-editor', 'spec:web/app/components/base/prompt-editor/plugins', 'spec:web/app/components/base/prompt-editor/plugins/component-picker-block', 'spec:web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin', 'spec:web/app/components/base/prompt-editor/plugins/draggable-plugin', 'spec:web/app/components/base/prompt-editor/plugins/custom-text', app/test/prompt_editor_test.dart, app/test/prompt_inline_extent_test.dart]
   ours: [app/lib/src/workflow_editor/prompt_editor/prompt_editor.dart, app/lib/src/workflow_editor/prompt_editor/component_picker.dart, app/lib/src/workflow_editor/prompt_editor/shortcuts_popup.dart]
 - id: editors.prompt-blocks
   area: editors
@@ -932,8 +932,8 @@ features:
   title: 'LLM panel: model selector and model parameters'
   dify: [web/app/components/header/account-setting/model-provider-page/model-selector, web/app/components/header/account-setting/model-provider-page/model-parameter-modal]
   status: partial
-  reason: "The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) and the popup's per-provider credential dropdown are not ported."
-  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/model-selector', 'spec:web/app/components/header/account-setting/model-provider-page/model-parameter-modal', 'spec:web/app/components/header/account-setting/model-provider-page/model-name', visual:panel-llm]
+  reason: "The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)) and the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) are not ported. Per-provider credentials reuse the settings service: lazy detail loading, permission checks, switching, and add/edit actions from the nested menu."
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/model-selector', 'spec:web/app/components/header/account-setting/model-provider-page/model-parameter-modal', 'spec:web/app/components/header/account-setting/model-provider-page/model-name', visual:panel-llm, visual:model-selector-credentials, app/test/dify_spec/workflow/nodes_panel/llm/model_selector_credentials_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/model_selector.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart, app/lib/src/workflow/model_catalog.dart, app/lib/src/workflow/workspace_models.dart, app/lib/src/workflow_editor/dify_editor.dart]
 - id: node-llm.prompt
   area: node-llm
@@ -1042,7 +1042,7 @@ features:
   title: 'HTTP Request panel: method, URL, headers, params, body types, authorization, timeout, SSL verify, cURL import'
   dify: [web/app/components/workflow/nodes/http/panel.tsx, web/app/components/workflow/nodes/http/components]
   status: ported
-  evidence: ['spec:web/app/components/workflow/nodes/http/components', 'spec:web/app/components/workflow/nodes/http/components/edit-body', 'spec:web/app/components/workflow/nodes/http/components/timeout', visual:panel-http-request]
+  evidence: ['spec:web/app/components/workflow/nodes/http/components', 'spec:web/app/components/workflow/nodes/http/components/edit-body', 'spec:web/app/components/workflow/nodes/http/components/timeout', visual:panel-http-request, app/test/prompt_inline_extent_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/data/http/http_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/http/http_dialogs.dart]
 
 - id: node-aggregator.card
@@ -1184,7 +1184,7 @@ features:
   title: 'Human Input panel: delivery methods (web app, email recipients), form content, user actions, timeout, preview'
   dify: [web/app/components/workflow/nodes/human-input/panel.tsx, web/app/components/workflow/nodes/human-input/components]
   status: ported
-  evidence: ['spec:web/app/components/workflow/nodes/human-input/components', 'spec:web/app/components/workflow/nodes/human-input/components/delivery-method', 'spec:web/app/components/workflow/nodes/human-input/components/delivery-method/recipient', 'spec:web/app/components/workflow/nodes/human-input/hooks', visual:panel-human-input]
+  evidence: ['spec:web/app/components/workflow/nodes/human-input/components', 'spec:web/app/components/workflow/nodes/human-input/components/delivery-method', 'spec:web/app/components/workflow/nodes/human-input/components/delivery-method/recipient', 'spec:web/app/components/workflow/nodes/human-input/hooks', visual:panel-human-input, app/test/dify_spec/workflow/nodes_panel/data/human_input_user_action_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/data/human_input/human_input_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/human_input/delivery_method.dart]
 - id: node-human-input.test-email
   area: node-human-input
@@ -1486,7 +1486,7 @@ features:
   dify: [web/app/components/workflow/panel/debug-and-preview]
   status: ported
   deviation: Answers come from the mock runtime.
-  evidence: ['spec:web/app/components/workflow/panel/debug-and-preview', visual:preview, visual:preview-chat]
+  evidence: ['spec:web/app/components/workflow/panel/debug-and-preview', visual:preview, visual:preview-chat, app/test/workflow_editor/run/chat_canvas_inspect_test.dart]
   ours: [app/lib/src/workflow_editor/run/ui/debug_and_preview.dart, app/lib/src/workflow_editor/run/ui/chat.dart]
 - id: chat-preview.chat-logic
   area: chat-preview

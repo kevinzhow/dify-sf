@@ -22,6 +22,11 @@ abstract final class Css {
   /// much taller than the button, which sits at its top. Measured in Chrome: 2.5 px at 2x, 2 px at 1x.
   static double get inlineButtonLineGap => devicePixelRatio >= 2 ? 2.5 : 2;
 
+  /// Chrome's intrinsic width of Dify Input (`size=20`, Noto Sans 13px/16px, px-3 and a 1px border).
+  /// A flex child with `min-width:auto` keeps this width even when its declared width is 100%; siblings with
+  /// flex-shrink (such as IconButton) give up space first. Measured in the pinned Dify 1.17.1 browser fixture.
+  static const inputMinContentWidth = 174.640625;
+
   // Noto Sans (Dify's font stack on Linux, and ours): hhea ascent 1069, descent 293 per 1000 units.
   static const _ascent = 1.069, _descent = 0.293;
 

@@ -22,7 +22,8 @@ import '../../i18n/dify_i18n.dart';
 import '../panel_fields/var_picker_model.dart';
 import '../panel_fields/var_reference_vars.dart' show VarReferenceVars;
 import '../../design/dify_icon.dart';
-import '../../design/widgets/widgets.dart' show DifyFloating, DifyPlacement, DifyCollision, DifyFloatingController;
+import '../../design/widgets/widgets.dart'
+    show DifyFloating, DifyPlacement, DifyCollision, DifyFloatingController, CssInlineExtent;
 import '../node_panel/bodies/llm/agent_v2_logic.dart' show createAgentOutputConfig;
 import 'agent_output_block.dart';
 import 'component_picker.dart';
@@ -1057,6 +1058,17 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
         onExit: (_) {
           if (_dragging == null && _dragLine != null) setState(() => _dragLine = null);
         },
+        child: field,
+      );
+    }
+    if (!hitl && w.height == null) {
+      field = CssInlineExtent(
+        fontSize: fontSize,
+        lineHeight: lineHeight,
+        inlineOffsets: [
+          for (var i = 0; i < controller.text.length; i++)
+            if (controller.blockAt(i) case final block? when block.kind != PromptBlockKind.literal) i,
+        ],
         child: field,
       );
     }

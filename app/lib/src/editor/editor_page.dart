@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../app_detail/detail_page_slot.dart';
 import '../auth/auth_api.dart';
+import '../settings/model_provider/model_provider_env.dart';
 import '../auth/auth_controller.dart';
 import '../design/widgets/toast.dart';
 import '../i18n/dify_i18n.dart';
@@ -469,6 +470,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       onExportDsl: (includeSecret) => _exportDifyDsl(context, includeSecret: includeSecret),
       onImportDsl: widget.backend.supportsDifyDsl ? _importDifyDsl : null,
       models: widget.models,
+      modelProviderEnv: widget.models == null ? null : ModelProviderEnv.forRole(widget.models!, _account?.role),
       openModelProviderSettings: switch (widget.openModelProviderSettings) {
         final open? => () => unawaited(open(context)),
         null => null,

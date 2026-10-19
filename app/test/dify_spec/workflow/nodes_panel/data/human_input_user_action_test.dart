@@ -38,6 +38,32 @@ void main() {
   }
 
   group('UserActionItem', () {
+    testWidgets('the title keeps HTML min-content width while the adjacent delete button shrinks', (t) async {
+      await pumpComponent(
+        t,
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(width: 367, child: item()),
+        ),
+      );
+      final title = find.byWidgetPredicate(
+        (w) => w is DifyInput && w.semanticLabel == hiKey('userActions.buttonTextPlaceholder'),
+      );
+      final remove = named('common.operation.delete');
+      expect(t.getSize(title).width, closeTo(174.640625, 0.001));
+      expect(t.getSize(remove).width, closeTo(28.359375, 0.001));
+      expect(t.getSize(remove).height, 32);
+      await pumpComponent(
+        t,
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(width: 500, child: item()),
+        ),
+      );
+      expect(t.getSize(title).width, 304);
+      expect(t.getSize(remove).width, 32);
+    });
+
     testWidgets('should sanitize ids, enforce length limits, and update the button text', (t) async {
       await pumpComponent(t, item(), toasts: toasts);
 

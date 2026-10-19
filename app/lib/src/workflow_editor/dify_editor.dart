@@ -14,6 +14,7 @@ import '../editor/editor_versions.dart';
 import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
 import '../workflow/workspace_models.dart';
+import '../settings/model_provider/model_provider_env.dart';
 import 'context_menu/context_menu.dart';
 import 'features/features_services.dart' show FeaturesServices;
 import 'features/workflow_features.dart';
@@ -133,6 +134,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.pickDslFile,
     this.saveImage,
     this.models,
+    this.modelProviderEnv,
     this.openModelProviderSettings,
     this.versions,
     this.publisher = const EditorPublisherHost(),
@@ -149,6 +151,7 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// The workspace's model providers and models (the model selector, parameter rules, default models, the checklist's
   /// "Configure a model", OpenAI moderation); null: an empty workspace (no server).
   final WorkspaceModels? models;
+  final ModelProviderEnv? modelProviderEnv;
 
   /// Opens the model provider settings (Dify's settings destination `provider`); refetching the models afterwards is
   /// the caller's. Null: the selector has no "Model Provider Settings" footer.
@@ -613,6 +616,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       builder: (context, child) => LlmGroupScope(
         services: LlmGroupServices(
           models: models.catalog,
+          modelProviderEnv: widget.modelProviderEnv,
           defaultModels: models.defaultModelsMap,
           parameterRules: models.parameterRules,
           openModelProviderSettings: widget.openModelProviderSettings,

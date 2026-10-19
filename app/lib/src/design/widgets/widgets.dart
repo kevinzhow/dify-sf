@@ -17,3 +17,4 @@ export 'surface.dart';
 export 'text.dart';
 export 'toast.dart';
 export 'tooltip.dart';
+export 'inline_extent.dart';

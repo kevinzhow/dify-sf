@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../cards/card_kit.dart';
 import '../../../../../design/dify_icon.dart';
+import '../../../../../design/css_metrics.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../panel_fields/panel_fields.dart';
@@ -111,47 +112,60 @@ class _UserActionItemState extends State<UserActionItem> {
   Widget build(BuildContext context) {
     final w = widget;
     final idLabel = hi('userActions.actionNamePlaceholder'), titleLabel = hi('userActions.buttonTextPlaceholder');
-    return Row(
-      spacing: 4,
-      children: [
-        SizedBox(
-          width: 120,
-          child: DifyInput(
-            value: _id,
-            focusNode: _idFocus,
-            placeholder: idLabel,
-            semanticLabel: idLabel,
-            disabled: w.readonly,
-            onChanged: _onId,
-            onSubmitted: (_) => _commit(),
-          ),
-        ),
-        Expanded(
-          child: DifyInput(
-            value: _title,
-            focusNode: _titleFocus,
-            placeholder: titleLabel,
-            semanticLabel: titleLabel,
-            disabled: w.readonly,
-            onChanged: _onTitle,
-            onSubmitted: (_) => _commit(),
-          ),
-        ),
-        ButtonStyleDropdown(
-          text: _title,
-          value: '${w.data['button_style'] ?? ''}',
-          readonly: w.readonly,
-          onChange: (style) => w.onChange({...w.data, 'id': _id, 'title': _title, 'button_style': style}, null),
-        ),
-        if (!w.readonly)
-          DifyIconButton(
-            label: cm('operation.delete'),
-            size: DifyIconButtonSize.lg,
-            variant: DifyButtonVariant.tertiary,
-            onPressed: () => w.onDelete(_str('id')),
-            icon: const RemixIcon('delete-bin-line', size: 16),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The Input's grow wrapper has CSS min-width:auto; the delete IconButton alone can shrink. Letting
+        // Expanded take all remaining space incorrectly shrinks the input below its HTML min-content width.
+        const fixed = 120 + 32 + 12; // id, button style, three gaps
+        final deleteWidth = w.readonly
+            ? 0.0
+            : (constraints.maxWidth - fixed - Css.inputMinContentWidth).clamp(28.0, 32.0);
+        return Row(
+          spacing: 4,
+          children: [
+            SizedBox(
+              width: 120,
+              child: DifyInput(
+                value: _id,
+                focusNode: _idFocus,
+                placeholder: idLabel,
+                semanticLabel: idLabel,
+                disabled: w.readonly,
+                onChanged: _onId,
+                onSubmitted: (_) => _commit(),
+              ),
+            ),
+            Expanded(
+              child: DifyInput(
+                value: _title,
+                focusNode: _titleFocus,
+                placeholder: titleLabel,
+                semanticLabel: titleLabel,
+                disabled: w.readonly,
+                onChanged: _onTitle,
+                onSubmitted: (_) => _commit(),
+              ),
+            ),
+            ButtonStyleDropdown(
+              text: _title,
+              value: '${w.data['button_style'] ?? ''}',
+              readonly: w.readonly,
+              onChange: (style) => w.onChange({...w.data, 'id': _id, 'title': _title, 'button_style': style}, null),
+            ),
+            if (!w.readonly)
+              SizedBox(
+                width: deleteWidth,
+                child: DifyIconButton(
+                  label: cm('operation.delete'),
+                  size: DifyIconButtonSize.lg,
+                  variant: DifyButtonVariant.tertiary,
+                  onPressed: () => w.onDelete(_str('id')),
+                  icon: const RemixIcon('delete-bin-line', size: 16),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

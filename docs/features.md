@@ -235,7 +235,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Prompt editor: inline variable chips, { and / variable picker, Jinja mode, shortcuts popup | ported | Deviation: A plain-text controller with block characters instead of Lexical nodes (same visible behaviour; Lexical internals are n/a in the ledger). | spec `base/prompt-editor`, spec `base/prompt-editor/plugins`, spec `base/prompt-editor/plugins/component-picker-block`, spec `base/prompt-editor/plugins/shortcuts-popup-plugin`, spec `base/prompt-editor/plugins/draggable-plugin`, spec `base/prompt-editor/plugins/custom-text`, `app/test/prompt_editor_test.dart` |
+| Prompt editor: inline variable chips, { and / variable picker, Jinja mode, shortcuts popup | ported | Deviation: A plain-text controller with block characters instead of Lexical nodes (Lexical internals are n/a in the ledger). CSS inline line-box extents retain fractional height for surrounding controls; the native text engine still rounds its internal line advances. | spec `base/prompt-editor`, spec `base/prompt-editor/plugins`, spec `base/prompt-editor/plugins/component-picker-block`, spec `base/prompt-editor/plugins/shortcuts-popup-plugin`, spec `base/prompt-editor/plugins/draggable-plugin`, spec `base/prompt-editor/plugins/custom-text`, `app/test/prompt_editor_test.dart`, `app/test/prompt_inline_extent_test.dart` |
 | Prompt editor blocks: context, query, history, current, error message, last run, request URL, variable value | ported |  | spec `base/prompt-editor/plugins/context-block`, spec `base/prompt-editor/plugins/query-block`, spec `base/prompt-editor/plugins/history-block`, spec `base/prompt-editor/plugins/current-block`, spec `base/prompt-editor/plugins/error-message-block`, spec `base/prompt-editor/plugins/last-run-block`, spec `base/prompt-editor/plugins/request-url-block`, spec `base/prompt-editor/plugins/variable-block`, spec `base/prompt-editor/plugins/variable-value-block`, spec `base/prompt-editor/plugins/workflow-variable-block` |
 | Prompt editor blocks: human input field, agent output | ported |  | spec `base/prompt-editor/plugins/hitl-input-block`, spec `base/prompt-editor/plugins/agent-output-block` |
 | Prompt editor: roster references (skills, files, tools) of the agent console | not ported | Only used by Dify's Agent v2 console (orchestrate prompt), which dify-sf does not have (taken from the host). | spec `base/prompt-editor/plugins/roster-reference-block` |
@@ -277,7 +277,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | LLM card: model chip | ported |  | spec `workflow/nodes/llm`, visual `canvas-basic-llm` |
-| LLM panel: model selector and model parameters | partial | The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) and the popup's per-provider credential dropdown are not ported. | spec `header/account-setting/model-provider-page/model-selector`, spec `header/account-setting/model-provider-page/model-parameter-modal`, spec `header/account-setting/model-provider-page/model-name`, visual `panel-llm` |
+| LLM panel: model selector and model parameters | partial | The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)) and the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) are not ported. Per-provider credentials reuse the settings service: lazy detail loading, permission checks, switching, and add/edit actions from the nested menu. | spec `header/account-setting/model-provider-page/model-selector`, spec `header/account-setting/model-provider-page/model-parameter-modal`, spec `header/account-setting/model-provider-page/model-name`, visual `panel-llm`, visual `model-selector-credentials`, `app/test/dify_spec/workflow/nodes_panel/llm/model_selector_credentials_test.dart` |
 | LLM panel: context, prompt messages (system / user / assistant), Jinja, vision, memory | ported |  | spec `workflow/nodes/llm/components`, spec `workflow/nodes/llm/hooks`, visual `panel-llm` |
 | LLM panel: structured output (JSON schema visual / code editor), reasoning format | ported |  | spec `workflow/nodes/llm/components/json-schema-config-modal`, spec `workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card` |
 | Model status: credential / quota / incompatible warnings, trial credits | ported | Deviation: Statuses come from the workspace's providers (protocol 1.9); the trial-credit states never show (Dify Cloud only; dify-sf is self-hosted). | spec `header/account-setting/model-provider-page`, spec `workflow/model-provider-fixtures.spec.ts` |
@@ -340,7 +340,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | HTTP Request card: method and URL | ported |  | spec `workflow/nodes/http`, visual `canvas-http` |
-| HTTP Request panel: method, URL, headers, params, body types, authorization, timeout, SSL verify, cURL import | ported |  | spec `workflow/nodes/http/components`, spec `workflow/nodes/http/components/edit-body`, spec `workflow/nodes/http/components/timeout`, visual `panel-http-request` |
+| HTTP Request panel: method, URL, headers, params, body types, authorization, timeout, SSL verify, cURL import | ported |  | spec `workflow/nodes/http/components`, spec `workflow/nodes/http/components/edit-body`, spec `workflow/nodes/http/components/timeout`, visual `panel-http-request`, `app/test/prompt_inline_extent_test.dart` |
 
 <a id="node-aggregator"></a>
 
@@ -421,7 +421,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Human Input card: delivery methods and user action branches | ported |  | spec `workflow/nodes/human-input`, visual `canvas-retrieval-human` |
-| Human Input panel: delivery methods (web app, email recipients), form content, user actions, timeout, preview | ported |  | spec `workflow/nodes/human-input/components`, spec `workflow/nodes/human-input/components/delivery-method`, spec `workflow/nodes/human-input/components/delivery-method/recipient`, spec `workflow/nodes/human-input/hooks`, visual `panel-human-input` |
+| Human Input panel: delivery methods (web app, email recipients), form content, user actions, timeout, preview | ported |  | spec `workflow/nodes/human-input/components`, spec `workflow/nodes/human-input/components/delivery-method`, spec `workflow/nodes/human-input/components/delivery-method/recipient`, spec `workflow/nodes/human-input/hooks`, visual `panel-human-input`, `app/test/dify_spec/workflow/nodes_panel/data/human_input_user_action_test.dart` |
 | Human Input: send a test email | not ported | dify-sf has no mail server; the test email sender is a host callback the app does not provide. | spec `workflow/nodes/human-input/components/delivery-method` |
 
 <a id="node-triggers"></a>
@@ -508,7 +508,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Chatflow Debug & Preview: panel, chat, restart, conversation variables viewer, input form | ported | Deviation: Answers come from the mock runtime. | spec `workflow/panel/debug-and-preview`, visual `preview`, visual `preview-chat` |
+| Chatflow Debug & Preview: panel, chat, restart, conversation variables viewer, input form | ported | Deviation: Answers come from the mock runtime. | spec `workflow/panel/debug-and-preview`, visual `preview`, visual `preview-chat`, `app/test/workflow_editor/run/chat_canvas_inspect_test.dart` |
 | Chat: send, stop, restart, resume a paused run, sibling messages, suggested questions, opening statement | ported |  | spec `workflow/panel/debug-and-preview/hooks` |
 
 <a id="comments"></a>

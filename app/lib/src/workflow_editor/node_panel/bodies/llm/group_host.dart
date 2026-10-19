@@ -7,6 +7,7 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../../../../workflow/model_catalog.dart';
+import '../../../../settings/model_provider/model_provider_env.dart';
 import '../../../../design/widgets/toast.dart';
 import '../../../panel_fields/node_config.dart' show Json;
 import '../../../prompt_editor/prompt_editor_types.dart' show extractPluginId;
@@ -23,6 +24,7 @@ typedef LlmPage = ({List<Json> data, bool hasMore});
 class LlmGroupServices {
   const LlmGroupServices({
     this.models = ModelCatalog.empty,
+    this.modelProviderEnv,
     this.defaultModels = const {},
     this.parameterRules,
     this.nodesDefaultConfigs = const {},
@@ -59,6 +61,9 @@ class LlmGroupServices {
 
   /// The workspace's providers and model lists.
   final ModelCatalog models;
+
+  /// The same credential permissions and operations used by Model Provider settings.
+  final ModelProviderEnv? modelProviderEnv;
 
   /// The workspace default model per model type (`ModelTypeEnum` value: `llm`, `rerank`, ...), Dify's
   /// `useModelListAndDefaultModelAndCurrentProviderAndModel(type).defaultModel`; `mode` from its model_properties.

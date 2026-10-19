@@ -1,8 +1,10 @@
 /// ModelSelector (header/account-setting/model-provider-page/model-selector/index.tsx, model-selector-trigger.tsx,
 /// popup.tsx, popup-item.tsx, popup-layout.tsx, popup-empty-state.tsx): the model trigger and the model list popup.
-/// The marketplace and AI-credit sections, the provider credential dropdown and the model preview card are not
-/// ported (they need the marketplace and the credential services).
+/// The provider credential popover reuses Model Provider settings. Marketplace, AI-credit sections and model
+/// preview cards are outside this self-hosted selector.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/semantics.dart';
@@ -16,6 +18,8 @@ import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
 import '../../../../i18n/dify_i18n.dart';
 import '../../../../workflow/model_catalog.dart';
+import '../../../../settings/model_provider/model_provider_env.dart';
+import '../../../../settings/model_provider/provider_added_card.dart' show DropdownContent;
 import '../../../panel_fields/controls.dart' show DifyInput;
 import 'group_host.dart';
 import 'model_search.dart';
@@ -210,11 +214,12 @@ class _ModelSelectorRootState extends State<ModelSelectorRoot> {
     final services = LlmGroupScope.of(context);
     final (:currentProvider, :currentModel) = getCurrentProviderAndModel(w.models, w.value);
     final settings = services.openModelProviderSettings;
+    final credentials = services.modelProviderEnv ?? ModelProviderScope.maybeOf(context);
     return DifyFloating(
       open: _open,
       onOpenChange: _setOpen,
       placement: DifyPlacement.bottomStart,
-      sideOffset: 4,
+      sideOffset: 8,
       constrainHeight: true,
       builder: (context, controller) => LayoutBuilder(
         builder: (context, c) {
@@ -239,34 +244,37 @@ class _ModelSelectorRootState extends State<ModelSelectorRoot> {
           return trigger;
         },
       ),
-      popupBuilder: (context) => ModelSelectorPopupSurface(
-        width: w.popupWidth ?? _anchorWidth,
-        child: ModelSelectorPopup(
-          defaultModel: w.value,
-          inputValue: _input,
-          modelList: w.models,
-          catalog: services.models,
-          scopeFeatures: w.scopeFeatures,
-          modelPredicate: w.modelPredicate,
-          modelSuggestionPredicate: w.modelSuggestionPredicate,
-          onInputValueChange: (v) => setState(() => _input = v),
-          onOpenProviderSettings: settings == null || w.hideProviderSettingsFooter
-              ? null
-              : () {
-                  _hide();
-                  settings();
-                },
-          onConfigureEmptyState: () {
-            _hide();
-            (w.onConfigureEmptyState ?? settings)?.call();
-          },
-          onSelect: (provider, model) {
-            _setOpen(false);
-            w.onChange?.call((provider: provider, model: model.model));
-          },
-          onHide: _hide,
-        ),
-      ),
+      popupBuilder: (context) {
+        final popup = ModelSelectorPopupSurface(
+          width: w.popupWidth ?? _anchorWidth,
+          child: ModelSelectorPopup(
+            defaultModel: w.value,
+            inputValue: _input,
+            modelList: w.models,
+            catalog: services.models,
+            scopeFeatures: w.scopeFeatures,
+            modelPredicate: w.modelPredicate,
+            modelSuggestionPredicate: w.modelSuggestionPredicate,
+            onInputValueChange: (v) => setState(() => _input = v),
+            onOpenProviderSettings: settings == null || w.hideProviderSettingsFooter
+                ? null
+                : () {
+                    _hide();
+                    settings();
+                  },
+            onConfigureEmptyState: () {
+              _hide();
+              (w.onConfigureEmptyState ?? settings)?.call();
+            },
+            onSelect: (provider, model) {
+              _setOpen(false);
+              w.onChange?.call((provider: provider, model: model.model));
+            },
+            onHide: _hide,
+          ),
+        );
+        return credentials == null ? popup : ModelProviderScope(env: credentials, child: popup);
+      },
     );
   }
 }
@@ -570,6 +578,7 @@ class _ModelSelectorPopupState extends State<ModelSelectorPopup> {
                             modelPredicate: w.modelPredicate,
                             modelSuggestionPredicate: w.modelSuggestionPredicate,
                             onSelect: w.onSelect,
+                            onHide: w.onHide,
                           ),
                       ],
                     ),
@@ -808,6 +817,7 @@ class ModelSelectorPopupItem extends StatefulWidget {
     this.modelPredicate,
     this.modelSuggestionPredicate,
     required this.onSelect,
+    this.onHide,
   });
 
   final DefaultModel? defaultModel;
@@ -815,6 +825,7 @@ class ModelSelectorPopupItem extends StatefulWidget {
   final ModelCatalog catalog;
   final ModelPredicate? modelPredicate, modelSuggestionPredicate;
   final void Function(String provider, ModelItem model) onSelect;
+  final VoidCallback? onHide;
 
   @override
   State<ModelSelectorPopupItem> createState() => _ModelSelectorPopupItemState();
@@ -840,48 +851,53 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
             constraints: const BoxConstraints(minHeight: 22),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             color: DifyColors.componentsPanelBg,
-            child: Row(
-              children: [
-                Flexible(
-                  child: DifyPressable(
-                    semanticLabel: label,
-                    onPressed: () => setState(() => _open = !_open),
-                    builder: (context, hovered, focused) => Semantics(
-                      expanded: _open,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                height: 16 / 12,
-                                fontWeight: FontWeight.w500,
-                                color: DifyColors.textTertiary,
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: DifyPressable(
+                      semanticLabel: label,
+                      onPressed: () => setState(() => _open = !_open),
+                      builder: (context, hovered, focused) => Semantics(
+                        expanded: _open,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 16 / 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: DifyColors.textTertiary,
+                                ),
                               ),
                             ),
-                          ),
-                          AnimatedRotation(
-                            turns: _open ? 0 : -0.25,
-                            duration: difyTransitionDuration,
-                            child: DifyIcon(
-                              'vender/solid/general/arrow-down-round-fill',
-                              size: 16,
-                              color: DifyColors.textQuaternary,
+                            AnimatedRotation(
+                              turns: _open ? 0 : -0.25,
+                              duration: difyTransitionDuration,
+                              child: DifyIcon(
+                                'vender/solid/general/arrow-down-round-fill',
+                                size: 16,
+                                color: DifyColors.textQuaternary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Spacer(),
-                Flexible(child: _CredentialStatus(state: state)),
-              ],
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constraints.maxWidth / 2),
+                    child: _ProviderCredentialDropdown(provider: current.provider, state: state, onHide: w.onHide),
+                  ),
+                ],
+              ),
             ),
           ),
           if (_open)
@@ -910,11 +926,90 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
   }
 }
 
+/// PopupItem's credential Popover: lazy-load the provider's full definition before opening, then use the same
+/// DropdownContent as the Model Provider settings. Adding/editing closes both popovers; switching keeps them open.
+class _ProviderCredentialDropdown extends StatefulWidget {
+  const _ProviderCredentialDropdown({required this.provider, required this.state, this.onHide});
+  final String provider;
+  final CredentialPanelState state;
+  final VoidCallback? onHide;
+
+  @override
+  State<_ProviderCredentialDropdown> createState() => _ProviderCredentialDropdownState();
+}
+
+class _ProviderCredentialDropdownState extends State<_ProviderCredentialDropdown> {
+  bool _open = false;
+  bool _loading = false;
+
+  Future<void> _change(ModelProviderEnv env, bool open) async {
+    if (!open) {
+      setState(() => _open = false);
+      return;
+    }
+    if (_loading) return;
+    _loading = true;
+    final detail = await env.models.loadProviderDetail(widget.provider);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _open = detail != null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final env = ModelProviderScope.maybeOf(context);
+    final canOpen = env != null && (env.canUseCredential || env.canCreateCredential || env.canManageCredential);
+    return DifyFloating(
+      open: _open,
+      onOpenChange: (open) {
+        if (canOpen) unawaited(_change(env, open));
+      },
+      placement: DifyPlacement.bottomEnd,
+      sideOffset: 8,
+      builder: (context, controller) => canOpen
+          ? DifyButton(
+              semanticLabel: widget.state.credentialName ?? _c('modelProvider.selector.configureRequired'),
+              variant: DifyButtonVariant.ghost,
+              size: DifyButtonSize.small,
+              paddingX: 6,
+              onPressed: controller.toggle,
+              child: _CredentialStatus(state: widget.state, showArrow: true),
+            )
+          : _CredentialStatus(state: widget.state),
+      popupBuilder: (context) => ModelProviderScope(
+        env: env!,
+        child: ListenableBuilder(
+          listenable: env.models,
+          builder: (context, _) {
+            final provider = env.models.detailOf(widget.provider);
+            final summary = env.models.catalog.provider(widget.provider);
+            return DifyPopoverSurface(
+              child: provider == null
+                  ? const SizedBox.shrink()
+                  : DropdownContent(
+                      provider: provider,
+                      state: env.models.catalog.credentialPanelState(summary),
+                      onClose: () {
+                        setState(() => _open = false);
+                        widget.onHide?.call();
+                      },
+                    ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 /// The provider header's credential label (the dropdown trigger's content, without the dropdown): AI credits or
 /// "Credits exhausted" for a provider on credits, else the credential's name with its status dot, or "Configure
 /// required".
 class _CredentialStatus extends StatelessWidget {
-  const _CredentialStatus({required this.state});
+  const _CredentialStatus({required this.state, this.showArrow = false});
+  final bool showArrow;
   final CredentialPanelState state;
 
   @override
@@ -941,17 +1036,24 @@ class _CredentialStatus extends StatelessWidget {
             _c('modelProvider.selector.configureRequired'),
             DifyColors.textTertiary,
           );
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        lead,
+        const SizedBox(width: 4),
+        Flexible(child: DifyText(text, DifyType.systemXsMedium, color: color)),
+        if (showArrow)
+          Transform.translate(
+            offset: const Offset(0, 1),
+            child: RemixIcon('arrow-down-s-line', size: 14, color: DifyColors.textTertiary),
+          ),
+      ],
+    );
+    if (showArrow) return content;
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          lead,
-          const SizedBox(width: 4),
-          Flexible(child: DifyText(text, DifyType.systemXsMedium, color: color)),
-        ],
-      ),
+      child: content,
     );
   }
 }

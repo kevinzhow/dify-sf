@@ -10,3 +10,5 @@ Dify 1.17.1 workflow DSL format (`version: 0.7.0`) and are used as visual-test f
 - `sf_triggers_workflow.yml`
 - `sf_run_workflow.yml` (no models: start, code, template, end; environment variables; a note)
 - `sf_chat_preview.yml` (no models: chatflow start, template, answer; conversation variables)
+
+- `sf_model_credentials.yml` adapts `basic_llm_chat_workflow.yml` to the official OpenAI provider ID, for the credential popup comparison. The two `model-provider-*.json` responses are synthetic fixtures (no API keys). The icon is from dify-official-plugins f2d7811364193f8d7069f24a299ee465c5519d3c, Apache-2.0; its license is in `model-provider-icon.LICENSE`.
