@@ -606,7 +606,9 @@ public enum Schema {
             PRIMARY KEY (workflow_run_id, generation)
         )
         """,
-        "CREATE INDEX IF NOT EXISTS workflow_pauses_open ON workflow_pauses (workflow_run_id) WHERE resumed_at IS NULL",
+        // Dify's WorkflowPause is zero-or-one per run (UniqueConstraint workflow_run_id): a pause that is not resumed yet
+        // is the run's only one, so two generations can never be claimed at once.
+        "CREATE UNIQUE INDEX IF NOT EXISTS workflow_pauses_one_open ON workflow_pauses (workflow_run_id) WHERE resumed_at IS NULL",
         // Protocol 1.16: the form a human answers. `(workflow_run_id, execution_id)` is its unique key: a node execution
         // has one form, and a later pause of the same run adopts a form that is still waiting instead of minting a new
         // token (the recipient keeps the link they were given). `generation` names the pause the form currently belongs
