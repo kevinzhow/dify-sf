@@ -585,16 +585,17 @@ public enum Schema {
             UNIQUE (doc_id, user_id, node_id, name)
         )
         """,
-        // Protocol 1.16: a run waiting for human input. The snapshot is the JSON text the engine wrote (`graphon`
-        // encoding: key order, number kinds and segment types kept), the same text a restart resumes from; the totals
-        // are the run's up to the pause. One row per execution; `resumed_at` marks the pause that was resumed, and
-        // `resume_requested` keeps a submission that arrived before the pause row existed (a form persisted first).
+        // Protocol 1.16: a run waiting for human input. The pause is the whole run's: one snapshot per generation of a
+        // run, so resuming is claimed once per generation rather than once per node execution — two nodes waiting in the
+        // same pause must not each start an engine, and a node that pauses again after a resume is another generation
+        // rather than a duplicate key. `snapshot` is the JSON text the engine wrote (key order, number kinds and segment
+        // types kept). `resume_requested` means every form of this generation is answered; `resumed_at` is the claim.
         """
         CREATE TABLE IF NOT EXISTS workflow_pauses (
-            workflow_run_id text             NOT NULL,
-            execution_id    text             NOT NULL,
+            workflow_run_id text             NOT NULL REFERENCES workflow_runs(id),
+            generation      integer          NOT NULL,
             doc_id          text             NOT NULL REFERENCES documents(id),
-            node_id         text             NOT NULL,
+            node_id         text             NOT NULL DEFAULT '',
             snapshot        text             NOT NULL,
             total_tokens    bigint           NOT NULL DEFAULT 0,
             total_steps     integer          NOT NULL DEFAULT 0,
@@ -602,19 +603,22 @@ public enum Schema {
             created_at      timestamptz      NOT NULL,
             resumed_at      timestamptz,
             resume_requested boolean         NOT NULL DEFAULT false,
-            PRIMARY KEY (workflow_run_id, execution_id)
+            PRIMARY KEY (workflow_run_id, generation)
         )
         """,
         "CREATE INDEX IF NOT EXISTS workflow_pauses_open ON workflow_pauses (workflow_run_id) WHERE resumed_at IS NULL",
-        // Protocol 1.16: the form a human answers. `form_content`, `inputs`, `user_actions`, `actions`,
-        // `default_values` and `resolved_default_values` are Dify's FormDefinition members as JSON text (order kept);
-        // `rendered_content` is the rendered markdown. `expiration_time` is Dify's Unix seconds. A submission is a
-        // conditional update from `waiting`, so a form is answered at most once; `consumed_at` is when the resumed run
-        // read it back, which keeps a completed form from waking the run again.
+        // Protocol 1.16: the form a human answers. `(workflow_run_id, execution_id)` is its unique key: a node execution
+        // has one form, and a later pause of the same run adopts a form that is still waiting instead of minting a new
+        // token (the recipient keeps the link they were given). `generation` names the pause the form currently belongs
+        // to. `form_content`, `inputs`, `user_actions`, `actions`, `default_values` and `resolved_default_values` are
+        // Dify's FormDefinition members as JSON text (array order kept); `rendered_content` is the rendered markdown;
+        // `expiration_time` is Dify's Unix seconds. Statuses: waiting, submitted, expired (the form's deadline passed),
+        // timed_out (the node's own deadline, which fails that node rather than the whole run).
         """
         CREATE TABLE IF NOT EXISTS human_input_forms (
             id                      text        PRIMARY KEY,
-            workflow_run_id         text        NOT NULL,
+            workflow_run_id         text        NOT NULL REFERENCES workflow_runs(id),
+            generation              integer     NOT NULL,
             execution_id            text        NOT NULL,
             doc_id                  text        NOT NULL REFERENCES documents(id),
             node_id                 text        NOT NULL,
@@ -639,6 +643,6 @@ public enum Schema {
             UNIQUE (workflow_run_id, execution_id)
         )
         """,
-        "CREATE INDEX IF NOT EXISTS human_input_forms_run ON human_input_forms (workflow_run_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS human_input_forms_run ON human_input_forms (workflow_run_id, generation, created_at)",
     ]
 }
