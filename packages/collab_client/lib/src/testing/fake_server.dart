@@ -239,6 +239,23 @@ class FakeServer {
   /// Called for every committed entry, after it is applied (the stream fan-out).
   final List<void Function(LogEntry)> _listeners = [];
 
+  /// Protocol 1.10: the document's app was deleted (`FakeAppsApi.delete`): every request through a `FakeTransport` then
+  /// answers `404 app_deleted` and open streams end.
+  bool get deleted => _deleted;
+  bool _deleted = false;
+  final List<void Function()> _deletedListeners = [];
+
+  void markDeleted() {
+    if (_deleted) return;
+    _deleted = true;
+    for (final l in List.of(_deletedListeners)) {
+      l();
+    }
+  }
+
+  void addDeletedListener(void Function() l) => _deletedListeners.add(l);
+  void removeDeletedListener(void Function() l) => _deletedListeners.remove(l);
+
   void addListener(void Function(LogEntry) l) => _listeners.add(l);
   void removeListener(void Function(LogEntry) l) => _listeners.remove(l);
 

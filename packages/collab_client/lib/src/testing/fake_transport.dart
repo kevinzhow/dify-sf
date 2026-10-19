@@ -71,6 +71,9 @@ class FakeNetwork {
 /// With accounts on the server (protocol 1.8) every request carries [auth]'s token: no valid token is `401` (refreshed
 /// once, then the error), ops need the edit role and a client id of the caller's account (`403 forbidden`), as on the
 /// real server.
+/// What every document request of a deleted app answers (protocol 1.10).
+const _appDeleted = TransportException('the app was deleted', statusCode: 404, code: 'app_deleted');
+
 class FakeTransport implements CollabTransport {
   FakeTransport(this.server, {FakeNetwork? network, this.auth}) : network = network ?? FakeNetwork();
 
@@ -120,6 +123,7 @@ class FakeTransport implements CollabTransport {
   /// Protocol 1.8 checks of a POST that reached the server: `401`, `403` for a read-only role or another account's
   /// client id. Null = accepted.
   TransportException? _refusal(SubmitRequest request) {
+    if (server.deleted) return _appDeleted;
     if (server.accounts == null) return null;
     try {
       server.requireOwnClient(request.client, _principal(edit: true)!);
@@ -190,6 +194,7 @@ class FakeTransport implements CollabTransport {
   /// One quick request with the accounts checks (and a refresh after a `401`).
   Future<T> _request<T>(T Function() f) => _authed(() async {
     if (network.refused || network.partitioned) throw const TransportException('connection refused');
+    if (server.deleted) throw _appDeleted;
     try {
       return f();
     } on FakeAuthError catch (e) {
@@ -251,6 +256,11 @@ class _FakeStream {
   late final void Function(LogEntry) _listener = _onCommit;
   late final void Function(CommentsEvent) _commentsListener = _onComments;
 
+  /// The app was deleted: the stream ends (the reconnect gets `404 app_deleted`), as the server's.
+  late final void Function() _deletedListener = _onDeleted;
+
+  void _onDeleted() => unawaited(close());
+
   FakeNetwork get net => transport.network;
   FakeServer get server => transport.server;
 
@@ -269,6 +279,10 @@ class _FakeStream {
   void _connect() {
     if (_closed) return;
     if (net.partitioned || net.blockStreams) return;
+    if (server.deleted) {
+      fail(_appDeleted);
+      return;
+    }
     if (server.accounts != null) {
       final token = transport.auth?.accessToken;
       try {
@@ -290,6 +304,7 @@ class _FakeStream {
     );
     server.addListener(_listener);
     server.comments.addListener(_commentsListener);
+    server.addDeletedListener(_deletedListener);
     for (final e in events) {
       _deliver(e);
     }
@@ -361,6 +376,7 @@ class _FakeStream {
     _openTimer?.cancel();
     server.removeListener(_listener);
     server.comments.removeListener(_commentsListener);
+    server.removeDeletedListener(_deletedListener);
     net._streams.remove(this);
   }
 }

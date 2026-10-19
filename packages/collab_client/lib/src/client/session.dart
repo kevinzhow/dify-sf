@@ -121,6 +121,7 @@ class CollabSession {
   bool _running = false;
   bool _everLive = false;
   String? _lastError;
+  bool _appDeleted = false;
 
   final _events = StreamController<ClientEvent>.broadcast();
   final _comments = StreamController<CommentsEvent>.broadcast();
@@ -158,6 +159,11 @@ class CollabSession {
   bool get hasState => _machine.hasState;
 
   List<PendingOpInfo> get pending => _machine.pending;
+
+  /// Protocol 1.10: the document's app was deleted (a `POST /ops` or the event stream answered `404 app_deleted`). The
+  /// session then stops syncing for good (no retries; [changes] fires, [status] has the reason): its unsaved ops can never
+  /// be committed. The app should tell the user, leave the editor (back to the Studio) and drop the document's journal.
+  bool get appDeleted => _appDeleted;
 
   /// Diagnostic access to the state machine (tests, CLI).
   ClientMachine get machine => _machine;
@@ -407,6 +413,7 @@ class CollabSession {
     final gen = open.generation;
     void closed(Object? error) {
       if (error != null) _lastError = '$error';
+      if (_isAppDeleted(error)) return _onAppDeleted();
       _feed(() {
         _machine.streamClosed(gen, _clock());
         return const [];
@@ -429,6 +436,19 @@ class CollabSession {
           onDone: () => closed(null),
           cancelOnError: true,
         );
+  }
+
+  static bool _isAppDeleted(Object? e) => e is TransportException && e.statusCode == 404 && e.code == 'app_deleted';
+
+  /// Protocol 1.10: the app is gone for good. Stop everything that would retry, tell the app once.
+  void _onAppDeleted() {
+    if (_appDeleted || !_running) return;
+    _appDeleted = true;
+    _running = false;
+    _lastError = 'the app was deleted';
+    _ticker?.cancel();
+    _cancelStream();
+    _scheduleChange();
   }
 
   /// The id is shared with another process: get a fresh one (retrying while the server is unreachable) and
@@ -462,6 +482,7 @@ class CollabSession {
     } on Object catch (e) {
       if (!_running || id != _postSeq) return;
       _lastError = '$e';
+      if (_isAppDeleted(e)) return _onAppDeleted();
       if (e is TransportException && e.forbidden) {
         // Final for these ops (read-only role, or another account's client id): not retried, see submitForbidden.
         _feed(() => _machine.submitForbidden(_clock()));

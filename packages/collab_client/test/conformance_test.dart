@@ -9,10 +9,14 @@
 /// Model providers (protocol 1.9): credential checks go to a stub provider this test serves on `DIFYSF_STUB_HOST`
 /// (default 127.0.0.1; the server must reach it, e.g. a server on the host network), never to a real provider. Set
 /// `DIFYSF_MODELS_VALIDATE=false` for a server running with `COLLAB_MODELS_VALIDATE=false`.
+///
+/// Apps (protocol 1.10): the Studio page's calls (`AppsApi`, the same scenario as the in-memory fake's unit test); the apps it
+/// creates carry a unique name and are deleted again.
 @TestOn('vm')
 @Timeout(Duration(minutes: 3))
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -22,6 +26,7 @@ import 'package:collab_client/storm.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
+import 'support/apps_scenario.dart';
 import 'support/helpers.dart';
 import 'support/model_providers_scenario.dart';
 
@@ -1220,6 +1225,80 @@ workflow:
       } finally {
         ownerApi.close();
         viewerApi.close();
+      }
+    });
+  });
+
+  group('apps (1.10)', () {
+    String unique() => 'apps-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+
+    test('the Studio page\'s calls against the server', () async {
+      final o = HttpAppsApi(base, auth: owner),
+          e = HttpAppsApi(base, auth: editor),
+          v = HttpAppsApi(base, auth: viewer);
+      try {
+        await appsScenario(
+          owner: o,
+          editor: e,
+          viewer: v,
+          ownerName: owner.currentAccount!.name,
+          editorId: editor.currentAccount!.id,
+          unique: unique(),
+          commitEdit: (id) async {
+            final edit = HttpTransport(baseUrl: base, docId: id, auth: owner);
+            try {
+              final client = await edit.issueClientId();
+              final r = await edit.submit(
+                SubmitRequest(
+                  client: client,
+                  ops: [
+                    const OutgoingOp(cseq: 1, base: 0, op: SetField('start', ConfigKey(['desc']), VString('edited'))),
+                  ],
+                ),
+                timeout: const Duration(seconds: 10),
+              );
+              expect(r.results.single, isA<AckResult>());
+            } finally {
+              edit.close();
+            }
+          },
+        );
+      } finally {
+        o.close();
+        e.close();
+        v.close();
+      }
+    });
+
+    test('deleting an app ends its streams and its document answers 404 app_deleted', () async {
+      final apps = HttpAppsApi(base, auth: owner);
+      final docs = DocsApi(base, auth: owner);
+      final app = await apps.create(name: '${unique()} doomed', mode: AppModes.advancedChat);
+      final stream = HttpTransport(baseUrl: base, docId: app.id, auth: owner);
+      try {
+        final ready = Completer<void>(), ended = Completer<void>();
+        stream
+            .openStream(const StreamOpen())
+            .listen(
+              (ev) {
+                if (ev is ReadyEvent && !ready.isCompleted) ready.complete();
+              },
+              onError: (Object _) {},
+              onDone: ended.complete,
+            );
+        await ready.future.timeout(const Duration(seconds: 10));
+        expect((await docs.snapshot(app.id)).doc.nodes.keys.toSet(), {'start', 'llm', 'answer'});
+        await apps.delete(app.id);
+        await ended.future.timeout(const Duration(seconds: 10));
+        final gone = throwsA(isA<TransportException>().having((x) => x.appDeleted, 'appDeleted', isTrue));
+        await expectLater(docs.snapshot(app.id), gone);
+        await expectLater(docs.meta(app.id), gone);
+        await expectLater(docs.issueClientId(app.id), gone);
+        await expectLater(apps.get(app.id), gone);
+      } finally {
+        stream.close();
+        apps.close();
+        docs.close();
       }
     });
   });
