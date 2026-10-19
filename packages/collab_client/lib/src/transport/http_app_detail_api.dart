@@ -544,4 +544,13 @@ class HttpLogsApi extends HttpConsoleApi implements LogsApi {
           )).json,
         ),
       );
+
+  @override
+  Future<void> updateFeedback(String appId, {required String messageId, String? rating, String? content}) async =>
+      _send(
+        'POST',
+        '${HttpConsoleApi._app(appId)}/feedbacks',
+        ok: const [200],
+        body: {'message_id': messageId, 'rating': rating, 'content': content},
+      );
 }

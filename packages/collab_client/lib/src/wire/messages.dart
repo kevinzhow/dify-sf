@@ -212,6 +212,8 @@ sealed class StreamEvent {
         return ReadyEvent(_int(_obj(jsonDecode(data), 'ready'), 'head'));
       case 'comments':
         return CommentsEvent.fromJson(jsonDecode(data));
+      case 'app':
+        return const AppEvent();
       default:
         return null;
     }
@@ -294,6 +296,27 @@ final class CommentsEvent extends StreamEvent {
 
   @override
   String toString() => 'CommentsEvent(${action.name}, $comment)';
+}
+
+/// `event: app` (protocol 1.11, additive): the document's app changed (what `GET /v1/apps/{app}` answers: name, icon,
+/// description, site, switches). A notification only, like [CommentsEvent]: no `id`, not replayed; clients refetch the
+/// app (Dify's `app_meta_update`).
+final class AppEvent extends StreamEvent {
+  const AppEvent({this.resync = false});
+
+  /// The local "stream (re)connected" signal: changes missed while disconnected are not replayed, so refetch too.
+  const AppEvent.resync() : resync = true;
+
+  final bool resync;
+
+  @override
+  bool operator ==(Object other) => other is AppEvent && other.resync == resync;
+
+  @override
+  int get hashCode => resync.hashCode;
+
+  @override
+  String toString() => resync ? 'AppEvent(resync)' : 'AppEvent()';
 }
 
 /// The protocol version this package implements (docs/protocol.md). Sent as `proto` when opening the event stream, so

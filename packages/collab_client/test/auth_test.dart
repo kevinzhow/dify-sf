@@ -14,6 +14,7 @@ import 'package:collab_client/testing_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
+import 'support/account_settings_scenario.dart';
 import 'support/helpers.dart';
 
 const _fast = ClientConfig(streamSilence: 900, reconnectBase: 40, reconnectMax: 300, retransmitAfter: 3000);
@@ -395,7 +396,11 @@ void main() {
         api.checkResetCode(email: 'o@example.com', code: 'nope', token: token),
         throwsA(_status(400, 'email_code_error')),
       );
-      final check = await api.checkResetCode(email: 'o@example.com', code: accounts.sentMails.first.code!, token: token);
+      final check = await api.checkResetCode(
+        email: 'o@example.com',
+        code: accounts.sentMails.first.code!,
+        token: token,
+      );
       expect((check.isValid, check.email), (true, 'o@example.com'));
       await expectLater(
         api.resetPassword(token: check.token, newPassword: 'owner-new-1', passwordConfirm: 'owner-new-2'),
@@ -415,6 +420,36 @@ void main() {
       await api.resetPassword(token: reset.token, newPassword: 'cy-new-123', passwordConfirm: 'cy-new-123');
       expect((await cy.login(email: 'cy@example.com', password: 'cy-new-123')).name, 'Cy');
       await expectLater(cy.resetPasswordLink(owner.currentAccount!.id), throwsA(_status(403, 'forbidden')));
+    });
+
+    test('account settings over HTTP (1.12): profile, change email with codes by mail', () async {
+      final api = HttpAuthApi(srv.url);
+      addTearDown(api.close);
+      final owner = AuthSession(api: api);
+      await owner.setup(email: 'o@example.com', name: 'Olivia', password: 'owner-pass-1');
+      Future<AuthSession> member(String email) async {
+        final link = (await owner.invite(emails: [email], role: AccountRole.editor)).single;
+        final s = AuthSession(api: api);
+        await s.activate(token: link.token!, name: 'Member', password: 'member-pass-1');
+        return s;
+      }
+
+      final me = await member('me@example.com'), other = await member('other@example.com');
+      // Without mail the scenario stops at `mail_not_configured`.
+      await accountSettingsScenario(me: me, other: other, unique: 'nomail');
+      expect((await api.systemFeatures()).enableChangeEmail, isFalse);
+      accounts.emailSetup = true;
+      final me2 = await member('me2@example.com');
+      String? codeFor(String to) => accounts.sentMails.lastWhere((m) => m.to == to.toLowerCase() || m.to == to).code;
+      await accountSettingsScenario(me: me2, other: other, unique: 'mail', codeFor: codeFor);
+      expect(
+        [for (final m in accounts.sentMails) m.kind],
+        [FakeMail.changeEmailOld, FakeMail.changeEmailNew, FakeMail.changeEmailCompleted],
+      );
+      expect(
+        (await me2.login(email: 'changed-mail@example.com', password: 'member-pass-1')).id,
+        me2.currentAccount!.id,
+      );
     });
 
     test('a server without system features has no mail', () async {

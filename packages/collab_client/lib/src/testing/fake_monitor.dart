@@ -410,7 +410,10 @@ class FakeLogsApi implements LogsApi {
           'from_source': c['from_source'],
           'from_end_user_id': c['from_end_user_id'],
           'from_account_id': c['from_account_id'],
-          'feedbacks': const <Object?>[],
+          'feedbacks': [
+            if (_adminFeedback['msg-$conversationId-$m'] case final f?)
+              {...f, 'from_source': 'admin', 'from_end_user_id': null},
+          ],
           'workflow_run_id': null,
           'annotation': null,
           'annotation_hit_history': null,
@@ -430,5 +433,52 @@ class FakeLogsApi implements LogsApi {
     }
     final start = (end - limit).clamp(0, end);
     return ChatMessagePage(limit: limit, hasMore: start > 0, data: all.sublist(start, end));
+  }
+
+  /// The members' feedback by message id (`rating`, `content`, `from_account_id`).
+  final Map<String, Map<String, Object?>> _adminFeedback = {};
+
+  static final _uuid = RegExp(r'^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$');
+
+  /// Whether [messageId] is one of the mock's messages of [appId].
+  bool _mockMessage(String appId, String messageId) {
+    final m = RegExp(r'^msg-(.+)-(\d+)$').firstMatch(messageId);
+    if (!mock || m == null) return false;
+    final i = _conversationIndex(appId, m.group(1)!);
+    return i != null && int.parse(m.group(2)!) < (_conversation(appId, i)['message_count']! as int);
+  }
+
+  @override
+  Future<void> updateFeedback(String appId, {required String messageId, String? rating, String? content}) async {
+    if (apps != null) await apps!.get(appId); // the app must exist (any member)
+    final known = _mockMessage(appId, messageId);
+    if (!known && !_uuid.hasMatch(messageId)) {
+      throw TransportException('$messageId is not a valid uuid.', statusCode: 400, code: 'bad_request');
+    }
+    if (rating != null && rating != 'like' && rating != 'dislike') {
+      throw const TransportException(
+        'rating must be one of like, dislike or null',
+        statusCode: 400,
+        code: 'bad_request',
+      );
+    }
+    if (!known) throw const TransportException('Message Not Exists.', statusCode: 404, code: 'not_found');
+    final current = _adminFeedback[messageId];
+    if (rating == null) {
+      if (current == null) {
+        throw const TransportException(
+          'rating cannot be None when feedback not exists',
+          statusCode: 400,
+          code: 'bad_request',
+        );
+      }
+      _adminFeedback.remove(messageId);
+      return;
+    }
+    _adminFeedback[messageId] = {
+      'rating': rating,
+      'content': content,
+      'from_account_id': current?['from_account_id'] ?? apps?.accountId,
+    };
   }
 }

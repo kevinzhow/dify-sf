@@ -123,8 +123,12 @@ class CollabSession {
   String? _lastError;
   bool _appDeleted = false;
 
+  /// The stream reached `ready` once: later readies are reconnects (an [AppEvent.resync]).
+  bool _appReadyOnce = false;
+
   final _events = StreamController<ClientEvent>.broadcast();
   final _comments = StreamController<CommentsEvent>.broadcast();
+  final _appEvents = StreamController<AppEvent>.broadcast();
   final _changes = StreamController<void>.broadcast();
   bool _changeScheduled = false;
   final List<Completer<void>> _idleWaiters = [];
@@ -145,6 +149,11 @@ class CollabSession {
   /// [CommentsAction.resync] each time the stream reaches `ready` (first connect and every reconnect), since
   /// notifications missed while disconnected are not replayed. Refetch on each (`transport.comments`). Broadcast.
   Stream<CommentsEvent> get comments => _comments.stream;
+
+  /// App notices (protocol 1.11, `event: app`; Dify's `app_meta_update`): the app's name, icon, site or switches
+  /// changed, so refetch `GET /v1/apps/{app}`. Plus an [AppEvent.resync] each time the stream reaches `ready` after a
+  /// reconnect (notices missed while disconnected are not replayed). Broadcast.
+  Stream<AppEvent> get appEvents => _appEvents.stream;
 
   /// Fires (coalesced) whenever the view, status or pending ops changed. Broadcast.
   Stream<void> get changes => _changes.stream;
@@ -330,6 +339,7 @@ class CollabSession {
     transport.close();
     await _events.close();
     await _comments.close();
+    await _appEvents.close();
     await _changes.close();
   }
 
@@ -428,8 +438,12 @@ class CollabSession {
             if (_comments.isClosed || !_running || gen != _machine.generation) return;
             if (e is CommentsEvent) {
               _comments.add(e);
+            } else if (e is AppEvent) {
+              _appEvents.add(e);
             } else if (e is ReadyEvent) {
               _comments.add(const CommentsEvent.resync());
+              if (_appReadyOnce) _appEvents.add(const AppEvent.resync());
+              _appReadyOnce = true;
             }
           },
           onError: closed,

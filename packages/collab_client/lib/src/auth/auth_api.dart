@@ -18,6 +18,7 @@ import 'account.dart';
 /// (403: the role does not allow it), `unauthorized` (401: the access or refresh token is not valid). Forgot password
 /// (docs/protocol.md "Password reset"): `mail_not_configured`, `invalid_email`, `email_code_error`, `password_mismatch`,
 /// `account_not_found` (400), `email_send_ip_limit`, `password_reset_rate_limit_exceeded`, `email_password_reset_limit` (429).
+/// Account settings (1.12): `email_already_in_use` (400), `email_change_rate_limit_exceeded`, `email_change_limit` (429).
 ///
 /// Implementations: [HttpAuthApi] (a real server) and `FakeAuthApi` (`package:collab_client/testing.dart`, in memory).
 abstract interface class AuthApi {
@@ -63,6 +64,40 @@ abstract interface class AuthApi {
     required String newPassword,
     required String repeatNewPassword,
   });
+
+  /// `PATCH /v1/account/profile` (1.12, Dify's account profile): sets what is given ([name]: 3-30 characters;
+  /// [interfaceLanguage]: one of Dify's languages; [timezone]: an IANA name; `400 bad_request` otherwise) and answers the
+  /// account.
+  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone});
+
+  /// `POST /v1/account/change-email` (1.12): mails a six-digit code and answers the token for [checkChangeEmailCode].
+  /// Without [phase] the code goes to the account's own address ([email] must be it, else `400 invalid_email`); with
+  /// `new_email` and the [token] of a right code for the old address it goes to the new address [email]. `400
+  /// mail_not_configured`, `400 invalid_token`, `429 email_change_rate_limit_exceeded`, `429 email_send_ip_limit`.
+  Future<String> sendChangeEmailCode(
+    String accessToken, {
+    required String email,
+    String? language,
+    String? phase,
+    String? token,
+  });
+
+  /// `POST /v1/account/change-email/validity` (1.12): a right [code] spends [token] and answers the token of the next step.
+  /// `400 invalid_token`, `400 invalid_email`, `400 email_code_error`, `429 email_change_limit`.
+  Future<ResetCodeCheck> checkChangeEmailCode(
+    String accessToken, {
+    required String email,
+    required String code,
+    required String token,
+  });
+
+  /// `POST /v1/account/change-email/reset` (1.12): with the token of a right code for [newEmail], changes the account's
+  /// email; answers the account. `400 email_already_in_use`, `400 invalid_token`.
+  Future<Account> changeEmail(String accessToken, {required String newEmail, required String token});
+
+  /// `POST /v1/account/change-email/check-email-unique` (1.12): completes when no account has [email]; `400
+  /// email_already_in_use` otherwise.
+  Future<void> checkEmailUnique(String accessToken, String email);
 
   /// `GET /v1/workspace/members`: owner first.
   Future<List<Member>> members(String accessToken);
@@ -195,6 +230,79 @@ class HttpAuthApi implements AuthApi {
     ok: 204,
     token: accessToken,
     body: {'password': password, 'new_password': newPassword, 'repeat_new_password': repeatNewPassword},
+  );
+
+  @override
+  Future<Account> updateProfile(
+    String accessToken, {
+    String? name,
+    String? interfaceLanguage,
+    String? timezone,
+  }) async => Account.fromJson(
+    await _send(
+      'PATCH',
+      '/v1/account/profile',
+      ok: 200,
+      token: accessToken,
+      body: {'name': ?name, 'interface_language': ?interfaceLanguage, 'timezone': ?timezone},
+    ),
+  );
+
+  @override
+  Future<String> sendChangeEmailCode(
+    String accessToken, {
+    required String email,
+    String? language,
+    String? phase,
+    String? token,
+  }) async {
+    final json = await _send(
+      'POST',
+      '/v1/account/change-email',
+      ok: 200,
+      token: accessToken,
+      body: {'email': email, 'language': ?language, 'phase': ?phase, 'token': ?token},
+    ) as Map<String, Object?>;
+    final data = json['data'];
+    if (data is! String) throw const TransportException('malformed change-email answer');
+    return data;
+  }
+
+  @override
+  Future<ResetCodeCheck> checkChangeEmailCode(
+    String accessToken, {
+    required String email,
+    required String code,
+    required String token,
+  }) async => ResetCodeCheck.fromJson(
+    await _send(
+      'POST',
+      '/v1/account/change-email/validity',
+      ok: 200,
+      token: accessToken,
+      body: {'email': email, 'code': code, 'token': token},
+    ),
+  );
+
+  @override
+  Future<Account> changeEmail(String accessToken, {required String newEmail, required String token}) async =>
+      Account.fromJson(
+        await _send(
+          'POST',
+          '/v1/account/change-email/reset',
+          ok: 200,
+          token: accessToken,
+          body: {'new_email': newEmail, 'token': token},
+        ),
+      );
+
+  @override
+  Future<void> checkEmailUnique(String accessToken, String email) => _send(
+    'POST',
+    '/v1/account/change-email/check-email-unique',
+    ok: 200,
+    token: accessToken,
+    body: {'email': email},
   );
 
   @override

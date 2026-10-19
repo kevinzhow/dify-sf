@@ -347,6 +347,7 @@ class FakeAppsApi implements AppsApi {
       ..maxActiveRequests = maxActiveRequests ?? a.maxActiveRequests
       ..updatedAt = _s.clock()
       ..updatedBy = accountId;
+    a.server.announceApp();
     return _info(a);
   }
 

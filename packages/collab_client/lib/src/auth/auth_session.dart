@@ -219,6 +219,33 @@ class AuthSession implements TokenProvider {
     (t) => api.updatePassword(t, password: password, newPassword: newPassword, repeatNewPassword: repeatNewPassword),
   );
 
+  /// `PATCH /v1/account/profile` (1.12): name, interface language, time zone; updates [currentAccount].
+  Future<Account> updateProfile({String? name, String? interfaceLanguage, String? timezone}) async {
+    final a = await authorized(
+      (t) => api.updateProfile(t, name: name, interfaceLanguage: interfaceLanguage, timezone: timezone),
+    );
+    _setAccount(a);
+    return a;
+  }
+
+  /// `POST /v1/account/change-email` (1.12): the token for [checkChangeEmailCode].
+  Future<String> sendChangeEmailCode({required String email, String? language, String? phase, String? token}) =>
+      authorized((t) => api.sendChangeEmailCode(t, email: email, language: language, phase: phase, token: token));
+
+  /// `POST /v1/account/change-email/validity` (1.12).
+  Future<ResetCodeCheck> checkChangeEmailCode({required String email, required String code, required String token}) =>
+      authorized((t) => api.checkChangeEmailCode(t, email: email, code: code, token: token));
+
+  /// `POST /v1/account/change-email/reset` (1.12); updates [currentAccount].
+  Future<Account> changeEmail({required String newEmail, required String token}) async {
+    final a = await authorized((t) => api.changeEmail(t, newEmail: newEmail, token: token));
+    _setAccount(a);
+    return a;
+  }
+
+  /// `POST /v1/account/change-email/check-email-unique` (1.12).
+  Future<void> checkEmailUnique(String email) => authorized((t) => api.checkEmailUnique(t, email));
+
   /// `GET /v1/workspace/members`.
   Future<List<Member>> members() => authorized(api.members);
 

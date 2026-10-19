@@ -47,6 +47,7 @@ class FakeAccessApi implements AccessApi {
       for (final e in u.toJson().entries) e.key: e.value,
     };
     s.updatedBy = apps.accountId;
+    a.server.announceApp();
     return apps._siteOf(a);
   }
 
@@ -57,6 +58,7 @@ class FakeAccessApi implements AccessApi {
     final a = apps._live(appId);
     a.site.code = apps._s.newSiteCode();
     a.site.updatedBy = apps.accountId;
+    a.server.announceApp();
     return apps._siteOf(a);
   }
 
@@ -70,6 +72,7 @@ class FakeAccessApi implements AccessApi {
         ..enableSite = enable
         ..updatedBy = apps.accountId
         ..updatedAt = apps._s.clock();
+      a.server.announceApp();
     }
     return apps._info(a);
   }
@@ -84,6 +87,7 @@ class FakeAccessApi implements AccessApi {
         ..enableApi = enable
         ..updatedBy = apps.accountId
         ..updatedAt = apps._s.clock();
+      a.server.announceApp();
     }
     return apps._info(a);
   }

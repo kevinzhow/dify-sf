@@ -221,5 +221,37 @@ void main() {
       expect((await custom.workflowRun(wf.id, page.data.first.runId))['custom'], isTrue);
       expect(await FakeLogsApi(apps: owner).workflowRunNodeExecutions(wf.id, 'unknown'), isEmpty);
     });
+
+    test(
+      'logs: a member\'s feedback on a mock message shows in its transcript (Dify\'s admin feedback rules)',
+      () async {
+        final chat = await owner.create(name: 'Rated', mode: AppModes.advancedChat);
+        final logs = FakeLogsApi(apps: owner, mock: true);
+        final conv = (await logs.chatConversations(chat.id)).data.first.id;
+        final msg = (await logs.chatMessages(chat.id, conv)).data.first['id']! as String;
+        Future<List<Object?>> feedbacks() async =>
+            (await logs.chatMessages(chat.id, conv)).data.firstWhere((m) => m['id'] == msg)['feedbacks']!
+                as List<Object?>;
+        expect(await feedbacks(), isEmpty);
+        await logs.updateFeedback(chat.id, messageId: msg, rating: 'dislike', content: 'wrong');
+        expect(await feedbacks(), [
+          {
+            'rating': 'dislike',
+            'content': 'wrong',
+            'from_account_id': owner.accountId,
+            'from_source': 'admin',
+            'from_end_user_id': null,
+          },
+        ]);
+        await logs.updateFeedback(chat.id, messageId: msg, rating: 'like');
+        expect(((await feedbacks()).single! as Map)['content'], isNull);
+        await logs.updateFeedback(chat.id, messageId: msg);
+        expect(await feedbacks(), isEmpty);
+        await expectLater(
+          logs.updateFeedback(chat.id, messageId: msg),
+          throwsA(isA<TransportException>().having((e) => (e.statusCode, e.code), 'error', (400, 'bad_request'))),
+        );
+      },
+    );
   });
 }

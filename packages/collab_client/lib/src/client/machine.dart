@@ -520,8 +520,8 @@ class ClientMachine {
     _lastStreamActivity = now;
     final out = <ClientRequest>[];
     switch (event) {
-      case PingEvent() || CommentsEvent():
-        return const []; // liveness only (comments are the session's business, not the document's)
+      case PingEvent() || CommentsEvent() || AppEvent():
+        return const []; // liveness only (comments and app notices are the session's business, not the document's)
       case ReadyEvent():
         streamReady = true;
         reconnectAttempts = 0;

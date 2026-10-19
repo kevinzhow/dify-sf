@@ -119,7 +119,7 @@ class HttpFakeServer {
         preflights++;
         req.response
           ..statusCode = 204
-          ..headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+          ..headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
           ..headers.set(
             'Access-Control-Allow-Headers',
             'Content-Type, Accept, Authorization, Last-Event-ID, Cache-Control',
@@ -538,7 +538,7 @@ class HttpFakeServer {
           onCommit(entry);
         case ReadyEvent(:final head):
           write(_frame('ready', null, {'head': head}));
-        case PingEvent() || CommentsEvent():
+        case PingEvent() || CommentsEvent() || AppEvent():
           break;
       }
     }
@@ -547,6 +547,9 @@ class HttpFakeServer {
     void onComments(CommentsEvent e) =>
         write(_frame('comments', null, {'comment': e.comment, 'action': e.action.name}));
     d.comments.addListener(onComments);
+    // App notices (1.11): no `id:` either.
+    void onApp() => write(_frame('app', null, {'action': 'updated'}));
+    d.addAppListener(onApp);
     final ping = Timer.periodic(pingInterval, (_) => write(': ping\n\n'));
     try {
       await gone.future;
@@ -557,6 +560,7 @@ class HttpFakeServer {
       ping.cancel();
       d.removeListener(onCommit);
       d.comments.removeListener(onComments);
+      d.removeAppListener(onApp);
       _streams.remove(socket);
       socket.destroy();
     }
@@ -617,6 +621,30 @@ class HttpFakeServer {
           );
           req.response.statusCode = 204;
           return await req.response.close();
+        case ('PATCH', 'account/profile'):
+          return await _json(req, 200, a.updateProfile(token, body));
+        case ('POST', 'account/change-email'):
+          return await _json(
+            req,
+            200,
+            a.sendChangeEmailCode(
+              token,
+              email: body['email'],
+              language: body['language'],
+              phase: body['phase'],
+              token: body['token'],
+            ),
+          );
+        case ('POST', 'account/change-email/validity'):
+          return await _json(
+            req,
+            200,
+            a.checkChangeEmailCode(token, email: body['email'], code: body['code'], token: body['token']),
+          );
+        case ('POST', 'account/change-email/reset'):
+          return await _json(req, 200, a.changeEmail(token, newEmail: body['new_email'], token: body['token']));
+        case ('POST', 'account/change-email/check-email-unique'):
+          return await _json(req, 200, a.checkEmailUnique(token, body['email']));
         case ('GET', 'workspace/members'):
           return await _json(req, 200, {'accounts': a.members(token)});
         case ('POST', 'workspace/members/invite-email'):

@@ -254,6 +254,18 @@ class FakeServer {
   }
 
   void addDeletedListener(void Function() l) => _deletedListeners.add(l);
+
+  final List<void Function()> _appListeners = [];
+
+  /// Protocol 1.11 `event: app`: the document's app changed (the fakes of the app endpoints call it after a change).
+  void announceApp() {
+    for (final l in List.of(_appListeners)) {
+      l();
+    }
+  }
+
+  void addAppListener(void Function() l) => _appListeners.add(l);
+  void removeAppListener(void Function() l) => _appListeners.remove(l);
   void removeDeletedListener(void Function() l) => _deletedListeners.remove(l);
 
   void addListener(void Function(LogEntry) l) => _listeners.add(l);

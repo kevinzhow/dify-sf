@@ -413,4 +413,11 @@ abstract interface class LogsApi {
 
   /// `GET /v1/apps/{appId}/chat-messages?conversation_id&first_id&limit`.
   Future<ChatMessagePage> chatMessages(String appId, String conversationId, {String? firstId, int limit = 20});
+
+  /// `POST /v1/apps/{appId}/feedbacks` (1.11 amendment; any member; Dify's `MessageFeedbackApi`): the member's ("admin")
+  /// [rating] of message [messageId], `like` or `dislike` with an optional [content] (a dislike's "what went wrong"),
+  /// or null to remove it. `404 not_found` "Message Not Exists." for a message that is not the app's (every message until
+  /// a runtime exists); `400 bad_request` for a null [rating] without a feedback to remove, or a [messageId] that is not
+  /// a UUID.
+  Future<void> updateFeedback(String appId, {required String messageId, String? rating, String? content});
 }

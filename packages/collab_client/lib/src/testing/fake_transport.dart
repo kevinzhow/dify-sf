@@ -255,6 +255,7 @@ class _FakeStream {
   DateTime? _lastDelivery;
   late final void Function(LogEntry) _listener = _onCommit;
   late final void Function(CommentsEvent) _commentsListener = _onComments;
+  late final void Function() _appListener = _onApp;
 
   /// The app was deleted: the stream ends (the reconnect gets `404 app_deleted`), as the server's.
   late final void Function() _deletedListener = _onDeleted;
@@ -304,6 +305,7 @@ class _FakeStream {
     );
     server.addListener(_listener);
     server.comments.addListener(_commentsListener);
+    server.addAppListener(_appListener);
     server.addDeletedListener(_deletedListener);
     for (final e in events) {
       _deliver(e);
@@ -332,6 +334,12 @@ class _FakeStream {
   void _onComments(CommentsEvent e) {
     if (!_connected || _closed || _blackholed || _dead) return;
     _deliver(e);
+  }
+
+  /// App notices: best-effort, as comment notifications.
+  void _onApp() {
+    if (!_connected || _closed || _blackholed || _dead) return;
+    _deliver(const AppEvent());
   }
 
   /// In-order delivery with latency (TCP never reorders).
@@ -376,6 +384,7 @@ class _FakeStream {
     _openTimer?.cancel();
     server.removeListener(_listener);
     server.comments.removeListener(_commentsListener);
+    server.removeAppListener(_appListener);
     server.removeDeletedListener(_deletedListener);
     net._streams.remove(this);
   }

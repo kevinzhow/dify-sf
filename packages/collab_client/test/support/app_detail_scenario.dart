@@ -402,6 +402,17 @@ Future<void> appDetailScenario({
       owner.logs.chatMessages(c.id, 'f0e1d2c3-0000-4000-8000-000000000000'),
       throwsA(_code('not_found', 404)),
     );
+    // Message feedback (any member; no messages until a runtime exists).
+    for (final api in [owner, viewer]) {
+      await expectLater(
+        api.logs.updateFeedback(c.id, messageId: 'f0e1d2c3-0000-4000-8000-000000000000', rating: 'like'),
+        throwsA(_code('not_found', 404)),
+      );
+    }
+    await expectLater(
+      owner.logs.updateFeedback(c.id, messageId: 'not-a-uuid', rating: 'dislike', content: 'x'),
+      throwsA(_code('bad_request', 400)),
+    );
 
     // ----- A deleted app -----
     await owner.apps.delete(copy.id);

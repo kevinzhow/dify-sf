@@ -36,7 +36,7 @@ class FakeAccount {
   }) : createdAt = createdAt ?? clock.now().toUtc();
 
   final String id;
-  final String email;
+  String email;
   String name;
 
   /// Kept in plain text: this is a test double.
@@ -72,12 +72,32 @@ class _Token {
   final DateTime expires;
 }
 
-/// A mail the fake server "sent" (forgot password): the code, or null for the "no account" notice.
+/// A mail the fake server "sent": the code, or null for the "no account" notice and the "email changed" notice.
 class FakeMail {
-  const FakeMail({required this.to, required this.code, required this.language});
+  const FakeMail({required this.to, required this.code, required this.language, this.kind = FakeMail.resetPassword});
   final String to;
   final String? code;
   final String language;
+
+  /// [resetPassword], [changeEmailOld], [changeEmailNew] or [changeEmailCompleted].
+  final String kind;
+
+  static const resetPassword = 'reset_password';
+  static const changeEmailOld = 'change_email_old';
+  static const changeEmailNew = 'change_email_new';
+  static const changeEmailCompleted = 'change_email_completed';
+}
+
+class _EmailChange {
+  _EmailChange(this.account, this.email, this.oldEmail, this.code, this.phase, this.expires);
+  final String account;
+  final String email;
+  final String oldEmail;
+  final String? code;
+
+  /// `old_email`, `old_email_verified`, `new_email` or `new_email_verified`.
+  final String phase;
+  final DateTime expires;
 }
 
 class _Reset {
@@ -124,6 +144,10 @@ class FakeAccounts {
     this.maxResetCodeFailures = 5,
     this.resetLockout = const Duration(hours: 24),
     this.resetLinkTtl = const Duration(hours: 24),
+    this.changeEmailTtl = const Duration(minutes: 5),
+    this.changeEmailSendInterval = const Duration(seconds: 60),
+    this.maxChangeEmailFailures = 5,
+    this.changeEmailLockout = const Duration(hours: 24),
     Random? random,
   }) : _random = random ?? Random(11);
 
@@ -140,8 +164,16 @@ class FakeAccounts {
   final int maxResetCodeFailures;
   final Duration resetLockout;
   final Duration resetLinkTtl;
+  final Duration changeEmailTtl;
+  final Duration changeEmailSendInterval;
+  final int maxChangeEmailFailures;
+  final Duration changeEmailLockout;
 
-  /// Every forgot-password mail, in order.
+  final Map<String, _EmailChange> _emailChanges = {};
+  final Map<String, DateTime> _lastChangeMail = {};
+  final Map<String, ({int count, DateTime until})> _changeFailures = {};
+
+  /// Every mail (forgot password, change email), in order.
   final List<FakeMail> sentMails = [];
   final Map<String, _Reset> _resets = {};
   final Map<String, DateTime> _lastResetMail = {};
@@ -332,6 +364,172 @@ class FakeAccounts {
     a.password = _password(newPassword);
   }
 
+  /// Dify's languages (`interface_language`).
+  static const languages = {
+    'en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'lo-LA', 'ru-RU', 'it-IT', //
+    'uk-UA', 'vi-VN', 'ro-RO', 'pl-PL', 'hi-IN', 'tr-TR', 'fa-IR', 'sl-SI', 'th-TH', 'id-ID', 'ar-TN', 'nl-NL',
+  };
+
+  /// `PATCH /v1/account/profile` (1.12). Time zones: `UTC` and `Area/Location` names of the IANA areas (the real server
+  /// checks the IANA database).
+  Map<String, Object?> updateProfile(String? accessToken, Map<String, Object?> body) {
+    final a = principal(accessToken);
+    String? name, language, timezone;
+    for (final MapEntry(:key, :value) in body.entries) {
+      if (value == null) throw const FakeAuthError(400, 'bad_request', 'Account profile fields cannot be null');
+      switch (key) {
+        case 'name':
+          name = _name(value, min: 3);
+        case 'interface_language':
+          if (value is! String || !languages.contains(value)) {
+            throw FakeAuthError(400, 'bad_request', '$value is not a valid language.');
+          }
+          language = value;
+        case 'timezone':
+          if (value is! String ||
+              !(value == 'UTC' ||
+                  RegExp(
+                    r'^(Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Europe|Indian|Pacific|Etc)(/[A-Z][A-Za-z0-9_+-]*)+$',
+                  ).hasMatch(value))) {
+            throw FakeAuthError(400, 'bad_request', '$value is not a valid timezone.');
+          }
+          timezone = value;
+        default:
+          throw FakeAuthError(400, 'bad_request', 'unknown member $key');
+      }
+    }
+    a
+      ..name = name ?? a.name
+      ..interfaceLanguage = language ?? a.interfaceLanguage
+      ..timezone = timezone ?? a.timezone;
+    return a.toAccount().toJson();
+  }
+
+  /// `POST /v1/account/change-email` (1.12).
+  Map<String, Object?> sendChangeEmailCode(
+    String? accessToken, {
+    Object? email,
+    Object? language,
+    Object? phase,
+    Object? token,
+  }) {
+    final a = principal(accessToken);
+    final requested = _email(email);
+    final lang = language == 'zh-Hans' ? 'zh-Hans' : 'en-US';
+    if (!emailSetup) throw const FakeAuthError(400, 'mail_not_configured', 'Mail is not configured on this server.');
+    const invalidToken = FakeAuthError(400, 'invalid_token', 'The token is invalid or has expired.');
+    const invalidEmail = FakeAuthError(400, 'invalid_email', 'The email address is not valid.');
+    final now = clock.now();
+    final String next, destination, oldEmail;
+    if (phase == 'new_email') {
+      final prior = token is String ? _emailChanges[token] : null;
+      if (prior == null ||
+          !prior.expires.isAfter(now) ||
+          prior.phase != 'old_email_verified' ||
+          prior.account != a.id) {
+        throw invalidToken;
+      }
+      if (prior.email.toLowerCase() != a.email.toLowerCase()) throw invalidEmail;
+      next = 'new_email';
+      destination = requested.toLowerCase();
+      oldEmail = prior.email;
+    } else {
+      if (requested.toLowerCase() != a.email.toLowerCase()) throw invalidEmail;
+      next = 'old_email';
+      destination = a.email;
+      oldEmail = a.email;
+    }
+    final key = destination.toLowerCase(), last = _lastChangeMail[key];
+    if (last != null && now.isBefore(last.add(changeEmailSendInterval))) {
+      final minutes = (changeEmailSendInterval.inSeconds + 59) ~/ 60;
+      throw FakeAuthError(
+        429,
+        'email_change_rate_limit_exceeded',
+        'Too many email change emails have been sent. Please try again in ${minutes < 1 ? 1 : minutes} minutes.',
+      );
+    }
+    final code = List.generate(6, (_) => _random.nextInt(10)).join(), t = _newToken();
+    _emailChanges.removeWhere((_, c) => c.account == a.id || !c.expires.isAfter(now));
+    _emailChanges[t] = _EmailChange(a.id, destination, oldEmail, code, next, now.add(changeEmailTtl));
+    sentMails.add(
+      FakeMail(
+        to: destination,
+        code: code,
+        language: lang,
+        kind: next == 'new_email' ? FakeMail.changeEmailNew : FakeMail.changeEmailOld,
+      ),
+    );
+    _lastChangeMail[key] = now;
+    return {'result': 'success', 'data': t};
+  }
+
+  /// `POST /v1/account/change-email/validity` (1.12).
+  Map<String, Object?> checkChangeEmailCode(String? accessToken, {Object? email, Object? code, Object? token}) {
+    final a = principal(accessToken);
+    final key = _email(email).toLowerCase(), now = clock.now();
+    final f = _changeFailures[key];
+    if (f != null && f.until.isAfter(now) && f.count > maxChangeEmailFailures) {
+      throw const FakeAuthError(
+        429,
+        'email_change_limit',
+        'Too many failed email change attempts. Please try again in 24 hours.',
+      );
+    }
+    const invalidToken = FakeAuthError(400, 'invalid_token', 'The token is invalid or has expired.');
+    final c = token is String ? _emailChanges[token] : null;
+    if (c == null || !c.expires.isAfter(now) || c.account != a.id) throw invalidToken;
+    if (c.email.toLowerCase() != key) {
+      throw const FakeAuthError(400, 'invalid_email', 'The email address is not valid.');
+    }
+    if (c.phase != 'old_email' && c.phase != 'new_email') throw invalidToken;
+    if (code != c.code) {
+      final count = f != null && f.until.isAfter(now) ? f.count : 0;
+      _changeFailures[key] = (count: count + 1, until: now.add(changeEmailLockout));
+      throw const FakeAuthError(400, 'email_code_error', 'Email code is invalid or expired.');
+    }
+    _emailChanges.removeWhere((_, x) => x.account == a.id);
+    final next = _newToken();
+    _emailChanges[next] = _EmailChange(a.id, c.email, c.oldEmail, null, '${c.phase}_verified', now.add(changeEmailTtl));
+    _changeFailures.remove(key);
+    return {'is_valid': true, 'email': key, 'token': next};
+  }
+
+  /// `POST /v1/account/change-email/reset` (1.12).
+  Map<String, Object?> changeEmail(String? accessToken, {Object? newEmail, Object? token}) {
+    final a = principal(accessToken);
+    final e = _email(newEmail).toLowerCase();
+    const invalidToken = FakeAuthError(400, 'invalid_token', 'The token is invalid or has expired.');
+    final c = token is String ? _emailChanges[token] : null;
+    if (c == null ||
+        !c.expires.isAfter(clock.now()) ||
+        c.account != a.id ||
+        c.phase != 'new_email_verified' ||
+        c.email.toLowerCase() != e) {
+      throw invalidToken;
+    }
+    final other = byEmail(e);
+    if (other != null && other.id != a.id) {
+      throw const FakeAuthError(400, 'email_already_in_use', 'A user with this email already exists.');
+    }
+    if (a.email.toLowerCase() != c.oldEmail.toLowerCase()) {
+      throw const FakeAuthError(400, 'account_not_found', 'Account not found.');
+    }
+    a.email = e;
+    _emailChanges.removeWhere((_, x) => x.account == a.id);
+    _resets.removeWhere((_, x) => x.account == a.id);
+    sentMails.add(FakeMail(to: e, code: null, language: 'en-US', kind: FakeMail.changeEmailCompleted));
+    return a.toAccount().toJson();
+  }
+
+  /// `POST /v1/account/change-email/check-email-unique` (1.12).
+  Map<String, Object?> checkEmailUnique(String? accessToken, Object? email) {
+    principal(accessToken);
+    if (byEmail(_email(email)) != null) {
+      throw const FakeAuthError(400, 'email_already_in_use', 'A user with this email already exists.');
+    }
+    return {'result': 'success'};
+  }
+
   List<Map<String, Object?>> members(String? accessToken) {
     principal(accessToken);
     return [for (final a in _members) _memberJson(a)];
@@ -454,6 +652,7 @@ class FakeAccounts {
     'enable_email_password_login': true,
     'is_allow_register': false,
     'is_email_setup': emailSetup,
+    'enable_change_email': emailSetup,
   };
 
   Map<String, Object?> sendResetCode({Object? email, Object? language}) {
@@ -719,6 +918,49 @@ class FakeAuthApi implements AuthApi {
       repeatNewPassword: repeatNewPassword,
     ),
   );
+
+  @override
+  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone}) =>
+      _call(
+        (a) => Account.fromJson(
+          a.updateProfile(accessToken, {
+            'name': ?name,
+            'interface_language': ?interfaceLanguage,
+            'timezone': ?timezone,
+          }),
+        ),
+      );
+
+  @override
+  Future<String> sendChangeEmailCode(
+    String accessToken, {
+    required String email,
+    String? language,
+    String? phase,
+    String? token,
+  }) => _call(
+    (a) =>
+        a.sendChangeEmailCode(accessToken, email: email, language: language, phase: phase, token: token)['data']!
+            as String,
+  );
+
+  @override
+  Future<ResetCodeCheck> checkChangeEmailCode(
+    String accessToken, {
+    required String email,
+    required String code,
+    required String token,
+  }) => _call(
+    (a) => ResetCodeCheck.fromJson(a.checkChangeEmailCode(accessToken, email: email, code: code, token: token)),
+  );
+
+  @override
+  Future<Account> changeEmail(String accessToken, {required String newEmail, required String token}) =>
+      _call((a) => Account.fromJson(a.changeEmail(accessToken, newEmail: newEmail, token: token)));
+
+  @override
+  Future<void> checkEmailUnique(String accessToken, String email) =>
+      _call((a) => a.checkEmailUnique(accessToken, email));
 
   @override
   Future<List<Member>> members(String accessToken) =>

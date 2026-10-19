@@ -86,14 +86,14 @@ final class Account {
     'created_at': ?createdAt?.toUtc().toIso8601String(),
   };
 
-  Account copyWith({String? name, String? role}) => Account(
+  Account copyWith({String? name, String? role, String? email, String? interfaceLanguage, String? timezone}) => Account(
     id: id,
-    email: email,
+    email: email ?? this.email,
     name: name ?? this.name,
     avatarUrl: avatarUrl,
     role: role ?? this.role,
-    interfaceLanguage: interfaceLanguage,
-    timezone: timezone,
+    interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
+    timezone: timezone ?? this.timezone,
     createdAt: createdAt,
   );
 
@@ -273,6 +273,7 @@ final class SystemFeatures {
     this.enableEmailPasswordLogin = true,
     this.enableEmailCodeLogin = false,
     this.isAllowRegister = false,
+    this.enableChangeEmail = false,
   });
 
   factory SystemFeatures.fromJson(Object? json) {
@@ -282,6 +283,7 @@ final class SystemFeatures {
       enableEmailPasswordLogin: m['enable_email_password_login'] != false,
       enableEmailCodeLogin: m['enable_email_code_login'] == true,
       isAllowRegister: m['is_allow_register'] == true,
+      enableChangeEmail: m['enable_change_email'] == true,
     );
   }
 
@@ -292,9 +294,14 @@ final class SystemFeatures {
   final bool enableEmailPasswordLogin;
   final bool enableEmailCodeLogin;
   final bool isAllowRegister;
+
+  /// Dify's `enable_change_email` (1.12): the account page offers changing the email (dify-sf: only with mail). Older
+  /// servers do not say, which is false.
+  final bool enableChangeEmail;
 }
 
-/// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password.
+/// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password. Also the answer of
+/// `POST /v1/account/change-email/validity` (1.12): the token of the next step.
 final class ResetCodeCheck {
   const ResetCodeCheck({required this.isValid, required this.email, required this.token});
 

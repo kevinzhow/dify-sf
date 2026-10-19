@@ -26,6 +26,7 @@ import 'package:collab_client/storm.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
+import 'support/account_settings_scenario.dart';
 import 'support/app_detail_scenario.dart';
 import 'support/apps_scenario.dart';
 import 'support/helpers.dart';
@@ -99,6 +100,12 @@ void main() {
   );
 
   group('accounts (1.8)', () {
+    test('1.12 account settings: profile (name, language, time zone), unique emails, change email as far as mail '
+        'allows', () async {
+      final me = await member(AccountRole.editor);
+      await accountSettingsScenario(me: me, other: editor, unique: _docId());
+    });
+
     test('setup is done; sign-in answers the same for unknown emails and wrong passwords', () async {
       expect(await owner.api.setupStatus(), SetupStatus.finished);
       await expectLater(
