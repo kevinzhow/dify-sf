@@ -1,0 +1,404 @@
+{
+ "app": "4f536642-ef8f-4e31-ad44-8ea1cb66e376",
+ "wait_seconds": 3.0,
+ "frames": [
+  {
+   "event": "workflow_started",
+   "at": 1792478693.791,
+   "created_at": 1792478693,
+   "keys": [
+    "created_at",
+    "id",
+    "inputs",
+    "reason",
+    "workflow_id"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478693.791,
+   "created_at": 1792478693,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478693.797,
+   "created_at": 1792478693,
+   "finished_at": 1792478693,
+   "elapsed_time": 0.000104,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "outputs_truncated",
+    "predecessor_node_id",
+    "process_data",
+    "process_data_truncated",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478693.89,
+   "created_at": 1792478693,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "human_input_required",
+   "at": 1792478694.049,
+   "keys": [
+    "actions",
+    "approval_channels",
+    "display_in_ui",
+    "expiration_time",
+    "form_content",
+    "form_id",
+    "form_token",
+    "inputs",
+    "node_id",
+    "node_title",
+    "resolved_default_values"
+   ]
+  },
+  {
+   "event": "workflow_paused",
+   "at": 1792478694.049,
+   "created_at": 1792478693,
+   "elapsed_time": 0.250555,
+   "status": "paused",
+   "workflow_run_id": "d7f3d26f-a600-4986-888b-4a57106aaa3d",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "outputs",
+    "paused_nodes",
+    "reasons",
+    "status",
+    "total_steps",
+    "total_tokens",
+    "workflow_run_id"
+   ]
+  },
+  {
+   "event": "workflow_started",
+   "at": 1792478697.118,
+   "created_at": 1792478693,
+   "keys": [
+    "created_at",
+    "id",
+    "inputs",
+    "reason",
+    "workflow_id"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478697.118,
+   "created_at": 1792478693,
+   "keys": [
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478697.118,
+   "created_at": 1792478693,
+   "finished_at": 1792478693,
+   "elapsed_time": 0.000104,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "predecessor_node_id",
+    "process_data",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478697.118,
+   "created_at": 1792478693,
+   "keys": [
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478697.118,
+   "created_at": 1792478693,
+   "finished_at": 1792478693,
+   "elapsed_time": 0.010195,
+   "status": "paused",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "predecessor_node_id",
+    "process_data",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478697.118,
+   "created_at": 1792478697,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "text_chunk",
+   "at": 1792478697.123,
+   "keys": [
+    "from_variable_selector",
+    "text"
+   ]
+  },
+  {
+   "event": "human_input_form_filled",
+   "at": 1792478697.123,
+   "keys": [
+    "action_id",
+    "action_text",
+    "node_id",
+    "node_title",
+    "rendered_content",
+    "submitted_data"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478697.129,
+   "created_at": 1792478697,
+   "finished_at": 1792478697,
+   "elapsed_time": 0.003926,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "outputs_truncated",
+    "predecessor_node_id",
+    "process_data",
+    "process_data_truncated",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478697.219,
+   "created_at": 1792478697,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478697.226,
+   "created_at": 1792478697,
+   "finished_at": 1792478697,
+   "elapsed_time": 0.000267,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "outputs_truncated",
+    "predecessor_node_id",
+    "process_data",
+    "process_data_truncated",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "workflow_finished",
+   "at": 1792478697.233,
+   "created_at": 1792478697,
+   "finished_at": 1792478697,
+   "elapsed_time": 0.119684,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "created_by",
+    "elapsed_time",
+    "error",
+    "exceptions_count",
+    "files",
+    "finished_at",
+    "id",
+    "outputs",
+    "status",
+    "total_steps",
+    "total_tokens",
+    "workflow_id"
+   ]
+  }
+ ],
+ "detail": {
+  "id": "d7f3d26f-a600-4986-888b-4a57106aaa3d",
+  "status": "succeeded",
+  "created_at": 1792478693,
+  "finished_at": 1792478697,
+  "elapsed_time": 0.123562,
+  "total_tokens": 0,
+  "total_steps": 4
+ },
+ "history": {
+  "id": "d7f3d26f-a600-4986-888b-4a57106aaa3d",
+  "status": "succeeded",
+  "created_at": 1792478693,
+  "finished_at": 1792478697,
+  "elapsed_time": 0.123562,
+  "total_tokens": 0,
+  "total_steps": 4
+ },
+ "error": null,
+ "run_id": "d7f3d26f-a600-4986-888b-4a57106aaa3d",
+ "paused_detail": {
+  "id": "d7f3d26f-a600-4986-888b-4a57106aaa3d",
+  "status": "paused",
+  "created_at": 1792478693,
+  "finished_at": null,
+  "elapsed_time": 0.0,
+  "total_tokens": 0,
+  "total_steps": 2
+ },
+ "submit_status": 200
+}

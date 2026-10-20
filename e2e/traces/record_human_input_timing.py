@@ -10,13 +10,14 @@ stream frame's `created_at` is the resumed round's start with the round's `elaps
 history keep the run's `created_at` with the round's `elapsed_time`; the events endpoint's snapshot starts with
 the run's original `created_at`; `human_input_form_filled` precedes the human node's `node_finished`.
 """
-import base64, json, os, re, sys, time
+import base64, json, os, pathlib, re, sys, time
 import requests
 
 DIFY = os.environ.get('DIFY_URL', 'http://localhost')
 EMAIL = os.environ['DIFY_EMAIL']
 PASSWORD = os.environ['DIFY_PASSWORD']
 WAIT_SECONDS = float(os.environ.get('WAIT_SECONDS', '3'))
+OUT = pathlib.Path(os.environ.get('OUT_DIR', 'e2e/traces/human_input_timing'))
 
 YAML = """
 app:
@@ -72,10 +73,14 @@ if body.get('status') == 'pending':
     body = s.post(f'{DIFY}/console/api/apps/imports/{body["id"]}/confirm').json()
 app = body['app_id']
 
+OUT.mkdir(parents=True, exist_ok=True)
+(OUT / 'workflow.yaml').write_text(YAML)
 report = {'app': app, 'wait_seconds': WAIT_SECONDS, 'frames': [], 'detail': {}, 'history': {}, 'error': None}
+raw_frames = []
 
 
 def record(name, data, when=None):
+    raw_frames.append({'event': name, 'data': data})
     entry = {'event': name, 'at': round(when if when is not None else time.time(), 3)}
     if isinstance(data, dict):
         for key in ('created_at', 'finished_at', 'elapsed_time', 'status', 'workflow_run_id'):
@@ -143,4 +148,17 @@ try:
 except Exception as exc:  # keep whatever was recorded
     report['error'] = f'{type(exc).__name__}: {exc}'
 
-print(json.dumps(report, ensure_ascii=False, indent=1))
+# Reproducible evidence next to the code, with no credentials: the frames exactly as they arrived, the run's
+# detail/history rows, and the workflow that was imported.
+def scrubbed(value):
+    """A form token is a capability for that form: the evidence keeps the field, never the value."""
+    if isinstance(value, dict):
+        return {k: ('<redacted>' if k == 'form_token' else scrubbed(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrubbed(v) for v in value]
+    return value
+
+
+(OUT / 'frames.jsonl').write_text(''.join(json.dumps(scrubbed(f), ensure_ascii=False) + '\n' for f in raw_frames))
+(OUT / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=1) + '\n')
+print(json.dumps({'out': str(OUT), 'frames': len(raw_frames), 'error': report['error']}, ensure_ascii=False))
