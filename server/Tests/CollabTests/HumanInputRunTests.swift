@@ -57,6 +57,102 @@ struct HumanInputRunTests {
         }
     }
 
+    /// start -> {approve1, approve2} -> end: both human nodes are ready at once, so one pause carries two forms and the
+    /// resume can be asked the question that matters — does it decide only what its claim took?
+    static func twoFormsYAML() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-two
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: approve1, targetHandle: target}
+            - {id: e2, source: start, sourceHandle: source, target: approve2, targetHandle: target}
+            - {id: e3, source: approve1, sourceHandle: approve, target: end, targetHandle: target}
+            - {id: e4, source: approve2, sourceHandle: approve, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data:
+                title: Start
+                type: start
+                variables: []
+            - id: approve1
+              data:
+                title: First
+                type: human-input
+                form_content: 'First {{#$output.reply#}}'
+                inputs:
+                - {type: paragraph, output_variable_name: reply}
+                user_actions:
+                - {id: approve, title: Approve, button_style: primary}
+            - id: approve2
+              data:
+                title: Second
+                type: human-input
+                form_content: 'Second {{#$output.reply#}}'
+                inputs:
+                - {type: paragraph, output_variable_name: reply}
+                user_actions:
+                - {id: approve, title: Approve, button_style: primary}
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs:
+                - {variable: reply, value_selector: [approve2, reply]}
+        """
+    }
+
+    @Test func aResumeDecidesOnlyWhatItsClaimTookAndTheOtherFormPausesAgain() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", Self.twoFormsYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let required = Self.frames(run.text).filter { $0["event"]?.string == "human_input_required" }
+            #expect(required.count == 2, "one pause with two forms: \(required.count)")
+            let tokens = required.compactMap { $0["data"]?["form_token"]?.string }
+            #expect(tokens.count == 2)
+            var forms: [StoredHumanInputForm?] = []
+            for token in tokens { forms.append(try await store.humanInputForm(token: token)) }
+            let first = try #require(forms.first { $0?.nodeId == "approve1" } ?? nil)
+            let second = try #require(forms.first { $0?.nodeId == "approve2" } ?? nil)
+
+            // Answer only the first: the resume takes that decision, the second node pauses again with the form it had.
+            let answer = try await api.post("/v1/form/human_input/\(first.token)", #"{"inputs":{"reply":"one"},"action":"approve"}"#,
+                                            token: owner)
+            #expect(answer.status == 200, "\(answer.text)")
+            var secondGeneration = 0
+            for _ in 0..<200 where secondGeneration == 0 {
+                try await Task.sleep(for: .milliseconds(25))
+                let open = try await store.openPauses(workflowRunId: first.workflowRunId)
+                secondGeneration = open.first?.generation ?? 0
+            }
+            #expect(secondGeneration == 2, "the second node pauses again as a new generation")
+            let adopted = try await store.humanInputForm(token: second.token)
+            #expect(adopted?.id == second.id && adopted?.token == second.token, "the waiting form is adopted, not replaced")
+            #expect(adopted?.status == .waiting)
+            #expect(try await store.workflowRun(doc: app, id: first.workflowRunId)?.status == "paused")
+
+            // Answer the second: now the run ends.
+            let last = try await api.post("/v1/form/human_input/\(second.token)", #"{"inputs":{"reply":"two"},"action":"approve"}"#,
+                                          token: owner)
+            #expect(last.status == 200, "\(last.text)")
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: first.workflowRunId)?.status ?? ""
+            }
+            #expect(status == "succeeded", "got \(status)")
+            #expect(try await store.workflowRun(doc: app, id: first.workflowRunId)?.outputs?.contains("two") == true)
+        }
+    }
+
     @Test func thePauseIsDurableBeforeItIsPublishedAndTheFormWakesTheRun() async throws {
         try await withServer { api, store, _ in
             let owner = try await api.setupOwner()

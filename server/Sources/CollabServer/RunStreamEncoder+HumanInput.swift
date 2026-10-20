@@ -38,6 +38,17 @@ extension RunStreamEncoder {
         ])
     }
 
+    /// `human_input_form_timeout`: the node's own deadline ended its form; the run resumes through `__timeout`, so this is
+    /// not a filled answer.
+    func humanInputFormTimeout(_ form: StoredHumanInputForm) -> JSONValue {
+        envelope("human_input_form_timeout", [
+            "form_id": .string(form.id),
+            "node_id": .string(form.nodeId),
+            "node_title": .string(form.nodeTitle),
+            "rendered_content": .string(form.renderedContent),
+        ])
+    }
+
     func workflowPaused(_ forms: [StoredHumanInputForm], reasons: [PauseReason], stats: GraphRunStats, at: Date) -> JSONValue {
         let pausedNodes = forms.map { form -> JSONValue in
             .object(["node_id": .string(form.nodeId), "node_title": .string(form.nodeTitle), "form_id": .string(form.id)])

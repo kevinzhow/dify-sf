@@ -33,39 +33,47 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
     public var docId: String
     public var userId: String
     public var pending: PendingHumanInputForms
-    public var startedAt: Date
+    /// The answers **this** resume claimed (`claimResume`'s decisions), by execution id. A resume decides from this fixed
+    /// view and nothing else: a submission that arrives after the claim belongs to the next pause, so the node re-pauses
+    /// instead of completing on an answer the claim did not take.
+    public var decisions: [String: StoredHumanInputForm]
 
     public init(store: PostgresStore, workflowRunId: String, docId: String, userId: String, pending: PendingHumanInputForms,
-                startedAt: Date = Date()) {
+                decisions: [String: StoredHumanInputForm] = [:]) {
         self.store = store
         self.workflowRunId = workflowRunId
         self.docId = docId
         self.userId = userId
         self.pending = pending
-        self.startedAt = startedAt
+        self.decisions = decisions
     }
 
     public func decide(form: HumanInputFormConfig, context: HumanInputContext) async throws -> HumanInputDecision {
         // A container round pauses again under its own execution id (`HumanInputContext.executionId`), so two rounds of
         // one node are two forms, which is what the store's (run, execution) key means.
         let executionId = context.executionId ?? context.nodeId
-        if let existing = try await store.humanInputForm(workflowRunId: workflowRunId, executionId: executionId) {
-            switch existing.status {
+        // The claim's decisions are the whole view of this resume.
+        if let decided = decisions[executionId] {
+            switch decided.status {
             case .submitted:
-                let values = (try? JSONValue.parse(existing.submittedInputs ?? "{}"))?.object ?? [:]
-                let result = try form.completion(action: existing.submittedAction ?? "", values: values,
-                                                renderedContent: existing.renderedContent)
-                return .completed(result)
+                let values = (try? JSONValue.parse(decided.submittedInputs ?? "{}"))?.object ?? [:]
+                return .completed(try form.completion(action: decided.submittedAction ?? "", values: values,
+                                                      renderedContent: decided.renderedContent))
             case .timedOut:
-                return .expired(form.timeoutResult(renderedContent: existing.renderedContent))
+                return .expired(form.timeoutResult(renderedContent: decided.renderedContent))
             case .expired:
                 // The global deadline ended the run; the engine must not continue through the timeout branch here.
                 throw NodeError("HumanInputExpired", "the form expired and the run was stopped")
             case .waiting:
-                // A pause that was decided before (a re-entered node) keeps its form and token.
-                pending.add(existing)
-                return .pause(sessionId: existing.id)
+                pending.add(decided)
+                return .pause(sessionId: decided.id)
             }
+        }
+        // Not this resume's decision: a form of this execution that is still waiting (a re-entered node) keeps its id and
+        // token; one answered after the claim leaves the node paused, so the next pause carries that answer.
+        if let existing = try await store.humanInputForm(workflowRunId: workflowRunId, executionId: executionId) {
+            pending.add(existing)
+            return .pause(sessionId: existing.id)
         }
 
         let now = Date()
@@ -77,8 +85,9 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
             nodeTitle: context.nodeTitle, token: UUID().uuidString.lowercased(), formContent: form.content,
             inputs: try Self.jsonText(form.inputs), userActions: try Self.jsonText(form.actions), renderedContent: rendered,
             defaultValues: Self.jsonTextObject(defaults), resolvedDefaultValues: Self.jsonTextObject(defaults),
-            actions: try Self.jsonText(form.actions), displayInUi: defaults["display_in_ui"]?.bool ?? true,
-            expirationTime: Int(form.expirationTime(from: startedAt).timeIntervalSince1970), createdAt: now)
+            actions: try Self.jsonText(form.actions), displayInUi: form.displayInUi ?? true,
+            // The deadline counts from when this form is created, not from when the adapter was built.
+            expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now)
         pending.add(created)
         return .pause(sessionId: id)
     }

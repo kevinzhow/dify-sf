@@ -39,11 +39,11 @@ extension Routes {
     /// The services for one workflow run: `runtimeServices`, plus the human-input adapter bound to this run. The adapter
     /// needs the run id and the ledger the run persists from, so it cannot live in `runtimeServices` (which is shared by
     /// the single-node and container paths, and by graphs built before a run exists).
-    func runServices(appId: String, runId: String, docId: String, userId: String,
-                     pending: PendingHumanInputForms) -> RuntimeServices {
+    func runServices(appId: String, runId: String, docId: String, userId: String, pending: PendingHumanInputForms,
+                     decisions: [String: StoredHumanInputForm] = [:]) -> RuntimeServices {
         var services = runtimeServices(appId: appId)
         services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
-                                                      pending: pending)
+                                                      pending: pending, decisions: decisions)
         return services
     }
 
@@ -170,9 +170,13 @@ extension Routes {
         guard let claim = try? await store.claimResume(workflowRunId: runId, at: Date()) else { return false }
         guard let run = try? await store.workflowRun(doc: appId, id: runId) else { return false }
         guard let graphJSON = try? JSONValue.parse(Data(run.graph.utf8)) else {
-            logger.error("run \(runId) has a stored graph that does not parse; it stays paused")
+            // The claim already made the run `running`: leaving it there would be a run that never finishes.
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                               error: "the paused run's stored graph does not parse",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
             return false
         }
+        let decisions = Dictionary(uniqueKeysWithValues: claim.decisions.map { ($0.executionId, $0) })
         let pending = PendingHumanInputForms()
         let userId = run.createdBy ?? ""
         let graph: RuntimeGraph
@@ -181,7 +185,8 @@ extension Routes {
             let rootId = try RuntimeGraph.defaultRootId(config)
             graph = try await RuntimeGraph.build(config, rootId: rootId,
                                                  factory: BuiltinNodeFactory(services: runServices(
-                                                    appId: appId, runId: runId, docId: appId, userId: userId, pending: pending)))
+                                                    appId: appId, runId: runId, docId: appId, userId: userId, pending: pending,
+                                                    decisions: decisions)))
         } catch {
             logger.error("run \(runId) could not rebuild its graph: \(error)")
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "could not rebuild the paused run: \(error)",
@@ -199,6 +204,9 @@ extension Routes {
         let snapshot: GraphEngineSnapshot
         do { snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8)) } catch {
             logger.error("run \(runId) has a pause snapshot that does not decode: \(error)")
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                               error: "the paused run's snapshot does not decode: \(error)",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
             return false
         }
         let channel = RunChannel()
@@ -429,6 +437,9 @@ final class RunExecution: Sendable {
                 try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                           error: "could not resume the paused run: \(error)", elapsedTime: 0,
                                                           totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+                pinger.cancel()
+                await channel.finish()
+                await routes.runs.remove(taskId)
                 return
             }
         } else {
@@ -439,7 +450,9 @@ final class RunExecution: Sendable {
             if case .runResumed = event, !announcedFilled {
                 announcedFilled = true
                 var frames = encoderBox.withLock { $0.encode(event) }
-                frames += encoderBox.withLock { enc in filled.map { enc.humanInputFormFilled($0) } }
+                frames += encoderBox.withLock { enc in
+                    filled.map { $0.status == .timedOut ? enc.humanInputFormTimeout($0) : enc.humanInputFormFilled($0) }
+                }
                 for f in frames { await channel.publish(Self.sse(f)) }
                 continue
             }
@@ -498,9 +511,10 @@ final class RunExecution: Sendable {
         }
         let forms = pendingForms.take(sessionIds)
         let at = Date()
+        var generation = 0
         do {
             let encoded = String(decoding: try snapshot.encoded(), as: UTF8.self)
-            try await routes.store.createPause(
+            generation = try await routes.store.createPause(
                 workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,
                 totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                 elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.startedAt) }, forms: forms, at: at)
@@ -528,6 +542,15 @@ final class RunExecution: Sendable {
             forms.map { enc.humanInputRequired($0) } + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at)]
         }
         for f in frames { await channel.publish(Self.sse(f)) }
+        // An answer for another execution of this pause may have been taken while the pause was being written: the pause
+        // starts awake, and since no new submission will come to wake it, the resume is enqueued here.
+        let stored = (try? await routes.store.pause(workflowRunId: runId, generation: generation)) ?? nil
+        if stored?.resumeRequested == true {
+            let routes = self.routes
+            let app = appId
+            let run = runId
+            Task.detached { await routes.resumeRun(appId: app, runId: run) }
+        }
     }
 
     static func sse(_ payload: JSONValue) -> String { "data: " + payload.compactJSON() + "\n\n" }

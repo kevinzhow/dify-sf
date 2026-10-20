@@ -13,6 +13,9 @@ public struct HumanInputFormConfig: Sendable {
     public let actions: [JSONObject]
     public let timeout: Int
     public let timeoutUnit: String
+    /// Dify's `FormDefinition.display_in_ui`: whether the form is shown in a UI surface at all (the node sets it; the
+    /// delivery policy turns it into tokens), kept as the config wrote it — never inferred from rendered defaults.
+    public let displayInUi: Bool?
 
     public static let timeoutHandle = "__timeout"
     public static let actionIdField = "__action_id"
@@ -22,6 +25,7 @@ public struct HumanInputFormConfig: Sendable {
     public init(_ data: JSONObject) throws {
         base = try BaseNodeData(data)
         content = try Self.string(data, "form_content", fallback: "")
+        displayInUi = data["display_in_ui"]?.bool
         timeout = data["timeout"]?.int ?? 36
         timeoutUnit = try Self.string(data, "timeout_unit", fallback: "hour")
         guard ["hour", "day"].contains(timeoutUnit) else { throw NodeDataError("timeout_unit: expected hour or day") }
