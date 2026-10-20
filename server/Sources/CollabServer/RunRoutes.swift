@@ -43,7 +43,9 @@ extension Routes {
                      decisions: [String: StoredHumanInputForm] = [:]) -> RuntimeServices {
         var services = runtimeServices(appId: appId)
         services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
-                                                      pending: pending, decisions: decisions)
+                                                      pending: pending, decisions: decisions,
+                                                      // Draft runs are Dify's debugger; published runs come with M5.
+                                                      isDebugger: true)
         return services
     }
 

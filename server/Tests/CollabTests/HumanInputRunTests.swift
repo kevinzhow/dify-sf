@@ -313,6 +313,32 @@ struct HumanInputLiveFollowTests {
     }
 }
 
+/// `_display_in_ui`: the debugger shows every form; a published run follows the node's setting.
+@Suite("Human input display rules", .enabled(if: testDbHost != nil))
+struct HumanInputDisplayRuleTests {
+    @Test func theDebuggerShowsAFormEvenWhenTheNodeDisablesIt() async throws {
+        // The rule itself, both ways.
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: true, node: false) == true)
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: true, node: nil) == true)
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, node: false) == false)
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, node: nil) == false)
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, node: true) == true)
+
+        // And through a draft run (the debugger): a node that sets `display_in_ui: false` still produces a shown form.
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let actionsLine = "                - {id: approve, title: Approve it, button_style: primary}"
+            let yaml = HumanInputRunTests.appYAML().replacingOccurrences(
+                of: actionsLine, with: actionsLine + "\n                display_in_ui: false")
+            let app = try await api.post("/v1/docs/import", yaml, token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            #expect(try await store.humanInputForm(token: token)?.displayInUi == true, "the debugger shows it anyway")
+        }
+    }
+}
+
 /// The run ends inside the window between subscribing and reading the persisted state (`testDefect: slowStateRead` widens
 /// it): the connection must answer one terminal frame, not a snapshot plus a terminal, and must close.
 @Suite("Run events end during the state read", .enabled(if: testDbHost != nil))

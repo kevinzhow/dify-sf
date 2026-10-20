@@ -33,19 +33,23 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
     public var docId: String
     public var userId: String
     public var pending: PendingHumanInputForms
+    /// Dify's `node_runtime._display_in_ui`: under the debugger a form is always shown; elsewhere the enabled Web App
+    /// delivery decides (a published run additionally requires the site to be enabled, which M5 wires).
+    public var isDebugger: Bool
     /// The answers **this** resume claimed (`claimResume`'s decisions), by execution id. A resume decides from this fixed
     /// view and nothing else: a submission that arrives after the claim belongs to the next pause, so the node re-pauses
     /// instead of completing on an answer the claim did not take.
     public var decisions: [String: StoredHumanInputForm]
 
     public init(store: PostgresStore, workflowRunId: String, docId: String, userId: String, pending: PendingHumanInputForms,
-                decisions: [String: StoredHumanInputForm] = [:]) {
+                decisions: [String: StoredHumanInputForm] = [:], isDebugger: Bool = true) {
         self.store = store
         self.workflowRunId = workflowRunId
         self.docId = docId
         self.userId = userId
         self.pending = pending
         self.decisions = decisions
+        self.isDebugger = isDebugger
     }
 
     public func decide(form: HumanInputFormConfig, context: HumanInputContext) async throws -> HumanInputDecision {
@@ -85,11 +89,17 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
             nodeTitle: context.nodeTitle, token: UUID().uuidString.lowercased(), formContent: form.content,
             inputs: try Self.jsonText(form.inputs), userActions: try Self.jsonText(form.actions), renderedContent: rendered,
             defaultValues: Self.jsonTextObject(defaults), resolvedDefaultValues: Self.jsonTextObject(defaults),
-            actions: try Self.jsonText(form.actions), displayInUi: form.displayInUi ?? true,
+            actions: try Self.jsonText(form.actions), displayInUi: Self.displayInUi(isDebugger: isDebugger, node: form.displayInUi),
             // The deadline counts from when this form is created, not from when the adapter was built.
             expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now)
         pending.add(created)
         return .pause(sessionId: id)
+    }
+
+    /// `_display_in_ui`: the debugger always shows the form; a published run follows the node's setting (and, once M5
+    /// wires published runs, the enabled Web App delivery) — an unset node value means "not shown" there.
+    static func displayInUi(isDebugger: Bool, node: Bool?) -> Bool {
+        isDebugger ? true : (node ?? false)
     }
 
     static func jsonText(_ values: [JSONObject]) throws -> String {
