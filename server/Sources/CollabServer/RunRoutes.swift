@@ -777,7 +777,7 @@ struct RunStreamEncoder: Sendable {
         case .runStarted, .runResumed:
             let reason = { if case .runResumed = event { return "resumption" }; return "initial" }()
             return [envelope("workflow_started", ["id": .string(runId), "workflow_id": .string(workflowId), "inputs": .object(inputs),
-                                                  "created_at": Self.ts(startedAt), "reason": .string(reason)])]
+                                                  "created_at": Self.ts(roundStartedAt), "reason": .string(reason)])]
         case .node(let e):
             switch e {
             case .pauseRequested: return [] // The async form adapter enriches these after a durable pause.
@@ -884,7 +884,9 @@ struct RunStreamEncoder: Sendable {
             "id": .string(runId), "workflow_id": .string(workflowId), "status": .string(status), "outputs": .object(stats.outputs),
             "error": error.map(JSONValue.string) ?? .null, "elapsed_time": .double(now.timeIntervalSince(roundStartedAt)),
             "total_tokens": .int(stats.totalTokens), "total_steps": .int(stats.totalSteps), "created_by": account,
-            "created_at": Self.ts(startedAt), "finished_at": Self.ts(now), "exceptions_count": .int(exceptions), "files": [],
+            // The converter stamps its own `started_at` on every `workflow_started`; a resumed round's frames carry the
+            // resume moment, while the run row keeps the original `created_at`.
+            "created_at": Self.ts(roundStartedAt), "finished_at": Self.ts(now), "exceptions_count": .int(exceptions), "files": [],
         ])
     }
 }

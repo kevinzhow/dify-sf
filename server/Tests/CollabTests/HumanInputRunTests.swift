@@ -52,6 +52,20 @@ struct HumanInputRunTests {
         """
     }
 
+    /// Frames read off a raw socket: chunked transfer puts `size` lines between them, so this scans `data: ` lines
+    /// instead of splitting on blank lines.
+    static func wireFrames(_ text: String) -> [JSONValue] {
+        var out: [JSONValue] = []
+        var search = text.startIndex
+        while let r = text.range(of: "data: ", range: search..<text.endIndex) {
+            let start = r.upperBound
+            let end = text[start...].firstIndex(of: "\n") ?? text.endIndex
+            if let value = try? JSONValue.parse(Data(text[start..<end].utf8)) { out.append(value) }
+            search = end
+        }
+        return out
+    }
+
     static func frames(_ sse: String) -> [JSONValue] {
         sse.components(separatedBy: "\n\n").compactMap { frame in
             let line = frame.split(separator: "\n").first { $0.hasPrefix("data: ") }
@@ -345,44 +359,71 @@ struct HumanInputStopPausedTests {
 /// original `created_at`, while the finish, the detail and the history report the resumed round's time.
 @Suite("Human input elapsed time", .enabled(if: testDbHost != nil))
 struct HumanInputElapsedTests {
-    @Test func theReportedTimeExcludesTheTimeSpentWaiting() async throws {
-        try await withServer { api, store, _ in
-            let owner = try await api.setupOwner()
-            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
-            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
-            let frames = HumanInputRunTests.frames(run.text)
-            let runId = frames.first?["workflow_run_id"]?.string ?? ""
-            let token = frames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
-            let createdBefore = try #require(try await store.workflowRun(id: runId)?.createdAt)
+    @Test func theStreamAndTheRecordsUseTheirOwnClocks() async throws {
+        try await withStore { store, logger in
+            let config = ServerConfig.defaults
+            let routes = try CollabServer.Routes(registry: DocumentRegistry(store: store, config: config, logger: logger),
+                                                 store: store, config: config, logger: logger)
+            try await withApp(configure: { try routes.register(on: $0) }) { application in
+                try await application.testing(.running) { client in
+                    guard let port = client.port else { Issue.record("no port"); return }
+                    let api = API(client: client)
+                    let owner = try await api.setupOwner()
+                    let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+                    let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+                    let frames = HumanInputRunTests.frames(run.text)
+                    let runId = frames.first?["workflow_run_id"]?.string ?? ""
+                    let token = frames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+                    let createdBefore = try #require(try await store.workflowRun(id: runId)?.createdAt)
 
-            // A clear wait: 1.5 s with the run paused.
-            let waitStart = Date()
-            try await Task.sleep(for: .milliseconds(1500))
-            _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
-            var status = ""
-            for _ in 0..<200 where status != "succeeded" {
-                try await Task.sleep(for: .milliseconds(25))
-                status = try await store.workflowRun(id: runId)?.status ?? ""
+                    // A paused run reports no elapsed time yet (Dify's pause write leaves finished_at empty, so the row is 0).
+                    let pausedRow = try await store.workflowRun(id: runId)
+                    #expect(pausedRow?.status == "paused")
+                    #expect((pausedRow?.elapsedTime ?? -1) == 0, "a paused row has no elapsed time")
+                    let pause = try #require(try await store.openPauses(workflowRunId: runId).first)
+                    #expect(pause.elapsedTime >= 0, "the pause carries the round's elapsed for the SSE")
+
+                    try await withRawConnection(port: port) { conn in
+                        try await conn.send("""
+                            GET /v1/workflow/\(runId)/events?include_state_snapshot=true&continue_on_pause=true HTTP/1.1\r
+                            Host: 127.0.0.1\r
+                            Authorization: Bearer \(owner)\r
+                            Accept: text/event-stream\r
+                            \r
+
+                            """)
+                        #expect(try await conn.wait(upTo: 10) { $0.text.contains("\"event\":\"workflow_paused\"") })
+
+                        let waitStart = Date()
+                        try await Task.sleep(for: .milliseconds(1500))
+                        _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+                        #expect(try await conn.wait(upTo: 20) { $0.text.contains("\"event\":\"workflow_finished\"") })
+                        let wall = Date().timeIntervalSince(waitStart)
+
+                        let finished = HumanInputRunTests.wireFrames(conn.text).last { $0["event"]?.string == "workflow_finished" }
+                        let sseElapsed = finished?["data"]?["elapsed_time"]?.double ?? -1
+                        let sseCreated = finished?["data"]?["created_at"]?.int ?? 0
+                        #expect(sseElapsed >= 0 && sseElapsed < 1.0, "SSE elapsed \(sseElapsed) excludes the \(wall)s wait")
+                        // The round starts after the run was created (the wait happens between), so the stream's
+                        // created_at is later than the run row's — they are different clocks on purpose.
+                        #expect(Double(sseCreated) - createdBefore.timeIntervalSince1970 >= 0.5,
+                                "SSE created_at is the round's start (\(sseCreated))")
+                    }
+
+                    let detail = try await api.get("/v1/apps/\(app)/workflow-runs/\(runId)", token: owner)
+                    let detailJSON = try JSONValue.parse(Data(detail.text.utf8))
+                    let elapsed = detailJSON["elapsed_time"]?.double ?? -1
+                    let created = detailJSON["created_at"]?.int ?? 0
+                    #expect(elapsed >= 0 && elapsed < 1.0, "detail elapsed \(elapsed) excludes the wait")
+                    #expect(abs(Double(created) - createdBefore.timeIntervalSince1970) < 2, "detail created_at stays the run's")
+
+                    let history = try await api.get("/v1/apps/\(app)/workflow-runs?limit=5", token: owner)
+                    let historyJSON = try JSONValue.parse(Data(history.text.utf8))
+                    let row = historyJSON["data"]?.array?.first { $0["id"]?.string == runId }?.object ?? [:]
+                    #expect(abs((row["elapsed_time"]?.double ?? -1) - elapsed) < 0.01, "history matches the detail")
+                    #expect(row["created_at"]?.int == created)
+                }
             }
-            #expect(status == "succeeded")
-            let wall = Date().timeIntervalSince(waitStart)
-
-            // Detail: elapsed excludes the wait, created_at is the original.
-            let detail = try await api.get("/v1/apps/\(app)/workflow-runs/\(runId)", token: owner)
-            #expect(detail.status == 200, "\(detail.text)")
-            let detailJSON = try JSONValue.parse(Data(detail.text.utf8))
-            let elapsed = detailJSON["elapsed_time"]?.double ?? -1
-            let created = detailJSON["created_at"]?.int ?? 0
-            #expect(elapsed >= 0 && elapsed < 1.0, "elapsed \(elapsed) should not include the \(wall)s wait")
-            #expect(abs(Double(created) - createdBefore.timeIntervalSince1970) < 2, "created_at stays the run's own")
-
-            // History: the same numbers.
-            let history = try await api.get("/v1/apps/\(app)/workflow-runs?limit=5", token: owner)
-            let historyJSON = try JSONValue.parse(Data(history.text.utf8))
-            let row = historyJSON["data"]?.array?.first { $0["id"]?.string == runId }?.object ?? [:]
-            #expect(abs((row["elapsed_time"]?.double ?? -1) - elapsed) < 0.01, "history matches the detail")
-            #expect(row["created_at"]?.int == created)
-            #expect(row["total_steps"]?.int ?? 0 > 0)
         }
     }
 }
