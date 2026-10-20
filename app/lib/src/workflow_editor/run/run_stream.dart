@@ -27,11 +27,40 @@ class RunStreamHandle {
   RunStreamHandle();
   StreamSubscription<RunEvent>? _sub;
   bool _aborted = false;
+  bool _ended = false;
+
+  /// The stream ended (a completed event, an error event, or the stream closing): the connection is gone, whether the run
+  /// finished or not. False for a handle that was [abort]ed — that was the reader's choice.
+  bool get ended => _ended;
+
+  final _endedStream = StreamController<void>.broadcast();
+
+  /// Fires once when the stream ends (see [ended]); a handle that already ended fires at once.
+  Stream<void> get endedStream => _ended ? Future<void>.value().asStream() : _endedStream.stream;
   bool get aborted => _aborted;
+
+  // A follow that retries wraps the attempt it made: aborting stops the subscription and any queued wait.
+  void Function()? stopChild;
+  Timer? _wait;
+
+  /// True while a retry is queued (the follow is between two attempts).
+  bool get pausing => _wait != null;
+
+  /// Queues [wait], then calls [then] — unless this handle was aborted in between.
+  void waitThen(Duration wait, void Function() then) {
+    _wait?.cancel();
+    _wait = Timer(wait, () {
+      _wait = null;
+      if (!_aborted) then();
+    });
+  }
 
   void abort() {
     if (_aborted) return;
     _aborted = true;
+    _wait?.cancel();
+    _wait = null;
+    stopChild?.call();
     _sub?.cancel();
   }
 }
@@ -193,6 +222,10 @@ RunStreamHandle listenRunEvents(Stream<RunEvent> stream, RunCallbacks cb) {
   }
 
   void finish([bool hasError = false, String? message]) {
+    if (!handle._ended) {
+      handle._ended = true;
+      handle._endedStream.add(null);
+    }
     if (handle.aborted) return;
     handle._aborted = true;
     handle._sub?.cancel();

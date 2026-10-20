@@ -388,6 +388,8 @@ void main() {
     }
     final scope = WorkflowRunScope.of(t.element(find.byType(WorkflowCanvas)));
     final store = WorkflowStoreScope.of(t.element(find.byType(WorkflowCanvas)));
+    // The fake's stream ends when it has delivered what it holds; a real server's stream is a connection that stays open.
+    scope.run.retriesLostConnections = false;
     scope.run.handleWorkflowStartRunInWorkflow();
     for (var i = 0; i < 200 && find.byType(HumanInputFormList).evaluate().isEmpty; i++) {
       await t.pump(const Duration(milliseconds: 50));

@@ -239,7 +239,9 @@ void main() {
       }
     }
 
-    // The header's Test Run (Dify's handleWorkflowStartRunInWorkflow): no inputs, the run starts, the panel opens.
+    // The header's Test Run (Dify's handleWorkflowStartRunInWorkflow): no inputs, the run starts, the panel opens. The
+    // stand-in's stream ends when it has delivered what it holds; a real server's stream is a connection that stays open.
+    scope.run.retriesLostConnections = false;
     scope.run.handleWorkflowStartRunInWorkflow();
     for (var i = 0; i < 200 && runningStatusOf(store.workflowRunningData.value) != WorkflowRunningStatus.paused; i++) {
       await step();
@@ -354,7 +356,8 @@ void main() {
       graph: () => graph,
       scenario: const MockRunScenario(stepDelay: Duration(milliseconds: 10), pauseNodeIds: {'human'}),
     );
-    final run = WorkflowRunController(store: store, service: service, graph: graph, isChatMode: () => true);
+    final run = WorkflowRunController(store: store, service: service, graph: graph, isChatMode: () => true)
+      ..retriesLostConnections = false;
     final chat = DebugChatController(run: run, service: service, store: store, graph: graph);
     addTearDown(chat.dispose);
     await renderRun(

@@ -624,17 +624,25 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
       throw transportErrorOf(res.statusCode, text);
     }
     final parser = SseParser();
-    await for (final chunk in res.stream.cast<List<int>>().transform(utf8.decoder)) {
-      for (final m in parser.add(chunk)) {
-        if (m.event != 'message') continue; // `event: ping`
-        final Object? json;
-        try {
-          json = jsonDecode(m.data);
-        } on FormatException {
-          continue;
+    try {
+      await for (final chunk in res.stream.cast<List<int>>().transform(utf8.decoder)) {
+        for (final m in parser.add(chunk)) {
+          if (m.event != 'message') continue; // `event: ping`
+          final Object? json;
+          try {
+            json = jsonDecode(m.data);
+          } on FormatException {
+            continue;
+          }
+          if (json is Map<String, Object?>) yield json;
         }
-        if (json is Map<String, Object?>) yield json;
       }
+    } on TransportException {
+      rethrow;
+    } on Object catch (e) {
+      // The connection died mid-stream (a server that restarts closes it): the same `TransportException` a refused
+      // connection gives, so the stream's callers have one failure to reason about instead of a raw socket error.
+      throw TransportException('$method $path ended: $e');
     }
   }
 

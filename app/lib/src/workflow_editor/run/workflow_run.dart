@@ -344,6 +344,85 @@ class WorkflowRunController {
   RunContainerSize get _container =>
       (clientWidth: store.workflowCanvasWidth.value ?? 0, clientHeight: store.workflowCanvasHeight.value ?? 0);
 
+  /// Follows a run's stream, reconnecting when the connection ends **without** the run ending.
+  ///
+  /// A server that restarts drops the run's SSE connection. The client used to answer that with `onError`, which marks
+  /// the run failed and clears the listening state, so the run's real result never returned to the panel. The reconnect
+  /// endpoint rebuilds the run from its records (its snapshot and whatever the new process published), so the fix is one
+  /// more subscription. Backoff 0.5 s, 1 s, 2 s, 4 s, then 5 s. A run that finished on the way ends the follow, as a
+  /// refusal the run itself reports does; aborting the returned handle (Stop, a new run, dispose) ends it at once.
+  /// The follow this editor currently has open, so a second one (a pause seen twice) replaces it rather than doubling the
+  /// run's frames.
+  RunStreamHandle? _followOfRun;
+
+  /// Whether a follow whose connection ended without the run ending is opened again: true for a real server's stream. A
+  /// test with a service whose stream ends for its own reasons (a stand-in that stops at a pause) turns it off.
+  bool _retriesLostConnections = true;
+
+  /// For a test with a service whose stream ends for its own reasons (a stand-in that stops at a pause).
+  set retriesLostConnections(bool value) => _retriesLostConnections = value;
+
+  RunStreamHandle _followWithResume(String runId, RunCallbacks cb) {
+    final follower = RunStreamHandle();
+    var delay = const Duration(milliseconds: 500);
+    var finished = false, ended = false;
+    // Another follow of this run is already attached (`onWorkflowPaused` opens one, and a pause may be seen again by a
+    // later snapshot): the new one replaces it, as the single subscription it replaces did.
+    _followOfRun?.abort();
+
+    void attempt() {
+      if (follower.aborted || finished || ended) return;
+      var lost = false;
+      final inner = _listen(
+        service.workflowEvents(runId),
+        cb.merge(RunCallbacks(
+          // The follow's own ends first, then the caller's handlers (they build the panel's state): `merge` keeps the
+          // other object's non-null callbacks, so this one calls both.
+          onWorkflowFinished: (p) {
+            finished = true;
+            cb.onWorkflowFinished?.call(p);
+          },
+          onError: (message, [code]) {
+            // A refusal the run itself reports ends the follow, as it always did; a connection that died (`ended`,
+            // `failed`) does not — the run may be fine, and the next attempt finds out.
+            final connection = message.contains(' ended: ') || message.contains(' failed: ') || message.contains(' timed out');
+            if (!connection) {
+              ended = true;
+              cb.onError?.call(message, code);
+              return;
+            }
+            lost = true;
+            // A note of the loss (never the run's state); the retry follows in a moment.
+            cb.onNotifyError?.call(message, code);
+          },
+        )),
+      );
+      follower.stopChild = () => inner.abort();
+      void retry() {
+        if (follower.aborted || finished || ended) return;
+        final wait = delay;
+        delay = delay * 2 > const Duration(seconds: 5) ? const Duration(seconds: 5) : delay * 2;
+        follower.waitThen(wait, attempt);
+      }
+      // The attempt ends when its stream does (a completed event, an error event, the connection closing): a message from
+      // `endedStream` rather than a timer of our own. An attempt that lost its connection or that ended without a
+      // terminal event is opened again; `finished`/`ended`/an abort end the follow.
+      if (_retriesLostConnections) {
+        inner.endedStream.listen((_) {
+          if (follower.aborted || finished || ended) return;
+          if (!lost && !finished) retry();
+        });
+        // A stream that ended while its handle was made (a run this process does not know, an empty stand-in) ends its
+        // follow here rather than through an event that already fired.
+        if (inner.ended && (lost || !finished)) retry();
+      }
+    }
+
+    _followOfRun = follower;
+    attempt();
+    return follower;
+  }
+
   RunStreamHandle _listen(Stream<RunEvent> stream, RunCallbacks cb) {
     final h = listenRunEvents(stream, cb);
     _streams
@@ -428,7 +507,7 @@ class WorkflowRunController {
       clearAbortController: _clearAbortController,
       clearListeningState: () => clearListeningState(store),
       handlers: events,
-      resume: (runId, callbacks) => _listen(service.workflowEvents(runId), callbacks),
+      resume: (runId, callbacks) => _followWithResume(runId, callbacks),
       callbacks: userCallbacks,
       restCallback: restCallback,
     );
