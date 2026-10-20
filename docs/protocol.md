@@ -1345,9 +1345,18 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   debug mode the recipient is the signed-in account. `400` for a method that cannot send or has no recipients, and
   without mail configured.
 
-**Deviations from Dify.** The email link carries the form's own token, not a per-recipient one (Dify mints one access
-token per recipient); the body goes out as text in a `<pre>` (this server has no markdown/HTML sanitiser); a
-human-input preview/run of a node of another type answers `400` where Dify raises a `ValueError` (a 500).
+**Mail delivery.** Every enabled email method's recipients get their own persistent token and their own link
+(`/form/{token}`), and the link opens the form anonymously. The body is Dify's `render_markdown_body`: the template is
+sanitized first (its own HTML never reaches the message, `bleach.clean(tags=[])`), the variables are filled in (values
+stay text), and the result is rendered by a CommonMark parser (`swift-markdown`) into the tags a mail may carry, with
+links restricted to `http(s)`, `mailto:` and `#` destinations — a rendered value cannot become an attribute or a handler.
+The subject is Dify's `sanitize_subject` (one line, no tags). A recipient is marked mailed only after the SMTP server
+took the message, and a row that is still unmarked is mailed again by the product's periodic scan: at-least-once, and a
+recipient whose mail went out just before a crash can receive it twice.
+
+**Deviations from Dify.** The email link carries a token minted per recipient (as Dify) but of the form's own token
+family (no separate access token per recipient with its own expiry); a human-input preview/run of a node of another type
+answers `400` where Dify raises a `ValueError` (a 500).
 
 ### Draft variables (1.14)
 

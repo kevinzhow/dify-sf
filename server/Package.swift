@@ -22,6 +22,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-configuration.git", exact: "1.2.2"),
         .package(url: "https://github.com/swift-server/async-http-client.git", exact: "1.35.0"),
         .package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2"),
+        // Human-input mail bodies (Dify's `render_markdown_body`): a maintained CommonMark parser instead of the server's
+        // own regex subset (review: the regexes produced attributes and missed every block construct).
+        .package(url: "https://github.com/apple/swift-markdown.git", from: "0.5.0"),
         // Already in the graph through Vapor (same version as Package.resolved): SHA-256 for token hashes, PBKDF2 for passwords.
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "4.5.2"),
         // Vendored copy of swift-smtp 2.19.0 (password-reset mail, Dify's ext_mail `smtp`): a maintained Swift 6 SMTP client on
@@ -41,6 +44,7 @@ let package = Package(
         .executableTarget(name: "collab-sim", dependencies: ["CollabSim"]),
         // Dify workflow files (DSL, YAML) <-> documents.
         .target(name: "CollabDSL", dependencies: ["CollabCore", .product(name: "Yams", package: "Yams")]),
+        .target(name: "CollabMarkdown", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
         // Model providers (protocol 1.9): the vendored official provider definitions (Resources, see its SOURCE.md), parameter
         // templates, custom-model schemas, credential form rules and the credential checks' requests. No I/O beyond reading
         // its resources.
@@ -60,7 +64,7 @@ let package = Package(
             .product(name: "PostgresNIO", package: "postgres-nio"),
         ]),
         // The Vapor application: HTTP routes, per-document sequencer actors, SSE hub, configuration.
-        .target(name: "CollabServer", dependencies: [
+        .target(name: "CollabServer", dependencies: ["CollabMarkdown", .product(name: "Markdown", package: "swift-markdown"),
             "CollabCore", "CollabStore", "CollabDSL", "CollabModels", "CollabRuntime",
             .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Vapor", package: "vapor"),

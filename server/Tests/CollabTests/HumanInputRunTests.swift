@@ -788,7 +788,8 @@ struct HumanInputEmailTests {
                 let text = mail.text
                 #expect(text.contains("<strong>Please</strong>"), "\(text)")
                 #expect(text.contains("the report"), "the body has the run's value: \(text)")
-                #expect(text.contains("<ul><li>one</li><li>two</li></ul>"), "\(text)")
+                // CommonMark puts each item's text in a paragraph (`<li><p>one</p></li>`), as Dify's Markdown does.
+                #expect(text.contains("<ul><li><p>one</p></li><li><p>two</p></li></ul>"), "\(text)")
                 #expect(text.contains("<a href=\"https://apps.example.test/form/"), "\(text)")
                 #expect(!text.contains("<script"), "the template's markup is stripped: \(text)")
             }
