@@ -43,6 +43,16 @@ public struct GraphEngineSnapshot: Sendable {
         return state.pools[root.poolId]
     }
 
+    /// The pool an execution runs in: the frame the execution id was bound to (`FrameNode(frameId:nodeId)`, saved in the
+    /// snapshot) — an iteration or a loop item has the pool of its own frame — else the root. A form's select options come
+    /// from the item the node runs for, not from the root.
+    public func variablePool(forExecution executionId: String) -> VariablePool? {
+        for (key, id) in state.executionIds where id == executionId {
+            if let frame = state.frames[key.frameId], let pool = state.pools[frame.poolId] { return pool }
+        }
+        return variablePool()
+    }
+
     public func encoded() throws -> Data {
         let encoder = JSONEncoder()
         encoder.userInfo[.runtimeSnapshot] = true

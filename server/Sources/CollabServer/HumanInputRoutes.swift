@@ -46,7 +46,8 @@ extension Routes {
     /// which case the stored definition is served as it is.
     static func resolvedInputs(_ form: StoredHumanInputForm, pauseSnapshot: String?) -> [JSONObject]? {
         guard let pauseSnapshot, let snapshot = try? GraphEngineSnapshot(data: Data(pauseSnapshot.utf8)),
-              let pool = snapshot.variablePool(), let config = try? formConfig(form) else { return nil }
+              // The form's own execution, not the root: inside an iteration the item's pool holds its options.
+              let pool = snapshot.variablePool(forExecution: form.executionId), let config = try? formConfig(form) else { return nil }
         return config.inputsResolved(pool: pool)
     }
 

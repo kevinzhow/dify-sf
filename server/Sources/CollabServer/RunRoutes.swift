@@ -265,21 +265,43 @@ extension Routes {
         // production scan with a real form written an hour in the future rather than calling the store in its place.
         let at = now.addingTimeInterval(Double(config.testClockSkewSeconds))
         var timedOut = 0, expired = 0
+        // Dify's `human_input_timeout_tasks` decides **per form, global first**: a run past its global deadline stops
+        // (the form is `expired`) even when the node's own deadline passed in the same scan, and only a run that is still
+        // within its global deadline takes the node's `__timeout` branch. Deciding the two in sequence (all node timeouts,
+        // then all global ones) could start a run that should stop, and leave `timedOut` where the original writes
+        // `expired`.
+        let error = "Human input form timed out"
+        var stopping = Set<String>()
         if let forms = try? await store.waitingFormsPastDeadline(at: at) {
             for form in forms {
+                guard let runId = form.workflowRunId else {
+                    guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                    timedOut += 1
+                    continue
+                }
+                // The run's own deadline: has it passed? (The store repeats this under the run's lock.)
+                let pastGlobal = (try? await store.pausedRunPastGlobalDeadline(
+                    workflowRunId: runId, at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds)) ?? false
+                if pastGlobal {
+                    guard (try? await store.expireRunForGlobalTimeout(workflowRunId: runId, error: error, at: at)) == true else { continue }
+                    stopping.insert(runId)
+                    continue
+                }
                 guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
                 timedOut += 1
                 // The pause is now woken (`resume_requested`), and the run takes the timeout branch — in the background,
                 // as an answer does.
-                if let runId = form.workflowRunId {
-                    let appId = form.docId, routes = self
-                    Task.detached { await routes.resumeRun(appId: appId, runId: runId) }
-                }
+                let appId = form.docId, routes = self
+                Task.detached { await routes.resumeRun(appId: appId, runId: runId) }
+            }
+            for runId in stopping.sorted() {
+                expired += 1
+                await finishRunWithoutEngine(runId)
             }
         }
-        let error = "Human input form timed out"
+        // A run whose global deadline passed with no waiting form (the pause itself is older than the deadline).
         if let runs = try? await store.pausedRunsPastGlobalDeadline(at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
-            for run in runs {
+            for run in runs where !stopping.contains(run.runId) {
                 guard (try? await store.expireRunForGlobalTimeout(workflowRunId: run.runId, error: error, at: at)) == true else { continue }
                 expired += 1
                 await finishRunWithoutEngine(run.runId)
@@ -292,7 +314,13 @@ extension Routes {
     /// same `resumeRun`, so a restart is just another resume (and a run whose answer arrived while the server was down is
     /// not lost).
     func resumeRunsWaitingAfterRestart() async -> Int {
-        guard let waiting = try? await store.runsAwaitingResume() else { return 0 }
+        (try? await resumeRunsWaitingAfterRestartStrict()) ?? 0
+    }
+
+    /// The same, telling a failed read from an empty one: the startup recovery retries a read that failed (a schema being
+    /// migrated, a connection reset) instead of concluding that there is nothing to resume.
+    func resumeRunsWaitingAfterRestartStrict() async throws -> Int {
+        let waiting = try await store.runsAwaitingResume()
         for run in waiting {
             logger.info("resuming run \(run.runId) after a restart")
             await resumeRun(appId: run.docId, runId: run.runId)
@@ -693,13 +721,10 @@ final class RunExecution: Sendable {
             // The run is over: the caller must run its terminal cleanup (channel, registry).
             return false
         }
-        // A variable-backed select's options come from the pause's own pool (Dify's `resolve_variable_select_input_options`
-        // over the resumed state), so the client gets concrete options rather than a selector it cannot read.
-        let pool = snapshot.variablePool()
-        let resolvedInputs: [[JSONObject]?] = forms.map { form in
-            guard let pool, let config = try? Routes.formConfig(form) else { return nil }
-            return config.inputsResolved(pool: pool)
-        }
+        // A variable-backed select's options were resolved by the node in **its own** pool (an iteration item's list is
+        // not the root's, Dify's `resolve_variable_select_input_options` over the execution's state). They travel with the
+        // prepared forms, so the live frames and every later read of the same form agree.
+        let resolvedInputs: [[JSONObject]?] = prepared.map(\.resolvedInputs)
         let frames = encoderBox.withLock { enc in
             forms.enumerated().map { i, form in enc.humanInputRequired(form, inputs: resolvedInputs[i]) }
                 + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at, inputs: resolvedInputs)]

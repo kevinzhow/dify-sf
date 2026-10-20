@@ -42,6 +42,13 @@ extension Routes {
         let includeSnapshot = query["include_state_snapshot"] == "true"
         let continueOnPause = query["continue_on_pause"] == "true"
 
+        // A run that already ended is answered from its record **before** any live channel exists: a query for history
+        // must not allocate a channel and a keep-alive pinger that nothing would ever close.
+        if ["succeeded", "failed", "stopped", "partial-succeeded"].contains(run.status) {
+            // One frame and close, whatever was asked: there is nothing left to follow.
+            return try Self.streaming([RunExecution.sse(try finishedFrame(run))])
+        }
+
         // Subscribe first, then read the persisted state; the frames published from the mark on are the window this
         // response has to reconcile with the snapshot.
         let live = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
@@ -53,7 +60,10 @@ extension Routes {
         let terminal = ["succeeded", "failed", "stopped", "partial-succeeded"].contains(state.status)
 
         if terminal {
-            // One frame and close, whatever was asked: there is nothing left to follow.
+            // The run ended between this read and the subscription: one frame and close — and the channel this request
+            // allocated is released here, or it would keep a pinger for a run nobody can follow any more.
+            await live.finish()
+            await runChannels.remove(runId)
             return try Self.streaming([RunExecution.sse(try finishedFrame(state))])
         }
 
@@ -152,9 +162,12 @@ extension Routes {
                                     // Dify's replay reports the pause with the run's own start and no elapsed time: its
                                     // converter stamps the replay's clock when the snapshot is built, so the resumed
                                     // round's clock only appears on the live frame. The outputs are the record's.
+                                    // The reasons carry the same resolved inputs the live pause sent (an iteration item's
+                                    // select options included), so a reconnect shows what the pause showed.
                                     "data": RunStreamEncoder.workflowPausedData(
                                         runId: run.id, forms: waiting, stats: pauseStats(pause),
-                                        createdAt: run.createdAt, elapsed: 0)]))
+                                        createdAt: run.createdAt, elapsed: 0,
+                                        inputs: waiting.map { Self.resolvedInputs($0, pauseSnapshot: pause.snapshot) })]))
         }
         return SnapshotFrames(frames: frames, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
                               pauseGeneration: pauseGeneration)

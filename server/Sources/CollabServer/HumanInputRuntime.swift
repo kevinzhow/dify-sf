@@ -12,12 +12,15 @@ public final class PendingHumanInputForms: Sendable {
     struct Prepared: Sendable {
         var form: StoredHumanInputForm
         var deliveryMethods: [JSONObject]
+        /// The form's inputs with its variable-backed select options resolved **in the execution's own pool** (an
+        /// iteration item's list is not the root's), so every surface that shows this form shows the same options.
+        var resolvedInputs: [JSONObject]?
     }
 
     private let forms = Mutex<[String: Prepared]>([:])
 
-    func add(_ form: StoredHumanInputForm, deliveryMethods: [JSONObject] = []) {
-        forms.withLock { $0[form.id] = Prepared(form: form, deliveryMethods: deliveryMethods) }
+    func add(_ form: StoredHumanInputForm, deliveryMethods: [JSONObject] = [], resolvedInputs: [JSONObject]? = nil) {
+        forms.withLock { $0[form.id] = Prepared(form: form, deliveryMethods: deliveryMethods, resolvedInputs: resolvedInputs) }
     }
 
     /// The forms behind these pause sessions (the engine's `session_id` is the form id), in the reasons' order.
@@ -81,14 +84,16 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
                 // The global deadline ended the run; the engine must not continue through the timeout branch here.
                 throw NodeError("HumanInputExpired", "the form expired and the run was stopped")
             case .waiting:
-                pending.add(decided, deliveryMethods: form.deliveryMethods)
+                pending.add(decided, deliveryMethods: form.deliveryMethods,
+                            resolvedInputs: form.inputsResolved(pool: context.pool))
                 return .pause(sessionId: decided.id)
             }
         }
         // Not this resume's decision: a form of this execution that is still waiting (a re-entered node) keeps its id and
         // token; one answered after the claim leaves the node paused, so the next pause carries that answer.
         if let existing = try await store.humanInputForm(workflowRunId: workflowRunId, executionId: executionId) {
-            pending.add(existing, deliveryMethods: form.deliveryMethods)
+            pending.add(existing, deliveryMethods: form.deliveryMethods,
+                        resolvedInputs: form.inputsResolved(pool: context.pool))
             return .pause(sessionId: existing.id)
         }
 
@@ -105,7 +110,7 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
             displayInUi: Self.displayInUi(isDebugger: isDebugger, webappDeliveryEnabled: form.webappDeliveryEnabled),
             // The deadline counts from when this form is created, not from when the adapter was built.
             expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now)
-        pending.add(created, deliveryMethods: form.deliveryMethods)
+        pending.add(created, deliveryMethods: form.deliveryMethods, resolvedInputs: form.inputsResolved(pool: context.pool))
         return .pause(sessionId: id)
     }
 

@@ -657,6 +657,20 @@ extension PostgresStore {
 
     /// Paused runs past the global deadline (`created_at + timeoutSeconds`): Dify's `EXPIRED` (the run stops), which is
     /// not the node's own timeout.
+    /// Whether **this** paused run is past the global deadline (the scan asks it once per form it is about to end, so the
+    /// decision for a form and its run is the same one; the run's row is re-read, never taken from an earlier list).
+    public func pausedRunPastGlobalDeadline(workflowRunId: String, at now: Date, timeoutSeconds: Int) async throws -> Bool {
+        guard timeoutSeconds > 0 else { return false }
+        return try await bounded {
+            let rows = try await self.client.query("""
+                SELECT 1 FROM workflow_runs
+                WHERE id = \(workflowRunId) AND status = 'paused' AND created_at <= \(now.addingTimeInterval(-Double(timeoutSeconds)))
+                """, logger: self.logger)
+            for try await _ in rows { return true }
+            return false
+        }
+    }
+
     public func pausedRunsPastGlobalDeadline(at now: Date, timeoutSeconds: Int, limit: Int = 500) async throws -> [(runId: String, docId: String)] {
         guard timeoutSeconds > 0 else { return [] }
         return try await bounded {
