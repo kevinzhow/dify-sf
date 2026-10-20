@@ -179,6 +179,20 @@ extension PostgresStore {
     }
 
     /// The node executions of a run, oldest first (Dify's `get_executions_by_workflow_run`).
+    /// The highest `run_index` the run has stored, 0 when it has none: a resumed round continues the numbering instead of
+    /// restarting at 1 (Dify's `persistence.py` resumes from the stored maximum), so the history's order stays the run's.
+    public func maxNodeExecutionIndex(doc: String, run: String) async throws -> Int {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT coalesce(max(run_index), 0) FROM workflow_node_executions
+                WHERE doc_id = \(doc) AND workflow_run_id = \(run)
+                """, logger: self.logger)
+            var top = 0
+            for try await (n,) in rows { top = try n.decode(Int.self) }
+            return top
+        }
+    }
+
     public func nodeExecutions(doc: String, run: String) async throws -> [StoredNodeExecution] {
         try await bounded {
             let rows = try await self.client.query("""

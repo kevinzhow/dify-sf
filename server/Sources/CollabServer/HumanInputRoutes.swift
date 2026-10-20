@@ -24,11 +24,14 @@ extension Routes {
         }
     }
 
-    /// Dify's FormDefinition, in the order its API emits it, plus `expiration_time` as Unix seconds.
-    static func formDefinitionJSON(_ f: StoredHumanInputForm) throws -> JSONValue {
-        .object([
+    /// Dify's FormDefinition, in the order its API emits it, plus `expiration_time` as Unix seconds. [inputs] are the
+    /// resolved inputs when the form's pause still has its pool (Dify's `resolve_form_inputs`), else the stored ones.
+    static func formDefinitionJSON(_ f: StoredHumanInputForm, inputs: [JSONObject]? = nil) throws -> JSONValue {
+        let formInputs: JSONValue = inputs.map { list in .array(list.map(JSONValue.object)) }
+            ?? ((try? JSONValue.parse(f.inputs)) ?? .array([]))
+        return .object([
             "form_content": .string(f.formContent),
-            "inputs": (try? JSONValue.parse(f.inputs)) ?? .array([]),
+            "inputs": formInputs,
             "user_actions": (try? JSONValue.parse(f.userActions)) ?? .array([]),
             "rendered_content": .string(f.renderedContent),
             "expiration_time": .int(f.expirationTime ?? 0),
@@ -36,6 +39,15 @@ extension Routes {
             "node_title": f.nodeTitle.isEmpty ? .null : .string(f.nodeTitle),
             "display_in_ui": .bool(f.displayInUi),
         ])
+    }
+
+    /// The inputs a client should see: a variable-backed select's options resolved against the pause's own pool
+    /// (`human_input_policy.resolve_variable_select_input_options`); nil when there is no pool to resolve against, in
+    /// which case the stored definition is served as it is.
+    static func resolvedInputs(_ form: StoredHumanInputForm, pauseSnapshot: String?) -> [JSONObject]? {
+        guard let pauseSnapshot, let snapshot = try? GraphEngineSnapshot(data: Data(pauseSnapshot.utf8)),
+              let pool = snapshot.variablePool(), let config = try? formConfig(form) else { return nil }
+        return config.inputsResolved(pool: pool)
     }
 
     /// The engine's form config, rebuilt from what was persisted: the field types, their option sources and defaults and
@@ -104,7 +116,10 @@ extension Routes {
         if form.status == .submitted {
             throw ServerError.http(status: 412, code: "human_input_form_submitted", message: "this form has been submitted")
         }
-        return try json(Self.formDefinitionJSON(form))
+        // Dify reads the definition through `HumanInputService.resolve_form_inputs`: the pool comes from the run's open
+        // pause, so an already resumed form keeps its unresolved definition (there is no pool any more).
+        let pause = (try? await store.openPauses(workflowRunId: form.workflowRunId))?.first
+        return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
     }
 
     static func invalidFormData(_ message: String) -> ServerError {

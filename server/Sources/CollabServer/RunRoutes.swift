@@ -491,7 +491,9 @@ final class RunExecution: Sendable {
     func run(engine: GraphEngine, pool: VariablePool, snapshot: GraphEngineSnapshot? = nil,
              filled: [StoredHumanInputForm] = []) async {
         let started = ContinuousClock.now
-        var index = 0
+        // The round continues the run's numbering: a resumed round's executions follow the ones already stored, so the
+        // history keeps its order and no index repeats. A failure to read it starts at the run's own count (0).
+        var index = (try? await routes.store.maxNodeExecutionIndex(doc: appId, run: runId)) ?? 0
         /// False when the round ended at a pause: the run is still alive, so its channel is not finished.
         var endedWithoutPause = true
         var running: [String: Running] = [:]
@@ -617,7 +619,8 @@ final class RunExecution: Sendable {
             generation = try await routes.store.createPause(
                 workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,
                 totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
-                elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.roundStartedAt) }, forms: forms, at: at)
+                elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.roundStartedAt) },
+                outputs: JSONValue.object(stats.outputs).compactJSON(), forms: forms, at: at)
         } catch {
             // A pause for a deleted app is a stop, not a failure: the user deleted the app, nothing broke.
             let appDeleted = (error as? PostgresStore.PauseRefused) == .appDeleted
@@ -637,8 +640,16 @@ final class RunExecution: Sendable {
             // The run is over: the caller must run its terminal cleanup (channel, registry).
             return false
         }
+        // A variable-backed select's options come from the pause's own pool (Dify's `resolve_variable_select_input_options`
+        // over the resumed state), so the client gets concrete options rather than a selector it cannot read.
+        let pool = snapshot.variablePool()
+        let resolvedInputs: [[JSONObject]?] = forms.map { form in
+            guard let pool, let config = try? Routes.formConfig(form) else { return nil }
+            return config.inputsResolved(pool: pool)
+        }
         let frames = encoderBox.withLock { enc in
-            forms.map { enc.humanInputRequired($0) } + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at)]
+            forms.enumerated().map { i, form in enc.humanInputRequired(form, inputs: resolvedInputs[i]) }
+                + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at, inputs: resolvedInputs)]
         }
         for f in frames { await channel.publish(Self.sse(f), pauseGeneration: generation) }
         // The email delivery, after the pause is durable (Dify's mail task runs after the form exists). Best effort: a

@@ -15,6 +15,8 @@ public struct StoredWorkflowPause: Sendable, Equatable {
     public var totalTokens: Int
     public var totalSteps: Int
     public var elapsedTime: Double
+    /// The run's outputs so far (`workflow_paused.outputs`), kept so a reconnect's pause frame says the same as the live one.
+    public var outputs: String
     public var createdAt: Date
     public var resumedAt: Date?
     /// Every form of this generation is answered (submitted, expired or timed out) and the run may resume.
@@ -22,7 +24,7 @@ public struct StoredWorkflowPause: Sendable, Equatable {
 
     public init(workflowRunId: String, generation: Int, docId: String, nodeId: String = "", snapshot: String,
                 executionIds: [String] = [], totalTokens: Int = 0, totalSteps: Int = 0, elapsedTime: Double = 0,
-                createdAt: Date, resumedAt: Date? = nil, resumeRequested: Bool = false) {
+                outputs: String = "{}", createdAt: Date, resumedAt: Date? = nil, resumeRequested: Bool = false) {
         self.workflowRunId = workflowRunId
         self.generation = generation
         self.docId = docId
@@ -32,6 +34,7 @@ public struct StoredWorkflowPause: Sendable, Equatable {
         self.totalTokens = totalTokens
         self.totalSteps = totalSteps
         self.elapsedTime = elapsedTime
+        self.outputs = outputs
         self.createdAt = createdAt
         self.resumedAt = resumedAt
         self.resumeRequested = resumeRequested
@@ -187,7 +190,7 @@ extension PostgresStore {
 
     static let pauseColumns = """
         workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids, total_tokens, total_steps, elapsed_time,
-        created_at, resumed_at, resume_requested
+        outputs, created_at, resumed_at, resume_requested
         """
 
     /// An unknown recipient is refused like an unknown status: reading it as `console` would hand a form to a surface it
@@ -206,8 +209,8 @@ extension PostgresStore {
             docId: try r[2].decode(String.self), nodeId: try r[3].decode(String.self),
             snapshot: try r[4].decode(String.self), executionIds: try r[5].decode([String].self),
             totalTokens: Int(try r[6].decode(Int64.self)), totalSteps: Int(try r[7].decode(Int32.self)),
-            elapsedTime: try r[8].decode(Double.self), createdAt: try r[9].decode(Date.self),
-            resumedAt: try r[10].decode(Date?.self), resumeRequested: try r[11].decode(Bool.self))
+            elapsedTime: try r[8].decode(Double.self), outputs: try r[9].decode(String.self), createdAt: try r[10].decode(Date.self),
+            resumedAt: try r[11].decode(Date?.self), resumeRequested: try r[12].decode(Bool.self))
     }
 
     /// Serializes every writer of one run's pause and forms on the run's own row, in the order run → forms. Two
@@ -248,8 +251,8 @@ extension PostgresStore {
 
     @discardableResult
     public func createPause(workflowRunId: String, docId: String, nodeId: String = "", snapshot: String, totalTokens: Int = 0,
-                            totalSteps: Int = 0, elapsedTime: Double = 0, forms: [StoredHumanInputForm],
-                            at: Date) async throws -> Int {
+                            totalSteps: Int = 0, elapsedTime: Double = 0, outputs: String = "{}",
+                            forms: [StoredHumanInputForm], at: Date) async throws -> Int {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(workflowRunId, c)
@@ -295,9 +298,9 @@ extension PostgresStore {
                     """, logger: self.logger)
                 _ = try await c.query("""
                     INSERT INTO workflow_pauses (workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids,
-                        total_tokens, total_steps, elapsed_time, created_at)
+                        total_tokens, total_steps, elapsed_time, outputs, created_at)
                     VALUES (\(workflowRunId), \(generation), \(docId), \(nodeId), \(snapshot), \(executionIds),
-                        \(totalTokens), \(totalSteps), \(elapsedTime), \(at))
+                        \(totalTokens), \(totalSteps), \(elapsedTime), \(outputs), \(at))
                     """, logger: self.logger)
                 for f in forms {
                     // `ON CONFLICT` on (run, execution): a form still waiting keeps its id and token and moves to this

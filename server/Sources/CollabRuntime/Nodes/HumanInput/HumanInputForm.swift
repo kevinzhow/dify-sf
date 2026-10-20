@@ -77,6 +77,24 @@ public struct HumanInputFormConfig: Sendable {
         start.addingTimeInterval(Double(timeout) * (timeoutUnit == "day" ? 86400 : 3600))
     }
 
+    /// `resolve_variable_select_input_options` (Dify's `human_input_policy`): a select whose options come from a variable
+    /// gets the pool's list as its `option_source.value` (the source stays `variable`, its selector included), because a
+    /// client can only draw options it was given. A source the pool cannot answer is left as written.
+    public func inputsResolved(pool: VariablePool) -> [JSONObject] {
+        inputs.map { input in
+            guard (input["type"]?.string ?? "paragraph") == "select",
+                  var source = input["option_source"]?.object,
+                  source["type"]?.string == "variable",
+                  let selector = source["selector"]?.array?.compactMap(\.string),
+                  let value = pool.get(selector), case .array(let items) = value.value,
+                  items.allSatisfy({ $0.string != nil }) else { return input }
+            source["value"] = .array(items)
+            var resolved = input
+            resolved["option_source"] = .object(source)
+            return resolved
+        }
+    }
+
     /// Before submission only runtime references are replaced; `$output` references stay in the form.
     public func renderedContent(pool: VariablePool) -> String { VariableTemplate.convert(pool, content).markdown }
 

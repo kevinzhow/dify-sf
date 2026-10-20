@@ -603,6 +603,7 @@ public enum Schema {
             total_tokens    bigint           NOT NULL DEFAULT 0,
             total_steps     integer          NOT NULL DEFAULT 0,
             elapsed_time    double precision NOT NULL DEFAULT 0,
+            outputs         text             NOT NULL DEFAULT '{}',
             created_at      timestamptz      NOT NULL,
             resumed_at      timestamptz,
             resume_requested boolean         NOT NULL DEFAULT false,
@@ -611,6 +612,9 @@ public enum Schema {
         """,
         // Dify's WorkflowPause is zero-or-one per run (UniqueConstraint workflow_run_id): a pause that is not resumed yet
         // is the run's only one, so two generations can never be claimed at once.
+        // Protocol 1.16: the run's outputs so far, as the live `workflow_paused` frame reports them; a reconnect rebuilds
+        // that frame from the record, and Dify's pause record carries the same state.
+        "ALTER TABLE workflow_pauses ADD COLUMN IF NOT EXISTS outputs text NOT NULL DEFAULT '{}'",
         "CREATE UNIQUE INDEX IF NOT EXISTS workflow_pauses_one_open ON workflow_pauses (workflow_run_id) WHERE resumed_at IS NULL",
         // Protocol 1.16: the form a human answers. `(workflow_run_id, execution_id)` is its unique key: a node execution
         // has one form, and a later pause of the same run adopts a form that is still waiting instead of minting a new

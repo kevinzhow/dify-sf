@@ -7,14 +7,16 @@ import Foundation
 /// (`WorkflowResponseConverter`'s `human_input_required` and `workflow_paused`).
 extension RunStreamEncoder {
     /// Dify's `HumanInputRequired` reason, as `human_input_policy` enriches it for the stream.
-    static func reasonJSON(_ form: StoredHumanInputForm) -> JSONValue {
-        .object([
+    static func reasonJSON(_ form: StoredHumanInputForm, inputs: [JSONObject]? = nil) -> JSONValue {
+        let formInputs: JSONValue = inputs.map { list in .array(list.map(JSONValue.object)) }
+            ?? ((try? JSONValue.parse(form.inputs)) ?? .array([]))
+        return .object([
             "TYPE": .string("human_input_required"),
             "form_id": .string(form.id),
             // Dify's `_enrich_hitl_required` sends the form's **rendered** content (the `$output` placeholders stay); the
             // raw template is what the definition API's `form_content` keeps.
             "form_content": .string(form.renderedContent),
-            "inputs": (try? JSONValue.parse(form.inputs)) ?? .array([]),
+            "inputs": formInputs,
             "actions": (try? JSONValue.parse(form.actions)) ?? .array([]),
             "node_id": .string(form.nodeId),
             "node_title": .string(form.nodeTitle),
@@ -26,15 +28,19 @@ extension RunStreamEncoder {
     }
 
     /// The `human_input_required` data, shared by the live stream and the reconnect snapshot so the two cannot drift.
-    static func humanInputRequiredData(_ form: StoredHumanInputForm) -> JSONValue {
-        .object([
+    /// [inputs] overrides the stored definition's inputs: a variable-backed select's options are resolved against the
+    /// pause's variable pool (`resolve_variable_select_input_options`), so the client receives concrete options.
+    static func humanInputRequiredData(_ form: StoredHumanInputForm, inputs: [JSONObject]? = nil) -> JSONValue {
+        let formInputs: JSONValue = inputs.map { list in .array(list.map(JSONValue.object)) }
+            ?? ((try? JSONValue.parse(form.inputs)) ?? .array([]))
+        return .object([
             "form_id": .string(form.id),
             "node_id": .string(form.nodeId),
             "node_title": .string(form.nodeTitle),
             // Dify's `_enrich_hitl_required` sends the form's **rendered** content (the `$output` placeholders stay); the
             // raw template is what the definition API's `form_content` keeps.
             "form_content": .string(form.renderedContent),
-            "inputs": (try? JSONValue.parse(form.inputs)) ?? .array([]),
+            "inputs": formInputs,
             "actions": (try? JSONValue.parse(form.actions)) ?? .array([]),
             "display_in_ui": .bool(form.displayInUi),
             "form_token": .string(form.token),
@@ -44,20 +50,22 @@ extension RunStreamEncoder {
         ])
     }
 
-    func humanInputRequired(_ form: StoredHumanInputForm) -> JSONValue {
-        envelope("human_input_required", Self.humanInputRequiredData(form))
+    func humanInputRequired(_ form: StoredHumanInputForm, inputs: [JSONObject]? = nil) -> JSONValue {
+        envelope("human_input_required", Self.humanInputRequiredData(form, inputs: inputs))
     }
 
     /// The `workflow_paused` data, shared by the live stream and the snapshot.
-    static func workflowPausedData(runId: String, forms: [StoredHumanInputForm], stats: GraphRunStats, at: Date,
-                                   elapsed: Double) -> JSONValue {
+    /// `created_at` is the **round's** start and `elapsed_time` the round's time so far, as Dify's
+    /// `workflow_pause_to_stream_response` (`started_at` = the converter's, i.e. this round's `workflow_started`).
+    static func workflowPausedData(runId: String, forms: [StoredHumanInputForm], stats: GraphRunStats, createdAt: Date,
+                                   elapsed: Double, inputs: [[JSONObject]?] = []) -> JSONValue {
         .object([
             "workflow_run_id": .string(runId),
             "paused_nodes": .array(forms.map { JSONValue.string($0.nodeId) }),
             "outputs": .object(stats.outputs),
-            "reasons": .array(forms.map { reasonJSON($0) }),
+            "reasons": .array(forms.enumerated().map { i, f in reasonJSON(f, inputs: i < inputs.count ? inputs[i] : nil) }),
             "status": "paused",
-            "created_at": .int(Int(at.timeIntervalSince1970)),
+            "created_at": .int(Int(createdAt.timeIntervalSince1970)),
             "elapsed_time": .double(elapsed),
             "total_tokens": .int(stats.totalTokens),
             "total_steps": .int(stats.totalSteps),
@@ -88,8 +96,9 @@ extension RunStreamEncoder {
         ])
     }
 
-    func workflowPaused(_ forms: [StoredHumanInputForm], reasons: [PauseReason], stats: GraphRunStats, at: Date) -> JSONValue {
-        envelope("workflow_paused", Self.workflowPausedData(runId: runId, forms: forms, stats: stats, at: at,
-                                                           elapsed: at.timeIntervalSince(startedAt)))
+    func workflowPaused(_ forms: [StoredHumanInputForm], reasons: [PauseReason], stats: GraphRunStats, at: Date,
+                        inputs: [[JSONObject]?] = []) -> JSONValue {
+        envelope("workflow_paused", Self.workflowPausedData(runId: runId, forms: forms, stats: stats, createdAt: roundStartedAt,
+                                                           elapsed: at.timeIntervalSince(roundStartedAt), inputs: inputs))
     }
 }

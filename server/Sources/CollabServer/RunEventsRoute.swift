@@ -144,16 +144,15 @@ extension Routes {
             for form in waiting {
                 frames.append(RunExecution.sse(["event": "human_input_required", "workflow_run_id": .string(run.id),
                                         "task_id": .string(run.id),
-                                        "data": RunStreamEncoder.humanInputRequiredData(form)]))
+                                        "data": RunStreamEncoder.humanInputRequiredData(
+                                            form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause.snapshot))]))
             }
             // The same projection the live stream uses, so the two paths cannot drift.
-            var stats = GraphRunStats()
-            stats.outputs = [:]
             frames.append(RunExecution.sse(["event": "workflow_paused", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
                                     "data": RunStreamEncoder.workflowPausedData(
-                                        runId: run.id, forms: waiting, stats: pauseStats(pause), at: pause.createdAt,
+                                        runId: run.id, forms: waiting, stats: pauseStats(pause),
+                                        createdAt: pause.createdAt.addingTimeInterval(-pause.elapsedTime),
                                         elapsed: pause.elapsedTime)]))
-            _ = stats
         }
         return SnapshotFrames(frames: frames, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
                               pauseGeneration: pauseGeneration)
@@ -175,9 +174,10 @@ extension Routes {
         return true
     }
 
-    /// The totals a pause carried, as the live frame reports them.
+    /// The outputs and totals a pause carried, as the live frame reports them (the pause row keeps both).
     private func pauseStats(_ pause: StoredWorkflowPause) -> GraphRunStats {
-        GraphRunStats(outputs: [:], totalTokens: pause.totalTokens, totalSteps: pause.totalSteps)
+        GraphRunStats(outputs: (try? JSONValue.parse(pause.outputs))?.object ?? [:], totalTokens: pause.totalTokens,
+                      totalSteps: pause.totalSteps)
     }
 
     func finishedFrame(_ run: StoredWorkflowRun) throws -> JSONValue {

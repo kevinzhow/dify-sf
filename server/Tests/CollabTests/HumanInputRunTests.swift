@@ -1429,3 +1429,189 @@ struct HumanInputPauseKeepAliveTests {
         }
     }
 }
+
+/// A select whose options come from a variable (protocol 1.16, Dify's `resolve_variable_select_input_options`): the live
+/// `human_input_required`, the console definition and the reconnect snapshot all carry the pool's list, because a client
+/// can only draw options it was given.
+@Suite("Human input variable select options", .enabled(if: testDbHost != nil))
+struct HumanInputVariableSelectTests {
+    /// start (`q`, a JSON object with `items`) → human (select `level` from `[start, q, items]`) → end.
+    static func yaml() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-select
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e2, source: human, sourceHandle: approve, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data:
+                title: Start
+                type: start
+                variables:
+                - {label: q, required: true, type: json_object, variable: q}
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                form_content: 'Level: {{#$output.level#}}'
+                inputs:
+                - type: select
+                  output_variable_name: level
+                  option_source: {type: variable, selector: [start, q, items]}
+                user_actions: [{id: approve, title: Approve it, button_style: primary}]
+            - id: end
+              data: {title: End, type: end, outputs: []}
+        """
+    }
+
+    @Test func theOptionsAreResolvedFromThePausePoolEverywhereAClientReadsThem() async throws {
+        try await withServerAndRoutes { api, _, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run",
+                                         ##"{"inputs":{"q":{"items":["low","high"]}}}"##, token: owner)
+            #expect(run.status == 200, "run: \(run.text)")
+            let frames = HumanInputRunTests.frames(run.text)
+            let required = try #require(frames.first { $0["event"]?.string == "human_input_required" })
+            let runId = required["workflow_run_id"]?.string ?? ""
+            let token = required["data"]?["form_token"]?.string ?? ""
+
+            func optionValue(_ data: JSONValue?) -> [String]? {
+                guard case .object(let d)? = data, case .array(let inputs)? = d["inputs"],
+                      case .object(let first)? = inputs.first,
+                      case .object(let source)? = first["option_source"],
+                      case .array(let values)? = source["value"] else { return nil }
+                return values.compactMap { if case .string(let s) = $0 { return s } else { return nil } }
+            }
+            #expect(optionValue(required["data"]) == ["low", "high"], "\(String(describing: required["data"]))")
+
+            // The console definition reads the same pool (Dify's `resolve_form_inputs`).
+            let definition = try await api.get("/v1/form/human_input/\(token)", token: owner)
+            #expect(definition.status == 200, "\(definition.text)")
+            let definitionJSON = try JSONValue.parse(definition.text)
+            #expect(optionValue(definitionJSON) == ["low", "high"], "\(definition.text)")
+
+            // And a reconnect that rebuilds the run from its records.
+            let reconnect = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+            let again = try #require(HumanInputRunTests.frames(reconnect.text).first { $0["event"]?.string == "human_input_required" })
+            #expect(optionValue(again["data"]) == ["low", "high"], "\(String(describing: again["data"]))")
+        }
+    }
+}
+
+/// A second pause of the same run: its `workflow_paused` counts **this round's** time and carries this round's start (Dify's
+/// converter `started_at`), the resume continues the run's execution numbering instead of restarting it, and the reconnect
+/// says the same as the live frame.
+@Suite("Human input second pause", .enabled(if: testDbHost != nil))
+struct HumanInputSecondPauseTests {
+    /// start → human1 (approve) → human2 (approve) → end.
+    static func yaml() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-two-human
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: h1, targetHandle: target}
+            - {id: e2, source: h1, sourceHandle: approve, target: h2, targetHandle: target}
+            - {id: e3, source: h2, sourceHandle: approve, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data: {title: Start, type: start, variables: []}
+            - id: h1
+              data:
+                title: First
+                type: human-input
+                form_content: 'First {{#$output.reply#}}?'
+                inputs: [{type: paragraph, output_variable_name: reply}]
+                user_actions: [{id: approve, title: Approve it, button_style: primary}]
+            - id: h2
+              data:
+                title: Second
+                type: human-input
+                form_content: 'Second {{#$output.reply#}}?'
+                inputs: [{type: paragraph, output_variable_name: reply}]
+                user_actions: [{id: approve, title: Approve it, button_style: primary}]
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs: [{variable: reply, value_selector: [h2, reply]}]
+        """
+    }
+
+    @Test func theSecondPauseCountsItsOwnRoundAndTheNumberingContinues() async throws {
+        try await withServerAndRoutes { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+            let first = HumanInputRunTests.frames(run.text)
+            let runId = first.first?["workflow_run_id"]?.string ?? ""
+            let runCreatedAt = first.first?["data"]?["created_at"]?.int ?? 0
+            let token1 = try #require(first.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string)
+            #expect(!runId.isEmpty && runCreatedAt > 0)
+
+            // The run waits: a run-relative elapsed on the second pause would count this wait, a round-relative one must not.
+            try await Task.sleep(for: .milliseconds(1_300))
+            let answeredAt = Date()
+            _ = try await api.post("/v1/form/human_input/\(token1)", ##"{"inputs":{"reply":"one"},"action":"approve"}"##, token: owner)
+
+            var second: StoredWorkflowPause?
+            for _ in 0..<300 {
+                try await Task.sleep(for: .milliseconds(20))
+                if let p = try await store.openPauses(workflowRunId: runId).first, p.generation >= 2 { second = p; break }
+            }
+            let pause = try #require(second, "the run pauses again")
+            // This round's time, not the run's: the answer was given 1.3 s after the run started.
+            #expect(pause.elapsedTime >= 0 && pause.elapsedTime < 1.0, "the second pause's elapsed counts its own round: \(pause.elapsedTime)")
+            #expect(Int(pause.createdAt.timeIntervalSince1970) > runCreatedAt, "the pause is not at the run's creation")
+            #expect(pause.createdAt >= answeredAt.addingTimeInterval(-1))
+
+            // The reconnect's pause frame reports the same round (its `created_at` is the round's start, as Dify's converter).
+            let again = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+            let snapshotPause = try #require(HumanInputRunTests.frames(again.text).last { $0["event"]?.string == "workflow_paused" })
+            #expect(abs((snapshotPause["data"]?["elapsed_time"]?.double ?? -9) - pause.elapsedTime) < 0.5,
+                    "the snapshot's pause elapsed matches the record")
+            let expectedCreatedAt = Int(pause.createdAt.timeIntervalSince1970 - pause.elapsedTime)
+            #expect(snapshotPause["data"]?["created_at"]?.int == expectedCreatedAt,
+                    "the pause carries the round's start: \(String(describing: snapshotPause["data"]?["created_at"]))")
+            #expect(snapshotPause["data"]?["outputs"] == (try? JSONValue.parse(pause.outputs)),
+                    "and the outputs the record kept")
+
+            // Answer the second form and let the run finish: the numbering of the resumed rounds must have continued.
+            let token2 = try #require(HumanInputRunTests.frames(again.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string)
+            _ = try await api.post("/v1/form/human_input/\(token2)", ##"{"inputs":{"reply":"two"},"action":"approve"}"##, token: owner)
+            var status = ""
+            for _ in 0..<300 where status != "succeeded" && status != "failed" {
+                try await Task.sleep(for: .milliseconds(20))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded", "the run ends: \(status)")
+            let executions = try await store.nodeExecutions(doc: app, run: runId)
+            let indices = executions.map(\.index)
+            #expect(Set(indices).count == indices.count, "no index repeats: \(indices)")
+            if let i1 = executions.first(where: { $0.nodeId == "h1" })?.index,
+               let i2 = executions.first(where: { $0.nodeId == "h2" })?.index {
+                #expect(i2 > i1, "the second round continues after the first (h1 \(i1), h2 \(i2))")
+            } else {
+                Issue.record("both human executions are stored: \(executions.map(\.nodeId))")
+            }
+        }
+    }
+}

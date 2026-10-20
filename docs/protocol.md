@@ -1266,7 +1266,11 @@ dify-sf waits without blocking other nodes.
 A `human-input` node pauses the whole run and waits for a person. It is a **draft run** node type (`draft_run` lists it);
 it has no plain single node run — the panel's own form has its own endpoints, below.
 
-* **The pause.** The node creates the forms of this round (or reuses the waiting one of the same execution), and the run
+* **The pause.** A waiting form's **select options that come from a variable** are resolved from the pause's own
+  variable pool into `option_source.value` (`human_input_policy.resolve_variable_select_input_options`): the live frame,
+  the reconnect snapshot and `GET /v1/form/human_input/{token}` all carry the list, while the stored definition keeps the
+  source as written. The node's own preview form does not resolve them (Dify's preview entry does not either).
+* The node creates the forms of this round (or reuses the waiting one of the same execution), and the run
   records a pause (the run's inputs, the engine snapshot, the node executions in flight and the round's forms) — all
   durable **before** the stream publishes anything. The stream then sends one `human_input_required` per waiting form
   (`{form_id, node_id, node_title, form_content, inputs, actions, display_in_ui, form_token, approval_channels,
@@ -1298,7 +1302,18 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   `workflow_finished` and closes.
 * **Timeouts.** The node's `timeout` / `timeout_unit` (`hour`, `day`) ends its wait through the node's `__timeout` branch
   (`human_input_form_timeout`); `COLLAB_HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS` (default 7 days; 0 disables) expires a run
-  that waits longer and stops it. Stopping a paused run closes its pause and its waiting forms; deleting the app closes
+  that waits longer and stops it. The scan that does both is a task of the server (`HumanInputTimeouts`,
+  `COLLAB_HUMAN_INPUT_SCAN_SECONDS`, default 5): once at startup (a stopped server leaves deadlines behind) and then
+  periodically; it goes through the same resume and stop paths an answer does.
+* **Ending without an engine.** A stop of a paused run, an app deletion, a global timeout and every resume that fails
+  after its claim end the run through one entry: the durable row, then exactly one `workflow_finished` on the run's
+  channel, then the channel is released — a connection that is already attached never waits for frames nobody will send.
+* **Keep-alives.** The ping belongs to the run's channel, not to a round: a run that waits for a person keeps sending
+  `event: ping` while it waits (Dify's queue pings regardless of what is running).
+* **Numbering.** A resumed round continues the run's execution numbering from the highest stored `index` (Dify's
+  `persistence.py`), so no index repeats and the history keeps its order. A pause's `workflow_paused` carries the
+  **round's** start as `created_at` and this round's time as `elapsed_time`, live and after a reconnect; the pause row
+  keeps both, with the run's outputs so far. Stopping a paused run closes its pause and its waiting forms; deleting the app closes
   its waiting runs the same way.
 * **Delivery.** After the pause is durable, each form whose node enables an `email` delivery method (in the node's
   `delivery_methods`) is mailed to that method's recipients, one message per address, with the node's `subject` and
