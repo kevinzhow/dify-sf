@@ -258,7 +258,13 @@ extension Routes {
         let p = try await authenticate(req, .edit)
         let a = try await appOfMode(req, p, Self.workflowModes)
         guard let task = req.parameters.get("task"), !task.isEmpty, task.utf8.count <= 255 else { throw ServerError.badRequest("invalid task id") }
-        if let active = await runs.get(task), active.appId == a.id { active.commands.abort(reason: "User requested stop") }
+        if let active = await runs.get(task), active.appId == a.id {
+            active.commands.abort(reason: "User requested stop")
+        } else {
+            // A paused run has no engine to abort: its pause must be closed and its forms closed, or a later submission
+            // would wake a run the user already stopped.
+            try? await store.stopPausedRun(workflowRunId: task, error: "User requested stop", at: Date())
+        }
         return rawJSON(["result": "success"])
     }
 

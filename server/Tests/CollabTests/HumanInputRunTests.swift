@@ -313,6 +313,34 @@ struct HumanInputLiveFollowTests {
     }
 }
 
+/// Stopping a paused run closes it: the pause is closed, its waiting forms are expired, and a later submission answers 412
+/// instead of waking a run the user stopped.
+@Suite("Human input stop while paused", .enabled(if: testDbHost != nil))
+struct HumanInputStopPausedTests {
+    @Test func stoppingAPausedRunClosesItAndRefusesLaterAnswers() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            #expect(!runId.isEmpty)
+
+            let stop = try await api.post("/v1/apps/\(app)/workflow-runs/tasks/\(runId)/stop", token: owner)
+            #expect(stop.status == 200, "\(stop.text)")
+            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "stopped")
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty, "the pause is closed")
+            #expect(try await store.humanInputForm(token: token)?.status == .expired, "and the form with it")
+
+            // A late answer cannot wake it.
+            let late = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+            #expect(late.status == 412, "\(late.text)")
+            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "stopped", "still stopped")
+        }
+    }
+}
+
 /// `_display_in_ui`: the debugger shows every form; a published run follows the node's setting.
 @Suite("Human input display rules", .enabled(if: testDbHost != nil))
 struct HumanInputDisplayRuleTests {

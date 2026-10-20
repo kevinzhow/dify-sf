@@ -532,6 +532,32 @@ extension PostgresStore {
         }
     }
 
+    /// A stop while the run waits: the waiting forms are closed (`expired`, so a later submission answers 412 instead of
+    /// waking it), the run becomes `stopped` and the pause is closed. A run that is not paused is left alone.
+    public func stopPausedRun(workflowRunId: String, error: String, at: Date) async throws {
+        try await bounded {
+            try await self.client.withTransaction(logger: self.logger) { c in
+                try await self.lockRun(workflowRunId, c)
+                let rows = try await c.query("""
+                    UPDATE workflow_runs SET status = 'stopped', error = \(error), finished_at = \(at)
+                    WHERE id = \(workflowRunId) AND status = 'paused'
+                    RETURNING id
+                    """, logger: self.logger)
+                var stopped = false
+                for try await _ in rows { stopped = true }
+                guard stopped else { return }
+                _ = try await c.query("""
+                    UPDATE human_input_forms SET status = 'expired'
+                    WHERE workflow_run_id = \(workflowRunId) AND status = 'waiting'
+                    """, logger: self.logger)
+                _ = try await c.query("""
+                    UPDATE workflow_pauses SET resumed_at = \(at)
+                    WHERE workflow_run_id = \(workflowRunId) AND resumed_at IS NULL
+                    """, logger: self.logger)
+            }
+        }
+    }
+
     /// The global deadline (`created_at + HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS`), which is not the node's: every form still
     /// waiting is marked `expired`, the run is stopped with the error Dify writes, and the pause is closed. Dify's
     /// `_handle_global_timeout` does the same three things; a node's own deadline takes `endHumanInputForm(.timedOut)`.
