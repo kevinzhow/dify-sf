@@ -1271,8 +1271,9 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   durable **before** the stream publishes anything. The stream then sends one `human_input_required` per waiting form
   (`{form_id, node_id, node_title, form_content (rendered), inputs, actions, display_in_ui, form_token,
   approval_channels, resolved_default_values, expiration_time}`) and one `workflow_paused` (`{outputs, paused_nodes,
-  reasons, workflow_run_id, elapsed_time, ...}`). The run's `status` is `paused`; its connection stays open (the run is
-  alive). At most one pause of a run is open at a time: a resume that pauses again records a new pause with the next
+  reasons, workflow_run_id, elapsed_time, ...}`). The run's `status` is `paused`. The draft run's own stream **ends**
+  with `workflow_paused`, as Dify's; the run's channel stays open for the round the answer resumes, which a client follows
+  on [the reconnect endpoint](#reconnecting). At most one pause of a run is open at a time: a resume that pauses again records a new pause with the next
   `generation`, and a resume consumes only the decisions its claim took.
 * **The form.** `GET /v1/form/human_input/{token}` (any account of the workspace; `404` for an unknown token and for one
   of a surface the console API does not serve — a web app's form until published runs exist, `412`
