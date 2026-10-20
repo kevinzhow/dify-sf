@@ -94,6 +94,22 @@ struct HumanInputRunTests {
             #expect(answer.status == 200, "\(answer.text)")
             #expect(try await store.pause(workflowRunId: form?.workflowRunId ?? "", generation: 1)?.resumeRequested == true)
             #expect(try await store.humanInputForm(token: token)?.status == .submitted)
+
+            // The answer resumes the run in the background: the human node completes with the submitted value and the run
+            // goes on to its end node.
+            let runId = form?.workflowRunId ?? ""
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded", "the resumed run should finish, got \(status)")
+            let stored = try await store.workflowRun(doc: app, id: runId)
+            #expect(stored?.outputs?.contains("ok") == true, "the end node sees the submitted value: \(stored?.outputs ?? "nil")")
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty, "the pause is closed by the resume")
+            let executions = try await store.nodeExecutions(doc: app, run: runId)
+            #expect(executions.contains { $0.nodeId == "human" && $0.status == "succeeded" })
+            #expect(executions.contains { $0.nodeId == "end" }, "the run continued past the human node")
         }
     }
 }

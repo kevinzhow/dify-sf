@@ -160,6 +160,56 @@ extension Routes {
         return Response(status: .ok, headers: headers, body: body)
     }
 
+    // MARK: - Resume
+
+    /// Resumes a paused run after an answer: claim it (one winner), rebuild the graph from the run's **stored** graph (never
+    /// the draft that was edited since), rebuild the engine from the pause's snapshot and consume the resumed stream.
+    /// Returns false when there was nothing to claim (not paused, no unconsumed answer, already resumed or stopped).
+    @discardableResult
+    func resumeRun(appId: String, runId: String) async -> Bool {
+        guard let claim = try? await store.claimResume(workflowRunId: runId, at: Date()) else { return false }
+        guard let run = try? await store.workflowRun(doc: appId, id: runId) else { return false }
+        guard let graphJSON = try? JSONValue.parse(Data(run.graph.utf8)) else {
+            logger.error("run \(runId) has a stored graph that does not parse; it stays paused")
+            return false
+        }
+        let pending = PendingHumanInputForms()
+        let userId = run.createdBy ?? ""
+        let graph: RuntimeGraph
+        do {
+            let config = try GraphConfig(json: graphJSON)
+            let rootId = try RuntimeGraph.defaultRootId(config)
+            graph = try await RuntimeGraph.build(config, rootId: rootId,
+                                                 factory: BuiltinNodeFactory(services: runServices(
+                                                    appId: appId, runId: runId, docId: appId, userId: userId, pending: pending)))
+        } catch {
+            logger.error("run \(runId) could not rebuild its graph: \(error)")
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "could not rebuild the paused run: \(error)",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            return false
+        }
+        let account: JSONValue = ["id": .string(userId), "name": .string(run.createdByName ?? ""), "email": .string(run.createdByEmail ?? "")]
+        let inputs = (try? JSONValue.parse(run.inputs))?.object ?? [:]
+        let encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: appId, graph: graph, account: account,
+                                       inputs: inputs, startedAt: run.createdAt)
+        let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
+                                                                        maxSteps: config.runtimeMaxSteps,
+                                                                        maxTimeSeconds: config.runtimeMaxTimeSeconds),
+                                 commands: GraphEngineCommands(), userId: userId, appId: appId)
+        let snapshot: GraphEngineSnapshot
+        do { snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8)) } catch {
+            logger.error("run \(runId) has a pause snapshot that does not decode: \(error)")
+            return false
+        }
+        let channel = RunChannel()
+        let routes = self
+        let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
+                                     createdBy: userId, channel: channel, encoder: encoder, triggeredFrom: "workflow-run",
+                                     pendingForms: pending)
+        Task.detached { await execution.run(engine: engine, pool: VariablePool(), snapshot: snapshot, filled: claim.decisions) }
+        return true
+    }
+
     // MARK: - Stop
 
     /// `POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop` (edit; workflow and chatflow apps): Dify's stop command
@@ -333,7 +383,10 @@ final class RunExecution: Sendable {
         var scope: NodeScope
     }
 
-    func run(engine: GraphEngine, pool: VariablePool) async {
+    /// Consumes a run's event stream. `snapshot` resumes a paused run instead of starting one; `filled` are the answers the
+    /// resume took, published as `human_input_form_filled` right after the engine's `workflow_started(reason=resumption)`.
+    func run(engine: GraphEngine, pool: VariablePool, snapshot: GraphEngineSnapshot? = nil,
+             filled: [StoredHumanInputForm] = []) async {
         let started = ContinuousClock.now
         // Dify's queue sends a ping every 10 s; here while nothing else was sent.
         let pinger = Task { [channel] in
@@ -347,7 +400,37 @@ final class RunExecution: Sendable {
         var running: [String: Running] = [:]
         // `_append_retry_history`: the failed attempts of a node execution, kept in its process data.
         var retries: [String: [JSONValue]] = [:]
-        for await event in engine.run(pool: pool) {
+        let stream: AsyncStream<GraphEngineEvent>
+        if let snapshot {
+            do { stream = try engine.resume(snapshot) } catch {
+                routes.logger.error("run \(runId) could not resume: \(error)")
+                let frames = encoderBox.withLock { enc in
+                    [enc.envelope("workflow_failed", [
+                        "id": .string(runId), "workflow_id": .string(appId), "status": "failed", "outputs": .object([:]),
+                        "error": .string("could not resume the paused run: \(error)"),
+                        "elapsed_time": 0, "total_tokens": 0, "total_steps": 0, "created_by": enc.account,
+                        "created_at": .double(Date().timeIntervalSince1970), "finished_at": .double(Date().timeIntervalSince1970),
+                        "exceptions_count": 0, "files": [],
+                    ])]
+                }
+                for f in frames { await channel.publish(Self.sse(f)) }
+                try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                                          error: "could not resume the paused run: \(error)", elapsedTime: 0,
+                                                          totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+                return
+            }
+        } else {
+            stream = engine.run(pool: pool)
+        }
+        var announcedFilled = false
+        for await event in stream {
+            if case .runResumed = event, !announcedFilled {
+                announcedFilled = true
+                var frames = encoderBox.withLock { $0.encode(event) }
+                frames += encoderBox.withLock { enc in filled.map { enc.humanInputFormFilled($0) } }
+                for f in frames { await channel.publish(Self.sse(f)) }
+                continue
+            }
             if case .runPaused(let reasons, let snapshot, let stats) = event {
                 await handlePause(reasons: reasons, snapshot: snapshot, stats: stats)
                 continue

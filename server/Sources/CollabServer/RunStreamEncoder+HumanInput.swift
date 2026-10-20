@@ -22,6 +22,22 @@ extension RunStreamEncoder {
         ])
     }
 
+    /// `human_input_form_filled`: the answer the resume took (Dify's payload keeps the rendered content and the action's
+    /// id, title and submitted data).
+    func humanInputFormFilled(_ form: StoredHumanInputForm) -> JSONValue {
+        let actions = (try? JSONValue.parse(form.actions))?.array ?? []
+        let action = actions.first { $0["id"]?.string == form.submittedAction }
+        return envelope("human_input_form_filled", [
+            "form_id": .string(form.id),
+            "node_id": .string(form.nodeId),
+            "node_title": .string(form.nodeTitle),
+            "action_id": form.submittedAction.map(JSONValue.string) ?? .null,
+            "action_text": action?["title"] ?? .null,
+            "rendered_content": .string(form.renderedContent),
+            "submitted_data": form.submittedInputs.flatMap { try? JSONValue.parse($0) } ?? .object([:]),
+        ])
+    }
+
     func workflowPaused(_ forms: [StoredHumanInputForm], reasons: [PauseReason], stats: GraphRunStats, at: Date) -> JSONValue {
         let pausedNodes = forms.map { form -> JSONValue in
             .object(["node_id": .string(form.nodeId), "node_title": .string(form.nodeTitle), "form_id": .string(form.id)])

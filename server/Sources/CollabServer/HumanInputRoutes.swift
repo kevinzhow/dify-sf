@@ -139,7 +139,11 @@ extension Routes {
         // The store re-checks the deadlines after taking the run's lock; the config value is the global one.
         switch try await store.submitHumanInputForm(token: token, inputs: inputsText, action: action, userId: p.id,
                                                     globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
-        case .accepted:
+        case .accepted(let answered):
+            // Dify's `enqueue_resume`: the answer asks for a resume; it runs in the background so the caller is answered
+            // immediately, and the claim inside makes a second answer harmless.
+            let routes = self
+            Task.detached { await routes.resumeRun(appId: answered.docId, runId: answered.workflowRunId) }
             struct Empty: Encodable {}
             return try json(Empty())
         case .alreadySubmitted:
