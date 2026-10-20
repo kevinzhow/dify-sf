@@ -590,7 +590,7 @@ final class RunExecution: Sendable {
         let frames = encoderBox.withLock { enc in
             forms.map { enc.humanInputRequired($0) } + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at)]
         }
-        for f in frames { await channel.publish(Self.sse(f)) }
+        for f in frames { await channel.publish(Self.sse(f), pauseGeneration: generation) }
         // An answer for another execution of this pause may have been taken while the pause was being written: the pause
         // starts awake, and since no new submission will come to wake it, the resume is enqueued here.
         let stored = (try? await routes.store.pause(workflowRunId: runId, generation: generation)) ?? nil
@@ -897,12 +897,16 @@ actor RunChannelRegistry {
 
 actor RunChannel {
     private var frames: [String] = []
+    private var pauseGenerations: [Int: Int] = [:]
     private var subscribers: [Int: AsyncStream<String>.Continuation] = [:]
     private var next = 0
     private var finished = false
     private var lastSent = ContinuousClock.now
 
-    func publish(_ frame: String) {
+    /// `pauseGeneration` tags a frame that belongs to one pause (the database generation): a reconnect deduplicates by that
+    /// identity, never by a second-resolution `created_at` (two resumes can re-pause within the same second).
+    func publish(_ frame: String, pauseGeneration: Int? = nil) {
+        if let pauseGeneration { pauseGenerations[frames.count] = pauseGeneration }
         frames.append(frame)
         lastSent = .now
         for c in subscribers.values { c.yield(frame) }
@@ -923,6 +927,9 @@ actor RunChannel {
 
     /// How many frames have been published so far (a reconnect marks the window it must deduplicate).
     var published: Int { frames.count }
+
+    /// The pause generation a published frame belongs to, when it is a pause frame.
+    func pauseGeneration(at index: Int) -> Int? { pauseGenerations[index] }
 
     /// `replay` = the frames already published (a fresh subscriber sees the run from its start); false = only what comes
     /// next. `from` starts the replay at that index instead of 0.

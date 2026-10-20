@@ -17,9 +17,9 @@ struct SnapshotFrames: Sendable {
     var frames: [String]
     var nodeIds: Set<String>
     var formIds: Set<String>
-    /// The pause the snapshot described, by its `created_at`: a later generation's pause has another one and must not be
-    /// filtered by it.
-    var pauseCreatedAt: Int?
+    /// The pause the snapshot described, by its database generation: a later pause is another generation and must not be
+    /// filtered by this one (two resumes can re-pause inside the same second).
+    var pauseGeneration: Int?
 }
 
 extension Routes {
@@ -54,7 +54,7 @@ extension Routes {
             return try Self.streaming([RunExecution.sse(try finishedFrame(state))])
         }
 
-        var snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseCreatedAt: nil)
+        var snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseGeneration: nil)
         if includeSnapshot {
             snapshot = try await snapshotFrames(state, paused: state.status == "paused")
         }
@@ -68,14 +68,14 @@ extension Routes {
         let subscription = await live.subscribe(replay: true, from: mark)
         let replay = snapshot.frames
         let covered = snapshot
-        let window = coveredUpTo - mark
         let body = try Response.Body(stream: { writer in
             for frame in replay { try await writer.write(frame) }
-            var consumed = 0
+            var index = mark
             for await frame in subscription {
-                let isWindow = consumed < window
-                consumed += 1
-                if isWindow && Self.isCovered(frame, snapshot: covered) { continue }
+                let isWindow = index < coveredUpTo
+                let generation = await live.pauseGeneration(at: index)
+                index += 1
+                if isWindow && Self.isCovered(frame, snapshot: covered, pauseGeneration: generation) { continue }
                 try await writer.write(frame)
                 if frame.contains("\"event\":\"workflow_finished\"") { break }
                 if frame.contains("\"event\":\"workflow_paused\"") && !continueOnPause { break }
@@ -85,15 +85,14 @@ extension Routes {
     }
 
     /// Whether a live frame repeats something the snapshot already carried.
-    static func isCovered(_ frame: String, snapshot: SnapshotFrames) -> Bool {
+    static func isCovered(_ frame: String, snapshot: SnapshotFrames, pauseGeneration: Int?) -> Bool {
         guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
               let parsed = try? JSONValue.parse(Data(line.dropFirst(6).utf8)),
               let event = parsed["event"]?.string else { return false }
         switch event {
         case "workflow_paused":
-            // Only the pause this snapshot described: a later generation has another `created_at`.
-            if let described = snapshot.pauseCreatedAt,
-               parsed["data"]?["created_at"]?.int == described { return true }
+            // Only the pause this snapshot described, identified by its generation on the channel.
+            if let described = snapshot.pauseGeneration, let pauseGeneration, described == pauseGeneration { return true }
         case "human_input_required":
             if let formId = parsed["data"]?["form_id"]?.string, snapshot.formIds.contains(formId) { return true }
         case "node_started", "node_finished":
@@ -133,10 +132,10 @@ extension Routes {
                                              "created_at": .int(Int(start.timeIntervalSince1970)),
                                              "finished_at": .int(Int(finished.timeIntervalSince1970))]]))
         }
-        var pauseCreatedAt: Int?
+        var pauseGeneration: Int?
         var waiting: [StoredHumanInputForm] = []
         if paused, let pause = (try? await store.openPauses(workflowRunId: run.id))?.first ?? nil {
-            pauseCreatedAt = Int(pause.createdAt.timeIntervalSince1970)
+            pauseGeneration = pause.generation
             let forms = (try? await store.humanInputForms(workflowRunId: run.id)) ?? []
             waiting = forms.filter { $0.status == .waiting && pause.executionIds.contains($0.executionId) }
             for form in waiting {
@@ -154,7 +153,7 @@ extension Routes {
             _ = stats
         }
         return SnapshotFrames(frames: frames, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
-                              pauseCreatedAt: pauseCreatedAt)
+                              pauseGeneration: pauseGeneration)
     }
 
     /// The totals a pause carried, as the live frame reports them.

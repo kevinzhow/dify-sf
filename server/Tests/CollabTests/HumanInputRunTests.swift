@@ -263,6 +263,24 @@ struct HumanInputSSEContractTests {
     }
 }
 
+/// Pause identity on the channel is the database generation: two resumes can re-pause inside the same second, and the
+/// public `created_at` (integer seconds) cannot tell those apart.
+@Suite("Run channel pause identity")
+struct RunChannelPauseIdentityTests {
+    @Test func twoPausesInTheSameSecondKeepDifferentIdentities() async {
+        let channel = RunChannel()
+        let frame = "data: " + #"{"event":"workflow_paused","data":{"created_at":1780000000}}"# + "\n\n"
+        await channel.publish(frame, pauseGeneration: 1)
+        await channel.publish(frame, pauseGeneration: 2)
+        #expect(await channel.pauseGeneration(at: 0) == 1)
+        #expect(await channel.pauseGeneration(at: 1) == 2)
+        let snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseGeneration: 1)
+        // The first pause is the one the snapshot described; the second, in the same second, is new.
+        #expect(CollabServer.Routes.isCovered(frame, snapshot: snapshot, pauseGeneration: await channel.pauseGeneration(at: 0)))
+        #expect(!CollabServer.Routes.isCovered(frame, snapshot: snapshot, pauseGeneration: await channel.pauseGeneration(at: 1)))
+    }
+}
+
 /// A pause that cannot be written must end the run and report it — never publish a pause nobody can answer, never keep
 /// the run "paused" in the database. Driven through the routes with the server's test defect.
 @Suite("Human input pause write failure", .enabled(if: testDbHost != nil))
