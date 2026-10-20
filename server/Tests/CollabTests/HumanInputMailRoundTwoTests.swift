@@ -188,4 +188,42 @@ struct HumanInputMailRoundTwoTests {
             }
         }
     }
+
+    /// Winnie's end-to-end flow: a pause mails a link, the link (no account) opens the **real** definition the server
+    /// serves, the same definition renders in the page's form widget with its button, the answer goes through the public
+    /// route, and the run finishes with it. Nothing here goes through the console API.
+    @Test func theMailedLinkOpensTheRealDefinitionAndItsAnswerFinishesTheRun() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, store, _ in
+                let owner = try await api.setupOwner()
+                let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve please {{#url#}}'"), token: owner).str("id")
+                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+                let runId = try #require(HumanInputRunTests.frames(run.text).first?["workflow_run_id"]?.string)
+                let mails = try await mailbox.wait(for: 1)
+                let link = try #require(mails.first?.text.split(separator: "/form/").last.map {
+                    String($0.prefix { $0 != "<" && $0 != "\"" && !$0.isWhitespace }) })
+                // The recipient's token, anonymously: the console definition shape Dify's web surface serves.
+                let anonymous = try await api.get("/v1/form/human_input/\(link)")
+                #expect(anonymous.status == 200, "\(anonymous.text)")
+                #expect(anonymous.json["user_actions"] != nil, "the console shape carries user_actions: \(anonymous.text)")
+                #expect(anonymous.json["actions"] == nil, "and not the panel's actions: \(anonymous.text)")
+                #expect(anonymous.str("node_title") == "Approve")
+                // The answer goes through the same public route, and the run finishes with it.
+                let answer = try await api.post("/v1/form/human_input/\(link)",
+                                                ##"{"inputs":{"reply":"from the mail"},"action":"approve"}"##)
+                #expect(answer.status == 200, "answer: \(answer.text)")
+                var status = ""
+                for _ in 0..<300 where status != "succeeded" && status != "failed" {
+                    try await Task.sleep(for: .milliseconds(20))
+                    status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+                }
+                #expect(status == "succeeded", "the mailed answer finishes the run: \(status)")
+                let detail = try await api.get("/v1/apps/\(app)/workflow-runs/\(runId)", token: owner)
+                let outputs = detail.obj("outputs")
+                #expect(outputs["reply"] == .string("from the mail"), "\(detail.text)")
+            }
+        }
+    }
 }
