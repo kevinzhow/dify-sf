@@ -46,6 +46,9 @@ extension Routes {
         // response has to reconcile with the snapshot.
         let live = await runChannels.channel(runId)
         let mark = await live.published
+        // TEST ONLY (`testDefect: slowStateRead`): widen the window between subscribing and reading the persisted state, so
+        // a test can end the run inside it instead of racing.
+        if config.testDefect == "slowStateRead" { try? await Task.sleep(for: .milliseconds(400)) }
         let state = try await store.workflowRun(id: runId) ?? run
         let terminal = ["succeeded", "failed", "stopped", "partial-succeeded"].contains(state.status)
 

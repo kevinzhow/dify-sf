@@ -313,6 +313,50 @@ struct HumanInputLiveFollowTests {
     }
 }
 
+/// The run ends inside the window between subscribing and reading the persisted state (`testDefect: slowStateRead` widens
+/// it): the connection must answer one terminal frame, not a snapshot plus a terminal, and must close.
+@Suite("Run events end during the state read", .enabled(if: testDbHost != nil))
+struct RunEventsStateReadRaceTests {
+    @Test func aRunThatEndsWhileItsStateIsReadStillAnswersOneTerminalFrame() async throws {
+        var config = ServerConfig.defaults
+        config.testDefect = "slowStateRead"
+        try await withRunningServer(config: config) { api, port, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let frames = HumanInputRunTests.frames(run.text)
+            let runId = frames.first?["workflow_run_id"]?.string ?? ""
+            let token = frames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            #expect(!runId.isEmpty && !token.isEmpty)
+
+            try await withRawConnection(port: port) { conn in
+                try await conn.send("""
+                    GET /v1/workflow/\(runId)/events?include_state_snapshot=true&continue_on_pause=false HTTP/1.1\r
+                    Host: 127.0.0.1\r
+                    Authorization: Bearer \(owner)\r
+                    Accept: text/event-stream\r
+                    \r
+
+                    """)
+                // The endpoint is now subscribed and sleeping before it reads the state: finish the run inside that window.
+                try await Task.sleep(for: .milliseconds(120))
+                _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+
+                let closedOrFinished = try await conn.wait(upTo: 20) {
+                    $0.text.contains("\"event\":\"workflow_finished\"")
+                }
+                #expect(closedOrFinished, "the connection answers the run's end")
+                try await Task.sleep(for: .milliseconds(300))
+                let text = conn.text
+                #expect(text.components(separatedBy: "\"event\":\"workflow_finished\"").count - 1 == 1,
+                        "exactly one terminal frame")
+                #expect(!text.contains("\"event\":\"workflow_started\""),
+                        "no snapshot for a run that already ended: \(text.prefix(400))")
+            }
+        }
+    }
+}
+
 /// The channel yields each published frame once, whether the subscriber replays from a mark or starts live.
 @Suite("Run channel delivery")
 struct RunChannelDeliveryTests {
