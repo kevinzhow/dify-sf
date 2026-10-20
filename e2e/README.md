@@ -119,6 +119,15 @@ mocked LLM response" streamed word by word (leading spaces), usage 10/5/15; code
 "mocked tool output"}`; HTTP -> `{"status_code": 200, "body": "mocked response", "headers": {}}`; template transform
 -> real Jinja2 rendering; per-case overrides in `cases.json` (`mock`).
 
+## Human input across a process restart
+
+`human_input_restart/run.sh` (protocol 1.16): two server **processes** over one database, with `kill -9` between them.
+The first pauses a run, takes the answer, and dies before it can claim it (`testDefect: slowClaim` holds the window);
+the second starts on the same database, finds the answered pause at startup (`resumeRunsWaitingAfterRestart`) and
+finishes the run — outputs `{"reply": "yes"}`, checked through the server's own API. It is the process-level
+counterpart of `HumanInputRealRestartTests` (two `Routes` in one process), so the resume is shown to depend on nothing
+that a restart loses. Needs docker and the dev image (`server/run-swift.sh build`); ports `18090` / `55440` by default.
+
 ## --no-deps (verified)
 
 Dify's api and worker `depends_on` agent_backend (Agent v2). Starting stack R with `--no-deps` and without

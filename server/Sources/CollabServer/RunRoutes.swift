@@ -175,6 +175,9 @@ extension Routes {
     /// Returns false when there was nothing to claim (not paused, no unconsumed answer, already resumed or stopped).
     @discardableResult
     func resumeRun(appId: String, runId: String) async -> Bool {
+        // TEST ONLY (`testDefect: slowClaim`): widen the window between an accepted answer and the claim that consumes it,
+        // so a test can kill the process there — the state a crash leaves behind (answer waiting, pause untouched).
+        if config.testDefect == "slowClaim" { try? await Task.sleep(for: .milliseconds(1500)) }
         guard let claim = try? await store.claimResume(workflowRunId: runId, at: Date()) else { return false }
         guard let run = try? await store.workflowRun(doc: appId, id: runId) else { return false }
         // TEST ONLY (`testDefect: resumePrepFails`): a resume whose preparation fails must end the run as failed and
