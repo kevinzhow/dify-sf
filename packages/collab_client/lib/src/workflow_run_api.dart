@@ -40,7 +40,21 @@ library;
 ///   (Dify's `WorkflowRunPaginationResponse`, `WorkflowRunDetailResponse`, NodeTracing list).
 /// * **Variable inspect**: the draft variable endpoints ([WorkflowRunApi.draftVariables] and the rest), Dify's JSON.
 ///
-/// The run operations of the workflow runtime (protocols 1.13–1.15).
+/// ## Human input (1.16)
+///
+/// * **A paused run**: a draft run with a `human-input` node streams `human_input_required` (`data` is the form) and
+///   `workflow_paused`, then keeps the connection open. The form is answered with
+///   [WorkflowRunApi.submitHumanInputForm] (Dify's `service/workflow.ts` `submitHumanInputForm`), and the run's events
+///   continue; a client that lost the connection follows them with [WorkflowRunApi.workflowEvents] (Dify's
+///   `sseGet('/workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true')`, its `handleResume`).
+///   [WorkflowRunApi.humanInputForm] reads a form by the token a delivery hands out (the console's form API: a form of
+///   another surface, or of another workspace, is `404`).
+/// * **A human-input node's own form** (the panel's single run): [WorkflowRunApi.humanInputFormPreview] renders it from
+///   the node's config and the values it asks for, [WorkflowRunApi.humanInputFormRun] submits it (no run: the answers
+///   become the node's draft variables). The panel's test email is not served yet (it needs a form a delivery test can
+///   own, which this server's forms require a run for).
+///
+/// The run operations of the workflow runtime (protocols 1.13–1.16).
 abstract class WorkflowRunApi {
   /// `POST /v1/apps/{app}/workflows/draft/nodes/{node}/run` with Dify's body (`{"inputs": {...}}`): the execution
   /// (Dify's `WorkflowRunNodeExecutionResponse`).
@@ -92,4 +106,39 @@ abstract class WorkflowRunApi {
 
   /// 1.14: `DELETE .../workflows/draft/variables/{id}`, `.../nodes/{node}/variables` (nodeId), or all (neither).
   Future<void> deleteDraftVariables(String appId, {String? variableId, String? nodeId});
+
+  // ---- human input (1.16) ----
+
+  /// 1.16: `GET /v1/form/human_input/{token}`: the form a paused run waits on (Dify's FormDefinition: `form_content`,
+  /// `inputs`, `user_actions`, `rendered_content`, `default_values`, `node_title`, `display_in_ui`,
+  /// `expiration_time`). `404` an unknown token, `412` a form that was already answered or expired
+  /// (`human_input_form_submitted` / `human_input_form_expired`), `401` without an account.
+  Future<Map<String, Object?>> humanInputForm(String token);
+
+  /// 1.16: `POST /v1/form/human_input/{token}` with Dify's body `{inputs: {...}, action: "..."}`; the answer is `{}`.
+  /// The run continues on its own: the stream of [workflowEvents] (or the live draft-run stream) carries
+  /// `human_input_form_filled` and the rest. Refusals: `400 invalid_form_data` (a field the form requires, a value
+  /// outside a select's options, an unknown action), `404`, `412`.
+  Future<void> submitHumanInputForm(String token, Map<String, Object?> body);
+
+  /// 1.16: `GET /v1/workflow/{run}/events` (`sseGet`): Dify's reconnect endpoint. With [includeStateSnapshot] the
+  /// stream opens with the state rebuilt from the run's records (`workflow_started` of the run, the node executions so
+  /// far, the waiting forms, `workflow_paused` when it is paused); [continueOnPause] keeps it open across a pause
+  /// rather than ending it at one (`close_on_pause`). A run that already ended answers one `workflow_finished` and
+  /// closes; a run of another account is `404`.
+  Stream<Map<String, Object?>> workflowEvents(
+    String runId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  });
+
+  /// 1.16: `POST {url}/preview` (the human-input node's own form: `/apps/{app}/workflows/draft/human-input/nodes/
+  /// {node}/form`): the form as the node would show it, its `form_content` rendered with `inputs` (Dify's
+  /// `HumanInputRequired`: `form_id`, `form_content`, `inputs`, `actions`, `node_id`, `node_title`,
+  /// `resolved_default_values`).
+  Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body);
+
+  /// 1.16: `POST {url}/run` with `{inputs, form_inputs, action}`: the node's preview form is validated and its outputs
+  /// (the filled fields, `__action_id`, `__action_value`, `__rendered_content`) are saved as the node's draft variables.
+  Future<Map<String, Object?>> humanInputFormRun(String url, Map<String, Object?> body);
 }

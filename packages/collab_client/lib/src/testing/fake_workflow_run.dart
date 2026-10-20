@@ -182,4 +182,65 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   /// Makes the next runs fail the way the server refuses a request (`400 invalid_param` and the like).
   static Never refuse(String code, String message, {int status = 400}) =>
       throw TransportException(message, statusCode: status, code: code);
+
+  // ---- human input (1.16) ----
+
+  /// Forms by token, their definitions Dify's `GET /v1/form/human_input/{token}` answers.
+  final humanInputForms = <String, Map<String, Object?>>{};
+
+  /// The bodies [submitHumanInputForm] received, by token.
+  final humanInputAnswers = <String, Map<String, Object?>>{};
+
+  /// What [workflowEvents] streams for a run (the frames after the pause, as [draftRunEvents] would write them).
+  final humanInputEvents = <String, List<Map<String, Object?>>>{};
+
+  /// Every reconnect ([WorkflowRunApi.workflowEvents]) with the flags it asked for.
+  final reconnects = <({String runId, bool includeStateSnapshot, bool continueOnPause})>[];
+
+  /// The previews and submissions of a human-input node's own form (`url` → body that was sent).
+  final formPreviews = <String, Map<String, Object?>>{};
+  final formRuns = <String, Map<String, Object?>>{};
+
+  /// The form a preview answers (`url` → definition), else a bare one.
+  final formDefinitions = <String, Map<String, Object?>>{};
+
+  @override
+  Future<Map<String, Object?>> humanInputForm(String token) async =>
+      humanInputForms[token] ?? refuse('not_found', 'Form not found', status: 404);
+
+  @override
+  Future<void> submitHumanInputForm(String token, Map<String, Object?> body) async {
+    if (!humanInputForms.containsKey(token)) refuse('not_found', 'Form not found', status: 404);
+    humanInputAnswers[token] = body;
+  }
+
+  @override
+  Stream<Map<String, Object?>> workflowEvents(
+    String runId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  }) async* {
+    reconnects.add((runId: runId, includeStateSnapshot: includeStateSnapshot, continueOnPause: continueOnPause));
+    yield* Stream.fromIterable(humanInputEvents[runId] ?? const []);
+  }
+
+  @override
+  Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body) async {
+    formPreviews[url] = body;
+    return formDefinitions[url] ?? const {
+      'form_id': 'node',
+      'form_content': 'Form content',
+      'inputs': <Object?>[],
+      'actions': <Object?>[],
+      'node_id': 'node',
+      'node_title': 'Human Input',
+      'resolved_default_values': <String, Object?>{},
+    };
+  }
+
+  @override
+  Future<Map<String, Object?>> humanInputFormRun(String url, Map<String, Object?> body) async {
+    formRuns[url] = body;
+    return {'__action_id': body['action'], '__action_value': body['action'], '__rendered_content': 'Form content'};
+  }
 }

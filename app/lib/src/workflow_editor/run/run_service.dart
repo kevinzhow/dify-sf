@@ -90,8 +90,13 @@ abstract class WorkflowRunService {
   Stream<RunEvent> sendChatMessage(ChatMessageRequest request);
 
   /// `sseGet('/workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true')`: the events of a
-  /// paused run after it resumes (human input).
-  Stream<RunEvent> workflowEvents(String workflowRunId);
+  /// paused run after it resumes (human input). [includeStateSnapshot] opens the stream with the state rebuilt from the
+  /// run's records; [continueOnPause] keeps it open across a pause instead of ending it at one.
+  Stream<RunEvent> workflowEvents(
+    String workflowRunId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  });
 
   /// `stopWorkflowRun('/apps/{id}/workflow-runs/tasks/{task_id}/stop')`.
   Future<void> stopWorkflowRun(String taskId);

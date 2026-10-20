@@ -4,6 +4,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:collab_client/collab_client.dart' show TransportException;
 import 'package:flutter/material.dart';
 
 import '../../../../../cards/card_kit.dart';
@@ -160,6 +161,9 @@ class _TestEmailSenderState extends State<TestEmailSender> {
     try {
       await send(nodeId: widget.email.nodeId, deliveryId: widget.deliveryId, inputs: formatted);
       if (mounted) setState(() => _done = true);
+    } on Object catch (e) {
+      // The send failed (no mail configured, a refused delivery method): the dialog stays on the form, as Dify's.
+      if (mounted) showDataToast(context, DataToastType.error, e is TransportException ? e.message : '$e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }

@@ -312,6 +312,7 @@ final class WorkflowRuntimeFeatures {
     required this.protocolVersion,
     this.singleNodeRun = const {},
     this.draftRun = const {},
+    this.humanInput = false,
   });
 
   /// Null when [json] is not an object (the member is absent).
@@ -329,6 +330,7 @@ final class WorkflowRuntimeFeatures {
           for (final t in types)
             if (t is String) t,
       },
+      humanInput: json['human_input'] == true,
     );
   }
 
@@ -342,6 +344,12 @@ final class WorkflowRuntimeFeatures {
   /// 1.14: the node types a whole draft run (`POST .../workflows/draft/run`) supports; empty before 1.14. A graph with
   /// another node type is refused (`unsupported_node_type`).
   final Set<String> draftRun;
+
+  /// 1.16: the server runs human input — a draft run pauses at a `human-input` node (`human_input_required` +
+  /// `workflow_paused`), the form is answered through `POST /v1/form/human_input/{token}`, a reconnect
+  /// (`GET /v1/workflow/{run}/events`) rebuilds the run's state, and the node's own form (preview, submit, delivery
+  /// test) is served. Older servers do not say, which is false.
+  final bool humanInput;
 }
 
 /// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password. Also the answer of

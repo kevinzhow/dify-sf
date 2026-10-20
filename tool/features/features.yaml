@@ -762,8 +762,8 @@ features:
   title: 'Node panel: single-run input form (Run this step)'
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: partial
-  reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms are ported with typed instruction references and inspected-value filtering; supported node types use the server and the others use the mock runtime. DataSource pipeline custom forms and Human Input generated-form preview are not wired.'
-  deviation: Single runs of the node types the server runs go to it (protocol 1.13 LLM, 1.14 core node types and 1.15 dedicated iteration/loop streams, with missing values read from the draft variables); other node types still go to the mock runtime. The data source node's custom run form (online documents, crawl, local files) and the human input node's generated form preview are not wired.
+  reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms are ported with typed instruction references and inspected-value filtering; supported node types use the server and the others use the mock runtime. The DataSource pipeline custom forms are not wired.'
+  deviation: 'Single runs of the node types the server runs go to it (protocol 1.13 LLM, 1.14 core node types and 1.15 dedicated iteration/loop streams, with missing values read from the draft variables); other node types still go to the mock runtime. A human input node''s "Run this step" is its generated form (1.16): the server renders the node''s form from its config and the values it reads, and the answers become the node''s draft variables without a run, as in Dify. The data source node''s custom run form (online documents, crawl, local files) is not wired.'
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
 - id: node-panel.retry
@@ -1393,7 +1393,7 @@ features:
   title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
   dify: [api/core/workflow, web/service/workflow.ts]
   status: partial
-  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13–1.15): whole draft runs (Dify''s SSE events, stop, run history and records) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor, question classifier, iteration (sequential/parallel, flattening and error modes) and loop (variables and break conditions) run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 23 supported workflow cases equal, with nested iteration and container single-run outcomes also compared). Iteration/loop single runs use their dedicated SSE endpoints; Dify''s existing nested-container filtering and nested-selector restrictions are preserved. Not yet: human input (P4), files (P5), chatflow debug runs, tools and published runs (P6); knowledge retrieval is deferred separately. Graphs with unsupported node types, and chat, are served by the deterministic MockWorkflowRunService.'
+  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13–1.16): whole draft runs (Dify''s SSE events, stop, run history and records), human input (a run pauses at a human-input node, the form is answered through the console form API, and a reconnect rebuilds the paused run''s state from its records — the panel and chat follow the resumed run on the same stream) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor, question classifier, iteration (sequential/parallel, flattening and error modes) and loop (variables and break conditions) run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 23 supported workflow cases equal, with nested iteration and container single-run outcomes also compared). Iteration/loop single runs use their dedicated SSE endpoints; Dify''s existing nested-container filtering and nested-selector restrictions are preserved. Not yet: files (P5), chatflow debug runs, tools and published runs (P6); knowledge retrieval is deferred separately. Graphs with unsupported node types, and chat, are served by the deterministic MockWorkflowRunService.'
   deviation: A graph runs on the server only when the server runs every node type in it (system-features workflow_runtime.draft_run); otherwise the whole run stays on the mock runtime.
   evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, app/test/workflow_editor/run/server_runtime_e2e_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
   ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
@@ -1443,10 +1443,11 @@ features:
 - id: run.human-input-forms
   area: run
   title: 'Run: human input forms (pause, fill, submit, timeout) in the run panel and chat'
-  dify: [web/app/components/base/chat/chat/answer/human-input-content, web/app/components/workflow/panel/human-input-form-list.tsx]
+  dify: [web/app/components/base/chat/chat/answer/human-input-content, web/app/components/workflow/panel/human-input-form-list.tsx, web/app/components/workflow/panel/debug-and-preview/hooks.ts]
   status: ported
-  evidence: ['spec:web/app/components/base/chat/chat/answer/human-input-content', 'spec:web/app/components/base/chat/chat/answer', 'spec:web/app/components/workflow/run/utils/format-log/human-input']
-  ours: [app/lib/src/workflow_editor/run/ui/human_input_content.dart]
+  deviation: 'A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. A pause the stand-in serves answers locally, as before.'
+  evidence: ['spec:web/app/components/base/chat/chat/answer/human-input-content', 'spec:web/app/components/base/chat/chat/answer', 'spec:web/app/components/workflow/run/utils/format-log/human-input', 'app/test/workflow_editor/run/server_run_service_test.dart']
+  ours: [app/lib/src/workflow_editor/run/ui/human_input_content.dart, app/lib/src/workflow_editor/run/server_run_service.dart, packages/collab_client/lib/src/workflow_run_api.dart]
 - id: run.history-record
   area: run
   title: 'Run history: view a past run (record panels)'

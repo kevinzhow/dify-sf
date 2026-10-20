@@ -145,6 +145,71 @@ void main() {
       expect(fallback.containers, isEmpty);
     });
   });
+  group('ServerRunService, protocol 1.16 human input', () {
+    late FakeWorkflowRunApi api;
+    late MockWorkflowRunService mock;
+    ServerRunService make({required bool humanInput}) => ServerRunService(
+      runtime: ServerWorkflowRuntime(api: api, singleNodeRun: const {'llm'}, humanInput: humanInput),
+      appId: 'app-1',
+      fallback: mock,
+      nodeTypeOf: (id) => id,
+    );
+    setUp(() {
+      api = FakeWorkflowRunApi();
+      api.humanInputForms['t1'] = {'form_id': 'h1'};
+      api.humanInputEvents['r1'] = [
+        {
+          'event': 'human_input_form_filled',
+          'workflow_run_id': 'r1',
+          'data': {'node_id': 'h1', 'node_title': 'Approve'},
+        },
+        {
+          'event': 'workflow_finished',
+          'workflow_run_id': 'r1',
+          'data': {'status': 'succeeded'},
+        },
+      ];
+      mock = MockWorkflowRunService(graph: () => _graph, scenario: const MockRunScenario(stepDelay: Duration.zero));
+    });
+
+    test('with the capability the answer goes to the server and the reconnect streams its frames', () async {
+      final service = make(humanInput: true);
+      await service.submitHumanInputForm('t1', {
+        'inputs': {'note': 'ok'},
+        'action': 'approve',
+      });
+      expect(api.humanInputAnswers['t1'], {
+        'inputs': {'note': 'ok'},
+        'action': 'approve',
+      });
+      final events = await service.workflowEvents('r1').toList();
+      expect(events.map((e) => e.runtimeType), [HumanInputFormFilledEvent, WorkflowFinishedEvent]);
+      // Dify's `handleResume` URL: a snapshot of the paused run, kept open across the resume.
+      expect(api.reconnects.single, (runId: 'r1', includeStateSnapshot: true, continueOnPause: true));
+    });
+
+    test('without it both stay on the stand-in', () async {
+      final service = make(humanInput: false);
+      // The stand-in's answer to an unknown token: it never went to the server.
+      await expectLater(
+        service.submitHumanInputForm('t1', {'inputs': const {}, 'action': 'approve'}),
+        throwsA(isA<RunServiceException>()),
+      );
+      expect(api.humanInputAnswers, isEmpty);
+      expect(api.reconnects, isEmpty);
+      expect(await service.workflowEvents('r1').toList(), isEmpty);
+    });
+
+    test('a refusal keeps the server\'s message and does not fall back', () async {
+      final service = make(humanInput: true);
+      await expectLater(
+        service.submitHumanInputForm('nope', {'inputs': const {}, 'action': 'approve'}),
+        throwsA(isA<RunServiceException>().having((e) => e.code, 'code', 'not_found')),
+      );
+      expect(api.humanInputAnswers, isEmpty);
+    });
+  });
+
   group('ServerRunService', () {
     late FakeWorkflowRunApi api;
     late MockWorkflowRunService mock;

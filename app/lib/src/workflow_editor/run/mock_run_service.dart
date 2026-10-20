@@ -149,7 +149,11 @@ class MockWorkflowRunService extends WorkflowRunService {
   }
 
   @override
-  Stream<RunEvent> workflowEvents(String workflowRunId) async* {
+  Stream<RunEvent> workflowEvents(
+    String workflowRunId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  }) async* {
     final run = _byRunId[workflowRunId];
     if (run == null) return;
     for (final c in [...run.resumed.values]) {
