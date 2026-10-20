@@ -21,10 +21,14 @@ import '../../node_panel/bodies/data/human_input/user_action.dart' show buttonVa
 import '../../store/workflow_store.dart' show DifyJson;
 import 'before_run_form.dart' show RunFileInput, RunFilePicker;
 import 'markdown.dart';
+import '../run_events.dart' show RunServiceException;
 import 'run_widgets.dart' show RunFileList;
 
 /// `onHumanInputFormSubmit(formToken, {inputs, action})`.
 typedef HumanInputFormSubmit = Future<void> Function(String formToken, DifyJson data);
+
+// A refused answer (the server's `RunServiceException`, see `_HumanInputFormState._submit`) is shown above the form's
+// actions and keeps what was typed.
 
 /// The node data of a form's Human Input node (`getHumanInputNodeData`), null when it is not in the graph.
 typedef HumanInputNodeData = DifyJson? Function(String nodeId);
@@ -242,16 +246,30 @@ class _HumanInputFormState extends State<HumanInputForm> {
     },
   );
   bool _submitting = false;
+  /// A refused or lost answer ([HumanInputRejection.message]) shown above the actions until the next attempt. A form that
+  /// fails must not look submitted, lose the typed answers, or leave its buttons disabled.
+  String? _error;
 
   void _change(String name, Object? value) => setState(() => _inputs = {..._inputs, name: value});
 
   Future<void> _submit(String token, String action) async {
-    setState(() => _submitting = true);
-    await widget.onSubmit?.call(token, {
-      'inputs': processedHumanInputFormInputs(_rendered, _inputs) ?? const <String, Object?>{},
-      'action': action,
+    setState(() {
+      _submitting = true;
+      _error = null;
     });
-    if (mounted) setState(() => _submitting = false);
+    try {
+      await widget.onSubmit?.call(token, {
+        'inputs': processedHumanInputFormInputs(_rendered, _inputs) ?? const <String, Object?>{},
+        'action': action,
+      });
+    } on RunServiceException catch (e) {
+      // The server refused (a form already answered, an expired pause) or the connection failed: its own words.
+      if (mounted) setState(() => _error = e.message);
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -271,6 +289,12 @@ class _HumanInputFormState extends State<HumanInputForm> {
                 pickFile: widget.pickFile,
                 onInputChange: _change,
               ),
+        if (_error case final message?)
+          Padding(
+            key: const Key('human-input-form-error'),
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(message, style: difyStyle(DifyType.bodySmRegular, DifyColors.textWarning)),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Wrap(

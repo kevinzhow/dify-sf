@@ -214,6 +214,10 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   /// When set, [humanInputForm] answers this instead of the stored definition (a `412` an expired form gives, a `404`).
   Object? humanInputFormError;
 
+  /// When set, the next [submitHumanInputForm] throws it instead of taking the answer (a `412` for a form already
+  /// answered, a connection that failed): what a page shows when an answer does not land.
+  Object? humanInputSubmitError;
+
   /// The form a preview answers (`url` → definition), else a bare one.
   final formDefinitions = <String, Map<String, Object?>>{};
 
@@ -225,6 +229,7 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
 
   @override
   Future<void> submitHumanInputForm(String token, Map<String, Object?> body) async {
+    if (humanInputSubmitError case final error?) throw error;
     if (!humanInputForms.containsKey(token)) refuse('not_found', 'Form not found', status: 404);
     humanInputAnswers[token] = body;
     // The answer wakes the run: a gated reconnect goes on.
