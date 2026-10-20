@@ -625,7 +625,7 @@ final class RunExecution: Sendable {
             let recipients = HumanInputMail.recipients(entry.deliveryMethods)
             guard !recipients.isEmpty else { continue }
             guard let link = HumanInputMail.link(base: routes.config.webAppBaseURL, token: entry.form.token) else {
-                routes.logger.warning("human input mail skipped: COLLAB_WEB_APP_URL is not set (no form link)")
+                routes.logger.warning("human input mail skipped: COLLAB_WEBAPP_BASE_URL is not set (no form link)")
                 continue
             }
             for recipient in recipients {

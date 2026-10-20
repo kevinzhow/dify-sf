@@ -72,6 +72,7 @@ struct Routes: Sendable {
         registerContainerRuns(on: r)
         registerDraftVariables(on: r)
         registerHumanInput(on: r)
+        registerHumanInputNode(on: r)
         registerRunEvents(on: r)
     }
 

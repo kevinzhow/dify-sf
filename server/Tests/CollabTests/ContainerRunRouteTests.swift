@@ -178,7 +178,7 @@ struct ContainerRunRouteTests {
             try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
                 let (owner, _, _) = try await runtimeFixture(api)
                 let features = try JSONValue.parse(try await api.get("/v1/system-features").text)["workflow_runtime"]
-                #expect(features?["protocol_version"] == "1.15")
+                #expect(features?["protocol_version"] == "1.16")
                 for t in ["iteration", "iteration-start", "loop", "loop-start", "loop-end"] {
                     #expect(features?["draft_run"]?.array?.contains(.string(t)) == true, "\(t)")
                 }
