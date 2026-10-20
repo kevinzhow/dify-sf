@@ -9,6 +9,7 @@
 /// harness's owner).
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:collab_client/collab_client.dart';
@@ -94,6 +95,52 @@ workflow:
         - {variable: n, value_selector: [lp, n]}
 ''';
 
+/// Protocol 1.16: a run that stops at a human input node and waits for the answer.
+const _humanYaml = '''
+app:
+  mode: workflow
+  name: client-e2e-human
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+    - {id: e2, source: human, sourceHandle: approve, target: end, targetHandle: target}
+    nodes:
+    - id: start
+      data: {title: Start, type: start, variables: []}
+    - id: human
+      data:
+        title: Approve
+        type: human-input
+        form_content: 'Approve {{#\$output.reply#}}?'
+        inputs:
+        - {type: paragraph, output_variable_name: reply}
+        user_actions:
+        - {id: approve, title: Approve it, button_style: primary}
+        delivery_methods:
+        - {type: webapp, enabled: true}
+    - id: end
+      data:
+        title: End
+        type: end
+        outputs:
+        - {variable: reply, value_selector: [human, reply]}
+''';
+
+const _humanGraph = StaticRunGraph(
+  nodes: [
+    RunGraphNode(id: 'start', type: 'start', title: 'Start', data: {'type': 'start', 'title': 'Start'}),
+    RunGraphNode(id: 'human', type: 'human-input', title: 'Approve', x: 300, data: {'type': 'human-input', 'title': 'Approve'}),
+    RunGraphNode(id: 'end', type: 'end', title: 'End', x: 600, data: {'type': 'end', 'title': 'End'}),
+  ],
+  edges: [RunGraphEdge(id: 'e1', source: 'start', target: 'human'), RunGraphEdge(id: 'e2', source: 'human', target: 'end')],
+);
+
 const _graph = StaticRunGraph(
   nodes: [
     RunGraphNode(id: 'start', type: 'start', title: 'Start', data: {'type': 'start', 'title': 'Start'}),
@@ -136,7 +183,7 @@ void main() {
       await owner.login(email: _email, password: _password);
     }
     final features = (await owner.api.systemFeatures()).workflowRuntime;
-    expect(features?.protocolVersion, '1.15');
+    expect(features?.protocolVersion, '1.16');
     expect(features?.draftRun, containsAll(['iteration', 'iteration-start', 'loop', 'loop-start', 'assigner']));
     final apps = HttpAppsApi(base, auth: owner);
     final app = (await apps.importDsl(_yaml)).appId!;
@@ -226,6 +273,88 @@ void main() {
     stdout.writeln(
       'server runtime e2e (client): ${result['outputs']} in ${result['elapsed_time']} s, ${tracing.length} traces',
     );
+  });
+
+  test('1.16: a human input pause on the server is answered, and the editor follows the run to its end', () async {
+    final owner = AuthSession(api: HttpAuthApi(base));
+    if (await owner.api.setupStatus() == SetupStatus.notStarted) {
+      await owner.setup(email: _email, name: 'Client E2E', password: _password);
+    } else {
+      await owner.login(email: _email, password: _password);
+    }
+    final features = (await owner.api.systemFeatures()).workflowRuntime;
+    expect(features?.protocolVersion, '1.16');
+    expect(features?.humanInput, isTrue, reason: 'system-features workflow_runtime.human_input');
+    expect(features?.draftRun, contains('human-input'));
+    final apps = HttpAppsApi(base, auth: owner);
+    final app = (await apps.importDsl(_humanYaml)).appId!;
+    addTearDown(() => apps.delete(app));
+
+    final store = WorkflowStore();
+    final service = ServerRunService(
+      runtime: ServerWorkflowRuntime(
+        api: HttpWorkflowRunApi(base, auth: owner),
+        singleNodeRun: features!.singleNodeRun,
+        draftRun: features.draftRun,
+        humanInput: features.humanInput,
+      ),
+      appId: app,
+      fallback: MockWorkflowRunService(graph: () => _humanGraph),
+      nodeTypeOf: (id) => _humanGraph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => _humanGraph.nodes.map((n) => n.type),
+    );
+    expect(service.draftRunsOnServer, isTrue);
+    final run = WorkflowRunController(
+      store: store,
+      service: service,
+      graph: _humanGraph,
+      toast: (_, m) => fail('toast: $m'),
+    );
+    final required = Completer<HumanInputRequiredEvent>();
+    final filled = <String>[];
+    await run.handleRun(
+      <String, Object?>{'inputs': <String, Object?>{}},
+      callback: RunCallbacks(
+        onHumanInputRequired: (e) {
+          if (!required.isCompleted) required.complete(e);
+        },
+        onHumanInputFormFilled: (e) => filled.add('${e.data['form_token'] ?? e.data['form_id']}'),
+      ),
+    );
+    final event = await required.future.timeout(const Duration(seconds: 30));
+    final token = event.data['form_token'] as String? ?? '';
+    expect(token, isNotEmpty, reason: '$event');
+    // The run waits: its status becomes paused (the `workflow_paused` frame follows the form) and the form is in the
+    // run panel's list.
+    for (var i = 0; i < 200 && resultOf(store.workflowRunningData.value ?? const {})['status'] != 'paused'; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(resultOf(store.workflowRunningData.value ?? const {})['status'], 'paused',
+        reason: '${store.workflowRunningData.value}');
+    expect((store.workflowRunningData.value ?? const {})['humanInputFormDataList'], hasLength(1));
+
+    // The panel's submit (`service.submitHumanInputForm`): the run resumes on the reconnect stream the controller opened
+    // when it saw `workflow_paused`.
+    await service.submitHumanInputForm(token, {
+      'inputs': {'reply': 'yes'},
+      'action': 'approve',
+    });
+    for (
+      var i = 0;
+      i < 600 && ['running', 'paused'].contains(resultOf(store.workflowRunningData.value ?? const {})['status']);
+      i++
+    ) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    final result = resultOf(store.workflowRunningData.value ?? const {});
+    expect(result['status'], 'succeeded', reason: '$result');
+    expect(result['outputs'], {'reply': 'yes'});
+    expect(filled, isNotEmpty, reason: 'human_input_form_filled arrived');
+    // The filled form is shown as answered, and the run is in the server's history.
+    expect((store.workflowRunningData.value ?? const {})['humanInputFilledFormDataList'], hasLength(1));
+    final history = await service.fetchWorkflowRunHistory();
+    expect(history.map((h) => h['id']), contains(result['id']));
+    stdout.writeln('server runtime e2e (client, 1.16): paused for "$token", resumed to ${result['outputs']}');
   });
 
   test('1.15: editor container single runs use the real server, with server history and failures', () async {
