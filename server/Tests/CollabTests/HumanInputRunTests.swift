@@ -144,11 +144,13 @@ struct HumanInputRunTests {
             let answer = try await api.post("/v1/form/human_input/\(first.token)", #"{"inputs":{"reply":"one"},"action":"approve"}"#,
                                             token: owner)
             #expect(answer.status == 200, "\(answer.text)")
+            // After the first node's resume generation 1 is gone; generation 2 is the other form's pause. Read until
+            // the **new** generation is there, so a leftover generation 1 from before the answer is never the answer.
             var secondGeneration = 0
-            for _ in 0..<200 where secondGeneration == 0 {
+            for _ in 0..<400 where secondGeneration < 2 {
                 try await Task.sleep(for: .milliseconds(25))
                 let open = try await store.openPauses(workflowRunId: first.workflowRunId ?? "")
-                secondGeneration = open.first?.generation ?? 0
+                secondGeneration = open.map(\.generation).max() ?? 0
             }
             #expect(secondGeneration == 2, "the second node pauses again as a new generation")
             let adopted = try await store.humanInputForm(token: second.token)
