@@ -313,6 +313,25 @@ struct HumanInputLiveFollowTests {
     }
 }
 
+/// The channel yields each published frame once, whether the subscriber replays from a mark or starts live.
+@Suite("Run channel delivery")
+struct RunChannelDeliveryTests {
+    @Test func aSubscriberSeesEachFrameOnce() async {
+        let channel = RunChannel()
+        await channel.publish("data: {\"event\":\"workflow_started\"}\n\n")
+        let mark = await channel.published
+        let stream = await channel.subscribe(replay: true, from: mark)
+        await channel.publish("data: {\"event\":\"human_input_form_filled\"}\n\n")
+
+        var seen: [String] = []
+        for await frame in stream {
+            seen.append(frame)
+            if seen.count >= 1 { break }
+        }
+        #expect(seen.filter { $0.contains("human_input_form_filled") }.count == 1, "\(seen)")
+    }
+}
+
 /// Pause identity on the channel is the database generation: two resumes can re-pause inside the same second, and the
 /// public `created_at` (integer seconds) cannot tell those apart.
 @Suite("Run channel pause identity")
