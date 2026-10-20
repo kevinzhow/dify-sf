@@ -1122,3 +1122,160 @@ struct HumanInputRealRestartTests {
         }
     }
 }
+
+/// Stopping the round a resume started: the claim has already taken the pause, so the stop must reach the resumed engine
+/// (and not a stale one), end the run `stopped`, and leave nothing waiting for another answer.
+@Suite("Human input stop during the resume", .enabled(if: testDbHost != nil))
+struct HumanInputStopDuringResumeTests {
+    @Test func aStopThatArrivesWithTheResumedRoundEndsItStopped() async throws {
+        var config = ServerConfig.defaults
+        // TEST ONLY: holds the resumed round 300 ms after it took the run over, so the stop lands inside it.
+        config.testDefect = "slowResume"
+        try await withServer(config: config) { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+            let events = HumanInputRunTests.frames(run.text)
+            let required = try #require(events.first { $0["event"]?.string == "human_input_required" })
+            let token = required["data"]?["form_token"]?.string ?? ""
+            let runId = required["workflow_run_id"]?.string ?? ""
+            #expect(!token.isEmpty && !runId.isEmpty)
+
+            let answered = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"ok"},"action":"approve"}"##,
+                                             token: owner)
+            #expect(answered.status == 200, "answer: \(answered.text)")
+            // The resume is its own round now; stopping it is Dify's stop of a running task.
+            let stop = try await api.post("/v1/apps/\(app)/workflow-runs/tasks/\(runId)/stop", token: owner)
+            #expect(stop.status == 200, "stop: \(stop.text)")
+
+            var status = ""
+            for _ in 0..<200 where !["stopped", "succeeded", "failed"].contains(status) {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "stopped", "the stopped round ends \(status)")
+            // Nothing is left to wake: the pause is closed and the form consumed.
+            #expect(try await store.runsAwaitingResume().isEmpty)
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty)
+            let again = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"ok"},"action":"approve"}"##,
+                                          token: owner)
+            #expect(again.status == 412, "a stopped run's form is closed: \(again.text)")
+        }
+    }
+}
+
+/// Reconnecting after text has streamed: the snapshot rebuilds a paused run from its **records** — nodes as
+/// `node_started` / `node_finished`, no `text_chunk` — and a run that ended answers one terminal frame, so a client never
+/// sees the same text twice.
+@Suite("Human input reconnect after text", .enabled(if: testDbHost != nil))
+struct HumanInputReconnectTextTests {
+    /// start(q) -> human -> llm -> end{answer: llm.text, reply: human.reply}.
+    static func yaml() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-text
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e2, source: human, sourceHandle: approve, target: llm, targetHandle: target}
+            - {id: e3, source: llm, sourceHandle: source, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data:
+                title: Start
+                type: start
+                variables:
+                - {label: q, required: true, type: text-input, variable: q}
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                form_content: 'Approve {{#$output.reply#}} after {{#start.q#}}?'
+                inputs:
+                - {type: paragraph, output_variable_name: reply}
+                user_actions:
+                - {id: approve, title: Approve it, button_style: primary}
+            - id: llm
+              data:
+                title: Ask
+                type: llm
+                model:
+                  provider: langgenius/openai_api_compatible/openai_api_compatible
+                  name: stub-chat
+                  mode: chat
+                  completion_params: {}
+                prompt_template:
+                - role: user
+                  text: '{{#start.q#}} {{#human.reply#}}'
+                context: {enabled: false, variable_selector: []}
+                vision: {enabled: false}
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs:
+                - {variable: answer, value_selector: [llm, text]}
+                - {variable: reply, value_selector: [human, reply]}
+        """
+    }
+
+    @Test func theSnapshotHasTheRecordsAndNoTextAndAFinishedRunAnswersOneFrame() async throws {
+        try await withFakeDaemon { daemon, _ in
+            try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
+                let owner = try await api.setupOwner()
+                // The stub model the LLM node names (`runtimeFixture` saves it the same way).
+                let creds: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": [
+                    "endpoint_url": "http://llmstub:8000/v1", "api_key": "sk-stub-not-a-real-key", "mode": "chat",
+                    "context_size": "4096", "max_tokens_to_sample": "4096",
+                ]]
+                let saved = try await api.post(
+                    "/v1/workspace/model-providers/langgenius/openai_api_compatible/openai_api_compatible/models/credentials",
+                    creds.compactJSON(), token: owner)
+                #expect(saved.status == 201, "credentials: \(saved.text)")
+                let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{"q":"hi"}}"##, token: owner)
+                #expect(run.status == 200, "run: \(run.text)")
+                let events = HumanInputRunTests.frames(run.text)
+                let required = try #require(events.first { $0["event"]?.string == "human_input_required" })
+                let runId = required["workflow_run_id"]?.string ?? ""
+                let token = required["data"]?["form_token"]?.string ?? ""
+                #expect(required["data"]?["form_content"]?.string == "Approve {{#$output.reply#}} after hi?", "\(required)")
+
+                // At the pause: the records, no text. `continue_on_pause=false` (the default): this read wants the
+                // snapshot and its end, not a stream that waits for the answer.
+                let reconnect = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+                #expect(reconnect.status == 200, "\(reconnect.text)")
+                let paused = HumanInputRunTests.frames(reconnect.text)
+                let pausedNames = paused.compactMap { $0["event"]?.string }
+                #expect(!pausedNames.contains("text_chunk"), "\(pausedNames)")
+                #expect(paused.filter { $0["event"]?.string == "node_finished" }
+                    .compactMap { $0["data"]?["node_id"]?.string } == ["start"])
+                #expect(pausedNames.filter { $0 == "human_input_required" }.count == 1)
+                #expect(pausedNames.last == "workflow_paused")
+
+                // Answer it: the resumed round runs the LLM and the end node, which streams its text.
+                let answered = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"yes"},"action":"approve"}"##,
+                                                 token: owner)
+                #expect(answered.status == 200, "answer: \(answered.text)")
+                var status = ""
+                for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                    try await Task.sleep(for: .milliseconds(25))
+                    status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+                }
+                #expect(status == "succeeded", "the resumed run ends \(status)")
+
+                // A finished run answers one terminal frame, whatever was asked: no records, no text.
+                let after = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+                let afterFrames = HumanInputRunTests.frames(after.text)
+                #expect(afterFrames.compactMap { $0["event"]?.string } == ["workflow_finished"], "\(after.text)")
+            }
+        }
+    }
+}

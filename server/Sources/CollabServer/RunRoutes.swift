@@ -236,6 +236,9 @@ extension Routes {
         let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
                                      createdBy: userId, channel: channel, encoder: encoder, triggeredFrom: "workflow-run",
                                      pendingForms: pending, lease: lease, decisions: claim.decisions)
+        // TEST ONLY (`testDefect: slowResume`): hold the resumed round after it took the run over, so a test can stop it
+        // while it is the run's round and prove the stop reaches this engine.
+        if config.testDefect == "slowResume" { try? await Task.sleep(for: .milliseconds(300)) }
         Task.detached { await execution.run(engine: engine, pool: VariablePool(), snapshot: snapshot, filled: claim.decisions) }
         return true
     }

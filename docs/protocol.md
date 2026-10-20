@@ -1269,8 +1269,9 @@ it has no plain single node run — the panel's own form has its own endpoints, 
 * **The pause.** The node creates the forms of this round (or reuses the waiting one of the same execution), and the run
   records a pause (the run's inputs, the engine snapshot, the node executions in flight and the round's forms) — all
   durable **before** the stream publishes anything. The stream then sends one `human_input_required` per waiting form
-  (`{form_id, node_id, node_title, form_content (rendered), inputs, actions, display_in_ui, form_token,
-  approval_channels, resolved_default_values, expiration_time}`) and one `workflow_paused` (`{outputs, paused_nodes,
+  (`{form_id, node_id, node_title, form_content, inputs, actions, display_in_ui, form_token, approval_channels,
+  resolved_default_values, expiration_time}`; `form_content` is the **rendered** content — runtime references replaced,
+  the form's own `{{#$output.x#}}` placeholders kept, as Dify's `_enrich_hitl_required`) and one `workflow_paused` (`{outputs, paused_nodes,
   reasons, workflow_run_id, elapsed_time, ...}`). The run's `status` is `paused`. The draft run's own stream **ends**
   with `workflow_paused`, as Dify's; the run's channel stays open for the round the answer resumes, which a client follows
   on [the reconnect endpoint](#reconnecting). At most one pause of a run is open at a time: a resume that pauses again records a new pause with the next

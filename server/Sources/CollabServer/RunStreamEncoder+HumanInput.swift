@@ -11,7 +11,9 @@ extension RunStreamEncoder {
         .object([
             "TYPE": .string("human_input_required"),
             "form_id": .string(form.id),
-            "form_content": .string(form.formContent),
+            // Dify's `_enrich_hitl_required` sends the form's **rendered** content (the `$output` placeholders stay); the
+            // raw template is what the definition API's `form_content` keeps.
+            "form_content": .string(form.renderedContent),
             "inputs": (try? JSONValue.parse(form.inputs)) ?? .array([]),
             "actions": (try? JSONValue.parse(form.actions)) ?? .array([]),
             "node_id": .string(form.nodeId),
@@ -29,7 +31,9 @@ extension RunStreamEncoder {
             "form_id": .string(form.id),
             "node_id": .string(form.nodeId),
             "node_title": .string(form.nodeTitle),
-            "form_content": .string(form.formContent),
+            // Dify's `_enrich_hitl_required` sends the form's **rendered** content (the `$output` placeholders stay); the
+            // raw template is what the definition API's `form_content` keeps.
+            "form_content": .string(form.renderedContent),
             "inputs": (try? JSONValue.parse(form.inputs)) ?? .array([]),
             "actions": (try? JSONValue.parse(form.actions)) ?? .array([]),
             "display_in_ui": .bool(form.displayInUi),
