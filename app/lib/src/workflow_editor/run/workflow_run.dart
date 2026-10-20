@@ -355,6 +355,9 @@ class WorkflowRunController {
   /// run's frames.
   RunStreamHandle? _followOfRun;
 
+  /// Every follow this editor has opened, so [dispose] settles them (their queued retries, their subscriptions).
+  final _follows = <_FollowState>[];
+
   /// Whether a follow whose connection ended without the run ending is opened again: true for a real server's stream. A
   /// test with a service whose stream ends for its own reasons (a stand-in that stops at a pause) turns it off.
   bool _retriesLostConnections = true;
@@ -366,62 +369,78 @@ class WorkflowRunController {
     final follower = RunStreamHandle();
     var delay = const Duration(milliseconds: 500);
     var finished = false, ended = false;
+    // Settled once: the follow is over (an abort, a finished run, a refusal) and nothing more is opened or waited on.
+    // Every attempt and every retry checks it, so a page that went away cannot leave a queued request behind.
+    final follow = _FollowState();
     // Another follow of this run is already attached (`onWorkflowPaused` opens one, and a pause may be seen again by a
     // later snapshot): the new one replaces it, as the single subscription it replaces did.
     _followOfRun?.abort();
+    follower.stopChild = () {
+      follow.done = true;
+      follow.inner?.abort();
+    };
 
-    void attempt() {
-      if (follower.aborted || finished || ended) return;
-      var lost = false;
-      final inner = _listen(
+    late void Function() attempt;
+    void retry() {
+      if (!_retriesLostConnections) return;
+      if (follow.done || follower.aborted || finished || ended) return;
+      final wait = delay;
+      delay = delay * 2 > const Duration(seconds: 5) ? const Duration(seconds: 5) : delay * 2;
+      follow.waiting = wait;
+      follower.waitThen(wait, () {
+        follow.waiting = null;
+        attempt();
+      });
+    }
+
+    attempt = () {
+      if (follow.done || follower.aborted || finished || ended) return;
+      follow.inner = _listen(
         service.workflowEvents(runId),
         cb.merge(RunCallbacks(
           // The follow's own ends first, then the caller's handlers (they build the panel's state): `merge` keeps the
           // other object's non-null callbacks, so this one calls both.
           onWorkflowFinished: (p) {
             finished = true;
+            follow.done = true;
             cb.onWorkflowFinished?.call(p);
           },
           onError: (message, [code]) {
-            // A refusal the run itself reports ends the follow, as it always did; a connection that died (`ended`,
-            // `failed`) does not — the run may be fine, and the next attempt finds out.
+            // A refusal the run itself reports ends the follow, as it always did. A lost connection arrives as an error
+            // event too (`GET … ended: ClientException…`) and does **not**: the run may be fine, and the next attempt
+            // finds out.
             final connection = message.contains(' ended: ') || message.contains(' failed: ') || message.contains(' timed out');
             if (!connection) {
               ended = true;
+              follow.done = true;
               cb.onError?.call(message, code);
               return;
             }
-            lost = true;
-            // A note of the loss (never the run's state); the retry follows in a moment.
+            // A note of the loss, never the run's state; the retry follows in a moment.
             cb.onNotifyError?.call(message, code);
+            retry();
           },
         )),
       );
-      follower.stopChild = () => inner.abort();
-      void retry() {
-        if (follower.aborted || finished || ended) return;
-        final wait = delay;
-        delay = delay * 2 > const Duration(seconds: 5) ? const Duration(seconds: 5) : delay * 2;
-        follower.waitThen(wait, attempt);
-      }
-      // The attempt ends when its stream does (a completed event, an error event, the connection closing): a message from
-      // `endedStream` rather than a timer of our own. An attempt that lost its connection or that ended without a
-      // terminal event is opened again; `finished`/`ended`/an abort end the follow.
-      if (_retriesLostConnections) {
-        inner.endedStream.listen((_) {
-          if (follower.aborted || finished || ended) return;
-          if (!lost && !finished) retry();
-        });
-        // A stream that ended while its handle was made (a run this process does not know, an empty stand-in) ends its
-        // follow here rather than through an event that already fired.
-        if (inner.ended && (lost || !finished)) retry();
-      }
-    }
+      // A stream that ends **without** a terminal event is a connection that died (a clean end counts): open it again.
+      follow.listener = follow.inner!.endedStream.listen((_) {
+        if (follow.done || follower.aborted || finished || ended) return;
+        retry();
+      });
+      // A stream that is already over when its handle arrives (an empty stand-in) is not waited for.
+      if (follow.inner!.ended) retry();
+    };
 
     _followOfRun = follower;
+    _follows.add(follow);
     attempt();
     return follower;
   }
+
+  /// For a test: the follow a pause would open (the same path `resume` takes), so its failure modes can be driven by a
+  /// scripted service without a server or a page.
+  @visibleForTesting
+  RunStreamHandle debugFollow(String runId, RunCallbacks cb) => _followWithResume(runId, cb);
 
   RunStreamHandle _listen(Stream<RunEvent> stream, RunCallbacks cb) {
     final h = listenRunEvents(stream, cb);
@@ -769,7 +788,32 @@ class WorkflowRunController {
       s.abort();
     }
     _streams.clear();
+    // A follow's retries are its own (a timer and the next request): stopping them here is what keeps a disposed page
+    // from making one more request and from touching its notifiers.
+    for (final f in _follows) {
+      f.settle();
+    }
+    _follows.clear();
+    _followOfRun = null;
     lastRunVersion.dispose();
     runHistoryVersion.dispose();
+  }
+}
+
+/// The live state of one run follow (see `_followWithResume`): the attempt it has open, the retry it has queued, and
+/// whether it is over. [settle] ends it for good: no timer fires, no request is made, and the open subscription closes.
+class _FollowState {
+  bool done = false;
+  RunStreamHandle? inner;
+  StreamSubscription<void>? listener;
+  Duration? waiting;
+
+  void settle() {
+    done = true;
+    listener?.cancel();
+    listener = null;
+    inner?.abort();
+    inner = null;
+    waiting = null;
   }
 }
