@@ -308,3 +308,20 @@ struct HumanInputRestartTests {
         }
     }
 }
+
+/// The registry lease: a resumed round registers its own engine under the run's task id, and a round that finishes late
+/// must not remove its successor (which would make `stop` answer for a run that is still going).
+@Suite("Run registry lease")
+struct RunRegistryLeaseTests {
+    @Test func onlyTheOwningRoundRemovesItsEntry() async {
+        let registry = WorkflowRunRegistry()
+        let commands = GraphEngineCommands()
+        await registry.add("run-1", WorkflowRunRegistry.Active(appId: "app", runId: "run-1", commands: commands, lease: "round-1"))
+        // Round 2 takes the run over after the resume.
+        await registry.add("run-1", WorkflowRunRegistry.Active(appId: "app", runId: "run-1", commands: commands, lease: "round-2"))
+        await registry.remove("run-1", lease: "round-1")
+        #expect(await registry.get("run-1")?.lease == "round-2", "a late round-1 must not delete round-2")
+        await registry.remove("run-1", lease: "round-2")
+        #expect(await registry.get("run-1") == nil)
+    }
+}

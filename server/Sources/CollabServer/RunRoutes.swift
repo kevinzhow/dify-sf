@@ -130,7 +130,8 @@ extension Routes {
 
         let channel = await runChannels.channel(runId)
         let commands = GraphEngineCommands()
-        await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands))
+        let lease = UUID().uuidString.lowercased()
+        await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
         let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
                                        inputs: workflowInputs, startedAt: stored.createdAt)
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
@@ -140,7 +141,7 @@ extension Routes {
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
                                      channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom,
-                                     pendingForms: pendingForms)
+                                     pendingForms: pendingForms, lease: lease)
         Task.detached { await execution.run(engine: engine, pool: pool) }
 
         var headers = HTTPFields()
@@ -197,10 +198,11 @@ extension Routes {
         let inputs = (try? JSONValue.parse(run.inputs))?.object ?? [:]
         let encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: appId, graph: graph, account: account,
                                        inputs: inputs, startedAt: run.createdAt)
+        let commands = GraphEngineCommands()
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
                                                                         maxSteps: config.runtimeMaxSteps,
                                                                         maxTimeSeconds: config.runtimeMaxTimeSeconds),
-                                 commands: GraphEngineCommands(), userId: userId, appId: appId)
+                                 commands: commands, userId: userId, appId: appId)
         let snapshot: GraphEngineSnapshot
         do { snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8)) } catch {
             logger.error("run \(runId) has a pause snapshot that does not decode: \(error)")
@@ -210,10 +212,13 @@ extension Routes {
             return false
         }
         let channel = await runChannels.channel(runId)
+        // The resumed round owns the task id from here: `stop` must find this engine, not the one that paused.
+        let lease = UUID().uuidString.lowercased()
+        await runs.add(runId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
                                      createdBy: userId, channel: channel, encoder: encoder, triggeredFrom: "workflow-run",
-                                     pendingForms: pending)
+                                     pendingForms: pending, lease: lease, decisions: claim.decisions)
         Task.detached { await execution.run(engine: engine, pool: VariablePool(), snapshot: snapshot, filled: claim.decisions) }
         return true
     }
@@ -377,10 +382,15 @@ final class RunExecution: Sendable {
     let pendingForms: PendingHumanInputForms
     /// The node executions' `triggered_from` (Dify: `workflow-run`; an iteration or loop single run: `single-step`).
     let triggeredFrom: String
+    /// This round's ownership of the registry entry (see `WorkflowRunRegistry.remove`).
+    let lease: String
+    /// The answers this round's claim took; a filled frame is published when their node succeeds.
+    let decisions: [StoredHumanInputForm]
 
     init(routes: Routes, appId: String, docSeq: Int, runId: String, taskId: String, createdBy: String, channel: RunChannel,
          encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run",
-         pendingForms: PendingHumanInputForms = PendingHumanInputForms()) {
+         pendingForms: PendingHumanInputForms = PendingHumanInputForms(), lease: String = "",
+         decisions: [StoredHumanInputForm] = []) {
         self.routes = routes
         self.appId = appId
         self.docSeq = docSeq
@@ -391,6 +401,8 @@ final class RunExecution: Sendable {
         encoderBox = Mutex(encoder)
         self.triggeredFrom = triggeredFrom
         self.pendingForms = pendingForms
+        self.lease = lease
+        self.decisions = decisions
     }
 
     /// A started node not finished yet (for its record and the end of the run).
@@ -439,7 +451,7 @@ final class RunExecution: Sendable {
                                                           totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
                 pinger.cancel()
                 await channel.finish()
-                await routes.runs.remove(taskId)
+                await routes.runs.remove(taskId, lease: lease)
                 return
             }
         } else {
@@ -450,8 +462,10 @@ final class RunExecution: Sendable {
             if case .runResumed = event, !announcedFilled {
                 announcedFilled = true
                 var frames = encoderBox.withLock { $0.encode(event) }
+                // A timed-out form is announced with the resume; a filled one is announced when its node succeeds
+                // (`boundary.py` emits it from the node, with the rendered content the completion produced).
                 frames += encoderBox.withLock { enc in
-                    filled.map { $0.status == .timedOut ? enc.humanInputFormTimeout($0) : enc.humanInputFormFilled($0) }
+                    decisions.filter { $0.status == .timedOut }.map { enc.humanInputFormTimeout($0) }
                 }
                 for f in frames { await channel.publish(Self.sse(f)) }
                 continue
@@ -479,6 +493,16 @@ final class RunExecution: Sendable {
             case .node(.succeeded(let x, let nodeId, _, let finishedAt, let r)):
                 await persist(x, nodeId, running.removeValue(forKey: x), "succeeded", r, error: nil, finishedAt: finishedAt,
                               retries: retries.removeValue(forKey: x))
+                if let decision = decisions.first(where: { ($0.executionId == x || $0.nodeId == nodeId) && $0.status == .submitted }) {
+                    let filled = encoderBox.withLock { enc in
+                        enc.humanInputFormFilled(nodeId: nodeId, nodeTitle: running[nodeId]?.title ?? decision.nodeTitle,
+                                                 renderedContent: r.outputs["__rendered_content"]?.string ?? decision.renderedContent,
+                                                 actionId: r.outputs["__action_id"]?.string ?? (decision.submittedAction ?? ""),
+                                                 actionText: r.outputs["__action_value"]?.string ?? "",
+                                                 submittedData: r.inputs)
+                    }
+                    await channel.publish(Self.sse(filled))
+                }
             case .node(.failed(let x, let nodeId, _, let finishedAt, let r, let error)):
                 await persist(x, nodeId, running.removeValue(forKey: x), "failed", r, error: error.isEmpty ? r.error : error, finishedAt: finishedAt,
                               retries: retries.removeValue(forKey: x))
@@ -497,7 +521,7 @@ final class RunExecution: Sendable {
         }
         pinger.cancel()
         await channel.finish()
-        await routes.runs.remove(taskId)
+        await routes.runs.remove(taskId, lease: lease)
         await routes.runChannels.remove(runId)
     }
 
@@ -895,12 +919,19 @@ actor WorkflowRunRegistry {
         var appId: String
         var runId: String
         var commands: GraphEngineCommands
+        /// The round that registered this entry. A resumed round takes over the task id; the round before it must not
+        /// remove the new one when its own cleanup runs.
+        var lease: String
     }
 
     private var active: [String: Active] = [:]
 
     func add(_ taskId: String, _ a: Active) { active[taskId] = a }
     func get(_ taskId: String) -> Active? { active[taskId] }
-    func remove(_ taskId: String) { active[taskId] = nil }
+    /// Removes the entry only when `lease` still owns it (an older round finishing late must not delete its successor).
+    func remove(_ taskId: String, lease: String) {
+        guard active[taskId]?.lease == lease else { return }
+        active[taskId] = nil
+    }
     var count: Int { active.count }
 }
