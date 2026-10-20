@@ -16,6 +16,9 @@ enum HumanInputMail {
         var email: String
         /// The index of the enabled email method that names this address.
         var method: Int
+        /// `member` (a workspace account, `referenceId`) or `external`.
+        var type: String
+        var referenceId: String?
     }
 
     /// The recipients of a node's enabled email delivery methods, deduplicated by address and in the order the node lists
@@ -24,23 +27,25 @@ enum HumanInputMail {
     /// email.
     static func recipients(_ deliveryMethods: [JSONObject], members: [String: String]) -> [Recipient] {
         var out: [Recipient] = []
-        func add(_ raw: String?, _ method: Int) {
+        func add(_ raw: String?, _ method: Int, type: String = "external", referenceId: String? = nil) {
             guard let raw else { return }
             let address = MailMessage.contact(raw)?.address ?? raw
             guard address.contains("@"), !out.contains(where: { $0.email.caseInsensitiveCompare(address) == .orderedSame })
             else { return }
-            out.append(Recipient(email: address, method: method))
+            out.append(Recipient(email: address, method: method, type: type, referenceId: referenceId))
         }
         for (index, method) in deliveryMethods.enumerated()
         where method["type"]?.string == "email" && (method["enabled"]?.bool ?? false) {
             let recipients = method["config"]?["recipients"]?.object ?? [:]
             if (recipients["include_bound_group"]?.bool ?? false) || (recipients["whole_workspace"]?.bool ?? false) {
-                for id in members.keys.sorted() { add(members[id], index) }
+                for id in members.keys.sorted() { add(members[id], index, type: "member", referenceId: id) }
             }
             for item in recipients["items"]?.array ?? [] {
                 switch item["type"]?.string {
-                case "member": add(item["reference_id"]?.string.flatMap { members[$0] }, index)
-                case "external": add(item["email"]?.string, index)
+                case "member":
+                    let id = item["reference_id"]?.string
+                    add(id.flatMap { members[$0] }, index, type: "member", referenceId: id)
+                case "external": add(item["email"]?.string, index, type: "external")
                 default: add(item["email"]?.string, index) // no type: the address it carries, as older nodes wrote them
                 }
             }
@@ -50,9 +55,9 @@ enum HumanInputMail {
 
     /// `subject` and `body` of the method that named the recipient, with `{{#url#}}` replaced
     /// (`EmailDeliveryConfig.replace_url_placeholder`).
-    static func message(_ deliveryMethods: [JSONObject], recipient: Recipient, link: String) -> MailMessage? {
-        guard deliveryMethods.indices.contains(recipient.method) else { return nil }
-        let method = deliveryMethods[recipient.method]
+    static func message(_ deliveryMethods: [JSONObject], methodIndex: Int, to email: String, link: String) -> MailMessage? {
+        guard deliveryMethods.indices.contains(methodIndex) else { return nil }
+        let method = deliveryMethods[methodIndex]
         guard method["type"]?.string == "email", method["enabled"]?.bool ?? false else { return nil }
         let config = method["config"]?.object ?? [:]
         let subject = (config["subject"]?.string ?? "").replacingOccurrences(of: "\r", with: " ")
@@ -60,7 +65,7 @@ enum HumanInputMail {
         let body = (config["body"]?.string ?? "").replacingOccurrences(of: "{{#url#}}", with: link)
         guard !subject.isEmpty else { return nil }
         let html = "<div style=\"white-space:pre-wrap\">" + escape(body) + "</div>"
-        return MailMessage(to: recipient.email, subject: subject, html: html)
+        return MailMessage(to: email, subject: subject, html: html)
     }
 
     /// The link Dify sends: `APP_WEB_URL.rstrip('/') + "/form/" + token`.

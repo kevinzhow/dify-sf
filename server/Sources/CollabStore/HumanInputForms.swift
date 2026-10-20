@@ -166,26 +166,35 @@ extension PostgresStore {
         status, submitted_inputs, submitted_action, submitted_by, submitted_at, consumed_at, created_at, recipient_type
         """
 
-    static func decodeForm(_ row: PostgresRow) throws -> StoredHumanInputForm {
+    /// `formColumns` qualified for a join (`human_input_forms` shares `workflow_run_id` and others with its neighbours).
+    static let formColumnsQualified = """
+        f.id, f.workflow_run_id, f.generation, f.execution_id, f.doc_id, f.node_id, f.node_title, f.token, f.form_content,
+        f.inputs, f.user_actions, f.rendered_content, f.default_values, f.resolved_default_values, f.actions,
+        f.display_in_ui, f.expiration_time, f.status, f.submitted_inputs, f.submitted_action, f.submitted_by,
+        f.submitted_at, f.consumed_at, f.created_at, f.recipient_type
+        """
+
+    static func decodeForm(_ row: PostgresRow, offset: Int = 0) throws -> StoredHumanInputForm {
         let r = row.makeRandomAccess()
-        let rawStatus = try r[17].decode(String.self)
+        // `offset` is where this row's form columns start (a join's recipient columns come first).
+        let rawStatus = try r[17 + offset].decode(String.self)
         guard let status = HumanInputFormStatus(rawValue: rawStatus) else {
             throw HumanInputStoreError.unknownStatus(rawStatus)
         }
         return StoredHumanInputForm(
-            id: try r[0].decode(String.self), workflowRunId: try r[1].decode(String.self),
-            generation: Int(try r[2].decode(Int32.self)), executionId: try r[3].decode(String.self),
-            docId: try r[4].decode(String.self), nodeId: try r[5].decode(String.self),
-            nodeTitle: try r[6].decode(String.self), token: try r[7].decode(String.self),
-            formContent: try r[8].decode(String.self), inputs: try r[9].decode(String.self),
-            userActions: try r[10].decode(String.self), renderedContent: try r[11].decode(String.self),
-            defaultValues: try r[12].decode(String?.self), resolvedDefaultValues: try r[13].decode(String?.self),
-            actions: try r[14].decode(String.self), displayInUi: try r[15].decode(Bool.self),
-            expirationTime: try r[16].decode(Int64?.self).map { Int($0) }, status: status,
-            submittedInputs: try r[18].decode(String?.self), submittedAction: try r[19].decode(String?.self),
-            submittedBy: try r[20].decode(String?.self), submittedAt: try r[21].decode(Date?.self),
-            consumedAt: try r[22].decode(Date?.self), createdAt: try r[23].decode(Date.self),
-            recipientType: try Self.decodeRecipient(try r[24].decode(String.self)))
+            id: try r[0 + offset].decode(String.self), workflowRunId: try r[1 + offset].decode(String.self),
+            generation: Int(try r[2 + offset].decode(Int32.self)), executionId: try r[3 + offset].decode(String.self),
+            docId: try r[4 + offset].decode(String.self), nodeId: try r[5 + offset].decode(String.self),
+            nodeTitle: try r[6 + offset].decode(String.self), token: try r[7 + offset].decode(String.self),
+            formContent: try r[8 + offset].decode(String.self), inputs: try r[9 + offset].decode(String.self),
+            userActions: try r[10 + offset].decode(String.self), renderedContent: try r[11 + offset].decode(String.self),
+            defaultValues: try r[12 + offset].decode(String?.self), resolvedDefaultValues: try r[13 + offset].decode(String?.self),
+            actions: try r[14 + offset].decode(String.self), displayInUi: try r[15 + offset].decode(Bool.self),
+            expirationTime: try r[16 + offset].decode(Int64?.self).map { Int($0) }, status: status,
+            submittedInputs: try r[18 + offset].decode(String?.self), submittedAction: try r[19 + offset].decode(String?.self),
+            submittedBy: try r[20 + offset].decode(String?.self), submittedAt: try r[21 + offset].decode(Date?.self),
+            consumedAt: try r[22 + offset].decode(Date?.self), createdAt: try r[23 + offset].decode(Date.self),
+            recipientType: try Self.decodeRecipient(try r[24 + offset].decode(String.self)))
     }
 
     static let pauseColumns = """

@@ -1280,13 +1280,17 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   with `workflow_paused`, as Dify's; the run's channel stays open for the round the answer resumes, which a client follows
   on [the reconnect endpoint](#reconnecting). At most one pause of a run is open at a time: a resume that pauses again records a new pause with the next
   `generation`, and a resume consumes only the decisions its claim took.
-* **The form.** `GET /v1/form/human_input/{token}` (any account of the workspace; `404` for an unknown token and for one
-  of a surface the console API does not serve — a web app's form until published runs exist, `412`
+* **The form.** `GET /v1/form/human_input/{token}`: with a session it serves a **console** form (any account of the
+  workspace; `404` for an unknown token and for one of a surface the console API does not serve, `412`
   `human_input_form_submitted` / `human_input_form_expired`) answers Dify's FormDefinition: `form_content`, `inputs`,
   `user_actions`, `rendered_content`, `expiration_time` (Unix seconds), `default_values`, `node_title`, `display_in_ui`.
   `POST` with Dify's `{inputs, action}` checks the form is still open first (`404`/`412`), then validates with the node's
   own rules (`400 invalid_form_data`: a missing field, a value outside a select's options, an unknown action) and wakes
-  the run; the answer is `{}`. Forms are one-shot: the first submission wins.
+  the run; the answer is `{}`. Forms are one-shot: the first submission wins. **Without** a session the same path serves a
+  mail recipient's token (`human_input_form_recipients`), which is what opens a mailed link: same definition, same
+  validation, and the run resumes as it does for a console answer (an external recipient's answer has no account; a
+  member's is recorded against the member). A console form's token without a session is `404`, as in Dify's surface
+  policy.
 * **The resume.** A wake claims the pause atomically (`paused → running`) and continues the run from the engine snapshot:
   the answers become the node's outputs (`__action_id`, `__action_value`, `__rendered_content`), `workflow_started`
   (`reason: resumption`) and the names of the decisions the claim consumed (`human_input_form_filled`) are published,
@@ -1320,8 +1324,12 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   its waiting runs the same way.
 * **Delivery.** After the pause is durable, each form whose node enables an `email` delivery method (in the node's
   `delivery_methods`) is mailed to that method's recipients, one message per address, with the node's `subject` and
-  `body` (its `{{#url#}}` replaced) and the form's link `COLLAB_WEBAPP_BASE_URL` + `/form/{token}` (without that setting
-  the mail is skipped and logged). A mail failure is logged and never unwinds the pause. `display_in_ui` follows
+  `body` (its `{{#url#}}` replaced). A `member` recipient is the workspace account `reference_id` names, an `external`
+  one its own address, and `include_bound_group` (Dify's `whole_workspace`) the whole workspace; every recipient gets a
+  **row of its own with its own token** (`human_input_form_recipients`), and the link is `COLLAB_WEBAPP_BASE_URL` +
+  `/form/{recipientToken}` — the console's form token never leaves the console. A row is marked mailed only after the
+  send, so a restart or a later pause that adopts the same waiting form mails nothing twice. Without
+  `COLLAB_WEBAPP_BASE_URL` the mail is skipped and logged. A mail failure is logged and never unwinds the pause. `display_in_ui` follows
   `human_input_adapter`: true in the console, and for a published run only when a `webapp` delivery method is enabled.
 * **The node's own form** (the panel's "Run this step"):
   `POST /v1/apps/{app}/workflows/draft/human-input/nodes/{node}/form/preview` (edit; the app of the route's mode —

@@ -58,8 +58,10 @@ struct HumanInputRouteTests {
             let owner = try await api.setupOwner()
             let unknown = try await api.get("/v1/form/human_input/nope", token: owner)
             #expect(unknown.status == 404, "\(unknown.text)")
+            // Without a session, only an email recipient's link token is served (protocol 1.16); a console form's token
+            // answers 404, so the console boundary is not widened to anonymous callers.
             let anonymous = try await api.get("/v1/form/human_input/tok-1")
-            #expect(anonymous.status == 401, "\(anonymous.text)")
+            #expect(anonymous.status == 404, "\(anonymous.text)")
         }
     }
 

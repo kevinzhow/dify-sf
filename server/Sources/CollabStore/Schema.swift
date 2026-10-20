@@ -655,5 +655,25 @@ public enum Schema {
         )
         """,
         "CREATE INDEX IF NOT EXISTS human_input_forms_run ON human_input_forms (workflow_run_id, generation, created_at)",
+        // Protocol 1.16: an email recipient of a form (Dify's `human_input_form_recipient`). Its `token` is the one the
+        // link carries, so a link works for the person it was mailed to without a console account; `mailed_at` makes the
+        // delivery idempotent (a restart, or a pause that adopts the same waiting form, does not mail twice).
+        """
+        CREATE TABLE IF NOT EXISTS human_input_form_recipients (
+            token           text        PRIMARY KEY,
+            form_id         text        NOT NULL REFERENCES human_input_forms(id),
+            workflow_run_id text        NOT NULL,
+            method_index    integer     NOT NULL,
+            recipient_type  text        NOT NULL,
+            reference_id    text,
+            email           text        NOT NULL,
+            mailed_at       timestamptz,
+            used_at         timestamptz,
+            created_at      timestamptz NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS human_input_form_recipients_form ON human_input_form_recipients (form_id)",
+        // One row per address and form: a pause that adopts a waiting form must keep the links it already handed out.
+        "CREATE UNIQUE INDEX IF NOT EXISTS human_input_form_recipients_address ON human_input_form_recipients (form_id, email)",
     ]
 }

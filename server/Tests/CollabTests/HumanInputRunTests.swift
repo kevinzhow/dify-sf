@@ -706,7 +706,9 @@ struct HumanInputEmailTests {
         """
     }
 
-    @Test func anEnabledEmailMethodIsSentOncePerRecipientWithTheFormLink() async throws {
+    /// The loop a mail must close: each recipient gets **their own** link, the link opens the form without an account,
+    /// answering it resumes the run, and the console token keeps needing one.
+    @Test func eachRecipientGetsTheirOwnLinkWhichOpensAndAnswersTheForm() async throws {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
@@ -714,21 +716,46 @@ struct HumanInputEmailTests {
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "one@example.test,two@example.test"),
                                              token: owner).str("id")
-                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
-                let token = HumanInputRunTests.frames(run.text)
-                    .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
-                #expect(!token.isEmpty)
-                let form = try #require(try await store.humanInputForm(token: token))
+                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+                let frames = HumanInputRunTests.frames(run.text)
+                let consoleToken = try #require(frames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string)
+                let runId = try #require(frames.first?["workflow_run_id"]?.string)
+                let form = try #require(try await store.humanInputForm(token: consoleToken))
 
                 let mails = try await mailbox.wait(for: 2)
                 #expect(mails.count == 2, "one mail per recipient: \(mails.count)")
-                let tos = mails.map { $0.to.joined(separator: ",") }.sorted()
-                #expect(tos == ["one@example.test", "two@example.test"])
-                for mail in mails {
-                    #expect(mail.subject == "A workflow is waiting", "the node's subject, got \(mail.subject)")
-                    #expect(mail.text.contains("https://apps.example.test/form/\(form.token)"), "the form link")
-                    #expect(!mail.text.contains("{{#url#}}"), "the placeholder is replaced")
+                let tokens = mails.compactMap { mail in
+                    mail.text.split(separator: "/form/").last.map { String($0.prefix { $0 != "<" && $0 != "\"" && !$0.isWhitespace }) }
                 }
+                #expect(tokens.count == 2 && Set(tokens).count == 2, "a link per recipient: \(tokens)")
+                #expect(!tokens.contains(consoleToken), "a link never carries the console's token")
+
+                // The link opens the form without an account…
+                let anonymous = try await api.get("/v1/form/human_input/\(tokens[0])")
+                #expect(anonymous.status == 200, "the mailed link opens the form: \(anonymous.text)")
+                #expect(anonymous.str("node_title") == form.nodeTitle, "\(anonymous.text)")
+                #expect(anonymous.str("rendered_content") == form.renderedContent)
+                // …while the console's token still needs one.
+                let consoleAnonymously = try await api.get("/v1/form/human_input/\(consoleToken)")
+                #expect(consoleAnonymously.status == 404, "a console token is not anonymous")
+
+                // Answering through the link resumes the run, and the other link is then a submitted form.
+                let answered = try await api.post("/v1/form/human_input/\(tokens[0])",
+                                                  ##"{"inputs":{"reply":"from mail"},"action":"approve"}"##)
+                #expect(answered.status == 200, "answer: \(answered.text)")
+                var status = ""
+                for _ in 0..<300 where status != "succeeded" && status != "failed" {
+                    try await Task.sleep(for: .milliseconds(20))
+                    status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+                }
+                #expect(status == "succeeded", "the mailed answer resumes the run: \(status)")
+                let second = try await api.post("/v1/form/human_input/\(tokens[1])",
+                                                ##"{"inputs":{"reply":"late"},"action":"approve"}"##)
+                #expect(second.status == 412, "the form is one-shot: \(second.text)")
+                let rows = try await store.formRecipients(formId: form.id)
+                #expect(rows.count == 2)
+                #expect(rows.allSatisfy { $0.mailedAt != nil }, "both links were mailed")
+                #expect(rows.filter { $0.usedAt != nil }.count == 1, "the link that answered is recorded")
             }
         }
     }

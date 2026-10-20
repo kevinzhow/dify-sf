@@ -88,6 +88,18 @@ extension Routes {
         return form
     }
 
+    /// The form a token names, on the surface the request belongs to. An **email link** carries a recipient token
+    /// (`human_input_form_recipients`), which is served without an account — that is what a recipient of the mail has —
+    /// while a console token still needs one (`consoleForm`). A console form's token without a session is therefore 404,
+    /// not an anonymous form: the console boundary stays where Dify keeps it.
+    private func formAndRecipient(_ req: Request) async throws -> (form: StoredHumanInputForm, recipient: StoredFormRecipient?) {
+        if req.headers[.authorization] != nil { return (try await consoleForm(req), nil) }
+        guard let found = try? await store.formRecipient(token: try humanInputToken(req)) else {
+            throw ServerError.notFound
+        }
+        return (found.form, found.recipient)
+    }
+
     /// `ALLOWED_RECIPIENT_TYPES_BY_SURFACE[HumanInputSurface.CONSOLE]`.
     static let consoleSurfaceRecipients: Set<HumanInputRecipient> = [.console, .backstage]
 
@@ -111,7 +123,7 @@ extension Routes {
     }
 
     private func humanInputFormDefinition(_ req: Request) async throws -> Response {
-        let form = try await consoleForm(req)
+        let (form, _) = try await formAndRecipient(req)
         // `get_form_definition_by_token_for_console` → `_ensure_not_submitted`.
         if form.status == .submitted {
             throw ServerError.http(status: 412, code: "human_input_form_submitted", message: "this form has been submitted")
@@ -127,8 +139,10 @@ extension Routes {
     }
 
     private func submitHumanInputForm(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req)
-        let token = try humanInputToken(req)
+        // A console answer is attributable to its account; a mail recipient's answer is attributable to the recipient row.
+        let (form0, recipient) = try await formAndRecipient(req)
+        let p = req.headers[.authorization] != nil ? try await authenticate(req) : nil
+        let token = form0.token
         let data = try await body(req)
         guard let parsed = try? JSONValue.parse(data.isEmpty ? Data("{}".utf8) : data), case .object(let b) = parsed else {
             throw Self.invalidFormData("the body must be a JSON object")
@@ -139,7 +153,7 @@ extension Routes {
         guard case .string(let action)? = b["action"], !action.isEmpty else {
             throw Self.invalidFormData("action is required")
         }
-        let form = try await consoleForm(req)
+        let form = form0
         // `submit_form_by_token`: `ensure_form_active` first, then the field validation.
         try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
         // Dify validates against the form's own definition before the row is touched, so an invalid value answers 400
@@ -152,9 +166,12 @@ extension Routes {
 
         let inputsText = String(decoding: try WireJSON.encode(JSONValue.object(values)), as: UTF8.self)
         // The store re-checks the deadlines after taking the run's lock; the config value is the global one.
-        switch try await store.submitHumanInputForm(token: token, inputs: inputsText, action: action, userId: p.id,
+        // Who answered: the account, or the member a recipient row names; an external recipient has none.
+        let answeredBy = p?.id ?? recipient?.referenceId ?? ""
+        switch try await store.submitHumanInputForm(token: token, inputs: inputsText, action: action, userId: answeredBy,
                                                     globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
         case .accepted(let answered):
+            if let recipient { try? await store.markFormRecipientUsed(token: recipient.token, at: Date()) }
             // Dify's `enqueue_resume`: the answer asks for a resume; it runs in the background so the caller is answered
             // immediately, and the claim inside makes a second answer harmless.
             let routes = self

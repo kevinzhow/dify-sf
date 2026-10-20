@@ -262,6 +262,21 @@ struct MailOutbox: Sendable {
 
     var isEnabled: Bool { sender != nil }
 
+    /// Sends now and answers whether it went out: a caller that records the delivery (the human-input recipients, whose
+    /// links must not be mailed twice) needs to know before it marks the row.
+    @discardableResult
+    func send(_ message: MailMessage, kind: String) async -> Bool {
+        guard let sender else { return false }
+        do {
+            try await sender.send(message)
+            logger.info("sent \(kind) mail")
+            return true
+        } catch {
+            logger.warning("sending \(kind) mail failed: \(error)")
+            return false
+        }
+    }
+
     func post(_ message: MailMessage, kind: String) {
         guard let sender else { return }
         let logger = logger
