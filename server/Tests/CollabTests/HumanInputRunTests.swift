@@ -1131,7 +1131,7 @@ struct HumanInputStopDuringResumeTests {
         var config = ServerConfig.defaults
         // TEST ONLY: holds the resumed round 300 ms after it took the run over, so the stop lands inside it.
         config.testDefect = "slowResume"
-        try await withServer(config: config) { api, store, _ in
+        try await withServerAndRoutes(config: config) { api, store, routes in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -1144,7 +1144,12 @@ struct HumanInputStopDuringResumeTests {
             let answered = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"ok"},"action":"approve"}"##,
                                              token: owner)
             #expect(answered.status == 200, "answer: \(answered.text)")
-            // The resume is its own round now; stopping it is Dify's stop of a running task.
+            // The resume is its own round now (the answer's detached task registers it, then the defect holds it);
+            // stopping it is Dify's stop of a running task.
+            for _ in 0..<200 where await routes.runs.get(runId) == nil {
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            #expect(await routes.runs.get(runId) != nil, "the resumed round owns the run before the stop")
             let stop = try await api.post("/v1/apps/\(app)/workflow-runs/tasks/\(runId)/stop", token: owner)
             #expect(stop.status == 200, "stop: \(stop.text)")
 
@@ -1276,6 +1281,151 @@ struct HumanInputReconnectTextTests {
                 let afterFrames = HumanInputRunTests.frames(after.text)
                 #expect(afterFrames.compactMap { $0["event"]?.string } == ["workflow_finished"], "\(after.text)")
             }
+        }
+    }
+}
+
+/// The timeout scan in the **product** (`HumanInputTimeouts`): a form past its node deadline ends `timedOut` and the run
+/// takes the node's `__timeout` branch; a run past the global deadline stops and its attached connection ends. The tests
+/// move the scan's clock (`COLLAB_TEST_CLOCK_SKEW_SECONDS`) instead of waiting, and never call the store in the scan's
+/// place.
+@Suite("Human input timeout scan", .enabled(if: testDbHost != nil))
+struct HumanInputTimeoutScanTests {
+    /// start → human (1 hour; approve → end, timeout → end) → end.
+    static func yaml() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-timeout
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e2, source: human, sourceHandle: approve, target: end, targetHandle: target}
+            - {id: e3, source: human, sourceHandle: __timeout, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data: {title: Start, type: start, variables: []}
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                form_content: 'Approve {{#$output.reply#}}?'
+                inputs: [{type: paragraph, output_variable_name: reply}]
+                user_actions: [{id: approve, title: Approve it, button_style: primary}]
+                timeout: 1
+                timeout_unit: hour
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs: [{variable: reply, value_selector: [human, reply]}]
+        """
+    }
+
+    @Test func aFormPastItsNodeDeadlineResumesTheRunThroughTheTimeoutBranch() async throws {
+        var config = ServerConfig.defaults
+        // The scan's clock is an hour and a minute ahead: the form's own deadline (created_at + 1 hour) has passed.
+        config.testClockSkewSeconds = 3_700
+        try await withServerAndRoutes(config: config) { api, store, routes in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+            let events = HumanInputRunTests.frames(run.text)
+            let required = try #require(events.first { $0["event"]?.string == "human_input_required" })
+            let runId = required["workflow_run_id"]?.string ?? ""
+            let token = required["data"]?["form_token"]?.string ?? ""
+            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "paused")
+
+            // The production scan, once.
+            let swept = await routes.sweepHumanInputTimeouts(now: Date())
+            #expect(swept.timedOut == 1, "one form past its deadline: \(swept)")
+
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded", "the run goes on through the timeout branch, got \(status)")
+            // The form is closed (a late answer is 412), the pause resumed, and the run took the timeout edge: the end
+            // node saw an empty reply and no action.
+            let late = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"late"},"action":"approve"}"##, token: owner)
+            #expect(late.status == 412, "\(late.text)")
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty)
+            let executions = try await api.get("/v1/apps/\(app)/workflow-runs/\(runId)/node-executions", token: owner)
+            func field(_ v: Value?, _ k: String) -> Value? {
+                guard case .map(let m)? = v else { return nil }
+                return m[k]
+            }
+            let human = executions.list("data").first { field($0, "node_id") == .string("human") }
+            #expect(field(field(human, "outputs"), "__action_id") == .string(""), "\(String(describing: human))")
+            #expect(field(human, "status") == .string("succeeded"))
+        }
+    }
+
+    @Test func aRunPastTheGlobalDeadlineStopsAndItsAttachedConnectionEnds() async throws {
+        var config = ServerConfig.defaults
+        config.humanInputGlobalTimeoutSeconds = 60
+        // Past the global deadline (60 s), not the node's (1 hour).
+        config.testClockSkewSeconds = 120
+        try await withServerAndRoutes(config: config) { api, store, routes in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+            let required = try #require(HumanInputRunTests.frames(run.text).first { $0["event"]?.string == "human_input_required" })
+            let runId = required["workflow_run_id"]?.string ?? ""
+            let channel = try #require(await routes.runChannels.existing(runId))
+            let live = await channel.subscribe(replay: false)
+            let received = Mutex<[String]>([])
+            let closed = Mutex(false)
+            let listener = Task {
+                for await frame in live { received.withLock { $0.append(frame) } }
+                closed.withLock { $0 = true }
+            }
+            defer { listener.cancel() }
+
+            let swept = await routes.sweepHumanInputTimeouts(now: Date())
+            #expect(swept.expired == 1, "one run past the global deadline: \(swept)")
+            for _ in 0..<100 where !closed.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(10)) }
+            let terminal = HumanInputRunTests.frames(received.withLock { $0.joined() })
+                .filter { $0["event"]?.string == "workflow_finished" }
+            #expect(terminal.count == 1, "one terminal frame, got \(terminal)")
+            #expect(terminal.first?["data"]?["status"]?.string == "stopped")
+            #expect(closed.withLock { $0 }, "the global deadline closes the attached connection")
+            #expect(await routes.runChannels.existing(runId) == nil)
+            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "stopped")
+        }
+    }
+}
+
+/// A run that waits for a person keeps its keep-alives: the ping belongs to the run's channel, not to one round (a round
+/// cancels its work when it pauses, and Dify's queue pings every 10 s regardless).
+@Suite("Human input pause keep-alive", .enabled(if: testDbHost != nil))
+struct HumanInputPauseKeepAliveTests {
+    @Test func aPausedRunStillPingsItsSubscribers() async throws {
+        var config = ServerConfig.defaults
+        config.ssePingSeconds = 1
+        try await withServerAndRoutes(config: config) { api, _, routes in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+            let required = try #require(HumanInputRunTests.frames(run.text).first { $0["event"]?.string == "human_input_required" })
+            let runId = required["workflow_run_id"]?.string ?? ""
+            let channel = try #require(await routes.runChannels.existing(runId))
+            let live = await channel.subscribe(replay: false)
+            let frames = Mutex<[String]>([])
+            let listener = Task { for await f in live { frames.withLock { $0.append(f) } } }
+            defer { listener.cancel() }
+            // The round that paused is over; the keep-alive must still arrive while the run waits.
+            for _ in 0..<40 where !frames.withLock({ $0.contains { $0.contains("event: ping") } }) {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            #expect(frames.withLock { $0.contains { $0.contains("event: ping") } }, "a paused run pings: \(frames.withLock { $0 })")
         }
     }
 }

@@ -130,7 +130,7 @@ extension Routes {
         stored.createdByName = p.account.name
         do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
 
-        let channel = await runChannels.channel(runId)
+        let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         let commands = GraphEngineCommands()
         let lease = UUID().uuidString.lowercased()
         await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
@@ -179,13 +179,21 @@ extension Routes {
         // so a test can kill the process there — the state a crash leaves behind (answer waiting, pause untouched).
         if config.testDefect == "slowClaim" { try? await Task.sleep(for: .milliseconds(1500)) }
         guard let claim = try? await store.claimResume(workflowRunId: runId, at: Date()) else { return false }
-        guard let run = try? await store.workflowRun(doc: appId, id: runId) else { return false }
+        // The claim already made the run `running`: a run we cannot read would stay there forever, and its subscribers
+        // would wait for a round nobody starts.
+        guard let run = try? await store.workflowRun(doc: appId, id: runId) else {
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "the claimed run could not be read",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
+            return false
+        }
         // TEST ONLY (`testDefect: resumePrepFails`): a resume whose preparation fails must end the run as failed and
         // release the claim's state, not leave a `running` run nothing will finish.
         if config.testDefect == "resumePrepFails" {
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                error: "the resumed run's preparation failed", elapsedTime: 0,
                                                totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
             return false
         }
         guard let graphJSON = try? JSONValue.parse(Data(run.graph.utf8)) else {
@@ -193,6 +201,7 @@ extension Routes {
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                error: "the paused run's stored graph does not parse",
                                                elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
             return false
         }
         let decisions = Dictionary(uniqueKeysWithValues: claim.decisions.map { ($0.executionId, $0) })
@@ -210,6 +219,7 @@ extension Routes {
             logger.error("run \(runId) could not rebuild its graph: \(error)")
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "could not rebuild the paused run: \(error)",
                                                elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
             return false
         }
         let account: JSONValue = ["id": .string(userId), "name": .string(run.createdByName ?? ""), "email": .string(run.createdByEmail ?? "")]
@@ -229,9 +239,10 @@ extension Routes {
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                error: "the paused run's snapshot does not decode: \(error)",
                                                elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
             return false
         }
-        let channel = await runChannels.channel(runId)
+        let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         // The resumed round owns the task id from here: `stop` must find this engine, not the one that paused.
         let lease = UUID().uuidString.lowercased()
         await runs.add(runId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
@@ -244,6 +255,35 @@ extension Routes {
         if config.testDefect == "slowResume" { try? await Task.sleep(for: .milliseconds(300)) }
         Task.detached { await execution.run(engine: engine, pool: VariablePool(), snapshot: snapshot, filled: claim.decisions) }
         return true
+    }
+
+    /// One pass of the human-input timeout scan (`HumanInputTimeouts`): node deadlines first (the run goes on through the
+    /// node's `__timeout` branch), then the global deadline (the run stops and its connection ends).
+    @discardableResult
+    func sweepHumanInputTimeouts(now: Date) async -> (timedOut: Int, expired: Int) {
+        // TEST ONLY (`collab.test.clockSkewSeconds`): the scan's clock can be moved forward, so a test exercises the
+        // production scan with a real form written an hour in the future rather than calling the store in its place.
+        let at = now.addingTimeInterval(Double(config.testClockSkewSeconds))
+        var timedOut = 0, expired = 0
+        if let forms = try? await store.waitingFormsPastDeadline(at: at) {
+            for form in forms {
+                guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                timedOut += 1
+                // The pause is now woken (`resume_requested`), and the run takes the timeout branch — in the background,
+                // as an answer does.
+                let appId = form.docId, runId = form.workflowRunId, routes = self
+                Task.detached { await routes.resumeRun(appId: appId, runId: runId) }
+            }
+        }
+        let error = "Human input form timed out"
+        if let runs = try? await store.pausedRunsPastGlobalDeadline(at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
+            for run in runs {
+                guard (try? await store.expireRunForGlobalTimeout(workflowRunId: run.runId, error: error, at: at)) == true else { continue }
+                expired += 1
+                await finishRunWithoutEngine(run.runId)
+            }
+        }
+        return (timedOut, expired)
     }
 
     /// Picks up the runs a stopped server left answered-but-paused. Called once the routes exist; each one goes through the
@@ -270,8 +310,10 @@ extension Routes {
             active.commands.abort(reason: "User requested stop")
         } else {
             // A paused run has no engine to abort: its pause must be closed and its forms closed, or a later submission
-            // would wake a run the user already stopped.
-            try? await store.stopPausedRun(workflowRunId: task, error: "User requested stop", at: Date())
+            // would wake a run the user already stopped. Then the subscribers hear it end (`workflow_finished` stopped)
+            // and the channel is released — a durable terminal state alone leaves a live connection waiting forever.
+            let stopped = (try? await store.stopPausedRun(workflowRunId: task, error: "User requested stop", at: Date())) ?? false
+            if stopped { await finishRunWithoutEngine(task) }
         }
         return rawJSON(["result": "success"])
     }
@@ -449,14 +491,6 @@ final class RunExecution: Sendable {
     func run(engine: GraphEngine, pool: VariablePool, snapshot: GraphEngineSnapshot? = nil,
              filled: [StoredHumanInputForm] = []) async {
         let started = ContinuousClock.now
-        // Dify's queue sends a ping every 10 s; here while nothing else was sent.
-        let pinger = Task { [channel] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(10))
-                if Task.isCancelled { break }
-                await channel.pingIfIdle(seconds: 10)
-            }
-        }
         var index = 0
         /// False when the round ended at a pause: the run is still alive, so its channel is not finished.
         var endedWithoutPause = true
@@ -467,16 +501,12 @@ final class RunExecution: Sendable {
         if let snapshot {
             do { stream = try engine.resume(snapshot) } catch {
                 routes.logger.error("run \(runId) could not resume: \(error)")
-                let stats = GraphRunStats()
-                let frames = encoderBox.withLock { enc in
-                    [enc.workflowFinished("failed", error: "could not resume the paused run: \(error)", stats: stats, exceptions: 0)]
-                }
-                for f in frames { await channel.publish(Self.sse(f)) }
+                // Durable first, then the one terminal frame and the channel's end (`finishRunWithoutEngine`), so an
+                // attached connection does not wait for a round that never started.
                 try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                           error: "could not resume the paused run: \(error)", elapsedTime: 0,
                                                           totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
-                pinger.cancel()
-                await channel.finish()
+                await routes.finishRunWithoutEngine(runId)
                 await routes.runs.remove(taskId, lease: lease)
                 return
             }
@@ -553,7 +583,6 @@ final class RunExecution: Sendable {
             default: break
             }
         }
-        pinger.cancel()
         if endedWithoutPause {
             // The run's channel lives as long as the run, not as long as one round: a pause keeps it so a reconnect (or the
             // resumed round) publishes into the same stream.
@@ -590,17 +619,21 @@ final class RunExecution: Sendable {
                 totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                 elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.roundStartedAt) }, forms: forms, at: at)
         } catch {
+            // A pause for a deleted app is a stop, not a failure: the user deleted the app, nothing broke.
+            let appDeleted = (error as? PostgresStore.PauseRefused) == .appDeleted
+            let status = appDeleted ? "stopped" : "failed"
+            let message = appDeleted ? "The app was deleted" : "could not persist the paused run: \(error)"
             routes.logger.error("run \(runId) could not persist its pause: \(error)")
-            // Dify's public stream has no `workflow_failed`: a failure is `workflow_finished` with `status: failed`.
-            let frames = encoderBox.withLock { enc in
-                [enc.workflowFinished("failed", error: "could not persist the paused run: \(error)", stats: stats, exceptions: 0)]
-            }
-            for f in frames { await channel.publish(Self.sse(f)) }
-            try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
-                                                      error: "could not persist the paused run: \(error)",
+            // Durable first, then the frame (Dify's public stream has no `workflow_failed`: a failure is
+            // `workflow_finished` with `status: failed`).
+            try? await routes.store.finishWorkflowRun(id: runId, status: status, outputs: nil, error: message,
                                                       elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.roundStartedAt }),
                                                       totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                                                       exceptionsCount: 0, finishedAt: at)
+            let frames = encoderBox.withLock { enc in
+                [enc.workflowFinished(status, error: message, stats: stats, exceptions: 0)]
+            }
+            for f in frames { await channel.publish(Self.sse(f)) }
             // The run is over: the caller must run its terminal cleanup (channel, registry).
             return false
         }
@@ -928,10 +961,11 @@ struct RunStreamEncoder: Sendable {
 actor RunChannelRegistry {
     private var channels: [String: RunChannel] = [:]
 
-    func channel(_ runId: String) -> RunChannel {
+    func channel(_ runId: String, pingSeconds: Int) async -> RunChannel {
         if let existing = channels[runId] { return existing }
         let created = RunChannel()
         channels[runId] = created
+        await created.startPing(seconds: pingSeconds)
         return created
     }
 
@@ -947,6 +981,7 @@ actor RunChannel {
     private var next = 0
     private var finished = false
     private var lastSent = ContinuousClock.now
+    private var pinger: Task<Void, Never>?
 
     /// `pauseGeneration` tags a frame that belongs to one pause (the database generation): a reconnect deduplicates by that
     /// identity, never by a second-resolution `created_at` (two resumes can re-pause within the same second).
@@ -957,15 +992,33 @@ actor RunChannel {
         for c in subscribers.values { c.yield(frame) }
     }
 
-    /// `event: ping` when nothing was sent for `seconds` (not kept for late subscribers).
-    func pingIfIdle(seconds: Int) {
-        guard !finished, ContinuousClock.now - lastSent >= .seconds(seconds) else { return }
+    /// `event: ping` when nothing was sent for `seconds` (not kept for late subscribers). True once the channel ended.
+    func pingIfIdle(seconds: Int) -> Bool {
+        guard !finished else { return true }
+        guard ContinuousClock.now - lastSent >= .seconds(seconds) else { return false }
         lastSent = .now
         for c in subscribers.values { c.yield("event: ping\n\n") }
+        return false
+    }
+
+    /// Keeps the keep-alives coming for as long as the channel lives — a **run**, not one round: a run that waits for a
+    /// person can wait for hours, and Dify's queue pings every 10 s whether a node is running or not.
+    func startPing(seconds: Int) {
+        guard pinger == nil else { return }
+        pinger = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(seconds))
+                if Task.isCancelled { return }
+                guard let self else { return }
+                if await self.pingIfIdle(seconds: seconds) { return }
+            }
+        }
     }
 
     func finish() {
         finished = true
+        pinger?.cancel()
+        pinger = nil
         for c in subscribers.values { c.finish() }
         subscribers = [:]
     }

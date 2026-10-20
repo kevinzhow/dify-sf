@@ -44,7 +44,7 @@ extension Routes {
 
         // Subscribe first, then read the persisted state; the frames published from the mark on are the window this
         // response has to reconcile with the snapshot.
-        let live = await runChannels.channel(runId)
+        let live = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         let mark = await live.published
         // TEST ONLY (`testDefect: slowStateRead`): widen the window between subscribing and reading the persisted state, so
         // a test can end the run inside it instead of racing.
@@ -159,12 +159,28 @@ extension Routes {
                               pauseGeneration: pauseGeneration)
     }
 
+    /// Ends a run that has **no engine** to report it: a paused run the user stopped, a pause whose resume could not be
+    /// prepared, a run past its global deadline, an app's waiting runs when it is deleted. The durable row is written
+    /// first by the caller (the store), then this publishes exactly one `workflow_finished` on the run's channel and
+    /// releases it, so a connection that is already attached ends here instead of waiting for frames nobody will send.
+    @discardableResult
+    func finishRunWithoutEngine(_ runId: String) async -> Bool {
+        guard let run = try? await store.workflowRun(id: runId) else { return false }
+        let terminal: JSONValue
+        do { terminal = try finishedFrame(run) } catch { return false }
+        let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
+        await channel.publish(RunExecution.sse(terminal))
+        await channel.finish()
+        await runChannels.remove(runId)
+        return true
+    }
+
     /// The totals a pause carried, as the live frame reports them.
     private func pauseStats(_ pause: StoredWorkflowPause) -> GraphRunStats {
         GraphRunStats(outputs: [:], totalTokens: pause.totalTokens, totalSteps: pause.totalSteps)
     }
 
-    private func finishedFrame(_ run: StoredWorkflowRun) throws -> JSONValue {
+    func finishedFrame(_ run: StoredWorkflowRun) throws -> JSONValue {
         let account: JSONValue = ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
                                   "email": .string(run.createdByEmail ?? "")]
         return ["event": "workflow_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),

@@ -71,6 +71,11 @@ public enum CollabServerMain {
         Task.detached {
             let resumed = await routes.resumeRunsWaitingAfterRestart()
             if resumed > 0 { logger.info("resumed \(resumed) answered run(s) after a restart") }
+            // A stopped server also leaves pauses whose deadline passed: the startup scan ends or resumes them.
+            let swept = await routes.sweepHumanInputTimeouts(now: Date())
+            if swept.timedOut > 0 || swept.expired > 0 {
+                logger.info("human input timeout scan at startup: \(swept.timedOut) form(s), \(swept.expired) run(s)")
+            }
         }
 
         let group = ServiceGroup(
@@ -79,6 +84,10 @@ public enum CollabServerMain {
                     .init(service: Named(name: "postgres", base: pg, logger: logger)),
                     .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger, staleRunSeconds: config.runtimeMaxTimeSeconds + 300), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
+                    // Protocol 1.16: node and global human-input deadlines, scanned in the product, not only in tests.
+                    .init(service: Named(name: "human-input-timeouts",
+                                         base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger),
+                                         logger: logger)),
                     .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
                 gracefulShutdownSignals: [.sigterm, .sigint],

@@ -364,7 +364,8 @@ extension Routes {
         // A run of the deleted app that is waiting on human input must not stay answerable: close its pause and forms.
         if let paused = try? await store.pausedRuns(ofDocument: id) {
             for run in paused {
-                try? await store.stopPausedRun(workflowRunId: run, error: "The app was deleted", at: Date())
+                let stopped = (try? await store.stopPausedRun(workflowRunId: run, error: "The app was deleted", at: Date())) ?? false
+                if stopped { await finishRunWithoutEngine(run) }
             }
         }
         return Response(status: .noContent)
