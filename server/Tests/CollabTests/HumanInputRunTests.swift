@@ -1713,14 +1713,14 @@ struct HumanInputSecondPauseTests {
             #expect(Int(pause.createdAt.timeIntervalSince1970) > runCreatedAt, "the pause is not at the run's creation")
             #expect(pause.createdAt >= answeredAt.addingTimeInterval(-1))
 
-            // The reconnect's pause frame reports the same round (its `created_at` is the round's start, as Dify's converter).
+            // The reconnect's pause frame, against what Dify 1.17.1 itself answers for the same pause
+            // (`e2e/traces/human_input_second_pause/report.json`): the replay says `elapsed_time: 0.0` and the **run's**
+            // `created_at`, while the live frame carried this round's elapsed time (0.24 s, not the run's lifetime).
             let again = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
             let snapshotPause = try #require(HumanInputRunTests.frames(again.text).last { $0["event"]?.string == "workflow_paused" })
-            #expect(abs((snapshotPause["data"]?["elapsed_time"]?.double ?? -9) - pause.elapsedTime) < 0.5,
-                    "the snapshot's pause elapsed matches the record")
-            let expectedCreatedAt = Int(pause.createdAt.timeIntervalSince1970 - pause.elapsedTime)
-            #expect(snapshotPause["data"]?["created_at"]?.int == expectedCreatedAt,
-                    "the pause carries the round's start: \(String(describing: snapshotPause["data"]?["created_at"]))")
+            #expect(snapshotPause["data"]?["elapsed_time"]?.double == 0, "the replay's pause has no elapsed time, as Dify's")
+            #expect(snapshotPause["data"]?["created_at"]?.int == runCreatedAt,
+                    "the replay's pause carries the run's start: \(String(describing: snapshotPause["data"]?["created_at"]))")
             #expect(snapshotPause["data"]?["outputs"] == (try? JSONValue.parse(pause.outputs)),
                     "and the outputs the record kept")
 
