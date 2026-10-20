@@ -124,6 +124,41 @@ struct HumanInputRouteTests {
         }
     }
 
+    @Test func theActiveCheckRunsBeforeFieldValidation() async throws {
+        try await withServer { api, store, _ in
+            _ = try await seed(store)
+            let owner = try await api.setupOwner()
+            let first = try await api.post("/v1/form/human_input/tok-1", #"{"inputs":{"content":"x","grade":"ok"},"action":"approve"}"#,
+                                           token: owner)
+            #expect(first.status == 200, "\(first.text)")
+
+            // 1. GET after the answer: `get_form_definition_by_token_for_console` → `_ensure_not_submitted`.
+            let get = try await api.get("/v1/form/human_input/tok-1", token: owner)
+            #expect(get.status == 412, "\(get.text)")
+            #expect(get.text.contains("human_input_form_submitted"), "\(get.text)")
+
+            // 2. A repeated submission with an unknown action: 412, because `ensure_form_active` runs before validation.
+            let unknownAction = try await api.post("/v1/form/human_input/tok-1",
+                                                   #"{"inputs":{"content":"x","grade":"ok"},"action":"no-such-action"}"#, token: owner)
+            #expect(unknownAction.status == 412, "\(unknownAction.text)")
+            #expect(unknownAction.text.contains("human_input_form_submitted"), "\(unknownAction.text)")
+        }
+    }
+
+    @Test func anExpiredFormAnswersExpiredBeforeAnInvalidValueIsChecked() async throws {
+        try await withServer { api, store, _ in
+            let past = Int(Date().timeIntervalSince1970) - 60
+            _ = try await seed(store, expiration: past)
+            let owner = try await api.setupOwner()
+            // An invalid select value on an expired form: Dify's `ensure_form_active` comes first, so 412 not 400.
+            let res = try await api.post("/v1/form/human_input/tok-1",
+                                         #"{"inputs":{"content":"x","grade":"not-an-option"},"action":"approve"}"#, token: owner)
+            #expect(res.status == 412, "\(res.text)")
+            #expect(res.text.contains("human_input_form_expired"), "\(res.text)")
+            #expect(try await store.humanInputForm(token: "tok-1")?.status == .waiting)
+        }
+    }
+
     @Test func invalidAnswersAreRejectedAndLeaveTheFormWaiting() async throws {
         try await withServer { api, store, _ in
             _ = try await seed(store)

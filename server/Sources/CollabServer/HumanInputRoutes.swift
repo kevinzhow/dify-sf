@@ -79,8 +79,31 @@ extension Routes {
     /// `ALLOWED_RECIPIENT_TYPES_BY_SURFACE[HumanInputSurface.CONSOLE]`.
     static let consoleSurfaceRecipients: Set<HumanInputRecipient> = [.console, .backstage]
 
+    /// Dify's `ensure_form_active`, in the order its submit path uses it: an answered or closed form answers 412 **before**
+    /// the field-level validation runs, so a repeated submission with an unknown action (or an expired form with a value
+    /// outside its options) is 412, not 400. The store repeats the check under the run's lock.
+    static func ensureFormActive(_ form: StoredHumanInputForm, now: Date, globalTimeoutSeconds: Int) throws {
+        switch form.status {
+        case .submitted:
+            throw ServerError.http(status: 412, code: "human_input_form_submitted", message: "this form has been submitted")
+        case .expired, .timedOut:
+            throw ServerError.http(status: 412, code: "human_input_form_expired", message: "this form has expired")
+        case .waiting: break
+        }
+        if let expiration = form.expirationTime, Int64(now.timeIntervalSince1970) >= Int64(expiration) {
+            throw ServerError.http(status: 412, code: "human_input_form_expired", message: "this form has expired")
+        }
+        if globalTimeoutSeconds > 0, now.timeIntervalSince(form.createdAt) >= Double(globalTimeoutSeconds) {
+            throw ServerError.http(status: 412, code: "human_input_form_expired", message: "this form has expired")
+        }
+    }
+
     private func humanInputFormDefinition(_ req: Request) async throws -> Response {
         let form = try await consoleForm(req)
+        // `get_form_definition_by_token_for_console` → `_ensure_not_submitted`.
+        if form.status == .submitted {
+            throw ServerError.http(status: 412, code: "human_input_form_submitted", message: "this form has been submitted")
+        }
         return try json(Self.formDefinitionJSON(form))
     }
 
@@ -102,8 +125,10 @@ extension Routes {
             throw Self.invalidFormData("action is required")
         }
         let form = try await consoleForm(req)
-        // Dify validates against the form's own definition before the row is touched (`submit_form_by_token`), so an
-        // invalid value answers 400 and leaves the form waiting.
+        // `submit_form_by_token`: `ensure_form_active` first, then the field validation.
+        try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
+        // Dify validates against the form's own definition before the row is touched, so an invalid value answers 400
+        // and leaves the form waiting.
         do {
             try Self.formConfig(form).validateSubmission(action: action, values: values)
         } catch {
