@@ -21,10 +21,12 @@ IMAGE="${HITL_IMAGE:-dify-sf-dev:local}"
 PORT="${HITL_PORT:-18090}"
 DB_PORT="${HITL_DB_PORT:-55440}"
 OUT=${HITL_OUT:-/tmp/hitl-restart}   # small logs and the raw SSE; keep them off /tmp on a small box
-NET=hitl-restart-net
-PG=hitl-restart-pg
-A=hitl-restart-a
-B=hitl-restart-b
+# Names carry this machine's own prefix (`dd-`, the containers this agent starts on K17): no collision with another
+# agent's stack, and the cleanup only ever removes its own.
+NET=dd-hitl-restart-net
+PG=dd-hitl-restart-pg
+A=dd-hitl-restart-a
+B=dd-hitl-restart-b
 BASE="http://127.0.0.1:$PORT"
 
 cleanup() { docker rm -f "$A" "$B" "$PG" >/dev/null 2>&1 || true; }
@@ -34,13 +36,13 @@ cleanup
 docker network inspect "$NET" >/dev/null 2>&1 || docker network create "$NET" >/dev/null
 
 echo "== database"
-docker run -d --name "$PG" --network "$NET" -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab \
+docker run -d --name "$PG" --network "$NET" --memory 1g --cpus 1 -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab \
   -p "127.0.0.1:$DB_PORT:5432" postgres:15-alpine >/dev/null
 for _ in $(seq 1 60); do docker exec "$PG" pg_isready -U collab -d collab >/dev/null 2>&1 && break; sleep 1; done
 
 server() { # server <name> <extra env...>
   local name=$1; shift
-  docker run -d --name "$name" --network "$NET" --memory 3g -e HOME=/tmp \
+  docker run -d --name "$name" --network "$NET" --memory 3g --cpus 3 -e HOME=/tmp \
     -e COLLAB_DB_HOST="$PG" -e COLLAB_DB_USER=collab -e COLLAB_DB_PASSWORD=collab -e COLLAB_DB_NAME=collab \
     -e COLLAB_HTTP_HOST=0.0.0.0 -e COLLAB_HTTP_PORT=8080 -e COLLAB_PLUGIN_DAEMON_URL=http://127.0.0.1:1 -e COLLAB_LOG_LEVEL=info \
     "$@" -p "127.0.0.1:$PORT:8080" -v "$PWD/server":/work -w /work "$IMAGE" .build/debug/collab-server >/dev/null

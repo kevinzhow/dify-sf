@@ -10,18 +10,20 @@ PORT2=${HITL_PORT2:-18091}
 IMAGE="${HITL_IMAGE:-dify-sf-dev:local}"
 OUT="${HITL_OUT:-$PWD/e2e/.out/human_input_restart}"
 E2E_OUT2="$OUT/scenario2"; mkdir -p "$E2E_OUT2"; chmod 777 "$E2E_OUT2"
-NET2=hitl-restart-net2; PG2=hitl-restart-pg2; A2=hitl-restart-a2; B2=hitl-restart-b2; ECHO2=hitl-restart-echo
+# Names carry this machine's own prefix (`dd-`, the containers an agent of this machine starts) so they cannot
+# collide with another agent's stack on a shared K17.
+NET2=dd-hitl-restart-net2; PG2=dd-hitl-restart-pg2; A2=dd-hitl-restart-a2; B2=dd-hitl-restart-b2; ECHO2=dd-hitl-restart-echo
 BASE2="http://127.0.0.1:$PORT2"
 cleanup2() { docker rm -f "$A2" "$B2" "$PG2" "$ECHO2" >/dev/null 2>&1 || true; }
 trap cleanup2 EXIT
 cleanup2
 docker network inspect "$NET2" >/dev/null 2>&1 || docker network create "$NET2" >/dev/null
-docker run -d --name "$PG2" --network "$NET2" -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab postgres:15-alpine >/dev/null
+docker run -d --name "$PG2" --network "$NET2" --memory 1g --cpus 1 -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab postgres:15-alpine >/dev/null
 for _ in $(seq 1 60); do docker exec "$PG2" pg_isready -U collab -d collab >/dev/null 2>&1 && break; sleep 1; done
 
 # The local effect counter: a tiny HTTP service whose calls are counted in a file this script reads.
 rm -f "$E2E_OUT2/echo.count"
-docker run -d --name "$ECHO2" --network "$NET2" --memory 96m -e PYTHONUNBUFFERED=1 -v "$E2E_OUT2":/out \
+docker run -d --name "$ECHO2" --network "$NET2" --memory 96m --cpus 0.2 -e PYTHONUNBUFFERED=1 -v "$E2E_OUT2":/out \
   python:3.12-alpine python -c '
 import http.server, json, pathlib
 class H(http.server.BaseHTTPRequestHandler):
@@ -36,7 +38,7 @@ http.server.HTTPServer(("0.0.0.0", 8000), H).serve_forever()
 
 start2() { # start2 <name> <extra env...>
   local name=$1; shift
-  docker run -d --name "$name" --network "$NET2" --memory 3g -e HOME=/tmp \
+  docker run -d --name "$name" --network "$NET2" --memory 3g --cpus 3 -e HOME=/tmp \
     -e COLLAB_DB_HOST="$PG2" -e COLLAB_DB_USER=collab -e COLLAB_DB_PASSWORD=collab -e COLLAB_DB_NAME=collab \
     -e COLLAB_HTTP_HOST=0.0.0.0 -e COLLAB_HTTP_PORT=8080 -e COLLAB_PLUGIN_DAEMON_URL=http://127.0.0.1:1 -e COLLAB_LOG_LEVEL=info \
     "$@" -p "127.0.0.1:$PORT2:8080" -v "$PWD/server":/work -w /work "$IMAGE" .build/debug/collab-server >/dev/null
@@ -73,7 +75,7 @@ workflow:
         title: Call
         type: http-request
         method: get
-        url: http://hitl-restart-echo:8000/report
+        url: http://dd-hitl-restart-echo:8000/report
         authorization: {type: no-auth, config: null}
         headers: ''
         params: ''
