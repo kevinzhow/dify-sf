@@ -649,9 +649,13 @@ struct HumanInputResumeStreamTests {
 struct HumanInputEmailTests {
     /// The same workflow as `appYAML`, with the human node's delivery methods written out: a webapp and an email method
     /// (enabled or not) whose recipients are the given addresses.
-    static func yaml(recipients: String, enabled: String = "true") -> String {
-        let items = recipients.split(separator: ",").map {
-            "                      - {type: external, email: " + $0.trimmingCharacters(in: .whitespaces) + "}"
+    static func yaml(recipients: String, enabled: String = "true", wholeTeam: Bool = false,
+                     subject: String = "A workflow is waiting", extraMethod: String? = nil) -> String {
+        let items = recipients.isEmpty ? "" : recipients.split(separator: ",").map { raw in
+            let r = raw.trimmingCharacters(in: .whitespaces)
+            return r.hasPrefix("member:")
+                ? "                      - {type: member, reference_id: " + r.dropFirst("member:".count) + "}"
+                : "                      - {type: external, email: " + r + "}"
         }.joined(separator: "\n")
         return """
         app:
@@ -687,12 +691,12 @@ struct HumanInputEmailTests {
                 - type: email
                   enabled: \(enabled)
                   config:
-                    subject: A workflow is waiting
+                    subject: \(subject)
                     body: 'Please review it: {{#url#}}'
                     recipients:
-                      include_bound_group: false
+                      include_bound_group: \(wholeTeam)
                       items:
-        \(items)
+        \(items)\(extraMethod ?? "")
             - id: end
               data:
                 title: End
@@ -725,6 +729,66 @@ struct HumanInputEmailTests {
                     #expect(mail.text.contains("https://apps.example.test/form/\(form.token)"), "the form link")
                     #expect(!mail.text.contains("{{#url#}}"), "the placeholder is replaced")
                 }
+            }
+        }
+    }
+
+    @Test func aMemberRecipientIsMailedAtTheAccountsAddress() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, _, _ in
+                let owner = try await api.setupOwner()
+                // A node names a member by account id (`reference_id`), not by address.
+                let member = try await api.member("ana@example.test", role: "editor", name: "Ana", inviter: owner)
+                let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "member:\(member.id)"), token: owner).str("id")
+                _ = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+                let mails = try await mailbox.wait(for: 1)
+                #expect(mails.map { $0.to.joined(separator: ",") } == ["ana@example.test"],
+                        "the member's address: \(mails.map(\.to))")
+            }
+        }
+    }
+
+    @Test func theWholeWorkspaceIsMailedWhenTheNodeSaysSo() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, _, _ in
+                let owner = try await api.setupOwner()
+                _ = try await api.member("ana@example.test", role: "editor", name: "Ana", inviter: owner)
+                let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "", wholeTeam: true), token: owner).str("id")
+                _ = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+                let mails = try await mailbox.wait(for: 2)
+                // The owner and the invited member both belong to the workspace.
+                #expect(mails.map { $0.to.joined(separator: ",") }.sorted() == ["ana@example.test", "owner@example.com"],
+                        "\(mails.map(\.to))")
+            }
+        }
+    }
+
+    @Test func eachMethodUsesItsOwnSubjectAndBody() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, _, _ in
+                let owner = try await api.setupOwner()
+                // A second email method with its own subject: the address it names must get *its* message.
+                let extra = "\n        - type: email\n          enabled: true\n          config:\n"
+                    + "            subject: Second notice\n            body: 'Second: {{#url#}}'\n"
+                    + "            recipients:\n              items:\n"
+                    + "              - {type: external, email: two@example.test}\n"
+                let imported = try await api.post(
+                    "/v1/docs/import",
+                    Self.yaml(recipients: "one@example.test", extraMethod: extra), token: owner)
+                #expect(imported.status == 201, "import: \(imported.text)")
+                let app = imported.str("id")
+                let started = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+                #expect(started.status == 200, "run: \(started.text)")
+                let mails = try await mailbox.wait(for: 2)
+                let byTo = Dictionary(uniqueKeysWithValues: mails.map { ($0.to.joined(separator: ","), $0.subject) })
+                #expect(byTo["one@example.test"] == "A workflow is waiting", "\(byTo)")
+                #expect(byTo["two@example.test"] == "Second notice", "\(byTo)")
             }
         }
     }

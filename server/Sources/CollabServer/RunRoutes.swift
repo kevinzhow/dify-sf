@@ -654,7 +654,7 @@ final class RunExecution: Sendable {
         for f in frames { await channel.publish(Self.sse(f), pauseGeneration: generation) }
         // The email delivery, after the pause is durable (Dify's mail task runs after the form exists). Best effort: a
         // mail failure is logged and never unwinds a pause the user can answer in the console.
-        sendHumanInputMail(prepared)
+        await sendHumanInputMail(prepared)
         // An answer for another execution of this pause may have been taken while the pause was being written: the pause
         // starts awake, and since no new submission will come to wake it, the resume is enqueued here.
         let stored = (try? await routes.store.pause(workflowRunId: runId, generation: generation)) ?? nil
@@ -667,19 +667,27 @@ final class RunExecution: Sendable {
         return true
     }
 
-    /// One mail per recipient of each prepared form whose node enables the email method.
-    private func sendHumanInputMail(_ prepared: [PendingHumanInputForms.Prepared]) {
+    /// One mail per recipient of each prepared form whose node enables the email method. The workspace's members are read
+    /// here because a node names its member recipients by account id (`reference_id`), not by address.
+    private func sendHumanInputMail(_ prepared: [PendingHumanInputForms.Prepared]) async {
         let outbox = MailOutbox(sender: SMTPMailSender(config: routes.config.mail), logger: routes.logger)
         guard outbox.isEnabled else { return }
+        let members: [String: String]
+        do {
+            members = Dictionary(uniqueKeysWithValues: try await routes.store.members().map { ($0.id, $0.email) })
+        } catch {
+            routes.logger.warning("human input mail skipped: the workspace's members could not be read (\(error))")
+            return
+        }
         for entry in prepared {
-            let recipients = HumanInputMail.recipients(entry.deliveryMethods)
+            let recipients = HumanInputMail.recipients(entry.deliveryMethods, members: members)
             guard !recipients.isEmpty else { continue }
             guard let link = HumanInputMail.link(base: routes.config.webAppBaseURL, token: entry.form.token) else {
                 routes.logger.warning("human input mail skipped: COLLAB_WEBAPP_BASE_URL is not set (no form link)")
                 continue
             }
             for recipient in recipients {
-                guard let message = HumanInputMail.message(entry.deliveryMethods, to: recipient, link: link) else { continue }
+                guard let message = HumanInputMail.message(entry.deliveryMethods, recipient: recipient, link: link) else { continue }
                 outbox.post(message, kind: "human input")
             }
         }
