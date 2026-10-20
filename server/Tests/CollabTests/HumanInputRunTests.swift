@@ -383,10 +383,10 @@ struct HumanInputResumeStreamTests {
                 let text = conn.text
                 func count(_ needle: String) -> Int { text.components(separatedBy: needle).count - 1 }
                 #expect(count("\"event\":\"workflow_finished\"") == 1, "one terminal frame, got \(count("\"event\":\"workflow_finished\""))")
-                // KNOWN DEFECT (open): the frame reaches the wire twice (two 0x13f chunks, same bytes) while the server
-                // publishes it once (`replay` carries none) — tracked, not hidden: the assertion below says "at least one"
-                // until the duplication is understood, and the ordering check still uses the first occurrence.
-                #expect(count("\"event\":\"human_input_form_filled\"") >= 1, "the answer is reported")
+                // Exactly one: the same execution's answer is reported once (the earlier duplicate came from the frame
+                // being published in both the pre-node block and the switch branch; the strict count is the regression).
+                #expect(count("\"event\":\"human_input_form_filled\"") == 1,
+                        "the answer is reported once, got \(count("\"event\":\"human_input_form_filled\""))")
                 // Order: the filled frame precedes the human node's own node_finished (Dify's boundary publishes it first).
                 // Frames are read off the wire with chunk headers around them, so positions come from the parsed frames.
                 func positions(_ text: String) -> [(offset: Int, value: JSONValue)] {

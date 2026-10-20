@@ -521,18 +521,6 @@ final class RunExecution: Sendable {
             case .node(.succeeded(let x, let nodeId, _, let finishedAt, let r)):
                 await persist(x, nodeId, running.removeValue(forKey: x), "succeeded", r, error: nil, finishedAt: finishedAt,
                               retries: retries.removeValue(forKey: x))
-                // Only this execution's decision: two rounds through one node are different executions, and a timed-out
-                // one must never be reported as filled.
-                if let decision = decisions.first(where: { $0.executionId == x && $0.status == .submitted }) {
-                    let filled = encoderBox.withLock { enc in
-                        enc.humanInputFormFilled(nodeId: nodeId, nodeTitle: running[nodeId]?.title ?? decision.nodeTitle,
-                                                 renderedContent: r.outputs["__rendered_content"]?.string ?? decision.renderedContent,
-                                                 actionId: r.outputs["__action_id"]?.string ?? (decision.submittedAction ?? ""),
-                                                 actionText: r.outputs["__action_value"]?.string ?? "",
-                                                 submittedData: r.inputs)
-                    }
-                    await channel.publish(Self.sse(filled))
-                }
             case .node(.failed(let x, let nodeId, _, let finishedAt, let r, let error)):
                 await persist(x, nodeId, running.removeValue(forKey: x), "failed", r, error: error.isEmpty ? r.error : error, finishedAt: finishedAt,
                               retries: retries.removeValue(forKey: x))
