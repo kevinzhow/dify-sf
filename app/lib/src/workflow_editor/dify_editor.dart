@@ -296,6 +296,17 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     await api.humanInputFormRun(_humanInputFormUrl(nodeId), body);
   }
 
+  /// The panel's test mail (`.../human-input/nodes/{node}/delivery-test`): one message of the delivery method, about a
+  /// delivery-test form the server owns. A refusal reaches the test sender's dialog, which keeps its form.
+  Future<void> _sendTestEmail({
+    required String nodeId,
+    required String deliveryId,
+    required Map<String, Object?> inputs,
+  }) async {
+    final api = widget.serverRuntime!.api;
+    await api.humanInputDeliveryTest(controller.docId, nodeId, {'delivery_method_id': deliveryId, 'inputs': inputs});
+  }
+
   /// The comments store this editor created (when none was passed in), tied to the controller's session.
   CommentsStore? _ownComments;
   CommentsStore get _comments =>
@@ -559,9 +570,9 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                       store: _comments,
                       userId: widget.user?.id,
                       userName: widget.user?.name ?? '',
-                      // The panel's test email needs a form a delivery test can own; this server's forms require a run,
-                      // so the test sender's Send stays disabled (the rest of the delivery configuration works).
-                      sendTestEmail: null,
+                      // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
+                      // the method is in debug mode (`.../delivery-test`).
+                      sendTestEmail: widget.serverRuntime?.humanInput == true ? _sendTestEmail : null,
                       fetchGeneratedForm: widget.serverRuntime?.humanInput == true ? _fetchGeneratedForm : null,
                       submitGeneratedForm: widget.serverRuntime?.humanInput == true ? _submitGeneratedForm : null,
                       child: VariableInspectHost(

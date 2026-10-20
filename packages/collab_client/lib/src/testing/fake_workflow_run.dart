@@ -208,6 +208,9 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   final formPreviews = <String, Map<String, Object?>>{};
   final formRuns = <String, Map<String, Object?>>{};
 
+  /// Delivery tests (`nodeId` → the body the panel sent).
+  final deliveryTests = <String, Map<String, Object?>>{};
+
   /// The form a preview answers (`url` → definition), else a bare one.
   final formDefinitions = <String, Map<String, Object?>>{};
 
@@ -248,6 +251,11 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
       'node_title': 'Human Input',
       'resolved_default_values': <String, Object?>{},
     };
+  }
+
+  @override
+  Future<void> humanInputDeliveryTest(String appId, String nodeId, Map<String, Object?> body) async {
+    deliveryTests[nodeId] = body;
   }
 
   @override

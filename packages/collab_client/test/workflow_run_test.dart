@@ -368,6 +368,8 @@ void main() {
         'action': 'approve',
       });
       expect(sent.last.url.path, '/v1$url/run');
+      await api.humanInputDeliveryTest('a', 'n 1', {'delivery_method_id': 'd1'});
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/human-input/nodes/n%201/delivery-test');
     });
 
     test('a submitted or expired form is 412 with Dify\'s code', () async {

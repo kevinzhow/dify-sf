@@ -138,6 +138,11 @@ abstract class WorkflowRunApi {
   /// `resolved_default_values`).
   Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body);
 
+  /// 1.16: `POST .../workflows/draft/human-input/nodes/{node}/delivery-test` `{"delivery_method_id": "...",
+  /// "inputs": {...}}`: one test message of that delivery method, about a **delivery-test form** (no run: answering it
+  /// proves the form and resumes nothing). `{}` on success; `400` when the method cannot send or has no recipients.
+  Future<void> humanInputDeliveryTest(String appId, String nodeId, Map<String, Object?> body);
+
   /// 1.16: `POST {url}/run` with `{inputs, form_inputs, action}`: the node's preview form is validated and its outputs
   /// (the filled fields, `__action_id`, `__action_value`, `__rendered_content`) are saved as the node's draft variables.
   Future<Map<String, Object?>> humanInputFormRun(String url, Map<String, Object?> body);

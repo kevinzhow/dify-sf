@@ -776,6 +776,14 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
   });
 
   @override
+  Future<void> humanInputDeliveryTest(String appId, String nodeId, Map<String, Object?> body) async => _send(
+    'POST',
+    '${_draft(appId)}/human-input/nodes/${HttpConsoleApi._seg(nodeId)}/delivery-test',
+    ok: const [200],
+    body: body,
+  );
+
+  @override
   Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body) async => HttpConsoleApi._map(
     (await _send('POST', '/v1$url/preview', ok: const [200], body: body)).json,
   );
