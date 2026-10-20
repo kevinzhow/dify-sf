@@ -63,17 +63,21 @@ extension Routes {
     }
 
     /// Dify's console access check (`_ensure_console_access`, `_ensure_console_recipient_type`): the token resolves only
-    /// inside this workspace, and only for a form delivered to the console. This server keeps one workspace per process
-    /// (protocol 1.8), so the tenant half is structural; the recipient half is enforced here, and a webapp or backstage
-    /// token answers 404 exactly as a foreign one does.
+    /// inside this workspace and only for a surface the console API serves. `human_input_policy.py` allows console **and
+    /// backstage** there (only the service-API and openapi surfaces are narrowed to web apps), so both are accepted and a
+    /// webapp token answers 404 exactly as a foreign one does. This server keeps one workspace per process (protocol 1.8),
+    /// which is why the tenant half is structural rather than a column.
     private func consoleForm(_ req: Request) async throws -> StoredHumanInputForm {
         _ = try await authenticate(req)
         guard let form = try await store.humanInputForm(token: try humanInputToken(req)),
-              form.recipientType == .console else {
+              Self.consoleSurfaceRecipients.contains(form.recipientType) else {
             throw ServerError.notFound
         }
         return form
     }
+
+    /// `ALLOWED_RECIPIENT_TYPES_BY_SURFACE[HumanInputSurface.CONSOLE]`.
+    static let consoleSurfaceRecipients: Set<HumanInputRecipient> = [.console, .backstage]
 
     private func humanInputFormDefinition(_ req: Request) async throws -> Response {
         let form = try await consoleForm(req)

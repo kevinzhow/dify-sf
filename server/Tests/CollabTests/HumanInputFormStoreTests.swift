@@ -287,6 +287,18 @@ struct HumanInputFormStoreTests {
         }
     }
 
+    @Test func anUnknownRecipientIsRefusedRatherThanReadAsConsole() async throws {
+        try await withStore { store, _ in
+            let (doc, run) = try await run(store)
+            let at = Date()
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
+            try await store.executeForTest("UPDATE human_input_forms SET recipient_type = 'carrier-pigeon' WHERE token = 'tok-a'")
+            await #expect(throws: HumanInputStoreError.unknownRecipient("carrier-pigeon")) {
+                _ = try await store.humanInputForm(token: "tok-a")
+            }
+        }
+    }
+
     @Test func anUnknownStatusIsRefusedRatherThanReadAsWaiting() async throws {
         try await withStore { store, _ in
             let (doc, run) = try await run(store)

@@ -145,6 +145,9 @@ public struct HumanInputResumeClaim: Sendable, Equatable {
 }
 
 public enum HumanInputStoreError: Error, Equatable {
+    /// A delivery surface the schema does not define: never read as `console` (that would open a form to a surface it
+    /// was not delivered to).
+    case unknownRecipient(String)
     /// A status value the schema does not define: never guessed (guessing `waiting` would reopen a closed form).
     case unknownStatus(String)
     /// `createPause` could not write the pause. The caller must stop the run and report the failure — the pause may not
@@ -179,13 +182,22 @@ extension PostgresStore {
             submittedInputs: try r[18].decode(String?.self), submittedAction: try r[19].decode(String?.self),
             submittedBy: try r[20].decode(String?.self), submittedAt: try r[21].decode(Date?.self),
             consumedAt: try r[22].decode(Date?.self), createdAt: try r[23].decode(Date.self),
-            recipientType: HumanInputRecipient(rawValue: try r[24].decode(String.self)) ?? .console)
+            recipientType: try Self.decodeRecipient(try r[24].decode(String.self)))
     }
 
     static let pauseColumns = """
         workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids, total_tokens, total_steps, elapsed_time,
         created_at, resumed_at, resume_requested
         """
+
+    /// An unknown recipient is refused like an unknown status: reading it as `console` would hand a form to a surface it
+    /// was never delivered to.
+    static func decodeRecipient(_ raw: String) throws -> HumanInputRecipient {
+        guard let value = HumanInputRecipient(rawValue: raw) else {
+            throw HumanInputStoreError.unknownRecipient(raw)
+        }
+        return value
+    }
 
     static func decodePause(_ row: PostgresRow) throws -> StoredWorkflowPause {
         let r = row.makeRandomAccess()

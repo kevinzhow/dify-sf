@@ -84,7 +84,19 @@ struct HumanInputRouteTests {
         }
     }
 
-    @Test func aTokenForAnotherSurfaceIsNotFoundOnTheConsoleApi() async throws {
+    @Test func consoleAndBackstageTokensAreServedAndAWebappTokenIsNot() async throws {
+        // `human_input_policy.py`: the console surface allows console and backstage; only web apps are narrowed away.
+        for recipient in [HumanInputRecipient.console, .backstage] {
+            try await withServer { api, store, _ in
+                _ = try await seed(store, recipient: recipient)
+                let owner = try await api.setupOwner()
+                let get = try await api.get("/v1/form/human_input/tok-1", token: owner)
+                #expect(get.status == 200, "\(recipient): \(get.text)")
+                let post = try await api.post("/v1/form/human_input/tok-1",
+                                              #"{"inputs":{"content":"x","grade":"ok"},"action":"approve"}"#, token: owner)
+                #expect(post.status == 200, "\(recipient): \(post.text)")
+            }
+        }
         try await withServer { api, store, _ in
             _ = try await seed(store, recipient: .webapp)
             let owner = try await api.setupOwner()
