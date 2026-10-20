@@ -16,6 +16,16 @@ public struct HumanInputFormConfig: Sendable {
     /// Dify's `FormDefinition.display_in_ui`: whether the form is shown in a UI surface at all (the node sets it; the
     /// delivery policy turns it into tokens), kept as the config wrote it — never inferred from rendered defaults.
     public let displayInUi: Bool?
+    /// `delivery_methods` as the node wrote them (`[{type: webapp|email, enabled, config}]`): the published-run display rule
+    /// reads whether a **webapp** delivery is enabled (`human_input_adapter.is_human_input_webapp_enabled`).
+    public let deliveryMethods: [JSONObject]
+
+    /// `is_human_input_webapp_enabled`: any delivery method that is enabled and is the web app.
+    public var webappDeliveryEnabled: Bool {
+        deliveryMethods.contains { method in
+            method["type"]?.string == "webapp" && (method["enabled"]?.bool ?? false)
+        }
+    }
 
     public static let timeoutHandle = "__timeout"
     public static let actionIdField = "__action_id"
@@ -26,6 +36,7 @@ public struct HumanInputFormConfig: Sendable {
         base = try BaseNodeData(data)
         content = try Self.string(data, "form_content", fallback: "")
         displayInUi = data["display_in_ui"]?.bool
+        deliveryMethods = (data["delivery_methods"]?.array ?? []).compactMap(\.object)
         timeout = data["timeout"]?.int ?? 36
         timeoutUnit = try Self.string(data, "timeout_unit", fallback: "hour")
         guard ["hour", "day"].contains(timeoutUnit) else { throw NodeDataError("timeout_unit: expected hour or day") }

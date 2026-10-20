@@ -89,17 +89,19 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
             nodeTitle: context.nodeTitle, token: UUID().uuidString.lowercased(), formContent: form.content,
             inputs: try Self.jsonText(form.inputs), userActions: try Self.jsonText(form.actions), renderedContent: rendered,
             defaultValues: Self.jsonTextObject(defaults), resolvedDefaultValues: Self.jsonTextObject(defaults),
-            actions: try Self.jsonText(form.actions), displayInUi: Self.displayInUi(isDebugger: isDebugger, node: form.displayInUi),
+            actions: try Self.jsonText(form.actions),
+            displayInUi: Self.displayInUi(isDebugger: isDebugger, webappDeliveryEnabled: form.webappDeliveryEnabled),
             // The deadline counts from when this form is created, not from when the adapter was built.
             expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now)
         pending.add(created)
         return .pause(sessionId: id)
     }
 
-    /// `_display_in_ui`: the debugger always shows the form; a published run follows the node's setting (and, once M5
-    /// wires published runs, the enabled Web App delivery) — an unset node value means "not shown" there.
-    static func displayInUi(isDebugger: Bool, node: Bool?) -> Bool {
-        isDebugger ? true : (node ?? false)
+    /// `node_runtime._display_in_ui` (`human_input_adapter.is_human_input_webapp_enabled`): the debugger always shows the
+    /// form; any other invocation source shows it only when an enabled **webapp** delivery exists. The node's bare
+    /// `display_in_ui` boolean is not what decides this.
+    static func displayInUi(isDebugger: Bool, webappDeliveryEnabled: Bool) -> Bool {
+        isDebugger || webappDeliveryEnabled
     }
 
     static func jsonText(_ values: [JSONObject]) throws -> String {

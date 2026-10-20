@@ -344,15 +344,31 @@ struct HumanInputStopPausedTests {
 /// `_display_in_ui`: the debugger shows every form; a published run follows the node's setting.
 @Suite("Human input display rules", .enabled(if: testDbHost != nil))
 struct HumanInputDisplayRuleTests {
-    @Test func theDebuggerShowsAFormEvenWhenTheNodeDisablesIt() async throws {
-        // The rule itself, both ways.
-        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: true, node: false) == true)
-        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: true, node: nil) == true)
-        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, node: false) == false)
-        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, node: nil) == false)
-        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, node: true) == true)
+    @Test func theDisplayDecisionFollowsTheWebappDeliveryNotTheBareBoolean() async throws {
+        // `node_runtime._display_in_ui` + `is_human_input_webapp_enabled`, both directions of the conflict.
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: true, webappDeliveryEnabled: false) == true, "debugger shows it")
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: true, webappDeliveryEnabled: true) == true)
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, webappDeliveryEnabled: true) == true,
+                "bare display_in_ui false, but webapp enabled: shown")
+        #expect(ServerHumanInputRuntime.displayInUi(isDebugger: false, webappDeliveryEnabled: false) == false,
+                "bare display_in_ui true, but only email / webapp disabled: not shown")
 
-        // And through a draft run (the debugger): a node that sets `display_in_ui: false` still produces a shown form.
+        // The node's delivery methods decide `webappDeliveryEnabled`, not the bare boolean.
+        func config(_ delivery: String, displayInUi: Bool = false) throws -> HumanInputFormConfig {
+            try HumanInputFormConfig([
+                "type": .string("human-input"), "title": .string("Approve"),
+                "form_content": .string("c"),
+                "inputs": .array([]), "user_actions": .array([]),
+                "display_in_ui": .bool(displayInUi),
+                "delivery_methods": try JSONValue.parse(Data(delivery.utf8)),
+            ])
+        }
+        #expect(try config(#"[{"type":"webapp","enabled":true}]"#).webappDeliveryEnabled == true)
+        #expect(try config(#"[{"type":"webapp","enabled":false}]"#).webappDeliveryEnabled == false)
+        #expect(try config(#"[{"type":"email","enabled":true}]"#).webappDeliveryEnabled == false)
+        #expect(try config(#"[]"#).webappDeliveryEnabled == false)
+
+        // Through a draft run (the debugger) a node with `display_in_ui: false` and no webapp still stores a shown form.
         try await withServer { api, store, _ in
             let owner = try await api.setupOwner()
             let actionsLine = "                - {id: approve, title: Approve it, button_style: primary}"
