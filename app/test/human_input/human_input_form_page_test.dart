@@ -29,7 +29,47 @@ const _form = {
   'expiration_time': 0,
 };
 
+/// The console `GET /v1/form/human_input/{token}` answer as the server sends it (`user_actions`/`rendered_content`,
+/// no `actions`/`form_content`): the shape the mailed page actually receives.
+const _consoleForm = {
+  'form_id': 'form-2',
+  'form_token': _token,
+  'node_title': 'Review',
+  'rendered_content': r'Please review: {{#$output.review#}}',
+  'inputs': [
+    {'type': 'paragraph', 'output_variable_name': 'review'},
+  ],
+  'user_actions': [
+    {'id': 'approve', 'title': 'Approve', 'button_style': 'primary'},
+  ],
+  'default_values': <String, Object?>{},
+  'display_in_ui': false,
+  'expiration_time': 0,
+};
+
 void main() {
+  testWidgets('the page answers a form in the console definition shape (user_actions, rendered_content)', (t) async {
+    await useAppFonts();
+    final api = FakeWorkflowRunApi()..humanInputForms[_token] = _consoleForm;
+    await renderRun(
+      t,
+      HumanInputFormPage(token: _token, server: Uri.parse('https://dify.example'), apiFor: (_) => api),
+      size: const Size(800, 900),
+    );
+    await t.pumpAndSettle();
+    // The console definition has no `actions`: the page has to read `user_actions`, or a mailed form has no button.
+    expect(find.text('Approve'), findsOneWidget, reason: 'the console definition\'s action is the button');
+    expect(find.textContaining('Please review:'), findsOneWidget, reason: 'the rendered content is what the page shows');
+    await t.enterText(find.byType(EditableText), 'looks good');
+    await t.pump();
+    await t.tap(find.text('Approve'));
+    await t.pumpAndSettle();
+    expect(api.humanInputAnswers[_token], {
+      'inputs': {'review': 'looks good'},
+      'action': 'approve',
+    });
+  });
+
   test('a /form/<token> link carries the form token', () {
     expect(LaunchOptions.fromQuery(const {}, path: '/form/abc-123').formToken, 'abc-123');
     expect(LaunchOptions.fromQuery(const {}, path: '/form/abc-123/').formToken, 'abc-123');

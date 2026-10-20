@@ -144,6 +144,16 @@ class HumanInputRunForm extends StatefulWidget {
   /// far are kept and the actions work again.
   final void Function(Object error)? onError;
 
+  /// Dify's console form definition (`GET /v1/form/human_input/{token}`: `rendered_content`, `user_actions`, `inputs`,
+  /// `default_values`) as the panel's own JSON (`form_content`, `actions`, `inputs`, `resolved_default_values`): the two
+  /// shapes Dify serves the same form in.
+  static HumanInputFormData definitionOf(HumanInputFormData definition) => {
+    ...definition,
+    'form_content': definition['rendered_content'] ?? definition['form_content'],
+    'actions': definition['actions'] ?? definition['user_actions'] ?? const <Object?>[],
+    'resolved_default_values': definition['resolved_default_values'] ?? definition['default_values'] ?? const <String, Object?>{},
+  };
+
   @override
   State<HumanInputRunForm> createState() => _HumanInputRunFormState();
 }

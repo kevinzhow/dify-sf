@@ -145,11 +145,17 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
+            // The page holds a **form definition** (the console `GET /v1/form/human_input/{token}` shape: `user_actions`,
+            // `inputs`, `rendered_content`), while the form widget reads Dify's panel JSON (`actions`, `form_content`).
+            // The console checks a definition's field first and then submits through `HumanInputForm`, which reads
+            // `actions`; without this map a real mailed form would show no button at all.
             child: HumanInputRunForm(
               nodeName: _title,
-              data: _form!,
+              data: HumanInputRunForm.definitionOf(_form!),
               onSubmit: _submit,
-              onError: (e) {},
+              onError: (e) {
+                // The snackbar in `_submit` says why; the form itself stays usable (answers kept, actions enabled).
+              },
             ),
           ),
         ),
