@@ -113,3 +113,41 @@ struct HumanInputRunTests {
         }
     }
 }
+
+/// The restart path: an answer taken while no process was running is picked up by the scan and resumed through the same
+/// `resumeRun` an answer uses.
+@Suite("Human input resume after a restart", .enabled(if: testDbHost != nil))
+struct HumanInputRestartTests {
+    @Test func anAnsweredPauseLeftByAStoppedServerIsResumedOnStartup() async throws {
+        try await withServerAndRoutes { api, store, routes in
+            let owner = try await api.setupOwner()
+            let imported = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner)
+            let app = imported.str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            #expect(!token.isEmpty)
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+
+            // The answer lands without any process to enqueue the resume: exactly what a stopped server leaves behind.
+            let answered = try await store.submitHumanInputForm(token: token, inputs: #"{"reply":"ok"}"#, action: "approve",
+                                                               userId: "u-1")
+            guard case .accepted = answered else {
+                Issue.record("the answer must be accepted, got \(answered)")
+                return
+            }
+            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "paused")
+            #expect(try await store.runsAwaitingResume().map(\.runId) == [runId])
+
+            let resumed = await routes.resumeRunsWaitingAfterRestart()
+            #expect(resumed == 1)
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded", "the restarted server should finish the run, got \(status)")
+            #expect(try await store.runsAwaitingResume().isEmpty)
+        }
+    }
+}

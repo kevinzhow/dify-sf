@@ -132,6 +132,18 @@ func withServer(config: ServerConfig = .defaults, secretsKey: Bool = true, model
     }
 }
 
+/// Like `withServer`, but hands over the `Routes` too: for what the server does outside a request (the restart re-attach).
+func withServerAndRoutes(config: ServerConfig = .defaults, secretsKey: Bool = true, models: ModelService? = nil,
+                         _ body: @Sendable @escaping (API, PostgresStore, Routes) async throws -> Void) async throws {
+    try await withStore(secretsKey: secretsKey) { store, logger in
+        let registry = DocumentRegistry(store: store, config: config, logger: logger)
+        let routes = try Routes(registry: registry, store: store, config: config, logger: logger, models: models)
+        try await withApp(configure: { app in try routes.register(on: app) }) { app in
+            try await app.testing { client in try await body(API(client: client), store, routes) }
+        }
+    }
+}
+
 /// Like `withServer`, but over a real listening socket (Vapor's live test mode): for what only a TCP connection shows, such
 /// as the HTTP server's connection timeouts. `body` also gets the bound port.
 func withRunningServer(config: ServerConfig = .defaults,

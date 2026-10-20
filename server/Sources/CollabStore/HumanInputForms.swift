@@ -337,6 +337,25 @@ extension PostgresStore {
         }
     }
 
+    /// The runs a restarted server has to resume: a pause that is still open and already asked for (its answer was taken
+    /// before the process stopped). `docId` is the run's document, i.e. what `resumeRun` needs beside the id.
+    public func runsAwaitingResume() async throws -> [(runId: String, docId: String)] {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT p.workflow_run_id, p.doc_id FROM workflow_pauses p
+                JOIN workflow_runs r ON r.id = p.workflow_run_id
+                WHERE p.resumed_at IS NULL AND p.resume_requested AND r.status = 'paused'
+                ORDER BY p.created_at
+                """, logger: self.logger)
+            var out: [(String, String)] = []
+            for try await row in rows {
+                let r = row.makeRandomAccess()
+                out.append((try r[0].decode(String.self), try r[1].decode(String.self)))
+            }
+            return out
+        }
+    }
+
     /// Claims the run's resumption: one atomic `paused → running` on the run row, allowed only when the run is paused and
     /// its single open pause has an unconsumed answer. The pause is closed, and **only the forms of the executions this
     /// pause covers** are marked consumed and handed back as `decisions` — a submission that arrives afterwards belongs to

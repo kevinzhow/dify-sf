@@ -210,6 +210,18 @@ extension Routes {
         return true
     }
 
+    /// Picks up the runs a stopped server left answered-but-paused. Called once the routes exist; each one goes through the
+    /// same `resumeRun`, so a restart is just another resume (and a run whose answer arrived while the server was down is
+    /// not lost).
+    func resumeRunsWaitingAfterRestart() async -> Int {
+        guard let waiting = try? await store.runsAwaitingResume() else { return 0 }
+        for run in waiting {
+            logger.info("resuming run \(run.runId) after a restart")
+            await resumeRun(appId: run.docId, runId: run.runId)
+        }
+        return waiting.count
+    }
+
     // MARK: - Stop
 
     /// `POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop` (edit; workflow and chatflow apps): Dify's stop command

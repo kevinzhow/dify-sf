@@ -64,7 +64,14 @@ public enum CollabServerMain {
                                   configuration: ServerConfiguration(address: .hostname(config.httpHost, port: config.httpPort)),
                                   configReader: reader.scoped(to: "collab.http"))
         app.middleware.use(CORSPolicy(allowedOrigins: config.corsAllowedOrigins), at: .beginning)
-        try Routes(registry: registry, store: store, config: config, logger: logger, models: models).register(on: app)
+        let routes = try Routes(registry: registry, store: store, config: config, logger: logger, models: models)
+        try routes.register(on: app)
+        // Protocol 1.16: runs that were answered while the server was down are resumed here, through the same path an
+        // answer uses. Detached: serving requests matters more than this catching up.
+        Task.detached {
+            let resumed = await routes.resumeRunsWaitingAfterRestart()
+            if resumed > 0 { logger.info("resumed \(resumed) answered run(s) after a restart") }
+        }
 
         let group = ServiceGroup(
             configuration: .init(
