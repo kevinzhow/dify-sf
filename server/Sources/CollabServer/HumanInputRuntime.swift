@@ -8,14 +8,26 @@ import Synchronization
 /// persists them together with its pause, and only then publishes `human_input_required` / `workflow_paused`. A form that
 /// a node asked for in a run that then fails leaves no token behind.
 public final class PendingHumanInputForms: Sendable {
-    private let forms = Mutex<[String: StoredHumanInputForm]>([:])
+    /// A prepared form and the node's delivery methods (the email delivery needs them; the form row does not keep them).
+    struct Prepared: Sendable {
+        var form: StoredHumanInputForm
+        var deliveryMethods: [JSONObject]
+    }
 
-    func add(_ form: StoredHumanInputForm) {
-        forms.withLock { $0[form.id] = form }
+    private let forms = Mutex<[String: Prepared]>([:])
+
+    func add(_ form: StoredHumanInputForm, deliveryMethods: [JSONObject] = []) {
+        forms.withLock { $0[form.id] = Prepared(form: form, deliveryMethods: deliveryMethods) }
     }
 
     /// The forms behind these pause sessions (the engine's `session_id` is the form id), in the reasons' order.
     func take(_ sessionIds: [String]) -> [StoredHumanInputForm] {
+        let all = forms.withLock { $0 }
+        return sessionIds.compactMap { all[$0]?.form }
+    }
+
+    /// The prepared entries behind these sessions, in order (form + the node's delivery methods).
+    func takePrepared(_ sessionIds: [String]) -> [Prepared] {
         let all = forms.withLock { $0 }
         return sessionIds.compactMap { all[$0] }
     }
@@ -69,14 +81,14 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
                 // The global deadline ended the run; the engine must not continue through the timeout branch here.
                 throw NodeError("HumanInputExpired", "the form expired and the run was stopped")
             case .waiting:
-                pending.add(decided)
+                pending.add(decided, deliveryMethods: form.deliveryMethods)
                 return .pause(sessionId: decided.id)
             }
         }
         // Not this resume's decision: a form of this execution that is still waiting (a re-entered node) keeps its id and
         // token; one answered after the claim leaves the node paused, so the next pause carries that answer.
         if let existing = try await store.humanInputForm(workflowRunId: workflowRunId, executionId: executionId) {
-            pending.add(existing)
+            pending.add(existing, deliveryMethods: form.deliveryMethods)
             return .pause(sessionId: existing.id)
         }
 
@@ -93,7 +105,7 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
             displayInUi: Self.displayInUi(isDebugger: isDebugger, webappDeliveryEnabled: form.webappDeliveryEnabled),
             // The deadline counts from when this form is created, not from when the adapter was built.
             expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now)
-        pending.add(created)
+        pending.add(created, deliveryMethods: form.deliveryMethods)
         return .pause(sessionId: id)
     }
 

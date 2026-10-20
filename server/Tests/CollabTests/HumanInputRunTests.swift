@@ -643,6 +643,108 @@ struct HumanInputResumeStreamTests {
     }
 }
 
+/// The email delivery: a form whose node enables the email method is mailed, after the pause is durable, with the form
+/// link. Sent to a local stub SMTP server; nothing leaves the machine.
+@Suite("Human input email delivery", .enabled(if: testDbHost != nil))
+struct HumanInputEmailTests {
+    /// The same workflow as `appYAML`, with the human node's delivery methods written out: a webapp and an email method
+    /// (enabled or not) whose recipients are the given addresses.
+    static func yaml(recipients: String, enabled: String = "true") -> String {
+        let items = recipients.split(separator: ",").map {
+            "                      - {type: external, email: " + $0.trimmingCharacters(in: .whitespaces) + "}"
+        }.joined(separator: "\n")
+        return """
+        app:
+          mode: workflow
+          name: hitl-mail
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e2, source: human, sourceHandle: approve, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data:
+                title: Start
+                type: start
+                variables: []
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                form_content: 'Please approve {{#$output.reply#}}'
+                inputs:
+                - {type: paragraph, output_variable_name: reply}
+                user_actions:
+                - {id: approve, title: Approve it, button_style: primary}
+                delivery_methods:
+                - {type: webapp, enabled: true}
+                - type: email
+                  enabled: \(enabled)
+                  config:
+                    subject: A workflow is waiting
+                    body: 'Please review it: {{#url#}}'
+                    recipients:
+                      include_bound_group: false
+                      items:
+        \(items)
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs:
+                - {variable: reply, value_selector: [human, reply]}
+        """
+    }
+
+    @Test func anEnabledEmailMethodIsSentOncePerRecipientWithTheFormLink() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, store, _ in
+                let owner = try await api.setupOwner()
+                let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "one@example.test,two@example.test"),
+                                             token: owner).str("id")
+                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+                let token = HumanInputRunTests.frames(run.text)
+                    .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+                #expect(!token.isEmpty)
+                let form = try #require(try await store.humanInputForm(token: token))
+
+                let mails = try await mailbox.wait(for: 2)
+                #expect(mails.count == 2, "one mail per recipient: \(mails.count)")
+                let tos = mails.map { $0.to.joined(separator: ",") }.sorted()
+                #expect(tos == ["one@example.test", "two@example.test"])
+                for mail in mails {
+                    #expect(mail.subject == "A workflow is waiting", "the node's subject, got \(mail.subject)")
+                    #expect(mail.text.contains("https://apps.example.test/form/\(form.token)"), "the form link")
+                    #expect(!mail.text.contains("{{#url#}}"), "the placeholder is replaced")
+                }
+            }
+        }
+    }
+
+    @Test func aDisabledEmailMethodSendsNothing() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, _, _ in
+                let owner = try await api.setupOwner()
+                let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "one@example.test", enabled: "false"),
+                                             token: owner).str("id")
+                _ = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+                let mails = try await mailbox.wait(for: 1)
+                #expect(mails.isEmpty, "a disabled method sends nothing")
+            }
+        }
+    }
+}
+
 /// The same node in two loop rounds is two executions: each round pauses with its own form, and an answer completes only
 /// the round it belongs to (decisions are matched by execution, never by node).
 @Suite("Human input in a loop", .enabled(if: testDbHost != nil))
