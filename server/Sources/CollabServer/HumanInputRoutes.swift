@@ -124,7 +124,7 @@ extension Routes {
     }
 
     private func humanInputFormDefinition(_ req: Request) async throws -> Response {
-        let (form, _) = try await formAndRecipient(req)
+        let (form, recipient) = try await formAndRecipient(req)
         // `get_form_definition_by_token_for_console` → `_ensure_not_submitted`.
         if form.status == .submitted {
             throw ServerError.http(status: 412, code: "human_input_form_submitted", message: "this form has been submitted")

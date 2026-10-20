@@ -128,7 +128,12 @@ struct HumanInputMailRoundTwoTests {
                                                 ##"{"inputs":{"reply":"late"},"action":"approve"}"##)
                 #expect(answer.status == 412, "and it cannot be answered: \(answer.text)")
                 #expect(answer.errorCode == "human_input_form_expired", "\(answer.text)")
-                // The form is the one the mail carried, untouched by the test's clock change apart from its deadline.
+                // The console surface keeps Dify's own rule: its token needs a session, and with one it still reads the
+                // definition (only the submit path checks the deadline there, as Dify's console does).
+                // (A recipient token is not a console token: the console surface only serves the console's own, so this
+                // token is 404 with a session — the recipient row is what the link is.)
+                let asConsole = try await api.get("/v1/form/human_input/\(token)", token: owner)
+                #expect(asConsole.status == 404, "a recipient token is not served on the console surface: \(asConsole.text)")
                 #expect(form.expirationTime != nil)
             }
         }
