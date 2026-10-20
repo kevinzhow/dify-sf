@@ -12,6 +12,13 @@ import Vapor
 /// executing is served from those records alone, and one that already ended answers a single `workflow_finished` and
 /// closes. `close_on_pause` (the default) ends the stream at the pause, so a client reconnects again after the resume;
 /// `continue_on_pause=true` keeps it open across the resume.
+/// What a snapshot describes, so a reconnect can drop exactly the live frames it already sent.
+struct SnapshotFrames: Sendable {
+    var frames: [String]
+    var nodeIds: Set<String>
+    var pause: Bool
+}
+
 extension Routes {
     func registerRunEvents(on r: any RoutesBuilder) {
         r.get("v1", "workflow", ":runId", "events") { req in
@@ -32,10 +39,10 @@ extension Routes {
         let includeSnapshot = query["include_state_snapshot"] == "true"
         let continueOnPause = query["continue_on_pause"] == "true"
 
-        // Subscribe first (live only), then read the persisted state: whatever happens in between is buffered rather than
-        // missed, and the buffered frames are deduplicated against the snapshot below.
+        // Subscribe first, then read the persisted state; the frames published from the mark on are the window this
+        // response has to reconcile with the snapshot.
         let live = await runChannels.channel(runId)
-        let subscription = await live.subscribe(replay: false)
+        let mark = await live.published
         let state = try await store.workflowRun(id: runId) ?? run
         let terminal = ["succeeded", "failed", "stopped", "partial-succeeded"].contains(state.status)
 
@@ -44,23 +51,28 @@ extension Routes {
             return try Self.streaming([RunExecution.sse(try finishedFrame(state))])
         }
 
-        var snapshot: [String] = []
+        var snapshot = SnapshotFrames(frames: [], nodeIds: [], pause: false)
         if includeSnapshot {
             snapshot = try await snapshotFrames(state, paused: state.status == "paused")
         }
         if state.status == "paused" && !continueOnPause {
-            return try Self.streaming(snapshot)
+            return try Self.streaming(snapshot.frames)
         }
 
-        // Live frames buffered while the state was read may repeat what the snapshot already said. Drop those: a node
-        // execution the snapshot carries, and a pause it already described.
-        let coveredNodes = Set(((try? await store.nodeExecutions(doc: state.docId, run: state.id)) ?? []).map(\.id))
-        let coveredPause = state.status == "paused" && includeSnapshot
-        let replay = snapshot
+        // Everything published before the snapshot was built is already described by it; everything after is new. Only the
+        // buffered window is filtered, so a later pause or a later node execution is never swallowed.
+        let coveredUpTo = await live.published
+        let subscription = await live.subscribe(replay: true, from: mark)
+        let replay = snapshot.frames
+        let covered = snapshot
+        let window = coveredUpTo - mark
         let body = try Response.Body(stream: { writer in
             for frame in replay { try await writer.write(frame) }
+            var consumed = 0
             for await frame in subscription {
-                if Self.isCovered(frame, nodes: coveredNodes, pause: coveredPause) { continue }
+                let isWindow = consumed < window
+                consumed += 1
+                if isWindow && Self.isCovered(frame, snapshot: covered) { continue }
                 try await writer.write(frame)
                 if frame.contains("\"event\":\"workflow_finished\"") { break }
                 if frame.contains("\"event\":\"workflow_paused\"") && !continueOnPause { break }
@@ -70,19 +82,19 @@ extension Routes {
     }
 
     /// Whether a live frame repeats something the snapshot already carried.
-    static func isCovered(_ frame: String, nodes: Set<String>, pause: Bool) -> Bool {
+    static func isCovered(_ frame: String, snapshot: SnapshotFrames) -> Bool {
         guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
               let parsed = try? JSONValue.parse(Data(line.dropFirst(6).utf8)),
               let event = parsed["event"]?.string else { return false }
-        if pause && event == "workflow_paused" { return true }
+        if snapshot.pause && event == "workflow_paused" { return true }
         if event == "node_started" || event == "node_finished",
-           let id = parsed["data"]?["id"]?.string, nodes.contains(id) { return true }
+           let id = parsed["data"]?["id"]?.string, snapshot.nodeIds.contains(id) { return true }
         return false
     }
 
     /// The state rebuilt from the records: the run's start, one pair of frames per recorded node execution, and, for a
     /// paused run, the forms still waiting with the pause that names them.
-    private func snapshotFrames(_ run: StoredWorkflowRun, paused: Bool) async throws -> [String] {
+    private func snapshotFrames(_ run: StoredWorkflowRun, paused: Bool) async throws -> SnapshotFrames {
         var frames: [String] = []
         let account: JSONValue = ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
                                   "email": .string(run.createdByEmail ?? "")]
@@ -107,7 +119,11 @@ extension Routes {
                                              "created_at": .int(Int(start.timeIntervalSince1970)),
                                              "finished_at": .int(Int(finished.timeIntervalSince1970))]]))
         }
+        var coveredNodes = Set<String>()
+        for e in executions { coveredNodes.insert(e.id) }
+        var coveredPause = false
         if paused, let pause = (try? await store.openPauses(workflowRunId: run.id))?.first ?? nil {
+            coveredPause = true
             let forms = (try? await store.humanInputForms(workflowRunId: run.id)) ?? []
             let waiting = forms.filter { $0.status == .waiting && pause.executionIds.contains($0.executionId) }
             for form in waiting {
@@ -134,7 +150,7 @@ extension Routes {
                                              "elapsed_time": .double(pause.elapsedTime),
                                              "total_tokens": .int(pause.totalTokens), "total_steps": .int(pause.totalSteps)]]))
         }
-        return frames
+        return SnapshotFrames(frames: frames, nodeIds: coveredNodes, pause: coveredPause)
     }
 
     private func finishedFrame(_ run: StoredWorkflowRun) throws -> JSONValue {

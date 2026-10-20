@@ -478,8 +478,9 @@ final class RunExecution: Sendable {
                 continue
             }
             if case .runPaused(let reasons, let snapshot, let stats) = event {
-                endedWithoutPause = false
-                await handlePause(reasons: reasons, snapshot: snapshot, stats: stats)
+                // The round did not end: the run is paused and its channel must survive into the next round — unless the
+                // pause could not be written, which ends the run as failed.
+                endedWithoutPause = !(await handlePause(reasons: reasons, snapshot: snapshot, stats: stats))
                 continue
             }
             let frames = encoderBox.withLock { $0.encode(event) }
@@ -501,7 +502,9 @@ final class RunExecution: Sendable {
             case .node(.succeeded(let x, let nodeId, _, let finishedAt, let r)):
                 await persist(x, nodeId, running.removeValue(forKey: x), "succeeded", r, error: nil, finishedAt: finishedAt,
                               retries: retries.removeValue(forKey: x))
-                if let decision = decisions.first(where: { ($0.executionId == x || $0.nodeId == nodeId) && $0.status == .submitted }) {
+                // Only this execution's decision: two rounds through one node are different executions, and a timed-out
+                // one must never be reported as filled.
+                if let decision = decisions.first(where: { $0.executionId == x && $0.status == .submitted }) {
                     let filled = encoderBox.withLock { enc in
                         enc.humanInputFormFilled(nodeId: nodeId, nodeTitle: running[nodeId]?.title ?? decision.nodeTitle,
                                                  renderedContent: r.outputs["__rendered_content"]?.string ?? decision.renderedContent,
@@ -541,7 +544,8 @@ final class RunExecution: Sendable {
     /// durable **first**, and only then do `human_input_required` and `workflow_paused` reach the stream. If the write fails
     /// the run ends as failed with that error: publishing a pause nobody can answer, or carrying on past human input, would
     /// both be worse than stopping.
-    private func handlePause(reasons: [PauseReason], snapshot: GraphEngineSnapshot, stats: GraphRunStats) async {
+    @discardableResult
+    private func handlePause(reasons: [PauseReason], snapshot: GraphEngineSnapshot, stats: GraphRunStats) async -> Bool {
         let sessionIds = reasons.compactMap { reason -> String? in
             if case .hitlRequired(let sessionId, _, _) = reason { return sessionId }
             return nil
@@ -573,7 +577,8 @@ final class RunExecution: Sendable {
                                                       elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.startedAt }),
                                                       totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                                                       exceptionsCount: 0, finishedAt: at)
-            return
+            // The run is over: the caller must run its terminal cleanup (channel, registry).
+            return false
         }
         let frames = encoderBox.withLock { enc in
             forms.map { enc.humanInputRequired($0) } + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at)]
@@ -588,6 +593,7 @@ final class RunExecution: Sendable {
             let run = runId
             Task.detached { await routes.resumeRun(appId: app, runId: run) }
         }
+        return true
     }
 
     static func sse(_ payload: JSONValue) -> String { "data: " + payload.compactJSON() + "\n\n" }
@@ -908,11 +914,14 @@ actor RunChannel {
         subscribers = [:]
     }
 
+    /// How many frames have been published so far (a reconnect marks the window it must deduplicate).
+    var published: Int { frames.count }
+
     /// `replay` = the frames already published (a fresh subscriber sees the run from its start); false = only what comes
-    /// next, which is what a reconnect that rebuilds the state needs.
-    func subscribe(replay: Bool = true) -> AsyncStream<String> {
+    /// next. `from` starts the replay at that index instead of 0.
+    func subscribe(replay: Bool = true, from: Int = 0) -> AsyncStream<String> {
         let (stream, cont) = AsyncStream<String>.makeStream(bufferingPolicy: .unbounded)
-        if replay { for f in frames { cont.yield(f) } }
+        if replay { for f in frames.dropFirst(max(0, min(from, frames.count))) { cont.yield(f) } }
         if finished {
             cont.finish()
             return stream

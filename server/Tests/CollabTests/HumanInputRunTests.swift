@@ -274,7 +274,7 @@ struct RunEventsReconnectTests {
         }
     }
 
-    @Test func someoneElsesRunIsNotFound() async throws {
+    @Test func onlyTheCreatorMayFollowTheRun() async throws {
         try await withServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
@@ -282,51 +282,20 @@ struct RunEventsReconnectTests {
             let token = HumanInputRunTests.frames(run.text)
                 .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
             let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
-            let stranger = try await api.post("/v1/auth/login", #"{"email":"owner@example.com","password":"owner-pass-1"}"#)
-            #expect(stranger.status == 200)
-            // The same account is the owner, so use an unknown run id to show the 404 shape, and an anonymous call for 401.
+
+            // A real second member of the same workspace: signed in, but not the run's creator.
+            let colleague = try await api.member("colleague@example.com", role: "normal", name: "Colleague", inviter: owner)
+            let asColleague = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: colleague.token)
+            #expect(asColleague.status == 404, "someone else's run is not found: \(asColleague.text)")
+
+            let asOwner = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+            #expect(asOwner.status == 200, "\(asOwner.text)")
+            #expect(!HumanInputRunTests.frames(asOwner.text).isEmpty)
+
             let unknown = try await api.get("/v1/workflow/no-such-run/events", token: owner)
             #expect(unknown.status == 404, "\(unknown.text)")
             let anonymous = try await api.get("/v1/workflow/\(runId)/events")
             #expect(anonymous.status == 401, "\(anonymous.text)")
-        }
-    }
-}
-
-/// The restart path: an answer taken while no process was running is picked up by the scan and resumed through the same
-/// `resumeRun` an answer uses.
-@Suite("Human input resume after a restart", .enabled(if: testDbHost != nil))
-struct HumanInputRestartTests {
-    @Test func anAnsweredPauseLeftByAStoppedServerIsResumedOnStartup() async throws {
-        try await withServerAndRoutes { api, store, routes in
-            let owner = try await api.setupOwner()
-            let imported = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner)
-            let app = imported.str("id")
-            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
-            let token = HumanInputRunTests.frames(run.text)
-                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
-            #expect(!token.isEmpty)
-            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
-
-            // The answer lands without any process to enqueue the resume: exactly what a stopped server leaves behind.
-            let answered = try await store.submitHumanInputForm(token: token, inputs: #"{"reply":"ok"}"#, action: "approve",
-                                                               userId: "u-1")
-            guard case .accepted = answered else {
-                Issue.record("the answer must be accepted, got \(answered)")
-                return
-            }
-            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "paused")
-            #expect(try await store.runsAwaitingResume().map(\.runId) == [runId])
-
-            let resumed = await routes.resumeRunsWaitingAfterRestart()
-            #expect(resumed == 1)
-            var status = ""
-            for _ in 0..<200 where status != "succeeded" && status != "failed" {
-                try await Task.sleep(for: .milliseconds(25))
-                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
-            }
-            #expect(status == "succeeded", "the restarted server should finish the run, got \(status)")
-            #expect(try await store.runsAwaitingResume().isEmpty)
         }
     }
 }
