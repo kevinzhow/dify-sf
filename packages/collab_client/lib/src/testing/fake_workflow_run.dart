@@ -211,12 +211,17 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   /// Delivery tests (`nodeId` → the body the panel sent).
   final deliveryTests = <String, Map<String, Object?>>{};
 
+  /// When set, [humanInputForm] answers this instead of the stored definition (a `412` an expired form gives, a `404`).
+  Object? humanInputFormError;
+
   /// The form a preview answers (`url` → definition), else a bare one.
   final formDefinitions = <String, Map<String, Object?>>{};
 
   @override
-  Future<Map<String, Object?>> humanInputForm(String token) async =>
-      humanInputForms[token] ?? refuse('not_found', 'Form not found', status: 404);
+  Future<Map<String, Object?>> humanInputForm(String token) async {
+    if (humanInputFormError case final error?) throw error;
+    return humanInputForms[token] ?? refuse('not_found', 'Form not found', status: 404);
+  }
 
   @override
   Future<void> submitHumanInputForm(String token, Map<String, Object?> body) async {
