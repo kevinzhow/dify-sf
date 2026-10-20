@@ -330,6 +330,35 @@ struct RunChannelPauseIdentityTests {
     }
 }
 
+/// A resume whose preparation fails must end the run as failed and leave nothing waiting — not a `running` run that no
+/// process will ever finish, and not a claim that blocks the next attempt.
+@Suite("Human input resume preparation failure", .enabled(if: testDbHost != nil))
+struct HumanInputResumePrepFailureTests {
+    @Test func aFailedPreparationEndsTheRunAndLeavesNothingWaiting() async throws {
+        var config = ServerConfig.defaults
+        config.testDefect = "resumePrepFails"
+        try await withServer(config: config) { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            #expect(!runId.isEmpty)
+
+            _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+            var status = ""
+            for _ in 0..<200 where status != "failed" && status != "succeeded" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "failed", "the failed preparation ends the run, got \(status)")
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty, "the claim closed the pause")
+            #expect(try await store.runsAwaitingResume().isEmpty, "and nothing is left to retry blindly")
+        }
+    }
+}
+
 /// A pause that cannot be written must end the run and report it — never publish a pause nobody can answer, never keep
 /// the run "paused" in the database. Driven through the routes with the server's test defect.
 @Suite("Human input pause write failure", .enabled(if: testDbHost != nil))

@@ -175,6 +175,14 @@ extension Routes {
     func resumeRun(appId: String, runId: String) async -> Bool {
         guard let claim = try? await store.claimResume(workflowRunId: runId, at: Date()) else { return false }
         guard let run = try? await store.workflowRun(doc: appId, id: runId) else { return false }
+        // TEST ONLY (`testDefect: resumePrepFails`): a resume whose preparation fails must end the run as failed and
+        // release the claim's state, not leave a `running` run nothing will finish.
+        if config.testDefect == "resumePrepFails" {
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                               error: "the resumed run's preparation failed", elapsedTime: 0,
+                                               totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            return false
+        }
         guard let graphJSON = try? JSONValue.parse(Data(run.graph.utf8)) else {
             // The claim already made the run `running`: leaving it there would be a run that never finishes.
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
