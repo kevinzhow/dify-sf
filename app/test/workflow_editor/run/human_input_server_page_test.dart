@@ -9,6 +9,7 @@ import 'dart:async';
 
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
@@ -16,12 +17,17 @@ import 'package:dify_sf_app/src/workflow_editor/run/server_run_service.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_types.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/human_input_content.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/workflow_store_scope.dart';
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../dify_spec/workflow/nodes_panel/core/harness.dart' show difyNode, difyNodes;
 import '../../support/app_fonts.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 /// start → human (approve, one paragraph) → end.
 Document humanDoc() => Document(
@@ -232,5 +238,81 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await demo.dispose();
     await t.pump(const Duration(seconds: 20));
+  });
+
+  // The form in both themes, for a human to look at (the suite's automated checks are the two cases above). Written
+  // only when `HUMAN_INPUT_SCREENSHOT_DIR` is set: a page test does not compare pixels, but a reviewer can see them.
+  testWidgets('the paused form in the light and the dark theme', (t) async {
+    final out = Platform.environment['HUMAN_INPUT_SCREENSHOT_DIR'];
+    if (out == null) return;
+    await useAppFonts();
+    // The real Material fonts (the widget walk in this suite uses the bundled Noto Sans; a screenshot should show what a
+    // person sees, buttons included).
+    final fonts = '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts';
+    for (final (family, files) in [
+      ('Roboto', ['Roboto-Regular.ttf', 'Roboto-Medium.ttf', 'Roboto-Bold.ttf']),
+      ('MaterialIcons', ['MaterialIcons-Regular.otf']),
+    ]) {
+      final loader = FontLoader(family);
+      for (final f in files) {
+        loader.addFont(Future.value(ByteData.sublistView(File('$fonts/$f').readAsBytesSync())));
+      }
+      await loader.load();
+    }
+    t.view.physicalSize = const Size(720, 520);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final boundary = GlobalKey();
+    final form = <String, Object?>{
+      'form_id': 'form-1',
+      'node_id': 'human',
+      'node_title': 'Human',
+      'form_content': r'Approve: {{#$output.reason#}}',
+      'inputs': [
+        {'type': 'paragraph', 'output_variable_name': 'reason'},
+      ],
+      'actions': [
+        {'id': 'approve', 'title': 'Approve', 'button_style': 'primary'},
+      ],
+      'form_token': 'form-token',
+      'display_in_ui': true,
+    };
+    Future<void> shot(String name) async {
+      await t.runAsync(() async {
+        final render = boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        final image = await render.toImage();
+        final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+        Directory(out).createSync(recursive: true);
+        File('$out/$name.png').writeAsBytesSync(bytes.buffer.asUint8List());
+      });
+    }
+
+    for (final dark in [false, true]) {
+      // The tokens are the theme (DifyTheme sets them; here the page is rendered without the editor around it).
+      DifyColors.useDark(dark);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: boundary,
+          child: MaterialApp(
+            theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
+            home: Scaffold(
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: HumanInputFormList(
+                  inPanel: true,
+                  humanInputFormDataList: [form],
+                  onHumanInputFormSubmit: (token, data) async {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      for (var i = 0; i < 10; i++) {
+        await t.pump(const Duration(milliseconds: 50));
+      }
+      await shot(dark ? 'human-input-form-dark' : 'human-input-form-light');
+    }
+    DifyColors.useDark(false);
   });
 }
