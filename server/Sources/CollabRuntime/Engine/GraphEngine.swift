@@ -78,6 +78,16 @@ public struct GraphRunStats: Sendable {
     public var totalSteps: Int
     public var llmUsage: LLMUsage
     public var exceptionsCount: Int
+
+    /// For a run that ends without stats of its own (a failure before or around the pause).
+    public init(outputs: JSONObject = [:], totalTokens: Int = 0, totalSteps: Int = 0, llmUsage: LLMUsage = LLMUsage(),
+                exceptionsCount: Int = 0) {
+        self.outputs = outputs
+        self.totalTokens = totalTokens
+        self.totalSteps = totalSteps
+        self.llmUsage = llmUsage
+        self.exceptionsCount = exceptionsCount
+    }
 }
 
 /// The engine's command channel (`InMemoryChannel` + `AbortCommand`): stop a run from outside.

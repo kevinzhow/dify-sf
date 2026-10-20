@@ -212,6 +212,57 @@ struct HumanInputRunTests {
     }
 }
 
+/// The SSE contract of a pause, against Dify's own field sets and array types (not just "an event arrived"): a client that
+/// parses the official stream must be able to parse ours.
+@Suite("Human input SSE contract", .enabled(if: testDbHost != nil))
+struct HumanInputSSEContractTests {
+    static let requiredKeys: Set<String> = ["form_id", "node_id", "node_title", "form_content", "inputs", "actions",
+                                            "display_in_ui", "form_token", "approval_channels", "resolved_default_values",
+                                            "expiration_time"]
+    static let pausedKeys: Set<String> = ["workflow_run_id", "paused_nodes", "outputs", "reasons", "status", "created_at",
+                                          "elapsed_time", "total_tokens", "total_steps"]
+    static let reasonKeys: Set<String> = ["TYPE", "form_id", "form_content", "inputs", "actions", "node_id", "node_title",
+                                          "resolved_default_values", "form_token", "approval_channels", "expiration_time"]
+
+    @Test func aPausePublishesDifyShapedFramesInOrder() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let frames = HumanInputRunTests.frames(run.text)
+            let events = frames.compactMap { $0["event"]?.string }
+            #expect(events.prefix(1) == ["workflow_started"], "\(events)")
+            #expect(Array(events.suffix(2)) == ["human_input_required", "workflow_paused"], "\(events)")
+            #expect(events.contains("node_finished"), "\(events)")
+
+            let required = frames.first { $0["event"]?.string == "human_input_required" }?["data"]?.object ?? [:]
+            #expect(Set(required.keys) == Self.requiredKeys, "extra/missing: \(Set(required.keys).symmetricDifference(Self.requiredKeys))")
+            #expect(required["inputs"]?.array != nil && required["actions"]?.array != nil, "arrays, not objects")
+            #expect(required["display_in_ui"]?.bool == true)
+
+            let paused = frames.first { $0["event"]?.string == "workflow_paused" }?["data"]?.object ?? [:]
+            #expect(Set(paused.keys) == Self.pausedKeys, "extra/missing: \(Set(paused.keys).symmetricDifference(Self.pausedKeys))")
+            // `paused_nodes` is a list of node ids, not objects.
+            #expect(paused["paused_nodes"]?.array?.allSatisfy { $0.string != nil } == true)
+            #expect(paused["paused_nodes"]?.array?.first?.string == "human")
+            #expect(paused["status"]?.string == "paused")
+            let reason = paused["reasons"]?.array?.first?.object ?? [:]
+            #expect(Set(reason.keys) == Self.reasonKeys, "extra/missing: \(Set(reason.keys).symmetricDifference(Self.reasonKeys))")
+            #expect(reason["TYPE"]?.string == "human_input_required")
+            #expect(reason["form_token"]?.string == required["form_token"]?.string, "the reason names the same form")
+
+            // The same shape comes back from the record-based reconnect.
+            let token = required["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            let reconnected = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+            let rebuilt = HumanInputRunTests.frames(reconnected.text)
+            let rebuiltData = rebuilt.first { $0["event"]?.string == "human_input_required" }?["data"]?.object ?? [:]
+            #expect(rebuiltData.keys.sorted() == required.keys.sorted(),
+                    "the snapshot and the live stream project the same fields")
+        }
+    }
+}
+
 /// A pause that cannot be written must end the run and report it — never publish a pause nobody can answer, never keep
 /// the run "paused" in the database. Driven through the routes with the server's test defect.
 @Suite("Human input pause write failure", .enabled(if: testDbHost != nil))
@@ -225,11 +276,14 @@ struct HumanInputPauseWriteFailureTests {
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
             let frames = HumanInputRunTests.frames(run.text)
             let events = frames.compactMap { $0["event"]?.string }
-            #expect(events.contains("workflow_failed"), "\(events)")
+            // Dify's public stream has no `workflow_failed`: the run ends with `workflow_finished` and `status: failed`.
+            #expect(events.last == "workflow_finished", "\(events)")
+            let finished = frames.first { $0["event"]?.string == "workflow_finished" }
+            #expect(finished?["data"]?["status"]?.string == "failed", "\(String(describing: finished))")
             #expect(!events.contains("human_input_required"), "no form is offered when the pause is not durable: \(events)")
             #expect(!events.contains("workflow_paused"), "\(events)")
 
-            let runId = frames.first { $0["event"]?.string == "workflow_failed" }?["data"]?["id"]?.string ?? ""
+            let runId = finished?["data"]?["id"]?.string ?? ""
             #expect(!runId.isEmpty)
             // Durable side: the run is failed, nothing is paused, no form exists to answer.
             #expect(try await store.workflowRun(doc: app, id: runId)?.status == "failed")

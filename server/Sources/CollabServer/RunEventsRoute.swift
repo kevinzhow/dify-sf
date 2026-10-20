@@ -16,7 +16,10 @@ import Vapor
 struct SnapshotFrames: Sendable {
     var frames: [String]
     var nodeIds: Set<String>
-    var pause: Bool
+    var formIds: Set<String>
+    /// The pause the snapshot described, by its `created_at`: a later generation's pause has another one and must not be
+    /// filtered by it.
+    var pauseCreatedAt: Int?
 }
 
 extension Routes {
@@ -51,7 +54,7 @@ extension Routes {
             return try Self.streaming([RunExecution.sse(try finishedFrame(state))])
         }
 
-        var snapshot = SnapshotFrames(frames: [], nodeIds: [], pause: false)
+        var snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseCreatedAt: nil)
         if includeSnapshot {
             snapshot = try await snapshotFrames(state, paused: state.status == "paused")
         }
@@ -86,9 +89,18 @@ extension Routes {
         guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
               let parsed = try? JSONValue.parse(Data(line.dropFirst(6).utf8)),
               let event = parsed["event"]?.string else { return false }
-        if snapshot.pause && event == "workflow_paused" { return true }
-        if event == "node_started" || event == "node_finished",
-           let id = parsed["data"]?["id"]?.string, snapshot.nodeIds.contains(id) { return true }
+        switch event {
+        case "workflow_paused":
+            // Only the pause this snapshot described: a later generation has another `created_at`.
+            if let described = snapshot.pauseCreatedAt,
+               parsed["data"]?["created_at"]?.int == described { return true }
+        case "human_input_required":
+            if let formId = parsed["data"]?["form_id"]?.string, snapshot.formIds.contains(formId) { return true }
+        case "node_started", "node_finished":
+            if let id = parsed["data"]?["id"]?.string, snapshot.nodeIds.contains(id) { return true }
+        default:
+            break
+        }
         return false
     }
 
@@ -113,44 +125,41 @@ extension Routes {
             frames.append(RunExecution.sse(["event": "node_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
                                     "data": ["id": .string(e.id), "node_id": .string(e.nodeId), "node_type": .string(e.nodeType),
                                              "title": .string(e.title), "index": .int(e.index), "status": .string(e.status),
-                                             "inputs": (e.inputs.flatMap { try? JSONValue.parse($0) }) ?? .object([:]), "inputs_truncated": false,
-                                             "outputs": (e.outputs.flatMap { try? JSONValue.parse($0) }) ?? .object([:]), "outputs_truncated": false,
-                                             "error": e.error.map(JSONValue.string) ?? .null, "elapsed_time": .double(e.elapsedTime),
+                                             "inputs": (e.inputs.flatMap { try? JSONValue.parse($0) }) ?? .object([:]),
+                                             "inputs_truncated": false,
+                                             "outputs": (e.outputs.flatMap { try? JSONValue.parse($0) }) ?? .object([:]),
+                                             "outputs_truncated": false, "error": e.error.map(JSONValue.string) ?? .null,
+                                             "elapsed_time": .double(e.elapsedTime),
                                              "created_at": .int(Int(start.timeIntervalSince1970)),
                                              "finished_at": .int(Int(finished.timeIntervalSince1970))]]))
         }
-        var coveredNodes = Set<String>()
-        for e in executions { coveredNodes.insert(e.id) }
-        var coveredPause = false
+        var pauseCreatedAt: Int?
+        var waiting: [StoredHumanInputForm] = []
         if paused, let pause = (try? await store.openPauses(workflowRunId: run.id))?.first ?? nil {
-            coveredPause = true
+            pauseCreatedAt = Int(pause.createdAt.timeIntervalSince1970)
             let forms = (try? await store.humanInputForms(workflowRunId: run.id)) ?? []
-            let waiting = forms.filter { $0.status == .waiting && pause.executionIds.contains($0.executionId) }
+            waiting = forms.filter { $0.status == .waiting && pause.executionIds.contains($0.executionId) }
             for form in waiting {
                 frames.append(RunExecution.sse(["event": "human_input_required", "workflow_run_id": .string(run.id),
-                                        "task_id": .string(run.id), "data": [
-                                            "form_id": .string(form.id), "node_id": .string(form.nodeId),
-                                            "node_title": .string(form.nodeTitle), "form_content": .string(form.formContent),
-                                            "inputs": (try? JSONValue.parse(form.inputs)) ?? .array([]),
-                                            "actions": (try? JSONValue.parse(form.actions)) ?? .array([]),
-                                            "display_in_ui": .bool(form.displayInUi), "form_token": .string(form.token),
-                                            "approval_channels": .array([]),
-                                            "resolved_default_values": form.resolvedDefaultValues.flatMap { try? JSONValue.parse($0) } ?? .object([:]),
-                                            "expiration_time": form.expirationTime.map { .int($0) } ?? .null]]))
+                                        "task_id": .string(run.id),
+                                        "data": RunStreamEncoder.humanInputRequiredData(form)]))
             }
+            // The same projection the live stream uses, so the two paths cannot drift.
+            var stats = GraphRunStats()
+            stats.outputs = [:]
             frames.append(RunExecution.sse(["event": "workflow_paused", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
-                                    "data": ["workflow_run_id": .string(run.id),
-                                             "paused_nodes": .array(waiting.map { .object(["node_id": .string($0.nodeId),
-                                                                                             "node_title": .string($0.nodeTitle),
-                                                                                             "form_id": .string($0.id)]) }),
-                                             "reasons": .array(waiting.map { .object(["TYPE": .string("human_input_required"),
-                                                                                      "node_id": .string($0.nodeId)]) }),
-                                             "outputs": .object([:]), "status": "paused",
-                                             "created_at": .double(pause.createdAt.timeIntervalSince1970),
-                                             "elapsed_time": .double(pause.elapsedTime),
-                                             "total_tokens": .int(pause.totalTokens), "total_steps": .int(pause.totalSteps)]]))
+                                    "data": RunStreamEncoder.workflowPausedData(
+                                        runId: run.id, forms: waiting, stats: pauseStats(pause), at: pause.createdAt,
+                                        elapsed: pause.elapsedTime)]))
+            _ = stats
         }
-        return SnapshotFrames(frames: frames, nodeIds: coveredNodes, pause: coveredPause)
+        return SnapshotFrames(frames: frames, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
+                              pauseCreatedAt: pauseCreatedAt)
+    }
+
+    /// The totals a pause carried, as the live frame reports them.
+    private func pauseStats(_ pause: StoredWorkflowPause) -> GraphRunStats {
+        GraphRunStats(outputs: [:], totalTokens: pause.totalTokens, totalSteps: pause.totalSteps)
     }
 
     private func finishedFrame(_ run: StoredWorkflowRun) throws -> JSONValue {

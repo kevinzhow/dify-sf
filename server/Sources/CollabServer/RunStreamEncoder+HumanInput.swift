@@ -23,8 +23,9 @@ extension RunStreamEncoder {
         ])
     }
 
-    func humanInputRequired(_ form: StoredHumanInputForm) -> JSONValue {
-        envelope("human_input_required", [
+    /// The `human_input_required` data, shared by the live stream and the reconnect snapshot so the two cannot drift.
+    static func humanInputRequiredData(_ form: StoredHumanInputForm) -> JSONValue {
+        .object([
             "form_id": .string(form.id),
             "node_id": .string(form.nodeId),
             "node_title": .string(form.nodeTitle),
@@ -36,6 +37,26 @@ extension RunStreamEncoder {
             "approval_channels": .array([]),
             "resolved_default_values": form.resolvedDefaultValues.flatMap { try? JSONValue.parse($0) } ?? .object([:]),
             "expiration_time": form.expirationTime.map { .int($0) } ?? .null,
+        ])
+    }
+
+    func humanInputRequired(_ form: StoredHumanInputForm) -> JSONValue {
+        envelope("human_input_required", Self.humanInputRequiredData(form))
+    }
+
+    /// The `workflow_paused` data, shared by the live stream and the snapshot.
+    static func workflowPausedData(runId: String, forms: [StoredHumanInputForm], stats: GraphRunStats, at: Date,
+                                   elapsed: Double) -> JSONValue {
+        .object([
+            "workflow_run_id": .string(runId),
+            "paused_nodes": .array(forms.map { JSONValue.string($0.nodeId) }),
+            "outputs": .object(stats.outputs),
+            "reasons": .array(forms.map { reasonJSON($0) }),
+            "status": "paused",
+            "created_at": .int(Int(at.timeIntervalSince1970)),
+            "elapsed_time": .double(elapsed),
+            "total_tokens": .int(stats.totalTokens),
+            "total_steps": .int(stats.totalSteps),
         ])
     }
 
@@ -64,19 +85,7 @@ extension RunStreamEncoder {
     }
 
     func workflowPaused(_ forms: [StoredHumanInputForm], reasons: [PauseReason], stats: GraphRunStats, at: Date) -> JSONValue {
-        let pausedNodes = forms.map { JSONValue.string($0.nodeId) }
-        return envelope("workflow_paused", [
-            "workflow_run_id": .string(runId),
-            "paused_nodes": .array(pausedNodes),
-            // Dify's public reasons carry the human-input type and the form, not the engine's internal `hitl_required`
-            // session id: `human_input_policy.enrich_human_input_pause_reasons` adds the token, channels and deadline.
-            "reasons": .array(forms.map { Self.reasonJSON($0) }),
-            "outputs": .object(stats.outputs),
-            "status": "paused",
-            "created_at": .int(Int(at.timeIntervalSince1970)),
-            "elapsed_time": .double(at.timeIntervalSince(startedAt)),
-            "total_tokens": .int(stats.totalTokens),
-            "total_steps": .int(stats.totalSteps),
-        ])
+        envelope("workflow_paused", Self.workflowPausedData(runId: runId, forms: forms, stats: stats, at: at,
+                                                           elapsed: at.timeIntervalSince(startedAt)))
     }
 }

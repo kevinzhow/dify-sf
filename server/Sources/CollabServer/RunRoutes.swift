@@ -443,14 +443,9 @@ final class RunExecution: Sendable {
         if let snapshot {
             do { stream = try engine.resume(snapshot) } catch {
                 routes.logger.error("run \(runId) could not resume: \(error)")
+                let stats = GraphRunStats()
                 let frames = encoderBox.withLock { enc in
-                    [enc.envelope("workflow_failed", [
-                        "id": .string(runId), "workflow_id": .string(appId), "status": "failed", "outputs": .object([:]),
-                        "error": .string("could not resume the paused run: \(error)"),
-                        "elapsed_time": 0, "total_tokens": 0, "total_steps": 0, "created_by": enc.account,
-                        "created_at": .double(Date().timeIntervalSince1970), "finished_at": .double(Date().timeIntervalSince1970),
-                        "exceptions_count": 0, "files": [],
-                    ])]
+                    [enc.workflowFinished("failed", error: "could not resume the paused run: \(error)", stats: stats, exceptions: 0)]
                 }
                 for f in frames { await channel.publish(Self.sse(f)) }
                 try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
@@ -482,6 +477,18 @@ final class RunExecution: Sendable {
                 // pause could not be written, which ends the run as failed.
                 endedWithoutPause = !(await handlePause(reasons: reasons, snapshot: snapshot, stats: stats))
                 continue
+            }
+            // `boundary.py` publishes the filled (or timeout) frame first and forwards the node's own frames after it.
+            if case .node(.succeeded(let x, let nodeId, _, _, let r)) = event,
+               let decision = decisions.first(where: { $0.executionId == x && $0.status == .submitted }) {
+                let filled = encoderBox.withLock { enc in
+                    enc.humanInputFormFilled(nodeId: nodeId, nodeTitle: decision.nodeTitle,
+                                             renderedContent: r.outputs["__rendered_content"]?.string ?? decision.renderedContent,
+                                             actionId: r.outputs["__action_id"]?.string ?? (decision.submittedAction ?? ""),
+                                             actionText: r.outputs["__action_value"]?.string ?? "",
+                                             submittedData: r.inputs)
+                }
+                await channel.publish(Self.sse(filled))
             }
             let frames = encoderBox.withLock { $0.encode(event) }
             for f in frames { await channel.publish(Self.sse(f)) }
@@ -567,15 +574,9 @@ final class RunExecution: Sendable {
                 elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.startedAt) }, forms: forms, at: at)
         } catch {
             routes.logger.error("run \(runId) could not persist its pause: \(error)")
+            // Dify's public stream has no `workflow_failed`: a failure is `workflow_finished` with `status: failed`.
             let frames = encoderBox.withLock { enc in
-                [enc.envelope("workflow_failed", [
-                    "id": .string(runId), "workflow_id": .string(appId), "status": "failed",
-                    "outputs": .object([:]),
-                    "error": .string("could not persist the paused run: \(error)"),
-                    "elapsed_time": .double(at.timeIntervalSince(enc.startedAt)), "total_tokens": .int(stats.totalTokens),
-                    "total_steps": .int(stats.totalSteps), "created_by": enc.account, "created_at": .double(enc.startedAt.timeIntervalSince1970),
-                    "finished_at": .double(at.timeIntervalSince1970), "exceptions_count": 0, "files": [],
-                ])]
+                [enc.workflowFinished("failed", error: "could not persist the paused run: \(error)", stats: stats, exceptions: 0)]
             }
             for f in frames { await channel.publish(Self.sse(f)) }
             try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
