@@ -1073,6 +1073,9 @@ actor RunChannel {
     /// How many frames have been published so far (a reconnect marks the window it must deduplicate).
     var published: Int { frames.count }
 
+    /// How many connections are attached right now (a test uses it to answer only once a follow is listening).
+    var subscriberCount: Int { subscribers.count }
+
     /// The pause generation a published frame belongs to, when it is a pause frame.
     func pauseGeneration(at index: Int) -> Int? { pauseGenerations[index] }
 

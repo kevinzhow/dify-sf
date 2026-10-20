@@ -149,10 +149,12 @@ extension Routes {
             }
             // The same projection the live stream uses, so the two paths cannot drift.
             frames.append(RunExecution.sse(["event": "workflow_paused", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
+                                    // Dify's replay reports the pause with the run's own start and no elapsed time: its
+                                    // converter stamps the replay's clock when the snapshot is built, so the resumed
+                                    // round's clock only appears on the live frame. The outputs are the record's.
                                     "data": RunStreamEncoder.workflowPausedData(
                                         runId: run.id, forms: waiting, stats: pauseStats(pause),
-                                        createdAt: pause.createdAt.addingTimeInterval(-pause.elapsedTime),
-                                        elapsed: pause.elapsedTime)]))
+                                        createdAt: run.createdAt, elapsed: 0)]))
         }
         return SnapshotFrames(frames: frames, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
                               pauseGeneration: pauseGeneration)

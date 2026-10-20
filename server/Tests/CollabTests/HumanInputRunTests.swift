@@ -1808,7 +1808,7 @@ struct HumanInputSideEffectTests {
 
     @Test func theModelIsCalledOnceAcrossThePauseTheResumeAndAReconnect() async throws {
         try await withFakeDaemon { daemon, log in
-            try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
+            try await withServerAndRoutes(config: runtimeConfig(daemon: daemon)) { api, store, routes in
                 let owner = try await api.setupOwner()
                 let creds: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": [
                     "endpoint_url": "http://llmstub:8000/v1", "api_key": "sk-stub-not-a-real-key", "mode": "chat",
@@ -1831,6 +1831,19 @@ struct HumanInputSideEffectTests {
                 _ = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
                 #expect(invokes() == 1, "a reconnect replays no side effect: \(invokes())")
 
+                // A **live follow** across the resume replays no side effect either: a reader that attaches while the run
+                // waits for its answer and stays for the resumed round sees the run end, and the model still ran once (the
+                // record it already produced, never a second call).
+                let follower = Task { try await api.get("/v1/workflow/\(runId)/events?continue_on_pause=true", token: owner) }
+                // Let the follow attach before the answer wakes the run: the subscriber is on the channel the resume
+                // publishes into, so its frames are the resume's and not a rebuild of the records.
+                var attached = false
+                for _ in 0..<200 {
+                    if await routes.runChannels.existing(runId)?.subscriberCount ?? 0 > 0 { attached = true; break }
+                    try await Task.sleep(for: .milliseconds(10))
+                }
+                #expect(attached, "the follow is attached to the run's channel before the answer")
+
                 // The resume continues from the snapshot: the LLM node is done, so it does not run again.
                 _ = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"yes"},"action":"approve"}"##, token: owner)
                 var status = ""
@@ -1840,6 +1853,10 @@ struct HumanInputSideEffectTests {
                 }
                 #expect(status == "succeeded", "the resumed run ends: \(status)")
                 #expect(invokes() == 1, "the resume did not run the model again: \(invokes())")
+                let follow = try await follower.value
+                let followEvents = HumanInputRunTests.frames(follow.text).compactMap { $0["event"]?.string }
+                #expect(followEvents.last == "workflow_finished", "the follow ends with the run: \(followEvents)")
+                #expect(invokes() == 1, "the follow across the resume replayed no side effect: \(invokes())")
                 let executions = try await store.nodeExecutions(doc: app, run: runId)
                 #expect(executions.filter { $0.nodeId == "llm" }.count == 1, "one LLM execution in the run's history")
             }
