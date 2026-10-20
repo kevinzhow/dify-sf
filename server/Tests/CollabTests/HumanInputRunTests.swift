@@ -341,6 +341,52 @@ struct HumanInputStopPausedTests {
     }
 }
 
+/// Dify's `elapsed_time` counts from the **round**, not from the run's creation: a run that waited for a human keeps its
+/// original `created_at`, while the finish, the detail and the history report the resumed round's time.
+@Suite("Human input elapsed time", .enabled(if: testDbHost != nil))
+struct HumanInputElapsedTests {
+    @Test func theReportedTimeExcludesTheTimeSpentWaiting() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let frames = HumanInputRunTests.frames(run.text)
+            let runId = frames.first?["workflow_run_id"]?.string ?? ""
+            let token = frames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let createdBefore = try #require(try await store.workflowRun(id: runId)?.createdAt)
+
+            // A clear wait: 1.5 s with the run paused.
+            let waitStart = Date()
+            try await Task.sleep(for: .milliseconds(1500))
+            _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded")
+            let wall = Date().timeIntervalSince(waitStart)
+
+            // Detail: elapsed excludes the wait, created_at is the original.
+            let detail = try await api.get("/v1/apps/\(app)/workflow-runs/\(runId)", token: owner)
+            #expect(detail.status == 200, "\(detail.text)")
+            let detailJSON = try JSONValue.parse(Data(detail.text.utf8))
+            let elapsed = detailJSON["elapsed_time"]?.double ?? -1
+            let created = detailJSON["created_at"]?.int ?? 0
+            #expect(elapsed >= 0 && elapsed < 1.0, "elapsed \(elapsed) should not include the \(wall)s wait")
+            #expect(abs(Double(created) - createdBefore.timeIntervalSince1970) < 2, "created_at stays the run's own")
+
+            // History: the same numbers.
+            let history = try await api.get("/v1/apps/\(app)/workflow-runs?limit=5", token: owner)
+            let historyJSON = try JSONValue.parse(Data(history.text.utf8))
+            let row = historyJSON["data"]?.array?.first { $0["id"]?.string == runId }?.object ?? [:]
+            #expect(abs((row["elapsed_time"]?.double ?? -1) - elapsed) < 0.01, "history matches the detail")
+            #expect(row["created_at"]?.int == created)
+            #expect(row["total_steps"]?.int ?? 0 > 0)
+        }
+    }
+}
+
 /// Deleting the app closes the runs it left waiting: the pause is closed, the forms expire, and the token stops working.
 @Suite("Human input app deletion", .enabled(if: testDbHost != nil))
 struct HumanInputAppDeletionTests {

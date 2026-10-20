@@ -211,8 +211,10 @@ extension Routes {
         }
         let account: JSONValue = ["id": .string(userId), "name": .string(run.createdByName ?? ""), "email": .string(run.createdByEmail ?? "")]
         let inputs = (try? JSONValue.parse(run.inputs))?.object ?? [:]
-        let encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: appId, graph: graph, account: account,
+        var encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: appId, graph: graph, account: account,
                                        inputs: inputs, startedAt: run.createdAt)
+        // `elapsed_time` counts from the round (the resume), while `created_at` stays the run's original creation.
+        encoder.roundStartedAt = Date()
         let commands = GraphEngineCommands()
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
                                                                         maxSteps: config.runtimeMaxSteps,
@@ -579,7 +581,7 @@ final class RunExecution: Sendable {
             generation = try await routes.store.createPause(
                 workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,
                 totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
-                elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.startedAt) }, forms: forms, at: at)
+                elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.roundStartedAt) }, forms: forms, at: at)
         } catch {
             routes.logger.error("run \(runId) could not persist its pause: \(error)")
             // Dify's public stream has no `workflow_failed`: a failure is `workflow_finished` with `status: failed`.
@@ -589,7 +591,7 @@ final class RunExecution: Sendable {
             for f in frames { await channel.publish(Self.sse(f)) }
             try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                       error: "could not persist the paused run: \(error)",
-                                                      elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.startedAt }),
+                                                      elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.roundStartedAt }),
                                                       totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                                                       exceptionsCount: 0, finishedAt: at)
             // The run is over: the caller must run its terminal cleanup (channel, registry).
@@ -716,7 +718,11 @@ struct RunStreamEncoder: Sendable {
     let graph: RuntimeGraph
     let account: JSONValue
     let inputs: JSONObject
+    /// The run's `created_at`: the original start, kept across a resume (Dify keeps the run row's value).
     let startedAt: Date
+    /// When **this round** started: equal to `startedAt` for a fresh run, the resume moment for a resumed one. Dify computes
+    /// `elapsed_time` from the round, not from the run's creation (`sqlalchemy_workflow_execution_repository`).
+    var roundStartedAt: Date
     /// `_NodeSnapshot`s of started nodes.
     struct Snapshot: Sendable {
         var title: String
@@ -733,6 +739,7 @@ struct RunStreamEncoder: Sendable {
         self.account = account
         self.inputs = inputs
         self.startedAt = startedAt
+        roundStartedAt = startedAt
     }
 
     static func ts(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
@@ -875,7 +882,7 @@ struct RunStreamEncoder: Sendable {
         let now = Date()
         return envelope("workflow_finished", [
             "id": .string(runId), "workflow_id": .string(workflowId), "status": .string(status), "outputs": .object(stats.outputs),
-            "error": error.map(JSONValue.string) ?? .null, "elapsed_time": .double(now.timeIntervalSince(startedAt)),
+            "error": error.map(JSONValue.string) ?? .null, "elapsed_time": .double(now.timeIntervalSince(roundStartedAt)),
             "total_tokens": .int(stats.totalTokens), "total_steps": .int(stats.totalSteps), "created_by": account,
             "created_at": Self.ts(startedAt), "finished_at": Self.ts(now), "exceptions_count": .int(exceptions), "files": [],
         ])
