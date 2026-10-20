@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../client/transport.dart';
 import '../workflow_run_api.dart';
 
@@ -197,6 +199,11 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   /// Every reconnect ([WorkflowRunApi.workflowEvents]) with the flags it asked for.
   final reconnects = <({String runId, bool includeStateSnapshot, bool continueOnPause})>[];
 
+  /// A reconnect that should wait for the answer, as the server's does: [humanInputGates] by run, opened by the
+  /// submission of [humanInputFormRuns]' token.
+  final humanInputGates = <String, Completer<void>>{};
+  final humanInputFormRuns = <String, String>{};
+
   /// The previews and submissions of a human-input node's own form (`url` → body that was sent).
   final formPreviews = <String, Map<String, Object?>>{};
   final formRuns = <String, Map<String, Object?>>{};
@@ -212,6 +219,10 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   Future<void> submitHumanInputForm(String token, Map<String, Object?> body) async {
     if (!humanInputForms.containsKey(token)) refuse('not_found', 'Form not found', status: 404);
     humanInputAnswers[token] = body;
+    // The answer wakes the run: a gated reconnect goes on.
+    if (humanInputFormRuns[token] case final run?) {
+      if (humanInputGates[run] case final gate? when !gate.isCompleted) gate.complete();
+    }
   }
 
   @override
@@ -221,6 +232,7 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
     bool continueOnPause = true,
   }) async* {
     reconnects.add((runId: runId, includeStateSnapshot: includeStateSnapshot, continueOnPause: continueOnPause));
+    if (humanInputGates[runId] case final gate?) await gate.future;
     yield* Stream.fromIterable(humanInputEvents[runId] ?? const []);
   }
 
