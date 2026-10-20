@@ -315,4 +315,113 @@ void main() {
     }
     DifyColors.useDark(false);
   });
+
+  testWidgets('a lost connection shows the refusal on the form, and the form takes the answer once it is back', (t) async {
+    await useAppFonts();
+    SharedPreferences.setMockInitialValues({});
+    t.view.physicalSize = const Size(1800, 1000);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    CanvasDefaults.viewport = (40, 200, 0.6);
+    addTearDown(() => CanvasDefaults.viewport = null);
+
+    final api = FakeWorkflowRunApi();
+    var token = '';
+    api.draftRunEvents = (appId, runId, body) {
+      token = 'form-$runId';
+      final gate = Completer<void>();
+      api.humanInputGates[runId] = gate;
+      api.humanInputForms[token] = {'form_id': 'form-1'};
+      api.humanInputFormRuns[token] = runId;
+      // The reconnect only delivers anything once the answer landed: a server that comes back does not replay.
+      api.humanInputEvents[runId] = const [];
+      return [
+        {
+          'event': 'human_input_required',
+          'workflow_run_id': runId,
+          'task_id': runId,
+          'data': {
+            'form_id': 'form-1',
+            'node_id': 'human',
+            'node_title': 'Human',
+            'form_content': r'Approve: {{#$output.reason#}}',
+            'inputs': [
+              {'type': 'paragraph', 'output_variable_name': 'reason'},
+            ],
+            'actions': [
+              {'id': 'approve', 'title': 'Approve', 'button_style': 'primary'},
+            ],
+            'display_in_ui': true,
+            'form_token': token,
+            'approval_channels': <Object?>[],
+            'resolved_default_values': <String, Object?>{},
+            'expiration_time': 0,
+          },
+        },
+        {
+          'event': 'workflow_paused',
+          'workflow_run_id': runId,
+          'task_id': runId,
+          'data': {'outputs': <String, Object?>{}, 'paused_nodes': ['human'], 'reasons': <Object?>[], 'elapsed_time': 0},
+        },
+      ];
+    };
+    final demo = DemoBackend(server: FakeServer(initial: humanDoc()), withBo: false);
+    await t.pumpWidget(
+      MaterialApp(
+        home: EditorPage(
+          backend: demo,
+          docId: 'demo',
+          clientId: 'me-abc123',
+          journaled: false,
+          serverRuntime: ServerWorkflowRuntime(
+            api: api,
+            singleNodeRun: const {},
+            draftRun: const {'start', 'human-input', 'end'},
+            humanInput: true,
+          ),
+        ),
+      ),
+    );
+    for (var i = 0; i < 20; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    final scope = WorkflowRunScope.of(t.element(find.byType(WorkflowCanvas)));
+    final store = WorkflowStoreScope.of(t.element(find.byType(WorkflowCanvas)));
+    scope.run.handleWorkflowStartRunInWorkflow();
+    for (var i = 0; i < 200 && find.byType(HumanInputFormList).evaluate().isEmpty; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.byType(HumanInputFormList), findsOneWidget);
+    final field = find.descendant(of: find.byKey(const Key('content-item-textarea')), matching: find.byType(EditableText));
+    await t.enterText(field, 'Looks good');
+
+    // The server goes away: the answer cannot be sent. The page keeps the run waiting and says so on the form.
+    api.humanInputSubmitError = const TransportException('Connection refused');
+    await t.tap(find.text('Approve'));
+    for (var i = 0; i < 100 && find.byKey(const Key('human-input-form-error')).evaluate().isEmpty; i++) {
+      await t.pump(const Duration(milliseconds: 20));
+    }
+    expect(find.text('Connection refused'), findsOneWidget);
+    expect(t.widget<EditableText>(field).controller.text, 'Looks good');
+    expect(resultOf(store.workflowRunningData.value ?? const {})['status'], WorkflowRunningStatus.paused,
+           reason: 'a lost answer does not end or restart the run');
+
+    // It comes back (the client reconnects; here: the API answers again) and the same form takes the answer.
+    api.humanInputSubmitError = null;
+    await t.tap(find.text('Approve'));
+    for (var i = 0; i < 100 && api.humanInputAnswers.isEmpty; i++) {
+      await t.pump(const Duration(milliseconds: 20));
+    }
+    expect(api.humanInputAnswers[token], {
+      'inputs': {'reason': 'Looks good'},
+      'action': 'approve',
+    });
+    await t.pump();
+    expect(find.byKey(const Key('human-input-form-error')), findsNothing);
+
+    await t.pumpWidget(const SizedBox());
+    await demo.dispose();
+    await t.pump(const Duration(seconds: 20));
+  });
 }
