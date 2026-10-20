@@ -128,7 +128,7 @@ extension Routes {
         stored.createdByName = p.account.name
         do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
 
-        let channel = RunChannel()
+        let channel = await runChannels.channel(runId)
         let commands = GraphEngineCommands()
         await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands))
         let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
@@ -209,7 +209,7 @@ extension Routes {
                                                elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
             return false
         }
-        let channel = RunChannel()
+        let channel = await runChannels.channel(runId)
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
                                      createdBy: userId, channel: channel, encoder: encoder, triggeredFrom: "workflow-run",
@@ -498,6 +498,7 @@ final class RunExecution: Sendable {
         pinger.cancel()
         await channel.finish()
         await routes.runs.remove(taskId)
+        await routes.runChannels.remove(runId)
     }
 
     /// The pause, in the order Dify's `WorkflowResponseConverter` implies: the snapshot, the forms and the run's state are
@@ -828,6 +829,23 @@ struct RunStreamEncoder: Sendable {
 
 /// The frames of one run for its SSE subscribers: every frame is kept (a subscriber that attaches late gets them all) until
 /// the run ends.
+/// The live channels of the runs this process is executing, by run id. A reconnect attaches to the same channel the run
+/// publishes into; a run that is not in here (paused, finished, or started by another process) is served from its records.
+actor RunChannelRegistry {
+    private var channels: [String: RunChannel] = [:]
+
+    func channel(_ runId: String) -> RunChannel {
+        if let existing = channels[runId] { return existing }
+        let created = RunChannel()
+        channels[runId] = created
+        return created
+    }
+
+    func existing(_ runId: String) -> RunChannel? { channels[runId] }
+
+    func remove(_ runId: String) { channels.removeValue(forKey: runId) }
+}
+
 actor RunChannel {
     private var frames: [String] = []
     private var subscribers: [Int: AsyncStream<String>.Continuation] = [:]

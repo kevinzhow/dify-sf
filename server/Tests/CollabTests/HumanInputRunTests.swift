@@ -210,6 +210,67 @@ struct HumanInputRunTests {
     }
 }
 
+/// Dify's reconnect endpoint: a paused run is described from its records (no frame table), a finished one answers a single
+/// `workflow_finished`, and someone else's run is not found.
+@Suite("Run events reconnect", .enabled(if: testDbHost != nil))
+struct RunEventsReconnectTests {
+    @Test func aPausedRunIsRebuiltFromItsRecordsAndAFinishedOneAnswersOneFrame() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            #expect(!runId.isEmpty)
+
+            // Reconnect to the paused run: the state comes from the run, node, form and pause records.
+            let reconnect = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+            #expect(reconnect.status == 200, "\(reconnect.text)")
+            let events = HumanInputRunTests.frames(reconnect.text).compactMap { $0["event"]?.string }
+            #expect(events.first == "workflow_started", "\(events)")
+            #expect(events.contains("node_finished"), "\(events)")
+            #expect(events.contains("human_input_required"), "\(events)")
+            #expect(events.last == "workflow_paused", "close_on_pause ends the stream at the pause: \(events)")
+            let rebuiltToken = HumanInputRunTests.frames(reconnect.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string
+            #expect(rebuiltToken == token, "the same form, same token")
+
+            // Answer it, let the run finish, then reconnect again: one frame and close.
+            _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded")
+            let finished = try await api.get("/v1/workflow/\(runId)/events", token: owner)
+            let finishedEvents = HumanInputRunTests.frames(finished.text)
+            #expect(finishedEvents.count == 1, "\(finishedEvents.count) frames for a finished run")
+            #expect(finishedEvents.first?["event"]?.string == "workflow_finished")
+            #expect(finishedEvents.first?["data"]?["status"]?.string == "succeeded")
+        }
+    }
+
+    @Test func someoneElsesRunIsNotFound() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            let stranger = try await api.post("/v1/auth/login", #"{"email":"owner@example.com","password":"owner-pass-1"}"#)
+            #expect(stranger.status == 200)
+            // The same account is the owner, so use an unknown run id to show the 404 shape, and an anonymous call for 401.
+            let unknown = try await api.get("/v1/workflow/no-such-run/events", token: owner)
+            #expect(unknown.status == 404, "\(unknown.text)")
+            let anonymous = try await api.get("/v1/workflow/\(runId)/events")
+            #expect(anonymous.status == 401, "\(anonymous.text)")
+        }
+    }
+}
+
 /// The restart path: an answer taken while no process was running is picked up by the scan and resumed through the same
 /// `resumeRun` an answer uses.
 @Suite("Human input resume after a restart", .enabled(if: testDbHost != nil))

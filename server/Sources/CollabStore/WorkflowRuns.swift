@@ -111,6 +111,18 @@ extension PostgresStore {
         return run
     }
 
+    /// A run by its id alone: the reconnect endpoint knows the run id it was given, not the document.
+    public func workflowRun(id: String) async throws -> StoredWorkflowRun? {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT \(unescaped: Self.runColumns) FROM workflow_runs r LEFT JOIN accounts a ON a.id = r.created_by
+                WHERE r.id = \(id)
+                """, logger: self.logger)
+            for try await row in rows { return try Self.decodeRun(row) }
+            return nil
+        }
+    }
+
     public func workflowRun(doc: String, id: String) async throws -> StoredWorkflowRun? {
         try await bounded {
             let rows = try await self.client.query("""
