@@ -532,6 +532,18 @@ extension PostgresStore {
         }
     }
 
+    /// The runs of one document that are waiting on a pause right now (a deleted app stops them).
+    public func pausedRuns(ofDocument doc: String) async throws -> [String] {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT workflow_run_id FROM workflow_pauses WHERE doc_id = \(doc) AND resumed_at IS NULL
+                """, logger: self.logger)
+            var out: [String] = []
+            for try await (id,) in rows { out.append(try id.decode(String.self)) }
+            return out
+        }
+    }
+
     /// A stop while the run waits: the waiting forms are closed (`expired`, so a later submission answers 412 instead of
     /// waking it), the run becomes `stopped` and the pause is closed. A run that is not paused is left alone.
     public func stopPausedRun(workflowRunId: String, error: String, at: Date) async throws {

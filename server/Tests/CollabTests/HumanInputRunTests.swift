@@ -341,6 +341,31 @@ struct HumanInputStopPausedTests {
     }
 }
 
+/// Deleting the app closes the runs it left waiting: the pause is closed, the forms expire, and the token stops working.
+@Suite("Human input app deletion", .enabled(if: testDbHost != nil))
+struct HumanInputAppDeletionTests {
+    @Test func deletingTheAppClosesItsWaitingRun() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            #expect(!runId.isEmpty)
+
+            let deleted = try await api.delete("/v1/apps/\(app)", token: owner)
+            #expect(deleted.status == 204, "\(deleted.text)")
+            #expect(try await store.workflowRun(id: runId)?.status == "stopped", "a deleted app does not leave a waiting run")
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty)
+            #expect(try await store.humanInputForm(token: token)?.status == .expired)
+
+            let late = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
+            #expect(late.status == 412, "the token of a deleted app does not answer: \(late.text)")
+        }
+    }
+}
+
 /// `_display_in_ui`: the debugger shows every form; a published run follows the node's setting.
 @Suite("Human input display rules", .enabled(if: testDbHost != nil))
 struct HumanInputDisplayRuleTests {
