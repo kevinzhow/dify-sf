@@ -643,6 +643,112 @@ struct HumanInputResumeStreamTests {
     }
 }
 
+/// The same node in two loop rounds is two executions: each round pauses with its own form, and an answer completes only
+/// the round it belongs to (decisions are matched by execution, never by node).
+@Suite("Human input in a loop", .enabled(if: testDbHost != nil))
+struct HumanInputLoopTests {
+    static func loopYAML() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-loop
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: loop, targetHandle: target}
+            - {id: e2, source: loop-start, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e3, source: human, sourceHandle: approve, target: increment, targetHandle: target}
+            - {id: e4, source: loop, sourceHandle: source, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data: {title: Start, type: start, variables: []}
+            - id: loop
+              data:
+                title: Loop
+                type: loop
+                start_node_id: loop-start
+                loop_count: 2
+                break_conditions: []
+                logical_operator: and
+                loop_variables:
+                - {label: n, var_type: number, value_type: constant, value: '0'}
+            - id: loop-start
+              data: {title: Loop start, type: loop-start}
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                loop_id: loop
+                isInLoop: true
+                form_content: 'Round {{#$output.reply#}}'
+                inputs:
+                - {type: paragraph, output_variable_name: reply}
+                user_actions:
+                - {id: approve, title: Approve it, button_style: primary}
+            - id: increment
+              data:
+                title: Increment
+                type: assigner
+                version: '2'
+                loop_id: loop
+                isInLoop: true
+                items:
+                - {input_type: constant, operation: '+=', value: 1, variable_selector: [loop, n], write_mode: over-write}
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs:
+                - {variable: n, value_selector: [loop, n]}
+        """
+    }
+
+    @Test func eachRoundPausesWithItsOwnFormAndAnswer() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", Self.loopYAML(), token: owner).str("id")
+            #expect(!app.isEmpty)
+            let first = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let firstFrames = HumanInputRunTests.frames(first.text)
+            let runId = firstFrames.first?["workflow_run_id"]?.string ?? ""
+            let firstToken = firstFrames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            #expect(!runId.isEmpty && !firstToken.isEmpty, "round 1 pauses: \(first.text.suffix(300))")
+            let firstForm = try #require(try await store.humanInputForm(token: firstToken))
+
+            // Answer round 1: the loop goes on to round 2, which pauses with a different execution and its own form.
+            _ = try await api.post("/v1/form/human_input/\(firstToken)", #"{"inputs":{"reply":"one"},"action":"approve"}"#, token: owner)
+            var secondToken = ""
+            for _ in 0..<200 where secondToken.isEmpty {
+                try await Task.sleep(for: .milliseconds(25))
+                let forms = try await store.humanInputForms(workflowRunId: runId)
+                secondToken = forms.first { $0.status == .waiting && $0.id != firstForm.id }?.token ?? ""
+            }
+            #expect(!secondToken.isEmpty, "round 2 pauses with a new form")
+            let secondForm = try #require(try await store.humanInputForm(token: secondToken))
+            #expect(secondForm.id != firstForm.id)
+            #expect(secondForm.executionId != firstForm.executionId, "two rounds are two executions of the same node")
+
+            // Answering round 2 only consumes its own execution; the run then finishes with both rounds done.
+            _ = try await api.post("/v1/form/human_input/\(secondToken)", #"{"inputs":{"reply":"two"},"action":"approve"}"#, token: owner)
+            var status = ""
+            for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                try await Task.sleep(for: .milliseconds(25))
+                status = try await store.workflowRun(id: runId)?.status ?? ""
+            }
+            #expect(status == "succeeded", "got \(status)")
+            let store_ = store
+            let forms = try await store_.humanInputForms(workflowRunId: runId)
+            #expect(forms.allSatisfy { $0.status == .submitted }, "both rounds answered: \(forms.map(\.status))")
+            #expect(Set(forms.map(\.executionId)).count == 2, "two executions, not one shared decision")
+        }
+    }
+}
+
 /// The resume position must match the forms that were persisted: rebuilding from the pause's own snapshot asks exactly for
 /// those executions (this checks the existing acceptance item, it does not redefine the set).
 @Suite("Human input resume position", .enabled(if: testDbHost != nil))
