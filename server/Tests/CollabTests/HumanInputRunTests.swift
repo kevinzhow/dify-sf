@@ -263,6 +263,55 @@ struct HumanInputSSEContractTests {
     }
 }
 
+/// One live connection across two pauses (`continue_on_pause=true`): the run's channel outlives a round, so the second
+/// pause arrives on the same stream instead of being filtered as a repeat of the first.
+@Suite("Human input live follow", .enabled(if: testDbHost != nil))
+struct HumanInputLiveFollowTests {
+    @Test func oneConnectionFollowsTwoPausesAndTheFinish() async throws {
+        try await withRunningServer { api, port, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.twoFormsYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let frames = HumanInputRunTests.frames(run.text)
+            let runId = frames.first?["workflow_run_id"]?.string ?? ""
+            #expect(!runId.isEmpty)
+            let tokens = frames.filter { $0["event"]?.string == "human_input_required" }
+                .compactMap { $0["data"]?["form_token"]?.string }
+            #expect(tokens.count == 2, "one pause with two forms")
+
+            try await withRawConnection(port: port) { conn in
+                try await conn.send("""
+                    GET /v1/workflow/\(runId)/events?include_state_snapshot=true&continue_on_pause=true HTTP/1.1\r
+                    Host: 127.0.0.1\r
+                    Authorization: Bearer \(owner)\r
+                    Accept: text/event-stream\r
+                    \r
+
+                    """)
+                // The snapshot describes the pause this run is in.
+                #expect(try await conn.wait(upTo: 10) { $0.text.contains("\"event\":\"workflow_paused\"") },
+                        "the snapshot should arrive on the live connection")
+                #expect(try await conn.wait(upTo: 10) { $0.text.contains("\"event\":\"human_input_required\"") })
+
+                // Answer the first form: the run resumes and pauses again on the second node, on the same connection.
+                _ = try await api.post("/v1/form/human_input/\(tokens[0])", #"{"inputs":{"reply":"one"},"action":"approve"}"#,
+                                       token: owner)
+                let twoPauses = try await conn.wait(upTo: 15) { state in
+                    state.text.components(separatedBy: "\"event\":\"workflow_paused\"").count - 1 >= 2
+                }
+                #expect(twoPauses, "the second pause must reach the same subscriber")
+
+                // Answer the second: the run finishes on this connection too.
+                _ = try await api.post("/v1/form/human_input/\(tokens[1])", #"{"inputs":{"reply":"two"},"action":"approve"}"#,
+                                       token: owner)
+                let finished = try await conn.wait(upTo: 15) { $0.text.contains("\"event\":\"workflow_finished\"") }
+                #expect(finished, "the run's end reaches the connection that followed it")
+                #expect(conn.text.contains("\"status\":\"succeeded\""), "and it succeeded")
+            }
+        }
+    }
+}
+
 /// Pause identity on the channel is the database generation: two resumes can re-pause inside the same second, and the
 /// public `created_at` (integer seconds) cannot tell those apart.
 @Suite("Run channel pause identity")
