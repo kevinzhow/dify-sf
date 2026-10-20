@@ -231,4 +231,34 @@ struct HumanInputMailRoundTwoTests {
             }
         }
     }
+
+    /// Winnie's independent regression: a run stopped while it waits makes its mailed link refuse too — the recipient
+    /// surface runs Dify's `ensure_form_active`, not only the deadline. (The console surface keeps its own rule.)
+    @Test func aStoppedRunsMailedLinkIsNoLongerAnswered() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, store, _ in
+                let owner = try await api.setupOwner()
+                let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve {{#url#}}'"), token: owner).str("id")
+                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
+                let runId = try #require(HumanInputRunTests.frames(run.text).first?["workflow_run_id"]?.string)
+                let mails = try await mailbox.wait(for: 1)
+                let link = try #require(mails.first?.text.split(separator: "/form/").last.map {
+                    String($0.prefix { $0 != "<" && $0 != "\"" && !$0.isWhitespace }) })
+                let before = try await api.get("/v1/form/human_input/\(link)")
+                #expect(before.status == 200, "while the run waits the link opens: \(before.text)")
+                // The user stops the waiting run: its forms are closed (`expired`).
+                let stop = try await api.post("/v1/apps/\(app)/workflow-runs/tasks/\(runId)/stop", "{}", token: owner)
+                #expect(stop.status == 200, "\(stop.text)")
+                let after = try await api.get("/v1/form/human_input/\(link)")
+                #expect(after.status == 412, "a stopped run's link does not open a form: \(after.text)")
+                #expect(after.errorCode == "human_input_form_expired", "\(after.text)")
+                let answer = try await api.post("/v1/form/human_input/\(link)",
+                                                ##"{"inputs":{"reply":"late"},"action":"approve"}"##)
+                #expect(answer.status == 412, "and it cannot be answered: \(answer.text)")
+                #expect(try await store.workflowRun(doc: app, id: runId)?.status == "stopped")
+            }
+        }
+    }
 }

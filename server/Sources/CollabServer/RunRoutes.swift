@@ -283,11 +283,17 @@ extension Routes {
                 let pastGlobal = (try? await store.pausedRunPastGlobalDeadline(
                     workflowRunId: runId, at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds)) ?? false
                 if pastGlobal {
+                    // The global deadline is the run's own to end: when that transition is refused (the run was answered,
+                    // stopped or resumed first) nothing about **this** form may change — a `timedOut` left behind would be
+                    // a form the run never acts on.
                     guard (try? await store.expireRunForGlobalTimeout(workflowRunId: runId, error: error, at: at)) == true else { continue }
                     stopping.insert(runId)
                     continue
                 }
-                guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                // The node's own deadline: its form ends `timedOut` — but only while the run is still the paused run this
+                // form belongs to. A run that left the pause in between (answered, stopped) gets no timeout of ours.
+                guard (try? await store.isRunPaused(workflowRunId: runId)) == true,
+                      (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
                 timedOut += 1
                 // The pause is now woken (`resume_requested`), and the run takes the timeout branch — in the background,
                 // as an answer does.

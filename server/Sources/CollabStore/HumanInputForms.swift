@@ -659,6 +659,16 @@ extension PostgresStore {
     /// not the node's own timeout.
     /// Whether **this** paused run is past the global deadline (the scan asks it once per form it is about to end, so the
     /// decision for a form and its run is the same one; the run's row is re-read, never taken from an earlier list).
+    /// Whether the run waits at a pause right now (the timeout scan asks before it ends one of the run's forms).
+    public func isRunPaused(workflowRunId: String) async throws -> Bool {
+        try await bounded {
+            let rows = try await self.client.query("SELECT 1 FROM workflow_runs WHERE id = \(workflowRunId) AND status = 'paused'",
+                                                   logger: self.logger)
+            for try await _ in rows { return true }
+            return false
+        }
+    }
+
     public func pausedRunPastGlobalDeadline(workflowRunId: String, at now: Date, timeoutSeconds: Int) async throws -> Bool {
         guard timeoutSeconds > 0 else { return false }
         return try await bounded {

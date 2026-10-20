@@ -137,6 +137,14 @@ extension Routes {
         // Dify's `_ensure_not_expired`: a link whose deadline has passed does not open the form. The deadline is the
         // node's own `expiration_time` (a delivery-test form expires with the definition that produced it).
         try Self.ensureNotExpired(form, now: Date())
+        // The **anonymous recipient** surface, on top of the deadline: a form the run no longer waits on — answered, or
+        // closed by a stop, a global expiry or the app's deletion — does not open either (Dify's web
+        // `HumanInputFormApi.get` runs `ensure_form_active`, the same rule its submit path applies). The console surface
+        // keeps the console's own rule (submitted is 412 above; the rest is the console's to check on submit), so this
+        // branch is the recipient's only.
+        if recipient != nil {
+            try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
+        }
         return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
     }
 
