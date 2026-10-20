@@ -16,6 +16,14 @@ let testDbHost = ProcessInfo.processInfo.environment["TEST_DB_HOST"]
 /// The store has a random secrets key (protocol 1.9) unless `secretsKey` is false (a server without COLLAB_SECRETS_KEY).
 func withStore<T: Sendable>(secretsKey: Bool = true, cipher: (any SecretCipher)? = nil,
                             _ body: @Sendable (PostgresStore, Logger) async throws -> T) async throws -> T {
+    try await withStoreAndSchema(secretsKey: secretsKey, cipher: cipher) { store, logger, _ in try await body(store, logger) }
+}
+
+/// Like `withStore`, but hands over the schema name too: a test that needs a second, independent connection (to hold a
+/// row lock while the Store API under test waits on it) builds its own client with the same `search_path`. Opening it
+/// from the store's own client would be the wrong test — the waiter could be blocked on the pool, not on the row.
+func withStoreAndSchema<T: Sendable>(secretsKey: Bool = true, cipher: (any SecretCipher)? = nil,
+                                     _ body: @Sendable (PostgresStore, Logger, String) async throws -> T) async throws -> T {
     var logger = Logger(label: "test")
     logger.logLevel = .error
     let port = Int(ProcessInfo.processInfo.environment["TEST_DB_PORT"] ?? "5432") ?? 5432
@@ -43,7 +51,7 @@ func withStore<T: Sendable>(secretsKey: Bool = true, cipher: (any SecretCipher)?
         for _ in 0..<50 where !migrated {
             do { try await store.migrate(); migrated = true } catch { try await Task.sleep(for: .milliseconds(100)) }
         }
-        let result = try await body(store, logger)
+        let result = try await body(store, logger, String(schema))
         group.cancelAll()
         return result
     }!

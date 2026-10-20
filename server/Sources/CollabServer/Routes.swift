@@ -69,6 +69,7 @@ struct Routes: Sendable {
         registerRuns(on: r)
         registerContainerRuns(on: r)
         registerDraftVariables(on: r)
+        registerHumanInput(on: r)
     }
 
     // MARK: - Plumbing

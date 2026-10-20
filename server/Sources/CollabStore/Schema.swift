@@ -618,7 +618,8 @@ public enum Schema {
         // to. `form_content`, `inputs`, `user_actions`, `actions`, `default_values` and `resolved_default_values` are
         // Dify's FormDefinition members as JSON text (array order kept); `rendered_content` is the rendered markdown;
         // `expiration_time` is Dify's Unix seconds. Statuses: waiting, submitted, expired (the form's deadline passed),
-        // timed_out (the node's own deadline, which fails that node rather than the whole run).
+        // timed_out (the node's own deadline, which fails that node rather than the whole run). `recipient_type` is Dify's
+        // delivery surface (console, backstage, webapp); the console API answers only its own, everything else 404s.
         """
         CREATE TABLE IF NOT EXISTS human_input_forms (
             id                      text        PRIMARY KEY,
@@ -645,6 +646,7 @@ public enum Schema {
             submitted_at            timestamptz,
             consumed_at             timestamptz,
             created_at              timestamptz NOT NULL,
+            recipient_type          text        NOT NULL DEFAULT 'console',
             UNIQUE (workflow_run_id, execution_id)
         )
         """,

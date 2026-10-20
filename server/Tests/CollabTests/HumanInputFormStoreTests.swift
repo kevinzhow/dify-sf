@@ -66,7 +66,7 @@ struct HumanInputFormStoreTests {
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a"),
                                                      form(doc, run: run, execution: "exec-b", token: "tok-b")], at: at)
             let answer = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1",
-                                                             at: at, now: Int(at.timeIntervalSince1970))
+                                                             )
             guard case .accepted = answer else {
                 Issue.record("A's answer must be accepted, got \(answer)")
                 return
@@ -92,11 +92,11 @@ struct HumanInputFormStoreTests {
             let at = Date()
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a"),
                                                      form(doc, run: run, execution: "exec-b", token: "tok-b")], at: at)
-            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
+            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", )
             _ = try await store.claimResume(workflowRunId: run, at: at)
 
             // Winnie's interleaving: the resume is under way, B answers, and only afterwards the next pause is written.
-            _ = try await store.submitHumanInputForm(token: "tok-b", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
+            _ = try await store.submitHumanInputForm(token: "tok-b", inputs: "{}", action: "approve", userId: "u-1", )
             let generation = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-c", token: "tok-c")], at: at)
             #expect(generation == 2)
             // B was answered before this pause existed and no resume has consumed it, so the new pause starts awake even
@@ -113,7 +113,7 @@ struct HumanInputFormStoreTests {
             let (doc, run) = try await run(store)
             let at = Date()
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
-            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
+            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", )
             #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
             // A was in that resume; the next pause must not wake on it again.
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-c", token: "tok-c")], at: at)
@@ -125,7 +125,7 @@ struct HumanInputFormStoreTests {
         try await withStore { store, _ in
             let (doc, run) = try await run(store)
             let at = Date()
-            try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
             // A second pause while the first is not resumed would be a second pause of the same run (Dify keeps one).
             await #expect(throws: (any Error).self) {
                 try await store.createPause(workflowRunId: run, docId: doc, snapshot: "{}",
@@ -133,7 +133,7 @@ struct HumanInputFormStoreTests {
             }
             #expect(try await store.openPauses(workflowRunId: run).count == 1)
             // After the resume the run may pause again, as generation 2.
-            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
+            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", )
             #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
             #expect(try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-d", token: "tok-d")], at: at) == 2)
         }
@@ -148,7 +148,7 @@ struct HumanInputFormStoreTests {
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
             // Paused, nothing answered: not ready.
             #expect(try await store.claimResume(workflowRunId: run, at: at) == nil)
-            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", at: at, now: 0)
+            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", )
             #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
             // Already resumed: the same answer cannot claim twice.
             #expect(try await store.claimResume(workflowRunId: run, at: at) == nil)
@@ -169,12 +169,81 @@ struct HumanInputFormStoreTests {
             #expect(try await store.claimResume(workflowRunId: run, at: at)?.generation == 1)
 
             // Global deadline: every waiting form expires, the run stops and the pause closes.
-            try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-b", token: "tok-b")], at: at)
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-b", token: "tok-b")], at: at)
             try await store.expireRunForGlobalTimeout(workflowRunId: run, error: "Human input global timeout at node human", at: at)
             #expect(try await store.humanInputForm(token: "tok-b")?.status == .expired)
             #expect(try await runStatus(store, doc, run) == "stopped")
             #expect(try await store.openPauses(workflowRunId: run).isEmpty)
             #expect(try await store.claimResume(workflowRunId: run, at: at) == nil, "a stopped run cannot resume")
+        }
+    }
+
+    @Test func theNextPauseCarriesAnUnconsumedAnswerIntoItsSetAndTheClaimTakesIt() async throws {
+        try await withStore { store, _ in
+            let (doc, run) = try await run(store)
+            let at = Date()
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a"),
+                                                         form(doc, run: run, execution: "exec-b", token: "tok-b")], at: at)
+            _ = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1", )
+            #expect(try await store.claimResume(workflowRunId: run, at: at)?.decisions.map(\.executionId) == ["exec-a"])
+            // B answers while the resume runs; the next pause is written with C only.
+            _ = try await store.submitHumanInputForm(token: "tok-b", inputs: "{}", action: "approve", userId: "u-1", )
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-c", token: "tok-c")], at: at)
+
+            // B is not in the forms this pause wrote, but its answer is a decision the snapshot still carries: the set
+            // must include it, or the flag would be true while the claim had nothing to take.
+            let second = try await store.pause(workflowRunId: run, generation: 2)
+            #expect(second?.executionIds.sorted() == ["exec-b", "exec-c"])
+            #expect(second?.resumeRequested == true)
+            let claim = try await store.claimResume(workflowRunId: run, at: at)
+            #expect(claim?.generation == 2)
+            #expect(claim?.decisions.map(\.executionId) == ["exec-b"], "the claim takes the answer the flag woke on")
+            // With B taken, nothing is unconsumed in that set: a third pause is not woken by it.
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-d", token: "tok-d")], at: at)
+            #expect(try await store.pause(workflowRunId: run, generation: 3)?.resumeRequested == false)
+        }
+    }
+
+    @Test func aSubmissionPastTheNodeDeadlineIsRefusedAndLeavesTheFormWaiting() async throws {
+        try await withStore { store, _ in
+            let (doc, run) = try await run(store)
+            let at = Date()
+            let past = Int(at.timeIntervalSince1970) - 60
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a", expiration: past)], at: at)
+            // `ensure_form_active` checks the node deadline itself: the scanner may not have run yet.
+            let outcome = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1",
+                                                               )
+            #expect(outcome == .expired)
+            #expect(try await store.humanInputForm(token: "tok-a")?.status == .waiting,
+                    "the scanner marks TIMEOUT; the submission only refuses")
+            #expect(try await store.pause(workflowRunId: run, generation: 1)?.resumeRequested == false)
+        }
+    }
+
+    @Test func aSubmissionPastTheGlobalDeadlineIsRefused() async throws {
+        try await withStore { store, _ in
+            let (doc, run) = try await run(store)
+            let old = Date().addingTimeInterval(-8 * 24 * 3600)
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a", now: old)], at: Date())
+            let outcome = try await store.submitHumanInputForm(token: "tok-a", inputs: "{}", action: "approve", userId: "u-1",
+                                                               globalTimeoutSeconds: 7 * 24 * 3600)
+            #expect(outcome == .expired, "the global deadline applies even when the node one has not passed")
+        }
+    }
+
+    @Test func aStoppedRunCannotBePausedAgain() async throws {
+        try await withStore { store, _ in
+            let (doc, run) = try await run(store)
+            let at = Date()
+            _ = try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
+            try await store.expireRunForGlobalTimeout(workflowRunId: run, error: "global timeout", at: at)
+            // A pause that arrives after the stop must not resurrect the run.
+            await #expect(throws: (any Error).self) {
+                try await store.createPause(workflowRunId: run, docId: doc, snapshot: "{}",
+                                            forms: [form(doc, run: run, execution: "exec-e", token: "tok-e")], at: at)
+            }
+            #expect(try await runStatus(store, doc, run) == "stopped")
+            #expect(try await store.openPauses(workflowRunId: run).isEmpty)
         }
     }
 
@@ -184,14 +253,14 @@ struct HumanInputFormStoreTests {
             let at = Date()
             try await pause(store, doc, run, forms: [form(doc, run: run, execution: "exec-a", token: "tok-a")], at: at)
             let first = try await store.submitHumanInputForm(token: "tok-a", inputs: #"{"approved":true}"#, action: "approve",
-                                                             userId: "u-1", at: at, now: 0)
+                                                             userId: "u-1", )
             guard case .accepted(let accepted) = first else {
                 Issue.record("first submission must be accepted, got \(first)")
                 return
             }
             #expect(accepted.status == .submitted && accepted.submittedBy == "u-1")
             let second = try await store.submitHumanInputForm(token: "tok-a", inputs: #"{"approved":false}"#, action: "reject",
-                                                             userId: "u-2", at: at, now: 0)
+                                                             userId: "u-2", )
             #expect(second == .alreadySubmitted)
             let stored = try await store.humanInputForm(token: "tok-a")
             #expect(stored?.submittedBy == "u-1" && stored?.submittedInputs == #"{"approved":true}"#)
@@ -203,7 +272,7 @@ struct HumanInputFormStoreTests {
             let missing = try await store.humanInputForm(token: "nope")
             #expect(missing == nil)
             let outcome = try await store.submitHumanInputForm(token: "nope", inputs: "{}", action: "approve", userId: "u-1",
-                                                               at: Date(), now: 0)
+                                                               )
             #expect(outcome == .notFound)
         }
     }

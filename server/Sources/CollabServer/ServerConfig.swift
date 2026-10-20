@@ -63,6 +63,10 @@ public struct ServerConfig: Sendable {
     public var webAppBaseURL: String
     /// Protocol 1.11: the Service API base (Dify's `SERVICE_API_URL`; `api_base_url` is it with `/v1`). Empty = as above.
     public var serviceAPIURL: String
+    /// Protocol 1.16: how long a run may stay paused waiting for human input before the global deadline (Dify's
+    /// `HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS`, default 7 days). A submission past it answers 412 and the timeout scanner
+    /// stops the run; 0 disables the global deadline.
+    public var humanInputGlobalTimeoutSeconds: Int
     /// Protocol 1.13: Dify's plugin daemon (models), e.g. `http://plugin_daemon:5002` (`COLLAB_PLUGIN_DAEMON_URL`; Dify's
     /// `PLUGIN_DAEMON_URL`). Empty = no model runtime: LLM nodes cannot run and `system-features` does not offer runs.
     public var pluginDaemonURL: String
@@ -101,6 +105,7 @@ public struct ServerConfig: Sendable {
         ssePingSeconds = reader.int(forKey: "collab.sse.pingSeconds", default: 10)
         maxReplay = reader.int(forKey: "collab.maxReplay", default: 2000)
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
+        humanInputGlobalTimeoutSeconds = reader.int(forKey: "collab.humanInputGlobalTimeoutSeconds", default: 604_800)
         testCommitDelayMillis = reader.int(forKey: "collab.test.commitDelayMillis", default: 0)
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
         mail = MailConfig(reader: reader)
