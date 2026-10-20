@@ -2,6 +2,7 @@ import CollabCore
 import CollabRuntime
 import CollabStore
 import Foundation
+import Synchronization
 import Testing
 import Vapor
 import VaporTesting
@@ -327,6 +328,57 @@ struct RunChannelPauseIdentityTests {
         // The first pause is the one the snapshot described; the second, in the same second, is new.
         #expect(CollabServer.Routes.isCovered(frame, snapshot: snapshot, pauseGeneration: await channel.pauseGeneration(at: 0)))
         #expect(!CollabServer.Routes.isCovered(frame, snapshot: snapshot, pauseGeneration: await channel.pauseGeneration(at: 1)))
+    }
+}
+
+/// The resume position must match the forms that were persisted: rebuilding from the pause's own snapshot asks exactly for
+/// those executions (this checks the existing acceptance item, it does not redefine the set).
+@Suite("Human input resume position", .enabled(if: testDbHost != nil))
+struct HumanInputResumePositionTests {
+    /// Records which executions the engine decides on, and pauses again so the stream ends where it started.
+    final class Recorder: HumanInputRuntime, @unchecked Sendable {
+        private let asked = Mutex<[(nodeId: String, executionId: String)]>([])
+        var askedList: [(nodeId: String, executionId: String)] { asked.withLock { $0 } }
+        func decide(form: HumanInputFormConfig, context: HumanInputContext) async throws -> HumanInputDecision {
+            asked.withLock { $0.append((context.nodeId, context.executionId ?? "")) }
+            return .pause(sessionId: "replay")
+        }
+    }
+
+    @Test func theSnapshotAsksForExactlyThePersistedForms() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.twoFormsYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let frames = HumanInputRunTests.frames(run.text)
+            let runId = frames.first?["workflow_run_id"]?.string ?? ""
+            let tokens = frames.filter { $0["event"]?.string == "human_input_required" }
+                .compactMap { $0["data"]?["form_token"]?.string }
+            #expect(tokens.count == 2)
+
+            var stored: [StoredHumanInputForm] = []
+            for token in tokens { stored.append(try #require(try await store.humanInputForm(token: token))) }
+            let pause = try #require(try await store.pause(workflowRunId: runId, generation: 1))
+            let record = try #require(try await store.workflowRun(doc: app, id: runId))
+
+            // Rebuild the run from its own stored graph + snapshot and let a recording runtime answer the decisions.
+            let config = try GraphConfig(json: try JSONValue.parse(record.graph))
+            let recorder = Recorder()
+            let graph = try await RuntimeGraph.build(
+                config, rootId: try RuntimeGraph.defaultRootId(config),
+                factory: BuiltinNodeFactory(services: RuntimeServices(humanInput: recorder)))
+            let engine = GraphEngine(graph: graph)
+            let snapshot = try GraphEngineSnapshot(data: Data(pause.snapshot.utf8))
+            for await event in try engine.resume(snapshot) {
+                if case .runPaused = event { break }
+            }
+
+            // Exactly the executions behind the persisted forms — not one more, not one less.
+            let asked = Set(recorder.askedList.map(\.executionId))
+            let persisted = Set(stored.map(\.executionId))
+            #expect(asked == persisted, "snapshot asks \(asked.sorted()), forms are \(persisted.sorted())")
+            #expect(recorder.askedList.count == stored.count, "each execution is decided once")
+        }
     }
 }
 
