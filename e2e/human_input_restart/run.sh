@@ -8,13 +8,19 @@
 #
 #   e2e/human_input_restart/run.sh            # needs docker and dify-sf-dev:local (server/run-swift.sh builds it)
 #
-# Env: HITL_IMAGE (default dify-sf-dev:local), HITL_PORT (default 18090), HITL_DB_PORT (default 55440).
+# A second scenario (`scenario2.sh`, run at the end) covers the restart that loses nothing: a paused run, the first
+# process stopped with SIGTERM, a **new** process on the same database, and the answer arriving over HTTP afterwards.
+# It counts the run's side effects (a local HTTP counter service and the node executions) and requires exactly one each.
+#
+# Env: HITL_IMAGE (default dify-sf-dev:local), HITL_PORT (default 18090), HITL_DB_PORT (default 55440),
+#      HITL_PORT2 (default 18091, scenario 2), HITL_OUT (default e2e/.out/human_input_restart: logs and the raw SSE).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 IMAGE="${HITL_IMAGE:-dify-sf-dev:local}"
 PORT="${HITL_PORT:-18090}"
 DB_PORT="${HITL_DB_PORT:-55440}"
+OUT=${HITL_OUT:-/tmp/hitl-restart}   # small logs and the raw SSE; keep them off /tmp on a small box
 NET=hitl-restart-net
 PG=hitl-restart-pg
 A=hitl-restart-a
@@ -22,6 +28,7 @@ B=hitl-restart-b
 BASE="http://127.0.0.1:$PORT"
 
 cleanup() { docker rm -f "$A" "$B" "$PG" >/dev/null 2>&1 || true; }
+mkdir -p "$OUT"
 trap cleanup EXIT
 cleanup
 docker network inspect "$NET" >/dev/null 2>&1 || docker network create "$NET" >/dev/null
@@ -84,10 +91,10 @@ YAML
 echo "app=$APP"
 
 curl -sN -X POST "$BASE/v1/apps/$APP/workflows/draft/run" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"inputs":{}}' > /tmp/hitl-run.sse
-FORM=$(python3 - <<'PY'
-import json
-frames = [l[6:] for l in open('/tmp/hitl-run.sse').read().split('\n\n') if l.startswith('data: ')]
+  -H 'Content-Type: application/json' -d '{"inputs":{}}' > "$OUT/run.sse"
+FORM=$(E2E_SSE="$OUT/run.sse" python3 - <<'PY'
+import json, os
+frames = [l[6:] for l in open(os.environ["E2E_SSE"]).read().split('\n\n') if l.startswith('data: ')]
 for f in frames:
     e = json.loads(f)
     if e.get('event') == 'human_input_required':
@@ -124,3 +131,6 @@ echo "outputs: $OUTPUT"
 [ "$OUTPUT" = '{"reply": "yes"}' ] || { echo "wrong outputs: $OUTPUT" >&2; exit 1; }
 
 echo "OK: a killed process left an answered pause, and a new process finished it"
+
+# Scenario 2 lives in its own file (a readable second half) and shares this script's image and output directory.
+HITL_IMAGE="$IMAGE" HITL_OUT="$OUT" bash "$(dirname "$0")/scenario2.sh"
