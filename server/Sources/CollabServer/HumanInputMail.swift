@@ -64,7 +64,12 @@ enum HumanInputMail {
         let config = method["config"]?.object ?? [:]
         let subject = sanitizeSubject(config["subject"]?.string ?? "")
         guard !subject.isEmpty else { return nil }
-        var body = (config["body"]?.string ?? "").replacingOccurrences(of: "{{#url#}}", with: link)
+        // The template's own markup never reaches the message (Dify's `bleach.clean(body, tags=[], ...)` runs **before**
+        // the variables are rendered). Stripping the rendered text instead would also eat a value that legitimately
+        // carries `<` — an answer, a URL with a query — so the order matters.
+        var escaped = config["body"]?.string ?? ""
+        escaped = escaped.replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
+        var body = escaped.replacingOccurrences(of: "{{#url#}}", with: link)
         if let pool { body = VariableTemplate.convert(pool, body).markdown }
         return MailMessage(to: email, subject: subject, html: renderBody(body))
     }
@@ -80,8 +85,9 @@ enum HumanInputMail {
     /// confined to the tags a mail may carry. This is a **subset** of markdown (paragraphs, emphasis, inline code, http(s)
     /// and mailto links, flat lists); tables and raw HTML are not rendered — recorded as a deviation in the protocol.
     static func renderBody(_ body: String) -> String {
-        // `bleach.clean(body, tags=[], ...)`: the template's own markup never reaches the message.
-        let text = body.replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
+        // The template was cleaned of its markup before the variables were filled in (`message`), so what is rendered here
+        // is text plus whatever the values carry.
+        let text = body
         var html: [String] = []
         var list: (tag: String, items: [String])?
         func flushList() {
@@ -110,7 +116,9 @@ enum HumanInputMail {
         return html.joined(separator: "\n")
     }
 
-    /// Inline markdown: `**strong**`, `*em*`, `` `code` ``, `[text](http…)`. Everything else is escaped text.
+    /// Inline markdown: `**strong**`, `*em*`, `` `code` ``, `[text](http…)`. Everything else is escaped text — including
+    /// what a rendered value carries (`a<b` becomes `a&lt;b`, a URL's `&` becomes `&amp;`, which a mail client shows as
+    /// the original character).
     static func inline(_ line: String) -> String {
         var out = escape(line)
         out = out.replacingOccurrences(of: #"\*\*([^*]+)\*\*"#, with: "<strong>$1</strong>", options: .regularExpression)

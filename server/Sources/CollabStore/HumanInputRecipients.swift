@@ -93,6 +93,27 @@ extension PostgresStore {
         }
     }
 
+    /// How many recipient rows are still waiting for their mail (what the scan will try).
+    public func humanInputFormsAwaitingMailCount() async throws -> Int {
+        try await bounded {
+            for try await n in try await self.client.query(
+                "SELECT count(*)::bigint FROM human_input_form_recipients WHERE mailed_at IS NULL",
+                logger: self.logger).decode(Int.self) {
+                return n
+            }
+            return 0
+        }
+    }
+
+    /// The row as a crash between "recipient stored" and "mail sent" leaves it (a test's way back to that state).
+    public func resetFormRecipientMailed(token: String) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                UPDATE human_input_form_recipients SET mailed_at = NULL WHERE token = \(token)
+                """, logger: self.logger)
+        }
+    }
+
     public func markFormRecipientMailed(token: String, at: Date) async throws {
         try await bounded {
             _ = try await self.client.query("""

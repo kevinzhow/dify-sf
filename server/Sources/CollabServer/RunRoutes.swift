@@ -442,6 +442,57 @@ struct PreparedRun: Sendable {
 // MARK: - Running
 
 /// One run in its task: engine events -> Dify's SSE frames (to the channel) and run records.
+extension Routes {
+        /// Dify's mail task retries, not just once: `mail_human_input_delivery_task` is a queued task and a send that failed
+        /// is delivered again later. The periodic scan (`HumanInputTimeouts`) calls this too, so a mail that failed — or a
+        /// recipient row whose pause was written while the server was stopping — is retried until it goes out, and the row's
+        /// `mailed_at` (not memory) is what keeps a delivered link from being mailed again.
+        @discardableResult
+        func deliverPendingHumanInputMail() async -> Int {
+            let outbox = MailOutbox(sender: SMTPMailSender(config: config.mail), logger: logger)
+            guard outbox.isEnabled, !config.webAppBaseURL.isEmpty else { return 0 }
+            // Which form belongs to which method index: read from the node's own definition (the form stores the actions and
+            // the content, not the delivery methods).
+            let pending: [StoredFormRecipient]
+            do { pending = try await store.formRecipientsAwaitingMail() } catch { return 0 }
+            guard !pending.isEmpty else { return 0 }
+            var delivered = 0
+            var methodsByDoc: [String: [String: [JSONObject]]] = [:]
+            for row in pending {
+                guard let form = try? await store.humanInputForm(id: row.formId) else { continue }
+                let methods: [JSONObject]
+                if let cached = methodsByDoc[form.docId]?[form.nodeId] {
+                    methods = cached
+                } else {
+                    guard let fromNode = await deliveryMethods(docId: form.docId, nodeId: form.nodeId) else { continue }
+                    methods = fromNode
+                    methodsByDoc[form.docId, default: [:]][form.nodeId] = fromNode
+                }
+                guard let link = HumanInputMail.link(base: config.webAppBaseURL, token: row.token),
+                      // The pause's pool is gone once the run resumed; the body's own text and the link still render.
+                      let message = HumanInputMail.message(methods, methodIndex: row.methodIndex, to: row.email, link: link) else { continue }
+                if await outbox.send(message, kind: "human input") {
+                    delivered += 1
+                    try? await store.markFormRecipientMailed(token: row.token, at: Date())
+                }
+            }
+            return delivered
+        }
+
+        /// The email delivery methods of one human-input node in an app's current draft (the panel's own configuration).
+        private func deliveryMethods(docId: String, nodeId: String) async -> [JSONObject]? {
+            guard let snapshot = try? await registry.sequencer(docId).currentSnapshot(),
+                  let metadata = try? await currentMetadata(docId, viewer: ""),
+                  let secrets = try? await store.secrets(docId),
+                  let exported = try? JSONValue.parse(try WireJSON.encode(
+                    try DifyDSL.exportValue(snapshot.doc, metadata: metadata, secrets: secrets))),
+                  let graph = try? GraphConfig(json: exported["workflow"]?["graph"] ?? .null),
+                  let node = graph.node(nodeId),
+                  let form = try? HumanInputFormConfig(node.data) else { return nil }
+            return form.deliveryMethods
+        }
+}
+
 final class RunExecution: Sendable {
     let routes: Routes
     let appId: String

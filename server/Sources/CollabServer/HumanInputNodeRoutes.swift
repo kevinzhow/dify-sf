@@ -140,11 +140,26 @@ extension Routes {
         guard outbox.isEnabled, let base = Optional(config.webAppBaseURL), !base.isEmpty else {
             throw ServerError.badRequest("Mail is not configured (no SMTP, no COLLAB_WEBAPP_BASE_URL).")
         }
+        // A test mail that did not go out is not a success: the panel shows Dify's error instead of claiming the mail was
+        // sent. (The delivery-test form and its recipient rows stay; they simply never become "mailed".)
+        var sent = 0
+        var firstFailure: String?
         for row in rows {
             guard let link = HumanInputMail.link(base: base, token: row.token),
-                  let message = HumanInputMail.message(form.deliveryMethods, methodIndex: index, to: row.email, link: link, pool: pool),
-                  await outbox.send(message, kind: "human input test") else { continue }
-            try? await store.markFormRecipientMailed(token: row.token, at: Date())
+                  let message = HumanInputMail.message(form.deliveryMethods, methodIndex: index, to: row.email, link: link, pool: pool) else {
+                firstFailure = firstFailure ?? "the delivery method's message could not be rendered"
+                continue
+            }
+            if await outbox.send(message, kind: "human input test") {
+                sent += 1
+                try? await store.markFormRecipientMailed(token: row.token, at: Date())
+            } else {
+                firstFailure = firstFailure ?? "the mail could not be sent"
+            }
+        }
+        guard sent > 0 else {
+            throw ServerError.http(status: 502, code: "email_send_failed",
+                                   message: firstFailure ?? "the test mail could not be sent")
         }
         struct Empty: Encodable {}
         return try json(Empty())
@@ -152,8 +167,14 @@ extension Routes {
 
     private func objectBody(_ req: Request) async throws -> JSONObject {
         let data = try await body(req)
-        guard let parsed = try? JSONValue.parse(data.isEmpty ? Data("{}".utf8) : data), case .object(let b) = parsed else {
+        guard let parsed = try? JSONValue.parse(data.isEmpty ? Data("{}".utf8) : data), case .object(var b) = parsed else {
             throw ServerError.badRequest("the body must be a JSON object")
+        }
+        // The method id is a string in Dify's model, whatever the document wrote it as. (The decoder's message for a
+        // numeric id is "the body must be a JSON object", because the struct's `delivery_method_id` is a `String`.)
+        if let id = b["delivery_method_id"], id.string == nil {
+            if let n = id.int { b["delivery_method_id"] = .string(String(n)) }
+            else if let d = id.double { b["delivery_method_id"] = .string(d == d.rounded() ? String(Int(d)) : String(d)) }
         }
         return b
     }

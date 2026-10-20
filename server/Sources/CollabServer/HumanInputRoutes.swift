@@ -133,11 +133,23 @@ extension Routes {
         // A delivery test has no run and therefore no pool to resolve against: its definition is served as it was stored.
         let pause = if let runId = form.workflowRunId { (try? await store.openPauses(workflowRunId: runId))?.first } else { nil }
             as StoredWorkflowPause?
+        // Dify's `_ensure_not_expired`: a link whose deadline has passed does not open the form. The deadline is the
+        // node's own `expiration_time` (a delivery-test form expires with the definition that produced it).
+        try Self.ensureNotExpired(form, now: Date())
         return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
     }
 
     static func invalidFormData(_ message: String) -> ServerError {
         .http(status: 400, code: "invalid_form_data", message: message)
+    }
+
+    /// Dify's `_ensure_not_expired` (a link whose deadline passed answers 412 `human_input_form_expired`, on the read and
+    /// on the submission alike). The deadline is the node's own `expiration_time` as the timeout scan compares it, so a
+    /// form the scan is about to end cannot be answered in between.
+    static func ensureNotExpired(_ form: StoredHumanInputForm, now: Date) throws {
+        if let deadline = form.expirationTime, deadline > 0, now.timeIntervalSince1970 >= Double(deadline) {
+            throw ServerError.http(status: 412, code: "human_input_form_expired", message: "this form has expired")
+        }
     }
 
     private func submitHumanInputForm(_ req: Request) async throws -> Response {

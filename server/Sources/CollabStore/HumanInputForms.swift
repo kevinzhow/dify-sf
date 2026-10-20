@@ -430,6 +430,26 @@ extension PostgresStore {
     }
 
     /// The form behind a token (the recipient's view). nil when the token does not exist.
+    /// A form's deadline, moved (a test's way of putting a link past its time without waiting an hour).
+    public func setHumanInputFormExpiration(token: String, at epoch: Int) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                UPDATE human_input_forms SET expiration_time = \(epoch) WHERE token = \(token) AND form_kind = 'runtime'
+                """, logger: self.logger)
+            // The decoder reads with the same `token =` spelling the other queries use (`tokenColumns`), so a form is the
+            // one whose token matches, whatever whitespace this statement's source had.
+        }
+    }
+
+    public func humanInputForm(id: String) async throws -> StoredHumanInputForm? {
+        try await bounded {
+            let rows = try await self.client.query("SELECT \(unescaped: Self.formColumns) FROM human_input_forms WHERE id = \(id)",
+                                                   logger: self.logger)
+            for try await row in rows { return try Self.decodeForm(row) }
+            return nil
+        }
+    }
+
     public func humanInputForm(token: String) async throws -> StoredHumanInputForm? {
         try await bounded {
             let rows = try await self.client.query("""

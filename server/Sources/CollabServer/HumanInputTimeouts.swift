@@ -27,6 +27,10 @@ struct HumanInputTimeouts: Service {
                 if swept.timedOut > 0 || swept.expired > 0 {
                     logger.info("human input timeout scan: \(swept.timedOut) form(s) timed out, \(swept.expired) run(s) past the global deadline")
                 }
+                // The same task retries a mail that did not go out (Dify's queued mail task): the recipient rows keep the
+                // state, so a restart's pending mail, or a send that failed, goes out on the next pass.
+                let mailed = await routes.deliverPendingHumanInputMail()
+                if mailed > 0 { logger.info("human input mail retry: \(mailed) message(s) delivered") }
                 do {
                     try await cancelWhenGracefulShutdown { try await Task.sleep(for: .seconds(intervalSeconds)) }
                 } catch { break }
