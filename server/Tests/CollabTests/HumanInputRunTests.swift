@@ -1615,3 +1615,103 @@ struct HumanInputSecondPauseTests {
         }
     }
 }
+/// Side effects are not replayed (protocol 1.16): the model the run called before the pause is **not** called again by the
+/// resume or by a reconnect. The count is the stub daemon's own request log — a real HTTP adapter, one call per
+/// invocation — not the engine's records.
+@Suite("Human input side effects", .enabled(if: testDbHost != nil))
+struct HumanInputSideEffectTests {
+    /// start(q) -> llm -> human -> end{answer: llm.text, reply: human.reply}.
+    static func yaml() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-effects
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: llm, targetHandle: target}
+            - {id: e2, source: llm, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e3, source: human, sourceHandle: approve, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data:
+                title: Start
+                type: start
+                variables:
+                - {label: q, required: true, type: text-input, variable: q}
+            - id: llm
+              data:
+                title: Ask
+                type: llm
+                model:
+                  provider: langgenius/openai_api_compatible/openai_api_compatible
+                  name: stub-chat
+                  mode: chat
+                  completion_params: {}
+                prompt_template:
+                - role: user
+                  text: '{{#start.q#}}'
+                context: {enabled: false, variable_selector: []}
+                vision: {enabled: false}
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                form_content: 'Approve {{#$output.reply#}} (text: {{#llm.text#}})'
+                inputs: [{type: paragraph, output_variable_name: reply}]
+                user_actions: [{id: approve, title: Approve it, button_style: primary}]
+            - id: end
+              data:
+                title: End
+                type: end
+                outputs:
+                - {variable: answer, value_selector: [llm, text]}
+                - {variable: reply, value_selector: [human, reply]}
+        """
+    }
+
+    @Test func theModelIsCalledOnceAcrossThePauseTheResumeAndAReconnect() async throws {
+        try await withFakeDaemon { daemon, log in
+            try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
+                let owner = try await api.setupOwner()
+                let creds: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": [
+                    "endpoint_url": "http://llmstub:8000/v1", "api_key": "sk-stub-not-a-real-key", "mode": "chat",
+                    "context_size": "4096", "max_tokens_to_sample": "4096",
+                ]]
+                #expect(try await api.post(
+                    "/v1/workspace/model-providers/langgenius/openai_api_compatible/openai_api_compatible/models/credentials",
+                    creds.compactJSON(), token: owner).status == 201)
+                let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+                func invokes() -> Int { log.requests.filter { $0.path.hasSuffix("/dispatch/llm/invoke") }.count }
+
+                let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{"q":"hi"}}"##, token: owner)
+                #expect(run.status == 200, "run: \(run.text)")
+                let required = try #require(HumanInputRunTests.frames(run.text).first { $0["event"]?.string == "human_input_required" })
+                let runId = required["workflow_run_id"]?.string ?? ""
+                let token = required["data"]?["form_token"]?.string ?? ""
+                #expect(invokes() == 1, "the model ran once before the pause: \(invokes())")
+
+                // A reconnect reads records; it must not call the model again.
+                _ = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+                #expect(invokes() == 1, "a reconnect replays no side effect: \(invokes())")
+
+                // The resume continues from the snapshot: the LLM node is done, so it does not run again.
+                _ = try await api.post("/v1/form/human_input/\(token)", ##"{"inputs":{"reply":"yes"},"action":"approve"}"##, token: owner)
+                var status = ""
+                for _ in 0..<300 where status != "succeeded" && status != "failed" {
+                    try await Task.sleep(for: .milliseconds(20))
+                    status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+                }
+                #expect(status == "succeeded", "the resumed run ends: \(status)")
+                #expect(invokes() == 1, "the resume did not run the model again: \(invokes())")
+                let executions = try await store.nodeExecutions(doc: app, run: runId)
+                #expect(executions.filter { $0.nodeId == "llm" }.count == 1, "one LLM execution in the run's history")
+            }
+        }
+    }
+}

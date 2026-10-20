@@ -1292,6 +1292,9 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   (`reason: resumption`) and the names of the decisions the claim consumed (`human_input_form_filled`) are published,
   and the rest of the run follows on the same stream. A run another process holds (after a restart, or a second server on
   the same database) re-attaches from its records the same way.
+* **No replay.** A resume continues from the pause's engine snapshot: a node that ran before the pause does not run
+  again, so its side effects (a model call, an HTTP request, code) happen once per run. A reconnect reads records and
+  publishes no node execution's effects at all.
 * **Reconnecting.** `GET /v1/workflow/{runId}/events` (the account that created the run; `404` otherwise) subscribes to
   the live channel first, then rebuilds the state from the records: the run's `workflow_started` (the run's original
   `created_at`), `node_started` + `node_finished` per execution so far, the waiting forms' `human_input_required`, and
