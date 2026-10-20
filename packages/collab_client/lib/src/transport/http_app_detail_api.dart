@@ -76,7 +76,10 @@ abstract class HttpConsoleApi {
     }
     final http.Response res;
     try {
-      res = await http.Response.fromStream(await _client.send(req).timeout(timeout)).timeout(timeout);
+      // `send` is awaited **outside** `Response.fromStream`: the stream is read in this zone, where the client's own
+      // socket handling (and a test's `runAsync`) runs, instead of in whatever zone `.fromStream` was created in.
+      final streamed = await _client.send(req).timeout(timeout);
+      res = await http.Response.fromStream(streamed).timeout(timeout);
     } on TimeoutException {
       throw TransportException('$method $path timed out', timeout: true);
     } on TransportException {
