@@ -252,6 +252,28 @@ struct RunEventsReconnectTests {
         }
     }
 
+    @Test func theSnapshotIsOffByDefaultAndExplicitlyRequested() async throws {
+        try await withServer { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let token = HumanInputRunTests.frames(run.text)
+                .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+            let runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+
+            // Dify's default: no state snapshot. A paused run with close_on_pause then has nothing to send.
+            let silent = try await api.get("/v1/workflow/\(runId)/events", token: owner)
+            #expect(silent.status == 200, "\(silent.text)")
+            #expect(HumanInputRunTests.frames(silent.text).isEmpty, "no history without include_state_snapshot: \(silent.text)")
+
+            // Asked for explicitly, the state is rebuilt from the records.
+            let snapshot = try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: owner)
+            let events = HumanInputRunTests.frames(snapshot.text).compactMap { $0["event"]?.string }
+            #expect(events.first == "workflow_started", "\(events)")
+            #expect(events.last == "workflow_paused", "\(events)")
+        }
+    }
+
     @Test func someoneElsesRunIsNotFound() async throws {
         try await withServer { api, store, _ in
             let owner = try await api.setupOwner()

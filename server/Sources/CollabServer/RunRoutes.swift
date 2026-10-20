@@ -152,7 +152,12 @@ extension Routes {
         let logger = self.logger
         let body = try Response.Body(stream: { writer in
             do {
-                for await frame in subscription { try await writer.write(frame) }
+                for await frame in subscription {
+                    try await writer.write(frame)
+                    // The run's channel stays open across a pause (the resumed round publishes into it), but this
+                    // response ends with the pause as Dify's draft-run stream does.
+                    if frame.contains("\"event\":\"workflow_paused\"") { break }
+                }
             } catch {
                 logger.debug("run stream \(runId) ended: \(error)")
                 throw error
@@ -429,6 +434,8 @@ final class RunExecution: Sendable {
             }
         }
         var index = 0
+        /// False when the round ended at a pause: the run is still alive, so its channel is not finished.
+        var endedWithoutPause = true
         var running: [String: Running] = [:]
         // `_append_retry_history`: the failed attempts of a node execution, kept in its process data.
         var retries: [String: [JSONValue]] = [:]
@@ -471,6 +478,7 @@ final class RunExecution: Sendable {
                 continue
             }
             if case .runPaused(let reasons, let snapshot, let stats) = event {
+                endedWithoutPause = false
                 await handlePause(reasons: reasons, snapshot: snapshot, stats: stats)
                 continue
             }
@@ -520,9 +528,13 @@ final class RunExecution: Sendable {
             }
         }
         pinger.cancel()
-        await channel.finish()
+        if endedWithoutPause {
+            // The run's channel lives as long as the run, not as long as one round: a pause keeps it so a reconnect (or the
+            // resumed round) publishes into the same stream.
+            await channel.finish()
+            await routes.runChannels.remove(runId)
+        }
         await routes.runs.remove(taskId, lease: lease)
-        await routes.runChannels.remove(runId)
     }
 
     /// The pause, in the order Dify's `WorkflowResponseConverter` implies: the snapshot, the forms and the run's state are
@@ -896,9 +908,11 @@ actor RunChannel {
         subscribers = [:]
     }
 
-    func subscribe() -> AsyncStream<String> {
+    /// `replay` = the frames already published (a fresh subscriber sees the run from its start); false = only what comes
+    /// next, which is what a reconnect that rebuilds the state needs.
+    func subscribe(replay: Bool = true) -> AsyncStream<String> {
         let (stream, cont) = AsyncStream<String>.makeStream(bufferingPolicy: .unbounded)
-        for f in frames { cont.yield(f) }
+        if replay { for f in frames { cont.yield(f) } }
         if finished {
             cont.finish()
             return stream

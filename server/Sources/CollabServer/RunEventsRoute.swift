@@ -28,42 +28,56 @@ extension Routes {
             throw ServerError.notFound
         }
         let query = query(req)
-        let includeSnapshot = query["include_state_snapshot"] != "false"
+        // Dify's default is no snapshot: a client asking only for live events must not receive history.
+        let includeSnapshot = query["include_state_snapshot"] == "true"
         let continueOnPause = query["continue_on_pause"] == "true"
-        let terminal = ["succeeded", "failed", "stopped", "partial-succeeded"].contains(run.status)
 
-        // A run this process is executing: its channel already holds every frame, replay included, so following it is the
-        // snapshot. Nothing is rebuilt and nothing is duplicated.
-        if !terminal, run.status != "paused", let live = await runChannels.existing(runId) {
-            let subscription = await live.subscribe()
-            return try Self.streaming(subscription, headers: Self.eventHeaders)
-        }
+        // Subscribe first (live only), then read the persisted state: whatever happens in between is buffered rather than
+        // missed, and the buffered frames are deduplicated against the snapshot below.
+        let live = await runChannels.channel(runId)
+        let subscription = await live.subscribe(replay: false)
+        let state = try await store.workflowRun(id: runId) ?? run
+        let terminal = ["succeeded", "failed", "stopped", "partial-succeeded"].contains(state.status)
 
-        // A paused run (or one this process does not execute): subscribe first — creating the channel if the resume will
-        // need it — then rebuild the state from the records.
-        let live = run.status == "paused" && continueOnPause ? await runChannels.channel(runId) : await runChannels.existing(runId)
-        let subscription = await live?.subscribe()
-
-        // A finished run: one frame and close, as Dify does — no snapshot, nothing will ever follow.
         if terminal {
-            return try Self.streaming([RunExecution.sse(try finishedFrame(run))])
+            // One frame and close, whatever was asked: there is nothing left to follow.
+            return try Self.streaming([RunExecution.sse(try finishedFrame(state))])
         }
+
         var snapshot: [String] = []
         if includeSnapshot {
-            snapshot = try await snapshotFrames(run, paused: run.status == "paused")
+            snapshot = try await snapshotFrames(state, paused: state.status == "paused")
         }
-        let closeAtPause = run.status == "paused" && !continueOnPause
-        if closeAtPause || subscription == nil {
+        if state.status == "paused" && !continueOnPause {
             return try Self.streaming(snapshot)
         }
+
+        // Live frames buffered while the state was read may repeat what the snapshot already said. Drop those: a node
+        // execution the snapshot carries, and a pause it already described.
+        let coveredNodes = Set(((try? await store.nodeExecutions(doc: state.docId, run: state.id)) ?? []).map(\.id))
+        let coveredPause = state.status == "paused" && includeSnapshot
         let replay = snapshot
         let body = try Response.Body(stream: { writer in
             for frame in replay { try await writer.write(frame) }
-            if let subscription {
-                for await frame in subscription { try await writer.write(frame) }
+            for await frame in subscription {
+                if Self.isCovered(frame, nodes: coveredNodes, pause: coveredPause) { continue }
+                try await writer.write(frame)
+                if frame.contains("\"event\":\"workflow_finished\"") { break }
+                if frame.contains("\"event\":\"workflow_paused\"") && !continueOnPause { break }
             }
         }, count: nil)
         return Response(status: .ok, headers: Self.eventHeaders, body: body)
+    }
+
+    /// Whether a live frame repeats something the snapshot already carried.
+    static func isCovered(_ frame: String, nodes: Set<String>, pause: Bool) -> Bool {
+        guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
+              let parsed = try? JSONValue.parse(Data(line.dropFirst(6).utf8)),
+              let event = parsed["event"]?.string else { return false }
+        if pause && event == "workflow_paused" { return true }
+        if event == "node_started" || event == "node_finished",
+           let id = parsed["data"]?["id"]?.string, nodes.contains(id) { return true }
+        return false
     }
 
     /// The state rebuilt from the records: the run's start, one pair of frames per recorded node execution, and, for a
