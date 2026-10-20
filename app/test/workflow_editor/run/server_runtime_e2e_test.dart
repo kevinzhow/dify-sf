@@ -10,6 +10,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:collab_client/collab_client.dart';
@@ -21,6 +22,10 @@ import 'package:dify_sf_app/src/workflow_editor/run/run_types.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/server_run_service.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/workflow_run.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/workflow_store.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/human_input_content.dart';
+import 'package:flutter/material.dart';
+
+import '../../support/app_fonts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final String? _url = Platform.environment['DIFYSF_RUNTIME_URL'];
@@ -173,6 +178,10 @@ void main() {
     return;
   }
   final base = Uri.parse(_url!);
+  // The whole suite talks to a real server: start the widget binding here (it would otherwise stub HTTP before the first
+  // page test) and take its stub off once.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = null;
   setUp(() => runStreamToast = (_) {});
 
   test('1.15: a draft run with an iteration and a loop runs on the server; the editor builds its run state', () async {
@@ -355,6 +364,116 @@ void main() {
     final history = await service.fetchWorkflowRunHistory();
     expect(history.map((h) => h['id']), contains(result['id']));
     stdout.writeln('server runtime e2e (client, 1.16): paused for "$token", resumed to ${result['outputs']}');
+  });
+
+
+  // The page against the live server is split in two: `testWidgets` fakes HTTP (and `dart:io` inside its zone never
+  // completes), so the server's own side is driven in an ordinary test, and the page is then given what it produced.
+  late String liveFormJson;
+  late String liveToken;
+  late String liveApp;
+  late String liveOwnerToken;
+  late String liveOwnerRefresh;
+  test('1.16 on the real server: a run pauses at a human input node, and its form is stored', () async {
+    // The page test below starts the widget binding, which stubs every HTTP client of the suite; the server is real
+    // here, so the stub is removed (the binding does not put it back once it exists).
+    TestWidgetsFlutterBinding.ensureInitialized();
+    HttpOverrides.global = null;
+    final owner = AuthSession(api: HttpAuthApi(base));
+    if (await owner.api.setupStatus() == SetupStatus.notStarted) {
+      await owner.setup(email: _email, name: 'Client E2E', password: _password);
+    } else {
+      await owner.login(email: _email, password: _password);
+    }
+    final features = (await owner.api.systemFeatures()).workflowRuntime!;
+    expect(features.protocolVersion, '1.16');
+    expect(features.humanInput, isTrue, reason: 'system-features workflow_runtime.human_input');
+    final apps = HttpAppsApi(base, auth: owner);
+    final app = liveApp = (await apps.importDsl(_humanYaml)).appId!;
+    addTearDown(() => apps.delete(app));
+    final api = HttpWorkflowRunApi(base, auth: owner);
+    var runId = '';
+    var token = '';
+    await for (final frame in api.draftRun(app, {'inputs': <String, Object?>{}})) {
+      runId = '${frame['workflow_run_id'] ?? runId}';
+      final data = frame['data'];
+      if (frame['event'] == 'human_input_required' && data is Map && data['form_token'] is String) {
+        token = data['form_token'] as String;
+      }
+      if (frame['event'] == 'workflow_paused') break;
+    }
+    expect(token, isNotEmpty, reason: 'the run paused at the human input node');
+    expect(runId, isNotEmpty);
+    // The form the paused run serves: what the page renders for a person.
+    liveFormJson = jsonEncode(await api.humanInputForm(token));
+    liveToken = token;
+    liveOwnerToken = owner.tokens!.accessToken;
+    liveOwnerRefresh = owner.tokens!.refreshToken;
+    stdout.writeln('server runtime e2e (page): paused at $token on run $runId');
+  });
+
+  testWidgets('1.16 in the page: the paused run\'s form renders, and its action answers the server', (t) async {
+    await useAppFonts();
+    // The sign-in from the test above: the page's own service reuses the session rather than signing in again.
+    final owner = AuthSession(api: HttpAuthApi(base));
+    await owner.adopt(AuthResult(
+      tokens: AuthTokens(accessToken: liveOwnerToken, refreshToken: liveOwnerRefresh),
+      account: const Account(id: 'e2e', email: 'deepdesign-e2e@example.test', name: 'DeepDesign E2E', role: AccountRole.owner),
+    ));
+    final service = ServerRunService(
+      runtime: ServerWorkflowRuntime(
+        api: HttpWorkflowRunApi(base, auth: owner),
+        singleNodeRun: const {},
+        draftRun: const {'human-input'},
+        humanInput: true,
+      ),
+      appId: liveApp,
+      fallback: MockWorkflowRunService(graph: () => _humanGraph),
+      nodeTypeOf: (id) => _humanGraph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => _humanGraph.nodes.map((n) => n.type),
+    );
+    // The page's form, as `WorkflowPreview` builds it from the run's `human_input_required` payload (with the token the
+    // panel's submit needs), rendering the definition the server stored for this pause.
+    final definition = jsonDecode(liveFormJson) as Map<String, Object?>;
+    final form = <String, Object?>{
+      ...definition,
+      'form_id': '${definition['form_id'] ?? 'form'}',
+      'node_id': 'human',
+      'node_title': 'Approve',
+      'form_content': definition['rendered_content'] ?? definition['form_content'],
+      'actions': definition['user_actions'] ?? const [],
+      'form_token': liveToken,
+      'display_in_ui': true,
+    };
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: HumanInputFormList(
+              inPanel: true,
+              humanInputFormDataList: [form],
+              onHumanInputFormSubmit: service.submitHumanInputForm,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(HumanInputFormList), findsOneWidget);
+    expect(find.text('Approve it'), findsOneWidget, reason: 'the live definition\'s own action');
+    final field = find.descendant(of: find.byKey(const Key('content-item-textarea')), matching: find.byType(EditableText));
+    expect(field, findsOneWidget, reason: 'the live definition\'s paragraph input');
+    await t.enterText(field, 'yes');
+    await t.pump();
+    // The tap starts a real request: it runs on the real clock, outside the fake one the page is pumped on.
+    await t.runAsync(() => t.tap(find.text('Approve it')));
+    // The page's own submit path: `ServerRunService.submitHumanInputForm` → the real form API (the real network works in
+    // this zone; what does not is leaving the zone).
+    for (var i = 0; i < 400 && find.byKey(const Key('human-input-form-error')).evaluate().isEmpty; i++) {
+      await t.pump(const Duration(milliseconds: 25));
+    }
+    expect(find.byKey(const Key('human-input-form-error')), findsNothing,
+           reason: 'the live server took the answer (a refusal would be shown on the form)');
+    stdout.writeln('server runtime e2e (page): answered $liveToken through the panel form');
   });
 
   test('1.15: editor container single runs use the real server, with server history and failures', () async {
