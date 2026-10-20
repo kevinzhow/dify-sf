@@ -1,0 +1,408 @@
+{
+  "app": "e04b6531-3c4f-4931-b634-094b1f22e086",
+  "detail": {
+    "created_at": 1792507612,
+    "elapsed_time": 0.123164,
+    "finished_at": 1792507613,
+    "id": "cb98f3a1-db6a-4ab3-ae0f-3137ac879b4c",
+    "status": "succeeded",
+    "total_steps": 6
+  },
+  "executions": [
+    {
+      "created_at": 1792507612,
+      "index": 1,
+      "node_id": "start",
+      "status": "succeeded"
+    },
+    {
+      "created_at": 1792507612,
+      "index": 2,
+      "node_id": "h1",
+      "status": "succeeded"
+    },
+    {
+      "created_at": 1792507613,
+      "index": 3,
+      "node_id": "h2",
+      "status": "succeeded"
+    },
+    {
+      "created_at": 1792507613,
+      "index": 4,
+      "node_id": "end",
+      "status": "succeeded"
+    }
+  ],
+  "frames": [
+    {
+      "at": 1792507612.2342207,
+      "created_at": 1792507612,
+      "data": {},
+      "elapsed_time": null,
+      "event": "workflow_started"
+    },
+    {
+      "at": 1792507612.2569966,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "start"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507612.315654,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "start",
+        "status": "succeeded"
+      },
+      "elapsed_time": 0.002495,
+      "event": "node_finished"
+    },
+    {
+      "at": 1792507612.3399842,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "h1"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507612.616922,
+      "created_at": null,
+      "data": {
+        "form_token": "bpcSGiWjaZ3jpAsXEmOkuL",
+        "node_id": "h1",
+        "node_title": "First"
+      },
+      "elapsed_time": null,
+      "event": "human_input_required"
+    },
+    {
+      "at": 1792507612.6172206,
+      "created_at": 1792507612,
+      "data": {
+        "paused_nodes": [
+          "h1"
+        ],
+        "reasons": [
+          {
+            "TYPE": "human_input_required",
+            "actions": [
+              {
+                "button_style": "primary",
+                "id": "approve",
+                "title": "Approve it"
+              }
+            ],
+            "approval_channels": [],
+            "expiration_time": 1792637212,
+            "form_content": "First {{#$output.reply#}}?",
+            "form_id": "e345753f-c091-445a-af33-c9e26f188002",
+            "form_token": "bpcSGiWjaZ3jpAsXEmOkuL",
+            "inputs": [
+              {
+                "default": null,
+                "output_variable_name": "reply",
+                "type": "paragraph"
+              }
+            ],
+            "node_id": "h1",
+            "node_title": "First",
+            "resolved_default_values": {}
+          }
+        ],
+        "status": "paused"
+      },
+      "elapsed_time": 0.364497,
+      "event": "workflow_paused"
+    },
+    {
+      "at": 1792507612.911513,
+      "created_at": 1792507612,
+      "data": {},
+      "elapsed_time": null,
+      "event": "workflow_started"
+    },
+    {
+      "at": 1792507612.911534,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "start"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507612.9116669,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "start",
+        "status": "succeeded"
+      },
+      "elapsed_time": 0.002495,
+      "event": "node_finished"
+    },
+    {
+      "at": 1792507612.9116774,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "h1"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507612.9116857,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "h1",
+        "status": "paused"
+      },
+      "elapsed_time": 0.026679,
+      "event": "node_finished"
+    },
+    {
+      "at": 1792507612.9117029,
+      "created_at": null,
+      "data": {
+        "form_token": "bpcSGiWjaZ3jpAsXEmOkuL",
+        "node_id": "h1",
+        "node_title": "First"
+      },
+      "elapsed_time": null,
+      "event": "human_input_required"
+    },
+    {
+      "at": 1792507612.9117165,
+      "created_at": 1792507612,
+      "data": {
+        "paused_nodes": [
+          "h1"
+        ],
+        "reasons": [
+          {
+            "TYPE": "human_input_required",
+            "actions": [
+              {
+                "button_style": "primary",
+                "id": "approve",
+                "title": "Approve it"
+              }
+            ],
+            "approval_channels": [],
+            "expiration_time": 1792637212,
+            "form_content": "First {{#$output.reply#}}?",
+            "form_id": "e345753f-c091-445a-af33-c9e26f188002",
+            "form_token": "bpcSGiWjaZ3jpAsXEmOkuL",
+            "inputs": [
+              {
+                "default": null,
+                "output_variable_name": "reply",
+                "type": "paragraph"
+              }
+            ],
+            "node_id": "h1",
+            "node_title": "First",
+            "resolved_default_values": {}
+          }
+        ],
+        "status": "paused"
+      },
+      "elapsed_time": 0.0,
+      "event": "workflow_paused"
+    },
+    {
+      "at": 1792507612.964454,
+      "created_at": 1792507612,
+      "data": {},
+      "elapsed_time": null,
+      "event": "workflow_started"
+    },
+    {
+      "at": 1792507612.9664912,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "h1"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507612.9730964,
+      "created_at": null,
+      "data": {
+        "node_id": "h1",
+        "node_title": "First"
+      },
+      "elapsed_time": null,
+      "event": "human_input_form_filled"
+    },
+    {
+      "at": 1792507612.9801803,
+      "created_at": 1792507612,
+      "data": {
+        "node_id": "h1",
+        "status": "succeeded"
+      },
+      "elapsed_time": 0.003352,
+      "event": "node_finished"
+    },
+    {
+      "at": 1792507613.0682142,
+      "created_at": 1792507613,
+      "data": {
+        "node_id": "h2"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507613.221579,
+      "created_at": null,
+      "data": {
+        "form_token": "N1ad849ygUFyU24m8s8nGr",
+        "node_id": "h2",
+        "node_title": "Second"
+      },
+      "elapsed_time": null,
+      "event": "human_input_required"
+    },
+    {
+      "at": 1792507613.2216105,
+      "created_at": 1792507612,
+      "data": {
+        "paused_nodes": [
+          "h2"
+        ],
+        "reasons": [
+          {
+            "TYPE": "human_input_required",
+            "actions": [
+              {
+                "button_style": "primary",
+                "id": "approve",
+                "title": "Approve it"
+              }
+            ],
+            "approval_channels": [],
+            "expiration_time": 1792637213,
+            "form_content": "Second {{#$output.reply#}}?",
+            "form_id": "6a5ff38f-17ca-4667-8569-1d2071ddd061",
+            "form_token": "N1ad849ygUFyU24m8s8nGr",
+            "inputs": [
+              {
+                "default": null,
+                "output_variable_name": "reply",
+                "type": "paragraph"
+              }
+            ],
+            "node_id": "h2",
+            "node_title": "Second",
+            "resolved_default_values": {}
+          }
+        ],
+        "status": "paused"
+      },
+      "elapsed_time": 0.242842,
+      "event": "workflow_paused"
+    },
+    {
+      "at": 1792507613.2814915,
+      "created_at": 1792507613,
+      "data": {},
+      "elapsed_time": null,
+      "event": "workflow_started"
+    },
+    {
+      "at": 1792507613.2834563,
+      "created_at": 1792507613,
+      "data": {
+        "node_id": "h2"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507613.288408,
+      "created_at": null,
+      "data": {},
+      "elapsed_time": null,
+      "event": "text_chunk"
+    },
+    {
+      "at": 1792507613.2889087,
+      "created_at": null,
+      "data": {
+        "node_id": "h2",
+        "node_title": "Second"
+      },
+      "elapsed_time": null,
+      "event": "human_input_form_filled"
+    },
+    {
+      "at": 1792507613.295419,
+      "created_at": 1792507613,
+      "data": {
+        "node_id": "h2",
+        "status": "succeeded"
+      },
+      "elapsed_time": 0.002181,
+      "event": "node_finished"
+    },
+    {
+      "at": 1792507613.3855097,
+      "created_at": 1792507613,
+      "data": {
+        "node_id": "end"
+      },
+      "elapsed_time": null,
+      "event": "node_started"
+    },
+    {
+      "at": 1792507613.3929746,
+      "created_at": 1792507613,
+      "data": {
+        "node_id": "end",
+        "status": "succeeded"
+      },
+      "elapsed_time": 0.000275,
+      "event": "node_finished"
+    },
+    {
+      "at": 1792507613.4090457,
+      "created_at": 1792507613,
+      "data": {
+        "status": "succeeded"
+      },
+      "elapsed_time": 0.127065,
+      "event": "workflow_finished"
+    }
+  ],
+  "history": [
+    {
+      "created_at": 1792507612,
+      "elapsed_time": 0.123164,
+      "finished_at": 1792507613,
+      "id": "cb98f3a1-db6a-4ab3-ae0f-3137ac879b4c",
+      "status": "succeeded",
+      "total_steps": 6
+    }
+  ],
+  "run": "cb98f3a1-db6a-4ab3-ae0f-3137ac879b4c",
+  "second_pause": {
+    "at": 1792507612.9117165,
+    "created_at": 1792507612,
+    "elapsed_time": 0.0,
+    "outputs": {},
+    "paused_nodes": [
+      "h1"
+    ],
+    "second_pause_at": 1792507613.2216105,
+    "second_pause_created_at": 1792507612,
+    "second_pause_elapsed_time": 0.242842
+  }
+}

@@ -1,0 +1,42 @@
+
+app:
+  mode: workflow
+  name: hitl-second-pause
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: h1, targetHandle: target}
+    - {id: e2, source: h1, sourceHandle: approve, target: h2, targetHandle: target}
+    - {id: e3, source: h2, sourceHandle: approve, target: end, targetHandle: target}
+    nodes:
+    - id: start
+      data:
+        title: Start
+        type: start
+        variables: []
+    - id: h1
+      data:
+        title: First
+        type: human-input
+        form_content: 'First {{#$output.reply#}}?'
+        inputs: [{type: paragraph, output_variable_name: reply}]
+        user_actions: [{id: approve, title: Approve it, button_style: primary}]
+        delivery_methods: [{type: webapp, enabled: true}]
+    - id: h2
+      data:
+        title: Second
+        type: human-input
+        form_content: 'Second {{#$output.reply#}}?'
+        inputs: [{type: paragraph, output_variable_name: reply}]
+        user_actions: [{id: approve, title: Approve it, button_style: primary}]
+        delivery_methods: [{type: webapp, enabled: true}]
+    - id: end
+      data:
+        title: End
+        type: end
+        outputs: [{variable: reply, value_selector: [h2, reply]}]
