@@ -36,6 +36,17 @@ extension Routes {
         return services
     }
 
+    /// The services for one workflow run: `runtimeServices`, plus the human-input adapter bound to this run. The adapter
+    /// needs the run id and the ledger the run persists from, so it cannot live in `runtimeServices` (which is shared by
+    /// the single-node and container paths, and by graphs built before a run exists).
+    func runServices(appId: String, runId: String, docId: String, userId: String,
+                     pending: PendingHumanInputForms) -> RuntimeServices {
+        var services = runtimeServices(appId: appId)
+        services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
+                                                      pending: pending)
+        return services
+    }
+
     /// Errors preparing a graph (before anything runs), as the single node run answers them.
     func preparationError(_ error: any Error) -> ServerError {
         switch error {
@@ -88,20 +99,25 @@ extension Routes {
         let (seq, workflow) = try await draftWorkflow(a.id, viewer: p.id)
         let runId = UUID().uuidString.lowercased()
         let prepared: PreparedRun
+        let pending = PendingHumanInputForms()
         do {
-            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs, services: runtimeServices(appId: a.id),
+            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs,
+                                                  services: runServices(appId: a.id, runId: runId, docId: a.id, userId: p.id,
+                                                                        pending: pending),
                                                   userId: p.id, appId: a.id, workflowId: a.id, runId: runId)
         } catch {
             throw preparationError(error)
         }
 
         return try await startRun(appId: a.id, principal: p, seq: seq, workflow: workflow, runId: runId, graph: prepared.graph,
-                                  pool: prepared.pool, workflowInputs: prepared.workflowInputs, nodeTriggeredFrom: "workflow-run")
+                                  pool: prepared.pool, workflowInputs: prepared.workflowInputs, nodeTriggeredFrom: "workflow-run",
+                                  pendingForms: pending)
     }
 
     /// Records the run (`workflow_runs`, `debugging`), starts it in its own task and answers its SSE stream.
     func startRun(appId: String, principal p: Principal, seq: Int, workflow: JSONValue, runId: String, graph: RuntimeGraph, pool: VariablePool,
-                  workflowInputs: JSONObject, nodeTriggeredFrom: String) async throws -> Response {
+                  workflowInputs: JSONObject, nodeTriggeredFrom: String,
+                  pendingForms: PendingHumanInputForms = PendingHumanInputForms()) async throws -> Response {
         // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
         let taskId = runId
         let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
@@ -123,7 +139,8 @@ extension Routes {
                                  commands: commands, userId: p.id, appId: appId)
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
-                                     channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom)
+                                     channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom,
+                                     pendingForms: pendingForms)
         Task.detached { await execution.run(engine: engine, pool: pool) }
 
         var headers = HTTPFields()
@@ -286,11 +303,14 @@ final class RunExecution: Sendable {
     let createdBy: String
     let channel: RunChannel
     let encoderBox: Mutex<RunStreamEncoder>
+    /// The forms the engine asked for during this run; the pause persists them before publishing anything.
+    let pendingForms: PendingHumanInputForms
     /// The node executions' `triggered_from` (Dify: `workflow-run`; an iteration or loop single run: `single-step`).
     let triggeredFrom: String
 
     init(routes: Routes, appId: String, docSeq: Int, runId: String, taskId: String, createdBy: String, channel: RunChannel,
-         encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run") {
+         encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run",
+         pendingForms: PendingHumanInputForms = PendingHumanInputForms()) {
         self.routes = routes
         self.appId = appId
         self.docSeq = docSeq
@@ -300,6 +320,7 @@ final class RunExecution: Sendable {
         self.channel = channel
         encoderBox = Mutex(encoder)
         self.triggeredFrom = triggeredFrom
+        self.pendingForms = pendingForms
     }
 
     /// A started node not finished yet (for its record and the end of the run).
@@ -327,6 +348,10 @@ final class RunExecution: Sendable {
         // `_append_retry_history`: the failed attempts of a node execution, kept in its process data.
         var retries: [String: [JSONValue]] = [:]
         for await event in engine.run(pool: pool) {
+            if case .runPaused(let reasons, let snapshot, let stats) = event {
+                await handlePause(reasons: reasons, snapshot: snapshot, stats: stats)
+                continue
+            }
             let frames = encoderBox.withLock { $0.encode(event) }
             for f in frames { await channel.publish(Self.sse(f)) }
             switch event {
@@ -365,6 +390,49 @@ final class RunExecution: Sendable {
         pinger.cancel()
         await channel.finish()
         await routes.runs.remove(taskId)
+    }
+
+    /// The pause, in the order Dify's `WorkflowResponseConverter` implies: the snapshot, the forms and the run's state are
+    /// durable **first**, and only then do `human_input_required` and `workflow_paused` reach the stream. If the write fails
+    /// the run ends as failed with that error: publishing a pause nobody can answer, or carrying on past human input, would
+    /// both be worse than stopping.
+    private func handlePause(reasons: [PauseReason], snapshot: GraphEngineSnapshot, stats: GraphRunStats) async {
+        let sessionIds = reasons.compactMap { reason -> String? in
+            if case .hitlRequired(let sessionId, _, _) = reason { return sessionId }
+            return nil
+        }
+        let forms = pendingForms.take(sessionIds)
+        let at = Date()
+        do {
+            let encoded = String(decoding: try snapshot.encoded(), as: UTF8.self)
+            try await routes.store.createPause(
+                workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,
+                totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
+                elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.startedAt) }, forms: forms, at: at)
+        } catch {
+            routes.logger.error("run \(runId) could not persist its pause: \(error)")
+            let frames = encoderBox.withLock { enc in
+                [enc.envelope("workflow_failed", [
+                    "id": .string(runId), "workflow_id": .string(appId), "status": "failed",
+                    "outputs": .object([:]),
+                    "error": .string("could not persist the paused run: \(error)"),
+                    "elapsed_time": .double(at.timeIntervalSince(enc.startedAt)), "total_tokens": .int(stats.totalTokens),
+                    "total_steps": .int(stats.totalSteps), "created_by": enc.account, "created_at": .double(enc.startedAt.timeIntervalSince1970),
+                    "finished_at": .double(at.timeIntervalSince1970), "exceptions_count": 0, "files": [],
+                ])]
+            }
+            for f in frames { await channel.publish(Self.sse(f)) }
+            try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                                      error: "could not persist the paused run: \(error)",
+                                                      elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.startedAt }),
+                                                      totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
+                                                      exceptionsCount: 0, finishedAt: at)
+            return
+        }
+        let frames = encoderBox.withLock { enc in
+            forms.map { enc.humanInputRequired($0) } + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at)]
+        }
+        for f in frames { await channel.publish(Self.sse(f)) }
     }
 
     static func sse(_ payload: JSONValue) -> String { "data: " + payload.compactJSON() + "\n\n" }

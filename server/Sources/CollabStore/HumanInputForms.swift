@@ -388,6 +388,18 @@ extension PostgresStore {
         }
     }
 
+    /// The form of one node execution (the pair a resume or a re-decision asks about), nil when it does not exist.
+    public func humanInputForm(workflowRunId: String, executionId: String) async throws -> StoredHumanInputForm? {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT \(unescaped: Self.formColumns) FROM human_input_forms
+                WHERE workflow_run_id = \(workflowRunId) AND execution_id = \(executionId)
+                """, logger: self.logger)
+            for try await row in rows { return try Self.decodeForm(row) }
+            return nil
+        }
+    }
+
     /// The forms a resumed run reads back, oldest first.
     public func humanInputForms(workflowRunId: String) async throws -> [StoredHumanInputForm] {
         try await bounded {
