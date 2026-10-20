@@ -147,14 +147,14 @@ struct HumanInputRunTests {
             var secondGeneration = 0
             for _ in 0..<200 where secondGeneration == 0 {
                 try await Task.sleep(for: .milliseconds(25))
-                let open = try await store.openPauses(workflowRunId: first.workflowRunId)
+                let open = try await store.openPauses(workflowRunId: first.workflowRunId ?? "")
                 secondGeneration = open.first?.generation ?? 0
             }
             #expect(secondGeneration == 2, "the second node pauses again as a new generation")
             let adopted = try await store.humanInputForm(token: second.token)
             #expect(adopted?.id == second.id && adopted?.token == second.token, "the waiting form is adopted, not replaced")
             #expect(adopted?.status == .waiting)
-            #expect(try await store.workflowRun(doc: app, id: first.workflowRunId)?.status == "paused")
+            #expect(try await store.workflowRun(doc: app, id: first.workflowRunId ?? "")?.status == "paused")
 
             // Answer the second: now the run ends.
             let last = try await api.post("/v1/form/human_input/\(second.token)", #"{"inputs":{"reply":"two"},"action":"approve"}"#,
@@ -163,10 +163,10 @@ struct HumanInputRunTests {
             var status = ""
             for _ in 0..<200 where status != "succeeded" && status != "failed" {
                 try await Task.sleep(for: .milliseconds(25))
-                status = try await store.workflowRun(doc: app, id: first.workflowRunId)?.status ?? ""
+                status = try await store.workflowRun(doc: app, id: first.workflowRunId ?? "")?.status ?? ""
             }
             #expect(status == "succeeded", "got \(status)")
-            #expect(try await store.workflowRun(doc: app, id: first.workflowRunId)?.outputs?.contains("two") == true)
+            #expect(try await store.workflowRun(doc: app, id: first.workflowRunId ?? "")?.outputs?.contains("two") == true)
         }
     }
 
@@ -1842,6 +1842,106 @@ struct HumanInputSideEffectTests {
                 #expect(invokes() == 1, "the resume did not run the model again: \(invokes())")
                 let executions = try await store.nodeExecutions(doc: app, run: runId)
                 #expect(executions.filter { $0.nodeId == "llm" }.count == 1, "one LLM execution in the run's history")
+            }
+        }
+    }
+}
+/// The panel's test mail (Dify's `.../delivery-test`): a **delivery-test** form of its own — no run — is created, mailed
+/// to the signed-in account in debug mode, opens through its link, validates a real answer, and resumes nothing.
+@Suite("Human input delivery test", .enabled(if: testDbHost != nil))
+struct HumanInputDeliveryTestTests {
+    /// The email method carries an id (the panel names it) and debug mode (the account is the recipient).
+    static func yaml() -> String {
+        """
+        app:
+          mode: workflow
+          name: hitl-delivery-test
+        kind: app
+        version: 0.3.1
+        workflow:
+          conversation_variables: []
+          environment_variables: []
+          features: {}
+          graph:
+            edges:
+            - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+            - {id: e2, source: human, sourceHandle: approve, target: end, targetHandle: target}
+            nodes:
+            - id: start
+              data: {title: Start, type: start, variables: []}
+            - id: human
+              data:
+                title: Approve
+                type: human-input
+                form_content: 'Approve {{#$output.reply#}}?'
+                inputs: [{type: paragraph, output_variable_name: reply}]
+                user_actions: [{id: approve, title: Approve it, button_style: primary}]
+                delivery_methods:
+                - {id: 11111111-1111-1111-1111-111111111111, type: webapp, enabled: true}
+                - id: 22222222-2222-2222-2222-222222222222
+                  type: email
+                  enabled: true
+                  config:
+                    subject: 'Test: {{#start.q#}}'
+                    body: 'Open {{#url#}}'
+                    debug_mode: true
+                    recipients: {include_bound_group: false, items: []}
+            - id: end
+              data: {title: End, type: end, outputs: []}
+        """
+    }
+
+    @Test func theTestMailOpensTheFormAndAnswersWithoutTouchingARun() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, store, _ in
+                let owner = try await api.setupOwner()
+                let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+                let sent = try await api.post(
+                    "/v1/apps/\(app)/workflows/draft/human-input/nodes/human/delivery-test",
+                    ##"{"delivery_method_id":"22222222-2222-2222-2222-222222222222","inputs":{}}"##, token: owner)
+                #expect(sent.status == 200, "delivery test: \(sent.text)")
+                let mails = try await mailbox.wait(for: 1)
+                let mail = try #require(mails.first)
+                #expect(mail.to.joined(separator: ",") == "owner@example.com", "debug mode mails the account: \(mail.to)")
+                let token = try #require(mail.text.split(separator: "/form/").last.map {
+                    String($0.prefix { $0 != "<" && $0 != "\"" && !$0.isWhitespace })
+                })
+
+                // The link opens the form without an account, and its answer is accepted…
+                let definition = try await api.get("/v1/form/human_input/\(token)")
+                #expect(definition.status == 200, "\(definition.text)")
+                let answered = try await api.post("/v1/form/human_input/\(token)",
+                                                  ##"{"inputs":{"reply":"works"},"action":"approve"}"##)
+                #expect(answered.status == 200, "answer: \(answered.text)")
+                // …and it resumed nothing: there is no run, and no pause is waiting.
+                #expect(try await store.runsAwaitingResume().isEmpty)
+                let form = try #require(try await store.formRecipient(token: token)?.form)
+                #expect(form.kind == .deliveryTest && form.workflowRunId == nil, "a delivery-test form belongs to no run")
+                #expect(form.status == .submitted)
+                let second = try await api.post("/v1/form/human_input/\(token)",
+                                                ##"{"inputs":{"reply":"again"},"action":"approve"}"##)
+                #expect(second.status == 412, "one-shot: \(second.text)")
+            }
+        }
+    }
+
+    @Test func aMethodThatCannotSendIsRefused() async throws {
+        try await withStubSMTP { port, _ in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, _, _ in
+                let owner = try await api.setupOwner()
+                let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
+                let webapp = try await api.post(
+                    "/v1/apps/\(app)/workflows/draft/human-input/nodes/human/delivery-test",
+                    ##"{"delivery_method_id":"11111111-1111-1111-1111-111111111111"}"##, token: owner)
+                #expect(webapp.status == 400, "\(webapp.text)")
+                let unknown = try await api.post(
+                    "/v1/apps/\(app)/workflows/draft/human-input/nodes/human/delivery-test",
+                    ##"{"delivery_method_id":"nope"}"##, token: owner)
+                #expect(unknown.status == 400, "\(unknown.text)")
             }
         }
     }

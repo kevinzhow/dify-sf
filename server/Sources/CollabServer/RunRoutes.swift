@@ -271,8 +271,10 @@ extension Routes {
                 timedOut += 1
                 // The pause is now woken (`resume_requested`), and the run takes the timeout branch — in the background,
                 // as an answer does.
-                let appId = form.docId, runId = form.workflowRunId, routes = self
-                Task.detached { await routes.resumeRun(appId: appId, runId: runId) }
+                if let runId = form.workflowRunId {
+                    let appId = form.docId, routes = self
+                    Task.detached { await routes.resumeRun(appId: appId, runId: runId) }
+                }
             }
         }
         let error = "Human input form timed out"
@@ -692,7 +694,7 @@ final class RunExecution: Sendable {
             for recipient in recipients {
                 // A waiting form adopted by a later pause keeps the tokens it already handed out.
                 rows.append(StoredFormRecipient(
-                    token: UUID().uuidString.lowercased(), formId: entry.form.id, workflowRunId: entry.form.workflowRunId,
+                    token: UUID().uuidString.lowercased(), formId: entry.form.id, workflowRunId: entry.form.workflowRunId ?? "",
                     methodIndex: recipient.method, type: recipient.type, referenceId: recipient.referenceId,
                     email: recipient.email, createdAt: now))
             }

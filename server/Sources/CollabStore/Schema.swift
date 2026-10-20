@@ -673,6 +673,11 @@ public enum Schema {
         )
         """,
         "CREATE INDEX IF NOT EXISTS human_input_form_recipients_form ON human_input_form_recipients (form_id)",
+        // Protocol 1.16: a **delivery-test** form (Dify's `HumanInputFormKind.DELIVERY_TEST`) belongs to no run: the panel's
+        // test mail opens and validates a form, and answering it never claims or resumes a workflow.
+        "ALTER TABLE human_input_forms ADD COLUMN IF NOT EXISTS form_kind text NOT NULL DEFAULT 'runtime'",
+        "ALTER TABLE human_input_forms ALTER COLUMN workflow_run_id DROP NOT NULL",
+        "ALTER TABLE human_input_form_recipients ALTER COLUMN workflow_run_id DROP NOT NULL",
         // One row per address and form: a pause that adopts a waiting form must keep the links it already handed out.
         "CREATE UNIQUE INDEX IF NOT EXISTS human_input_form_recipients_address ON human_input_form_recipients (form_id, email)",
     ]

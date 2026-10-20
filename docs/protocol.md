@@ -1339,8 +1339,11 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   null}`. `.../form/run` with `{form_inputs, inputs, action}` (all required) validates the submission and answers the
   outputs it makes (`__action_id`, `__action_value`, `__rendered_content` included), recorded as the node's draft
   variables — no workflow run happens, as in Dify. A node of another type is `400 bad_request`; an unknown node `404
-  not_found`. The panel's delivery test (`.../delivery-test`) is not served: it needs a form a test can own, and a form
-  here requires a run.
+  not_found`. `POST .../human-input/nodes/{node}/delivery-test` `{"delivery_method_id": "...", "inputs": {...}}` (both
+  app modes) sends one message of that delivery method about a **delivery-test** form (`form_kind: delivery_test`,
+  `workflow_run_id` null): its link opens and validates the real form, the answer proves it and resumes nothing, and in
+  debug mode the recipient is the signed-in account. `400` for a method that cannot send or has no recipients, and
+  without mail configured.
 
 **Deviations from Dify.** The email link carries the form's own token, not a per-recipient one (Dify mints one access
 token per recipient); the body goes out as text in a `<pre>` (this server has no markdown/HTML sanitiser); a

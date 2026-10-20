@@ -9,7 +9,8 @@ public struct StoredFormRecipient: Sendable, Equatable {
     /// The token in the link (`/form/{token}`), unique per recipient.
     public var token: String
     public var formId: String
-    public var workflowRunId: String
+    /// The run whose pause the form belongs to; nil for a delivery test.
+    public var workflowRunId: String?
     /// The index of the node's delivery method that named this recipient (its subject and body).
     public var methodIndex: Int
     /// `member` (a workspace account, `referenceId`) or `external` (an address).
@@ -21,7 +22,7 @@ public struct StoredFormRecipient: Sendable, Equatable {
     public var usedAt: Date?
     public var createdAt: Date
 
-    public init(token: String, formId: String, workflowRunId: String, methodIndex: Int, type: String,
+    public init(token: String, formId: String, workflowRunId: String?, methodIndex: Int, type: String,
                 referenceId: String? = nil, email: String, mailedAt: Date? = nil, usedAt: Date? = nil, createdAt: Date) {
         self.token = token
         self.formId = formId
@@ -45,7 +46,7 @@ extension PostgresStore {
         let r = row.makeRandomAccess()
         return StoredFormRecipient(
             token: try r[0].decode(String.self), formId: try r[1].decode(String.self),
-            workflowRunId: try r[2].decode(String.self), methodIndex: try r[3].decode(Int.self),
+            workflowRunId: try r[2].decode(String?.self), methodIndex: try r[3].decode(Int.self),
             type: try r[4].decode(String.self), referenceId: try r[5].decode(String?.self),
             email: try r[6].decode(String.self), mailedAt: try r[7].decode(Date?.self),
             usedAt: try r[8].decode(Date?.self), createdAt: try r[9].decode(Date.self))

@@ -130,7 +130,9 @@ extension Routes {
         }
         // Dify reads the definition through `HumanInputService.resolve_form_inputs`: the pool comes from the run's open
         // pause, so an already resumed form keeps its unresolved definition (there is no pool any more).
-        let pause = (try? await store.openPauses(workflowRunId: form.workflowRunId))?.first
+        // A delivery test has no run and therefore no pool to resolve against: its definition is served as it was stored.
+        let pause = if let runId = form.workflowRunId { (try? await store.openPauses(workflowRunId: runId))?.first } else { nil }
+            as StoredWorkflowPause?
         return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
     }
 
@@ -174,8 +176,12 @@ extension Routes {
             if let recipient { try? await store.markFormRecipientUsed(token: recipient.token, at: Date()) }
             // Dify's `enqueue_resume`: the answer asks for a resume; it runs in the background so the caller is answered
             // immediately, and the claim inside makes a second answer harmless.
-            let routes = self
-            Task.detached { await routes.resumeRun(appId: answered.docId, runId: answered.workflowRunId) }
+            // A delivery test belongs to no run: its answer proves the form and resumes nothing.
+            if let runId = answered.workflowRunId {
+                let routes = self
+                let docId = answered.docId
+                Task.detached { await routes.resumeRun(appId: docId, runId: runId) }
+            }
             struct Empty: Encodable {}
             return try json(Empty())
         case .alreadySubmitted:

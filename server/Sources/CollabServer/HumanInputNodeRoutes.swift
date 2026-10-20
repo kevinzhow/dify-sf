@@ -30,6 +30,13 @@ extension Routes {
         apps.post(":app", "advanced-chat", "workflows", "draft", "human-input", "nodes", ":node", "form", "run") { req in
             await handle(req) { try await submitHumanInputFormPreview(req, mode: "advanced-chat") }
         }
+        // The panel's test mail: Dify's `.../delivery-test`, both app modes on the workflow path.
+        apps.post(":app", "workflows", "draft", "human-input", "nodes", ":node", "delivery-test") { req in
+            await handle(req) { try await sendDeliveryTest(req) }
+        }
+        apps.post(":app", "advanced-chat", "workflows", "draft", "human-input", "nodes", ":node", "delivery-test") { req in
+            await handle(req) { try await sendDeliveryTest(req) }
+        }
     }
 
     /// The node's config, its latest seq and the export the run routes read (one consistent read).
@@ -74,6 +81,73 @@ extension Routes {
             throw Self.invalidParam(e.description)
         }
         return pool
+    }
+
+    /// Dify's `test_human_input_delivery`: one message of the chosen delivery method, about a **delivery-test form** — a
+    /// form of its own (no run, `form_kind: delivery_test`) whose link opens and validates the real form, and whose answer
+    /// resumes nothing. In debug mode the message goes to the signed-in account, as Dify's recipient override does.
+    private func sendDeliveryTest(_ req: Request) async throws -> Response {
+        let p = try await authenticate(req, .edit)
+        let a = try await appOfMode(req, p, Self.workflowModes)
+        let nodeId = try nodeId(req)
+        let b = try await objectBody(req)
+        guard let methodId = b["delivery_method_id"]?.string else { throw Self.invalidParam("missing delivery_method_id") }
+        let inputs = b["inputs"]?.object ?? [:]
+        let snapshot = try await registry.sequencer(a.id).currentSnapshot()
+        let metadata = try await currentMetadata(a.id, viewer: p.id)
+        let secrets: [String: String]
+        do { secrets = try await store.secrets(a.id) } catch { throw ServerError.unavailable("\(error)") }
+        let exported = try JSONValue.parse(try WireJSON.encode(try DifyDSL.exportValue(snapshot.doc, metadata: metadata, secrets: secrets)))
+        let graph = try GraphConfig(json: exported["workflow"]?["graph"] ?? .null)
+        guard let node = graph.node(nodeId) else { throw ServerError.missing("Node \(nodeId) not found") }
+        guard node.type == NodeType.humanInput else { throw ServerError.badRequest("Node type must be human-input.") }
+        let form: HumanInputFormConfig
+        do { form = try HumanInputFormConfig(node.data) } catch let e as NodeDataError { throw Self.invalidParam(e.description) }
+        guard let index = form.deliveryMethods.firstIndex(where: { $0["id"]?.string == methodId }) else {
+            throw Self.invalidParam("Delivery method not found.")
+        }
+        let method = form.deliveryMethods[index]
+        guard method["type"]?.string == "email" else {
+            throw Self.invalidParam("Delivery method does not support test send.")
+        }
+        let pool = try await humanInputPool(appId: a.id, userId: p.id, nodeId: nodeId, form: form, inputs: inputs, exported: exported)
+        // Debug mode addresses the signed-in account; otherwise the method's own recipients (members and addresses).
+        var members: [String: String] = [:]
+        do { members = Dictionary(uniqueKeysWithValues: try await store.members().map { ($0.id, $0.email) }) } catch {}
+        var recipients = HumanInputMail.recipients([method], members: members)
+        if method["config"]?["debug_mode"]?.bool ?? false {
+            recipients = [HumanInputMail.Recipient(email: p.account.email, method: 0, type: "member", referenceId: p.id)]
+        }
+        guard !recipients.isEmpty else { throw ServerError.badRequest("Delivery method has no recipients.") }
+        let now = Date()
+        let rendered = form.renderedContent(pool: pool)
+        let defaults = form.resolvedDefaults(pool: pool)
+        let testForm = StoredHumanInputForm(
+            id: UUID().uuidString.lowercased(), workflowRunId: nil, executionId: UUID().uuidString.lowercased(), docId: a.id,
+            nodeId: nodeId, nodeTitle: form.base.title, token: UUID().uuidString.lowercased(), formContent: form.content,
+            inputs: JSONValue.array(form.inputs.map(JSONValue.object)).compactJSON(),
+            userActions: JSONValue.array(form.actions.map(JSONValue.object)).compactJSON(), renderedContent: rendered,
+            resolvedDefaultValues: JSONValue.object(defaults).compactJSON(),
+            actions: JSONValue.array(form.actions.map(JSONValue.object)).compactJSON(), displayInUi: false,
+            createdAt: now, recipientType: .webapp, kind: .deliveryTest)
+        do { try await store.insertForm(testForm) } catch { throw ServerError.unavailable("\(error)") }
+        let rows = recipients.map {
+            StoredFormRecipient(token: UUID().uuidString.lowercased(), formId: testForm.id, workflowRunId: nil,
+                                methodIndex: index, type: $0.type, referenceId: $0.referenceId, email: $0.email, createdAt: now)
+        }
+        do { try await store.addFormRecipients(rows) } catch { throw ServerError.unavailable("\(error)") }
+        let outbox = MailOutbox(sender: SMTPMailSender(config: config.mail), logger: logger)
+        guard outbox.isEnabled, let base = Optional(config.webAppBaseURL), !base.isEmpty else {
+            throw ServerError.badRequest("Mail is not configured (no SMTP, no COLLAB_WEBAPP_BASE_URL).")
+        }
+        for row in rows {
+            guard let link = HumanInputMail.link(base: base, token: row.token),
+                  let message = HumanInputMail.message(form.deliveryMethods, methodIndex: index, to: row.email, link: link, pool: pool),
+                  await outbox.send(message, kind: "human input test") else { continue }
+            try? await store.markFormRecipientMailed(token: row.token, at: Date())
+        }
+        struct Empty: Encodable {}
+        return try json(Empty())
     }
 
     private func objectBody(_ req: Request) async throws -> JSONObject {

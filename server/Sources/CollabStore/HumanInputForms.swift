@@ -52,6 +52,13 @@ public enum HumanInputRecipient: String, Sendable {
     case webapp
 }
 
+/// Dify's `HumanInputFormKind`: a form a run waits on, or the panel's delivery test (which belongs to no run and whose
+/// answer only proves the form works).
+public enum HumanInputFormKind: String, Sendable {
+    case runtime
+    case deliveryTest = "delivery_test"
+}
+
 public enum HumanInputFormStatus: String, Sendable {
     case waiting
     case submitted
@@ -65,7 +72,8 @@ public enum HumanInputFormStatus: String, Sendable {
 /// the runtime rendered, never re-encoded here: the client compares field order and number kinds with Dify's.
 public struct StoredHumanInputForm: Sendable, Equatable {
     public var id: String
-    public var workflowRunId: String
+    /// The run that waits on this form; nil for a delivery test, which belongs to no run.
+    public var workflowRunId: String?
     /// The pause this form currently belongs to.
     public var generation: Int
     public var executionId: String
@@ -91,14 +99,15 @@ public struct StoredHumanInputForm: Sendable, Equatable {
     public var consumedAt: Date?
     public var createdAt: Date
     public var recipientType: HumanInputRecipient
+    public var kind: HumanInputFormKind
 
-    public init(id: String, workflowRunId: String, generation: Int = 1, executionId: String, docId: String, nodeId: String,
+    public init(id: String, workflowRunId: String?, generation: Int = 1, executionId: String, docId: String, nodeId: String,
                 nodeTitle: String, token: String, formContent: String, inputs: String, userActions: String,
                 renderedContent: String, defaultValues: String? = nil, resolvedDefaultValues: String? = nil,
                 actions: String, displayInUi: Bool, expirationTime: Int? = nil, status: HumanInputFormStatus = .waiting,
                 submittedInputs: String? = nil, submittedAction: String? = nil, submittedBy: String? = nil,
                 submittedAt: Date? = nil, consumedAt: Date? = nil, createdAt: Date,
-                recipientType: HumanInputRecipient = .console) {
+                recipientType: HumanInputRecipient = .console, kind: HumanInputFormKind = .runtime) {
         self.id = id
         self.workflowRunId = workflowRunId
         self.generation = generation
@@ -124,6 +133,7 @@ public struct StoredHumanInputForm: Sendable, Equatable {
         self.consumedAt = consumedAt
         self.createdAt = createdAt
         self.recipientType = recipientType
+        self.kind = kind
     }
 }
 
@@ -163,7 +173,8 @@ extension PostgresStore {
     static let formColumns = """
         id, workflow_run_id, generation, execution_id, doc_id, node_id, node_title, token, form_content, inputs,
         user_actions, rendered_content, default_values, resolved_default_values, actions, display_in_ui, expiration_time,
-        status, submitted_inputs, submitted_action, submitted_by, submitted_at, consumed_at, created_at, recipient_type
+        status, submitted_inputs, submitted_action, submitted_by, submitted_at, consumed_at, created_at, recipient_type,
+        form_kind
         """
 
     /// `formColumns` qualified for a join (`human_input_forms` shares `workflow_run_id` and others with its neighbours).
@@ -171,7 +182,7 @@ extension PostgresStore {
         f.id, f.workflow_run_id, f.generation, f.execution_id, f.doc_id, f.node_id, f.node_title, f.token, f.form_content,
         f.inputs, f.user_actions, f.rendered_content, f.default_values, f.resolved_default_values, f.actions,
         f.display_in_ui, f.expiration_time, f.status, f.submitted_inputs, f.submitted_action, f.submitted_by,
-        f.submitted_at, f.consumed_at, f.created_at, f.recipient_type
+        f.submitted_at, f.consumed_at, f.created_at, f.recipient_type, f.form_kind
         """
 
     static func decodeForm(_ row: PostgresRow, offset: Int = 0) throws -> StoredHumanInputForm {
@@ -182,7 +193,7 @@ extension PostgresStore {
             throw HumanInputStoreError.unknownStatus(rawStatus)
         }
         return StoredHumanInputForm(
-            id: try r[0 + offset].decode(String.self), workflowRunId: try r[1 + offset].decode(String.self),
+            id: try r[0 + offset].decode(String.self), workflowRunId: try r[1 + offset].decode(String?.self),
             generation: Int(try r[2 + offset].decode(Int32.self)), executionId: try r[3 + offset].decode(String.self),
             docId: try r[4 + offset].decode(String.self), nodeId: try r[5 + offset].decode(String.self),
             nodeTitle: try r[6 + offset].decode(String.self), token: try r[7 + offset].decode(String.self),
@@ -194,7 +205,8 @@ extension PostgresStore {
             submittedInputs: try r[18 + offset].decode(String?.self), submittedAction: try r[19 + offset].decode(String?.self),
             submittedBy: try r[20 + offset].decode(String?.self), submittedAt: try r[21 + offset].decode(Date?.self),
             consumedAt: try r[22 + offset].decode(Date?.self), createdAt: try r[23 + offset].decode(Date.self),
-            recipientType: try Self.decodeRecipient(try r[24 + offset].decode(String.self)))
+            recipientType: try Self.decodeRecipient(try r[24 + offset].decode(String.self)),
+            kind: HumanInputFormKind(rawValue: try r[25 + offset].decode(String.self)) ?? .runtime)
     }
 
     static let pauseColumns = """
@@ -467,23 +479,39 @@ extension PostgresStore {
             try await self.client.withTransaction(logger: self.logger) { c in
                 let owner = try await c.query("SELECT workflow_run_id FROM human_input_forms WHERE token = \(token)",
                                               logger: self.logger)
+                var found = false
                 var run: String?
-                for try await (id,) in owner { run = try id.decode(String.self) }
-                guard let workflowRunId = run else { return .notFound }
-                try await self.lockRun(workflowRunId, c)
+                for try await (id,) in owner { found = true; run = try id.decode(String?.self) }
+                guard found else { return .notFound }
+                // A delivery test has no run: there is nothing to lock and nothing to wake (its answer only proves the form).
+                if let workflowRunId = run { try await self.lockRun(workflowRunId, c) }
 
-                let read = try await c.query("""
-                    SELECT status, expiration_time, created_at FROM human_input_forms
-                    WHERE token = \(token) AND workflow_run_id = \(workflowRunId) FOR UPDATE
-                    """, logger: self.logger)
                 var status: String?
                 var expiration: Int64?
                 var createdAt: Date?
-                for try await row in read {
-                    let r = row.makeRandomAccess()
-                    status = try r[0].decode(String.self)
-                    expiration = try r[1].decode(Int64?.self)
-                    createdAt = try r[2].decode(Date.self)
+                // A run's form is read under the run's lock; a delivery test's under its own row lock only.
+                if let runId = run {
+                    let read = try await c.query("""
+                        SELECT status, expiration_time, created_at FROM human_input_forms
+                        WHERE token = \(token) AND workflow_run_id = \(runId) FOR UPDATE
+                        """, logger: self.logger)
+                    for try await row in read {
+                        let r = row.makeRandomAccess()
+                        status = try r[0].decode(String.self)
+                        expiration = try r[1].decode(Int64?.self)
+                        createdAt = try r[2].decode(Date.self)
+                    }
+                } else {
+                    let read = try await c.query("""
+                        SELECT status, expiration_time, created_at FROM human_input_forms
+                        WHERE token = \(token) FOR UPDATE
+                        """, logger: self.logger)
+                    for try await row in read {
+                        let r = row.makeRandomAccess()
+                        status = try r[0].decode(String.self)
+                        expiration = try r[1].decode(Int64?.self)
+                        createdAt = try r[2].decode(Date.self)
+                    }
                 }
                 guard let status else { return .notFound }
                 switch HumanInputFormStatus(rawValue: status) {
@@ -498,16 +526,27 @@ extension PostgresStore {
                 if globalTimeoutSeconds > 0, let createdAt,
                    at.timeIntervalSince(createdAt) >= Double(globalTimeoutSeconds) { return .expired }
 
-                let claimed = try await c.query("""
-                    UPDATE human_input_forms SET status = 'submitted', submitted_inputs = \(inputs),
-                        submitted_action = \(action), submitted_by = \(userId), submitted_at = \(at)
-                    WHERE token = \(token) AND workflow_run_id = \(workflowRunId) AND status = 'waiting'
-                    RETURNING \(unescaped: Self.formColumns)
-                    """, logger: self.logger)
-                for try await row in claimed {
-                    let form = try Self.decodeForm(row)
-                    try await self.refreshWake(workflowRunId, c)
-                    return .accepted(form)
+                if let runId = run {
+                    let claimed = try await c.query("""
+                        UPDATE human_input_forms SET status = 'submitted', submitted_inputs = \(inputs),
+                            submitted_action = \(action), submitted_by = \(userId), submitted_at = \(at)
+                        WHERE token = \(token) AND workflow_run_id = \(runId) AND status = 'waiting'
+                        RETURNING \(unescaped: Self.formColumns)
+                        """, logger: self.logger)
+                    for try await row in claimed {
+                        let form = try Self.decodeForm(row)
+                        try await self.refreshWake(runId, c)
+                        return .accepted(form)
+                    }
+                } else {
+                    // A delivery test wakes nothing: it is answered once, for the proof.
+                    let claimed = try await c.query("""
+                        UPDATE human_input_forms SET status = 'submitted', submitted_inputs = \(inputs),
+                            submitted_action = \(action), submitted_by = \(userId), submitted_at = \(at)
+                        WHERE token = \(token) AND status = 'waiting'
+                        RETURNING \(unescaped: Self.formColumns)
+                        """, logger: self.logger)
+                    for try await row in claimed { return .accepted(try Self.decodeForm(row)) }
                 }
                 // Lost the row to another writer between the read and the update: read the outcome it left.
                 let after = try await c.query("""
@@ -562,6 +601,21 @@ extension PostgresStore {
             var out: [String] = []
             for try await (id,) in rows { out.append(try id.decode(String.self)) }
             return out
+        }
+    }
+
+    /// Writes one form that belongs to no run (the panel's delivery test): Dify's `HumanInputFormKind.DELIVERY_TEST`.
+    public func insertForm(_ f: StoredHumanInputForm) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                INSERT INTO human_input_forms (id, workflow_run_id, generation, execution_id, doc_id, node_id, node_title,
+                    token, form_content, inputs, user_actions, rendered_content, default_values, resolved_default_values,
+                    actions, display_in_ui, expiration_time, status, created_at, recipient_type, form_kind)
+                VALUES (\(f.id), \(f.workflowRunId), \(f.generation), \(f.executionId), \(f.docId), \(f.nodeId), \(f.nodeTitle),
+                    \(f.token), \(f.formContent), \(f.inputs), \(f.userActions), \(f.renderedContent), \(f.defaultValues),
+                    \(f.resolvedDefaultValues), \(f.actions), \(f.displayInUi), \(f.expirationTime.map { Int64($0) }),
+                    \(f.status.rawValue), \(f.createdAt), \(f.recipientType.rawValue), \(f.kind.rawValue))
+                """, logger: self.logger)
         }
     }
 

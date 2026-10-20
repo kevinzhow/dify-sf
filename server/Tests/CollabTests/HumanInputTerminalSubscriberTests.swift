@@ -37,7 +37,7 @@ struct HumanInputReviewTests {
                     let frames = HumanInputRunTests.frames(response.text)
                     let token = try #require(frames.first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string)
                     let form = try #require(try await store.humanInputForm(token: token))
-                    let channel = try #require(await routes.runChannels.existing(form.workflowRunId))
+                    let channel = try #require(await routes.runChannels.existing(form.workflowRunId ?? ""))
                     let live = await channel.subscribe(replay: false)
                     let received = Mutex<[String]>([])
                     let closed = Mutex(false)
@@ -47,16 +47,16 @@ struct HumanInputReviewTests {
                     }
                     defer { listener.cancel() }
                     if stop {
-                        _ = try await api.post("/v1/apps/\(app)/workflow-runs/tasks/\(form.workflowRunId)/stop", "{}", token: owner)
+                        _ = try await api.post("/v1/apps/\(app)/workflow-runs/tasks/\(form.workflowRunId ?? "")/stop", "{}", token: owner)
                     } else {
                         _ = try await api.post("/v1/form/human_input/\(token)", #"{"inputs":{"reply":"ok"},"action":"approve"}"#, token: owner)
                     }
                     let expected = stop ? "stopped" : "failed"
                     for _ in 0..<100 {
-                        if try await store.workflowRun(doc: app, id: form.workflowRunId)?.status == expected { break }
+                        if try await store.workflowRun(doc: app, id: form.workflowRunId ?? "")?.status == expected { break }
                         try await Task.sleep(for: .milliseconds(20))
                     }
-                    #expect(try await store.workflowRun(doc: app, id: form.workflowRunId)?.status == expected)
+                    #expect(try await store.workflowRun(doc: app, id: form.workflowRunId ?? "")?.status == expected)
                     // Give the terminal publisher a bounded chance to complete, without awaiting a stream that can hang.
                     for _ in 0..<50 where !closed.withLock({ $0 }) {
                         try await Task.sleep(for: .milliseconds(10))
@@ -66,7 +66,7 @@ struct HumanInputReviewTests {
                     #expect(terminal.count == 1, "an attached subscriber needs exactly one terminal frame, received \(terminal)")
                     #expect(terminal.first?["data"]?["status"]?.string == expected)
                     #expect(closed.withLock { $0 }, "durable terminal state must close the existing subscription")
-                    #expect(await routes.runChannels.existing(form.workflowRunId) == nil, "a terminal run must release its channel")
+                    #expect(await routes.runChannels.existing(form.workflowRunId ?? "") == nil, "a terminal run must release its channel")
                 }
             }
         }
