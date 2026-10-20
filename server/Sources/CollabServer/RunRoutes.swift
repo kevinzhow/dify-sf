@@ -554,6 +554,12 @@ final class RunExecution: Sendable {
         let at = Date()
         var generation = 0
         do {
+            // TEST ONLY (`testDefect: pauseWriteFails`): a pause that cannot be written must end the run and run the
+            // terminal cleanup, never leave a channel or a paused run behind.
+            if routes.config.testDefect == "pauseWriteFails" {
+                struct PauseWriteFailed: Error {}
+                throw PauseWriteFailed()
+            }
             let encoded = String(decoding: try snapshot.encoded(), as: UTF8.self)
             generation = try await routes.store.createPause(
                 workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,

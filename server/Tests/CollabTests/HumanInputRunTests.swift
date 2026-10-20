@@ -3,6 +3,8 @@ import CollabRuntime
 import CollabStore
 import Foundation
 import Testing
+import Vapor
+import VaporTesting
 @testable import CollabServer
 
 /// A draft run that reaches a human-input node (protocol 1.16): the pause and its forms are durable before the stream
@@ -210,6 +212,33 @@ struct HumanInputRunTests {
     }
 }
 
+/// A pause that cannot be written must end the run and report it — never publish a pause nobody can answer, never keep
+/// the run "paused" in the database. Driven through the routes with the server's test defect.
+@Suite("Human input pause write failure", .enabled(if: testDbHost != nil))
+struct HumanInputPauseWriteFailureTests {
+    @Test func aFailedPauseWriteFailsTheRunAndPublishesNoPause() async throws {
+        var config = ServerConfig.defaults
+        config.testDefect = "pauseWriteFails"
+        try await withServer(config: config) { api, store, _ in
+            let owner = try await api.setupOwner()
+            let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+            let frames = HumanInputRunTests.frames(run.text)
+            let events = frames.compactMap { $0["event"]?.string }
+            #expect(events.contains("workflow_failed"), "\(events)")
+            #expect(!events.contains("human_input_required"), "no form is offered when the pause is not durable: \(events)")
+            #expect(!events.contains("workflow_paused"), "\(events)")
+
+            let runId = frames.first { $0["event"]?.string == "workflow_failed" }?["data"]?["id"]?.string ?? ""
+            #expect(!runId.isEmpty)
+            // Durable side: the run is failed, nothing is paused, no form exists to answer.
+            #expect(try await store.workflowRun(doc: app, id: runId)?.status == "failed")
+            #expect(try await store.openPauses(workflowRunId: runId).isEmpty)
+            #expect(try await store.humanInputForms(workflowRunId: runId).isEmpty)
+        }
+    }
+}
+
 /// Dify's reconnect endpoint: a paused run is described from its records (no frame table), a finished one answers a single
 /// `workflow_finished`, and someone else's run is not found.
 @Suite("Run events reconnect", .enabled(if: testDbHost != nil))
@@ -314,5 +343,60 @@ struct RunRegistryLeaseTests {
         #expect(await registry.get("run-1")?.lease == "round-2", "a late round-1 must not delete round-2")
         await registry.remove("run-1", lease: "round-2")
         #expect(await registry.get("run-1") == nil)
+    }
+}
+
+/// A real restart: the first server instance pauses a run and answers it while no instance is up to enqueue the resume;
+/// a **second instance over the same database** picks it up on startup and finishes it.
+@Suite("Human input resume across a real restart", .enabled(if: testDbHost != nil))
+struct HumanInputRealRestartTests {
+    @Test func theSecondInstanceResumesWhatTheFirstLeftAnswered() async throws {
+        try await withStore { store, logger in
+            let config = ServerConfig.defaults
+            func instance() throws -> CollabServer.Routes {
+                try CollabServer.Routes(registry: DocumentRegistry(store: store, config: config, logger: logger), store: store,
+                           config: config, logger: logger)
+            }
+
+            var app = ""
+            var runId = ""
+            var token = ""
+            // Instance 1: serve the run until it pauses, then stop (the answer arrives with nothing running).
+            let first = try instance()
+            try await withApp(configure: { try first.register(on: $0) }) { application in
+                try await application.testing { client in
+                    let api = API(client: client)
+                    let owner = try await api.setupOwner()
+                    app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
+                    let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
+                    token = HumanInputRunTests.frames(run.text)
+                        .first { $0["event"]?.string == "human_input_required" }?["data"]?["form_token"]?.string ?? ""
+                }
+            }
+            runId = try await store.humanInputForm(token: token)?.workflowRunId ?? ""
+            #expect(!runId.isEmpty)
+            // The answer lands with no server to enqueue it: exactly what a stopped process leaves.
+            let answered = try await store.submitHumanInputForm(token: token, inputs: #"{"reply":"ok"}"#, action: "approve",
+                                                               userId: "u-1")
+            guard case .accepted = answered else {
+                Issue.record("the answer must be accepted, got \(answered)")
+                return
+            }
+            #expect(try await store.runsAwaitingResume().map(\.runId) == [runId])
+
+            // Instance 2: a fresh server (its own registry, routes and application) over the same database.
+            let second = try instance()
+            try await withApp(configure: { try second.register(on: $0) }) { _ in
+                let resumed = await second.resumeRunsWaitingAfterRestart()
+                #expect(resumed == 1)
+                var status = ""
+                for _ in 0..<200 where status != "succeeded" && status != "failed" {
+                    try await Task.sleep(for: .milliseconds(25))
+                    status = try await store.workflowRun(doc: app, id: runId)?.status ?? ""
+                }
+                #expect(status == "succeeded", "the second instance should finish the run, got \(status)")
+                #expect(try await store.runsAwaitingResume().isEmpty)
+            }
+        }
     }
 }
