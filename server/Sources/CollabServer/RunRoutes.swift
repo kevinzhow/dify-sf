@@ -468,6 +468,7 @@ final class RunExecution: Sendable {
             stream = engine.run(pool: pool)
         }
         var announcedFilled = false
+        var filledPublished = Set<String>()
         for await event in stream {
             if case .runResumed = event, !announcedFilled {
                 announcedFilled = true
@@ -488,7 +489,10 @@ final class RunExecution: Sendable {
             }
             // `boundary.py` publishes the filled (or timeout) frame first and forwards the node's own frames after it.
             if case .node(.succeeded(let x, let nodeId, _, _, let r)) = event,
-               let decision = decisions.first(where: { $0.executionId == x && $0.status == .submitted }) {
+               let decision = decisions.first(where: { $0.executionId == x && $0.status == .submitted }),
+               // Dify reports an answered form once; an execution that succeeds more than once (a rebuilt round can
+               // replay its own success) must not put the same filled frame on the wire twice.
+               filledPublished.insert(x).inserted {
                 let filled = encoderBox.withLock { enc in
                     enc.humanInputFormFilled(nodeId: nodeId, nodeTitle: decision.nodeTitle,
                                              renderedContent: r.outputs["__rendered_content"]?.string ?? decision.renderedContent,
