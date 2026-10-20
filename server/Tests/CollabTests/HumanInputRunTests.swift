@@ -650,7 +650,12 @@ struct HumanInputEmailTests {
     /// The same workflow as `appYAML`, with the human node's delivery methods written out: a webapp and an email method
     /// (enabled or not) whose recipients are the given addresses.
     static func yaml(recipients: String, enabled: String = "true", wholeTeam: Bool = false,
-                     subject: String = "A workflow is waiting", extraMethod: String? = nil) -> String {
+                     subject: String = "A workflow is waiting", body: String = "Please review it: {{#url#}}",
+                     extraMethod: String? = nil, startVariable: Bool = false) -> String {
+        // The body goes into the YAML as a double-quoted scalar, so real newlines (markdown) survive the parse.
+        let yamlBody = body.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
         let items = recipients.isEmpty ? "" : recipients.split(separator: ",").map { raw in
             let r = raw.trimmingCharacters(in: .whitespaces)
             return r.hasPrefix("member:")
@@ -676,7 +681,7 @@ struct HumanInputEmailTests {
               data:
                 title: Start
                 type: start
-                variables: []
+                variables:\(startVariable ? "\n                - {label: q, required: false, type: text-input, variable: q}" : " []")
             - id: human
               data:
                 title: Approve
@@ -692,7 +697,7 @@ struct HumanInputEmailTests {
                   enabled: \(enabled)
                   config:
                     subject: \(subject)
-                    body: 'Please review it: {{#url#}}'
+                    body: "\(yamlBody)"
                     recipients:
                       include_bound_group: \(wholeTeam)
                       items:
@@ -758,6 +763,41 @@ struct HumanInputEmailTests {
                 #expect(rows.filter { $0.usedAt != nil }.count == 1, "the link that answered is recorded")
             }
         }
+    }
+
+    @Test func theBodyIsMarkdownWithTheRunsValuesAndTheSubjectIsSanitized() async throws {
+        try await withStubSMTP { port, mailbox in
+            var config = stubMailConfig(port: port)
+            config.webAppBaseURL = "https://apps.example.test"
+            try await withServer(config: config) { api, _, _ in
+                let owner = try await api.setupOwner()
+                // Dify renders the body as markdown with the pause's pool and sanitizes the subject; HTML in the template
+                // never reaches the mail.
+                let app = try await api.post(
+                    "/v1/docs/import",
+                    Self.yaml(recipients: "one@example.test", subject: "A <b>workflow</b> is waiting",
+                              body: "**Please** review {{#start.q#}}\n\n- one\n- two\n\n[Open]({{#url#}})<script>alert(1)</script>",
+                              startVariable: true),
+                    token: owner).str("id")
+                _ = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{"q":"the report"}}"##, token: owner)
+                let mails = try await mailbox.wait(for: 1)
+                let mail = try #require(mails.first)
+                #expect(mail.subject == "A workflow is waiting", "the subject is one clean line: \(mail.subject)")
+                let text = mail.text
+                #expect(text.contains("<strong>Please</strong>"), "\(text)")
+                #expect(text.contains("the report"), "the body has the run's value: \(text)")
+                #expect(text.contains("<ul><li>one</li><li>two</li></ul>"), "\(text)")
+                #expect(text.contains("<a href=\"https://apps.example.test/form/"), "\(text)")
+                #expect(!text.contains("<script"), "the template's markup is stripped: \(text)")
+            }
+        }
+    }
+
+    @Test func aSubjectIsOneLineWithoutMarkup() {
+        // Dify's `sanitize_subject`: no line breaks, no tags, one line.
+        #expect(HumanInputMail.sanitizeSubject("  A <b>workflow</b>\r\nis\n waiting  ") == "A workflow is waiting")
+        #expect(HumanInputMail.sanitizeSubject("<script>x</script>") == "x")
+        #expect(HumanInputMail.sanitizeSubject("") == "")
     }
 
     @Test func aMemberRecipientIsMailedAtTheAccountsAddress() async throws {

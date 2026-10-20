@@ -655,7 +655,7 @@ final class RunExecution: Sendable {
         // The email delivery, after the pause is durable (Dify's mail task runs after the form exists): each recipient gets
         // their own link, and a delivery that already happened is not repeated (a restart, or a later pause adopting the
         // same waiting form). Best effort: a failure is logged and never unwinds a pause.
-        await prepareAndDeliverHumanInputMail(prepared)
+        await prepareAndDeliverHumanInputMail(prepared, pool: snapshot.variablePool())
         // An answer for another execution of this pause may have been taken while the pause was being written: the pause
         // starts awake, and since no new submission will come to wake it, the resume is enqueued here.
         let stored = (try? await routes.store.pause(workflowRunId: runId, generation: generation)) ?? nil
@@ -671,7 +671,8 @@ final class RunExecution: Sendable {
     /// The email delivery of a pause (Dify's `mail_human_input_delivery_task`): every recipient of an enabled email method
     /// becomes a row of its own with its own link token, and every row that was never mailed gets one mail now. A node
     /// names member recipients by account id (`reference_id`), so the workspace's members are read here.
-    private func prepareAndDeliverHumanInputMail(_ prepared: [PendingHumanInputForms.Prepared]) async {
+    private func prepareAndDeliverHumanInputMail(_ prepared: [PendingHumanInputForms.Prepared],
+                                                 pool: VariablePool? = nil) async {
         let outbox = MailOutbox(sender: SMTPMailSender(config: routes.config.mail), logger: routes.logger)
         guard outbox.isEnabled else { return }
         let members: [String: String]
@@ -709,8 +710,8 @@ final class RunExecution: Sendable {
         for row in pending {
             guard let methods = methodsByForm[row.formId] else { continue }
             guard let link = HumanInputMail.link(base: base, token: row.token) else { continue }
-            guard let message = HumanInputMail.message(methods, methodIndex: row.methodIndex, to: row.email, link: link)
-            else { continue }
+            guard let message = HumanInputMail.message(methods, methodIndex: row.methodIndex, to: row.email, link: link,
+                                                       pool: pool) else { continue }
             // Marked only after the mail went out, so a failure is retried by the next pause or scan instead of lost.
             if await outbox.send(message, kind: "human input") {
                 try? await routes.store.markFormRecipientMailed(token: row.token, at: Date())
