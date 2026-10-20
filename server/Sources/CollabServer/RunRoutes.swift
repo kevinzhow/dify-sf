@@ -178,7 +178,17 @@ extension Routes {
         // TEST ONLY (`testDefect: slowClaim`): widen the window between an accepted answer and the claim that consumes it,
         // so a test can kill the process there — the state a crash leaves behind (answer waiting, pause untouched).
         if config.testDefect == "slowClaim" { try? await Task.sleep(for: .milliseconds(1500)) }
-        guard let claim = try? await store.claimResume(workflowRunId: runId, at: Date()) else { return false }
+        // A claim that **fails** (a lock timeout, a connection reset) leaves the run paused with its answer waiting: not
+        // a "nothing to claim". The attempt is kept, so the periodic scan takes it again instead of the answer sitting
+        // there until something else touches the run.
+        let claim: HumanInputResumeClaim?
+        do {
+            claim = try await store.claimResume(workflowRunId: runId, at: Date())
+        } catch {
+            logger.warning("run \(runId): the resume could not be claimed (\(error)); the scan tries again")
+            return false
+        }
+        guard let claim else { return false }
         // The claim already made the run `running`: a run we cannot read would stay there forever, and its subscribers
         // would wait for a round nobody starts.
         guard let run = try? await store.workflowRun(doc: appId, id: runId) else {
