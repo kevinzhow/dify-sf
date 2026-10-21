@@ -35,7 +35,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func returnsDifyFormDefinitionAndUnixSeconds() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             _ = try await seed(store)
             let owner = try await api.setupOwner()
             let res = try await api.get("/v1/form/human_input/tok-1", token: owner)
@@ -53,7 +53,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func anUnknownTokenIsNotFoundAndNoTokenIsUnauthorized() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             _ = try await seed(store)
             let owner = try await api.setupOwner()
             let unknown = try await api.get("/v1/form/human_input/nope", token: owner)
@@ -66,7 +66,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func answersOnceAndWakesTheRun() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let (_, run) = try await seed(store)
             let owner = try await api.setupOwner()
             let ok = try await api.post("/v1/form/human_input/tok-1", #"{"inputs":{"content":"looks good","grade":"ok"},"action":"approve"}"#,
@@ -89,7 +89,7 @@ struct HumanInputRouteTests {
     @Test func consoleAndBackstageTokensAreServedAndAWebappTokenIsNot() async throws {
         // `human_input_policy.py`: the console surface allows console and backstage; only web apps are narrowed away.
         for recipient in [HumanInputRecipient.console, .backstage] {
-            try await withServer { api, store, _ in
+            try await withHumanInputServer { api, store, _ in
                 _ = try await seed(store, recipient: recipient)
                 let owner = try await api.setupOwner()
                 let get = try await api.get("/v1/form/human_input/tok-1", token: owner)
@@ -99,7 +99,7 @@ struct HumanInputRouteTests {
                 #expect(post.status == 200, "\(recipient): \(post.text)")
             }
         }
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             _ = try await seed(store, recipient: .webapp)
             let owner = try await api.setupOwner()
             // Dify's `_ensure_console_recipient_type`: a webapp/backstage token answers 404 here, like a foreign one,
@@ -114,7 +114,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func aSubmissionPastTheNodeDeadlineAnswersExpired() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let past = Int(Date().timeIntervalSince1970) - 60
             _ = try await seed(store, expiration: past)
             let owner = try await api.setupOwner()
@@ -127,7 +127,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func theActiveCheckRunsBeforeFieldValidation() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             _ = try await seed(store)
             let owner = try await api.setupOwner()
             let first = try await api.post("/v1/form/human_input/tok-1", #"{"inputs":{"content":"x","grade":"ok"},"action":"approve"}"#,
@@ -148,7 +148,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func anExpiredFormAnswersExpiredBeforeAnInvalidValueIsChecked() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let past = Int(Date().timeIntervalSince1970) - 60
             _ = try await seed(store, expiration: past)
             let owner = try await api.setupOwner()
@@ -162,7 +162,7 @@ struct HumanInputRouteTests {
     }
 
     @Test func invalidAnswersAreRejectedAndLeaveTheFormWaiting() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             _ = try await seed(store)
             let owner = try await api.setupOwner()
 

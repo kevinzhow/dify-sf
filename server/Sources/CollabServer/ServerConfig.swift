@@ -74,6 +74,9 @@ public struct ServerConfig: Sendable {
     public var humanInputGlobalTimeoutSeconds: Int
     /// Protocol 1.16: how often the timeout scan runs (`COLLAB_HUMAN_INPUT_SCAN_SECONDS`, 5).
     public var humanInputScanSeconds: Int
+    /// Rollout switches: web forms and outbound email are accepted separately.
+    public var humanInputWebEnabled: Bool
+    public var humanInputEmailEnabled: Bool
     /// Protocol 1.13: Dify's plugin daemon (models), e.g. `http://plugin_daemon:5002` (`COLLAB_PLUGIN_DAEMON_URL`; Dify's
     /// `PLUGIN_DAEMON_URL`). Empty = no model runtime: LLM nodes cannot run and `system-features` does not offer runs.
     public var pluginDaemonURL: String
@@ -114,6 +117,8 @@ public struct ServerConfig: Sendable {
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
         humanInputGlobalTimeoutSeconds = reader.int(forKey: "collab.humanInputGlobalTimeoutSeconds", default: 604_800)
         humanInputScanSeconds = reader.int(forKey: "collab.humanInputScanSeconds", default: 5)
+        humanInputWebEnabled = reader.bool(forKey: "collab.humanInputWebEnabled", default: false)
+        humanInputEmailEnabled = reader.bool(forKey: "collab.humanInputEmailEnabled", default: false)
         testCommitDelayMillis = reader.int(forKey: "collab.test.commitDelayMillis", default: 0)
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
         mail = MailConfig(reader: reader)

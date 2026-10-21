@@ -77,7 +77,7 @@ struct HumanInputNodeRouteTests {
     @Test func systemFeaturesAnnounceTheHumanInputRuntime() async throws {
         // The runtime section exists only with a model runtime configured (as in RuntimeRouteTests).
         try await withFakeDaemon { daemon, _ in
-            try await withServer(config: runtimeConfig(daemon: daemon)) { api, _, _ in
+            try await withHumanInputServer(config: runtimeConfig(daemon: daemon)) { api, _, _ in
                 let runtime = try JSONValue.parse(try await api.get("/v1/system-features").text)["workflow_runtime"]
                 #expect(runtime?["protocol_version"] == "1.16")
                 #expect(runtime?["human_input"] == true)
@@ -89,7 +89,7 @@ struct HumanInputNodeRouteTests {
     }
 
     @Test func thePreviewRendersTheNodesFormWithTheValuesItReads() async throws {
-        try await withServer { api, _, _ in
+        try await withHumanInputServer { api, _, _ in
             let owner = try await api.setupOwner()
             let app = try await Self.importApp(api, owner)
             let preview = try await api.post(Self.path(app, "preview"), ##"{"inputs":{"#start.q#":"why not?"}}"##, token: owner)
@@ -108,7 +108,7 @@ struct HumanInputNodeRouteTests {
     }
 
     @Test func aValueOutsideASelectsOptionsIsRefusedAndNothingIsSaved() async throws {
-        try await withServer { api, _, _ in
+        try await withHumanInputServer { api, _, _ in
             let owner = try await api.setupOwner()
             let app = try await Self.importApp(api, owner)
             let bad = try await api.post(Self.path(app, "run"),
@@ -128,7 +128,7 @@ struct HumanInputNodeRouteTests {
     }
 
     @Test func theSubmissionReturnsTheAnswersAndSavesThemAsDraftVariables() async throws {
-        try await withServer { api, _, _ in
+        try await withHumanInputServer { api, _, _ in
             let owner = try await api.setupOwner()
             let app = try await Self.importApp(api, owner)
             let run = try await api.post(Self.path(app, "run"),
@@ -156,7 +156,7 @@ struct HumanInputNodeRouteTests {
     }
 
     @Test func theNodeMustBeAHumanInputNodeAndTheAppTheRoutesMode() async throws {
-        try await withServer { api, _, _ in
+        try await withHumanInputServer { api, _, _ in
             let owner = try await api.setupOwner()
             let app = try await Self.importApp(api, owner)
             let wrongNode = try await api.post(Self.path(app, "preview", nodeId: "start"), ##"{"inputs":{}}"##, token: owner)
@@ -174,7 +174,7 @@ struct HumanInputNodeRouteTests {
     }
 
     @Test func anEditorRunsItAndAMemberDoesNot() async throws {
-        try await withServer { api, _, _ in
+        try await withHumanInputServer { api, _, _ in
             let owner = try await api.setupOwner()
             let app = try await Self.importApp(api, owner)
             let editor = try await api.member("ed@example.com", role: "editor", name: "Ed", inviter: owner)

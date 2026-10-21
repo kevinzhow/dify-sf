@@ -18,19 +18,33 @@ struct HumanInputTimeouts: Service {
     let routes: Routes
     let intervalSeconds: Int
     let logger: Logger
+    var readiness: DatabaseReadiness? = nil
+
+    /// The same pass runs at every interval, so transient claim failures do not
+    /// strand an answer after the bounded startup recovery has finished.
+    func runOnce(now: Date) async {
+        do {
+            let resumed = try await routes.resumeRunsWaitingAfterRestartStrict()
+            if resumed > 0 { logger.info("resumed \(resumed) answered run(s)") }
+        } catch {
+            logger.warning("answered-run recovery will retry on the next pass: \(error)")
+        }
+        let swept = await routes.sweepHumanInputTimeouts(now: now)
+        if swept.timedOut > 0 || swept.expired > 0 {
+            logger.info("human input timeout scan: \(swept.timedOut) form(s), \(swept.expired) run(s)")
+        }
+        let mailed = await routes.deliverPendingHumanInputMail()
+        if mailed > 0 { logger.info("human input mail retry: \(mailed) message(s) delivered") }
+    }
 
     func run() async throws {
         try await withGracefulShutdownHandler {
+            if let readiness {
+                do { try await cancelWhenGracefulShutdown { try await readiness.wait() } }
+                catch { return }
+            }
             while !Task.isCancelled {
-                let now = Date()
-                let swept = await routes.sweepHumanInputTimeouts(now: now)
-                if swept.timedOut > 0 || swept.expired > 0 {
-                    logger.info("human input timeout scan: \(swept.timedOut) form(s) timed out, \(swept.expired) run(s) past the global deadline")
-                }
-                // The same task retries a mail that did not go out (Dify's queued mail task): the recipient rows keep the
-                // state, so a restart's pending mail, or a send that failed, goes out on the next pass.
-                let mailed = await routes.deliverPendingHumanInputMail()
-                if mailed > 0 { logger.info("human input mail retry: \(mailed) message(s) delivered") }
+                await runOnce(now: Date())
                 do {
                     try await cancelWhenGracefulShutdown { try await Task.sleep(for: .seconds(intervalSeconds)) }
                 } catch { break }

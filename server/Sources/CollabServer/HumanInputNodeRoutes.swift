@@ -43,6 +43,9 @@ extension Routes {
     private func humanInputNode(_ req: Request, mode: String) async throws -> (a: StoredApp, p: Principal, nodeId: String,
                                                                             data: JSONObject, exported: JSONValue, seq: Int) {
         let p = try await authenticate(req, .edit)
+        guard config.humanInputWebEnabled else {
+            throw ServerError.http(status: 501, code: "human_input_disabled", message: "Human input web forms are not enabled")
+        }
         let a = try await appOfMode(req, p, [mode])
         let nodeId = try nodeId(req)
         let snapshot = try await registry.sequencer(a.id).currentSnapshot()
@@ -88,6 +91,9 @@ extension Routes {
     /// resumes nothing. In debug mode the message goes to the signed-in account, as Dify's recipient override does.
     private func sendDeliveryTest(_ req: Request) async throws -> Response {
         let p = try await authenticate(req, .edit)
+        guard config.humanInputWebEnabled && config.humanInputEmailEnabled else {
+            throw ServerError.http(status: 501, code: "human_input_email_disabled", message: "Human input email delivery is not enabled")
+        }
         let a = try await appOfMode(req, p, Self.workflowModes)
         let nodeId = try nodeId(req)
         let b = try await objectBody(req)

@@ -1,3 +1,4 @@
+import CollabRuntime
 import CollabCore
 import CollabStore
 import Configuration
@@ -152,11 +153,20 @@ extension Routes {
             /// 1.16: human input is served — a draft run pauses at a `human-input` node, its form is answered through
             /// `POST /v1/form/human_input/{token}`, `GET /v1/workflow/{run}/events` rebuilds a paused run's state, and
             /// the node's own form (`.../human-input/nodes/{node}/form/{preview,run}`) is rendered from its config.
-            var human_input = true
+            var human_input: Bool
+            var human_input_email: Bool
         }
         let mail = config.mail.isConfigured
-        let runtime = runtimeConfigured
-            ? WorkflowRuntime(single_node_run: Self.singleRunNodeTypes, draft_run: Self.draftRunNodeTypes) : nil
+        // Web forms do not need a model daemon. That explicit rollout switch
+        // can expose pure workflow runs without advertising unconfigured LLMs.
+        let singleTypes = Self.singleRunNodeTypes.filter { runtimeConfigured || $0 != NodeType.llm }
+        let draftTypes = Self.draftRunNodeTypes.filter {
+            (config.humanInputWebEnabled || $0 != NodeType.humanInput) && (runtimeConfigured || $0 != NodeType.llm)
+        }
+        let runtime = runtimeConfigured || config.humanInputWebEnabled
+            ? WorkflowRuntime(single_node_run: singleTypes, draft_run: draftTypes,
+                              human_input: config.humanInputWebEnabled,
+                              human_input_email: config.humanInputWebEnabled && config.humanInputEmailEnabled && mail) : nil
         return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime))
     }
 

@@ -40,12 +40,14 @@ extension Routes {
     /// needs the run id and the ledger the run persists from, so it cannot live in `runtimeServices` (which is shared by
     /// the single-node and container paths, and by graphs built before a run exists).
     func runServices(appId: String, runId: String, docId: String, userId: String, pending: PendingHumanInputForms,
-                     decisions: [String: StoredHumanInputForm] = [:]) -> RuntimeServices {
+                     decisions: [String: StoredHumanInputForm] = [:], resuming: Bool = false) -> RuntimeServices {
         var services = runtimeServices(appId: appId)
-        services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
+        if config.humanInputWebEnabled || resuming {
+            services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
                                                       pending: pending, decisions: decisions,
                                                       // Draft runs are Dify's debugger; published runs come with M5.
                                                       isDebugger: true)
+        }
         return services
     }
 
@@ -224,7 +226,7 @@ extension Routes {
             graph = try await RuntimeGraph.build(config, rootId: rootId,
                                                  factory: BuiltinNodeFactory(services: runServices(
                                                     appId: appId, runId: runId, docId: appId, userId: userId, pending: pending,
-                                                    decisions: decisions)))
+                                                    decisions: decisions, resuming: true)))
         } catch {
             logger.error("run \(runId) could not rebuild its graph: \(error)")
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "could not rebuild the paused run: \(error)",
@@ -285,7 +287,7 @@ extension Routes {
         if let forms = try? await store.waitingFormsPastDeadline(at: at) {
             for form in forms {
                 guard let runId = form.workflowRunId else {
-                    guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                    guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at, globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)) == true else { continue }
                     timedOut += 1
                     continue
                 }
@@ -296,14 +298,14 @@ extension Routes {
                     // The global deadline is the run's own to end: when that transition is refused (the run was answered,
                     // stopped or resumed first) nothing about **this** form may change — a `timedOut` left behind would be
                     // a form the run never acts on.
-                    guard (try? await store.expireRunForGlobalTimeout(workflowRunId: runId, error: error, at: at)) == true else { continue }
+                    guard (try? await store.expireRunForGlobalTimeout(workflowRunId: runId, error: error, at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds)) == true else { continue }
                     stopping.insert(runId)
                     continue
                 }
                 // The node's own deadline: its form ends `timedOut` — but only while the run is still the paused run this
                 // form belongs to. A run that left the pause in between (answered, stopped) gets no timeout of ours.
                 guard (try? await store.isRunPaused(workflowRunId: runId)) == true,
-                      (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                      (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at, globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)) == true else { continue }
                 timedOut += 1
                 // The pause is now woken (`resume_requested`), and the run takes the timeout branch — in the background,
                 // as an answer does.
@@ -318,7 +320,7 @@ extension Routes {
         // A run whose global deadline passed with no waiting form (the pause itself is older than the deadline).
         if let runs = try? await store.pausedRunsPastGlobalDeadline(at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
             for run in runs where !stopping.contains(run.runId) {
-                guard (try? await store.expireRunForGlobalTimeout(workflowRunId: run.runId, error: error, at: at)) == true else { continue }
+                guard (try? await store.expireRunForGlobalTimeout(workflowRunId: run.runId, error: error, at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds)) == true else { continue }
                 expired += 1
                 await finishRunWithoutEngine(run.runId)
             }
@@ -326,7 +328,7 @@ extension Routes {
         return (timedOut, expired)
     }
 
-    /// Picks up the runs a stopped server left answered-but-paused. Called once the routes exist; each one goes through the
+    /// Picks up durable answered-but-paused work at startup and each maintenance interval. Each one goes through the
     /// same `resumeRun`, so a restart is just another resume (and a run whose answer arrived while the server was down is
     /// not lost).
     func resumeRunsWaitingAfterRestart() async -> Int {
@@ -337,11 +339,11 @@ extension Routes {
     /// migrated, a connection reset) instead of concluding that there is nothing to resume.
     func resumeRunsWaitingAfterRestartStrict() async throws -> Int {
         let waiting = try await store.runsAwaitingResume()
+        var resumed = 0
         for run in waiting {
-            logger.info("resuming run \(run.runId) after a restart")
-            await resumeRun(appId: run.docId, runId: run.runId)
+            if await resumeRun(appId: run.docId, runId: run.runId) { resumed += 1 }
         }
-        return waiting.count
+        return resumed
     }
 
     // MARK: - Stop
@@ -493,6 +495,7 @@ extension Routes {
         /// `mailed_at` (not memory) is what keeps a delivered link from being mailed again.
         @discardableResult
         func deliverPendingHumanInputMail() async -> Int {
+            guard config.humanInputEmailEnabled else { return 0 }
             let outbox = MailOutbox(sender: SMTPMailSender(config: config.mail), logger: logger)
             guard outbox.isEnabled, !config.webAppBaseURL.isEmpty else { return 0 }
             // Which form belongs to which method index: read from the node's own definition (the form stores the actions and
@@ -767,6 +770,7 @@ final class RunExecution: Sendable {
     /// names member recipients by account id (`reference_id`), so the workspace's members are read here.
     private func prepareAndDeliverHumanInputMail(_ prepared: [PendingHumanInputForms.Prepared],
                                                  pool: VariablePool? = nil) async {
+        guard routes.config.humanInputEmailEnabled else { return }
         let outbox = MailOutbox(sender: SMTPMailSender(config: routes.config.mail), logger: routes.logger)
         guard outbox.isEnabled else { return }
         let members: [String: String]

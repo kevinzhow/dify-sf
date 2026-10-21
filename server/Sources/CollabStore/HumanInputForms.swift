@@ -588,7 +588,8 @@ extension PostgresStore {
     /// The form's own deadline passed while it waited (`timedOut`, the node takes `__timeout` and the run resumes) or the
     /// form was closed for another reason. Dify's timeout task calls this and then `enqueue_resume`; the transition is
     /// conditional on `waiting`, so a submission that won the race is not overwritten.
-    public func endHumanInputForm(token: String, status: HumanInputFormStatus, at: Date) async throws -> Bool {
+    public func endHumanInputForm(token: String, status: HumanInputFormStatus, at: Date,
+                                 globalTimeoutSeconds: Int = 0) async throws -> Bool {
         precondition(status.isTerminal, "only a terminal status ends a form")
         return try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
@@ -598,6 +599,20 @@ extension PostgresStore {
                 for try await (id,) in owner { run = try id.decode(String.self) }
                 guard let workflowRunId = run else { return false }
                 try await self.lockRun(workflowRunId, c)
+                // Recheck under the same run lock as resume/stop. A stale scan
+                // cannot alter another form after a resume already won.
+                let state = try await c.query("SELECT status, created_at FROM workflow_runs WHERE id = \(workflowRunId)",
+                                              logger: self.logger)
+                var eligible = false
+                for try await row in state {
+                    let fields = row.makeRandomAccess()
+                    let paused = try fields[0].decode(String.self) == "paused"
+                    let createdAt = try fields[1].decode(Date.self)
+                    let globalExpired = globalTimeoutSeconds > 0 &&
+                        createdAt <= at.addingTimeInterval(-Double(globalTimeoutSeconds))
+                    eligible = paused && !globalExpired
+                }
+                guard eligible else { return false }
                 let rows = try await c.query("""
                     UPDATE human_input_forms SET status = \(status.rawValue)
                     WHERE token = \(token) AND workflow_run_id = \(workflowRunId) AND status = 'waiting'
@@ -731,22 +746,26 @@ extension PostgresStore {
     /// waiting is marked `expired`, the run is stopped with the error Dify writes, and the pause is closed. Dify's
     /// `_handle_global_timeout` does the same three things; a node's own deadline takes `endHumanInputForm(.timedOut)`.
     @discardableResult
-    public func expireRunForGlobalTimeout(workflowRunId: String, error: String, at: Date) async throws -> Bool {
-        try await bounded {
+    public func expireRunForGlobalTimeout(workflowRunId: String, error: String, at: Date,
+                                          timeoutSeconds: Int? = nil) async throws -> Bool {
+        if let timeoutSeconds, timeoutSeconds <= 0 { return false }
+        let deadline = timeoutSeconds.map { at.addingTimeInterval(-Double($0)) }
+        return try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(workflowRunId, c)
-                _ = try await c.query("""
-                    UPDATE human_input_forms SET status = 'expired'
-                    WHERE workflow_run_id = \(workflowRunId) AND status = 'waiting'
-                    """, logger: self.logger)
                 let stopped = try await c.query("""
                     UPDATE workflow_runs SET status = 'stopped', error = \(error), finished_at = \(at)
                     WHERE id = \(workflowRunId) AND status = 'paused'
+                      AND created_at <= COALESCE(\(deadline), created_at)
                     RETURNING id
                     """, logger: self.logger)
                 var didStop = false
                 for try await _ in stopped { didStop = true }
                 guard didStop else { return false }
+                _ = try await c.query("""
+                    UPDATE human_input_forms SET status = 'expired'
+                    WHERE workflow_run_id = \(workflowRunId) AND status = 'waiting'
+                    """, logger: self.logger)
                 _ = try await c.query("""
                     UPDATE workflow_pauses SET resumed_at = \(at)
                     WHERE workflow_run_id = \(workflowRunId) AND resumed_at IS NULL

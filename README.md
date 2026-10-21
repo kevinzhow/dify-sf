@@ -19,8 +19,8 @@ This repository currently contains step 1: the server-side collaboration kernel 
 | Status | Features |
 |---|---|
 | ported | 178 |
-| partial | 48 |
-| not ported | 35 |
+| partial | 49 |
+| not ported | 34 |
 | n/a | 17 |
 | dify-sf only | 13 |
 
@@ -113,3 +113,8 @@ This milestone does not yet enable runtime file values, model vision, HTTP file 
 (M2b). UTF-8 plain text has a 3000-codepoint preview. PDF/Office extraction and the document-extractor runtime
 remain unported and outside M2; original files can still be stored and downloaded. See docs/protocol.md for the
 HTTP contract, security boundaries and recovery behavior.
+
+Human input rollout: `COLLAB_HUMAN_INPUT_WEB_ENABLED=false` and `COLLAB_HUMAN_INPUT_EMAIL_ENABLED=false` by default.
+Enable web forms separately from outbound email. Web-only workflows can run without a model daemon; LLM execution
+is not advertised in that configuration. Periodic recovery starts after migration/startup work and retries accepted
+answers after transient database failures. See the [protocol](docs/protocol.md#human-input-116).

@@ -23,7 +23,7 @@ struct HumanInputReviewTests {
 
     private func checkTerminal(defect: String?, stop: Bool) async throws {
         try await withStore { store, logger in
-            var config = ServerConfig.defaults
+            var config = humanInputTestConfig()
             if let defect { config.testDefect = defect }
             let routes = try CollabServer.Routes(
                 registry: DocumentRegistry(store: store, config: config, logger: logger),

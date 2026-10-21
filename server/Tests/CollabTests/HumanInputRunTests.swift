@@ -127,7 +127,7 @@ struct HumanInputRunTests {
     }
 
     @Test func aResumeDecidesOnlyWhatItsClaimTookAndTheOtherFormPausesAgain() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.twoFormsYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -173,7 +173,7 @@ struct HumanInputRunTests {
     }
 
     @Test func thePauseIsDurableBeforeItIsPublishedAndTheFormWakesTheRun() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let imported = try await api.post("/v1/docs/import", Self.appYAML(), token: owner)
             let app = imported.str("id")
@@ -242,7 +242,7 @@ struct HumanInputSSEContractTests {
                                           "resolved_default_values", "form_token", "approval_channels", "expiration_time"]
 
     @Test func aPausePublishesDifyShapedFramesInOrder() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -285,7 +285,7 @@ struct HumanInputSSEContractTests {
 @Suite("Human input live follow", .enabled(if: testDbHost != nil))
 struct HumanInputLiveFollowTests {
     @Test func oneConnectionFollowsTwoPausesAndTheFinish() async throws {
-        try await withRunningServer { api, port, _ in
+        try await withHumanInputRunningServer { api, port, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.twoFormsYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -334,7 +334,7 @@ struct HumanInputLiveFollowTests {
 @Suite("Human input stop while paused", .enabled(if: testDbHost != nil))
 struct HumanInputStopPausedTests {
     @Test func stoppingAPausedRunClosesItAndRefusesLaterAnswers() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -363,7 +363,7 @@ struct HumanInputStopPausedTests {
 struct HumanInputElapsedTests {
     @Test func theStreamAndTheRecordsUseTheirOwnClocks() async throws {
         try await withStore { store, logger in
-            let config = ServerConfig.defaults
+            let config = humanInputTestConfig()
             let routes = try CollabServer.Routes(registry: DocumentRegistry(store: store, config: config, logger: logger),
                                                  store: store, config: config, logger: logger)
             try await withApp(configure: { try routes.register(on: $0) }) { application in
@@ -434,7 +434,7 @@ struct HumanInputElapsedTests {
 @Suite("Human input app deletion", .enabled(if: testDbHost != nil))
 struct HumanInputAppDeletionTests {
     @Test func deletingTheAppClosesItsWaitingRun() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -483,7 +483,7 @@ struct HumanInputDisplayRuleTests {
         #expect(try config(#"[]"#).webappDeliveryEnabled == false)
 
         // Through a draft run (the debugger) a node with `display_in_ui: false` and no webapp still stores a shown form.
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let actionsLine = "                - {id: approve, title: Approve it, button_style: primary}"
             let yaml = HumanInputRunTests.appYAML().replacingOccurrences(
@@ -502,9 +502,9 @@ struct HumanInputDisplayRuleTests {
 @Suite("Run events end during the state read", .enabled(if: testDbHost != nil))
 struct RunEventsStateReadRaceTests {
     @Test func aRunThatEndsWhileItsStateIsReadStillAnswersOneTerminalFrame() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         config.testDefect = "slowStateRead"
-        try await withRunningServer(config: config) { api, port, _ in
+        try await withHumanInputRunningServer(config: config) { api, port, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -583,7 +583,7 @@ struct RunChannelPauseIdentityTests {
 @Suite("Human input resume stream", .enabled(if: testDbHost != nil))
 struct HumanInputResumeStreamTests {
     @Test func filledComesBeforeTheNodeFinishesAndTheEndArrivesOnce() async throws {
-        try await withRunningServer { api, port, _ in
+        try await withHumanInputRunningServer { api, port, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -719,7 +719,7 @@ struct HumanInputEmailTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, store, _ in
+            try await withHumanInputServer(config: config) { api, store, _ in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "one@example.test,two@example.test"),
                                              token: owner).str("id")
@@ -771,7 +771,7 @@ struct HumanInputEmailTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, _, _ in
+            try await withHumanInputServer(config: config) { api, _, _ in
                 let owner = try await api.setupOwner()
                 // Dify renders the body as markdown with the pause's pool and sanitizes the subject; HTML in the template
                 // never reaches the mail.
@@ -807,7 +807,7 @@ struct HumanInputEmailTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, _, _ in
+            try await withHumanInputServer(config: config) { api, _, _ in
                 let owner = try await api.setupOwner()
                 // A node names a member by account id (`reference_id`), not by address.
                 let member = try await api.member("ana@example.test", role: "editor", name: "Ana", inviter: owner)
@@ -824,7 +824,7 @@ struct HumanInputEmailTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, _, _ in
+            try await withHumanInputServer(config: config) { api, _, _ in
                 let owner = try await api.setupOwner()
                 _ = try await api.member("ana@example.test", role: "editor", name: "Ana", inviter: owner)
                 let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "", wholeTeam: true), token: owner).str("id")
@@ -841,7 +841,7 @@ struct HumanInputEmailTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, _, _ in
+            try await withHumanInputServer(config: config) { api, _, _ in
                 let owner = try await api.setupOwner()
                 // A second email method with its own subject: the address it names must get *its* message.
                 let extra = "\n        - type: email\n          enabled: true\n          config:\n"
@@ -867,7 +867,7 @@ struct HumanInputEmailTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, _, _ in
+            try await withHumanInputServer(config: config) { api, _, _ in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(recipients: "one@example.test", enabled: "false"),
                                              token: owner).str("id")
@@ -945,7 +945,7 @@ struct HumanInputLoopTests {
     }
 
     @Test func eachRoundPausesWithItsOwnFormAndAnswer() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.loopYAML(), token: owner).str("id")
             #expect(!app.isEmpty)
@@ -1000,7 +1000,7 @@ struct HumanInputResumePositionTests {
     }
 
     @Test func theSnapshotAsksForExactlyThePersistedForms() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.twoFormsYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -1041,9 +1041,9 @@ struct HumanInputResumePositionTests {
 @Suite("Human input resume preparation failure", .enabled(if: testDbHost != nil))
 struct HumanInputResumePrepFailureTests {
     @Test func aFailedPreparationEndsTheRunAndLeavesNothingWaiting() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         config.testDefect = "resumePrepFails"
-        try await withServer(config: config) { api, store, _ in
+        try await withHumanInputServer(config: config) { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -1070,9 +1070,9 @@ struct HumanInputResumePrepFailureTests {
 @Suite("Human input pause write failure", .enabled(if: testDbHost != nil))
 struct HumanInputPauseWriteFailureTests {
     @Test func aFailedPauseWriteFailsTheRunAndPublishesNoPause() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         config.testDefect = "pauseWriteFails"
-        try await withServer(config: config) { api, store, _ in
+        try await withHumanInputServer(config: config) { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -1100,7 +1100,7 @@ struct HumanInputPauseWriteFailureTests {
 @Suite("Run events reconnect", .enabled(if: testDbHost != nil))
 struct RunEventsReconnectTests {
     @Test func aPausedRunIsRebuiltFromItsRecordsAndAFinishedOneAnswersOneFrame() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -1138,7 +1138,7 @@ struct RunEventsReconnectTests {
     }
 
     @Test func theSnapshotIsOffByDefaultAndExplicitlyRequested() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -1160,7 +1160,7 @@ struct RunEventsReconnectTests {
     }
 
     @Test func onlyTheCreatorMayFollowTheRun() async throws {
-        try await withServer { api, store, _ in
+        try await withHumanInputServer { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
@@ -1208,7 +1208,7 @@ struct RunRegistryLeaseTests {
 struct HumanInputRealRestartTests {
     @Test func theSecondInstanceResumesWhatTheFirstLeftAnswered() async throws {
         try await withStore { store, logger in
-            let config = ServerConfig.defaults
+            let config = humanInputTestConfig()
             func instance() throws -> CollabServer.Routes {
                 try CollabServer.Routes(registry: DocumentRegistry(store: store, config: config, logger: logger), store: store,
                            config: config, logger: logger)
@@ -1262,10 +1262,10 @@ struct HumanInputRealRestartTests {
 @Suite("Human input stop during the resume", .enabled(if: testDbHost != nil))
 struct HumanInputStopDuringResumeTests {
     @Test func aStopThatArrivesWithTheResumedRoundEndsItStopped() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         // TEST ONLY: holds the resumed round 300 ms after it took the run over, so the stop lands inside it.
         config.testDefect = "slowResume"
-        try await withServerAndRoutes(config: config) { api, store, routes in
+        try await withHumanInputServerAndRoutes(config: config) { api, store, routes in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -1367,7 +1367,7 @@ struct HumanInputReconnectTextTests {
 
     @Test func theSnapshotHasTheRecordsAndNoTextAndAFinishedRunAnswersOneFrame() async throws {
         try await withFakeDaemon { daemon, _ in
-            try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
+            try await withHumanInputServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
                 let owner = try await api.setupOwner()
                 // The stub model the LLM node names (`runtimeFixture` saves it the same way).
                 let creds: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": [
@@ -1463,10 +1463,10 @@ struct HumanInputTimeoutScanTests {
     }
 
     @Test func aFormPastItsNodeDeadlineResumesTheRunThroughTheTimeoutBranch() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         // The scan's clock is an hour and a minute ahead: the form's own deadline (created_at + 1 hour) has passed.
         config.testClockSkewSeconds = 3_700
-        try await withServerAndRoutes(config: config) { api, store, routes in
+        try await withHumanInputServerAndRoutes(config: config) { api, store, routes in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -1503,11 +1503,11 @@ struct HumanInputTimeoutScanTests {
     }
 
     @Test func aRunPastTheGlobalDeadlineStopsAndItsAttachedConnectionEnds() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         config.humanInputGlobalTimeoutSeconds = 60
         // Past the global deadline (60 s), not the node's (1 hour).
         config.testClockSkewSeconds = 120
-        try await withServerAndRoutes(config: config) { api, store, routes in
+        try await withHumanInputServerAndRoutes(config: config) { api, store, routes in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -1542,9 +1542,9 @@ struct HumanInputTimeoutScanTests {
 @Suite("Human input pause keep-alive", .enabled(if: testDbHost != nil))
 struct HumanInputPauseKeepAliveTests {
     @Test func aPausedRunStillPingsItsSubscribers() async throws {
-        var config = ServerConfig.defaults
+        var config = humanInputTestConfig()
         config.ssePingSeconds = 1
-        try await withServerAndRoutes(config: config) { api, _, routes in
+        try await withHumanInputServerAndRoutes(config: config) { api, _, routes in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", HumanInputRunTests.appYAML(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -1608,7 +1608,7 @@ struct HumanInputVariableSelectTests {
     }
 
     @Test func theOptionsAreResolvedFromThePausePoolEverywhereAClientReadsThem() async throws {
-        try await withServerAndRoutes { api, _, _ in
+        try await withHumanInputServerAndRoutes { api, _, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run",
@@ -1690,7 +1690,7 @@ struct HumanInputSecondPauseTests {
     }
 
     @Test func theSecondPauseCountsItsOwnRoundAndTheNumberingContinues() async throws {
-        try await withServerAndRoutes { api, store, _ in
+        try await withHumanInputServerAndRoutes { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
             let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -1811,7 +1811,7 @@ struct HumanInputSideEffectTests {
 
     @Test func theModelIsCalledOnceAcrossThePauseTheResumeAndAReconnect() async throws {
         try await withFakeDaemon { daemon, log in
-            try await withServerAndRoutes(config: runtimeConfig(daemon: daemon)) { api, store, routes in
+            try await withHumanInputServerAndRoutes(config: runtimeConfig(daemon: daemon)) { api, store, routes in
                 let owner = try await api.setupOwner()
                 let creds: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": [
                     "endpoint_url": "http://llmstub:8000/v1", "api_key": "sk-stub-not-a-real-key", "mode": "chat",
@@ -1915,7 +1915,7 @@ struct HumanInputDeliveryTestTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, store, _ in
+            try await withHumanInputServer(config: config) { api, store, _ in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
                 let sent = try await api.post(
@@ -1951,7 +1951,7 @@ struct HumanInputDeliveryTestTests {
         try await withStubSMTP { port, _ in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, _, _ in
+            try await withHumanInputServer(config: config) { api, _, _ in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(), token: owner).str("id")
                 let webapp = try await api.post(

@@ -70,6 +70,7 @@ public enum CollabServerMain {
         // **after** the migrations, as part of the migrator's service: a server that starts during an upgrade must not
         // read a schema that is still changing, and a read that fails then must be retried rather than swallowed.
         let startupWork = StartupRecovery(routes: routes, logger: logger)
+        let databaseReady = DatabaseReadiness()
 
         let group = ServiceGroup(
             configuration: .init(
@@ -77,11 +78,11 @@ public enum CollabServerMain {
                     .init(service: Named(name: "postgres", base: pg, logger: logger)),
                     .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger,
                         staleRunSeconds: config.runtimeMaxTimeSeconds + 300, blobs: routes.blobs,
-                        afterMigration: startupWork), logger: logger)),
+                        afterMigration: startupWork, readiness: databaseReady), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
                     // Protocol 1.16: node and global human-input deadlines, scanned in the product, not only in tests.
                     .init(service: Named(name: "human-input-timeouts",
-                                         base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger),
+                                         base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger, readiness: databaseReady),
                                          logger: logger)),
                     .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
@@ -140,6 +141,7 @@ struct Migrator: Service {
     var blobs: (any BlobStore)? = nil
     /// Protocol 1.16: what a stopped server left behind, run once the schema is ready (nil: nothing).
     var afterMigration: StartupRecovery?
+    var readiness: DatabaseReadiness? = nil
 
     func run() async throws {
         var delay = 0.2
@@ -166,6 +168,7 @@ struct Migrator: Service {
                 migrated = true
                 // The schema is ready: the recovery work may read it. Each piece retries on its own terms.
                 if let afterMigration { await afterMigration.run() }
+                await readiness?.markReady()
                 break
             } catch {
                 logger.warning("database not ready (attempt \(attempt)): \(error)")
@@ -198,5 +201,14 @@ struct Named<S: Service>: Service {
             logger.warning("service \(name) failed: \(String(reflecting: error))")
             throw error
         }
+    }
+}
+
+/// Recovery workers must not race the schema migration or the initial recovery pass.
+actor DatabaseReadiness {
+    private var ready = false
+    func markReady() { ready = true }
+    func wait() async throws {
+        while !ready { try await Task.sleep(for: .milliseconds(50)) }
     }
 }

@@ -74,7 +74,7 @@ struct HumanInputMailRoundTwoTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, store, _ in
+            try await withHumanInputServer(config: config) { api, store, _ in
                 let owner = try await api.setupOwner()
                 // The template carries markup; the start input carries `<` in its value and a link with a query string.
                 let app = try await api.post("/v1/docs/import", Self.yaml(
@@ -102,7 +102,7 @@ struct HumanInputMailRoundTwoTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServerAndRoutes(config: config) { api, store, routes in
+            try await withHumanInputServerAndRoutes(config: config) { api, store, routes in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve {{#url#}}'"), token: owner).str("id")
                 _ = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -144,7 +144,7 @@ struct HumanInputMailRoundTwoTests {
         // No stub mail server on that port: the send fails.
         var config = stubMailConfig(port: 1)
         config.webAppBaseURL = "https://apps.example.test"
-        try await withServer(config: config) { api, store, _ in
+        try await withHumanInputServer(config: config) { api, store, _ in
             let owner = try await api.setupOwner()
             let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve {{#url#}}'"), token: owner).str("id")
             let payload = #"{"delivery_method_id":"\#(Self.emailMethodId)","inputs":{}}"#
@@ -164,7 +164,7 @@ struct HumanInputMailRoundTwoTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServerAndRoutes(config: config) { api, store, routes in
+            try await withHumanInputServerAndRoutes(config: config) { api, store, routes in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve {{#url#}}'"), token: owner).str("id")
                 _ = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -201,7 +201,7 @@ struct HumanInputMailRoundTwoTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, store, _ in
+            try await withHumanInputServer(config: config) { api, store, _ in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve please {{#url#}}'"), token: owner).str("id")
                 let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)
@@ -238,7 +238,7 @@ struct HumanInputMailRoundTwoTests {
         try await withStubSMTP { port, mailbox in
             var config = stubMailConfig(port: port)
             config.webAppBaseURL = "https://apps.example.test"
-            try await withServer(config: config) { api, store, _ in
+            try await withHumanInputServer(config: config) { api, store, _ in
                 let owner = try await api.setupOwner()
                 let app = try await api.post("/v1/docs/import", Self.yaml(body: "'Approve {{#url#}}'"), token: owner).str("id")
                 let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", ##"{"inputs":{}}"##, token: owner)

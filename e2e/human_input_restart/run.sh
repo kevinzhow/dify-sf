@@ -13,39 +13,57 @@
 # It counts the run's side effects (a local HTTP counter service and the node executions) and requires exactly one each.
 #
 # Env: HITL_IMAGE (default dify-sf-dev:local), HITL_PORT (default 18090), HITL_DB_PORT (default 55440),
+#      HITL_BUILD_CACHE (default server/.build), HITL_BUILD_MODE (default release), HITL_TAG (unique by default),
 #      HITL_PORT2 (default 18091, scenario 2), HITL_OUT (default e2e/.out/human_input_restart: logs and the raw SSE).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 IMAGE="${HITL_IMAGE:-dify-sf-dev:local}"
 PORT="${HITL_PORT:-18090}"
-DB_PORT="${HITL_DB_PORT:-55440}"
-OUT=${HITL_OUT:-/tmp/hitl-restart}   # small logs and the raw SSE; keep them off /tmp on a small box
-# Names carry this machine's own prefix (`dd-`, the containers this agent starts on K17): no collision with another
-# agent's stack, and the cleanup only ever removes its own.
-NET=dd-hitl-restart-net
-PG=dd-hitl-restart-pg
-A=dd-hitl-restart-a
-B=dd-hitl-restart-b
+HITL_RUN_TAG=${HITL_TAG:-dify-hitl-$(id -u)-$$}
+export HITL_RUN_TAG
+BUILD_CACHE=${HITL_BUILD_CACHE:-$PWD/server/.build}
+BUILD_MODE=${HITL_BUILD_MODE:-release}
+export HITL_BUILD_CACHE="$BUILD_CACHE" HITL_BUILD_MODE="$BUILD_MODE"
+OUT=${HITL_OUT:-$PWD/e2e/.out/human_input_restart/$HITL_RUN_TAG}   # small logs and the raw SSE; keep them off /tmp on a small box
+# Names and labels are unique to this invocation; cleanup never removes another invocation's containers.
+NET=$HITL_RUN_TAG-net
+PG=$HITL_RUN_TAG-pg
+A=$HITL_RUN_TAG-a
+B=$HITL_RUN_TAG-b
 BASE="http://127.0.0.1:$PORT"
 
-cleanup() { docker rm -f "$A" "$B" "$PG" >/dev/null 2>&1 || true; }
+cleanup() {
+  for name in "$A" "$B" "$PG"; do
+    if [ "$(docker inspect --format '{{index .Config.Labels "dify-sf.hitl"}}' "$name" 2>/dev/null || true)" = "$HITL_RUN_TAG" ]; then
+      docker rm -f "$name" >/dev/null 2>&1 || true
+    fi
+  done
+  if [ "$(docker network inspect --format '{{index .Labels "dify-sf.hitl"}}' "$NET" 2>/dev/null || true)" = "$HITL_RUN_TAG" ]; then
+    docker network rm "$NET" >/dev/null 2>&1 || true
+  fi
+}
 mkdir -p "$OUT"
+chmod 700 "$OUT"
 trap cleanup EXIT
 cleanup
-docker network inspect "$NET" >/dev/null 2>&1 || docker network create "$NET" >/dev/null
+if docker network inspect "$NET" >/dev/null 2>&1; then
+  [ "$(docker network inspect --format '{{index .Labels "dify-sf.hitl"}}' "$NET")" = "$HITL_RUN_TAG" ] || { echo "refusing an existing foreign network" >&2; exit 2; }
+else
+  docker network create --label dify-sf.hitl="$HITL_RUN_TAG" "$NET" >/dev/null
+fi
 
 echo "== database"
-docker run -d --name "$PG" --network "$NET" --memory 1g --cpus 1 -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab \
-  -p "127.0.0.1:$DB_PORT:5432" postgres:15-alpine >/dev/null
+docker run -d --name "$PG" --label dify-sf.hitl="$HITL_RUN_TAG" --network "$NET" --memory 512m --cpus .5 -e POSTGRES_USER=collab -e POSTGRES_PASSWORD=collab -e POSTGRES_DB=collab \
+  postgres:15-alpine >/dev/null
 for _ in $(seq 1 60); do docker exec "$PG" pg_isready -U collab -d collab >/dev/null 2>&1 && break; sleep 1; done
 
 server() { # server <name> <extra env...>
   local name=$1; shift
-  docker run -d --name "$name" --network "$NET" --memory 3g --cpus 3 -e HOME=/tmp \
+  docker run -d --name "$name" --label dify-sf.hitl="$HITL_RUN_TAG" --network "$NET" --memory 1g --cpus 1 --user "$(id -u):$(id -g)" -e HOME=/tmp \
     -e COLLAB_DB_HOST="$PG" -e COLLAB_DB_USER=collab -e COLLAB_DB_PASSWORD=collab -e COLLAB_DB_NAME=collab \
-    -e COLLAB_HTTP_HOST=0.0.0.0 -e COLLAB_HTTP_PORT=8080 -e COLLAB_PLUGIN_DAEMON_URL=http://127.0.0.1:1 -e COLLAB_LOG_LEVEL=info \
-    "$@" -p "127.0.0.1:$PORT:8080" -v "$PWD/server":/work -w /work "$IMAGE" .build/debug/collab-server >/dev/null
+    -e COLLAB_HTTP_HOST=0.0.0.0 -e COLLAB_HTTP_PORT=8080 -e COLLAB_HUMAN_INPUT_WEB_ENABLED=true -e COLLAB_FILES_DIRECTORY=/tmp/uploads -e COLLAB_LOG_LEVEL=info \
+    "$@" -p "127.0.0.1:$PORT:8080" -v "$PWD/server":/work:ro -v "$BUILD_CACHE":/work/.build:ro -w /work "$IMAGE" ".build/$BUILD_MODE/collab-server" >/dev/null
   for _ in $(seq 1 60); do curl -sf "$BASE/v1/system-features" >/dev/null 2>&1 && return 0; sleep 1; done
   echo "server $name did not start" >&2; docker logs "$name" | tail -20 >&2; exit 1
 }

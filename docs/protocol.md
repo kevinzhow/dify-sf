@@ -15,8 +15,9 @@ section 9 describes the same algorithm in prose.
   state from its records and follows it across the resume (Dify's `handleResume`). The node's own form, for the panel's
   "Run this step", is rendered and submitted by `.../workflows/draft/human-input/nodes/{node}/form/{preview,run}`. Forms
   whose node enables an email delivery method are mailed after the pause is durable.
-  * `system-features`' `workflow_runtime`: `protocol_version` `1.16`; `human_input` `true`; `draft_run` adds
-    `human-input` (`single_node_run` does not: its form endpoints replace a plain run).
+  * `system-features`' `workflow_runtime`: `protocol_version` `1.16`; `human_input` and `human_input_email` are
+    independently gated (both default false). `draft_run` adds `human-input` only with web forms enabled
+    (`single_node_run` does not: its form endpoints replace a plain run).
 
 * 1.15 (additive; clients older than 1.15 are unaffected): **iterations and loops** (section 2, "Iterations and loops
   (1.15)"), and the rest of Dify's error handling around them.
@@ -1266,6 +1267,12 @@ dify-sf waits without blocking other nodes.
 A `human-input` node pauses the whole run and waits for a person. It is a **draft run** node type (`draft_run` lists it);
 it has no plain single node run — the panel's own form has its own endpoints, below.
 
+Rollout: `COLLAB_HUMAN_INPUT_WEB_ENABLED` and `COLLAB_HUMAN_INPUT_EMAIL_ENABLED` both default to `false`.
+The first permits new human-input runs and node previews; the second additionally permits outbound mail and delivery
+tests. Web-only mode does not send mail even when SMTP is configured. Existing durable answers can still resume
+when new web-form runs are disabled. Pure web-form workflows do not require a model daemon; in that mode the runtime
+section is present but does not advertise LLM execution. Email acceptance and enablement remain separate from web forms.
+
 * **The pause.** A waiting form's **select options that come from a variable** are resolved from the pause's own
   variable pool into `option_source.value` (`human_input_policy.resolve_variable_select_input_options`): the live frame,
   the reconnect snapshot and `GET /v1/form/human_input/{token}` all carry the list, while the stored definition keeps the
@@ -1311,7 +1318,9 @@ it has no plain single node run — the panel's own form has its own endpoints, 
   (`human_input_form_timeout`); `COLLAB_HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS` (default 7 days; 0 disables) expires a run
   that waits longer and stops it. The scan that does both is a task of the server (`HumanInputTimeouts`,
   `COLLAB_HUMAN_INPUT_SCAN_SECONDS`, default 5): once at startup (a stopped server leaves deadlines behind) and then
-  periodically; it goes through the same resume and stop paths an answer does.
+  periodically after migrations and startup recovery finish. Every pass also retries durable `resume_requested` work,
+  so a transient claim failure does not require another answer or server restart. Node/global deadline decisions are
+  rechecked under the run lock; a refused transition leaves every form unchanged.
 * **Ending without an engine.** A stop of a paused run, an app deletion, a global timeout and every resume that fails
   after its claim end the run through one entry: the durable row, then exactly one `workflow_finished` on the run's
   channel, then the channel is released — a connection that is already attached never waits for frames nobody will send.
