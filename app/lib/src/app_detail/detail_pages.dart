@@ -37,5 +37,6 @@ Map<Type, Object> httpAppDetailServices(
       singleNodeRun: runtime.singleNodeRun,
       draftRun: runtime.draftRun,
       humanInput: runtime.humanInput,
+      humanInputEmail: runtime.humanInputEmail,
     ),
 };

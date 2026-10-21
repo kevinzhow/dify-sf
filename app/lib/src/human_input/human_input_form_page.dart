@@ -39,6 +39,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
   _State _state = _State.loading;
   HumanInputFormPageData? _form;
   String? _error;
+  final _toasts = DifyToastManager();
 
   @override
   void initState() {
@@ -94,7 +95,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
       // A submission that failed for another reason leaves the form on screen (with what was typed), so it can be sent
       // again; the message says why.
       if (_state == _State.form) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(e.message)));
+        DifyToast(_toasts).error(e.message);
       }
     }
   }
@@ -128,7 +129,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
   @override
   Widget build(BuildContext context) {
     final Widget body = switch (_state) {
-      _State.loading => const Center(child: CircularProgressIndicator()),
+      _State.loading => const DifyLoading(),
       _State.thanks => _card(_share('thanks'), _share('recorded')),
       _State.expired => _card(_share('expired'), _share('expiredTip')),
       _State.completed => _card(_share('completed'), null),
@@ -154,7 +155,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
               data: HumanInputRunForm.definitionOf(_form!),
               onSubmit: _submit,
               onError: (e) {
-                // The snackbar in `_submit` says why; the form itself stays usable (answers kept, actions enabled).
+                // The toast in `_submit` says why; the form itself stays usable (answers kept, actions enabled).
               },
             ),
           ),
@@ -163,7 +164,15 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
     };
     return Scaffold(
       backgroundColor: DifyColors.backgroundBody,
-      body: SafeArea(child: Center(child: body)),
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(child: body),
+            DifyToastHost(manager: _toasts),
+          ],
+        ),
+      ),
     );
   }
 }

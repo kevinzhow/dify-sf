@@ -572,29 +572,32 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                       userName: widget.user?.name ?? '',
                       // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
                       // the method is in debug mode (`.../delivery-test`).
-                      sendTestEmail: widget.serverRuntime?.humanInput == true ? _sendTestEmail : null,
+                      sendTestEmail:
+                          widget.serverRuntime?.humanInput == true && widget.serverRuntime?.humanInputEmail == true
+                          ? _sendTestEmail
+                          : null,
                       fetchGeneratedForm: widget.serverRuntime?.humanInput == true ? _fetchGeneratedForm : null,
                       submitGeneratedForm: widget.serverRuntime?.humanInput == true ? _submitGeneratedForm : null,
                       child: VariableInspectHost(
-                      services: _inspectServices(context, canvas),
-                      nodes: () => controller.doc.nodes.values,
-                      onViewNode: (nodeId) {
-                        WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
-                        controller.selectNode(nodeId);
-                      },
-                      onStop: () => _runHost.currentState?.emitWorkflowStop(),
-                      child: Builder(
-                        builder: (context) => WorkflowRunHost(
-                          key: _runHost,
-                          controller: controller,
-                          canvas: canvas,
-                          service: _runService(context, canvas),
-                          isChatMode: () => widget.meta.isChatflow,
-                          fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
-                          child: child,
+                        services: _inspectServices(context, canvas),
+                        nodes: () => controller.doc.nodes.values,
+                        onViewNode: (nodeId) {
+                          WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                          controller.selectNode(nodeId);
+                        },
+                        onStop: () => _runHost.currentState?.emitWorkflowStop(),
+                        child: Builder(
+                          builder: (context) => WorkflowRunHost(
+                            key: _runHost,
+                            controller: controller,
+                            canvas: canvas,
+                            service: _runService(context, canvas),
+                            isChatMode: () => widget.meta.isChatflow,
+                            fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
+                            child: child,
+                          ),
                         ),
                       ),
-                    ),
                     ),
                     operator: workflowOperatorBuilder(
                       controller,

@@ -47,7 +47,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: Doc Extractor](#node-doc-extractor) | 1 |  |  |  |  | 1 |
 | [Node: List Operator](#node-list-operator) | 1 |  |  |  |  | 1 |
 | [Node: Agent (v1 and v2)](#node-agent) |  | 4 |  |  |  | 4 |
-| [Node: Human Input](#node-human-input) | 2 |  | 1 |  |  | 3 |
+| [Node: Human Input](#node-human-input) | 2 | 1 |  |  |  | 3 |
 | [Nodes: triggers & workflow start](#node-triggers) | 3 | 2 | 1 |  |  | 6 |
 | [Nodes: knowledge pipeline (data source, knowledge base)](#node-pipeline) |  | 2 | 1 |  |  | 3 |
 | [Variables (environment, conversation, system) & variable picker](#variables) | 5 |  |  |  |  | 5 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 2 | 1 | 1 |  | 9 |
-| **Total** | **178** | **48** | **35** | **17** | **13** | **291** |
+| **Total** | **178** | **49** | **34** | **17** | **13** | **291** |
 
 <a id="canvas"></a>
 
@@ -422,7 +422,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 |---|---|---|---|
 | Human Input card: delivery methods and user action branches | ported |  | spec `workflow/nodes/human-input`, visual `canvas-retrieval-human` |
 | Human Input panel: delivery methods (web app, email recipients), form content, user actions, timeout, preview | ported |  | spec `workflow/nodes/human-input/components`, spec `workflow/nodes/human-input/components/delivery-method`, spec `workflow/nodes/human-input/components/delivery-method/recipient`, spec `workflow/nodes/human-input/hooks`, visual `panel-human-input`, `app/test/dify_spec/workflow/nodes_panel/data/human_input_user_action_test.dart` |
-| Human Input: send a test email | not ported | dify-sf has no mail server; the test email sender is a host callback the app does not provide. | spec `workflow/nodes/human-input/components/delivery-method` |
+| Human Input: send a test email | partial | The client callback and server delivery-test candidate exist, but mail acceptance is separate from web forms. The email capability defaults off; durable message content, closed-form filtering, Markdown parity and runless test-form expiry remain in the mail workstream. | spec `workflow/nodes/human-input/components/delivery-method` |
 
 <a id="node-triggers"></a>
 
@@ -496,7 +496,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Tracing: node items, parallel / branch grouping | ported |  | spec `workflow/run/utils/format-log`, spec `workflow/run/utils/format-log/parallel`, visual `run-tracing` |
 | Run: iteration log and loop log sub-views | ported |  | spec `workflow/run/iteration-log`, spec `workflow/run/loop-log`, spec `workflow/run/utils/format-log/iteration`, spec `workflow/run/utils/format-log/loop` |
 | Run: retry log and agent log sub-views | ported |  | spec `workflow/run/retry-log`, spec `workflow/run/agent-log`, spec `workflow/run/utils/format-log/retry`, spec `workflow/run/utils/format-log/agent` |
-| Run: human input forms (pause, fill, submit, timeout) in the run panel and chat | ported | Deviation: A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. A pause the stand-in serves answers locally, as before. | spec `base/chat/chat/answer/human-input-content`, spec `base/chat/chat/answer`, spec `workflow/run/utils/format-log/human-input`, `app/test/workflow_editor/run/server_run_service_test.dart` |
+| Run: human input forms (pause, fill, submit, timeout) in the run panel and chat | ported | Deviation: Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. A pause the stand-in serves answers locally, as before. | spec `base/chat/chat/answer/human-input-content`, spec `base/chat/chat/answer`, spec `workflow/run/utils/format-log/human-input`, `app/test/workflow_editor/run/server_run_service_test.dart` |
 | Run history: view a past run (record panels) | ported | Deviation: A past run's graph is not swapped into the shared canvas (that would be document ops); the record shows the run detail. Server runs (protocol 1.14) are stored; mock runs only exist in the session. | spec `workflow/panel/chat-record`, spec `workflow/panel/record.spec.tsx`, visual `run-history` |
 | Single node run (Run this step) and its result | ported | Deviation: Served by the server runtime for the node types it runs (protocol 1.15 includes dedicated iteration and loop streams), else by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint. | visual `run-single`, visual `run-last-run` |
 | Run: listen for a trigger (webhook / schedule / plugin debug polling) | partial | The Listening state is ported; there is no trigger runtime, so a listened trigger fires once from the mock runtime. | spec `workflow-app/hooks` |

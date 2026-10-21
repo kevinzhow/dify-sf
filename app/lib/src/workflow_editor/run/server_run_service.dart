@@ -26,6 +26,7 @@ class ServerWorkflowRuntime {
     required this.singleNodeRun,
     this.draftRun = const {},
     this.humanInput = false,
+    this.humanInputEmail = false,
   });
 
   final WorkflowRunApi api;
@@ -43,6 +44,9 @@ class ServerWorkflowRuntime {
   /// 1.16: the server runs human input (a draft run pauses at a `human-input` node, its form is submitted there, and a
   /// reconnect rebuilds the run's state). Without it forms belong to the editor's stand-in.
   final bool humanInput;
+
+  /// Outbound email has a separate rollout switch from web forms.
+  final bool humanInputEmail;
 }
 
 /// [WorkflowRunService] over the server's runtime for app [appId], [fallback] for the rest. [nodeTypeOf] answers a

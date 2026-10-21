@@ -316,6 +316,7 @@ final class WorkflowRuntimeFeatures {
     this.singleNodeRun = const {},
     this.draftRun = const {},
     this.humanInput = false,
+    this.humanInputEmail = false,
   });
 
   /// Null when [json] is not an object (the member is absent).
@@ -334,6 +335,7 @@ final class WorkflowRuntimeFeatures {
             if (t is String) t,
       },
       humanInput: json['human_input'] == true,
+      humanInputEmail: json['human_input_email'] == true,
     );
   }
 
@@ -350,9 +352,12 @@ final class WorkflowRuntimeFeatures {
 
   /// 1.16: the server runs human input — a draft run pauses at a `human-input` node (`human_input_required` +
   /// `workflow_paused`), the form is answered through `POST /v1/form/human_input/{token}`, a reconnect
-  /// (`GET /v1/workflow/{run}/events`) rebuilds the run's state, and the node's own form (preview, submit, delivery
-  /// test) is served. Older servers do not say, which is false.
+  /// (`GET /v1/workflow/{run}/events`) rebuilds the run's state, and the node's own form (preview and submit)
+  /// is served. Outbound email is announced independently by [humanInputEmail]. Older servers do not say, which is false.
   final bool humanInput;
+
+  /// Outbound human-input mail is accepted separately from web forms.
+  final bool humanInputEmail;
 }
 
 /// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password. Also the answer of

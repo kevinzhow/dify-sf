@@ -1190,8 +1190,8 @@ features:
   area: node-human-input
   title: 'Human Input: send a test email'
   dify: [web/app/components/workflow/nodes/human-input/components/delivery-method]
-  status: not_ported
-  reason: dify-sf has no mail server; the test email sender is a host callback the app does not provide.
+  status: partial
+  reason: 'The client callback and server delivery-test candidate exist, but mail acceptance is separate from web forms. The email capability defaults off; durable message content, closed-form filtering, Markdown parity and runless test-form expiry remain in the mail workstream.'
   evidence: ['spec:web/app/components/workflow/nodes/human-input/components/delivery-method']
   ours: [app/lib/src/workflow_editor/node_panel/bodies/data/human_input/test_email_sender.dart]
 
@@ -1445,7 +1445,7 @@ features:
   title: 'Run: human input forms (pause, fill, submit, timeout) in the run panel and chat'
   dify: [web/app/components/base/chat/chat/answer/human-input-content, web/app/components/workflow/panel/human-input-form-list.tsx, web/app/components/workflow/panel/debug-and-preview/hooks.ts]
   status: ported
-  deviation: 'A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. A pause the stand-in serves answers locally, as before.'
+  deviation: 'Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. A pause the stand-in serves answers locally, as before.'
   evidence: ['spec:web/app/components/base/chat/chat/answer/human-input-content', 'spec:web/app/components/base/chat/chat/answer', 'spec:web/app/components/workflow/run/utils/format-log/human-input', 'app/test/workflow_editor/run/server_run_service_test.dart']
   ours: [app/lib/src/workflow_editor/run/ui/human_input_content.dart, app/lib/src/workflow_editor/run/server_run_service.dart, packages/collab_client/lib/src/workflow_run_api.dart]
 - id: run.history-record

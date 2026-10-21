@@ -305,6 +305,8 @@ void main() {
     test('workflow_runtime.human_input is parsed, false when the server does not say', () {
       final yes = WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.16', 'human_input': true})!;
       expect(yes.humanInput, isTrue);
+      expect(yes.humanInputEmail, isFalse, reason: 'web support never enables outbound mail implicitly');
+      expect(WorkflowRuntimeFeatures.fromJson({'human_input_email': true})!.humanInputEmail, isTrue);
       expect(WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.15'})!.humanInput, isFalse);
       expect(WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.16', 'human_input': 'yes'})!.humanInput, isFalse);
     });
