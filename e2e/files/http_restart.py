@@ -67,7 +67,7 @@ try:
         if subprocess.run(['docker','exec',pg,'pg_isready','-U','collab','-d','collab'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
         time.sleep(.2)
     start()
-    password=secrets.token_urlsafe(24);email='file-test@example.test'
+    password='Aa1-'+secrets.token_urlsafe(24);email='file-test@example.test'
     status,auth,_=js('POST','/v1/setup',{'email':email,'password':password,'name':'File Test Owner'})
     check('owner setup',status==201)
     token=auth['access_token']
@@ -118,6 +118,12 @@ try:
     image_query=oracle._sign_query(payload='image-preview|'+picture['id'])
     image_url=base+'/files/'+picture['id']+'/image-preview?'+urllib.parse.urlencode(image_query)
     check('original Dify image signature delivers image bytes',request('GET',image_url)[1]==image_bytes)
+    status,profile,_=js('PATCH','/v1/account/profile',{'avatar':picture['id']},token)
+    check('own uploaded avatar saved',status==200)
+    status,again,_=js('POST','/v1/auth/login',{'email':email,'password':password})
+    check('new sign-in issues a fresh usable avatar URL',status==200 and again['account']['avatar_url']!=profile['avatar_url']
+          and request('GET',again['account']['avatar_url'])[1]==image_bytes)
+
 
     old=str(int(time.time())-301);nonce=secrets.token_hex(16)
     sig=base64.urlsafe_b64encode(hmac.new(key.encode(),('file-preview|'+file['id']+'|'+old+'|'+nonce).encode(),hashlib.sha256).digest()).decode()

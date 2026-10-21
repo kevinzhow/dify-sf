@@ -12,7 +12,7 @@ Only the temporary secret file and containers/network are removed; byte/result e
 The default loopback port is 19098 (override --port if occupied).
 
 Checks include real multipart upload, UTF-8 preview, anonymous signed delivery, ranges/ETag/If-Range,
-Dify-to-Swift and Swift-to-Dify signatures, expiry/type separation, SIGKILL plus a new process over the same
+Dify-to-Swift and Swift-to-Dify signatures, expiry/type separation, own-avatar save and new sign-in with a fresh usable avatar link, SIGKILL plus a new process over the same
 database/storage, and graceful shutdown plus a second restart. No shared development database is used.
 
 Client UI: integration_test/files_flow_test.dart in the client checkout runs real Linux UI against a fresh
