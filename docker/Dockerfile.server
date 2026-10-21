@@ -3,12 +3,14 @@ FROM swift:6.4 AS build
 WORKDIR /src
 # The whole package: SwiftPM validates every target directory (incl. Tests) even for a single product.
 COPY server/ ./
-RUN swift build -c release --product collab-server
+ARG SWIFT_BUILD_JOBS=2
+RUN swift build -c release --product collab-server --jobs $SWIFT_BUILD_JOBS
 
 FROM swift:6.4-slim
 COPY --from=build /src/.build/release/collab-server /usr/local/bin/collab-server
 # Protocol 1.9: the vendored model provider definitions (SwiftPM resource bundle of CollabModels), found next to the binary.
 COPY --from=build /src/.build/release/DifySF_CollabModels.bundle /usr/local/bin/DifySF_CollabModels.bundle
+RUN mkdir -p /var/lib/collab/uploads && chown nobody:nogroup /var/lib/collab/uploads
 USER nobody
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/collab-server"]

@@ -104,6 +104,9 @@ extension Routes {
     func siteJSON(_ a: StoredApp, req: Request) -> JSON {
         guard let text = a.siteJSON, var site = (try? JSONCoding.decode(Data(text.utf8)))?.object else { return .null }
         site["app_base_url"] = .string(appBaseURL(req))
+        if site["icon_type"]?.string == "image" {
+            site["icon_url"] = signedAvatar(site["icon"]?.string).map(JSON.string) ?? .null
+        }
         return .object(site)
     }
 
@@ -162,11 +165,16 @@ extension Routes {
         let p = try await authenticate(req, .edit)
         let id = try appId(req)
         let b = try await jsonBody(req)
+        let current = try await liveApp(id, viewer: p.id)
+        let oldSite = current.siteJSON.flatMap { (try? JSONCoding.decode(Data($0.utf8)))?.object } ?? [:]
         var c = SiteChanges()
         c.title = try optionalString(b, "title")
         c.iconType = try appIconType(b)
         c.icon = try optionalString(b, "icon")
         c.iconBackground = try optionalString(b, "icon_background")
+        if (c.iconType ?? oldSite["icon_type"]?.string) == "image" {
+            try await validateImageFile(c.icon ?? oldSite["icon"]?.string ?? "")
+        }
         c.description = try optionalString(b, "description")
         c.defaultLanguage = try optionalString(b, "default_language")
         if let l = c.defaultLanguage, !SiteLanguages.all.contains(l) { throw ServerError.badRequest("\(l) is not a valid language.") }

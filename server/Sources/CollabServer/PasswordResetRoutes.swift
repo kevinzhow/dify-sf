@@ -138,6 +138,7 @@ extension Routes {
             var is_allow_register = false
             var is_email_setup: Bool
             /// 1.12: the account page offers changing the email (Dify's `ENABLE_CHANGE_EMAIL`; dify-sf needs mail for it).
+            var enable_file_upload: Bool
             var enable_change_email: Bool
             /// 1.13 (dify-sf only): what the workflow runtime can run; absent without a model runtime (plugin daemon).
             var workflow_runtime: WorkflowRuntime?
@@ -152,7 +153,7 @@ extension Routes {
         let mail = config.mail.isConfigured
         let runtime = runtimeConfigured
             ? WorkflowRuntime(single_node_run: Self.singleRunNodeTypes, draft_run: Self.draftRunNodeTypes) : nil
-        return try json(Features(is_email_setup: mail, enable_change_email: mail, workflow_runtime: runtime))
+        return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime))
     }
 
     // MARK: - Forgot password (Dify's /forgot-password, /forgot-password/validity, /forgot-password/resets)

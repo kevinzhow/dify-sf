@@ -64,13 +64,14 @@ public enum CollabServerMain {
                                   configuration: ServerConfiguration(address: .hostname(config.httpHost, port: config.httpPort)),
                                   configReader: reader.scoped(to: "collab.http"))
         app.middleware.use(CORSPolicy(allowedOrigins: config.corsAllowedOrigins), at: .beginning)
-        try Routes(registry: registry, store: store, config: config, logger: logger, models: models).register(on: app)
+        let routes = try Routes(registry: registry, store: store, config: config, logger: logger, models: models)
+        routes.register(on: app)
 
         let group = ServiceGroup(
             configuration: .init(
                 services: [
                     .init(service: Named(name: "postgres", base: pg, logger: logger)),
-                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger, staleRunSeconds: config.runtimeMaxTimeSeconds + 300), logger: logger)),
+                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger, staleRunSeconds: config.runtimeMaxTimeSeconds + 300, blobs: routes.blobs), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
                     .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
@@ -87,9 +88,11 @@ struct Migrator: Service {
     let logger: Logger
     /// Protocol 1.14: a run "running" for longer than this ran in a server that stopped.
     var staleRunSeconds: Double = 3900
+    var blobs: (any BlobStore)? = nil
 
     func run() async throws {
         var delay = 0.2
+        var migrated = false
         for attempt in 1...60 {
             do {
                 try await store.migrate()
@@ -109,6 +112,7 @@ struct Migrator: Service {
                 if sealed.plaintextLeft > 0 {
                     logger.warning("\(sealed.plaintextLeft) secrets are still stored in plaintext: set COLLAB_SECRETS_KEY to encrypt them")
                 }
+                migrated = true
                 break
             } catch {
                 logger.warning("database not ready (attempt \(attempt)): \(error)")
@@ -116,8 +120,14 @@ struct Migrator: Service {
                 delay = min(delay * 1.5, 2)
             }
         }
-        // Stay alive until shutdown: a finished service would not stop the group, but keep the lifecycle simple.
-        try await gracefulShutdown()
+        guard migrated, let blobs else { try await gracefulShutdown(); return }
+        // Sweep only after migration. Disk/database failures retain pending metadata for the next pass.
+        while !Task.isCancelled {
+            do { _ = try await UploadReconciler.run(store: store, blobs: blobs) }
+            catch { logger.warning("unfinished file cleanup will be retried") }
+            do { try await cancelWhenGracefulShutdown { try await Task.sleep(for: .seconds(300)) } }
+            catch { break }
+        }
     }
 }
 

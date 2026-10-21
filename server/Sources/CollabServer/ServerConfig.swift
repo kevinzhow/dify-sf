@@ -53,6 +53,8 @@ public struct ServerConfig: Sendable {
     /// of 32 random bytes. Empty = no key: the server refuses to store secrets (`503 secrets_key_missing`) and cannot read
     /// sealed ones; it never stores them in plaintext. Losing or changing the key makes stored secrets unreadable.
     public var secretsKey: String
+    /// Protocol 1.17: local file storage and signed delivery. Empty signing key keeps uploads disabled.
+    var files: FileStorageConfig
     /// Check model provider credentials with one request to the provider before saving them (`COLLAB_MODELS_VALIDATE`,
     /// default true; false for servers without internet access).
     public var modelsValidate: Bool
@@ -120,6 +122,7 @@ public struct ServerConfig: Sendable {
         loginMaxFailures = reader.int(forKey: "collab.auth.loginMaxFailures", default: 5)
         loginLockoutSeconds = reader.int(forKey: "collab.auth.loginLockoutSeconds", default: 86_400)
         secretsKey = reader.string(forKey: "collab.secrets.key", isSecret: true, default: "")
+        files = FileStorageConfig(reader: reader)
         modelsValidate = reader.bool(forKey: "collab.models.validate", default: true)
         modelsValidateTimeoutSeconds = reader.int(forKey: "collab.models.validateTimeoutSeconds", default: 10)
         webAppBaseURL = reader.string(forKey: "collab.webapp.baseUrl", default: "").trimmingCharacters(in: .whitespaces)

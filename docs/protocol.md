@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.15
+# dify-sf collaboration protocol, version 1.17 (files storage; runtime stays 1.15)
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -77,7 +77,7 @@ section 9 describes the same algorithm in prose.
   * New error codes: `email_already_in_use` (400), `email_change_rate_limit_exceeded`, `email_change_limit` (429). New
     configuration: `COLLAB_AUTH_CHANGE_EMAIL_TOKEN_MINUTES`, `..._SEND_INTERVAL_SECONDS`, `..._MAX_FAILURES`,
     `..._LOCKOUT_SECONDS`. Streams are unchanged.
-  * Not part of 1.12: avatars (no file storage; `avatar_url` stays unset and clients show Dify's initial fallback) and
+  * Not part of 1.12: avatars (added separately in 1.17) and
     deleting the account (Dify Cloud only).
 * 1.11 (additive; clients older than 1.11 are unaffected): **app detail pages** (section 2, "App detail pages (1.11)"):
   Dify 1.17.1's console API for the pages inside an app, under `/v1/apps/{app}`, with Dify's paths and shapes.
@@ -514,8 +514,8 @@ section "Accounts".
   code clears the count.
 * **Mails**: Dify's templates (`change_mail_confirm_old/new`, `change_mail_completed`), in the background like the reset
   mails.
-* **Not offered**: avatars (Dify uploads a file; dify-sf has no file storage, so `avatar_url` stays unset and clients show
-  Dify's initial avatar), deleting the account (Dify Cloud only), the education programme (Dify Cloud only).
+* **Avatars**: added in 1.17 with configured local file storage, own-account upload authorization and fresh signed URLs.
+* **Not offered**: deleting the account and the education programme (Dify Cloud only).
 
 ### Dify app metadata: `GET /v1/docs/{doc}/meta`
 
@@ -757,7 +757,7 @@ Times are epoch **seconds**. `author_name` is the creator's account name (an app
 existed or by a harness, counts as the workspace owner's). **`updated_at` is "last modified"**: the later of the app row's last
 change (create, edit info) and the document's last committed op. This is a deviation from Dify, where draft saves only touch
 the workflow row and the Studio's "Edited" time would never move without publishing. `updated_by` is the account of the last
-app-row change. `tags` is always empty (dify-sf has no tags yet), `icon_url` always null (no file storage), and the members
+app-row change. `tags` is always empty (dify-sf has no tags yet), `icon_url` a fresh signed file URL for image icons (1.17), otherwise null, and the members
 of features dify-sf does not have (tracing, agents, triggers) have their empty values. `enable_site`, `enable_api`,
 `api_base_url` and `site` are real since 1.11 ("App detail pages (1.11)"; a 1.10 server sends `false`, `false`, `null`,
 `null`).
@@ -1996,3 +1996,59 @@ B: POST ... {"cseq":1,"base":0,"op":{"t":"setField","node":"llm","field":{"k":"c
 ```
 
 Same values: B's write of `"A"` would have been `ack` (seq 2, no-op).
+
+## Files storage and image settings (1.17, M2a)
+
+This additive console API does not yet enable files in workflow execution. M2b will add runtime file values,
+vision, HTTP file bodies, inspect and human-input files. PDF/Office text extraction and the document-extractor
+node remain unported and outside M2; raw originals can be uploaded and downloaded.
+
+Storage is a local persistent directory plus Postgres metadata, behind an asynchronous BlobStore. Configure
+COLLAB_FILES_DIRECTORY and COLLAB_FILES_URL (the externally reachable HTTP(S) server origin); optionally configure
+COLLAB_FILES_INTERNAL_URL for internal consumers. COLLAB_FILES_SIGNING_KEY must be a separately generated secret
+of at least 32 UTF-8 bytes, supplied through environment/configuration and retained across restarts. There is no
+default key, fixture key or implicit request-host fallback. Missing configuration disables enable_file_upload in
+GET /v1/system-features and returns 503 file_storage_not_configured. Docker Compose mounts file_uploads at
+/var/lib/collab/uploads, writable by its unprivileged server user. Back up that volume and Postgres together.
+
+Authenticated workspace members may use GET/POST /v1/files/upload. POST accepts exactly one multipart field file;
+success is 201 with Dify UploadFile fields (id, reference, name, size, extension, mime_type, created_by, created_at,
+preview_url, nullable source_url/original_url/user_id/conversation_id/file_key, tenant_id). Disk paths never leave
+the server. The reference is dify-file-ref: followed by URL-safe base64 of the record_id object. Names cannot
+contain path separators or controls. Only the server-generated workspace/file UUID key chooses disk placement.
+The datasets source is rejected because ingestion is not implemented.
+
+Defaults: files 15 MiB, images 10 MiB, audio 50 MiB, video 100 MiB. Override COLLAB_FILES_FILE_MIB, IMAGE_MIB,
+AUDIO_MIB, VIDEO_MIB; individual limits are capped at 1024 MiB. COLLAB_FILES_BLOCKED_EXTENSIONS is a comma-separated
+denylist (empty by default, as Dify). Two concurrent uploads per process are accepted; excess returns 429 upload_busy.
+Bodies are collected only by this route, within the configured bound plus 64 KiB multipart overhead; other route
+limits are unchanged. Multipart parsing reuses Vapor's pinned MultipartKit dependency. Image controls retain the
+3 MiB and 16-megapixel client limits and shared square crop implementation.
+
+GET /v1/files/{id}/preview is authenticated and returns content truncated to the first 3000 Unicode scalars for
+UTF-8 txt/md/markdown/json/csv/html/htm. Other types return 415 unsupported_file_type with an explicit explanation;
+there is no PDF/Office extraction. GET /v1/files/support-type lists these text-preview extensions.
+
+Public GET /files/{id}/file-preview uses timestamp, nonce and sign query parameters. Signing matches Dify 1.17.1:
+HMAC-SHA256 over UTF-8 file-preview|id|timestamp|nonce, URL-safe Base64 retaining padding; timestamp is integer Unix
+seconds and nonce is 16 random bytes encoded as 32 lowercase hex digits. Default age limit is 300 seconds
+(COLLAB_FILES_ACCESS_SECONDS); invalid/expired signatures return 404. image-preview has a separate image-preview
+signing prefix and accepts only image extensions. Query padding is percent-encoded. These URLs are bearer
+capabilities: authorization happens before issuance, and possession permits access until expiry. Signed links
+are regenerated on every account/app/site read; persisted avatars and image icons retain file IDs.
+
+Delivery supports single byte ranges, If-Range and ETag/If-None-Match, with bounded 128 KiB reads and awaited HTTP
+writes. Range failures return 416; malformed headers return 400. HTML/SVG and other active/unrecognized media are
+forced to attachment plus application/octet-stream and nosniff. Passive image/media/PDF/plain text may display
+inline; as_attachment=true forces a download. No storage key from a client is trusted.
+
+Upload writes private temporary bytes then atomically renames before publishing the metadata row as ready.
+Unready records cannot be fetched or used as images. Disk failures reserve the row for cleanup before deleting
+bytes, retaining the metadata if cleanup fails. After migrations, maintenance retries stale unready uploads
+(older than one hour) every five minutes in batches of 1000. Cleanup reservation and publication are mutually
+exclusive database transitions; ready files are never swept. An uncertain publication UPDATE retains bytes so
+a committed file cannot be destroyed by compensation.
+
+PATCH /v1/account/profile accepts avatar as an own-account image UploadFile ID, or an empty string to clear it.
+Another account's upload is refused; the profile update repeats this check atomically. App and site image icons
+may use ready image files within the same workspace. Existing unrelated profile/app operations remain compatible.

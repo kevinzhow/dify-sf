@@ -64,12 +64,11 @@ extension Routes {
 
     /// Sets the members present: `name` (3-30 characters), `interface_language` (one of Dify's languages), `timezone` (an
     /// IANA name). Like Dify's payload (`extra="forbid"`, nulls refused) any other member, or a null, is `400`; Dify's
-    /// `avatar` and `interface_theme` are refused too (dify-sf stores neither: avatars need file storage, the theme is the
-    /// app's own setting, as in Dify's preference page).
+    /// Avatar ids belong to the account; every read receives a fresh signed URL.
     private func updateProfile(_ req: Request) async throws -> Response {
         let p = try await authenticate(req)
         let b = try await jsonBody(req)
-        var name: String?, language: String?, timezone: String?
+        var name: String?, language: String?, timezone: String?, avatar: String?
         for (key, value) in b {
             if value.isNull { throw Self.bad("bad_request", "Account profile fields cannot be null") }
             switch key {
@@ -84,14 +83,18 @@ extension Routes {
                     throw Self.bad("bad_request", "\(value.string.map { String($0.prefix(64)) } ?? "value") is not a valid timezone.")
                 }
                 timezone = s
-            case "avatar", "interface_theme": throw Self.bad("bad_request", "\(key) is not supported by this server")
+            case "avatar":
+                guard let id = value.string else { throw Self.bad("bad_request", "avatar must be a file id") }
+                if !id.isEmpty { try await validateImageFile(id, owner: p.id) }
+                avatar = id.isEmpty ? "" : UUID(uuidString: id)!.uuidString.lowercased()
+            case "interface_theme": throw Self.bad("bad_request", "\(key) is not supported by this server")
             default: throw Self.bad("bad_request", "unknown member \(String(key.prefix(64)))")
             }
         }
         guard let a = try await storeCall({
-            try await store.updateProfile(p.id, name: name, interfaceLanguage: language, timezone: timezone)
+            try await store.updateProfile(p.id, name: name, interfaceLanguage: language, timezone: timezone, avatar: avatar, avatarWorkspace: uploadWorkspaceId)
         }) else { throw ServerError.missing("unknown account") }
-        return try json(Self.accountJSON(a))
+        return try json(accountJSON(a))
     }
 
     // MARK: - Change email (Dify's /account/change-email...)
@@ -198,7 +201,7 @@ extension Routes {
         case .notFound: throw Self.bad("account_not_found", "Account not found.")
         case .changed(let a):
             outbox.post(MailTemplates.changeEmailCompleted(to: newEmail, language: "en-US"), kind: "change email completed")
-            return try json(Self.accountJSON(a))
+            return try json(accountJSON(a))
         }
     }
 

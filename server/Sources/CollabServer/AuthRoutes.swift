@@ -188,7 +188,7 @@ extension Routes {
 
     private func account(_ req: Request) async throws -> Response {
         let p = try await authenticate(req)
-        return try json(Self.accountJSON(p.account))
+        return try json(accountJSON(p.account))
     }
 
     private func updateName(_ req: Request) async throws -> Response {
@@ -199,7 +199,7 @@ extension Routes {
         try await storeCall { try await store.updateAccountName(p.id, name: name) }
         var a = p.account
         a.name = name
-        return try json(Self.accountJSON(a))
+        return try json(accountJSON(a))
     }
 
     private func updatePassword(_ req: Request) async throws -> Response {
@@ -224,7 +224,7 @@ extension Routes {
         _ = try await authenticate(req)
         let all = try await storeCall { try await store.members() }
         struct List: Encodable { var accounts: [MemberJSON] }
-        return try json(List(accounts: all.map(Self.memberJSON)))
+        return try json(List(accounts: all.map(memberJSON)))
     }
 
     /// No mail server: like Dify without mail, the answer carries each activation link (`/activate?token=...`, relative to

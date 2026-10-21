@@ -158,7 +158,7 @@ extension Routes {
 
     /// Account names and avatars, looked up when a comment is read (so a rename shows everywhere).
     private func names() async -> Names {
-        (try? await store.accountNames()) ?? [:]
+        ((try? await store.accountNames()) ?? [:]).mapValues { (name: $0.name, avatarUrl: signedAvatar($0.avatarUrl)) }
     }
 
     private func announce(_ doc: String, _ comment: String, _ action: CommentsEvent.Action) async {
@@ -174,7 +174,7 @@ extension Routes {
         let all = try await storeCall { try await store.members() }
         struct User: Encodable { var id: String; var name: String; var email: String; var avatar_url: String?; var role: String }
         struct Users: Encodable { var users: [User] }
-        return try json(Users(users: all.map { User(id: $0.id, name: $0.name, email: $0.email, avatar_url: $0.avatarUrl, role: $0.role ?? "") }))
+        return try json(Users(users: all.map { User(id: $0.id, name: $0.name, email: $0.email, avatar_url: signedAvatar($0.avatarUrl), role: $0.role ?? "") }))
     }
 
     private func listComments(_ req: Request, _ doc: String) async throws -> Response {

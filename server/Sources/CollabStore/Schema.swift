@@ -651,5 +651,26 @@ public enum Schema {
         )
         """,
         "CREATE INDEX IF NOT EXISTS human_input_forms_run ON human_input_forms (workflow_run_id, generation, created_at)",
+        // Protocol 1.17: only ready files may be referenced; paths are server-generated, never document fields.
+        """
+        CREATE TABLE IF NOT EXISTS upload_files (
+            id text PRIMARY KEY,
+            workspace_id text NOT NULL,
+            storage_key text NOT NULL UNIQUE,
+            name text NOT NULL,
+            size bigint NOT NULL CHECK (size >= 0),
+            extension text NOT NULL,
+            mime_type text NOT NULL,
+            created_by_role text NOT NULL DEFAULT 'account',
+            created_by text NOT NULL REFERENCES accounts(id),
+            created_at timestamptz NOT NULL,
+            sha256 text NOT NULL,
+            source_url text,
+            ready boolean NOT NULL DEFAULT false,
+            deleting boolean NOT NULL DEFAULT false
+        )
+        """,
+        "ALTER TABLE upload_files ADD COLUMN IF NOT EXISTS deleting boolean NOT NULL DEFAULT false",
+        "CREATE INDEX IF NOT EXISTS upload_files_workspace ON upload_files (workspace_id, created_at)",
     ]
 }

@@ -129,13 +129,17 @@ extension PostgresStore {
     }
 
     /// Dify's `PATCH /account/profile`: sets the given fields (nil = unchanged) and answers the account; nil if it is gone.
-    public func updateProfile(_ id: String, name: String?, interfaceLanguage: String?, timezone: String?) async throws -> StoredAccount? {
+    public func updateProfile(_ id: String, name: String?, interfaceLanguage: String?, timezone: String?, avatar: String? = nil, avatarWorkspace: String? = nil) async throws -> StoredAccount? {
         try await bounded {
             var found = false
             for try await _ in try await self.client.query("""
                 UPDATE accounts SET name = COALESCE(\(name), name), interface_language = COALESCE(\(interfaceLanguage), interface_language),
-                       timezone = COALESCE(\(timezone), timezone)
-                WHERE id = \(id) RETURNING id
+                       timezone = COALESCE(\(timezone), timezone),
+                       avatar_url = CASE WHEN \(avatar)::text = '' THEN NULL ELSE COALESCE(\(avatar), avatar_url) END
+                WHERE id = \(id) AND (\(avatar)::text IS NULL OR \(avatar) = '' OR EXISTS (
+                    SELECT 1 FROM upload_files WHERE id = \(avatar) AND workspace_id = \(avatarWorkspace) AND ready
+                        AND created_by_role = 'account' AND created_by = \(id)))
+                RETURNING id
                 """, logger: self.logger) {
                 found = true
             }

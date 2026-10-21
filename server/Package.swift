@@ -11,6 +11,8 @@ let package = Package(
         .executable(name: "collab-runtime", targets: ["collab-runtime"]),
     ],
     dependencies: [
+        // Already pinned by Vapor; reuse its multipart parser directly.
+        .package(url: "https://github.com/vapor/multipart-kit.git", exact: "5.0.0-beta.2"),
         .package(url: "https://github.com/vapor/vapor.git", exact: "5.0.0-beta.4"),
         // Vendored copy of postgres-nio 1.33.1 with a one-line Swift 6.4 build fix (see Vendor/postgres-nio/PATCHES.md).
         .package(path: "Vendor/postgres-nio"),
@@ -68,6 +70,8 @@ let package = Package(
             .product(name: "Configuration", package: "swift-configuration"),
             .product(name: "Crypto", package: "swift-crypto"),
             .product(name: "CryptoExtras", package: "swift-crypto"),
+            .product(name: "_NIOFileSystem", package: "swift-nio"),
+            .product(name: "MultipartKit", package: "multipart-kit"),
             .product(name: "SwiftSMTP", package: "swift-smtp"),
         ]),
         .executableTarget(name: "collab-server", dependencies: ["CollabServer"]),

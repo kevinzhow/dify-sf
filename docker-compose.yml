@@ -35,6 +35,11 @@ services:
     environment:
       COLLAB_HTTP_HOST: 0.0.0.0
       COLLAB_HTTP_PORT: "8080"
+      # Files are disabled without a configured signing key and external URL. Never commit a key.
+      COLLAB_FILES_DIRECTORY: /var/lib/collab/uploads
+      COLLAB_FILES_SIGNING_KEY: ${COLLAB_FILES_SIGNING_KEY:-}
+      COLLAB_FILES_URL: ${COLLAB_FILES_URL:-}
+      COLLAB_FILES_INTERNAL_URL: ${COLLAB_FILES_INTERNAL_URL:-}
       COLLAB_DB_HOST: postgres
       COLLAB_DB_PORT: "5432"
       COLLAB_DB_USER: collab
@@ -53,6 +58,8 @@ services:
       COLLAB_SANDBOX_URL: http://sandbox:8194
       COLLAB_SANDBOX_KEY: ${COLLAB_SANDBOX_KEY:-dify-sf-local-sandbox-key}
       COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
+    volumes:
+      - file_uploads:/var/lib/collab/uploads
     # Lets the server reach a service on the host (e.g. the client conformance test's stub model provider, served by
     # the test process: DIFYSF_STUB_HOST=host.docker.internal).
     extra_hosts:
@@ -167,6 +174,7 @@ networks:
     internal: true
 
 volumes:
+  file_uploads:
   pgdata:
   plugin_storage:
   sandbox_dependencies:

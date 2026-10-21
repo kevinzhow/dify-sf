@@ -14,13 +14,13 @@ This repository currently contains step 1: the server-side collaboration kernel 
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-289 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
+291 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
 
 | Status | Features |
 |---|---|
-| ported | 176 |
-| partial | 47 |
-| not ported | 36 |
+| ported | 178 |
+| partial | 48 |
+| not ported | 35 |
 | n/a | 17 |
 | dify-sf only | 13 |
 
@@ -88,3 +88,24 @@ Results (JSON + markdown) are written to `bench/*/results/<timestamp>/`.
 [`docs/results/dify-vs-difysf.md`](docs/results/dify-vs-difysf.md) compares Dify 1.17.1 and dify-sf from four sources (real
 browser, a simulator running Dify's own collaboration code, a closed-form formula, dify-sf's own tests). The methods and
 raw results for the Dify side are in [`research/`](research/README.md).
+
+### Local files and image icons (M2a)
+
+The console can upload originals, download/preview through expiring signed links, and save cropped images as
+app/site icons or account avatars. Enable this with COLLAB_FILES_SIGNING_KEY (a separately generated secret of at
+least 32 UTF-8 bytes) and COLLAB_FILES_URL (the HTTP(S) server address the browser reaches). No signing key is
+provided by default; supply it through configuration/environment, keep it out of Git and retain it across restarts.
+COLLAB_FILES_INTERNAL_URL optionally chooses a separate internal address. Docker Compose keeps originals in the
+file_uploads volume; back it up together with Postgres. Standalone servers set COLLAB_FILES_DIRECTORY to a
+persistent private directory writable by the server user. Configure COLLAB_CORS_ALLOWED_ORIGINS when the client
+runs on another origin.
+
+Default size limits are 15 MiB for ordinary files, 10 MiB for images, 50 MiB for audio and 100 MiB for video.
+The account/app image controls retain their 3 MiB image limit and square crop. An account may use only its own
+uploaded image; app/site icons can share ready images in the workspace. Missing storage configuration hides
+avatar editing and refuses uploads explicitly.
+
+This milestone does not yet enable runtime file values, model vision, HTTP file bodies, or human-input files
+(M2b). UTF-8 plain text has a 3000-codepoint preview. PDF/Office extraction and the document-extractor runtime
+remain unported and outside M2; original files can still be stored and downloaded. See docs/protocol.md for the
+HTTP contract, security boundaries and recovery behavior.

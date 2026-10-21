@@ -158,7 +158,7 @@ extension Routes {
         let created = Self.seconds(a.createdAt), updated = Self.seconds(a.updatedAt)
         return .object([
             "id": .string(a.id), "name": .string(a.name), "description": .string(a.description), "mode": .string(a.mode),
-            "icon_type": opt(a.iconType), "icon": opt(a.icon), "icon_background": opt(a.iconBackground), "icon_url": .null,
+            "icon_type": opt(a.iconType), "icon": opt(a.icon), "icon_background": opt(a.iconBackground), "icon_url": (a.iconType == "image" ? signedAvatar(a.icon) : nil).map(JSON.string) ?? .null,
             "use_icon_as_answer_icon": .bool(a.useIconAsAnswerIcon), "max_active_requests": a.maxActiveRequests.map { .int($0) } ?? .null,
             "model_config": .null,
             "workflow": .object(["id": .string(a.id), "created_by": opt(a.createdBy), "created_at": .int(created),
@@ -279,6 +279,7 @@ extension Routes {
         }
         let iconType = try appIconType(b) ?? NewApp.defaultIconType
         let icon = try optionalString(b, "icon") ?? NewApp.defaultIcon
+        if iconType == "image" { try await validateImageFile(icon) }
         let background = try optionalString(b, "icon_background") ?? NewApp.defaultIconBackground
         let seed = DifyDSL.blankApp(mode: mode, name: name, description: description, iconType: iconType, icon: icon, iconBackground: background)
         let imported: DifyDSL.Imported
@@ -298,6 +299,11 @@ extension Routes {
         let name = try appName(b, required: true)
         let description = try appDescription(b)
         let iconType = try appIconType(b)
+        let selectedIcon = try optionalString(b, "icon")
+        let previous = try await liveApp(id, viewer: p.id)
+        if (iconType ?? previous.iconType) == "image", let imageId = selectedIcon ?? previous.icon {
+            try await validateImageFile(imageId)
+        }
         var answerIcon: Bool?
         if let v = b["use_icon_as_answer_icon"], !v.isNull {
             guard let x = v.bool else { throw ServerError.badRequest("use_icon_as_answer_icon must be a boolean") }
@@ -310,7 +316,7 @@ extension Routes {
         }
         let ok: Bool
         do {
-            ok = try await store.updateApp(id, name: name, description: description, iconType: iconType, icon: try optionalString(b, "icon"),
+            ok = try await store.updateApp(id, name: name, description: description, iconType: iconType, icon: selectedIcon,
                                            iconBackground: try optionalString(b, "icon_background"), useIconAsAnswerIcon: answerIcon,
                                            maxActiveRequests: maxActive, by: p.id)
         } catch let e as ServerError { throw e } catch { throw ServerError.unavailable("\(error)") }

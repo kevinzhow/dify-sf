@@ -124,9 +124,9 @@ extension Routes {
         var created_at: String
     }
 
-    static func accountJSON(_ a: StoredAccount) -> AccountJSON {
-        AccountJSON(id: a.id, email: a.email, name: a.name, avatar_url: a.avatarUrl, role: a.role, interface_language: a.interfaceLanguage,
-                    timezone: a.timezone, created_at: timestamp(a.createdAt))
+    func accountJSON(_ a: StoredAccount) -> AccountJSON {
+        AccountJSON(id: a.id, email: a.email, name: a.name, avatar_url: signedAvatar(a.avatarUrl), role: a.role, interface_language: a.interfaceLanguage,
+                    timezone: a.timezone, created_at: Self.timestamp(a.createdAt))
     }
 
     struct MemberJSON: Encodable {
@@ -140,9 +140,9 @@ extension Routes {
         var created_at: String
     }
 
-    static func memberJSON(_ a: StoredAccount) -> MemberJSON {
-        MemberJSON(id: a.id, name: a.name, email: a.email, avatar_url: a.avatarUrl, role: a.role ?? "", status: a.status,
-                   last_login_at: a.lastLoginAt.map(timestamp), created_at: timestamp(a.createdAt))
+    func memberJSON(_ a: StoredAccount) -> MemberJSON {
+        MemberJSON(id: a.id, name: a.name, email: a.email, avatar_url: signedAvatar(a.avatarUrl), role: a.role ?? "", status: a.status,
+                   last_login_at: a.lastLoginAt.map(Self.timestamp), created_at: Self.timestamp(a.createdAt))
     }
 
     struct TokenPair: Encodable {
@@ -172,7 +172,7 @@ extension Routes {
         do { try await store.storeTokens(rows, account: account.id, sessionId: UUID().uuidString.lowercased()) } catch {
             throw ServerError.unavailable("\(error)")
         }
-        return try json(SignedIn(access_token: pair.access_token, refresh_token: pair.refresh_token, account: Self.accountJSON(account)),
+        return try json(SignedIn(access_token: pair.access_token, refresh_token: pair.refresh_token, account: accountJSON(account)),
                         status: status)
     }
 }

@@ -18,6 +18,8 @@ struct Routes: Sendable {
     let store: PostgresStore
     let config: ServerConfig
     let logger: Logger
+    let blobs: any BlobStore
+    let uploadBudget = UploadBudget()
 
     static let maxBodyBytes = 1 << 20
     static let maxOpsPerRequest = 100
@@ -28,11 +30,12 @@ struct Routes: Sendable {
     let models: ModelService
 
     /// `models` defaults to the vendored catalog with real credential checks (as configured).
-    init(registry: DocumentRegistry, store: PostgresStore, config: ServerConfig, logger: Logger, models: ModelService? = nil) throws {
+    init(registry: DocumentRegistry, store: PostgresStore, config: ServerConfig, logger: Logger, models: ModelService? = nil, blobs: (any BlobStore)? = nil) throws {
         self.registry = registry
         self.store = store
         self.config = config
         self.logger = logger
+        self.blobs = try blobs ?? LocalBlobStore(directory: config.files.directory)
         limiter = LoginLimiter(maxFailures: config.loginMaxFailures, lockoutSeconds: config.loginLockoutSeconds)
         self.models = try models ?? ModelService.live(config: config)
     }
@@ -70,6 +73,7 @@ struct Routes: Sendable {
         registerContainerRuns(on: r)
         registerDraftVariables(on: r)
         registerHumanInput(on: r)
+        registerFiles(on: r)
     }
 
     // MARK: - Plumbing
@@ -322,7 +326,14 @@ struct Routes: Sendable {
         let p = try await authenticate(req)
         try await requireDoc(id)
         let s = try await registry.sequencer(id).currentSnapshot()
-        return try json(DifyDSL.appMeta(try await currentMetadata(id, viewer: p.id), document: s.doc))
+        var meta = DifyDSL.appMeta(try await currentMetadata(id, viewer: p.id), document: s.doc)
+        if case .map(var top) = meta, case .map(var a)? = top["app"],
+           a["icon_type"] == .string("image"), case .string(let icon)? = a["icon"], let url = signedAvatar(icon) {
+            a["icon_url"] = .string(url)
+            top["app"] = .map(a)
+            meta = .map(top)
+        }
+        return try json(meta)
     }
 
     /// Protocol 1.7: `POST /secrets` `{"value": "..."}` stores the plaintext of a secret environment variable and answers
@@ -406,7 +417,7 @@ struct Routes: Sendable {
         let dir = try await registry.sequencer(doc).clientDirectory(force: true)
         struct Entry: Encodable { var account: String; var name: String; var avatar_url: String? }
         struct Directory: Encodable { var clients: [String: Entry] }
-        return try json(Directory(clients: dir.mapValues { Entry(account: $0.account, name: $0.name, avatar_url: $0.avatarUrl) }))
+        return try json(Directory(clients: dir.mapValues { Entry(account: $0.account, name: $0.name, avatar_url: signedAvatar($0.avatarUrl)) }))
     }
 
     private func snapshot(_ req: Request, _ id: String) async throws -> Response {
