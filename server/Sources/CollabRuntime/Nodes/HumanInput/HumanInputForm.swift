@@ -13,6 +13,19 @@ public struct HumanInputFormConfig: Sendable {
     public let actions: [JSONObject]
     public let timeout: Int
     public let timeoutUnit: String
+    /// Dify's `FormDefinition.display_in_ui`: whether the form is shown in a UI surface at all (the node sets it; the
+    /// delivery policy turns it into tokens), kept as the config wrote it — never inferred from rendered defaults.
+    public let displayInUi: Bool?
+    /// `delivery_methods` as the node wrote them (`[{type: webapp|email, enabled, config}]`): the published-run display rule
+    /// reads whether a **webapp** delivery is enabled (`human_input_adapter.is_human_input_webapp_enabled`).
+    public let deliveryMethods: [JSONObject]
+
+    /// `is_human_input_webapp_enabled`: any delivery method that is enabled and is the web app.
+    public var webappDeliveryEnabled: Bool {
+        deliveryMethods.contains { method in
+            method["type"]?.string == "webapp" && (method["enabled"]?.bool ?? false)
+        }
+    }
 
     public static let timeoutHandle = "__timeout"
     public static let actionIdField = "__action_id"
@@ -22,6 +35,8 @@ public struct HumanInputFormConfig: Sendable {
     public init(_ data: JSONObject) throws {
         base = try BaseNodeData(data)
         content = try Self.string(data, "form_content", fallback: "")
+        displayInUi = data["display_in_ui"]?.bool
+        deliveryMethods = (data["delivery_methods"]?.array ?? []).compactMap(\.object)
         timeout = data["timeout"]?.int ?? 36
         timeoutUnit = try Self.string(data, "timeout_unit", fallback: "hour")
         guard ["hour", "day"].contains(timeoutUnit) else { throw NodeDataError("timeout_unit: expected hour or day") }
@@ -60,6 +75,24 @@ public struct HumanInputFormConfig: Sendable {
 
     public func expirationTime(from start: Date) -> Date {
         start.addingTimeInterval(Double(timeout) * (timeoutUnit == "day" ? 86400 : 3600))
+    }
+
+    /// `resolve_variable_select_input_options` (Dify's `human_input_policy`): a select whose options come from a variable
+    /// gets the pool's list as its `option_source.value` (the source stays `variable`, its selector included), because a
+    /// client can only draw options it was given. A source the pool cannot answer is left as written.
+    public func inputsResolved(pool: VariablePool) -> [JSONObject] {
+        inputs.map { input in
+            guard (input["type"]?.string ?? "paragraph") == "select",
+                  var source = input["option_source"]?.object,
+                  source["type"]?.string == "variable",
+                  let selector = source["selector"]?.array?.compactMap(\.string),
+                  let value = pool.get(selector), case .array(let items) = value.value,
+                  items.allSatisfy({ $0.string != nil }) else { return input }
+            source["value"] = .array(items)
+            var resolved = input
+            resolved["option_source"] = .object(source)
+            return resolved
+        }
     }
 
     /// Before submission only runtime references are replaced; `$output` references stay in the form.

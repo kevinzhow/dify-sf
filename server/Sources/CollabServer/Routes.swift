@@ -14,6 +14,8 @@ struct Routes: Sendable {
     let changeEmailLimits = ChangeEmailLimits()
     /// Draft runs in progress (protocol 1.14), by task id.
     let runs = WorkflowRunRegistry()
+    /// This process's live run channels, for `GET /v1/workflow/{runId}/events` (Dify's reconnect endpoint).
+    let runChannels = RunChannelRegistry()
     let registry: DocumentRegistry
     let store: PostgresStore
     let config: ServerConfig
@@ -74,6 +76,8 @@ struct Routes: Sendable {
         registerDraftVariables(on: r)
         registerHumanInput(on: r)
         registerFiles(on: r)
+        registerHumanInputNode(on: r)
+        registerRunEvents(on: r)
     }
 
     // MARK: - Plumbing

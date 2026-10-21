@@ -14,12 +14,13 @@ import Vapor
 extension Routes {
     /// The node types a single run supports (`system-features`' `workflow_runtime.single_node_run`).
     /// The node types a draft run supports (`system-features`' `workflow_runtime.draft_run`).
-    static var draftRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes }
+    static var draftRunNodeTypes: [String] { BuiltinNodeFactory.supportedTypes + [NodeType.humanInput] }
 
     /// Iteration and loop nodes run alone through their own endpoints (`.../draft/iteration|loop/nodes/{node}/run`, protocol
     /// 1.15); their start nodes and the loop end have no single run (as in Dify's editor).
     static var singleRunNodeTypes: [String] {
-        let helpers: Set<String> = [NodeType.iterationStart, NodeType.loopStart, NodeType.loopEnd]
+        // Human input's "run" is its generated form (`.../human-input/nodes/{node}/form/{preview,run}`, 1.16).
+        let helpers: Set<String> = [NodeType.iterationStart, NodeType.loopStart, NodeType.loopEnd, NodeType.humanInput]
         return BuiltinNodeFactory.supportedTypes.filter { !NodeType.startTypes.contains($0) && !helpers.contains($0) }
     }
 

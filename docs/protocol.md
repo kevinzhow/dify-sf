@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.17 (files storage; runtime stays 1.15)
+# dify-sf collaboration protocol, version 1.17 (files storage and human-input runtime)
 
 Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -8,6 +8,15 @@ reading the server code. The reference client state machine is `server/Sources/C
 section 9 describes the same algorithm in prose.
 
 ## Changes
+
+* 1.16 (additive; clients older than 1.16 are unaffected): **human input** (section 2, "Human input (1.16)"). A
+  `human-input` node pauses the run (`human_input_required` per form, then `workflow_paused`), the run answers unauthored
+  forms through `GET/POST /v1/form/human_input/{token}`, and `GET /v1/workflow/{runId}/events` rebuilds a paused run's
+  state from its records and follows it across the resume (Dify's `handleResume`). The node's own form, for the panel's
+  "Run this step", is rendered and submitted by `.../workflows/draft/human-input/nodes/{node}/form/{preview,run}`. Forms
+  whose node enables an email delivery method are mailed after the pause is durable.
+  * `system-features`' `workflow_runtime`: `protocol_version` `1.16`; `human_input` `true`; `draft_run` adds
+    `human-input` (`single_node_run` does not: its form endpoints replace a plain run).
 
 * 1.15 (additive; clients older than 1.15 are unaffected): **iterations and loops** (section 2, "Iterations and loops
   (1.15)"), and the rest of Dify's error handling around them.
@@ -1251,6 +1260,103 @@ their engine-backed debug endpoints".
 semantics; a node's model is prepared once). The loop node's first loop-variable values are written by the engine when
 the loop starts its rounds (graphon's node writes them while it runs). graphon's dispatcher sleeps the retry interval;
 dify-sf waits without blocking other nodes.
+
+### Human input (1.16)
+
+A `human-input` node pauses the whole run and waits for a person. It is a **draft run** node type (`draft_run` lists it);
+it has no plain single node run — the panel's own form has its own endpoints, below.
+
+* **The pause.** A waiting form's **select options that come from a variable** are resolved from the pause's own
+  variable pool into `option_source.value` (`human_input_policy.resolve_variable_select_input_options`): the live frame,
+  the reconnect snapshot and `GET /v1/form/human_input/{token}` all carry the list, while the stored definition keeps the
+  source as written. The node's own preview form does not resolve them (Dify's preview entry does not either).
+* The node creates the forms of this round (or reuses the waiting one of the same execution), and the run
+  records a pause (the run's inputs, the engine snapshot, the node executions in flight and the round's forms) — all
+  durable **before** the stream publishes anything. The stream then sends one `human_input_required` per waiting form
+  (`{form_id, node_id, node_title, form_content, inputs, actions, display_in_ui, form_token, approval_channels,
+  resolved_default_values, expiration_time}`; `form_content` is the **rendered** content — runtime references replaced,
+  the form's own `{{#$output.x#}}` placeholders kept, as Dify's `_enrich_hitl_required`) and one `workflow_paused` (`{outputs, paused_nodes,
+  reasons, workflow_run_id, elapsed_time, ...}`). The run's `status` is `paused`. The draft run's own stream **ends**
+  with `workflow_paused`, as Dify's; the run's channel stays open for the round the answer resumes, which a client follows
+  on [the reconnect endpoint](#reconnecting). At most one pause of a run is open at a time: a resume that pauses again records a new pause with the next
+  `generation`, and a resume consumes only the decisions its claim took.
+* **The form.** `GET /v1/form/human_input/{token}`: with a session it serves a **console** form (any account of the
+  workspace; `404` for an unknown token and for one of a surface the console API does not serve, `412`
+  `human_input_form_submitted` / `human_input_form_expired`) answers Dify's FormDefinition: `form_content`, `inputs`,
+  `user_actions`, `rendered_content`, `expiration_time` (Unix seconds), `default_values`, `node_title`, `display_in_ui`.
+  `POST` with Dify's `{inputs, action}` checks the form is still open first (`404`/`412`), then validates with the node's
+  own rules (`400 invalid_form_data`: a missing field, a value outside a select's options, an unknown action) and wakes
+  the run; the answer is `{}`. Forms are one-shot: the first submission wins. **Without** a session the same path serves a
+  mail recipient's token (`human_input_form_recipients`), which is what opens a mailed link: same definition, same
+  validation, and the run resumes as it does for a console answer (an external recipient's answer has no account; a
+  member's is recorded against the member). A console form's token without a session is `404`, as in Dify's surface
+  policy.
+* **The resume.** A wake claims the pause atomically (`paused → running`) and continues the run from the engine snapshot:
+  the answers become the node's outputs (`__action_id`, `__action_value`, `__rendered_content`), `workflow_started`
+  (`reason: resumption`) and the names of the decisions the claim consumed (`human_input_form_filled`) are published,
+  and the rest of the run follows on the same stream. A run another process holds (after a restart, or a second server on
+  the same database) re-attaches from its records the same way.
+* **No replay.** A resume continues from the pause's engine snapshot: a node that ran before the pause does not run
+  again, so its side effects (a model call, an HTTP request, code) happen once per run. A reconnect reads records and
+  publishes no node execution's effects at all.
+* **Reconnecting.** `GET /v1/workflow/{runId}/events` (the account that created the run; `404` otherwise) subscribes to
+  the live channel first, then rebuilds the state from the records: the run's `workflow_started` (the run's original
+  `created_at`), `node_started` + `node_finished` per execution so far, the waiting forms' `human_input_required`, and
+  `workflow_paused` (with the pause's `generation` as its identity). Frames published after the mark are streamed live,
+  dropping only those the snapshot already described (matched by node execution id and by the pause's `generation` —
+  never by timestamp). `include_state_snapshot` (default false) asks for the snapshot; `continue_on_pause` (default
+  false) keeps the stream open across a pause instead of ending it at one. A run that already ended answers one
+  `workflow_finished` and closes.
+* **Timeouts.** The node's `timeout` / `timeout_unit` (`hour`, `day`) ends its wait through the node's `__timeout` branch
+  (`human_input_form_timeout`); `COLLAB_HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS` (default 7 days; 0 disables) expires a run
+  that waits longer and stops it. The scan that does both is a task of the server (`HumanInputTimeouts`,
+  `COLLAB_HUMAN_INPUT_SCAN_SECONDS`, default 5): once at startup (a stopped server leaves deadlines behind) and then
+  periodically; it goes through the same resume and stop paths an answer does.
+* **Ending without an engine.** A stop of a paused run, an app deletion, a global timeout and every resume that fails
+  after its claim end the run through one entry: the durable row, then exactly one `workflow_finished` on the run's
+  channel, then the channel is released — a connection that is already attached never waits for frames nobody will send.
+* **Keep-alives.** The ping belongs to the run's channel, not to a round: a run that waits for a person keeps sending
+  `event: ping` while it waits (Dify's queue pings regardless of what is running).
+* **Numbering.** A resumed round continues the run's execution numbering from the highest stored `index` (Dify's
+  `persistence.py`), so no index repeats and the history keeps its order. A pause's `workflow_paused` carries the
+  **round's** start as `created_at` and this round's time as `elapsed_time`, live and after a reconnect; the pause row
+  keeps both, with the run's outputs so far. Stopping a paused run closes its pause and its waiting forms; deleting the app closes
+  its waiting runs the same way.
+* **Delivery.** After the pause is durable, each form whose node enables an `email` delivery method (in the node's
+  `delivery_methods`) is mailed to that method's recipients, one message per address, with the node's `subject` and
+  `body` (its `{{#url#}}` replaced). A `member` recipient is the workspace account `reference_id` names, an `external`
+  one its own address, and `include_bound_group` (Dify's `whole_workspace`) the whole workspace; every recipient gets a
+  **row of its own with its own token** (`human_input_form_recipients`), and the link is `COLLAB_WEBAPP_BASE_URL` +
+  `/form/{recipientToken}` — the console's form token never leaves the console. A row is marked mailed only after the
+  send, so a restart or a later pause that adopts the same waiting form mails nothing twice. Without
+  `COLLAB_WEBAPP_BASE_URL` the mail is skipped and logged. A mail failure is logged and never unwinds the pause. `display_in_ui` follows
+  `human_input_adapter`: true in the console, and for a published run only when a `webapp` delivery method is enabled.
+* **The node's own form** (the panel's "Run this step"):
+  `POST /v1/apps/{app}/workflows/draft/human-input/nodes/{node}/form/preview` (edit; the app of the route's mode —
+  `/workflows/...` a workflow app, `/advanced-chat/workflows/...` a chatflow, another mode `404 app_not_found`) with
+  `{"inputs": {...}}` answers `{form_id, node_id, node_title, form_content (rendered with `inputs` and the account's
+  draft variables), inputs, actions, display_in_ui: null, form_token: null, resolved_default_values, expiration_time:
+  null}`. `.../form/run` with `{form_inputs, inputs, action}` (all required) validates the submission and answers the
+  outputs it makes (`__action_id`, `__action_value`, `__rendered_content` included), recorded as the node's draft
+  variables — no workflow run happens, as in Dify. A node of another type is `400 bad_request`; an unknown node `404
+  not_found`. `POST .../human-input/nodes/{node}/delivery-test` `{"delivery_method_id": "...", "inputs": {...}}` (both
+  app modes) sends one message of that delivery method about a **delivery-test** form (`form_kind: delivery_test`,
+  `workflow_run_id` null): its link opens and validates the real form, the answer proves it and resumes nothing, and in
+  debug mode the recipient is the signed-in account. `400` for a method that cannot send or has no recipients, and
+  without mail configured.
+
+**Mail delivery.** Every enabled email method's recipients get their own persistent token and their own link
+(`/form/{token}`), and the link opens the form anonymously. The body is Dify's `render_markdown_body`: the template is
+sanitized first (its own HTML never reaches the message, `bleach.clean(tags=[])`), the variables are filled in (values
+stay text), and the result is rendered by a CommonMark parser (`swift-markdown`) into the tags a mail may carry, with
+links restricted to `http(s)`, `mailto:` and `#` destinations — a rendered value cannot become an attribute or a handler.
+The subject is Dify's `sanitize_subject` (one line, no tags). A recipient is marked mailed only after the SMTP server
+took the message, and a row that is still unmarked is mailed again by the product's periodic scan: at-least-once, and a
+recipient whose mail went out just before a crash can receive it twice.
+
+**Deviations from Dify.** The email link carries a token minted per recipient (as Dify) but of the form's own token
+family (no separate access token per recipient with its own expiry); a human-input preview/run of a node of another type
+answers `400` where Dify raises a `ValueError` (a 500).
 
 ### Draft variables (1.14)
 

@@ -1,0 +1,333 @@
+{
+ "app": "40e53f45-76a8-4ac7-a284-2205f863662b",
+ "wait_seconds": 3.0,
+ "frames": [
+  {
+   "event": "workflow_started",
+   "at": 1792478699.513,
+   "created_at": 1792478699,
+   "keys": [
+    "created_at",
+    "id",
+    "inputs",
+    "reason",
+    "workflow_id"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478699.513,
+   "created_at": 1792478699,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478699.516,
+   "created_at": 1792478699,
+   "finished_at": 1792478699,
+   "elapsed_time": 9.4e-05,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "outputs_truncated",
+    "predecessor_node_id",
+    "process_data",
+    "process_data_truncated",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478699.611,
+   "created_at": 1792478699,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "human_input_required",
+   "at": 1792478699.758,
+   "keys": [
+    "actions",
+    "approval_channels",
+    "display_in_ui",
+    "expiration_time",
+    "form_content",
+    "form_id",
+    "form_token",
+    "inputs",
+    "node_id",
+    "node_title",
+    "resolved_default_values"
+   ]
+  },
+  {
+   "event": "workflow_paused",
+   "at": 1792478699.758,
+   "created_at": 1792478699,
+   "elapsed_time": 0.237875,
+   "status": "paused",
+   "workflow_run_id": "79003c2d-12c7-4db5-8029-7f97916d8e5f",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "outputs",
+    "paused_nodes",
+    "reasons",
+    "status",
+    "total_steps",
+    "total_tokens",
+    "workflow_run_id"
+   ]
+  },
+  {
+   "event": "workflow_started",
+   "at": 1792478702.915,
+   "created_at": 1792478699,
+   "keys": [
+    "created_at",
+    "id",
+    "inputs",
+    "reason",
+    "workflow_id"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478702.915,
+   "created_at": 1792478699,
+   "keys": [
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478702.916,
+   "created_at": 1792478699,
+   "finished_at": 1792478699,
+   "elapsed_time": 9.4e-05,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "predecessor_node_id",
+    "process_data",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478702.916,
+   "created_at": 1792478702,
+   "keys": [
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478702.916,
+   "created_at": 1792478702,
+   "finished_at": 1792478702,
+   "elapsed_time": 0.002004,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "predecessor_node_id",
+    "process_data",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "node_started",
+   "at": 1792478702.916,
+   "created_at": 1792478702,
+   "keys": [
+    "agent_strategy",
+    "created_at",
+    "extras",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "predecessor_node_id",
+    "title"
+   ]
+  },
+  {
+   "event": "node_finished",
+   "at": 1792478702.925,
+   "created_at": 1792478702,
+   "finished_at": 1792478702,
+   "elapsed_time": 8.9e-05,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "elapsed_time",
+    "error",
+    "execution_metadata",
+    "files",
+    "finished_at",
+    "id",
+    "index",
+    "inputs",
+    "inputs_truncated",
+    "iteration_id",
+    "loop_id",
+    "node_id",
+    "node_type",
+    "outputs",
+    "outputs_truncated",
+    "predecessor_node_id",
+    "process_data",
+    "process_data_truncated",
+    "status",
+    "title"
+   ]
+  },
+  {
+   "event": "workflow_finished",
+   "at": 1792478702.939,
+   "created_at": 1792478702,
+   "finished_at": 1792478702,
+   "elapsed_time": 0.126575,
+   "status": "succeeded",
+   "keys": [
+    "created_at",
+    "created_by",
+    "elapsed_time",
+    "error",
+    "exceptions_count",
+    "files",
+    "finished_at",
+    "id",
+    "outputs",
+    "status",
+    "total_steps",
+    "total_tokens",
+    "workflow_id"
+   ]
+  }
+ ],
+ "detail": {
+  "id": "79003c2d-12c7-4db5-8029-7f97916d8e5f",
+  "status": "succeeded",
+  "created_at": 1792478699,
+  "finished_at": 1792478702,
+  "elapsed_time": 0.125648,
+  "total_tokens": 0,
+  "total_steps": 4
+ },
+ "history": {
+  "id": "79003c2d-12c7-4db5-8029-7f97916d8e5f",
+  "status": "succeeded",
+  "created_at": 1792478699,
+  "finished_at": 1792478702,
+  "elapsed_time": 0.125648,
+  "total_tokens": 0,
+  "total_steps": 4
+ },
+ "error": null,
+ "run_id": "79003c2d-12c7-4db5-8029-7f97916d8e5f",
+ "paused_detail": {
+  "id": "79003c2d-12c7-4db5-8029-7f97916d8e5f",
+  "status": "paused",
+  "created_at": 1792478699,
+  "finished_at": null,
+  "elapsed_time": 0.0,
+  "total_tokens": 0,
+  "total_steps": 2
+ },
+ "submit_status": 200
+}

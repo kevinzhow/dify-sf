@@ -50,7 +50,11 @@ accounts: `COLLAB_AUTH_ACCESS_TOKEN_MINUTES` (60), `COLLAB_AUTH_REFRESH_TOKEN_DA
 secrets and model providers (protocol 1.9): `COLLAB_SECRETS_KEY` (base64 of 32 random bytes, `openssl rand -base64 32`; encrypts
 model provider credentials and secret environment variables at rest; unset = the server refuses to store secrets; keep it: with
 another key stored secrets cannot be read), `COLLAB_MODELS_VALIDATE` (true: check credentials with the provider before saving),
-`COLLAB_MODELS_VALIDATE_TIMEOUT_SECONDS` (10).
+`COLLAB_MODELS_VALIDATE_TIMEOUT_SECONDS` (10);
+runtime (protocols 1.13–1.16): `COLLAB_PLUGIN_DAEMON_URL` / `_KEY` / `_TENANT` (models), `COLLAB_SANDBOX_URL` / `_KEY`,
+`COLLAB_SSRF_PROXY_URL`, `COLLAB_RUNTIME_MAX_WORKERS` (10) / `_MAX_STEPS` (500) / `_MAX_TIME_SECONDS` (3600), and human
+input's `COLLAB_WEBAPP_BASE_URL` (the form link in the mail) and `COLLAB_HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS` (604800; 0
+disables).
 
 ## Test
 

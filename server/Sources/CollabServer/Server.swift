@@ -65,20 +65,69 @@ public enum CollabServerMain {
                                   configReader: reader.scoped(to: "collab.http"))
         app.middleware.use(CORSPolicy(allowedOrigins: config.corsAllowedOrigins), at: .beginning)
         let routes = try Routes(registry: registry, store: store, config: config, logger: logger, models: models)
-        routes.register(on: app)
+        try routes.register(on: app)
+        // Protocol 1.16: the work a stopped server left behind (answered pauses, deadlines that passed, unsent mail) runs
+        // **after** the migrations, as part of the migrator's service: a server that starts during an upgrade must not
+        // read a schema that is still changing, and a read that fails then must be retried rather than swallowed.
+        let startupWork = StartupRecovery(routes: routes, logger: logger)
 
         let group = ServiceGroup(
             configuration: .init(
                 services: [
                     .init(service: Named(name: "postgres", base: pg, logger: logger)),
-                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger, staleRunSeconds: config.runtimeMaxTimeSeconds + 300, blobs: routes.blobs), logger: logger)),
+                    .init(service: Named(name: "migrator", base: Migrator(store: store, logger: logger,
+                        staleRunSeconds: config.runtimeMaxTimeSeconds + 300, blobs: routes.blobs,
+                        afterMigration: startupWork), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
+                    // Protocol 1.16: node and global human-input deadlines, scanned in the product, not only in tests.
+                    .init(service: Named(name: "human-input-timeouts",
+                                         base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger),
+                                         logger: logger)),
                     .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
                 gracefulShutdownSignals: [.sigterm, .sigint],
                 logger: logger))
         logger.info("starting on \(config.httpHost):\(config.httpPort), database \(config.dbHost):\(config.dbPort)/\(config.dbName)")
         try await group.run()
+    }
+}
+
+/// What a stopped server left behind, run once the migrations have made the schema readable (protocol 1.16): the runs
+/// whose answer arrived while it was down, the deadlines that passed, and the human-input mail that never went out. Each
+/// piece asks the database again and retries a transient failure, because "the read failed" is not "there is nothing to
+/// do" — the periodic services only cover work produced from now on.
+struct StartupRecovery: Sendable {
+    let routes: Routes
+    let logger: Logger
+    /// How many times a failing piece is tried before the pass ends (it is tried again on the next start).
+    var attempts: Int = 5
+
+    func run() async {
+        var delay = 0.5
+        // The resumed runs first: their pauses may then be ended by the timeout scan in the same pass.
+        for name in ["resume answered runs", "sweep human-input timeouts", "deliver human-input mail"] {
+            for attempt in 1...attempts {
+                do {
+                    switch name {
+                    case "resume answered runs":
+                        let resumed = try await routes.resumeRunsWaitingAfterRestartStrict()
+                        if resumed > 0 { logger.info("resumed \(resumed) answered run(s) after a restart") }
+                    case "sweep human-input timeouts":
+                        let swept = await routes.sweepHumanInputTimeouts(now: Date())
+                        if swept.timedOut > 0 || swept.expired > 0 {
+                            logger.info("human input timeout scan at startup: \(swept.timedOut) form(s), \(swept.expired) run(s)")
+                        }
+                    default:
+                        let mailed = await routes.deliverPendingHumanInputMail()
+                        if mailed > 0 { logger.info("human input mail at startup: \(mailed) message(s) delivered") }
+                    }
+                    break
+                } catch {
+                    logger.warning("startup recovery (\(name)) attempt \(attempt) failed: \(error)")
+                    if attempt < attempts { try? await Task.sleep(for: .seconds(delay)); delay = min(delay * 2, 8) }
+                }
+            }
+        }
     }
 }
 
@@ -89,6 +138,8 @@ struct Migrator: Service {
     /// Protocol 1.14: a run "running" for longer than this ran in a server that stopped.
     var staleRunSeconds: Double = 3900
     var blobs: (any BlobStore)? = nil
+    /// Protocol 1.16: what a stopped server left behind, run once the schema is ready (nil: nothing).
+    var afterMigration: StartupRecovery?
 
     func run() async throws {
         var delay = 0.2
@@ -113,6 +164,8 @@ struct Migrator: Service {
                     logger.warning("\(sealed.plaintextLeft) secrets are still stored in plaintext: set COLLAB_SECRETS_KEY to encrypt them")
                 }
                 migrated = true
+                // The schema is ready: the recovery work may read it. Each piece retries on its own terms.
+                if let afterMigration { await afterMigration.run() }
                 break
             } catch {
                 logger.warning("database not ready (attempt \(attempt)): \(error)")

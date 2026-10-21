@@ -24,11 +24,14 @@ extension Routes {
         }
     }
 
-    /// Dify's FormDefinition, in the order its API emits it, plus `expiration_time` as Unix seconds.
-    static func formDefinitionJSON(_ f: StoredHumanInputForm) throws -> JSONValue {
-        .object([
+    /// Dify's FormDefinition, in the order its API emits it, plus `expiration_time` as Unix seconds. [inputs] are the
+    /// resolved inputs when the form's pause still has its pool (Dify's `resolve_form_inputs`), else the stored ones.
+    static func formDefinitionJSON(_ f: StoredHumanInputForm, inputs: [JSONObject]? = nil) throws -> JSONValue {
+        let formInputs: JSONValue = inputs.map { list in .array(list.map(JSONValue.object)) }
+            ?? ((try? JSONValue.parse(f.inputs)) ?? .array([]))
+        return .object([
             "form_content": .string(f.formContent),
-            "inputs": (try? JSONValue.parse(f.inputs)) ?? .array([]),
+            "inputs": formInputs,
             "user_actions": (try? JSONValue.parse(f.userActions)) ?? .array([]),
             "rendered_content": .string(f.renderedContent),
             "expiration_time": .int(f.expirationTime ?? 0),
@@ -36,6 +39,16 @@ extension Routes {
             "node_title": f.nodeTitle.isEmpty ? .null : .string(f.nodeTitle),
             "display_in_ui": .bool(f.displayInUi),
         ])
+    }
+
+    /// The inputs a client should see: a variable-backed select's options resolved against the pause's own pool
+    /// (`human_input_policy.resolve_variable_select_input_options`); nil when there is no pool to resolve against, in
+    /// which case the stored definition is served as it is.
+    static func resolvedInputs(_ form: StoredHumanInputForm, pauseSnapshot: String?) -> [JSONObject]? {
+        guard let pauseSnapshot, let snapshot = try? GraphEngineSnapshot(data: Data(pauseSnapshot.utf8)),
+              // The form's own execution, not the root: inside an iteration the item's pool holds its options.
+              let pool = snapshot.variablePool(forExecution: form.executionId), let config = try? formConfig(form) else { return nil }
+        return config.inputsResolved(pool: pool)
     }
 
     /// The engine's form config, rebuilt from what was persisted: the field types, their option sources and defaults and
@@ -76,6 +89,18 @@ extension Routes {
         return form
     }
 
+    /// The form a token names, on the surface the request belongs to. An **email link** carries a recipient token
+    /// (`human_input_form_recipients`), which is served without an account — that is what a recipient of the mail has —
+    /// while a console token still needs one (`consoleForm`). A console form's token without a session is therefore 404,
+    /// not an anonymous form: the console boundary stays where Dify keeps it.
+    private func formAndRecipient(_ req: Request) async throws -> (form: StoredHumanInputForm, recipient: StoredFormRecipient?) {
+        if req.headers[.authorization] != nil { return (try await consoleForm(req), nil) }
+        guard let found = try? await store.formRecipient(token: try humanInputToken(req)) else {
+            throw ServerError.notFound
+        }
+        return (found.form, found.recipient)
+    }
+
     /// `ALLOWED_RECIPIENT_TYPES_BY_SURFACE[HumanInputSurface.CONSOLE]`.
     static let consoleSurfaceRecipients: Set<HumanInputRecipient> = [.console, .backstage]
 
@@ -99,21 +124,48 @@ extension Routes {
     }
 
     private func humanInputFormDefinition(_ req: Request) async throws -> Response {
-        let form = try await consoleForm(req)
+        let (form, recipient) = try await formAndRecipient(req)
         // `get_form_definition_by_token_for_console` → `_ensure_not_submitted`.
         if form.status == .submitted {
             throw ServerError.http(status: 412, code: "human_input_form_submitted", message: "this form has been submitted")
         }
-        return try json(Self.formDefinitionJSON(form))
+        // Dify reads the definition through `HumanInputService.resolve_form_inputs`: the pool comes from the run's open
+        // pause, so an already resumed form keeps its unresolved definition (there is no pool any more).
+        // A delivery test has no run and therefore no pool to resolve against: its definition is served as it was stored.
+        let pause = if let runId = form.workflowRunId { (try? await store.openPauses(workflowRunId: runId))?.first } else { nil }
+            as StoredWorkflowPause?
+        // Dify's `_ensure_not_expired`: a link whose deadline has passed does not open the form. The deadline is the
+        // node's own `expiration_time` (a delivery-test form expires with the definition that produced it).
+        try Self.ensureNotExpired(form, now: Date())
+        // The **anonymous recipient** surface, on top of the deadline: a form the run no longer waits on — answered, or
+        // closed by a stop, a global expiry or the app's deletion — does not open either (Dify's web
+        // `HumanInputFormApi.get` runs `ensure_form_active`, the same rule its submit path applies). The console surface
+        // keeps the console's own rule (submitted is 412 above; the rest is the console's to check on submit), so this
+        // branch is the recipient's only.
+        if recipient != nil {
+            try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
+        }
+        return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
     }
 
     static func invalidFormData(_ message: String) -> ServerError {
         .http(status: 400, code: "invalid_form_data", message: message)
     }
 
+    /// Dify's `_ensure_not_expired` (a link whose deadline passed answers 412 `human_input_form_expired`, on the read and
+    /// on the submission alike). The deadline is the node's own `expiration_time` as the timeout scan compares it, so a
+    /// form the scan is about to end cannot be answered in between.
+    static func ensureNotExpired(_ form: StoredHumanInputForm, now: Date) throws {
+        if let deadline = form.expirationTime, deadline > 0, now.timeIntervalSince1970 >= Double(deadline) {
+            throw ServerError.http(status: 412, code: "human_input_form_expired", message: "this form has expired")
+        }
+    }
+
     private func submitHumanInputForm(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req)
-        let token = try humanInputToken(req)
+        // A console answer is attributable to its account; a mail recipient's answer is attributable to the recipient row.
+        let (form0, recipient) = try await formAndRecipient(req)
+        let p = req.headers[.authorization] != nil ? try await authenticate(req) : nil
+        let token = form0.token
         let data = try await body(req)
         guard let parsed = try? JSONValue.parse(data.isEmpty ? Data("{}".utf8) : data), case .object(let b) = parsed else {
             throw Self.invalidFormData("the body must be a JSON object")
@@ -124,7 +176,7 @@ extension Routes {
         guard case .string(let action)? = b["action"], !action.isEmpty else {
             throw Self.invalidFormData("action is required")
         }
-        let form = try await consoleForm(req)
+        let form = form0
         // `submit_form_by_token`: `ensure_form_active` first, then the field validation.
         try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
         // Dify validates against the form's own definition before the row is touched, so an invalid value answers 400
@@ -137,9 +189,20 @@ extension Routes {
 
         let inputsText = String(decoding: try WireJSON.encode(JSONValue.object(values)), as: UTF8.self)
         // The store re-checks the deadlines after taking the run's lock; the config value is the global one.
-        switch try await store.submitHumanInputForm(token: token, inputs: inputsText, action: action, userId: p.id,
+        // Who answered: the account, or the member a recipient row names; an external recipient has none.
+        let answeredBy = p?.id ?? recipient?.referenceId ?? ""
+        switch try await store.submitHumanInputForm(token: token, inputs: inputsText, action: action, userId: answeredBy,
                                                     globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
-        case .accepted:
+        case .accepted(let answered):
+            if let recipient { try? await store.markFormRecipientUsed(token: recipient.token, at: Date()) }
+            // Dify's `enqueue_resume`: the answer asks for a resume; it runs in the background so the caller is answered
+            // immediately, and the claim inside makes a second answer harmless.
+            // A delivery test belongs to no run: its answer proves the form and resumes nothing.
+            if let runId = answered.workflowRunId {
+                let routes = self
+                let docId = answered.docId
+                Task.detached { await routes.resumeRun(appId: docId, runId: runId) }
+            }
             struct Empty: Encodable {}
             return try json(Empty())
         case .alreadySubmitted:

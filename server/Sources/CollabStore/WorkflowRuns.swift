@@ -111,6 +111,18 @@ extension PostgresStore {
         return run
     }
 
+    /// A run by its id alone: the reconnect endpoint knows the run id it was given, not the document.
+    public func workflowRun(id: String) async throws -> StoredWorkflowRun? {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT \(unescaped: Self.runColumns) FROM workflow_runs r LEFT JOIN accounts a ON a.id = r.created_by
+                WHERE r.id = \(id)
+                """, logger: self.logger)
+            for try await row in rows { return try Self.decodeRun(row) }
+            return nil
+        }
+    }
+
     public func workflowRun(doc: String, id: String) async throws -> StoredWorkflowRun? {
         try await bounded {
             let rows = try await self.client.query("""
@@ -167,6 +179,20 @@ extension PostgresStore {
     }
 
     /// The node executions of a run, oldest first (Dify's `get_executions_by_workflow_run`).
+    /// The highest `run_index` the run has stored, 0 when it has none: a resumed round continues the numbering instead of
+    /// restarting at 1 (Dify's `persistence.py` resumes from the stored maximum), so the history's order stays the run's.
+    public func maxNodeExecutionIndex(doc: String, run: String) async throws -> Int {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT coalesce(max(run_index), 0) FROM workflow_node_executions
+                WHERE doc_id = \(doc) AND workflow_run_id = \(run)
+                """, logger: self.logger)
+            var top = 0
+            for try await (n,) in rows { top = try n.decode(Int.self) }
+            return top
+        }
+    }
+
     public func nodeExecutions(doc: String, run: String) async throws -> [StoredNodeExecution] {
         try await bounded {
             let rows = try await self.client.query("""

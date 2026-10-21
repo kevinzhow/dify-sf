@@ -41,6 +41,9 @@ public struct ServerConfig: Sendable {
     /// TEST ONLY: deliberately break the server so that the harness can prove it notices
     /// (`ackBeforeCommit`, `skipStaleCheck`). Empty in every real deployment.
     public var testDefect: String
+    /// TEST ONLY (`COLLAB_TEST_CLOCK_SKEW_SECONDS`): the timeout scan's clock runs ahead, so a test can age a form or a
+    /// global deadline without waiting an hour. Production leaves it 0.
+    public var testClockSkewSeconds: Int
     /// Accounts (protocol 1.8), Dify's defaults: access tokens live 60 minutes, refresh tokens 30 days, activation links 72 hours.
     public var accessTokenMinutes: Int
     public var refreshTokenDays: Int
@@ -69,6 +72,8 @@ public struct ServerConfig: Sendable {
     /// `HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS`, default 7 days). A submission past it answers 412 and the timeout scanner
     /// stops the run; 0 disables the global deadline.
     public var humanInputGlobalTimeoutSeconds: Int
+    /// Protocol 1.16: how often the timeout scan runs (`COLLAB_HUMAN_INPUT_SCAN_SECONDS`, 5).
+    public var humanInputScanSeconds: Int
     /// Protocol 1.13: Dify's plugin daemon (models), e.g. `http://plugin_daemon:5002` (`COLLAB_PLUGIN_DAEMON_URL`; Dify's
     /// `PLUGIN_DAEMON_URL`). Empty = no model runtime: LLM nodes cannot run and `system-features` does not offer runs.
     public var pluginDaemonURL: String
@@ -108,6 +113,7 @@ public struct ServerConfig: Sendable {
         maxReplay = reader.int(forKey: "collab.maxReplay", default: 2000)
         snapshotEvery = reader.int(forKey: "collab.snapshotEvery", default: 200)
         humanInputGlobalTimeoutSeconds = reader.int(forKey: "collab.humanInputGlobalTimeoutSeconds", default: 604_800)
+        humanInputScanSeconds = reader.int(forKey: "collab.humanInputScanSeconds", default: 5)
         testCommitDelayMillis = reader.int(forKey: "collab.test.commitDelayMillis", default: 0)
         logLevel = reader.string(forKey: "collab.log.level", default: "info")
         mail = MailConfig(reader: reader)
@@ -116,6 +122,7 @@ public struct ServerConfig: Sendable {
         corsAllowedOrigins = reader.string(forKey: "collab.cors.allowedOrigins", default: "http://localhost:*,http://127.0.0.1:*,http://[::1]:*")
             .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         testDefect = reader.string(forKey: "collab.test.defect", default: "")
+        testClockSkewSeconds = reader.int(forKey: "collab.test.clockSkewSeconds", default: 0)
         accessTokenMinutes = reader.int(forKey: "collab.auth.accessTokenMinutes", default: 60)
         refreshTokenDays = reader.int(forKey: "collab.auth.refreshTokenDays", default: 30)
         inviteExpiryHours = reader.int(forKey: "collab.auth.inviteExpiryHours", default: 72)

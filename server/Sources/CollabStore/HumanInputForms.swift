@@ -15,6 +15,8 @@ public struct StoredWorkflowPause: Sendable, Equatable {
     public var totalTokens: Int
     public var totalSteps: Int
     public var elapsedTime: Double
+    /// The run's outputs so far (`workflow_paused.outputs`), kept so a reconnect's pause frame says the same as the live one.
+    public var outputs: String
     public var createdAt: Date
     public var resumedAt: Date?
     /// Every form of this generation is answered (submitted, expired or timed out) and the run may resume.
@@ -22,7 +24,7 @@ public struct StoredWorkflowPause: Sendable, Equatable {
 
     public init(workflowRunId: String, generation: Int, docId: String, nodeId: String = "", snapshot: String,
                 executionIds: [String] = [], totalTokens: Int = 0, totalSteps: Int = 0, elapsedTime: Double = 0,
-                createdAt: Date, resumedAt: Date? = nil, resumeRequested: Bool = false) {
+                outputs: String = "{}", createdAt: Date, resumedAt: Date? = nil, resumeRequested: Bool = false) {
         self.workflowRunId = workflowRunId
         self.generation = generation
         self.docId = docId
@@ -32,6 +34,7 @@ public struct StoredWorkflowPause: Sendable, Equatable {
         self.totalTokens = totalTokens
         self.totalSteps = totalSteps
         self.elapsedTime = elapsedTime
+        self.outputs = outputs
         self.createdAt = createdAt
         self.resumedAt = resumedAt
         self.resumeRequested = resumeRequested
@@ -49,6 +52,13 @@ public enum HumanInputRecipient: String, Sendable {
     case webapp
 }
 
+/// Dify's `HumanInputFormKind`: a form a run waits on, or the panel's delivery test (which belongs to no run and whose
+/// answer only proves the form works).
+public enum HumanInputFormKind: String, Sendable {
+    case runtime
+    case deliveryTest = "delivery_test"
+}
+
 public enum HumanInputFormStatus: String, Sendable {
     case waiting
     case submitted
@@ -62,7 +72,8 @@ public enum HumanInputFormStatus: String, Sendable {
 /// the runtime rendered, never re-encoded here: the client compares field order and number kinds with Dify's.
 public struct StoredHumanInputForm: Sendable, Equatable {
     public var id: String
-    public var workflowRunId: String
+    /// The run that waits on this form; nil for a delivery test, which belongs to no run.
+    public var workflowRunId: String?
     /// The pause this form currently belongs to.
     public var generation: Int
     public var executionId: String
@@ -88,14 +99,15 @@ public struct StoredHumanInputForm: Sendable, Equatable {
     public var consumedAt: Date?
     public var createdAt: Date
     public var recipientType: HumanInputRecipient
+    public var kind: HumanInputFormKind
 
-    public init(id: String, workflowRunId: String, generation: Int = 1, executionId: String, docId: String, nodeId: String,
+    public init(id: String, workflowRunId: String?, generation: Int = 1, executionId: String, docId: String, nodeId: String,
                 nodeTitle: String, token: String, formContent: String, inputs: String, userActions: String,
                 renderedContent: String, defaultValues: String? = nil, resolvedDefaultValues: String? = nil,
                 actions: String, displayInUi: Bool, expirationTime: Int? = nil, status: HumanInputFormStatus = .waiting,
                 submittedInputs: String? = nil, submittedAction: String? = nil, submittedBy: String? = nil,
                 submittedAt: Date? = nil, consumedAt: Date? = nil, createdAt: Date,
-                recipientType: HumanInputRecipient = .console) {
+                recipientType: HumanInputRecipient = .console, kind: HumanInputFormKind = .runtime) {
         self.id = id
         self.workflowRunId = workflowRunId
         self.generation = generation
@@ -121,6 +133,7 @@ public struct StoredHumanInputForm: Sendable, Equatable {
         self.consumedAt = consumedAt
         self.createdAt = createdAt
         self.recipientType = recipientType
+        self.kind = kind
     }
 }
 
@@ -160,34 +173,45 @@ extension PostgresStore {
     static let formColumns = """
         id, workflow_run_id, generation, execution_id, doc_id, node_id, node_title, token, form_content, inputs,
         user_actions, rendered_content, default_values, resolved_default_values, actions, display_in_ui, expiration_time,
-        status, submitted_inputs, submitted_action, submitted_by, submitted_at, consumed_at, created_at, recipient_type
+        status, submitted_inputs, submitted_action, submitted_by, submitted_at, consumed_at, created_at, recipient_type,
+        form_kind
         """
 
-    static func decodeForm(_ row: PostgresRow) throws -> StoredHumanInputForm {
+    /// `formColumns` qualified for a join (`human_input_forms` shares `workflow_run_id` and others with its neighbours).
+    static let formColumnsQualified = """
+        f.id, f.workflow_run_id, f.generation, f.execution_id, f.doc_id, f.node_id, f.node_title, f.token, f.form_content,
+        f.inputs, f.user_actions, f.rendered_content, f.default_values, f.resolved_default_values, f.actions,
+        f.display_in_ui, f.expiration_time, f.status, f.submitted_inputs, f.submitted_action, f.submitted_by,
+        f.submitted_at, f.consumed_at, f.created_at, f.recipient_type, f.form_kind
+        """
+
+    static func decodeForm(_ row: PostgresRow, offset: Int = 0) throws -> StoredHumanInputForm {
         let r = row.makeRandomAccess()
-        let rawStatus = try r[17].decode(String.self)
+        // `offset` is where this row's form columns start (a join's recipient columns come first).
+        let rawStatus = try r[17 + offset].decode(String.self)
         guard let status = HumanInputFormStatus(rawValue: rawStatus) else {
             throw HumanInputStoreError.unknownStatus(rawStatus)
         }
         return StoredHumanInputForm(
-            id: try r[0].decode(String.self), workflowRunId: try r[1].decode(String.self),
-            generation: Int(try r[2].decode(Int32.self)), executionId: try r[3].decode(String.self),
-            docId: try r[4].decode(String.self), nodeId: try r[5].decode(String.self),
-            nodeTitle: try r[6].decode(String.self), token: try r[7].decode(String.self),
-            formContent: try r[8].decode(String.self), inputs: try r[9].decode(String.self),
-            userActions: try r[10].decode(String.self), renderedContent: try r[11].decode(String.self),
-            defaultValues: try r[12].decode(String?.self), resolvedDefaultValues: try r[13].decode(String?.self),
-            actions: try r[14].decode(String.self), displayInUi: try r[15].decode(Bool.self),
-            expirationTime: try r[16].decode(Int64?.self).map { Int($0) }, status: status,
-            submittedInputs: try r[18].decode(String?.self), submittedAction: try r[19].decode(String?.self),
-            submittedBy: try r[20].decode(String?.self), submittedAt: try r[21].decode(Date?.self),
-            consumedAt: try r[22].decode(Date?.self), createdAt: try r[23].decode(Date.self),
-            recipientType: try Self.decodeRecipient(try r[24].decode(String.self)))
+            id: try r[0 + offset].decode(String.self), workflowRunId: try r[1 + offset].decode(String?.self),
+            generation: Int(try r[2 + offset].decode(Int32.self)), executionId: try r[3 + offset].decode(String.self),
+            docId: try r[4 + offset].decode(String.self), nodeId: try r[5 + offset].decode(String.self),
+            nodeTitle: try r[6 + offset].decode(String.self), token: try r[7 + offset].decode(String.self),
+            formContent: try r[8 + offset].decode(String.self), inputs: try r[9 + offset].decode(String.self),
+            userActions: try r[10 + offset].decode(String.self), renderedContent: try r[11 + offset].decode(String.self),
+            defaultValues: try r[12 + offset].decode(String?.self), resolvedDefaultValues: try r[13 + offset].decode(String?.self),
+            actions: try r[14 + offset].decode(String.self), displayInUi: try r[15 + offset].decode(Bool.self),
+            expirationTime: try r[16 + offset].decode(Int64?.self).map { Int($0) }, status: status,
+            submittedInputs: try r[18 + offset].decode(String?.self), submittedAction: try r[19 + offset].decode(String?.self),
+            submittedBy: try r[20 + offset].decode(String?.self), submittedAt: try r[21 + offset].decode(Date?.self),
+            consumedAt: try r[22 + offset].decode(Date?.self), createdAt: try r[23 + offset].decode(Date.self),
+            recipientType: try Self.decodeRecipient(try r[24 + offset].decode(String.self)),
+            kind: HumanInputFormKind(rawValue: try r[25 + offset].decode(String.self)) ?? .runtime)
     }
 
     static let pauseColumns = """
         workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids, total_tokens, total_steps, elapsed_time,
-        created_at, resumed_at, resume_requested
+        outputs, created_at, resumed_at, resume_requested
         """
 
     /// An unknown recipient is refused like an unknown status: reading it as `console` would hand a form to a surface it
@@ -206,8 +230,8 @@ extension PostgresStore {
             docId: try r[2].decode(String.self), nodeId: try r[3].decode(String.self),
             snapshot: try r[4].decode(String.self), executionIds: try r[5].decode([String].self),
             totalTokens: Int(try r[6].decode(Int64.self)), totalSteps: Int(try r[7].decode(Int32.self)),
-            elapsedTime: try r[8].decode(Double.self), createdAt: try r[9].decode(Date.self),
-            resumedAt: try r[10].decode(Date?.self), resumeRequested: try r[11].decode(Bool.self))
+            elapsedTime: try r[8].decode(Double.self), outputs: try r[9].decode(String.self), createdAt: try r[10].decode(Date.self),
+            resumedAt: try r[11].decode(Date?.self), resumeRequested: try r[12].decode(Bool.self))
     }
 
     /// Serializes every writer of one run's pause and forms on the run's own row, in the order run → forms. Two
@@ -242,15 +266,24 @@ extension PostgresStore {
     ///
     /// If this throws, the pause is not durable: the caller must stop the run and report the failure. Continuing would
     /// pass human input, and replaying would run finished nodes again.
+    /// Why a pause was refused although the run is still alive: the app was deleted while the round ran, so there is
+    /// nobody to answer it and the run must stop instead of waiting.
+    public enum PauseRefused: Error, Equatable { case appDeleted }
+
     @discardableResult
     public func createPause(workflowRunId: String, docId: String, nodeId: String = "", snapshot: String, totalTokens: Int = 0,
-                            totalSteps: Int = 0, elapsedTime: Double = 0, forms: [StoredHumanInputForm],
-                            at: Date) async throws -> Int {
+                            totalSteps: Int = 0, elapsedTime: Double = 0, outputs: String = "{}",
+                            forms: [StoredHumanInputForm], at: Date) async throws -> Int {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(workflowRunId, c)
                 // One open pause per run (Dify's `UniqueConstraint workflow_run_id`): a pause that was not resumed yet is
                 // the run's only one, so two generations cannot both be claimed.
+                // A deleted app's engine can still be mid-round (deletion closes the pauses that exist, not the engine):
+                // writing a new pause would leave a run nobody can see, and no one to answer it.
+                let gone = try await c.query("SELECT 1 FROM apps WHERE doc_id = \(docId) AND deleted_at IS NOT NULL",
+                                             logger: self.logger)
+                for try await _ in gone { throw PauseRefused.appDeleted }
                 let status = try await c.query("SELECT status FROM workflow_runs WHERE id = \(workflowRunId) FOR UPDATE",
                                                logger: self.logger)
                 var runStatus = ""
@@ -286,9 +319,9 @@ extension PostgresStore {
                     """, logger: self.logger)
                 _ = try await c.query("""
                     INSERT INTO workflow_pauses (workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids,
-                        total_tokens, total_steps, elapsed_time, created_at)
+                        total_tokens, total_steps, elapsed_time, outputs, created_at)
                     VALUES (\(workflowRunId), \(generation), \(docId), \(nodeId), \(snapshot), \(executionIds),
-                        \(totalTokens), \(totalSteps), \(elapsedTime), \(at))
+                        \(totalTokens), \(totalSteps), \(elapsedTime), \(outputs), \(at))
                     """, logger: self.logger)
                 for f in forms {
                     // `ON CONFLICT` on (run, execution): a form still waiting keeps its id and token and moves to this
@@ -337,6 +370,25 @@ extension PostgresStore {
         }
     }
 
+    /// The runs a restarted server has to resume: a pause that is still open and already asked for (its answer was taken
+    /// before the process stopped). `docId` is the run's document, i.e. what `resumeRun` needs beside the id.
+    public func runsAwaitingResume() async throws -> [(runId: String, docId: String)] {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT p.workflow_run_id, p.doc_id FROM workflow_pauses p
+                JOIN workflow_runs r ON r.id = p.workflow_run_id
+                WHERE p.resumed_at IS NULL AND p.resume_requested AND r.status = 'paused'
+                ORDER BY p.created_at
+                """, logger: self.logger)
+            var out: [(String, String)] = []
+            for try await row in rows {
+                let r = row.makeRandomAccess()
+                out.append((try r[0].decode(String.self), try r[1].decode(String.self)))
+            }
+            return out
+        }
+    }
+
     /// Claims the run's resumption: one atomic `paused → running` on the run row, allowed only when the run is paused and
     /// its single open pause has an unconsumed answer. The pause is closed, and **only the forms of the executions this
     /// pause covers** are marked consumed and handed back as `decisions` — a submission that arrives afterwards belongs to
@@ -378,10 +430,42 @@ extension PostgresStore {
     }
 
     /// The form behind a token (the recipient's view). nil when the token does not exist.
+    /// A form's deadline, moved (a test's way of putting a link past its time without waiting an hour).
+    public func setHumanInputFormExpiration(token: String, at epoch: Int) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                UPDATE human_input_forms SET expiration_time = \(epoch) WHERE token = \(token) AND form_kind = 'runtime'
+                """, logger: self.logger)
+            // The decoder reads with the same `token =` spelling the other queries use (`tokenColumns`), so a form is the
+            // one whose token matches, whatever whitespace this statement's source had.
+        }
+    }
+
+    public func humanInputForm(id: String) async throws -> StoredHumanInputForm? {
+        try await bounded {
+            let rows = try await self.client.query("SELECT \(unescaped: Self.formColumns) FROM human_input_forms WHERE id = \(id)",
+                                                   logger: self.logger)
+            for try await row in rows { return try Self.decodeForm(row) }
+            return nil
+        }
+    }
+
     public func humanInputForm(token: String) async throws -> StoredHumanInputForm? {
         try await bounded {
             let rows = try await self.client.query("""
                 SELECT \(unescaped: Self.formColumns) FROM human_input_forms WHERE token = \(token)
+                """, logger: self.logger)
+            for try await row in rows { return try Self.decodeForm(row) }
+            return nil
+        }
+    }
+
+    /// The form of one node execution (the pair a resume or a re-decision asks about), nil when it does not exist.
+    public func humanInputForm(workflowRunId: String, executionId: String) async throws -> StoredHumanInputForm? {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT \(unescaped: Self.formColumns) FROM human_input_forms
+                WHERE workflow_run_id = \(workflowRunId) AND execution_id = \(executionId)
                 """, logger: self.logger)
             for try await row in rows { return try Self.decodeForm(row) }
             return nil
@@ -415,23 +499,39 @@ extension PostgresStore {
             try await self.client.withTransaction(logger: self.logger) { c in
                 let owner = try await c.query("SELECT workflow_run_id FROM human_input_forms WHERE token = \(token)",
                                               logger: self.logger)
+                var found = false
                 var run: String?
-                for try await (id,) in owner { run = try id.decode(String.self) }
-                guard let workflowRunId = run else { return .notFound }
-                try await self.lockRun(workflowRunId, c)
+                for try await (id,) in owner { found = true; run = try id.decode(String?.self) }
+                guard found else { return .notFound }
+                // A delivery test has no run: there is nothing to lock and nothing to wake (its answer only proves the form).
+                if let workflowRunId = run { try await self.lockRun(workflowRunId, c) }
 
-                let read = try await c.query("""
-                    SELECT status, expiration_time, created_at FROM human_input_forms
-                    WHERE token = \(token) AND workflow_run_id = \(workflowRunId) FOR UPDATE
-                    """, logger: self.logger)
                 var status: String?
                 var expiration: Int64?
                 var createdAt: Date?
-                for try await row in read {
-                    let r = row.makeRandomAccess()
-                    status = try r[0].decode(String.self)
-                    expiration = try r[1].decode(Int64?.self)
-                    createdAt = try r[2].decode(Date.self)
+                // A run's form is read under the run's lock; a delivery test's under its own row lock only.
+                if let runId = run {
+                    let read = try await c.query("""
+                        SELECT status, expiration_time, created_at FROM human_input_forms
+                        WHERE token = \(token) AND workflow_run_id = \(runId) FOR UPDATE
+                        """, logger: self.logger)
+                    for try await row in read {
+                        let r = row.makeRandomAccess()
+                        status = try r[0].decode(String.self)
+                        expiration = try r[1].decode(Int64?.self)
+                        createdAt = try r[2].decode(Date.self)
+                    }
+                } else {
+                    let read = try await c.query("""
+                        SELECT status, expiration_time, created_at FROM human_input_forms
+                        WHERE token = \(token) FOR UPDATE
+                        """, logger: self.logger)
+                    for try await row in read {
+                        let r = row.makeRandomAccess()
+                        status = try r[0].decode(String.self)
+                        expiration = try r[1].decode(Int64?.self)
+                        createdAt = try r[2].decode(Date.self)
+                    }
                 }
                 guard let status else { return .notFound }
                 switch HumanInputFormStatus(rawValue: status) {
@@ -446,16 +546,27 @@ extension PostgresStore {
                 if globalTimeoutSeconds > 0, let createdAt,
                    at.timeIntervalSince(createdAt) >= Double(globalTimeoutSeconds) { return .expired }
 
-                let claimed = try await c.query("""
-                    UPDATE human_input_forms SET status = 'submitted', submitted_inputs = \(inputs),
-                        submitted_action = \(action), submitted_by = \(userId), submitted_at = \(at)
-                    WHERE token = \(token) AND workflow_run_id = \(workflowRunId) AND status = 'waiting'
-                    RETURNING \(unescaped: Self.formColumns)
-                    """, logger: self.logger)
-                for try await row in claimed {
-                    let form = try Self.decodeForm(row)
-                    try await self.refreshWake(workflowRunId, c)
-                    return .accepted(form)
+                if let runId = run {
+                    let claimed = try await c.query("""
+                        UPDATE human_input_forms SET status = 'submitted', submitted_inputs = \(inputs),
+                            submitted_action = \(action), submitted_by = \(userId), submitted_at = \(at)
+                        WHERE token = \(token) AND workflow_run_id = \(runId) AND status = 'waiting'
+                        RETURNING \(unescaped: Self.formColumns)
+                        """, logger: self.logger)
+                    for try await row in claimed {
+                        let form = try Self.decodeForm(row)
+                        try await self.refreshWake(runId, c)
+                        return .accepted(form)
+                    }
+                } else {
+                    // A delivery test wakes nothing: it is answered once, for the proof.
+                    let claimed = try await c.query("""
+                        UPDATE human_input_forms SET status = 'submitted', submitted_inputs = \(inputs),
+                            submitted_action = \(action), submitted_by = \(userId), submitted_at = \(at)
+                        WHERE token = \(token) AND status = 'waiting'
+                        RETURNING \(unescaped: Self.formColumns)
+                        """, logger: self.logger)
+                    for try await row in claimed { return .accepted(try Self.decodeForm(row)) }
                 }
                 // Lost the row to another writer between the read and the update: read the outcome it left.
                 let after = try await c.query("""
@@ -501,10 +612,126 @@ extension PostgresStore {
         }
     }
 
+    /// The runs of one document that are waiting on a pause right now (a deleted app stops them).
+    public func pausedRuns(ofDocument doc: String) async throws -> [String] {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT workflow_run_id FROM workflow_pauses WHERE doc_id = \(doc) AND resumed_at IS NULL
+                """, logger: self.logger)
+            var out: [String] = []
+            for try await (id,) in rows { out.append(try id.decode(String.self)) }
+            return out
+        }
+    }
+
+    /// Writes one form that belongs to no run (the panel's delivery test): Dify's `HumanInputFormKind.DELIVERY_TEST`.
+    public func insertForm(_ f: StoredHumanInputForm) async throws {
+        try await bounded {
+            _ = try await self.client.query("""
+                INSERT INTO human_input_forms (id, workflow_run_id, generation, execution_id, doc_id, node_id, node_title,
+                    token, form_content, inputs, user_actions, rendered_content, default_values, resolved_default_values,
+                    actions, display_in_ui, expiration_time, status, created_at, recipient_type, form_kind)
+                VALUES (\(f.id), \(f.workflowRunId), \(f.generation), \(f.executionId), \(f.docId), \(f.nodeId), \(f.nodeTitle),
+                    \(f.token), \(f.formContent), \(f.inputs), \(f.userActions), \(f.renderedContent), \(f.defaultValues),
+                    \(f.resolvedDefaultValues), \(f.actions), \(f.displayInUi), \(f.expirationTime.map { Int64($0) }),
+                    \(f.status.rawValue), \(f.createdAt), \(f.recipientType.rawValue), \(f.kind.rawValue))
+                """, logger: self.logger)
+        }
+    }
+
+    /// Waiting forms whose own deadline passed (`expiration_time`, Unix seconds): what a timeout scan ends with
+    /// `timedOut` so the run takes the node's `__timeout` branch (Dify's `human_input_timeout_tasks`).
+    public func waitingFormsPastDeadline(at now: Date, limit: Int = 500) async throws -> [StoredHumanInputForm] {
+        try await bounded {
+            let rows = try await self.client.query("""
+                SELECT \(unescaped: Self.formColumns) FROM human_input_forms
+                WHERE status = 'waiting' AND expiration_time IS NOT NULL AND expiration_time <= \(Int64(now.timeIntervalSince1970))
+                ORDER BY expiration_time
+                LIMIT \(limit)
+                """, logger: self.logger)
+            var out: [StoredHumanInputForm] = []
+            for try await row in rows { out.append(try Self.decodeForm(row)) }
+            return out
+        }
+    }
+
+    /// Paused runs past the global deadline (`created_at + timeoutSeconds`): Dify's `EXPIRED` (the run stops), which is
+    /// not the node's own timeout.
+    /// Whether **this** paused run is past the global deadline (the scan asks it once per form it is about to end, so the
+    /// decision for a form and its run is the same one; the run's row is re-read, never taken from an earlier list).
+    /// Whether the run waits at a pause right now (the timeout scan asks before it ends one of the run's forms).
+    public func isRunPaused(workflowRunId: String) async throws -> Bool {
+        try await bounded {
+            let rows = try await self.client.query("SELECT 1 FROM workflow_runs WHERE id = \(workflowRunId) AND status = 'paused'",
+                                                   logger: self.logger)
+            for try await _ in rows { return true }
+            return false
+        }
+    }
+
+    public func pausedRunPastGlobalDeadline(workflowRunId: String, at now: Date, timeoutSeconds: Int) async throws -> Bool {
+        guard timeoutSeconds > 0 else { return false }
+        return try await bounded {
+            let rows = try await self.client.query("""
+                SELECT 1 FROM workflow_runs
+                WHERE id = \(workflowRunId) AND status = 'paused' AND created_at <= \(now.addingTimeInterval(-Double(timeoutSeconds)))
+                """, logger: self.logger)
+            for try await _ in rows { return true }
+            return false
+        }
+    }
+
+    public func pausedRunsPastGlobalDeadline(at now: Date, timeoutSeconds: Int, limit: Int = 500) async throws -> [(runId: String, docId: String)] {
+        guard timeoutSeconds > 0 else { return [] }
+        return try await bounded {
+            let rows = try await self.client.query("""
+                SELECT id, doc_id FROM workflow_runs
+                WHERE status = 'paused' AND created_at <= \(now.addingTimeInterval(-Double(timeoutSeconds)))
+                ORDER BY created_at
+                LIMIT \(limit)
+                """, logger: self.logger)
+            var out: [(String, String)] = []
+            for try await row in rows {
+                let r = row.makeRandomAccess()
+                out.append((try r[0].decode(String.self), try r[1].decode(String.self)))
+            }
+            return out
+        }
+    }
+
+    /// A stop while the run waits: the waiting forms are closed (`expired`, so a later submission answers 412 instead of
+    /// waking it), the run becomes `stopped` and the pause is closed. A run that is not paused is left alone.
+    @discardableResult
+    public func stopPausedRun(workflowRunId: String, error: String, at: Date) async throws -> Bool {
+        try await bounded {
+            try await self.client.withTransaction(logger: self.logger) { c in
+                try await self.lockRun(workflowRunId, c)
+                let rows = try await c.query("""
+                    UPDATE workflow_runs SET status = 'stopped', error = \(error), finished_at = \(at)
+                    WHERE id = \(workflowRunId) AND status = 'paused'
+                    RETURNING id
+                    """, logger: self.logger)
+                var stopped = false
+                for try await _ in rows { stopped = true }
+                guard stopped else { return false }
+                _ = try await c.query("""
+                    UPDATE human_input_forms SET status = 'expired'
+                    WHERE workflow_run_id = \(workflowRunId) AND status = 'waiting'
+                    """, logger: self.logger)
+                _ = try await c.query("""
+                    UPDATE workflow_pauses SET resumed_at = \(at)
+                    WHERE workflow_run_id = \(workflowRunId) AND resumed_at IS NULL
+                    """, logger: self.logger)
+                return true
+            }
+        }
+    }
+
     /// The global deadline (`created_at + HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS`), which is not the node's: every form still
     /// waiting is marked `expired`, the run is stopped with the error Dify writes, and the pause is closed. Dify's
     /// `_handle_global_timeout` does the same three things; a node's own deadline takes `endHumanInputForm(.timedOut)`.
-    public func expireRunForGlobalTimeout(workflowRunId: String, error: String, at: Date) async throws {
+    @discardableResult
+    public func expireRunForGlobalTimeout(workflowRunId: String, error: String, at: Date) async throws -> Bool {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(workflowRunId, c)
@@ -512,14 +739,19 @@ extension PostgresStore {
                     UPDATE human_input_forms SET status = 'expired'
                     WHERE workflow_run_id = \(workflowRunId) AND status = 'waiting'
                     """, logger: self.logger)
-                _ = try await c.query("""
+                let stopped = try await c.query("""
                     UPDATE workflow_runs SET status = 'stopped', error = \(error), finished_at = \(at)
-                    WHERE id = \(workflowRunId)
+                    WHERE id = \(workflowRunId) AND status = 'paused'
+                    RETURNING id
                     """, logger: self.logger)
+                var didStop = false
+                for try await _ in stopped { didStop = true }
+                guard didStop else { return false }
                 _ = try await c.query("""
                     UPDATE workflow_pauses SET resumed_at = \(at)
                     WHERE workflow_run_id = \(workflowRunId) AND resumed_at IS NULL
                     """, logger: self.logger)
+                return true
             }
         }
     }

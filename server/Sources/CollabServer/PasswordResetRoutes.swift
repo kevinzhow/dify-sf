@@ -144,11 +144,15 @@ extension Routes {
             var workflow_runtime: WorkflowRuntime?
         }
         struct WorkflowRuntime: Encodable {
-            var protocol_version = "1.15"
+            var protocol_version = "1.16"
             /// The node types `POST .../workflows/draft/nodes/{node}/run` runs.
             var single_node_run: [String]
             /// 1.14: the node types a draft run (`POST .../workflows/draft/run`) runs; a graph with others is refused.
             var draft_run: [String]
+            /// 1.16: human input is served — a draft run pauses at a `human-input` node, its form is answered through
+            /// `POST /v1/form/human_input/{token}`, `GET /v1/workflow/{run}/events` rebuilds a paused run's state, and
+            /// the node's own form (`.../human-input/nodes/{node}/form/{preview,run}`) is rendered from its config.
+            var human_input = true
         }
         let mail = config.mail.isConfigured
         let runtime = runtimeConfigured

@@ -603,6 +603,7 @@ public enum Schema {
             total_tokens    bigint           NOT NULL DEFAULT 0,
             total_steps     integer          NOT NULL DEFAULT 0,
             elapsed_time    double precision NOT NULL DEFAULT 0,
+            outputs         text             NOT NULL DEFAULT '{}',
             created_at      timestamptz      NOT NULL,
             resumed_at      timestamptz,
             resume_requested boolean         NOT NULL DEFAULT false,
@@ -611,6 +612,9 @@ public enum Schema {
         """,
         // Dify's WorkflowPause is zero-or-one per run (UniqueConstraint workflow_run_id): a pause that is not resumed yet
         // is the run's only one, so two generations can never be claimed at once.
+        // Protocol 1.16: the run's outputs so far, as the live `workflow_paused` frame reports them; a reconnect rebuilds
+        // that frame from the record, and Dify's pause record carries the same state.
+        "ALTER TABLE workflow_pauses ADD COLUMN IF NOT EXISTS outputs text NOT NULL DEFAULT '{}'",
         "CREATE UNIQUE INDEX IF NOT EXISTS workflow_pauses_one_open ON workflow_pauses (workflow_run_id) WHERE resumed_at IS NULL",
         // Protocol 1.16: the form a human answers. `(workflow_run_id, execution_id)` is its unique key: a node execution
         // has one form, and a later pause of the same run adopts a form that is still waiting instead of minting a new
@@ -672,5 +676,30 @@ public enum Schema {
         """,
         "ALTER TABLE upload_files ADD COLUMN IF NOT EXISTS deleting boolean NOT NULL DEFAULT false",
         "CREATE INDEX IF NOT EXISTS upload_files_workspace ON upload_files (workspace_id, created_at)",
+        // Protocol 1.16: an email recipient of a form (Dify's `human_input_form_recipient`). Its `token` is the one the
+        // link carries, so a link works for the person it was mailed to without a console account; `mailed_at` makes the
+        // delivery idempotent (a restart, or a pause that adopts the same waiting form, does not mail twice).
+        """
+        CREATE TABLE IF NOT EXISTS human_input_form_recipients (
+            token           text        PRIMARY KEY,
+            form_id         text        NOT NULL REFERENCES human_input_forms(id),
+            workflow_run_id text        NOT NULL,
+            method_index    integer     NOT NULL,
+            recipient_type  text        NOT NULL,
+            reference_id    text,
+            email           text        NOT NULL,
+            mailed_at       timestamptz,
+            used_at         timestamptz,
+            created_at      timestamptz NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS human_input_form_recipients_form ON human_input_form_recipients (form_id)",
+        // Protocol 1.16: a **delivery-test** form (Dify's `HumanInputFormKind.DELIVERY_TEST`) belongs to no run: the panel's
+        // test mail opens and validates a form, and answering it never claims or resumes a workflow.
+        "ALTER TABLE human_input_forms ADD COLUMN IF NOT EXISTS form_kind text NOT NULL DEFAULT 'runtime'",
+        "ALTER TABLE human_input_forms ALTER COLUMN workflow_run_id DROP NOT NULL",
+        "ALTER TABLE human_input_form_recipients ALTER COLUMN workflow_run_id DROP NOT NULL",
+        // One row per address and form: a pause that adopts a waiting form must keep the links it already handed out.
+        "CREATE UNIQUE INDEX IF NOT EXISTS human_input_form_recipients_address ON human_input_form_recipients (form_id, email)",
     ]
 }

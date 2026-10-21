@@ -36,6 +36,19 @@ extension Routes {
         return services
     }
 
+    /// The services for one workflow run: `runtimeServices`, plus the human-input adapter bound to this run. The adapter
+    /// needs the run id and the ledger the run persists from, so it cannot live in `runtimeServices` (which is shared by
+    /// the single-node and container paths, and by graphs built before a run exists).
+    func runServices(appId: String, runId: String, docId: String, userId: String, pending: PendingHumanInputForms,
+                     decisions: [String: StoredHumanInputForm] = [:]) -> RuntimeServices {
+        var services = runtimeServices(appId: appId)
+        services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
+                                                      pending: pending, decisions: decisions,
+                                                      // Draft runs are Dify's debugger; published runs come with M5.
+                                                      isDebugger: true)
+        return services
+    }
+
     /// Errors preparing a graph (before anything runs), as the single node run answers them.
     func preparationError(_ error: any Error) -> ServerError {
         switch error {
@@ -88,20 +101,25 @@ extension Routes {
         let (seq, workflow) = try await draftWorkflow(a.id, viewer: p.id)
         let runId = UUID().uuidString.lowercased()
         let prepared: PreparedRun
+        let pending = PendingHumanInputForms()
         do {
-            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs, services: runtimeServices(appId: a.id),
+            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs,
+                                                  services: runServices(appId: a.id, runId: runId, docId: a.id, userId: p.id,
+                                                                        pending: pending),
                                                   userId: p.id, appId: a.id, workflowId: a.id, runId: runId)
         } catch {
             throw preparationError(error)
         }
 
         return try await startRun(appId: a.id, principal: p, seq: seq, workflow: workflow, runId: runId, graph: prepared.graph,
-                                  pool: prepared.pool, workflowInputs: prepared.workflowInputs, nodeTriggeredFrom: "workflow-run")
+                                  pool: prepared.pool, workflowInputs: prepared.workflowInputs, nodeTriggeredFrom: "workflow-run",
+                                  pendingForms: pending)
     }
 
     /// Records the run (`workflow_runs`, `debugging`), starts it in its own task and answers its SSE stream.
     func startRun(appId: String, principal p: Principal, seq: Int, workflow: JSONValue, runId: String, graph: RuntimeGraph, pool: VariablePool,
-                  workflowInputs: JSONObject, nodeTriggeredFrom: String) async throws -> Response {
+                  workflowInputs: JSONObject, nodeTriggeredFrom: String,
+                  pendingForms: PendingHumanInputForms = PendingHumanInputForms()) async throws -> Response {
         // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
         let taskId = runId
         let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
@@ -112,9 +130,10 @@ extension Routes {
         stored.createdByName = p.account.name
         do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
 
-        let channel = RunChannel()
+        let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         let commands = GraphEngineCommands()
-        await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands))
+        let lease = UUID().uuidString.lowercased()
+        await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
         let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
                                        inputs: workflowInputs, startedAt: stored.createdAt)
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
@@ -123,7 +142,8 @@ extension Routes {
                                  commands: commands, userId: p.id, appId: appId)
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
-                                     channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom)
+                                     channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom,
+                                     pendingForms: pendingForms, lease: lease)
         Task.detached { await execution.run(engine: engine, pool: pool) }
 
         var headers = HTTPFields()
@@ -134,13 +154,194 @@ extension Routes {
         let logger = self.logger
         let body = try Response.Body(stream: { writer in
             do {
-                for await frame in subscription { try await writer.write(frame) }
+                for await frame in subscription {
+                    try await writer.write(frame)
+                    // The run's channel stays open across a pause (the resumed round publishes into it), but this
+                    // response ends with the pause as Dify's draft-run stream does.
+                    if frame.contains("\"event\":\"workflow_paused\"") { break }
+                }
             } catch {
                 logger.debug("run stream \(runId) ended: \(error)")
                 throw error
             }
         }, count: nil)
         return Response(status: .ok, headers: headers, body: body)
+    }
+
+    // MARK: - Resume
+
+    /// Resumes a paused run after an answer: claim it (one winner), rebuild the graph from the run's **stored** graph (never
+    /// the draft that was edited since), rebuild the engine from the pause's snapshot and consume the resumed stream.
+    /// Returns false when there was nothing to claim (not paused, no unconsumed answer, already resumed or stopped).
+    @discardableResult
+    func resumeRun(appId: String, runId: String) async -> Bool {
+        // TEST ONLY (`testDefect: slowClaim`): widen the window between an accepted answer and the claim that consumes it,
+        // so a test can kill the process there — the state a crash leaves behind (answer waiting, pause untouched).
+        if config.testDefect == "slowClaim" { try? await Task.sleep(for: .milliseconds(1500)) }
+        // A claim that **fails** (a lock timeout, a connection reset) leaves the run paused with its answer waiting: not
+        // a "nothing to claim". The attempt is kept, so the periodic scan takes it again instead of the answer sitting
+        // there until something else touches the run.
+        let claim: HumanInputResumeClaim?
+        do {
+            claim = try await store.claimResume(workflowRunId: runId, at: Date())
+        } catch {
+            logger.warning("run \(runId): the resume could not be claimed (\(error)); the scan tries again")
+            return false
+        }
+        guard let claim else { return false }
+        // The claim already made the run `running`: a run we cannot read would stay there forever, and its subscribers
+        // would wait for a round nobody starts.
+        guard let run = try? await store.workflowRun(doc: appId, id: runId) else {
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "the claimed run could not be read",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
+            return false
+        }
+        // TEST ONLY (`testDefect: resumePrepFails`): a resume whose preparation fails must end the run as failed and
+        // release the claim's state, not leave a `running` run nothing will finish.
+        if config.testDefect == "resumePrepFails" {
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                               error: "the resumed run's preparation failed", elapsedTime: 0,
+                                               totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
+            return false
+        }
+        guard let graphJSON = try? JSONValue.parse(Data(run.graph.utf8)) else {
+            // The claim already made the run `running`: leaving it there would be a run that never finishes.
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                               error: "the paused run's stored graph does not parse",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
+            return false
+        }
+        let decisions = Dictionary(uniqueKeysWithValues: claim.decisions.map { ($0.executionId, $0) })
+        let pending = PendingHumanInputForms()
+        let userId = run.createdBy ?? ""
+        let graph: RuntimeGraph
+        do {
+            let config = try GraphConfig(json: graphJSON)
+            let rootId = try RuntimeGraph.defaultRootId(config)
+            graph = try await RuntimeGraph.build(config, rootId: rootId,
+                                                 factory: BuiltinNodeFactory(services: runServices(
+                                                    appId: appId, runId: runId, docId: appId, userId: userId, pending: pending,
+                                                    decisions: decisions)))
+        } catch {
+            logger.error("run \(runId) could not rebuild its graph: \(error)")
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "could not rebuild the paused run: \(error)",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
+            return false
+        }
+        let account: JSONValue = ["id": .string(userId), "name": .string(run.createdByName ?? ""), "email": .string(run.createdByEmail ?? "")]
+        let inputs = (try? JSONValue.parse(run.inputs))?.object ?? [:]
+        var encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: appId, graph: graph, account: account,
+                                       inputs: inputs, startedAt: run.createdAt)
+        // `elapsed_time` counts from the round (the resume), while `created_at` stays the run's original creation.
+        encoder.roundStartedAt = Date()
+        let commands = GraphEngineCommands()
+        let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
+                                                                        maxSteps: config.runtimeMaxSteps,
+                                                                        maxTimeSeconds: config.runtimeMaxTimeSeconds),
+                                 commands: commands, userId: userId, appId: appId)
+        let snapshot: GraphEngineSnapshot
+        do { snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8)) } catch {
+            logger.error("run \(runId) has a pause snapshot that does not decode: \(error)")
+            try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                               error: "the paused run's snapshot does not decode: \(error)",
+                                               elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+            await finishRunWithoutEngine(runId)
+            return false
+        }
+        let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
+        // The resumed round owns the task id from here: `stop` must find this engine, not the one that paused.
+        let lease = UUID().uuidString.lowercased()
+        await runs.add(runId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
+        let routes = self
+        let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
+                                     createdBy: userId, channel: channel, encoder: encoder, triggeredFrom: "workflow-run",
+                                     pendingForms: pending, lease: lease, decisions: claim.decisions)
+        // TEST ONLY (`testDefect: slowResume`): hold the resumed round after it took the run over, so a test can stop it
+        // while it is the run's round and prove the stop reaches this engine.
+        if config.testDefect == "slowResume" { try? await Task.sleep(for: .milliseconds(300)) }
+        Task.detached { await execution.run(engine: engine, pool: VariablePool(), snapshot: snapshot, filled: claim.decisions) }
+        return true
+    }
+
+    /// One pass of the human-input timeout scan (`HumanInputTimeouts`): node deadlines first (the run goes on through the
+    /// node's `__timeout` branch), then the global deadline (the run stops and its connection ends).
+    @discardableResult
+    func sweepHumanInputTimeouts(now: Date) async -> (timedOut: Int, expired: Int) {
+        // TEST ONLY (`collab.test.clockSkewSeconds`): the scan's clock can be moved forward, so a test exercises the
+        // production scan with a real form written an hour in the future rather than calling the store in its place.
+        let at = now.addingTimeInterval(Double(config.testClockSkewSeconds))
+        var timedOut = 0, expired = 0
+        // Dify's `human_input_timeout_tasks` decides **per form, global first**: a run past its global deadline stops
+        // (the form is `expired`) even when the node's own deadline passed in the same scan, and only a run that is still
+        // within its global deadline takes the node's `__timeout` branch. Deciding the two in sequence (all node timeouts,
+        // then all global ones) could start a run that should stop, and leave `timedOut` where the original writes
+        // `expired`.
+        let error = "Human input form timed out"
+        var stopping = Set<String>()
+        if let forms = try? await store.waitingFormsPastDeadline(at: at) {
+            for form in forms {
+                guard let runId = form.workflowRunId else {
+                    guard (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                    timedOut += 1
+                    continue
+                }
+                // The run's own deadline: has it passed? (The store repeats this under the run's lock.)
+                let pastGlobal = (try? await store.pausedRunPastGlobalDeadline(
+                    workflowRunId: runId, at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds)) ?? false
+                if pastGlobal {
+                    // The global deadline is the run's own to end: when that transition is refused (the run was answered,
+                    // stopped or resumed first) nothing about **this** form may change — a `timedOut` left behind would be
+                    // a form the run never acts on.
+                    guard (try? await store.expireRunForGlobalTimeout(workflowRunId: runId, error: error, at: at)) == true else { continue }
+                    stopping.insert(runId)
+                    continue
+                }
+                // The node's own deadline: its form ends `timedOut` — but only while the run is still the paused run this
+                // form belongs to. A run that left the pause in between (answered, stopped) gets no timeout of ours.
+                guard (try? await store.isRunPaused(workflowRunId: runId)) == true,
+                      (try? await store.endHumanInputForm(token: form.token, status: .timedOut, at: at)) == true else { continue }
+                timedOut += 1
+                // The pause is now woken (`resume_requested`), and the run takes the timeout branch — in the background,
+                // as an answer does.
+                let appId = form.docId, routes = self
+                Task.detached { await routes.resumeRun(appId: appId, runId: runId) }
+            }
+            for runId in stopping.sorted() {
+                expired += 1
+                await finishRunWithoutEngine(runId)
+            }
+        }
+        // A run whose global deadline passed with no waiting form (the pause itself is older than the deadline).
+        if let runs = try? await store.pausedRunsPastGlobalDeadline(at: at, timeoutSeconds: config.humanInputGlobalTimeoutSeconds) {
+            for run in runs where !stopping.contains(run.runId) {
+                guard (try? await store.expireRunForGlobalTimeout(workflowRunId: run.runId, error: error, at: at)) == true else { continue }
+                expired += 1
+                await finishRunWithoutEngine(run.runId)
+            }
+        }
+        return (timedOut, expired)
+    }
+
+    /// Picks up the runs a stopped server left answered-but-paused. Called once the routes exist; each one goes through the
+    /// same `resumeRun`, so a restart is just another resume (and a run whose answer arrived while the server was down is
+    /// not lost).
+    func resumeRunsWaitingAfterRestart() async -> Int {
+        (try? await resumeRunsWaitingAfterRestartStrict()) ?? 0
+    }
+
+    /// The same, telling a failed read from an empty one: the startup recovery retries a read that failed (a schema being
+    /// migrated, a connection reset) instead of concluding that there is nothing to resume.
+    func resumeRunsWaitingAfterRestartStrict() async throws -> Int {
+        let waiting = try await store.runsAwaitingResume()
+        for run in waiting {
+            logger.info("resuming run \(run.runId) after a restart")
+            await resumeRun(appId: run.docId, runId: run.runId)
+        }
+        return waiting.count
     }
 
     // MARK: - Stop
@@ -151,7 +352,15 @@ extension Routes {
         let p = try await authenticate(req, .edit)
         let a = try await appOfMode(req, p, Self.workflowModes)
         guard let task = req.parameters.get("task"), !task.isEmpty, task.utf8.count <= 255 else { throw ServerError.badRequest("invalid task id") }
-        if let active = await runs.get(task), active.appId == a.id { active.commands.abort(reason: "User requested stop") }
+        if let active = await runs.get(task), active.appId == a.id {
+            active.commands.abort(reason: "User requested stop")
+        } else {
+            // A paused run has no engine to abort: its pause must be closed and its forms closed, or a later submission
+            // would wake a run the user already stopped. Then the subscribers hear it end (`workflow_finished` stopped)
+            // and the channel is released — a durable terminal state alone leaves a live connection waiting forever.
+            let stopped = (try? await store.stopPausedRun(workflowRunId: task, error: "User requested stop", at: Date())) ?? false
+            if stopped { await finishRunWithoutEngine(task) }
+        }
         return rawJSON(["result": "success"])
     }
 
@@ -277,6 +486,57 @@ struct PreparedRun: Sendable {
 // MARK: - Running
 
 /// One run in its task: engine events -> Dify's SSE frames (to the channel) and run records.
+extension Routes {
+        /// Dify's mail task retries, not just once: `mail_human_input_delivery_task` is a queued task and a send that failed
+        /// is delivered again later. The periodic scan (`HumanInputTimeouts`) calls this too, so a mail that failed — or a
+        /// recipient row whose pause was written while the server was stopping — is retried until it goes out, and the row's
+        /// `mailed_at` (not memory) is what keeps a delivered link from being mailed again.
+        @discardableResult
+        func deliverPendingHumanInputMail() async -> Int {
+            let outbox = MailOutbox(sender: SMTPMailSender(config: config.mail), logger: logger)
+            guard outbox.isEnabled, !config.webAppBaseURL.isEmpty else { return 0 }
+            // Which form belongs to which method index: read from the node's own definition (the form stores the actions and
+            // the content, not the delivery methods).
+            let pending: [StoredFormRecipient]
+            do { pending = try await store.formRecipientsAwaitingMail() } catch { return 0 }
+            guard !pending.isEmpty else { return 0 }
+            var delivered = 0
+            var methodsByDoc: [String: [String: [JSONObject]]] = [:]
+            for row in pending {
+                guard let form = try? await store.humanInputForm(id: row.formId) else { continue }
+                let methods: [JSONObject]
+                if let cached = methodsByDoc[form.docId]?[form.nodeId] {
+                    methods = cached
+                } else {
+                    guard let fromNode = await deliveryMethods(docId: form.docId, nodeId: form.nodeId) else { continue }
+                    methods = fromNode
+                    methodsByDoc[form.docId, default: [:]][form.nodeId] = fromNode
+                }
+                guard let link = HumanInputMail.link(base: config.webAppBaseURL, token: row.token),
+                      // The pause's pool is gone once the run resumed; the body's own text and the link still render.
+                      let message = HumanInputMail.message(methods, methodIndex: row.methodIndex, to: row.email, link: link) else { continue }
+                if await outbox.send(message, kind: "human input") {
+                    delivered += 1
+                    try? await store.markFormRecipientMailed(token: row.token, at: Date())
+                }
+            }
+            return delivered
+        }
+
+        /// The email delivery methods of one human-input node in an app's current draft (the panel's own configuration).
+        private func deliveryMethods(docId: String, nodeId: String) async -> [JSONObject]? {
+            guard let snapshot = try? await registry.sequencer(docId).currentSnapshot(),
+                  let metadata = try? await currentMetadata(docId, viewer: ""),
+                  let secrets = try? await store.secrets(docId),
+                  let exported = try? JSONValue.parse(try WireJSON.encode(
+                    try DifyDSL.exportValue(snapshot.doc, metadata: metadata, secrets: secrets))),
+                  let graph = try? GraphConfig(json: exported["workflow"]?["graph"] ?? .null),
+                  let node = graph.node(nodeId),
+                  let form = try? HumanInputFormConfig(node.data) else { return nil }
+            return form.deliveryMethods
+        }
+}
+
 final class RunExecution: Sendable {
     let routes: Routes
     let appId: String
@@ -286,11 +546,19 @@ final class RunExecution: Sendable {
     let createdBy: String
     let channel: RunChannel
     let encoderBox: Mutex<RunStreamEncoder>
+    /// The forms the engine asked for during this run; the pause persists them before publishing anything.
+    let pendingForms: PendingHumanInputForms
     /// The node executions' `triggered_from` (Dify: `workflow-run`; an iteration or loop single run: `single-step`).
     let triggeredFrom: String
+    /// This round's ownership of the registry entry (see `WorkflowRunRegistry.remove`).
+    let lease: String
+    /// The answers this round's claim took; a filled frame is published when their node succeeds.
+    let decisions: [StoredHumanInputForm]
 
     init(routes: Routes, appId: String, docSeq: Int, runId: String, taskId: String, createdBy: String, channel: RunChannel,
-         encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run") {
+         encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run",
+         pendingForms: PendingHumanInputForms = PendingHumanInputForms(), lease: String = "",
+         decisions: [StoredHumanInputForm] = []) {
         self.routes = routes
         self.appId = appId
         self.docSeq = docSeq
@@ -300,6 +568,9 @@ final class RunExecution: Sendable {
         self.channel = channel
         encoderBox = Mutex(encoder)
         self.triggeredFrom = triggeredFrom
+        self.pendingForms = pendingForms
+        self.lease = lease
+        self.decisions = decisions
     }
 
     /// A started node not finished yet (for its record and the end of the run).
@@ -312,21 +583,70 @@ final class RunExecution: Sendable {
         var scope: NodeScope
     }
 
-    func run(engine: GraphEngine, pool: VariablePool) async {
+    /// Consumes a run's event stream. `snapshot` resumes a paused run instead of starting one; `filled` are the answers the
+    /// resume took, published as `human_input_form_filled` right after the engine's `workflow_started(reason=resumption)`.
+    func run(engine: GraphEngine, pool: VariablePool, snapshot: GraphEngineSnapshot? = nil,
+             filled: [StoredHumanInputForm] = []) async {
         let started = ContinuousClock.now
-        // Dify's queue sends a ping every 10 s; here while nothing else was sent.
-        let pinger = Task { [channel] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(10))
-                if Task.isCancelled { break }
-                await channel.pingIfIdle(seconds: 10)
-            }
-        }
-        var index = 0
+        // The round continues the run's numbering: a resumed round's executions follow the ones already stored, so the
+        // history keeps its order and no index repeats. A failure to read it starts at the run's own count (0).
+        var index = (try? await routes.store.maxNodeExecutionIndex(doc: appId, run: runId)) ?? 0
+        /// False when the round ended at a pause: the run is still alive, so its channel is not finished.
+        var endedWithoutPause = true
         var running: [String: Running] = [:]
         // `_append_retry_history`: the failed attempts of a node execution, kept in its process data.
         var retries: [String: [JSONValue]] = [:]
-        for await event in engine.run(pool: pool) {
+        let stream: AsyncStream<GraphEngineEvent>
+        if let snapshot {
+            do { stream = try engine.resume(snapshot) } catch {
+                routes.logger.error("run \(runId) could not resume: \(error)")
+                // Durable first, then the one terminal frame and the channel's end (`finishRunWithoutEngine`), so an
+                // attached connection does not wait for a round that never started.
+                try? await routes.store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
+                                                          error: "could not resume the paused run: \(error)", elapsedTime: 0,
+                                                          totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+                await routes.finishRunWithoutEngine(runId)
+                await routes.runs.remove(taskId, lease: lease)
+                return
+            }
+        } else {
+            stream = engine.run(pool: pool)
+        }
+        var announcedFilled = false
+        var filledPublished = Set<String>()
+        for await event in stream {
+            if case .runResumed = event, !announcedFilled {
+                announcedFilled = true
+                var frames = encoderBox.withLock { $0.encode(event) }
+                // A timed-out form is announced with the resume; a filled one is announced when its node succeeds
+                // (`boundary.py` emits it from the node, with the rendered content the completion produced).
+                frames += encoderBox.withLock { enc in
+                    decisions.filter { $0.status == .timedOut }.map { enc.humanInputFormTimeout($0) }
+                }
+                for f in frames { await channel.publish(Self.sse(f)) }
+                continue
+            }
+            if case .runPaused(let reasons, let snapshot, let stats) = event {
+                // The round did not end: the run is paused and its channel must survive into the next round — unless the
+                // pause could not be written, which ends the run as failed.
+                endedWithoutPause = !(await handlePause(reasons: reasons, snapshot: snapshot, stats: stats))
+                continue
+            }
+            // `boundary.py` publishes the filled (or timeout) frame first and forwards the node's own frames after it.
+            if case .node(.succeeded(let x, let nodeId, _, _, let r)) = event,
+               let decision = decisions.first(where: { $0.executionId == x && $0.status == .submitted }),
+               // Dify reports an answered form once; an execution that succeeds more than once (a rebuilt round can
+               // replay its own success) must not put the same filled frame on the wire twice.
+               filledPublished.insert(x).inserted {
+                let filled = encoderBox.withLock { enc in
+                    enc.humanInputFormFilled(nodeId: nodeId, nodeTitle: decision.nodeTitle,
+                                             renderedContent: r.outputs["__rendered_content"]?.string ?? decision.renderedContent,
+                                             actionId: r.outputs["__action_id"]?.string ?? (decision.submittedAction ?? ""),
+                                             actionText: r.outputs["__action_value"]?.string ?? "",
+                                             submittedData: r.inputs)
+                }
+                await channel.publish(Self.sse(filled))
+            }
             let frames = encoderBox.withLock { $0.encode(event) }
             for f in frames { await channel.publish(Self.sse(f)) }
             switch event {
@@ -362,9 +682,135 @@ final class RunExecution: Sendable {
             default: break
             }
         }
-        pinger.cancel()
-        await channel.finish()
-        await routes.runs.remove(taskId)
+        if endedWithoutPause {
+            // The run's channel lives as long as the run, not as long as one round: a pause keeps it so a reconnect (or the
+            // resumed round) publishes into the same stream.
+            await channel.finish()
+            await routes.runChannels.remove(runId)
+        }
+        await routes.runs.remove(taskId, lease: lease)
+    }
+
+    /// The pause, in the order Dify's `WorkflowResponseConverter` implies: the snapshot, the forms and the run's state are
+    /// durable **first**, and only then do `human_input_required` and `workflow_paused` reach the stream. If the write fails
+    /// the run ends as failed with that error: publishing a pause nobody can answer, or carrying on past human input, would
+    /// both be worse than stopping.
+    @discardableResult
+    private func handlePause(reasons: [PauseReason], snapshot: GraphEngineSnapshot, stats: GraphRunStats) async -> Bool {
+        let sessionIds = reasons.compactMap { reason -> String? in
+            if case .hitlRequired(let sessionId, _, _) = reason { return sessionId }
+            return nil
+        }
+        let prepared = pendingForms.takePrepared(sessionIds)
+        let forms = prepared.map(\.form)
+        let at = Date()
+        var generation = 0
+        do {
+            // TEST ONLY (`testDefect: pauseWriteFails`): a pause that cannot be written must end the run and run the
+            // terminal cleanup, never leave a channel or a paused run behind.
+            if routes.config.testDefect == "pauseWriteFails" {
+                struct PauseWriteFailed: Error {}
+                throw PauseWriteFailed()
+            }
+            let encoded = String(decoding: try snapshot.encoded(), as: UTF8.self)
+            generation = try await routes.store.createPause(
+                workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,
+                totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
+                elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.roundStartedAt) },
+                outputs: JSONValue.object(stats.outputs).compactJSON(), forms: forms, at: at)
+        } catch {
+            // A pause for a deleted app is a stop, not a failure: the user deleted the app, nothing broke.
+            let appDeleted = (error as? PostgresStore.PauseRefused) == .appDeleted
+            let status = appDeleted ? "stopped" : "failed"
+            let message = appDeleted ? "The app was deleted" : "could not persist the paused run: \(error)"
+            routes.logger.error("run \(runId) could not persist its pause: \(error)")
+            // Durable first, then the frame (Dify's public stream has no `workflow_failed`: a failure is
+            // `workflow_finished` with `status: failed`).
+            try? await routes.store.finishWorkflowRun(id: runId, status: status, outputs: nil, error: message,
+                                                      elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.roundStartedAt }),
+                                                      totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
+                                                      exceptionsCount: 0, finishedAt: at)
+            let frames = encoderBox.withLock { enc in
+                [enc.workflowFinished(status, error: message, stats: stats, exceptions: 0)]
+            }
+            for f in frames { await channel.publish(Self.sse(f)) }
+            // The run is over: the caller must run its terminal cleanup (channel, registry).
+            return false
+        }
+        // A variable-backed select's options were resolved by the node in **its own** pool (an iteration item's list is
+        // not the root's, Dify's `resolve_variable_select_input_options` over the execution's state). They travel with the
+        // prepared forms, so the live frames and every later read of the same form agree.
+        let resolvedInputs: [[JSONObject]?] = prepared.map(\.resolvedInputs)
+        let frames = encoderBox.withLock { enc in
+            forms.enumerated().map { i, form in enc.humanInputRequired(form, inputs: resolvedInputs[i]) }
+                + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at, inputs: resolvedInputs)]
+        }
+        for f in frames { await channel.publish(Self.sse(f), pauseGeneration: generation) }
+        // The email delivery, after the pause is durable (Dify's mail task runs after the form exists): each recipient gets
+        // their own link, and a delivery that already happened is not repeated (a restart, or a later pause adopting the
+        // same waiting form). Best effort: a failure is logged and never unwinds a pause.
+        await prepareAndDeliverHumanInputMail(prepared, pool: snapshot.variablePool())
+        // An answer for another execution of this pause may have been taken while the pause was being written: the pause
+        // starts awake, and since no new submission will come to wake it, the resume is enqueued here.
+        let stored = (try? await routes.store.pause(workflowRunId: runId, generation: generation)) ?? nil
+        if stored?.resumeRequested == true {
+            let routes = self.routes
+            let app = appId
+            let run = runId
+            Task.detached { await routes.resumeRun(appId: app, runId: run) }
+        }
+        return true
+    }
+
+    /// The email delivery of a pause (Dify's `mail_human_input_delivery_task`): every recipient of an enabled email method
+    /// becomes a row of its own with its own link token, and every row that was never mailed gets one mail now. A node
+    /// names member recipients by account id (`reference_id`), so the workspace's members are read here.
+    private func prepareAndDeliverHumanInputMail(_ prepared: [PendingHumanInputForms.Prepared],
+                                                 pool: VariablePool? = nil) async {
+        let outbox = MailOutbox(sender: SMTPMailSender(config: routes.config.mail), logger: routes.logger)
+        guard outbox.isEnabled else { return }
+        let members: [String: String]
+        do {
+            members = Dictionary(uniqueKeysWithValues: try await routes.store.members().map { ($0.id, $0.email) })
+        } catch {
+            routes.logger.warning("human input mail skipped: the workspace's members could not be read (\(error))")
+            return
+        }
+        var methodsByForm: [String: [JSONObject]] = [:]
+        for entry in prepared {
+            let recipients = HumanInputMail.recipients(entry.deliveryMethods, members: members)
+            guard !recipients.isEmpty else { continue }
+            methodsByForm[entry.form.id] = entry.deliveryMethods
+            let now = Date()
+            var rows: [StoredFormRecipient] = []
+            for recipient in recipients {
+                // A waiting form adopted by a later pause keeps the tokens it already handed out.
+                rows.append(StoredFormRecipient(
+                    token: UUID().uuidString.lowercased(), formId: entry.form.id, workflowRunId: entry.form.workflowRunId ?? "",
+                    methodIndex: recipient.method, type: recipient.type, referenceId: recipient.referenceId,
+                    email: recipient.email, createdAt: now))
+            }
+            do { try await routes.store.addFormRecipients(rows) } catch {
+                routes.logger.warning("human input mail skipped: the recipients of \(entry.form.id) could not be stored (\(error))")
+            }
+        }
+        guard !methodsByForm.isEmpty else { return }
+        guard let base = Optional(routes.config.webAppBaseURL), !base.isEmpty else {
+            routes.logger.warning("human input mail skipped: COLLAB_WEBAPP_BASE_URL is not set (no form link)")
+            return
+        }
+        let pending: [StoredFormRecipient]
+        do { pending = try await routes.store.formRecipientsAwaitingMail() } catch { return }
+        for row in pending {
+            guard let methods = methodsByForm[row.formId] else { continue }
+            guard let link = HumanInputMail.link(base: base, token: row.token) else { continue }
+            guard let message = HumanInputMail.message(methods, methodIndex: row.methodIndex, to: row.email, link: link,
+                                                       pool: pool) else { continue }
+            // Marked only after the mail went out, so a failure is retried by the next pause or scan instead of lost.
+            if await outbox.send(message, kind: "human input") {
+                try? await routes.store.markFormRecipientMailed(token: row.token, at: Date())
+            }
+        }
     }
 
     static func sse(_ payload: JSONValue) -> String { "data: " + payload.compactJSON() + "\n\n" }
@@ -472,7 +918,11 @@ struct RunStreamEncoder: Sendable {
     let graph: RuntimeGraph
     let account: JSONValue
     let inputs: JSONObject
+    /// The run's `created_at`: the original start, kept across a resume (Dify keeps the run row's value).
     let startedAt: Date
+    /// When **this round** started: equal to `startedAt` for a fresh run, the resume moment for a resumed one. Dify computes
+    /// `elapsed_time` from the round, not from the run's creation (`sqlalchemy_workflow_execution_repository`).
+    var roundStartedAt: Date
     /// `_NodeSnapshot`s of started nodes.
     struct Snapshot: Sendable {
         var title: String
@@ -489,6 +939,7 @@ struct RunStreamEncoder: Sendable {
         self.account = account
         self.inputs = inputs
         self.startedAt = startedAt
+        roundStartedAt = startedAt
     }
 
     static func ts(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
@@ -526,7 +977,7 @@ struct RunStreamEncoder: Sendable {
         case .runStarted, .runResumed:
             let reason = { if case .runResumed = event { return "resumption" }; return "initial" }()
             return [envelope("workflow_started", ["id": .string(runId), "workflow_id": .string(workflowId), "inputs": .object(inputs),
-                                                  "created_at": Self.ts(startedAt), "reason": .string(reason)])]
+                                                  "created_at": Self.ts(roundStartedAt), "reason": .string(reason)])]
         case .node(let e):
             switch e {
             case .pauseRequested: return [] // The async form adapter enriches these after a durable pause.
@@ -631,9 +1082,11 @@ struct RunStreamEncoder: Sendable {
         let now = Date()
         return envelope("workflow_finished", [
             "id": .string(runId), "workflow_id": .string(workflowId), "status": .string(status), "outputs": .object(stats.outputs),
-            "error": error.map(JSONValue.string) ?? .null, "elapsed_time": .double(now.timeIntervalSince(startedAt)),
+            "error": error.map(JSONValue.string) ?? .null, "elapsed_time": .double(now.timeIntervalSince(roundStartedAt)),
             "total_tokens": .int(stats.totalTokens), "total_steps": .int(stats.totalSteps), "created_by": account,
-            "created_at": Self.ts(startedAt), "finished_at": Self.ts(now), "exceptions_count": .int(exceptions), "files": [],
+            // The converter stamps its own `started_at` on every `workflow_started`; a resumed round's frames carry the
+            // resume moment, while the run row keeps the original `created_at`.
+            "created_at": Self.ts(roundStartedAt), "finished_at": Self.ts(now), "exceptions_count": .int(exceptions), "files": [],
         ])
     }
 }
@@ -642,35 +1095,87 @@ struct RunStreamEncoder: Sendable {
 
 /// The frames of one run for its SSE subscribers: every frame is kept (a subscriber that attaches late gets them all) until
 /// the run ends.
+/// The live channels of the runs this process is executing, by run id. A reconnect attaches to the same channel the run
+/// publishes into; a run that is not in here (paused, finished, or started by another process) is served from its records.
+actor RunChannelRegistry {
+    private var channels: [String: RunChannel] = [:]
+
+    func channel(_ runId: String, pingSeconds: Int) async -> RunChannel {
+        if let existing = channels[runId] { return existing }
+        let created = RunChannel()
+        channels[runId] = created
+        await created.startPing(seconds: pingSeconds)
+        return created
+    }
+
+    func existing(_ runId: String) -> RunChannel? { channels[runId] }
+
+    func remove(_ runId: String) { channels.removeValue(forKey: runId) }
+}
+
 actor RunChannel {
     private var frames: [String] = []
+    private var pauseGenerations: [Int: Int] = [:]
     private var subscribers: [Int: AsyncStream<String>.Continuation] = [:]
     private var next = 0
     private var finished = false
     private var lastSent = ContinuousClock.now
+    private var pinger: Task<Void, Never>?
 
-    func publish(_ frame: String) {
+    /// `pauseGeneration` tags a frame that belongs to one pause (the database generation): a reconnect deduplicates by that
+    /// identity, never by a second-resolution `created_at` (two resumes can re-pause within the same second).
+    func publish(_ frame: String, pauseGeneration: Int? = nil) {
+        if let pauseGeneration { pauseGenerations[frames.count] = pauseGeneration }
         frames.append(frame)
         lastSent = .now
         for c in subscribers.values { c.yield(frame) }
     }
 
-    /// `event: ping` when nothing was sent for `seconds` (not kept for late subscribers).
-    func pingIfIdle(seconds: Int) {
-        guard !finished, ContinuousClock.now - lastSent >= .seconds(seconds) else { return }
+    /// `event: ping` when nothing was sent for `seconds` (not kept for late subscribers). True once the channel ended.
+    func pingIfIdle(seconds: Int) -> Bool {
+        guard !finished else { return true }
+        guard ContinuousClock.now - lastSent >= .seconds(seconds) else { return false }
         lastSent = .now
         for c in subscribers.values { c.yield("event: ping\n\n") }
+        return false
+    }
+
+    /// Keeps the keep-alives coming for as long as the channel lives — a **run**, not one round: a run that waits for a
+    /// person can wait for hours, and Dify's queue pings every 10 s whether a node is running or not.
+    func startPing(seconds: Int) {
+        guard pinger == nil else { return }
+        pinger = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(seconds))
+                if Task.isCancelled { return }
+                guard let self else { return }
+                if await self.pingIfIdle(seconds: seconds) { return }
+            }
+        }
     }
 
     func finish() {
         finished = true
+        pinger?.cancel()
+        pinger = nil
         for c in subscribers.values { c.finish() }
         subscribers = [:]
     }
 
-    func subscribe() -> AsyncStream<String> {
+    /// How many frames have been published so far (a reconnect marks the window it must deduplicate).
+    var published: Int { frames.count }
+
+    /// How many connections are attached right now (a test uses it to answer only once a follow is listening).
+    var subscriberCount: Int { subscribers.count }
+
+    /// The pause generation a published frame belongs to, when it is a pause frame.
+    func pauseGeneration(at index: Int) -> Int? { pauseGenerations[index] }
+
+    /// `replay` = the frames already published (a fresh subscriber sees the run from its start); false = only what comes
+    /// next. `from` starts the replay at that index instead of 0.
+    func subscribe(replay: Bool = true, from: Int = 0) -> AsyncStream<String> {
         let (stream, cont) = AsyncStream<String>.makeStream(bufferingPolicy: .unbounded)
-        for f in frames { cont.yield(f) }
+        if replay { for f in frames.dropFirst(max(0, min(from, frames.count))) { cont.yield(f) } }
         if finished {
             cont.finish()
             return stream
@@ -691,12 +1196,19 @@ actor WorkflowRunRegistry {
         var appId: String
         var runId: String
         var commands: GraphEngineCommands
+        /// The round that registered this entry. A resumed round takes over the task id; the round before it must not
+        /// remove the new one when its own cleanup runs.
+        var lease: String
     }
 
     private var active: [String: Active] = [:]
 
     func add(_ taskId: String, _ a: Active) { active[taskId] = a }
     func get(_ taskId: String) -> Active? { active[taskId] }
-    func remove(_ taskId: String) { active[taskId] = nil }
+    /// Removes the entry only when `lease` still owns it (an older round finishing late must not delete its successor).
+    func remove(_ taskId: String, lease: String) {
+        guard active[taskId]?.lease == lease else { return }
+        active[taskId] = nil
+    }
     var count: Int { active.count }
 }

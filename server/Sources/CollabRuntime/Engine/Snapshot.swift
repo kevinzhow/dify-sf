@@ -34,6 +34,25 @@ public struct GraphEngineSnapshot: Sendable {
                                      filter: dispatcher.filter.snapshot)
     }
 
+    /// The root frame's variable pool: what a human-input form's runtime references (and a variable-backed select's
+    /// options) are resolved against — Dify's `GraphRuntimeState.variable_pool` from the same pause snapshot.
+    public func variablePool() -> VariablePool? {
+        // `rootId` is the graph's root **node**, not a frame: the root frame is always "root" (GraphEngine.rootFrameId).
+        let rootId = "root"
+        guard let root = state.frames[rootId] else { return nil }
+        return state.pools[root.poolId]
+    }
+
+    /// The pool an execution runs in: the frame the execution id was bound to (`FrameNode(frameId:nodeId)`, saved in the
+    /// snapshot) — an iteration or a loop item has the pool of its own frame — else the root. A form's select options come
+    /// from the item the node runs for, not from the root.
+    public func variablePool(forExecution executionId: String) -> VariablePool? {
+        for (key, id) in state.executionIds where id == executionId {
+            if let frame = state.frames[key.frameId], let pool = state.pools[frame.poolId] { return pool }
+        }
+        return variablePool()
+    }
+
     public func encoded() throws -> Data {
         let encoder = JSONEncoder()
         encoder.userInfo[.runtimeSnapshot] = true
