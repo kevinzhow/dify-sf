@@ -2018,8 +2018,8 @@ the server. The reference is dify-file-ref: followed by URL-safe base64 of the r
 contain path separators or controls. Only the server-generated workspace/file UUID key chooses disk placement.
 The datasets source is rejected because ingestion is not implemented.
 
-Defaults: files 15 MiB, images 10 MiB, audio 50 MiB, video 100 MiB. Override COLLAB_FILES_FILE_MIB, IMAGE_MIB,
-AUDIO_MIB, VIDEO_MIB; individual limits are capped at 1024 MiB. COLLAB_FILES_BLOCKED_EXTENSIONS is a comma-separated
+Defaults: files 15 MiB, images 10 MiB, audio 50 MiB, video 100 MiB. Override COLLAB_FILES_FILE_MIB, COLLAB_FILES_IMAGE_MIB,
+COLLAB_FILES_AUDIO_MIB, COLLAB_FILES_VIDEO_MIB; individual limits are capped at 1024 MiB. COLLAB_FILES_BLOCKED_EXTENSIONS is a comma-separated
 denylist (empty by default, as Dify). Two concurrent uploads per process are accepted; excess returns 429 upload_busy.
 Bodies are collected only by this route, within the configured bound plus 64 KiB multipart overhead; other route
 limits are unchanged. Multipart parsing reuses Vapor's pinned MultipartKit dependency. Image controls retain the

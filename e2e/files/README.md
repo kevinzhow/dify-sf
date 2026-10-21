@@ -16,5 +16,5 @@ Dify-to-Swift and Swift-to-Dify signatures, expiry/type separation, SIGKILL plus
 database/storage, and graceful shutdown plus a second restart. No shared development database is used.
 
 Client UI: integration_test/files_flow_test.dart in the client checkout runs real Linux UI against a fresh
-test server, with only the OS chooser substituted. Set DIFYSF_FILES_SERVER/EMAIL/PASSWORD and optionally
+test server, with only the OS chooser substituted. Set DIFYSF_FILES_SERVER/EMAIL/PASSWORD and
 DIFYSF_FILES_EVIDENCE, then use xvfb-run flutter test integration_test/files_flow_test.dart -d linux.
