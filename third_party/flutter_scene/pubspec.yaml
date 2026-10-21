@@ -1,0 +1,107 @@
+name: flutter_scene
+description: A 3D game engine for Flutter, built on Flutter GPU. Renders glTF models with PBR lighting, shadows, animation, physics, and audio, with a scene editor.
+version: 0.24.3
+repository: https://github.com/bdero/flutter_scene
+homepage: https://fscene.dev
+documentation: https://fscene.dev/getting-started/
+topics:
+  - game-engine
+  - gamedev
+  - flutter-gpu
+  - gltf
+  - graphics
+screenshots:
+  - description: The Flutter Scene logo.
+    path: screenshots/flutter_scene_logo.png
+platforms:
+  macos:
+  ios:
+  android:
+  windows:
+  linux:
+  web:
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+  # 3.47.0 is the first stable carrying the Flutter GPU support this package
+  # needs (render-to-mip-level, flutter/flutter#187685), so the floor is a
+  # truthful minimum rather than the pana-scoring compromise it used to be.
+  # Master builds numbered 3.47.0-1.0.pre.N sort below it and are excluded.
+  flutter: ">=3.47.0"
+
+dependencies:
+  # Injectable wall clock for SceneView tick deltas (faked under flutter_test).
+  clock: ^1.1.1
+  code_assets: '>=1.2.1 <3.0.0'
+  scene: ^0.4.0
+  # Offline glTF import (build hook + CLI) arg parsing. Build-time only.
+  args: ^2.5.0
+  collection: ^1.19.0
+  data_assets: ^0.20.0
+  # Reader for the bundled GPU shim's shader-bundle flatbuffer.
+  flat_buffers: ^25.9.23
+  flutter:
+    sdk: flutter
+  # Native-only: the bundled GPU shim re-exports flutter_gpu on native and
+  # falls back to a WebGL2 backend on web.
+  flutter_gpu:
+    sdk: flutter
+  # 0.4.5 includes the DataAssets shader-bundle mode used by the new
+  # zero-manifest .fmat workflow.
+  flutter_gpu_shaders: ^0.5.1
+  hooks: ^2.0.0
+  # Offline glTF texture decoding (build hook), and runtime OpenEXR decoding
+  # for HDR environment maps. WASM-safe (no dart:io/dart:html on its web graph).
+  image: ^4.5.0
+  logging: ^1.2.0
+  vector_math: ^2.1.4
+  # WebGL2 bindings for the web GPU backend.
+  web: ^1.1.0
+  # Reads and edits the app's pubspec asset list. Build-time only.
+  yaml: ^3.1.2
+  yaml_edit: ^2.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  test: ^1.25.15
+
+flutter:
+  assets:
+    # A bundled sample environment, loadable via EnvironmentMap.fromAssets.
+    # (The zero-config default is the procedural EnvironmentMap.studio().)
+    - assets/royal_esplanade.png
+    # The fitted linearly-transformed-cosine tables for rect area lights, two
+    # 64x64 RGBA half-float tiles (the inverse-matrix fit and the
+    # magnitude/Fresnel fit). See lib/src/material/dfg_lut.dart for the data's
+    # provenance and license.
+    - assets/ltc.bin
+    # The precomputed split-sum environment-BRDF (DFG) table, 64x64 RGBA
+    # half-float. Regenerate with `dart run tool/generate_dfg_lut.dart`;
+    # integrating it at startup instead costs a few hundred milliseconds of
+    # CPU (see lib/src/material/dfg_lut_data.dart).
+    - assets/dfg.bin
+    # The SMAA precomputed area (160x560 RG8) and search (64x16 R8) textures
+    # from the reference implementation. See lib/src/render/smaa_pass.dart
+    # for the data's provenance and license.
+    - assets/smaa_area.bin
+    - assets/smaa_search.bin
+    # The engine's own shader bundles, compiled by this package's build hook for
+    # the engine that consumes them (a bundle is only valid for that engine, so
+    # nothing here is published, the archive carries the directories and their
+    # .gitignore files alone). An app that runs its own buildEngineAssets ships
+    # its copy instead. Each target's bundles sit in their own directory, so an
+    # app ships only the ones its platform loads, however many other targets
+    # the shared pub cache has built.
+    - flutter_scene_generated/
+    - path: flutter_scene_generated/metal_ios/
+      platforms: [ios]
+    - path: flutter_scene_generated/metal_desktop/
+      platforms: [macos]
+    - path: flutter_scene_generated/opengl_es_vulkan/
+      platforms: [android, linux, windows]
+    - path: flutter_scene_generated/opengl_es/
+      platforms: [web]

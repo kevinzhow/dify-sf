@@ -1,0 +1,679 @@
+## 0.24.3
+
+* A frame that re-presents its previous image while the GPU catches up no longer uploads joint matrices or light data first. On Vulkan each upload waited for the GPU backlog, so a GPU-bound scene with skinned meshes or moving lights blocked the UI thread for about a frame of GPU time (230 ms down to 40 ms at p95 on a Galaxy A16).
+* Meshes lit by point and spot lights batch into instanced draws again. Every item got its own light list, so any ranged light split every batch; items with identical lists now share one, and froxel-lit views ignore the lists.
+* Lit materials draw with a lean shader when the scene uses no irradiance field, rect area lights, environment cross-fade, parallax reflection box, ambient occlusion, or point-light shadows. It stops the full shader spilling registers on mobile GPUs (frames 1.5 to 1.8x faster on a Mali-G57) and adds about 250 KB compressed to each platform's shader bundle.
+* `Scene.warmUp` takes `allShadingTiers` (and `SceneView` takes `warmUpAllShadingTiers`), which also compiles the shader tier the scene is not using, so turning one of those features on or off later does not stall a frame.
+* `Camera.right`, `Camera.horizontalForward`, and `Camera.horizontalRight`, plus `Node.forward`, `Node.right`, and `Node.up`, give the world-space basis for movement and aiming without deriving it by hand.
+
+## 0.24.2
+
+* `Scene.dispose` drops the render targets and history textures a scene keeps across frames, so they no longer wait on the scene object being collected. A disposed scene throws a `StateError` on render.
+* `SceneView.declarative` disposes the scene it owns when it unmounts.
+* Temporal anti-aliasing's `objectMotion` works on the web. Its velocity shaders failed to link on WebGL2, so every frame threw.
+* An object that stops moving no longer keeps reporting its last step in the velocity buffer, so temporal anti-aliasing stops reprojecting it as if it still moved.
+* Scenes drawn in the same frame pace the GPU together, so a second `SceneView` (a portal or picture-in-picture view) no longer freezes on its last image while the first one renders. Regressed in 0.24.0.
+* Directional shadows fade to lit over the last tenth of `shadowMaxDistance` (at least `shadowFadeRange`), so distant shadows no longer switch off a strip at a time as the camera moves and the cached shadow tiles re-centre. Surfaces past the fade skip shadow sampling.
+
+## 0.24.1
+
+* On Apple platforms, a `ShaderMaterial` whose fragment shader reads a varying its vertex shader does not write at that location and type is skipped with a message naming the varying, instead of crashing the app on Flutter 3.47. `Scene.preload` also waits for the shader reflection the check reads.
+* An alpha-masked or LOD cross-fading mesh whose layers overlap shades its nearest layer again, instead of leaving a hole wherever a farther layer comes first in its index order. Regressed in 0.24.0.
+* Lit, unlit, and `.fmat` shaders build about twice as fast in browsers on Windows, close to 0.23, where a new material could stall its first frame for tens of seconds. Regressed in 0.24.0.
+* The surface debug views' material channels are compiled in only when the app sets `hooks: user_defines: flutter_scene: debug_views: true` (plus `flutter_scene_debug_views: true` under the app's name if its hook builds materials or engine assets). Without it a view shows the geometry and identity channels and prints how to turn the rest on.
+* `buildMaterials` and `buildEngineAssets` take `debugViews`.
+
+## 0.24.0
+
+* Bloom weights an isolated extreme pixel down against its neighbors before blurring (`BloomSettings.fireflySuppression`, on by default), so a mirror glint of a small intense light no longer floods the frame or strobes, while bright regions bloom in full.
+* `BloomSettings.highlight` (default 1000) softly compresses extreme pixels before they bloom, so ordinary highlights pass nearly unchanged but no pixel floods the frame. 0 turns it off.
+* `PointLight.radius` and `SpotLight.radius` give a light a physical size, so glossy reflections widen to the emitter instead of peaking at a point, and the near-field falloff stops at its surface.
+* Opaque materials no longer `discard`, so mobile GPUs keep early depth testing and hidden-surface removal on for every opaque draw (frames 2.5 to 6x faster on a Mali-G57). Alpha-masked and LOD cross-fading draws cut out through a depth pre-draw instead; translucent cross-fades fade by opacity.
+* An alpha-masked `PhysicalMaterial` without a base color texture masks its shadows and depth by its vertex and factor alpha.
+* `Material.depthLayer` (`.fmat` `depth_layer:`) orders surfaces that share a plane. A higher layer draws over a lower one at any distance, so signs, screens, and road paint laid on a surface stop flickering (z-fighting).
+* Scenes store reversed float depth where the device supports it (Metal, and WebGL2 with `EXT_clip_control`) and rasterize with a near plane fitted to visible content each frame, so distant surfaces centimetres apart stay distinct. `Scene.reversedDepth` and `Scene.fitNearPlane` turn each off; projections and picking keep the authored planes.
+* `PerspectiveProjection` and `PerspectiveCamera` accept an infinite far plane (`.fscene` `infiniteFar`).
+* `Scene.probeDepthConflicts` names each pair of nodes that trades pixels as the camera moves, and `DebugOverlay.depthConflicts` marks them live.
+* `Scene.findCoplanarOverlaps` lists faces that overlap in one plane, with the length that fixes a repeated piece; debug builds print it once the scene settles.
+* `SurfaceDebugChannel.depthGap` shows the gap two surfaces need at each pixel to keep their order.
+* `Scene.coplanarTieBreak` (experimental) gives unlayered exact overlaps a stable winner.
+* Custom `ShaderMaterial` vertex shaders that write clip depth themselves (a sky at `z = w`) need `Scene.reversedDepth = false`; ones that use `camera_transform` are unaffected.
+* `loadScene` and the async `.fsceneb` loaders parse on a background isolate; `readFscenebAsync` is exported from `fscene.dart`.
+* Generated mip chains upload in one submission instead of one per level.
+* `Texture2D.fromImage(opaque: true)` wraps the image's GPU texture instead of reading it back, when no mip chain is needed.
+* `Scene.warmUp` waits for the raster thread before drawing, so OpenGL ES pipeline compiles no longer stall the UI thread behind a swap.
+* Fixed shadows striping on half-precision GPUs (Mali, Adreno, software GL) since material shaders default to mediump; the shadow map and punctual light data samplers are declared highp again (#234).
+* Fixed lit materials writing NaN at sharp specular highlights viewed at grazing angles on half-precision GPUs, which reflections, depth of field and bloom spread into screen-filling flashes.
+* The bloom and depth of field prefilters map a NaN pixel to black instead of to the half-float maximum, so a stray NaN from any shader can no longer flood the screen with bloom.
+* The shaders behind `PhysicallyBasedMaterial` extensions and `ShadowCatcherMaterial`, and the SMAA tables, load on first use instead of delaying every scene's first frame; `Scene.preload` loads them up front.
+* Generated scenes, textures, and materials rebuild when the flutter_scene code that writes them changes, so an upgrade no longer reuses outputs from the old importer, encoder, or `.fmat` compiler.
+* Custom vertex attributes no longer have to match between mesh and material. A declared attribute the mesh lacks reads zero instead of crashing or reading garbage, and materials that do not declare a mesh's attribute draw it instead of skipping it (#440).
+* `.fmat` samplers declared with `hint: default_black` or `hint: default_transparent` sample a black or transparent placeholder until a texture is set; both used to sample white.
+* A draw the backend refuses is skipped instead of throwing out of `paint`, and a pipeline that keeps failing (an OpenGL ES driver that cannot compile its shader) is dropped and reported once (#444).
+* Fixed a crash on M3 and newer Macs and recent iPhones (macOS and iOS 26+) when drawing a lit material with directional shadows; the lit shaders no longer inline their lighting twice (#436).
+* Fixed bloom stamping a grid of square copies around bright highlights and popping as they moved. The first mip averages each texel's whole source footprint, the upsample tent no longer spreads its taps apart, `BloomSettings.scatter` weights the wider mips instead, and the resolve magnifies bloom with a B-spline.
+* Fixed a native crash on Impeller Vulkan when cached static shadows re-rendered after a resize, a render-target release, or from a second view (#431).
+* Runtime-imported glTF textures honor their sampler's per-axis wrap modes (`CLAMP_TO_EDGE`, `MIRRORED_REPEAT`) and `NEAREST` filters instead of always repeating.
+* ETC1S KTX2 textures (`KHR_texture_basisu`) transcode to BC or ETC2 blocks on devices that sample them, instead of decoding to rgba8.
+* `buildTextures(encoding: TextureEncoding.etc1s(quality: ...))` cooks textures to standard ETC1S KTX2 with a pure-Dart encoder, several times smaller than `.fstex`; `encodings` sets it per source.
+* Fixed morph targets on unskinned meshes not deforming on the GPU path; their weights animated but the mesh drew in its base pose (#428).
+* Morphed mesh bounds grow to cover every weight a node draws with, including weights below 0 or above 1, so animated blend shapes are no longer culled while on screen.
+* Setting `Node.highlightColor` between a tick and the next draw no longer throws inside the selection outline pass; the outline draws white for that frame and takes the color on the next.
+* Punctual light data textures skip uploads that would not change them, saving a synchronous upload per texture per frame on drivers like Android Vulkan.
+* `Scene.warmUp(sliceBudget:)` compiles pipelines a slice at a time and yields between slices, so a slow device keeps answering input; `SceneView(warmUp: true)` now warms up this way.
+* Lit `.fmat` materials can define `Light()`, `Ambient()`, and `Composite()` hooks to shade each light with their own BRDF, adjust the image-based lighting inputs, and combine the lit lobes themselves; `Light()` also sees each light's table row and shadow slot.
+* Lit `.fmat` materials can set `environment_lighting: false` to compile out the engine's environment lighting and supply their own indirect light in `Composite()`.
+* `.fmat` `Vertex()` hooks read `vertex.model_transform`, the object-to-world transform, so a vertex stage can build geometry in object space and place it itself.
+* Fixed image-based lighting adding the specular multiscatter energy to the diffuse lobe instead of subtracting it, which brightened rough surfaces, partly metallic ones most.
+* `.fmat` `alpha_to_coverage: true` turns an opaque material's alpha into MSAA coverage for crisp, sort-free cutouts such as foliage cards (a dithered cutout on OpenGL ES and WebGL2), and cuts its depth prepass and shadows by the same alpha.
+* `SpotLight.shadowFieldOfView` narrows a spot's shadow frustum inside its cone, spending the tile's texels on the core of a wide, soft-edged cone.
+* `PointLight.falloffExponent` and `SpotLight.falloffExponent` accept 0, which turns off distance falloff and leaves only the `range` window; they used to clamp to 0.1.
+* Custom render passes read each casting spot's shadow matrix and atlas tile from `RenderPassContext.spotShadows` (`SpotShadowInfo`).
+* `RenderTexture(linearColor: true)` captures the view's linear HDR scene color with no post-processing or tone mapping, for mirrors and probes composited in HDR; MSAA still applies when the view asks for it.
+* `PlanarReflectionCamera` is public, so an app can render its own mirror into a `RenderTexture` with the reflected camera and an oblique near plane at the mirror.
+* `Node.renderOrder` sorts a node's draws ahead of everything else in their pass, pinning the order of overlapping translucent surfaces that depth sorting gets wrong.
+* `MeshPrimitive.drawSelector` and `InstancedMesh.drawSelector` take a `MeshDrawSelector` that picks how many leading instances and which index range each color, depth, or shadow draw uses, for detail that depends on the pass or camera.
+* An `InstancedMesh` whose instances stop changing keeps its instance data in a device buffer, so its draws stop copying every instance each frame.
+* Double-sided materials cast shadows from both faces, so cards turned away from the light no longer drop out of the shadow map.
+* Fixed a Metal crash when a `.fmat` named a declared sampler without reading it (in a comment or code the compiler removes); every declared sampler now stays in the compiled shader.
+* `buildScenes` and `buildMaterials` rerun when a source is added or removed in a subdirectory, not only at the top of the discovery root.
+* Image and HDR sky backgrounds no longer draw a one-pixel line where the panorama wraps or a fan of wedges at the poles; the sky picks its mip level from the projection instead of screen derivatives.
+* `.fscene` documents keep data this build does not read through a load and save, and a property with an unknown tag loads as an inert `UnknownValue` (exported from `fscene.dart`) instead of failing the document.
+* Render textures share the screen view's spot and point shadow tiles when no directional light casts, so mirrors no longer re-render them. Their casters draw from the screen view's camera.
+* A `.fmat` vertex stage that reads custom or per-instance attributes runs in depth and shadow passes too, so geometry it moves casts the shadow it draws.
+* After-scene custom passes that read depth see translucent surfaces that write depth, so a depth-based fog or composite no longer paints over them.
+* `.fmat` `effects_depth: true` puts a translucent surface in the depth that depth of field and custom passes read, cut by its alpha, without writing depth in the color pass (fins, hair cards).
+* `Scene.debug.splitView` shows a second surface debug view left of `Scene.debug.split`, so a wipe can run between two channels instead of against the lit image.
+* Debug overlays follow `Scene.debug.split`, drawn only on the view side, and `Scene.debug.splitOverlays` draws overlays on the other side, so a wireframe can wipe in and out.
+* Depth of field spreads an out-of-focus foreground object's blur past its silhouette over its full blur radius, while the in-focus background beside it stays sharp.
+* `SceneView.maxFrameRate` caps rendering at an even cadence, every other refresh for 60 on a 120 Hz display.
+* Transient GPU buffers are recycled by idle age, so a loaded scene stops allocating per frame.
+* `Geometry.uploadVertexStreams` uploads vertex streams in a caller-defined format, and `Geometry.setDepthOnlyVertex` gives such a mesh a position-only shader for shadows and the depth prepass.
+* A geometry with a declared vertex layout draws depth through its own vertex shader instead of the engine's position-only one, which misread any first stream that was not a float position.
+* Integer vertex formats work on the web backend.
+* `MeshGeometry` attributes left out at construction bind shared default streams instead of uploading per-mesh defaults.
+* A light that turns by a few degrees refreshes cached shadow cascades one per frame instead of re-rendering all of them in one frame, and keeps their textures.
+* Encoding a frame allocates far less per draw and per node (uniform slots, pipeline lookups, sort depth, transient staging, uniform scratches).
+* A view keeps render targets for its two most recent sizes, so a render scale toggling between two resolutions no longer reallocates.
+* Lit `.fmat` materials can set `directional_light: false` to compile out the directional light.
+* Fixed unlit `.fmat` materials drawing nothing on Impeller Vulkan. Their shader carried an unread radiance block that collided with the vertex stage's frame block in the pipeline layout, which some drivers reject; the block is now compiled out where nothing reads it.
+* Display-referred surfaces. `Material.displayReferred` (settable on `UnlitMaterial`) marks a surface whose color is already final screen values, so it draws past the tone curve into its own layer and composites onto the resolved image with its colors unchanged. `WidgetComponent` turns it on for the material it owns, fixing captured widgets arriving dark and dark tones crushed (#382); pass `displayReferred: false` for a screen that should read as a lit object. The layer is still occluded by opaque geometry, but takes no exposure, grading, tone mapping, fog, bloom or depth of field, casts no shadow, and does not order against translucent geometry.
+* Web decodes glTF, `.fscene`, and asset textures in the browser and builds their mip chains on the GPU, so large images no longer render in pieces and no longer stall the main thread.
+* `Texture2D.fromEncodedBytes` uploads an encoded image. It, `Texture2D.fromAsset`, and the glTF loaders take a size cap that scales larger images down as they decode.
+* Web wasm builds now enable anisotropic filtering, which a mistyped limit query had silently disabled.
+* Web mesh uploads give vertex and index data a GL buffer each, written straight through, instead of one shared buffer mirrored in Dart and uploaded twice. Meshes outside a `GeometryBufferArena` upload about half the bytes, and far faster under wasm.
+* `Geometry.uploadVertexData` takes `TypedData` rather than `ByteData` for its vertices and indices, so an upload keeps the element type it was packed as. Subclasses overriding it must widen their parameters to match.
+* `OrthographicCamera` and `OrthographicProjection` add parallel projection, sized by `OrthographicSize` (full world extents with height, width, contain, cover, or stretch fitting, or a fixed `pixelsPerUnit`) plus `zoom`, `offset`, and a `near` that may be negative.
+* `CameraProjection.getProjectionMatrixForViewport` lets a projection size its volume from the view's logical size, which rendering and picking both resolve against.
+* Shadows, AO, SSR, TAA, depth of field, god rays, GI, planar reflections, froxel lighting, LOD, and custom-pass depth/normals all work under orthographic and custom projections.
+* `#include <view_projection.glsl>` reconstructs view positions for any projection; `PostCameraInfo` carries its axis offset and orthographic flag in the formerly unused `w` slots.
+* `.fscene` cameras serialize orthographic projections, the editor draws their view volume, and `OrbitCameraController` dollies an orthographic camera by zoom.
+* Gaussian splats sort back to front and evaluate view-dependent color under orthographic cameras.
+* BREAKING: `Lighting` takes `projectionScaleX/Y`, `projectionOffsetX/Y`, and `orthographic` in place of `tanHalfFovX/Y`, which remain as deprecated getters.
+* The vertex stage writes the world normal and tangent varyings at unit length, so a model authored at a small scale no longer lights black on GPUs that flush its tiny normals to zero in mediump varyings.
+* Screen-size LOD applies to every perspective camera, not only `PerspectiveCamera`.
+* Apps ship each engine shader bundle once and only for their own platform; a shared pub cache used to ship every platform's bundles, twice with data assets enabled.
+* `dart run flutter_scene:init` lists a directory per platform in the app's pubspec so the app's own generated shaders ship only for their platform too; rerun it in an existing app.
+* `Scene.addTickListener` runs a `SceneTickListener` at the start of every tick and before every fixed step, ahead of all components, for per-frame sampling such as input.
+* `FlyCameraController.setMoveInput` drives movement from a gamepad, touch controls, or an input system, summing with the keys and keeping analog magnitude.
+* Cascaded shadows skip casters that cannot shadow anything the camera shades, cutting shadow-pass draws with no change to the rendered image.
+* Skinned vertex shaders normalize the four joint weights, so a mesh exported with weights summing to slightly under 1 no longer stretches toward the origin as it moves away from it.
+* `releaseTransientRenderTargets()` drops the render graph's pooled attachments (shadow atlas, scene color, depth, the post-process chain) and returns the bytes released; they reallocate on the next frame that needs them.
+* Pooled render targets are released automatically on platform memory pressure (`releaseRenderTargetsOnMemoryPressure` turns that off), and `takeMemoryReport()` reports them as a `render targets` category.
+* Surface debug views. `Scene.debug.view` shows a resolved material channel (base color, roughness, metallic, every physical field), a geometry attribute (normals, tangents, UV sets, vertex color, face orientation, UV checkers), an identity color per object or material, or a validation flag (NaN/Inf, albedo range, non-binary metallic, missing tangents, UV range) in place of the lit result, on every material including `.fmat` ones, at runtime in any build. `Scene.debug.split` compares a view against the lit image, `DebugView` carries a range, gain, and out-of-range policy, `Node.debugView` overrides or excludes a subtree, and `Scene.debug.overlays` adds a wireframe drawn through each mesh's own vertex path. `DebugViewRegistry` lists the views by id for tools; a `.fmat` shows any value through `material.debug` and the `custom` channel.
+* `GeometryBufferArena` fills the first block with room instead of abandoning a block's tail once an upload does not fit, and its docs now say it never reclaims space.
+* `DebugDraw.flushInto` rebuilds one updatable line geometry in place each frame (`DebugDraw.createGeometry` makes it) instead of allocating a geometry per flush; the Kit example uses it.
+* `Scene.renderStats` reports every frame's draw, instance, vertex, culling, batching, and pipeline counters per view and per pass with CPU times, plus a bounded history; the render graph also emits a `dart:developer` timeline event per pass for DevTools.
+* `ShaderReflection` parses any loaded shader bundle into per-shader, per-backend reflection (inputs, uniform block layouts, texture bindings, entrypoint) and the compiled source for every backend it holds, maps shader objects back to their names, and decodes packed uniform bytes through the layout.
+* A render graph capture now records every draw call (`CapturedDraw`, with node, material, shader pair, pipeline, counts, batch size, why an opaque run ended, and the uniform blocks bound for it) and every skipped item with its reason.
+* `RenderGraphCaptureResult.toJson` and `fromJson` serialize a capture with PNG thumbnails and decoded uniforms, so a capture can be attached to a bug report and opened elsewhere.
+* `.fmat` compile failures expose parsed diagnostics (`FmatCompileException.diagnostics`) with line numbers, and `shaderSourceWindow` renders the marked source around one.
+* Projected box decals via `DecalNode`, an oriented projection volume that paints a `.fmat` material onto whatever opaque surfaces it intersects (scorch marks, splats), with no mesh work at the impact site.
+* Radial screen distortion pulses via `Scene.screenDistortion`, expanding shockwave rings that warp the composed image with optional chromatic fringing.
+* `.fmat` materials accept `blending: additive` alongside `opaque`/`alpha`, and `depth_write`/`depth_test` configure the translucent depth state.
+* Barycentric wireframe helpers, `#include <wireframe.glsl>` plus `MeshData.unweld` barycentric attributes, for wireframe and scan-line overlays on any mesh.
+* `MaterialGroup` pushes one parameter value to a heterogeneous set of materials, skipping names a member does not declare.
+* Unlit `.fmat` materials may declare `engine_inputs`; the screen accessors gain `GetSceneWorldPosition`, materials that read scene depth get it at full resolution, and `scene_color_reach` bounds a reader so disjoint readers share one scene-color capture.
+* A draw whose render pipeline the backend rejects is skipped with a one-time console message naming the material and geometry, instead of failing the whole frame from inside paint.
+* A render pipeline build that stalls a frame (8ms or more, always on its first draw) is reported in debug builds with the material and geometry that triggered it, so the fix (drawing it once behind a load screen) has a target.
+* `Scene.shadowCasterOverflowCount` and `Scene.isShadowCasterGranted` report the lights whose authored shadow is not being drawn, since the shared shadow atlas caps shadow-casting spots and point lights (four each) and the lights past the cap previously went dark silently.
+* `Scene.globalIlluminationProbeGrid` reports the probe lattice the irradiance field resolved this frame (origin, spacing, and probe counts as an `IrradianceProbeGrid`), so an editor or debug overlay can draw where the probes actually are instead of re-deriving a placement that depends on the volume mode, camera, and scene bounds.
+* `Node.shadowCastingMode` selects how a node's meshes cast: `on`, `off` (excluded from every shadow map while still drawing), `doubleSided` (casts from every face, closing light leaks through single-sided geometry), or `shadowsOnly` (casts while staying out of the color image, for proxy and off-screen occluders). Replaces `Node.castsShadows`, which stays as a deprecated two-state view of it, and is carried by `.fscene` documents and the editor's node inspector.
+* `SpotLight.shadowCasterChannelMask` and `PointLight.shadowCasterChannelMask` drop casters from one light's shadow map by light channel, matching `DirectionalLight`'s, so a node can be lit by a light without casting into it.
+* Point lights cast shadows: `PointLight.castsShadow` plus per-light resolution, near, bias, softness, and caster-face controls. Six 90-degree cube faces render into the shared shadow atlas (four quarter-resolution faces per tile, two tiles per light) and the lit shader picks the face by the dominant axis of the light-to-fragment vector, so point shadows cost no new samplers or shader variants. A limited number of point casters render per frame; the rest shade unshadowed.
+* `Scene.smaa` (`SmaaSettings`) tunes SMAA's edge threshold, search steps, and corner rounding at runtime, previously compile-time constants.
+* `.fscene` stage effects now apply and serialize temporal anti-aliasing tuning and SMAA quality (the fields previously round-tripped through documents without reaching the scene).
+* The bundled agent skills cover this release (`flutter_scene-idioms` v14, `flutter_scene-kit` v7, `flutter_scene-looks` v5, `flutter_scene-performance` v3, `flutter_scene-procedural` v4, `flutter_scene-verification-loop` v4), including game input through `flutter_scene_input`. Run `dart run flutter_scene:skills` to update installed copies.
+* Switching `Scene.antiAliasingMode` from `msaa` to another mode on the OpenGL ES backend no longer renders without a depth test (far surfaces drew over near ones); pooled color targets now keep a separate texture per depth attachment setup.
+* `Scene.renderQuality` (`RenderQualitySettings`) puts the automatic settings on a quality ladder: `AntiAliasingMode.auto` and the scene color capture budget follow the tier (web and Linux desktop start at medium, everything else at high), and `adaptive` lowers the render scale and then the tier from measured frame periods when frames overrun `targetFrameRate`, recovering when they keep it. `Scene.effectiveRenderQualityTier` and `Scene.adaptiveRenderScale` report what is in effect.
+* `Scene.sceneColorCaptureBatches` caps how many scene color captures a frame opens for overlapping transmissive readers (1 makes them all share one snapshot), the biggest lever on tiled and low-end GPUs; null follows the quality tier.
+* Smooth transmission (zero roughness, or an index of refraction of 1) no longer builds the rough-transmission filter pyramid every capture, which the shader never sampled.
+* Material fragment shaders default to mediump with explicit highp on positions, coordinates, depth, and the HDR accumulators (see `shaders/PRECISION.md`), so GPUs that run half precision faster (Mali, Adreno, the web) shade the standard and physical materials at their fp16 rate. Metal is unaffected. A `.fmat` body inherits the default and should declare `highp` on positions or coordinates it computes itself; `noise.glsl` runs in highp regardless, since its parity with the Dart port is a float32 contract.
+* `Scene.maxGpuFramesInFlight` paces the GPU: once that many frames of GPU work are still running, a screen view presents its previous image instead of encoding a new frame, so a GPU-bound scene no longer stalls the UI thread on the Vulkan and Metal backends, which queue work from the calling thread. The default of 1 keeps the UI thread free for about a tenth of GPU throughput; 2 keeps the throughput but only halves the stall. `Scene.pacedFrameCount` counts the frames it held, and `Scene.repaintRequested` notifies when the held frame can be painted, so a view that repaints only on demand still shows it (`SceneView` listens).
+* `ThirdPersonControllerComponent.rotatesToMovement` keeps the node's authored rotation while still moving it, and `yaw` exposes the smoothed heading, now seeded from the node's rotation instead of snapping to zero on the first step.
+* `DebugDraw.colliders` wireframes every physics collider in a node subtree, posed the way the simulation sees it, and `DebugDraw.shape` draws one `Shape` at a given transform. Triggers draw in their own color.
+* `SceneView` measures `onTick` deltas with a wall clock instead of the ticker's frame-begin timestamps, whose deltas alternate between tiny and double-length values under GPU load and stagger any motion integrated against them. The new `SceneView.clock` injects a clock for tests and time-controlling drivers; the ambient `package:clock` clock (faked under `flutter_test`) is the default.
+* `Scene.punctualLightOverflowCount` reports how many drawable items dropped punctual lights last frame because more lights reached them than the per-object budget shades.
+* A `-split<N>` suffix on a glTF node name splits its mesh into grid-cell child meshes at import (whole triangles binned by world-space centroid into `N`-unit cells, children named `Ground_x0_z3`), so a level-spanning mesh culls and receives punctual lights per cell; the split reapplies on every re-import.
+* Punctual lights shade through per-view froxel clustering (screen tiles crossed with exponential depth slices, each shading only the lights that reach it), removing the per-object light cap, so a large mesh reached by many lights shades them all and no draw carries light state. Perspective views cluster automatically; orthographic views and frames using light channel masks keep the per-object lists, and `Scene.punctualLightClustering` disables clustering for comparison.
+* The punctual light loop is dynamically bounded (every compiled shader dialect is GLSL ES 3.00 or newer), so drivers cannot unroll it, and a froxel holds up to 255 lights.
+* Normals transform by the inverse-transpose of the model matrix, so a node under non-uniform scale or shear lights the same as the shape modelled at that size.
+* BREAKING for classes that `implements` rather than extends these types: `Geometry` gained `uploadVertexStreams` and `setDepthOnlyVertex`, `Material` gained `depthLayer` and `displayReferred`, `Camera` gained `projectToScreenUv`, `CameraProjection` gained `getProjectionMatrixForViewport`, and `ComponentCodec` gained `writeLiveProperty`, all with default implementations, alongside several internal engine members. `IrradianceFieldBakeStepper` takes a required `pointShadowFrame`, and its `renderView` callback receives it.
+* BREAKING: `Scene.initializeStaticResources()` completes with its error instead of normally, so a failed shader-bundle or material load now reaches the caller rather than only `dart:developer` `log()` (which web never showed). Awaiting it without a `try`/`catch` throws where it previously continued; wrap the call, or use a `SceneView`, which reports the failure and stays on its `loadingBuilder`. `baseShaderLibrary` names that cause too, rather than telling you to await the call that already failed.
+* A rejected collider names the node it was on and the degenerate cases that cause the rejection.
+* Batching comparators cache their identity keys, `sceneSortDepth` allocates nothing, and instance batch objects are pooled, cutting per-frame work that multiplies across shadow, depth-prepass, and reflection views.
+* Allow `code_assets` 2.x.
+* Fix vertex-attribute traffic on the web backend growing quadratically across same-pipeline draws.
+* On web, shader bundles and their generated JSON revalidate with the server on load, so a browser cache can no longer pair a previous build's bundle with new Dart code.
+* Spatial audio follows a `SceneView`'s camera (or `cameraBuilder`) when no scene camera or `AudioListener` is set, instead of a listener stuck at the origin.
+* Fix the mip-sampling probe reporting the base-mip clamp on hardware that samples mip chains correctly, about one cold run in three on a Mali-G57. It read its render target back without waiting for the draw, which the OpenGL ES backend runs on the raster thread, so an unrendered target answered with whatever its memory held. A false reading dropped every uploaded mip chain for the life of the process and moved image-based lighting to the radiance atlas, silently.
+* The split-sum environment BRDF ships precomputed as `assets/dfg.bin` instead of being integrated at every cold start, taking `Scene.initializeStaticResources()` from 274ms to under 20ms on a Galaxy A16. The table is a constant, so the asset is bit-identical to the integration; an app that trims it still gets a correct table, built off the render isolate and with a message saying what it costs.
+* The CPU mip build is roughly twice as fast for color and normal textures: the content switch moved out of the per-texel loop, the normal filter's taps are unrolled, and the sRGB decode reads a 256-entry table instead of calling `pow` three times per texel. A 2048-square color chain drops from 141ms to 55ms.
+* Radiance prefiltering fills one roughness band per frame instead of submitting the whole atlas as a single draw. That draw was ~850ms of GPU work on a Mali-G57, and because it lands inside a Flutter frame the display froze until the driver's buffer-queue timeout; a cold start that built two environments spent 1.7 seconds of 3.1 frozen. The texture is returned immediately and sharpens over the following frames, and `EnvironmentMap.radianceComplete` waits for the finished result.
+* The radiance prefilter takes its mirror band directly rather than integrating a delta lobe 256 times, and generates its samples from a rank-1 lattice instead of a float-emulated radical inverse whose loop cost more than the texture fetches it fed. Together about half the prefilter's GPU cost, with no change to the rendered result.
+* Fixed animating glTF rigs with a joint named `root`, whose channels drove the import root instead, dropping the Z flip and leaving the joint still.
+* On web, `EnvironmentMap.fromEquirectImageAsset` and `imageFromBytes(maxWidth:)` no longer fail with "ImageDescriptor.width is not supported".
+* The Dart noise (`FastNoiseLite`, `noiseCurl3`, particle turbulence) now matches native exactly on web; 3D OpenSimplex2 previously returned huge values there, driving particles to NaN.
+* On web, an int `.fmat` parameter saved into an `.fscene` document keeps its int type instead of becoming a double.
+
+## 0.23.0
+
+* Build hooks no longer crash on a target OS `package:code_assets` cannot name, which is how a third-party embedder announces tvOS or visionOS.
+* tvOS, visionOS, and watchOS select the iOS Metal shader variant, so an app on an Apple embedded platform finds its shader bundles and materials instead of looking for a target nothing builds.
+* Added `package:flutter_scene/kit.dart`, high-level gameplay, camera boom, character controller, day/night cycle, water surface, audio, pooling, and debug visualization components.
+* BREAKING: model-space front faces wind Counter-Clockwise (CCW) now, across primitives, procedural builders, materials, and `.fscene` version 5, matching glTF and the rest of the ecosystem. Version 4 documents swap index pairs on read and version 4 containers migrate at realization, so assets need no action, but hand-authored index buffers and custom `Geometry` subclasses wind the other way and need their triangles swapped.
+* World-space global illumination via `Scene.globalIllumination`, a grid of octahedral irradiance probes fed by scattering the visible surfaces' shaded radiance, so bounce light persists for geometry the camera is not looking at and colored bleed reads correctly. Off by default.
+* Probe visibility via `GlobalIlluminationSettings.visibility`, per-direction depth moments and a Chebyshev bound so the field does not leak through walls.
+* Emissive surfaces light the probe field, scaled by `GlobalIlluminationSettings.emissiveGiBoost` so a small bright emitter can light a room without brightening the direct image.
+* Offline and progressive irradiance field baking via `Scene.bakeIrradianceField` and `IrradianceFieldBakeStepper`.
+* `IrradianceVolumeComponent` places the irradiance volume on a node, for authored placement instead of fitting the scene or following the camera.
+* `Scene.invalidateGlobalIllumination` discards the accumulated field so it refills from scratch after a hard camera cut.
+* The lit shaders read the environment's diffuse coefficients with `texelFetch` from a texture the probe atlas extends, so global illumination costs no additional fragment sampler.
+* Add the `flutter_scene-kit` agent skill, covering the gameplay, camera rig, character controller, day/night, water, audio, pooling, and debug components in `kit.dart`.
+* Update `flutter_scene-idioms` skill (v4) with the reflection probes and lens flares the engine gained, and the traps that came with them.
+* Update `flutter_scene-performance` skill (v2) with SMAA's cost next to FXAA and the per-frame reflection-probe recapture trap.
+* Update `flutter_scene-procedural` skill (v2) with natural formation recipes (rock fractures, incised trails, pebble scatter, Gerstner waves, tree branching, and procedural island topographies).
+* Update `flutter_scene-looks` skill (v4) with micro-surface and anti-waxiness tuning guidance.
+* Update `flutter_scene-verification-loop` skill (v2) with empirical verification disciplines and blind-pairwise review rules.
+* Temporal anti-aliasing via `AntiAliasingMode.taa` and `Scene.temporalAntiAliasing`, reprojecting history with camera subpixel jittering, motion vectors for unskinned and skinned geometry, and variance-guided history clamping.
+* Geometric specular anti-aliasing adapts specular roughness based on screen-space normal derivatives to suppress high-frequency specular shimmer on subpixel geometry and grazing angles; `Material.specularAaThreshold` configures the threshold.
+* `DirectionalShadowFilter.bilinearPcf` continuous 2x2 bilinear percentage-closer filtering.
+* `CameraProjection.getProjectionMatrix` adds an optional named `jitter` parameter for temporal subpixel sampling.
+* Direct lighting modulates specular and clearcoat terms with `sun_visibility`.
+* Added `ExternalTexture`, a `TextureSource` fed by a platform texture id (video, camera preview) with optional `colorFilter`, captured through the compositor on frames that sample it.
+* Generated scene registries are cached per asset bundle.
+* `.fsceneb` payload chunks compress with gzip, cutting file sizes by ~73% in exchange for higher load-time decompression CPU.
+* Static render items skip per-frame property re-assignment when their transform and bounds are unchanged.
+* Instanced mesh static shadow updates track component visibility changes correctly.
+* Widget-surface pointer forwarding dispatches events in the framework's global space (with the host's transform in the hit path), so widgets that convert `globalPosition` through render objects (Slider, text selection) work when the scene view is not at the window origin.
+* The standard PBR shader ships a no-shadow variant, selected automatically for draws with no shadow atlas bound, roughly halving the compiled fragment program for shadow-less scenes on mobile GPUs; it also skips its five per-texture UV-transform evaluations when every transform is identity.
+* `PhysicallyBasedMaterial` keeps a scalar `ior`, `specular`, and `specularColor` on the standard shader by folding them into its dielectric reflectance (the `KHR_materials_ior` / `KHR_materials_specular` formula the physical shader uses), so only specular textures and the layered features select the heavier physical variant.
+* The model scale is no longer interpolated per fragment (`v_model_scale` left the vertex output interface, cutting varying bandwidth on tiler GPUs); lit materials read it from `FragInfo.model_scale` through the unchanged `GetModelScale()` accessor, now carrying the node's scale rather than per-instance or per-joint scale, and a raw `ShaderMaterial` pair that needs it passes its own varying computed from the model transform.
+* glTF import validates `extensionsRequired` and surfaces warnings through an `onWarning` callback on every entry point.
+* Sparse glTF accessors apply, including the zero-filled base for an absent `bufferView`.
+* `KHR_draco_mesh_compression` decodes in pure Dart on every platform.
+* `EXT_meshopt_compression` decodes in pure Dart; `KHR_mesh_quantization` is recognized alongside it.
+* Standard KTX2 textures (`KHR_texture_basisu`) load on both import paths, transcoded in pure Dart.
+* The runtime importer accepts multi-buffer `.gltf` documents and percent-decodes resource URIs.
+* `MeshPrimitive.visible` and `MeshPrimitive.castsShadow` toggle one primitive's color and shadow passes independently.
+* `MaterialParameters` gains typed getters, `hasParameter`, `isParameterAssigned`, and parameter enumeration.
+* Light channels, `channelMask` on lights and `Node.lightChannelMask` restrict what a light illuminates; `DirectionalLight.shadowCasterChannelMask` filters shadow casters independently.
+* `DirectionalLight.firstCascadeFarBound` pins the first cascade split; `cascadeOverlap` cross-fades cascade hand-offs.
+* `ShadowCatcherMaterial`, an invisible ground showing only received shadows and ambient occlusion, live by default with a baked mode.
+* Morph targets import on both paths, animate via `weights` channels, and blend on the CPU or a GPU morph texture; `Node.morphWeights` drives them.
+* `EnvironmentMap.fromKtx2Bytes` loads a pre-baked radiance cubemap with SH-9 diffuse, skipping the load-time prefilter.
+* `EXT_lights_image_based` imports as an `ImageBasedLightComponent` on the model root.
+* SH-9 diffuse helpers, `parseDiffuseShSidecar`/`encodeDiffuseShSidecar`, `evaluateDiffuseSphericalHarmonics`, and `describeDiffuseSphericalHarmonics` for verifying imported coefficients.
+* `PhysicallyBasedMaterial.lightmapTexture` adds a baked lightmap that replaces the SH diffuse ambient.
+* `.fmat` `instance_attributes` declare typed per-instance data, set via `InstancedMesh.setInstanceAttribute`.
+* A raw `ShaderMaterial` declares the same per-instance data through `ShaderInstanceAttribute`, so a custom vertex shader reads the `instance_<name>` inputs a `.fmat` would have generated.
+* `PlanarReflectorComponent` renders a mirrored scene capture that `.fmat` materials sample via the `planar_reflection` engine input.
+* `ShaderMaterial.sceneInputs` declares the engine's per-frame scene textures, so a raw shader can refract and measure its own thickness like a `.fmat` material. Include `<scene_inputs.glsl>` for the samplers and their accessors; `buildTargetShaderBundleJson` puts flutter_scene's `shaders/` on the include path so it resolves with no setup.
+* Parallax-corrected reflection probes via `ReflectionProbeComponent`, capturing the scene into a local environment whose reflections track the probe's box.
+* `Scene.captureEnvironment` renders the scene's lighting at a point into a new `EnvironmentMap`.
+* SMAA anti-aliasing via `AntiAliasingMode.smaa`, cleaner edges than FXAA with far less texture blurring.
+* Lens flares via `BloomSettings.lensFlare`, ghost chains and a halo with chromatic dispersion off the bloom pyramid.
+* Bloom now spreads a consistent fraction of the screen across device pixel ratios, so bloom and lens flares no longer tighten on high-DPI displays; its passes also stop relying on reloaded attachments, matching every backend.
+* Clearcoat now responds to rect area lights.
+* Screen-space indirect light reprojects its radiance history, so the bounce stays put under camera motion.
+
+## 0.22.2
+
+* Four new agent skills alongside `flutter_scene-idioms`: `flutter_scene-verification-loop` (the run-settle-capture-correct visual loop and the blind-pairwise judgment rule), `flutter_scene-looks` (copy-paste `EnvironmentSettings` presets for a deliberate look), `flutter_scene-procedural` (terrain, noise, and instancing from code), and `flutter_scene-performance` (frame-budget measurement and a fixed remediation order). `dart run flutter_scene:init` and `dart run flutter_scene:skills` now install every bundled skill.
+
+## 0.22.1
+
+* Camera controllers `OrbitCameraController`, `FlyCameraController`, and `FollowCameraController` drive a camera node from drag, scroll, and keyboard input with frame-rate-independent smoothing and clamped pitch. The `CameraControls` widget wires Flutter input to a controller; controllers also expose intent methods (`orbitBy`, `dollyBy`, `look`, ...) for driving them from any source.
+* `Node.lookAt`, `Node.lookAtFrom`, and the static `Node.lookAtTransform` orient a node's forward axis (local +Z) at a world-space target, aiming cameras, lights, and imported models without hand-building a view matrix.
+* Ship the `flutter_scene-idioms` agent skill, correct-usage guidance for coding agents that corrects the wrong assumptions carried from other 3D engines. `dart run flutter_scene:init` offers to install it, asking first at a terminal and never installing unattended without `--skills`.
+* Add `dart run flutter_scene:skills` to install, update, or `--check` the agent skill on its own, without touching the build hook or pubspec.
+
+## 0.22.0
+
+* `Node.position`, `Node.rotation`, and `Node.scale` read and write the local transform one component at a time, and editing a returned copy in place throws in debug builds rather than silently doing nothing.
+* `Node.mutateLocalTransform` edits the local matrix in place through a callback and marks the node dirty, the correct way to reach for the raw matrix.
+* A frame that draws nothing now prints once in debug builds naming the likely cause (not ready, empty region, no views composite to screen, no visible meshes, or a layer mask matching nothing).
+* Degenerate cameras now assert in debug builds, catching a view direction of zero length, an `up` parallel to it, and a field of view passed in degrees.
+* The web backend now throws on a bind to a shader uniform or texture name that does not exist, matching native, instead of silently sampling whatever was bound last.
+* `SkinnedGeometry.uploadVertexData` and `setCustomAttribute` now throw on a buffer whose length does not match the vertex count, instead of rendering garbage.
+* A `Mesh` whose primitive geometry is replaced now recomputes its bounds on its own, rather than over-culling until `markLocalBoundsDirty` is called.
+* An `AnimationClip` that binds zero of its channels now asserts in debug builds, naming the wanted nodes, since it otherwise plays while nothing moves.
+* Fixed the second and every later `flutter run` rendering nothing, from two hook invocations writing the same shader bundle filenames with different backend trims.
+* Fixed `Scene.initializeStaticResources()` reporting ready when the shader bundle loaded but held nothing this engine can read.
+* Fixed `dart run flutter_scene:init` then `flutter run` failing on a new app with "Flutter failed to list directory".
+* Fixed `Node.clone()` sharing the original's transform matrix.
+* Fixed the skinning joints texture being too narrow for small joint counts, which duplicated matrix columns.
+* Fixed `ParticleSystem.reset()` not restarting its random stream.
+* Mutating `Node.localTransform` in place without `markTransformDirty()` now throws in debug builds instead of silently doing nothing.
+* `SceneViewsBuilder` is now exported.
+* Documentation fixes for names that no longer exist (`Environment`, `loadModel`, the master channel requirement), plus a readme scene that needs no asset files and a list of the built-in geometry.
+
+## 0.21.1
+
+* Documentation only. The readme spells out how to turn Flutter GPU on for each platform, shows the build hook and the pubspec entry `dart run flutter_scene:init` writes, recommends converting assets ahead of time over importing glTF at runtime, and links the guides at fscene.dev.
+
+## 0.21.0
+
+* Requires Flutter 3.47.0 or newer. That is the first stable carrying the Flutter GPU support this package needs, so the constraint is a real minimum rather than the loose value earlier releases carried. A master build numbered `3.47.0-1.0.pre.N` sorts below it and will not resolve.
+* Assets are generated into `flutter_scene_generated/` at the app root and loaded by source path, the same way on every Flutter channel. `dart run flutter_scene:init` installs the hook, creates the directory with a `.gitignore` for its outputs, and adds the one pubspec assets entry it needs.
+* `flutter pub add flutter_scene` is the whole setup. flutter_scene's own build hook compiles the engine's shaders for the app being built, on every channel, so an app with no hook of its own renders a runtime-imported `.glb` everywhere including web.
+* Compiled shader bundles record the engine that built them and are rebuilt when it changes, so switching Flutter versions cannot leave a bundle the new engine refuses to read.
+* `buildEngineAssets` is an optional build-hook call that puts the engine's shaders in the app's own generated tree instead of flutter_scene's.
+* Breaking change, `legacyOnly` and `dataAssetsIfAvailable` are removed in favor of `generatedTree`, now the default in `SceneAssetMode`, `TextureAssetMode`, `MaterialAssetMode`, and `TargetShaderBundleAssetMode`. A hook still passing a removed mode fails the build naming its replacement, since outputs moved out of `build/` into the generated tree and an app loading by explicit asset key reads its new keys from the tree's `manifest.json`. Re-run `dart run flutter_scene:init` to migrate a hook and add the pubspec entry. The Dart data assets modes remain as explicit opt-ins and prune the tree entries they replace.
+* A build with no generated assets now fails with the exact pubspec lines to add instead of producing an app that dies at its first load.
+* Fixed a `.fmat` reference written against the package root binding to a path beside its scene document, which left the material unresolved at load and the geometry on an opaque fallback. A reference only rebases onto the document when a file is actually there, matching how the source-root loader reads the same scene.
+* `resolveShaderBundleKey` resolves a shader bundle built by `buildTargetShaderBundleJson` (or `flutter_gpu_shaders`) by name, for `loadShaderLibraryAsync`.
+* Build stamps fingerprint a source over a megabyte by size and modification time instead of reading it, cutting about 5 seconds per gigabyte off every build. Set `flutter_scene_strict_hashing: true` under `hooks: user_defines:` in the app pubspec to content-hash everything.
+* Switching asset modes needs a clean build. Nothing prunes assets from a previous mode out of an app bundle.
+* Breaking change, `buildScenes` and `buildTextures` no longer take `outputDirectory`. Outputs go to the app's generated tree, so a hook passing it fails to compile; drop the argument.
+* Breaking change, `FmatMaterialBundleIndex.fromJson` requires `assetKey`. The bundle and its sidecar resolve from the index's own key, so a direct caller passes the key it parsed.
+* `Node.extractMeshData` flattens a subtree's geometry into one `MeshData` with the descendant transforms baked in, and `MeshData.toTriMeshShape`/`toConvexHullShape` turn that into a collider, so an imported model no longer needs a hand-written walk to collide.
+* `MeshData.transformed` places a snapshot by a matrix, carrying normals by the inverse transpose and, through a mirror, flipping both tangent handedness and triangle winding.
+* The lit shaders declare one prefiltered-radiance sampler instead of one per layout, freeing two fragment texture units so a skinned shadow-casting draw fits GLES drivers reporting the 16-unit minimum.
+* Breaking change for raw `ShaderMaterial` shaders that sample the environment, they declare `prefiltered_radiance` as `RadianceSampler` and supply a `radianceCubeFragmentShader` variant built with `FLUTTER_SCENE_RADIANCE_CUBE`. `.fmat` materials are unaffected.
+* A material or sky that samples the environment without a cubemap-radiance variant now keeps its 2D sampler and is bound a placeholder instead of a mismatched cubemap, and says so in debug builds. `PreprocessedMaterial` takes `radianceCubeFragmentShader` for code that builds one directly rather than through a loader.
+* Breaking change, `EnvironmentMap.prefilteredRadianceTexture` and `EnvironmentMap.prefilteredRadianceCube` are gone. The single prefiltered-radiance sampler replaces the layout pair, so code reading either field reads the one texture the map now carries.
+* `RenderItem.windingFlipped` derives from its geometry instead of being assignable, so a mirrored transform reverses winding without callers tracking it.
+* Breaking change, the fscene component codec API is declarative. `ComponentCodec.serialize` is abstract, `ComponentPropertyDef` and `ComponentPropertyKind` moved to the `scene` schema model (constraints replace `min`/`max`/`read`), and flat codecs extend `DeclarativeComponentCodec`, deriving schema, realization, and delta serialization from one `ComponentField` list.
+* `.fscene` version 3. Component properties delta-serialize (values equal to their schema default are omitted) and audio attenuation settings nest; version 2 documents read unchanged.
+* `package:flutter_scene/annotations.dart`, `@SceneComponent` and typed property annotations that lower to schema constraints for generated codecs.
+* Unknown component types realize as lossless `ForeignComponent` placeholders and round-trip untouched.
+* Physics components register in any mount order. A rigid body, collider, joint, or character controller added before its world (or its sibling dependency) registers when the dependency arrives instead of staying inert.
+* `registerPhysicsBackend` is public, so physics backend packages can register simulation factories the way audio backends do.
+* `FsceneComponentRegistry.unregister` removes a registered codec; documents carrying the type realize it as a lossless unknown-type placeholder.
+* `nodeRefOf` and `resourceRefOf` recover document references from live nodes and realized resources, so custom codecs (generated ones included) round-trip them.
+* Debug builds launched with `FLUTTER_SCENE_SOURCE_ROOT` read scene sources straight from the project, and `ext.flutter_scene.reloadScene` patches loaded scenes in place.
+* Component schemas carry declarative editor gizmos (`ComponentSchema.gizmo`, the `GizmoSpec` primitive model, the `@SceneGizmo` annotation), and the builtin lights, camera, colliders, audio, environment volumes, and particle emitters declare them.
+* Builtin component schemas declare richer editing constraints, the camera projection is a fixed-option enum, its field of view carries hard degree bounds, and shadow, area-light, and volume fields gained slider soft ranges.
+* `Scene.captureRenderGraph` records one frame's render graph (passes, CPU timings, data flow, snapshot copies of written targets) behind the `Scene.debugAllowRenderGraphCapture` opt-in, and `RenderPassContext.debugBlackboardTexture` exposes raw pipeline textures to debug overlays.
+* Screen-space contact shadows for the sun via `DirectionalLight.contactShadows`, grounding small contacts that shadow-map resolution and bias miss.
+* Screen-space indirect light via `AmbientOcclusionSettings.indirectLight`, crediting one bounce of scene radiance to newly visible sectors of the occlusion bitmask.
+* Rect area lights via `RectAreaLight` and `RectAreaLightComponent`, shaded with linearly transformed cosines so panel highlights stretch and fall off physically.
+* Film-look color grading via `ColorGradingSettings.lut`, loading Adobe `.cube` tables with `ColorLut.fromCubeAsset` and blending with `lutBlend`.
+* Environments persist the grading LUT (`.cube` reference and blend) in `.fscene` documents, and `ColorLut.sourceAsset` reports where a table was loaded from.
+* Percentage-closer soft shadows via `DirectionalShadowFilter.pcss`, sharpening shadows at contact and widening them with caster distance scaled by `DirectionalLight.angularRadius`.
+* Depth of field focuses on translucent depth-writing surfaces (fmat `depth_write: true`, transmissive `PhysicallyBasedMaterial`) instead of the backdrop seen through them.
+
+* Ground-truth ambient occlusion via `AmbientOcclusionSettings.method`, integrating horizon-slice visibility with `sliceCount`/`stepsPerSlice` controls and an optional constant-thickness `visibilityBitmask` mode.
+* `AmbientOcclusionSettings.multiBounce` keeps albedo-tinted bounce light in occluded creases instead of darkening them to gray.
+* `AmbientOcclusionSettings.bentNormals` steers indirect diffuse along the average unoccluded direction and enables `SpecularAmbientOcclusionMode.bentCone`.
+* Environment resources persist every ambient-occlusion control, including the new method, slice, thickness, bent-normal, and multi-bounce fields.
+* `AmbientOcclusionSettings.intensity` defaults to `1.0` and both methods are calibrated there; the obscurance estimator folds its former 2x, so halve any explicitly set obscurance intensity to keep its look.
+* Retuned enable-time defaults, bloom intensity `0.15`, chromatic aberration `0.2`, and auto-exposure clamps of -4 to +4 EV.
+* Breaking change, `.fscene` version 2 uses one native coordinate system and offline glTF import bakes source coordinates into it.
+* Removed `Handedness`, `UpAxis`, `StageMetadata.unitsPerMeter`, `NodeSpec.excludeFromWindingParity`, `SkyEnvironmentSpec.castShadows`, and the directional-light component schema's `direction` property.
+* Runtime glTF import keeps source buffers unchanged and resolves coordinate winding in the renderer.
+* Directional-light nodes aim along native local +Z and support explicit primary-light priority.
+* Fscene directional lights preserve the complete cascaded-shadow configuration.
+* Text scenes can reference a binary payload sidecar with `payloadSource`.
+* Fixed world-transform assignment under transformed parents corrupting the parent's cached transform.
+* Fixed in-memory glTF import dropping punctual lights and material variants.
+* GPU memory can be inspected and released. `takeMemoryReport()` reports what the engine's shared caches are pinning, `releaseTexture`/`releaseScene` give a claim back, and `clearTextureCache`/`clearSceneTemplateCache` drop everything.
+* `ResourceGroup.track` scopes a load to the group's lifetime, so `dispose()` releases the claims it took. Previously `dispose()` only released the progress notifier despite the name.
+* Fixed `ResourceGroup` throwing when it was disposed while a tracked load was still in flight, which is what tearing down a level mid-load does.
+* Fixed `loadScene` keeping a scene template claim when it threw after the template loaded, so a caller that got no `Node` no longer has to issue a compensating `releaseScene`.
+
+* `PhysicallyBasedMaterial` and glTF import support every ratified `KHR_materials_*` extension with scene-native property names.
+* Scene startup loads the shared physical-material shader bundle so every `PhysicallyBasedMaterial` property remains synchronous.
+* Shader build hooks keep only the target platform backends in generated bundles.
+* `KHR_texture_transform` applies independently to every built-in and advanced material texture.
+* Geometry and material textures support both UV0 and UV1, including `textureInfo.texCoord` in both glTF import paths.
+* `ShaderMaterial` owns the vertex stage too. Pass a `vertexShader` (per `MeshVariant`, so skinned and shadow passes can differ) and set uniforms and textures on either stage with `ShaderStage`, so a hand-written shader pair needs no subclassing.
+* Geometry can declare its own pipeline vertex layout with `setVertexLayout`, and `VertexAttributeDescriptor`/`VertexBufferDescriptor`/`VertexLayoutDescriptor` are public.
+* Custom vertex attributes work on skinned meshes.
+* A `ShaderMaterial` that supplies a vertex shader for some mesh kinds but not others warns in debug builds, naming the missing variant, instead of failing opaquely at pipeline creation.
+* Debug builds check a custom material's uniform blocks against the shader's reflection, so a misspelled or optimized-out block name and a buffer too small for its std140 layout raise named exceptions instead of failing at bind time or reading past the end.
+* Debug builds check a caller-declared vertex layout against the buffers actually bound, so a slot count mismatch raises instead of feeding the pipeline undefined vertex data.
+* `IndexType`, `VertexFormat`, and `VertexStepMode` are exported, so 32-bit indices and caller-declared layouts no longer need `lib/src` imports.
+* Made first-party shader/material hooks and examples DataAssets-only, with migration guidance for legacy assets.
+* `buildMaterials` registers generated outputs as DataAssets when available by default.
+* Added `Node.castsShadows` for excluding individual meshes from shadow passes.
+* Added `GeometryBufferArena` and `GeometryBuilder.build({bufferArena, retainCpuData})` for lower-overhead immutable mesh batches.
+* Added per-instance colors through `InstancedMesh.addInstance(color:)` and `setInstanceColor`.
+* Breaking change, instanced vertex layouts now require `instance_color` and use an 80-byte instance stride instead of 64 bytes.
+* Added `InstancedMesh.updateInstanceTransforms` for allocation-light bulk motion and `InstancedMesh.cullInstances` for opt-in per-instance culling.
+* Added `InstancedMesh.sortTransparentInstances` to skip unnecessary particle sorting.
+* Added `RenderView.cullingPlanes` for application-defined frustum planes and `Scene.warmUp(includeOffscreen:)` for full-scene preparation.
+* Added `SunLight.cacheStaticShadows` and `DirectionalLight.cacheStaticShadows` for continuously changing shadow lights.
+* Added `SunLight.shadowFilter` and `DirectionalShadowFilter.fixedPcf` for stable lower-ALU shadow filtering.
+* Tightened stable cascade fitting to increase effective shadow resolution.
+* Reduced shadow-map color bandwidth with single-channel fp32 tiles.
+* Fixed cascade-edge striping from normal-biased receiver positions.
+* Switched material and resolve color conversion to exact sRGB transfer functions.
+* Cached instanced bounds and render data to keep moving-camera culling allocation-light.
+* Skipped per-instance bounds packing when instance culling is disabled.
+* Skipped per-instance culling when an entire batch is inside every active plane.
+* Reused large transient buffers across changing instance counts.
+* Translucent instanced meshes now sort as one batch, with instances ordered within it.
+* Translucent draws sort back to front by view-axis depth through their geometry bounds center.
+* Double-sided lit materials reverse geometric normals on back-facing fragments.
+* Fixed instanced meshes losing their lighting, shadow, and fog bindings on GLES, which drew them (and any mesh sharing their pipeline) black.
+* Fixed anisotropy strength being ignored by environment lighting and using an isotropic visibility term for analytic lights.
+* Fixed anisotropic materials exposing primitive triangles by importing and interpolating authored tangents.
+* Vertex payload layouts include UV1 and tangents under versioned names, growing unskinned payloads by 50% and skinned payloads by 30%; older `.fscene` layouts upgrade when loaded.
+* Fixed runtime glTF normal maps building color-filtered mips, which skewed minified normals and washed out reflective materials.
+* Fixed uncompressed `.fsceneb` textures uploading without mipmaps, so a cooked scene is mipmapped whether or not `compressTextures` is set.
+* Fixed cooked `.fsceneb` and `.fstex` textures sampling without anisotropic filtering, which blurred them at grazing angles.
+* Texture resources record what their pixels represent, so mip levels downsample by role (normal maps average as vectors, color in linear light).
+* `buildScenes` warns when a texture is not block aligned and falls back to uncompressed, instead of dropping the compressed form silently.
+* `buildScenes` and `buildTextures` take `alignForCompression` to resample a misaligned source up to the next multiple of 4 rather than failing or storing it uncompressed.
+* Cooked textures build their mip chain on a background isolate, so a large uncompressed scene no longer pays for it on the calling thread.
+* Devices measured to sample every texture at its base mip skip mip chains entirely, reclaiming the memory and transcode time they were spending on levels the sampler ignores, and say so once at startup.
+* Loose images cook to compressed, mipmapped `.fstex` through `buildTextures`, loaded by source path with `loadTexture` (shipped in 0.20.0, missing from its notes).
+* Fixed a `RangeError` when an updatable mesh rebuilds at a smaller vertex count.
+* Fixed ambient-occlusion banding and over-darkening with normalized sampling, robust normals, and depth-aware filtering.
+* Ambient occlusion gains power, detail, horizon, direct-light, depth-mip, and specular controls. Intensity now scales obscurance, defaults to `2.0`, and its former contrast role is `power`.
+* Baked and screen-space ambient occlusion now combine with `min` instead of multiplication.
+* Added `ToneMappingMode.agx` with configurable `Scene.agxWhite` and `Scene.agxContrast`, persisted by environment resources.
+* Added `Material.depthBias`, a world-space camera offset for coplanar surface details.
+* Breaking change, custom `Geometry.bind` overrides must add the named parameter `double depthBias = 0.0`.
+* `EnvironmentSettings` preserves every ambient-occlusion control and can apply only its environment look with `applyLookTo`.
+* Added `EnvironmentMap.constantDiffuse` and declarative `ConstantEnvironment` ambient lighting.
+* Added declarative torus and icosphere geometry specs.
+* `ParticleSystem.prewarm` is now readable after construction.
+* Nested prefab material overrides and linked material/scene references now compose and round-trip.
+* Custom asset bundles can load fmat shaders from bytes and provide their own fmat material loader.
+* Cooked glTF scenes import photometric punctual lights for use with physical camera exposure.
+
+## 0.20.0
+
+* The `.fscene` document core (document model, stable ids, JSON/binary serialization, prefab composition, diffing) moved to the new pure-Dart `scene` package; `flutter_scene` re-exports it, so existing imports are unchanged.
+* Fixed the web backend dropping every uniform-block draw on drivers that pad uniform block sizes (Mesa on Linux).
+* New declarative scene API. `SceneView.declarative`, `SceneNode`, `SceneMesh`, and `SceneModel` describe scenes in `build()`, with bridges to and from the imperative API, which is unchanged.
+* Declarative animation control via `SceneModel.animations` (`SceneAnimationSpec`), plus cached model templates so equal sources load once and share GPU resources.
+* `KHR_materials_variants` support in both import paths via `MaterialsVariantsComponent`, declaratively via `SceneModel.variant`, with a new Configurator example.
+* Fixed animation blending collapsing rigs with mirrored bones.
+* Fixed slerp taking the long arc when interpolating between quaternions in opposite hemispheres.
+* Automatic exposure (eye adaptation) via `Scene.autoExposure`, metered entirely on the GPU.
+* Imported materials keep their source names via the new `Material.name`.
+* Fixed cloned skinned meshes all drawing with the last-updated skeleton.
+* Physics backends now implement the pure `PhysicsSimulation` contract from the `scene` package and no longer depend on Flutter, so the same simulations run under plain `dart run`.
+* One generic physics component layer for every backend. `PhysicsWorld(RapierWorld())`, plus concrete `RigidBody`, `Collider`, the joint components, and `KinematicCharacterController`; the backend-specific component classes are gone.
+* Backend-specific physics features stay first-class. `RigidBody.handle`, `Collider.handles`, and `Joint.handle` are public, so downcasting `PhysicsWorld.simulation` to a backend reaches capabilities beyond the shared contract, and the components subclass for typed backend components.
+* Physics is now an optional sub-barrel. Import `package:flutter_scene/physics.dart` (or `package:scene/physics.dart` for the pure contract); the core `package:flutter_scene/scene.dart` no longer carries physics types.
+* `BasicSimulation` (queries and triggers, pure Dart) replaces `BasicPhysicsWorld`/`BasicCollider`/`BasicKinematicBody`.
+* Colliders without a sibling `RigidBody` now attach as static geometry instead of throwing.
+* Spatial audio through an optional pluggable-backend contract. `AudioEngine` (implemented by `flutter_scene_soloud` and `flutter_scene_fmod`), with `AudioListener`, `AudioSource`/`ClipAudioSource`, `AudioBus`, and distance attenuation. Import `package:flutter_scene/audio.dart`; it is not in the core barrel.
+* CPU particle systems are now public. `ParticleEmitterComponent` (camera-facing billboards), `MeshParticleEmitterComponent` (instanced 3D debris), and `TrailComponent` (ribbon trails), all driven by a `ParticleSystem` built from emitter shapes, spawners, over-life distributions, and a module stack (acceleration, drag, size/color-over-life, rotation, flipbook, curl-noise turbulence), with new Particles and Explosion examples.
+* Sprites and billboard particles depth-test against opaque geometry again, so closer objects occlude them.
+
+## 0.19.0
+
+* Steady-state frame allocations cut sharply. Fullscreen passes reuse cached pipelines and per-draw uniform packs reuse scratch buffers.
+* Faster draw submission. Bindings clear only on pipeline change and the engine lighting set rebinds only when it actually changes.
+* Cheaper `MeshGeometry.fromArrays` for streamed meshes. Bulk attribute copies, no repack for typed index lists, and an optional caller-supplied `bounds`.
+* Depth of field with shaped bokeh via `scene.depthOfField`, driven by a thin-lens camera model with three quality tiers.
+* Cached shadow tiles for nodes marked `shadowStatic`, making static-world shadow rendering near free.
+* Alpha-masked materials are now alpha-tested in the shadow and depth passes, so cutouts cast and receive correctly.
+* Materials can declare per-frame scene inputs (`scene_color`, `scene_depth`) for refraction and depth-fade effects, and `MaterialInputs` gains `specular`.
+* Fixed `.fmat` skies with `requires: [environment]` sampling black on the roughness-mip layout, and `ShaderSkySource.sampledEnvironment` pins the sampled map.
+* The lit shader reads diffuse SH through one sampler, fixing skinned-mesh crashes on 16-unit GLES drivers (ANGLE on Windows).
+* Fixed white speckles in compressed textures on devices preferring BC formats.
+* Scene-graph conveniences. `Node.meshNodes`, `Node.combinedWorldBounds`, and `PerspectiveCamera.framing`.
+* 3D Gaussian splatting. Load `.ply`/`.splat` captures with `GaussianSplats` and draw them with `SplatComponent`, with a new example.
+* Scene content can be exposed to assistive technology via `SemanticsComponent`, including hosted widget-surface semantics.
+* `WidgetComponent` gains opt-in `occlusionHiding`.
+* Added `Camera.worldToScreen`.
+* A failed static-resource load no longer marks the engine ready to render; it retries instead of crashing mid-frame.
+* Point and spot lights. `PointLightComponent` and `SpotLightComponent`, unlimited BVH-culled lights, spot shadows, `KHR_lights_punctual` import, and a Lights example.
+* Geometry readback and derivation. `Geometry.extractMeshData()`, `MeshData` ops (`unweld`, `extractEdges`, `merge`), and `LineSegmentsGeometry` for thick lines.
+* Per-frame transient GPU data rides a completion-aware arena allocator, fixing whole-frame aborts past ~1MB of transients and collapsing per-draw buffer writes.
+* BREAKING: the custom-pass and material/geometry `bind` surfaces take a `TransientWriter` where they previously took a `gpu.HostBuffer`.
+* Large speedup for many-draw scenes on the web backend. No more per-draw buffer ghosting, vertex state cached in VAOs, redundant sampler calls skipped.
+* The web shim's `HostBuffer` is a faithful flutter_gpu port again.
+* On the web backend, an active but unbound uniform block reads zeros instead of rejecting the draw, fixing unlit `.fmat` materials rendering nothing.
+* Fixed ambient occlusion and reflections sampling the wrong depth for double-sided materials.
+* The `.fmat` compiler no longer lets declared but unread resources strip out of the generated shaders, which surfaced as build errors or draw-time crashes.
+* Built-in noise matched between CPU and GPU via `package:flutter_scene/noise.dart` and `#include <noise.glsl>` (the Dart side is native-only for now).
+* `AmbientOcclusionSettings.depthMipChain` (off by default) keeps occlusion accurate on grazing surfaces and large radii.
+* Distance fog via `scene.fog`, with falloff modes, a height term, light in-scatter, and sky-color blending.
+* Custom render passes via `Scene.addRenderPass`, powering the new `Node.highlightColor` selection outlines.
+* Custom passes can request scene buffers (`depth`, `normals`, `shadowMap`) through `RenderInput`.
+* Volumetric god rays via `scene.godRays`.
+* Load gating and warm-up. `ResourceGroup`, `SceneView.loading`/`revealMinDuration`, `Scene.warmUp`, and background-isolate GLB geometry packing.
+* Widget-texture captures stay on the GPU on texture-backed platforms, removing the per-capture CPU round trip.
+* `.fmat` materials gain a vertex stage (a `Vertex()` hook, `varyings`, custom `attributes`), applied consistently across the color, shadow, depth, and pick passes.
+* Built-in materials and geometries can now be constructed before `Scene.initializeStaticResources()` completes.
+* Added `Scene.camera` with `CameraComponent` auto-promotion, and a default camera so a bare `SceneView(scene)` always renders.
+* Camera-facing billboards and sprites via `BillboardGeometry`, `SpriteMaterial`, and `Sprite`.
+* Directional-shadow controls. `shadowAmbientStrength`, `shadowCasterFaces`, and cascades that extend toward the sun so long shadows stop dropping out.
+* Fixed the cascaded-shadow lookup misreading cascades on GLES and crashing the shader compiler on Windows.
+* BREAKING: vertex layouts are described by `VertexLayoutDescriptor` and unskinned geometry is structure of arrays (`.fscene` gains `unskinned_soa`; old files still load).
+* New procedural primitives. Cylinder, capsule, torus, disc, ring, and icosphere, each with a `collisionShape` physics bridge.
+* Geometry level of detail via `LodComponent`, with screen-size selection, hysteresis, and dithered cross-fade.
+* Image-based lighting prefilters into a mipped radiance cubemap, and `EnvironmentMap.fromEquirectHdr` keeps HDR intensity through the prefilter.
+* Spatial environment volumes with camera-driven blending via `EnvironmentSettings`, `Scene.baseEnvironment`, and `EnvironmentVolume`.
+* Sky-driven sun light via `Scene.sunLight`, aiming and coloring the directional light from the sky.
+* BREAKING: `.fscene` stages reference an environment resource instead of inline stage fields, and prefab host-node additions are `Attachment`s.
+* Added `Texture2D` (generated mips, trilinear and anisotropic filtering) with `TextureContent`/`TextureSampling`; imported models are now mipmapped.
+* BREAKING: material texture slots hold a `TextureSource` instead of a raw `gpu.Texture`.
+* Added `TextureAtlas` for uniform tile grids.
+* Added geometric specular antialiasing to `PhysicallyBasedMaterial`.
+* Fixed the split-sum specular lookup sampling with its roughness axis flipped.
+* Fixed image-based lighting taking the shadow-ambient gate and Fresnel term from the normal-mapped normal.
+* Fixed `normalScale` not being applied to the perturbed normal.
+* Screen-space reflections via `Scene.screenSpaceReflections`, with an example and live tuning panel.
+* Screen-space reflections fade out on rough surfaces.
+* The environment BRDF lookup is generated at load as `RGBA16F`, removing banding and the bundled PNG.
+
+## 0.18.1
+
+* No code changes. Reworded the package description and added the logo as a pub.dev screenshot.
+
+## 0.18.0
+
+* Offscreen render targets via `RenderTexture`, `Scene.views`, and the `RenderTextureView` widget.
+* The prefiltered-radiance environment stores roughness bands as mips of one texture (smoother transitions, ~25% less memory).
+* Fixed dim image-based specular lighting on the web backend by re-baking radiance after the first presented frame.
+* The base shader bundle loads asynchronously on every backend; await `Scene.initializeStaticResources()` before constructing geometry or materials.
+* The `flutter` SDK constraint is now `>=3.44.0`; the real requirement is a 2026-06-09 or later master build (see the README).
+* Render targets serialize in `.fscene` via a `renderTexture` resource kind and a top-level `views` array.
+* Material texture slots accept a `RenderTexture` for live render-to-texture sampling.
+* Added render scaling (`Scene.renderScale`) and composite filtering (`Scene.filterQuality`), with per-view overrides.
+* Added FXAA and an automatic anti-aliasing mode; `auto` is the new default, so backends without MSAA now get FXAA.
+* Adopted hardware instancing for `InstancedMesh`. Breaking for direct `VertexLayout` construction, which now takes a list of `VertexBuffer`s.
+* BREAKING: package exports are explicit show lists; file an issue if a symbol you used disappeared.
+* Added scene raycasting via `Scene.raycast`/`raycastAll`, with layer masks and `Node.raycastable`.
+* Added `WidgetComponent`, a live interactive widget subtree on a scene surface.
+* Added automatic widget-surface input, with `WidgetInput.manual` opt-out and `SceneView.debugWidgetInput`.
+* Added `ScenePointer` for programmatic scene input.
+* Added `WidgetTexture` and `Camera.screenPointToRay`.
+* Added `UnlitMaterial.alphaMode`.
+* Added `Surface.lastSwapchainColorTexture` for one-frame feedback effects.
+* Fixed vertically flipped texturing on the cuboid and wedge primitives.
+
+## 0.17.0
+
+* Added `SceneView`, a widget that renders a `Scene` and drives its frame loop.
+* Added debug-mode hot reload for `.fmat` materials and re-exported `.glb` scenes, patched in place.
+* Added DataAssets-backed GLB import with auto-discovery, cached composed documents, and `dart run flutter_scene:init` wiring.
+* Added `AnimationClip.rebind`/`AnimationPlayer.rebind` and `Mesh.clone`.
+* Skinned geometry from `buildScenes` carries a pose-union bound for sound frustum culling.
+* BREAKING: removed the `.model` format; convert with `buildScenes` or load GLBs at runtime.
+* BREAKING: `.fmat` materials are discovered under `assets/` and loaded by source path via `loadFmatMaterial`.
+* Building `.fmat` materials and models requires `flutter_gpu_shaders` 0.5.0.
+* Added the `.fscene`/`.fsceneb` serialized scene format with prefabs, hot reload, and deterministic composition.
+* Added scene serialization via `serializeScene` and `realizeStage`/`serializeStage`, round-tripping byte-stably.
+* Added opt-in KTX2 texture compression for imported scenes, transcoded at load off the main isolate.
+* BREAKING: fixed vertically inverted image-based lighting; loaded panoramas now light correctly.
+* Added a skybox via `Scene.skybox` and the built-in `EnvironmentSkySource`.
+* Added custom sky shaders via `ShaderSkySource` and `.fmat` `sky` blocks.
+* Added sky-driven lighting via `EnvironmentMap.fromSky` and `Scene.skyEnvironment`, with time-sliced re-bakes.
+* Added built-in procedural skies, `GradientSkySource` and `PhysicalSkySource`.
+* Diffuse SH coefficients are sampled from a texture, and `fromGpuTextures` accepts a GPU-computed `diffuseShTexture`.
+* A `.fmat` compile failure during hot reload keeps the last good shaders and reports the error.
+* Build-hook conversions are cached by input content; set `FLUTTER_SCENE_DISABLE_BUILD_CACHE` to always reconvert.
+* Fixed progressive slowdown on the web backend from leaked framebuffers and per-frame program re-links.
+
+## 0.16.0
+
+* Added an abstract physics contract (bodies, colliders, joints, queries, events) with a built-in kinematic world; a full backend ships in `flutter_scene_rapier`.
+* Added `WedgeGeometry`, a triangular-prism ramp primitive.
+* Added optional screen-space ambient occlusion via `Scene.ambientOcclusion`, working on every backend.
+
+## 0.15.1
+
+* Added a DataAssets-backed `.fmat` material workflow with auto-discovery.
+* Added `dart run flutter_scene:init`.
+* Added `FmatMaterialRegistry` and `loadFmatMaterial`.
+* Updated `flutter_gpu_shaders` to `^0.4.5` and moved hook-time dependencies to `hooks` 2.x/`data_assets` 0.20.x.
+
+## 0.15.0
+
+* Added the `.fmat` custom-material format, compiled by `buildMaterials` and driven at runtime with typed parameters. See `MATERIALS.md`.
+* Added a post-processing suite via `Scene.postProcess` (bloom, color grading, vignette, chromatic aberration, film grain), each off by default.
+* Added `PostEffect` for custom post-processing shaders. See `POST_PROCESSING.md`.
+* The tone-mapping pass is now the resolve pass (exposure, grading, tone map, EOTF, bloom composite).
+* Fixed image-based lighting on the OpenGL ES backend.
+* Building `.fmat` custom materials requires `flutter_gpu_shaders` 0.4.4 or newer.
+
+## 0.14.2
+
+* Fixed mirrored geometry rendering inside-out; cull winding now follows the world-transform determinant.
+* Fixed `material.doubleSided` being ignored by the runtime glTF importer.
+
+## 0.14.1
+
+* Now WASM-compatible; build-hook helpers no longer pull `dart:io` onto the web graph.
+* Added a package example and a fuller description.
+* Bumped `flat_buffers` to `^25.9.23`.
+* Internal lint and formatting cleanup.
+
+## 0.14.0
+
+Renderer overhaul, with several breaking changes.
+
+* Rendering is structured as a render graph (`ShadowPass?` -> `ScenePass` -> `TonemapPass`) with a transient-texture pool.
+* HDR pipeline. The scene renders to a float target and a tone-map pass writes the swapchain; custom shaders now output linear HDR premultiplied by alpha (see `MATERIALS.md`).
+* Tone mapping and exposure moved onto `Scene` (`exposure`, `toneMapping`, `physicalCameraExposure`).
+* Added `DirectionalLight` with PCF shadow mapping, assignable as `Scene.directionalLight`.
+* Image-based lighting rework. SH-9 diffuse, a GPU-prefiltered specular atlas, and the old brightness fudges removed.
+* BREAKING: `Environment` removed in favor of `Scene.environment` (an `EnvironmentMap`) and `Scene.environmentIntensity`.
+* BREAKING: `EnvironmentMap` always carries a prefiltered atlas plus SH-9; the procedural `EnvironmentMap.studio()` is the new default.
+* `ShaderMaterial.useEnvironment` now binds `prefiltered_radiance` and `brdf_lut`.
+* Web support. flutter_scene runs on Flutter web through a built-in WebGL2 backend, under both CanvasKit and Skwasm.
+* BREAKING: `flutter_scene_importer` folded into `flutter_scene` (`package:flutter_scene/build_hooks.dart`), with a curated `gpu.dart` for custom shaders.
+
+## 0.13.0
+
+* Added `ShaderMaterial`, custom fragment shaders with uniform and texture binding by name and render-state knobs.
+* Added `MATERIALS.md`, the custom-shader contract guide.
+* The example app gains a toon-shader demo.
+
+## 0.12.0
+
+* Added bounding-volume and frustum culling, with offline pose-union bounds for skinned content.
+* New bounds API on `Geometry`, `Mesh`, and `Node`, plus `Camera.getFrustum`.
+
+## 0.0.1-dev.1
+
+* Initial render box.
+
+## 0.1.0
+
+* Rewrite for Flutter GPU.
+* Physically based rendering.
+* More conventional interface for scene construction.
+
+## 0.1.1
+
+* Rename PhysicallyBasedMaterial and UnlitMaterial.
+* Fix environment lighting problems in PhysicallyBasedMaterial.
+* Add default environment map.
+
+## 0.2.0
+
+* Skinned mesh import.
+* Fix readme for pub.dev.
+
+## 0.2.1-0
+
+* Switch to pre-release versioning.
+* Bump version of flutter_scene_importer.
+
+## 0.2.1-1
+
+* Bump flutter_scene_importer version.
+
+## 0.3.0-0
+
+* Add animation playback (Animation, AnimationPlayer, AnimationClip).
+* Import animations from scene models.
+* Add support for cloning nodes.
+
+## 0.4.0-0
+
+* Support node cloning for skins.
+* Fix default/animation-less pose.
+
+## 0.5.0-0
+
+* Support non-embedded/URI-only image embeds.
+
+## 0.6.0-0
+
+* Fix memory leak in transients buffer.
+* Optional MSAA support on iOS and Android (enabled by default).
+* Cull backfaces by default.
+* Fix animation blending bugs.
+* Pin native_assets_cli to <0.9.0.
+* Add car model and animation blending examples.
+* Fancy readme and FAQ.
+
+## 0.7.0-0
+
+* Update to native_assets_cli 0.9.0.
+* Update to flutter_gpu_shaders 0.2.0.
+
+## 0.8.0-0
+
+* Update to Flutter 3.29.0-1.0.pre.242.
+
+## 0.9.0-0
+
+* Update to native_assets_cli 0.13.0.
+* Update to flutter_gpu_shaders 0.3.0.
+
+## 0.9.1-0
+
+* Fix invalid usage of textureLod on desktop platforms.
+
+## 0.9.2-0
+
+* Fix globalTransform calculation.
+
+## 0.11.1
+
+* Fixed the `Node.globalTransform` setter scaling by the parent's determinant instead of composing with its inverse.
+
+## 0.11.0
+
+* Added a runtime GLB importer, `Node.fromGlbBytes` and `Node.fromGlbAsset`. (#12)
+* Bumped `flutter_scene_importer` to `^0.11.0` (pure Dart, no CMake).
+
+## 0.10.0
+
+* Migrated from the discontinued `native_assets_cli` to `hooks` 1.0; build hooks now import `package:hooks/hooks.dart`. (#82)
+* Dropped the obsolete `--enable-experiment=native-assets` flag that broke builds on Dart 3.10+. (#82)
+* Reorganized the repository as a pub workspace. (#36)
+* Updated `flutter_gpu_shaders` to `^0.4.0`.

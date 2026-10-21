@@ -1,0 +1,1001 @@
+// Emits standard GLSL and a metadata sidecar from a parsed [FmatMaterial].
+//
+// The emitted fragment shader composes the engine framework includes, a
+// generated `MaterialParams` uniform block plus sampler declarations, the
+// author's verbatim `Surface()` body, and a generated `main()`. The sidecar
+// records each parameter's type, default, and hint so the runtime can offer
+// type-checked, name-based parameter setting (offsets come from shader
+// reflection at load time; the sidecar supplies the types reflection does not
+// expose).
+
+import 'package:flutter_scene/src/fmat/fmat_ast.dart';
+
+/// The GLSL uniform block name the runtime binds custom parameters through.
+const String kMaterialParamsBlock = 'MaterialParams';
+
+/// The GLES-fold-safe instance name for [kMaterialParamsBlock].
+const String kMaterialParamsInstance = 'material_params';
+
+/// The uniform block a generated vertex variant declares to keep the mesh
+/// vertex inputs live (see the body includes). The runtime binds it to zero,
+/// so it has no effect; it exists only so the optimizer cannot strip a
+/// declared vertex attribute when a `Vertex()` hook fully replaces the stage
+/// outputs (which would break shader reflection).
+const String kVertexKeepAliveBlock = 'VertexKeepAlive';
+
+/// The GLES-fold-safe instance name for [kVertexKeepAliveBlock].
+const String kVertexKeepAliveInstance = 'vertex_keep_alive';
+
+/// The uniform block a generated fragment declares to keep the `MaterialParams`
+/// block live when `Surface()` reads no parameter (e.g. a material whose
+/// parameters are used only in its `Vertex()` stage). The runtime binds it to
+/// zero, so it has no effect; without it the optimizer strips the unreferenced
+/// block, its uniform slot is then absent, and binding the parameters crashes
+/// the Metal backend.
+const String kFragmentKeepAliveBlock = 'FragmentKeepAlive';
+
+/// The GLES-fold-safe instance name for [kFragmentKeepAliveBlock].
+const String kFragmentKeepAliveInstance = 'fragment_keep_alive';
+
+/// The framework varying schema version recorded in sidecars. Bumped whenever
+/// standard varyings in material_varyings.glsl or material_vertex.glsl change.
+const int kFrameworkVaryingSchemaVersion = 2;
+
+/// The engine vertex variants a material with a `vertex { }` block generates a
+/// shader for, mapping the sidecar key the runtime selects by to the shared
+/// body include that variant reuses. The keys correspond to the geometry a
+/// draw uses: `unskinned` for static meshes, `skinned` for skinned meshes, and
+/// `depth` for the position-only shadow-map / depth-prepass pass.
+const Map<String, String> kVertexVariants = <String, String>{
+  'unskinned': 'flutter_scene_unskinned_body.glsl',
+  'skinned': 'flutter_scene_skinned_body.glsl',
+  'depth': 'flutter_scene_unskinned_depth_body.glsl',
+};
+
+const Map<String, String> _vertexVariantEntrySuffix = <String, String>{
+  'unskinned': 'UnskinnedVertex',
+  'skinned': 'SkinnedVertex',
+  'depth': 'UnskinnedDepthVertex',
+};
+
+/// The shader-bundle entry name for [material]'s [variant] vertex shader (one
+/// of the keys in [kVertexVariants]).
+String vertexVariantEntryName(FmatMaterial material, String variant) =>
+    '${material.name}${_vertexVariantEntrySuffix[variant]}';
+
+/// Writes the custom-varying declarations for [material] into [sb], as `in`
+/// (fragment stage) or `out` (vertex stage). They are matched across stages by
+/// name, like the engine's standard `v_*` varyings.
+void _writeVaryings(StringBuffer sb, FmatMaterial material, String direction) {
+  if (material.varyings.isEmpty) return;
+  sb.writeln('// Custom interpolants (vertex Vertex() -> fragment Surface()).');
+  for (final v in material.varyings) {
+    sb.writeln('$direction ${v.type.glslType} ${v.name};');
+  }
+  sb.writeln();
+}
+
+/// The instance attributes [material]'s fragment stage reads, in declared
+/// order. Only these get an interpolant, so a material whose attributes drive
+/// the vertex stage alone pays no varying slots. The whole-word check errs
+/// toward forwarding when unsure, which costs a slot rather than a compile
+/// error.
+List<FmatInstanceAttribute> forwardedInstanceAttributes(FmatMaterial material) {
+  if (material.instanceAttributes.isEmpty) return const [];
+  return [
+    for (final a in material.instanceAttributes)
+      if (RegExp(
+        '\\b${RegExp.escape(a.accessorName)}\\b',
+      ).hasMatch(material.fragmentSource))
+        a,
+  ];
+}
+
+/// Writes the fragment stage's instance-attribute interpolants and accessors
+/// into [sb]. `Surface()` reads each attribute through `GetInstance<Name>()`,
+/// matching how it reads every other engine input.
+void _writeInstanceAccessors(StringBuffer sb, FmatMaterial material) {
+  final forwarded = forwardedInstanceAttributes(material);
+  if (forwarded.isEmpty) return;
+  sb.writeln('// Per-instance attributes forwarded by the vertex stage.');
+  for (final a in forwarded) {
+    sb.writeln('in ${a.type.glslType} ${a.varyingName};');
+  }
+  for (final a in forwarded) {
+    sb.writeln(
+      '${a.type.glslType} ${a.accessorName}() { return ${a.varyingName}; }',
+    );
+  }
+  sb.writeln();
+}
+
+/// Emits the fragment shader GLSL for [material].
+///
+/// [defines] are written after the generated-file banner and before framework
+/// includes.
+/// Selects the cubemap prefiltered-radiance layout. Only the selected
+/// layout's sampler is declared, so a material that samples the environment
+/// ships one entry per layout and the runtime picks the one matching the
+/// bound environment.
+///
+/// This doubles the entries a material that samples the environment
+/// contributes. TODO(radiance-layout): remove it with the define in
+/// `texture.glsl` once the engine's combined-limit validation is in every
+/// supported stable, which halves those entries again.
+const String kRadianceCubeDefine = 'FLUTTER_SCENE_RADIANCE_CUBE';
+
+/// Whether [material] declares the prefiltered-radiance sampler, and so needs
+/// an entry per radiance layout. A shadow catcher never samples the
+/// environment (its generated `main()` skips `EvaluateLighting`, so the
+/// radiance samplers are compiled out), so it ships no cube twin.
+bool materialSamplesEnvironment(FmatMaterial material) =>
+    switch (material.shadingModel) {
+      FmatShadingModel.unlit ||
+      FmatShadingModel.shadowCatcher => material.useEnvironment,
+      _ => material.environmentLighting,
+    };
+
+/// The bundle entry name of [entryName]'s cubemap-radiance twin.
+String radianceCubeEntryName(String entryName) => '${entryName}Cube';
+
+/// Declares the baked-lightmap sampler and swaps the SH diffuse ambient for
+/// it. The sampler exists only in these entries, and it displaces
+/// `sh_coefficients` rather than extending the sampler set, so a lightmap
+/// entry costs the same texture units as its plain twin.
+///
+/// This doubles the entries of every material it is generated for, so it is
+/// generated only where a lightmap is expected (see
+/// `buildBundledPhysicalMaterials`).
+///
+/// TODO(lightmap-fmat): let a user `.fmat` opt into the axis (a declared
+/// feature, so a material that wants a bake pays the entries and the rest do
+/// not), which needs a runtime path to set the slot on a
+/// `PreprocessedMaterial`.
+const String kLightmapDefine = 'FLUTTER_SCENE_LIGHTMAP';
+
+/// Compiles the surface debug views into a material's shaded entries (see
+/// `material_debug.glsl`). Without it a material draws through the fallback
+/// debug shader while a view is active.
+const String kDebugViewsDefine = 'FLUTTER_SCENE_DEBUG_VIEWS';
+
+/// The bundle entry name of [entryName]'s baked-lightmap twin.
+String lightmapEntryName(String entryName) => '${entryName}Lightmap';
+
+/// Whether the material described by sidecar [metadata] samples the
+/// environment, and so ships a [radianceCubeEntryName] twin.
+bool sidecarSamplesEnvironment(Map<String, Object?> metadata) =>
+    switch (metadata['shading_model']) {
+      'unlit' || 'shadowCatcher' => metadata['use_environment'] == true,
+      _ => metadata['environment_lighting'] != false,
+    };
+
+const _lightingHookDefines = {
+  'Light': 'FLUTTER_SCENE_HOOK_LIGHT',
+  'Ambient': 'FLUTTER_SCENE_HOOK_AMBIENT',
+  'Composite': 'FLUTTER_SCENE_HOOK_COMPOSITE',
+};
+
+final _lightingHookPattern = RegExp(
+  r'(?:^|[\s;}])(?:highp\s+)?(LightTerms|void|vec4)\s+(Light|Ambient|Composite)\s*\(',
+  multiLine: true,
+);
+
+/// The optional lighting hooks a lit fragment source defines: `Light()`,
+/// `Ambient()`, and `Composite()` (see shaders/material_lighting.glsl).
+Set<String> lightingHooksIn(String fragmentSource) {
+  const signatures = {
+    'Light': 'LightTerms',
+    'Ambient': 'void',
+    'Composite': 'vec4',
+  };
+  final hooks = <String>{};
+  for (final m in _lightingHookPattern.allMatches(fragmentSource)) {
+    if (signatures[m.group(2)] == m.group(1)) hooks.add(m.group(2)!);
+  }
+  return hooks;
+}
+
+/// Whether [material] ships its own depth-pass fragments: an opaque cutout
+/// (`alpha_to_coverage`) whose shader reads no engine scene inputs.
+bool materialHasDepthSurface(FmatMaterial material) =>
+    (material.alphaToCoverage || material.effectsDepth) &&
+    material.engineInputs.isEmpty;
+
+/// The bundle entry name of [material]'s depth-pass fragment for [kind].
+String depthSurfaceEntryName(FmatMaterial material, DepthSurfaceKind kind) =>
+    '${material.name}${kind.suffix}';
+
+String emitFragmentGlsl(
+  FmatMaterial material, {
+  Iterable<String> defines = const [],
+  DepthSurfaceKind? depthSurface,
+}) {
+  if (material.domain == FmatDomain.sky) {
+    return _emitSkyGlsl(material, defines: defines);
+  }
+  final sb = StringBuffer();
+  final lit = material.shadingModel != FmatShadingModel.unlit;
+
+  sb.writeln(
+    '// Generated from a .fmat material by flutter_scene. '
+    'Do not edit.',
+  );
+  for (final define in defines) {
+    sb.writeln('#define $define');
+  }
+  if (material.shadingModel == FmatShadingModel.physical) {
+    sb.writeln('#define FLUTTER_SCENE_PHYSICAL_MATERIAL');
+  }
+  if (material.shadingModel == FmatShadingModel.shadowCatcher) {
+    sb.writeln('#define FLUTTER_SCENE_SHADOW_CATCHER');
+  }
+  if (material.engineInputs.contains('filtered_scene_color') ||
+      !material.environmentLighting) {
+    sb.writeln('#define FLUTTER_SCENE_SKIP_SSAO');
+  }
+  if (!material.environmentLighting) {
+    sb.writeln('#define FLUTTER_SCENE_CUSTOM_AMBIENT');
+  }
+  if (!material.directionalLight) {
+    sb.writeln('#define FLUTTER_SCENE_NO_DIRECTIONAL_LIGHT');
+  }
+  if (lit && material.shadingModel != FmatShadingModel.shadowCatcher) {
+    for (final hook in lightingHooksIn(material.fragmentSource)) {
+      sb.writeln('#define ${_lightingHookDefines[hook]}');
+    }
+  }
+  // Compile the scene-input samplers and their accessors in or out by what the
+  // material declares (see material_scene_inputs.glsl); a declared-but-unread
+  // resource has backend-dependent liveness, so it is never a bind-time choice.
+  for (final input in material.engineInputs) {
+    final define = _engineInputDefines[input];
+    if (define != null) sb.writeln('#define $define');
+  }
+  // Fragment math defaults to mediump; the engine includes opt positions,
+  // coordinates, and depth back into highp (see shaders/PRECISION.md). The
+  // material body below inherits the default like any engine source, and the
+  // define lets an include that runs in highp restore it.
+  sb.writeln('#define FLUTTER_SCENE_DEFAULT_FLOAT_PRECISION mediump');
+  sb.writeln('precision mediump float;');
+  sb.writeln('precision highp int;');
+  if (!lit &&
+      material.shadingModel != FmatShadingModel.shadowCatcher &&
+      !material.useEnvironment) {
+    // An unlit material that never samples the engine environment must not
+    // carry texture.glsl's RadianceLayoutInfo block. Nothing binds it (see
+    // PreprocessedMaterial.bind), and a fragment-stage uniform block that no
+    // draw writes is reflected at set 0 / binding 0, where it collides with
+    // the vertex stage's FrameInfo. GLES resolves uniforms per stage and
+    // ignores the clash; Vulkan builds one descriptor set layout for both
+    // stages, so the duplicate binding makes every draw with the material
+    // disappear.
+    sb.writeln('#define FLUTTER_SCENE_NO_ENGINE_RADIANCE');
+  }
+  sb.writeln('#include <material_varyings.glsl>');
+  sb.writeln('#include <pbr.glsl>');
+  if (material.shadingModel != FmatShadingModel.shadowCatcher) {
+    sb.writeln('#include <texture.glsl>');
+  }
+  sb.writeln('#include <normals.glsl>');
+  sb.writeln('#include <material_inputs.glsl>');
+  sb.writeln('#include <material_debug.glsl>');
+  if (material.alphaToCoverage) {
+    sb.writeln('#include <material_coverage.glsl>');
+  }
+  if (material.shadingModel == FmatShadingModel.shadowCatcher) {
+    // The catcher samples the shadow atlas and occlusion chain but never
+    // evaluates the lighting, so it takes the engine bindings plus the
+    // sampling utilities without the full framework (whose dead code would
+    // keep the image-based-lighting samplers in the binding surface).
+    sb.writeln('#include <material_engine_lighting.glsl>');
+    sb.writeln('#include <material_shadow_sampling.glsl>');
+  } else if (lit) {
+    sb.writeln('#include <material_engine_lighting.glsl>');
+    sb.writeln('#include <material_lighting.glsl>');
+  } else if (material.engineInputs.isNotEmpty) {
+    // An unlit material with engine inputs takes the FragInfo block and the
+    // scene-input accessors without any of the lighting samplers. The block
+    // costs no texture unit, so this stays clear of the sampler budget.
+    sb.writeln('#include <material_scene_inputs.glsl>');
+  }
+  sb.writeln();
+
+  // Custom interpolants the vertex stage wrote, read by name in Surface().
+  _writeVaryings(sb, material, 'in');
+  _writeInstanceAccessors(sb, material);
+
+  final uniforms = material.uniformParameters.toList();
+  final samplers = material.samplerParameters.toList();
+  if (uniforms.isNotEmpty) {
+    // The vertex stage declares the same block at its highp default, and a
+    // block shared by both stages must match member precision to link on
+    // WebGL2, so the members stay highp under the fragment mediump default.
+    sb.writeln('uniform $kMaterialParamsBlock {');
+    for (final p in uniforms) {
+      sb.writeln('  highp ${p.type.glslType} ${p.name};');
+    }
+    sb.writeln('}');
+    sb.writeln('$kMaterialParamsInstance;');
+    sb.writeln();
+  }
+  if (uniforms.isNotEmpty ||
+      samplers.isNotEmpty ||
+      material.engineInputs.isNotEmpty) {
+    // Bound to zero by the runtime; main() folds the parameters and the engine
+    // scene inputs into a term multiplied by it so no declared resource can be
+    // optimized out (the runtime binds them all unconditionally, and binding an
+    // optimized-out uniform or sampler is unsafe).
+    sb.writeln('uniform $kFragmentKeepAliveBlock { vec4 keep_alive; }');
+    sb.writeln('$kFragmentKeepAliveInstance;');
+    sb.writeln();
+  }
+
+  for (final p in samplers) {
+    sb.writeln('uniform ${p.type.glslType} ${p.name};');
+  }
+  if (samplers.isNotEmpty) sb.writeln();
+
+  // The roughness-filtered scene-color atlas, sampled through
+  // GetSceneColorFiltered. Its sampler follows scene_opaque_color, which the
+  // shared include declared above.
+  if (material.engineInputs.contains('filtered_scene_color')) {
+    sb.writeln('#include <filtered_scene_color.glsl>');
+    sb.writeln();
+  }
+  if (material.engineInputs.contains('planar_reflection')) {
+    sb.writeln("// This surface's planar reflection capture (linear HDR),");
+    sb.writeln('// with the view-projection that rendered it.');
+    sb.writeln('uniform sampler2D planar_reflection;');
+    sb.writeln('uniform PlanarReflectionInfo {');
+    sb.writeln('  mat4 view_projection;');
+    sb.writeln('  vec4 params; // x: a capture is bound this draw');
+    sb.writeln('}');
+    sb.writeln('planar_reflection_info;');
+    sb.writeln('// The mirrored scene color reflected at this fragment. a is');
+    sb.writeln('// 1 when a capture is bound this draw and 0 otherwise (no');
+    sb.writeln('// reflector routed one, or the draw is inside a capture);');
+    sb.writeln('// fall back to the environment reflection at a == 0.');
+    sb.writeln('vec4 GetPlanarReflection() {');
+    sb.writeln('  if (planar_reflection_info.params.x < 0.5) {');
+    sb.writeln('    return vec4(0.0);');
+    sb.writeln('  }');
+    sb.writeln('  vec4 clip = planar_reflection_info.view_projection *');
+    sb.writeln('      vec4(GetWorldPosition(), 1.0);');
+    sb.writeln('  if (clip.w <= 0.0) {');
+    sb.writeln('    return vec4(0.0);');
+    sb.writeln('  }');
+    sb.writeln('  vec2 uv = vec2(0.5 + 0.5 * clip.x / clip.w,');
+    sb.writeln('                 0.5 - 0.5 * clip.y / clip.w);');
+    sb.writeln('  uv = clamp(uv, vec2(0.001), vec2(0.999));');
+    sb.writeln('  return vec4(texture(planar_reflection, uv).rgb, 1.0);');
+    sb.writeln('}');
+    sb.writeln();
+  }
+
+  // Map compiler errors in the author's code back to the .fmat source line.
+  sb.writeln('#line ${material.fragmentSourceLine}');
+  sb.write(material.fragmentSource);
+  if (!material.fragmentSource.endsWith('\n')) sb.writeln();
+  sb.writeln();
+
+  if (depthSurface != null) {
+    _writeDepthSurfaceMain(sb, material, uniforms, samplers, depthSurface);
+    return sb.toString();
+  }
+
+  // The shaded output, in a function so main() can pick it, the debug view,
+  // or a per-pixel split of the two without duplicating the tail.
+  sb.writeln('vec4 MaterialOutput(MaterialInputs material) {');
+  final additive = material.blending == FmatBlending.additive;
+  if (material.shadingModel == FmatShadingModel.shadowCatcher) {
+    sb.writeln(
+      '  // Shadow catcher: the surface color is the composed overlay,',
+    );
+    sb.writeln('  // output premultiplied without running the lighting.');
+    sb.writeln(
+      '  return vec4(material.base_color.rgb, 1.0) * material.base_color.a;',
+    );
+  } else if (lit) {
+    if (additive) {
+      // Zero the output alpha so an additive draw never darkens the
+      // destination, keeping the premultiplied color.
+      sb.writeln('  vec4 lit = EvaluateLighting(material);');
+      sb.writeln('  return vec4(lit.rgb, 0.0);');
+    } else {
+      sb.writeln('  return EvaluateLighting(material);');
+    }
+  } else {
+    sb.writeln('  // Unlit: output the surface color, premultiplied by alpha.');
+    if (additive) {
+      sb.writeln(
+        '  return vec4(material.base_color.rgb * material.base_color.a, 0.0);',
+      );
+    } else {
+      sb.writeln(
+        '  return vec4(material.base_color.rgb, 1.0) * material.base_color.a;',
+      );
+    }
+  }
+  sb.writeln('}');
+  sb.writeln();
+
+  sb.writeln('void main() {');
+  sb.writeln('  MaterialInputs material = InitMaterialInputs();');
+  sb.writeln('  Surface(material);');
+  if (material.alphaToCoverage) {
+    // Coverage carries the alpha; the covered samples take the full color.
+    sb.writeln('  ApplyAlphaToCoverage(material.base_color.a);');
+    sb.writeln('  material.base_color.a = 1.0;');
+  }
+  final keepAlive = _fragmentKeepAliveTerm(material, uniforms, samplers);
+  _writeDebugViewSelect(sb);
+  if (keepAlive != null) {
+    // Folded into the final output, since a lighting hook may never read the
+    // surface color, under a uniform branch that is never taken.
+    sb.writeln('  if ($kFragmentKeepAliveInstance.keep_alive.x != 0.0) {');
+    sb.writeln(
+      '    frag_color.r += '
+      '$kFragmentKeepAliveInstance.keep_alive.x * $keepAlive;',
+    );
+    sb.writeln('  }');
+  }
+  sb.writeln('}');
+
+  return sb.toString();
+}
+
+/// Writes the `main()` of a depth-pass fragment: the material's own
+/// `Surface()` decides coverage, and a fragment below half is cut the way
+/// alpha to coverage would drop it on a single sample.
+void _writeDepthSurfaceMain(
+  StringBuffer sb,
+  FmatMaterial material,
+  List<FmatParameter> uniforms,
+  List<FmatParameter> samplers,
+  DepthSurfaceKind kind,
+) {
+  switch (kind) {
+    case DepthSurfaceKind.linearDepth:
+      sb.writeln('uniform DepthInfo {');
+      sb.writeln('  vec4 camera_forward;');
+      sb.writeln('}');
+      sb.writeln('depth_info;');
+    case DepthSurfaceKind.linearDepthNormal:
+      // The engine prepass block's layout, so the pass binds it unchanged.
+      sb.writeln('uniform DepthNormalInfo {');
+      sb.writeln('  vec4 camera_forward;');
+      sb.writeln('  vec4 camera_right;');
+      sb.writeln('  vec4 camera_up;');
+      sb.writeln('  vec4 roughness_uv_transform;');
+      sb.writeln('  vec4 roughness_uv_rotation;');
+      sb.writeln('}');
+      sb.writeln('info;');
+      sb.writeln('vec2 DepthSurfaceOctEncode(vec3 n) {');
+      sb.writeln('  n /= (abs(n.x) + abs(n.y) + abs(n.z));');
+      sb.writeln('  return n.z >= 0.0 ? n.xy : (1.0 - abs(n.yx)) *');
+      sb.writeln(
+        '      vec2(n.x >= 0.0 ? 1.0 : -1.0, n.y >= 0.0 ? 1.0 : -1.0);',
+      );
+      sb.writeln('}');
+    case DepthSurfaceKind.shadow:
+      break;
+  }
+  // The main shader declares the keep-alive block only when the material
+  // has a resource to keep; this one always keeps the camera blocks.
+  if (uniforms.isEmpty && samplers.isEmpty && material.engineInputs.isEmpty) {
+    sb.writeln('uniform $kFragmentKeepAliveBlock { vec4 keep_alive; }');
+    sb.writeln('$kFragmentKeepAliveInstance;');
+  }
+  sb.writeln();
+  sb.writeln('void main() {');
+  sb.writeln('  MaterialInputs material = InitMaterialInputs();');
+  sb.writeln('  Surface(material);');
+  sb.writeln('  if (material.base_color.a < 0.5) {');
+  sb.writeln('    discard;');
+  sb.writeln('  }');
+  switch (kind) {
+    case DepthSurfaceKind.linearDepth:
+      sb.writeln(
+        '  float view_depth = -dot(v_viewvector, depth_info.camera_forward.xyz);',
+      );
+      sb.writeln('  frag_color = vec4(view_depth, 0.0, 0.0, 1.0);');
+    case DepthSurfaceKind.linearDepthNormal:
+      sb.writeln(
+        '  float view_depth = -dot(v_viewvector, info.camera_forward.xyz);',
+      );
+      sb.writeln('  vec3 n = normalize(material.normal);');
+      sb.writeln('  vec3 view_normal = normalize(vec3(');
+      sb.writeln('      dot(n, info.camera_right.xyz),');
+      sb.writeln('      dot(n, info.camera_up.xyz),');
+      sb.writeln('      dot(n, info.camera_forward.xyz)));');
+      sb.writeln('  vec2 oct = DepthSurfaceOctEncode(view_normal);');
+      sb.writeln(
+        '  frag_color = vec4(view_depth, oct.x, oct.y, '
+        'clamp(material.roughness, 0.0, 1.0));',
+      );
+    case DepthSurfaceKind.shadow:
+      sb.writeln('  frag_color = vec4(gl_FragCoord.z, 0.0, 0.0, 1.0);');
+  }
+  // The engine blocks the pass binds (the camera ones Surface() may read)
+  // are kept too, so binding them is always valid.
+  final lit = material.shadingModel != FmatShadingModel.unlit;
+  final keepAlive = [
+    ?_fragmentKeepAliveTerm(material, uniforms, samplers),
+    'view_info.camera_forward.x',
+    if (lit) 'frag_info.camera_position.x',
+  ].join(' + ');
+  sb.writeln('  if ($kFragmentKeepAliveInstance.keep_alive.x != 0.0) {');
+  sb.writeln(
+    '    frag_color.r += '
+    '$kFragmentKeepAliveInstance.keep_alive.x * ($keepAlive);',
+  );
+  sb.writeln('  }');
+  sb.writeln('}');
+}
+
+/// Writes the tail of a material's `main()`: the surface debug view when one
+/// is active, the shaded `MaterialOutput` otherwise, or two outputs selected
+/// per pixel for a split (against the shaded result or another view). The
+/// shaded path runs under a uniform branch, never a per-pixel one.
+///
+/// `MaterialOutput` and the debug view each have exactly one call site.
+/// Every call is inlined, so a second one duplicates that code. A second
+/// lighting copy pushed the shadowed variants past what Apple's M3 and newer
+/// GPU compilers can build under fast math, and extra debug view copies
+/// doubled the link time under ANGLE's D3D11 backend.
+void _writeDebugViewSelect(StringBuffer sb) {
+  sb.writeln('  vec4 shaded = vec4(0.0);');
+  sb.writeln('  if (DebugViewNeedsShaded()) {');
+  sb.writeln('    shaded = MaterialOutput(material);');
+  sb.writeln('  }');
+  sb.writeln('  frag_color = DebugViewOutput(material, shaded);');
+}
+
+/// A scalar GLSL expression reading one component of [p] through the
+/// MaterialParams instance. Both stages fold it into their zero-bound
+/// keep-alive term so the optimizer cannot strip the block when the author's
+/// code reads no parameter (the runtime binds it unconditionally, and binding
+/// an optimized-out block is unsafe).
+String _paramsKeepAliveScalar(FmatParameter p) {
+  final member = '$kMaterialParamsInstance.${p.name}';
+  return switch (p.type) {
+    FmatType.float_ => member,
+    FmatType.int_ => 'float($member)',
+    FmatType.mat4 => '$member[0].x',
+    _ => '$member.x',
+  };
+}
+
+/// The define that compiles each `engine_inputs` entry's sampler and accessors
+/// into `material_scene_inputs.glsl`. `filtered_scene_color` has none; it rides
+/// `scene_color` and brings its own include.
+const Map<String, String> _engineInputDefines = <String, String>{
+  'scene_color': 'FLUTTER_SCENE_SCENE_COLOR',
+  'scene_depth': 'FLUTTER_SCENE_SCENE_DEPTH',
+};
+
+/// The sampler each entry declares, for the keep-alive fetch.
+const Map<String, String> _engineInputSamplers = <String, String>{
+  'scene_color': 'scene_opaque_color',
+  'filtered_scene_color': 'scene_filtered_color',
+  'scene_depth': 'scene_depth',
+  'planar_reflection': 'planar_reflection',
+};
+
+/// The scalar keep-alive term for a fragment (or sky) shader, or null when the
+/// material declares no parameters and no engine inputs (no keep-alive block is
+/// emitted then).
+///
+/// Folds in a MaterialParams read plus a zero-multiplied fetch of every
+/// declared sampler and engine input, so the runtime can bind every declared
+/// resource safely, and an unlit material also reads FragInfo so the block it
+/// binds survives. Callers emit it under a branch on the zero-bound block, so
+/// the fetches never run.
+String? _fragmentKeepAliveTerm(
+  FmatMaterial material,
+  List<FmatParameter> uniforms,
+  List<FmatParameter> samplers,
+) {
+  if (uniforms.isEmpty && samplers.isEmpty && material.engineInputs.isEmpty) {
+    return null;
+  }
+  // Every sampler, even one the source names: a reference in dead code (a
+  // lighting hook that ignores a term) still lets the compiler drop it. The
+  // caller puts these under a branch the zero-bound block never takes, so the
+  // fetches cost nothing at runtime.
+  final terms = <String>[
+    if (uniforms.isNotEmpty) _paramsKeepAliveScalar(uniforms.first),
+    for (final p in samplers)
+      p.type == FmatType.samplerCube
+          ? 'texture(${p.name}, vec3(0.0, 0.0, 1.0)).x'
+          : 'texture(${p.name}, vec2(0.0)).x',
+    if (material.shadingModel == FmatShadingModel.unlit &&
+        material.engineInputs.isNotEmpty)
+      'frag_info.scene_inputs.x',
+    for (final input in material.engineInputs)
+      'texture(${_engineInputSamplers[input]!}, vec2(0.0)).x',
+  ];
+  // Every declared resource is already referenced; the block still needs a
+  // live operand of its own so it cannot be folded away.
+  if (terms.isEmpty) {
+    return '$kFragmentKeepAliveInstance.keep_alive.y';
+  }
+  return '(${terms.join(' + ')})';
+}
+
+/// Emits the vertex-shader GLSL for each variant of [material], keyed by the
+/// shader-bundle entry name. Empty when the material has no `vertex { }` block
+/// (the draw then uses the engine's standard vertex shader for its geometry).
+///
+/// Each variant declares the shared `MaterialParams` block (so a parameter is
+/// readable in both stages), splices the author's `Vertex()` after the
+/// `VertexInputs` struct, and `#include`s the engine body for its mesh type,
+/// which builds the struct, calls `Vertex()`, and writes the stage outputs.
+Map<String, String> emitVertexGlsl(FmatMaterial material) {
+  if (!material.hasVertexStage) return const <String, String>{};
+  final result = <String, String>{};
+  kVertexVariants.forEach((variant, bodyInclude) {
+    result[vertexVariantEntryName(material, variant)] = _emitVertexVariant(
+      material,
+      bodyInclude,
+      isDepth: variant == 'depth',
+      // Only the unskinned color variant fetches the instance-rate slot the
+      // custom attributes ride in; the skinned variant takes its transform
+      // from FrameInfo and the depth variant binds a transform-only buffer.
+      fetchesInstanceAttributes: variant == 'unskinned',
+    );
+  });
+  return result;
+}
+
+/// The GLSL zero literal for a varying/attribute [type].
+String _zeroLiteral(FmatType type) =>
+    type == FmatType.float_ ? '0.0' : '${type.glslType}(0.0)';
+
+/// Writes a vertex variant's custom-attribute declarations into [sb]. In the
+/// color variants they are real vertex `in`s (bound from the mesh's streams by
+/// name); in the depth variant, which fetches only position, they are
+/// zero-initialized globals so the author's `Vertex()` still compiles.
+void _writeAttributes(
+  StringBuffer sb,
+  FmatMaterial material, {
+  required bool isDepth,
+}) {
+  if (material.attributes.isEmpty) return;
+  if (isDepth) {
+    sb.writeln(
+      '// Custom vertex attributes are not fetched in the depth pass; they '
+      'read',
+    );
+    sb.writeln('// zero here (attribute-driven displacement does not shadow).');
+    for (final a in material.attributes) {
+      sb.writeln('${a.type.glslType} ${a.name} = ${_zeroLiteral(a.type)};');
+    }
+  } else {
+    sb.writeln('// Custom per-vertex attributes supplied by the mesh.');
+    for (final a in material.attributes) {
+      sb.writeln('in ${a.type.glslType} ${a.name};');
+    }
+  }
+  sb.writeln();
+}
+
+/// Writes a vertex variant's instance-attribute declarations into [sb]. The
+/// unskinned color variant reads them from the instance-rate slot; the other
+/// variants never bind that data, so they read zero. Depth and shadow passes
+/// run the color variant for such a material, so its displacement still casts.
+void _writeInstanceAttributes(
+  StringBuffer sb,
+  FmatMaterial material, {
+  required bool fetchesInstanceAttributes,
+}) {
+  if (material.instanceAttributes.isEmpty) return;
+  if (fetchesInstanceAttributes) {
+    sb.writeln('// Custom per-instance attributes (instance-rate slot).');
+    for (final a in material.instanceAttributes) {
+      sb.writeln('in ${a.type.glslType} ${a.inputName};');
+    }
+  } else {
+    sb.writeln('// This variant binds no per-instance attribute data; they');
+    sb.writeln('// read zero here.');
+    // TODO(instance-attributes-skinned): a skinned mesh takes its transform
+    // from FrameInfo and binds no instance-rate slot, so instancing it means
+    // giving it one before these can carry real values.
+    for (final a in material.instanceAttributes) {
+      sb.writeln(
+        '${a.type.glslType} ${a.inputName} = ${_zeroLiteral(a.type)};',
+      );
+    }
+  }
+  final forwarded = forwardedInstanceAttributes(material);
+  for (final a in forwarded) {
+    sb.writeln('out ${a.type.glslType} ${a.varyingName};');
+  }
+  if (forwarded.isNotEmpty) {
+    // The body include invokes this after writing the stage outputs, so the
+    // fragment accessors see the drawn instance's values.
+    final assignments = forwarded
+        .map((a) => '${a.varyingName} = ${a.inputName};')
+        .join(' ');
+    sb.writeln('#define MATERIAL_INSTANCE_VARYINGS $assignments');
+  }
+  sb.writeln();
+}
+
+String _emitVertexVariant(
+  FmatMaterial material,
+  String bodyInclude, {
+  required bool isDepth,
+  required bool fetchesInstanceAttributes,
+}) {
+  final sb = StringBuffer();
+  sb.writeln(
+    '// Generated from a .fmat material by flutter_scene. Do not edit.',
+  );
+
+  final uniforms = material.uniformParameters.toList();
+  if (uniforms.isNotEmpty) {
+    // The same block the fragment stage declares; the runtime binds the packed
+    // bytes to both stages so `material_params.<name>` reads the same value in
+    // Vertex() as in Surface().
+    sb.writeln('uniform $kMaterialParamsBlock {');
+    for (final p in uniforms) {
+      sb.writeln('  ${p.type.glslType} ${p.name};');
+    }
+    sb.writeln('}');
+    sb.writeln('$kMaterialParamsInstance;');
+    sb.writeln();
+    // The body include folds this into the zero-bound keep-alive so the block
+    // survives even when Vertex() reads no parameter; the runtime binds it to
+    // both stages unconditionally, and binding an optimized-out block crashes
+    // the Metal backend.
+    sb.writeln(
+      '#define MATERIAL_PARAMS_KEEP_ALIVE '
+      '(${_paramsKeepAliveScalar(uniforms.first)})',
+    );
+    sb.writeln();
+  }
+
+  // Bound to zero by the runtime; the body include multiplies the mesh inputs
+  // by it so a hook that fully replaces the outputs cannot strip a declared
+  // vertex attribute (which would break shader reflection).
+  sb.writeln('uniform $kVertexKeepAliveBlock { vec4 keep_alive; }');
+  sb.writeln('$kVertexKeepAliveInstance;');
+  sb.writeln();
+
+  // The material supplies its own Vertex(), so suppress the no-op hook in
+  // material_vertex.glsl.
+  sb.writeln('#define HAS_MATERIAL_VERTEX');
+  sb.writeln('#include <material_vertex.glsl>');
+  sb.writeln();
+
+  // Custom per-vertex attributes Vertex() reads by name (real inputs in the
+  // color variants, zero in the depth variant).
+  _writeAttributes(sb, material, isDepth: isDepth);
+  _writeInstanceAttributes(
+    sb,
+    material,
+    fetchesInstanceAttributes: fetchesInstanceAttributes,
+  );
+  // Folded into the zero-bound keep-alive by the body include so an attribute
+  // Vertex() never reads survives compilation; the geometry supplies its
+  // buffer unconditionally and a stripped input breaks reflection and the
+  // pipeline's vertex layout. The instance-rate inputs join it only in the
+  // variant that actually declares them as inputs.
+  final keepAliveTerms = <String>[
+    for (final a in material.attributes)
+      a.type == FmatType.float_ ? a.name : '${a.name}.x',
+    if (fetchesInstanceAttributes)
+      for (final a in material.instanceAttributes)
+        a.type == FmatType.float_ ? a.inputName : '${a.inputName}.x',
+  ];
+  if (keepAliveTerms.isNotEmpty) {
+    sb.writeln(
+      '#define MATERIAL_ATTRIBUTES_KEEP_ALIVE (${keepAliveTerms.join(' + ')})',
+    );
+    sb.writeln();
+  }
+
+  // Custom interpolants Vertex() writes by name, read in the fragment stage.
+  _writeVaryings(sb, material, 'out');
+
+  // Map compiler errors in the author's code back to the .fmat source line.
+  sb.writeln('#line ${material.vertexSourceLine}');
+  sb.write(material.vertexSource);
+  if (!material.vertexSource!.endsWith('\n')) sb.writeln();
+  sb.writeln();
+
+  // The engine body for this mesh type builds VertexInputs, calls Vertex(),
+  // and writes the stage outputs.
+  sb.writeln('#include <$bodyInclude>');
+  return sb.toString();
+}
+
+/// Emits the full-screen sky fragment GLSL for a `sky { }` material.
+///
+/// The engine's sky vertex shader supplies the world view direction as
+/// `v_ray`; the generated `main()` calls the author's `Sky()` and outputs
+/// linear HDR radiance with premultiplied alpha.
+String _emitSkyGlsl(
+  FmatMaterial material, {
+  required Iterable<String> defines,
+}) {
+  final sb = StringBuffer();
+  sb.writeln('// Generated from a .fmat sky by flutter_scene. Do not edit.');
+  for (final define in defines) {
+    sb.writeln('#define $define');
+  }
+  if (!material.useEnvironment) {
+    // Same dead-block hazard as an unlit surface material; the skybox vertex
+    // stage owns binding 0.
+    sb.writeln('#define FLUTTER_SCENE_NO_ENGINE_RADIANCE');
+  }
+  sb.writeln('#include <pbr.glsl>');
+  sb.writeln('#include <texture.glsl>');
+  sb.writeln();
+
+  final uniforms = material.uniformParameters.toList();
+  final samplers = material.samplerParameters.toList();
+  if (uniforms.isNotEmpty) {
+    // The vertex stage declares the same block at its highp default, and a
+    // block shared by both stages must match member precision to link on
+    // WebGL2, so the members stay highp under the fragment mediump default.
+    sb.writeln('uniform $kMaterialParamsBlock {');
+    for (final p in uniforms) {
+      sb.writeln('  highp ${p.type.glslType} ${p.name};');
+    }
+    sb.writeln('}');
+    sb.writeln('$kMaterialParamsInstance;');
+    sb.writeln();
+  }
+  if (uniforms.isNotEmpty || samplers.isNotEmpty || material.useEnvironment) {
+    // Same keep-alive as the surface fragment shader; see
+    // _fragmentKeepAliveTerm.
+    sb.writeln('uniform $kFragmentKeepAliveBlock { vec4 keep_alive; }');
+    sb.writeln('$kFragmentKeepAliveInstance;');
+    sb.writeln();
+  }
+
+  for (final p in samplers) {
+    sb.writeln('uniform ${p.type.glslType} ${p.name};');
+  }
+  if (samplers.isNotEmpty) sb.writeln();
+
+  if (material.useEnvironment) {
+    sb.writeln(
+      '// The environment\'s prefiltered radiance, bound by the engine in',
+    );
+    sb.writeln(
+      '// whichever layout it uses (2D equirect or cube). Sample through',
+    );
+    sb.writeln('// SampleEnvironment(direction, roughness).');
+    sb.writeln('uniform RadianceSampler prefiltered_radiance;');
+    sb.writeln();
+    sb.writeln('vec3 SampleEnvironment(vec3 direction, float roughness) {');
+    sb.writeln(
+      '  return SampleRadianceEnv(prefiltered_radiance, direction, roughness);',
+    );
+    sb.writeln('}');
+    sb.writeln();
+  }
+
+  sb.writeln('in vec3 v_ray;');
+  sb.writeln('out vec4 frag_color;');
+  sb.writeln();
+
+  // Map compiler errors in the author's code back to the .fmat source line.
+  sb.writeln('#line ${material.fragmentSourceLine}');
+  sb.write(material.fragmentSource);
+  if (!material.fragmentSource.endsWith('\n')) sb.writeln();
+  sb.writeln();
+
+  sb.writeln('void main() {');
+  sb.writeln('  // Linear HDR radiance, premultiplied alpha (opaque sky).');
+  sb.writeln('  frag_color = vec4(Sky(normalize(v_ray)), 1.0);');
+  var keepAlive = _fragmentKeepAliveTerm(material, uniforms, samplers);
+  // A sky that requires the environment but never calls SampleEnvironment
+  // would let the compiler strip the radiance samplers and layout block the
+  // engine binds unconditionally; a zero-multiplied sample keeps them live.
+  if (material.useEnvironment &&
+      !RegExp(r'\bSampleEnvironment\b').hasMatch(material.fragmentSource)) {
+    const envTerm = 'SampleEnvironment(vec3(0.0, 1.0, 0.0), 1.0).x';
+    keepAlive = keepAlive == null ? envTerm : '($keepAlive + $envTerm)';
+  }
+  if (keepAlive != null) {
+    sb.writeln('  if ($kFragmentKeepAliveInstance.keep_alive.x != 0.0) {');
+    sb.writeln(
+      '    frag_color.r += '
+      '$kFragmentKeepAliveInstance.keep_alive.x * $keepAlive;',
+    );
+    sb.writeln('  }');
+  }
+  sb.writeln('}');
+
+  return sb.toString();
+}
+
+/// Builds the JSON-serializable metadata sidecar for [material].
+Map<String, Object?> buildSidecar(FmatMaterial material) {
+  return <String, Object?>{
+    'name': material.name,
+    'framework_varying_schema': kFrameworkVaryingSchemaVersion,
+    'domain': material.domain.name,
+    if (material.useEnvironment) 'use_environment': true,
+    'shading_model': material.shadingModel.name,
+    if (!material.environmentLighting) 'environment_lighting': false,
+    if (material.alphaToCoverage) 'alpha_to_coverage': true,
+    'blending': material.blending.name,
+    'culling': material.culling.name,
+    if (material.depthWrite) 'depth_write': true,
+    if (material.effectsDepth) 'effects_depth': true,
+    if (material.depthTest != FmatDepthTest.lessEqual)
+      'depth_test': material.depthTest.token,
+    if (material.depthLayer != 0) 'depth_layer': material.depthLayer,
+    if (material.engineInputs.isNotEmpty)
+      'engine_inputs': material.engineInputs,
+    if (material.sceneColorReach != null)
+      'scene_color_reach': material.sceneColorReach,
+    'uniform_block': kMaterialParamsBlock,
+    // Always written, so a sidecar without it is from an older build.
+    'attributes': [
+      for (final a in material.attributes)
+        <String, Object?>{'name': a.name, 'components': a.components},
+    ],
+    // Declared order plus the resolved record offsets, so the runtime lays out
+    // the instance-rate buffer without re-deriving the padding rule.
+    if (material.instanceAttributes.isNotEmpty)
+      'instance_attributes': [
+        for (final a in material.instanceAttributes)
+          <String, Object?>{
+            'name': a.name,
+            'type': a.type.glslType,
+            'offset': a.byteOffset,
+          },
+      ],
+    if (material.instanceAttributes.isNotEmpty)
+      'instance_record_bytes': material.instanceRecordBytes,
+    if (materialHasDepthSurface(material))
+      'depth_surface': <String, Object?>{
+        for (final kind in DepthSurfaceKind.values)
+          kind.sidecarKey: depthSurfaceEntryName(material, kind),
+      },
+    if (material.hasVertexStage)
+      'vertex': <String, Object?>{
+        for (final variant in kVertexVariants.keys)
+          variant: vertexVariantEntryName(material, variant),
+      },
+    'parameters': [
+      for (final p in material.uniformParameters)
+        <String, Object?>{
+          'name': p.name,
+          'type': p.type.glslType,
+          if (p.defaultValue != null) 'default': p.defaultValue,
+          if (p.hint != null) 'hint': _hintJson(p.hint!),
+        },
+    ],
+    'samplers': [
+      for (final p in material.samplerParameters)
+        <String, Object?>{
+          'name': p.name,
+          'type': p.type.glslType,
+          if (p.hint != null) 'hint': _hintJson(p.hint!),
+        },
+    ],
+  };
+}
+
+Map<String, Object?> _hintJson(FmatHint hint) {
+  return switch (hint.kind) {
+    FmatHintKind.range => <String, Object?>{
+      'kind': 'range',
+      'min': hint.rangeMin,
+      'max': hint.rangeMax,
+      'step': hint.rangeStep,
+    },
+    FmatHintKind.sourceColor => const {'kind': 'source_color'},
+    FmatHintKind.defaultWhite => const {'kind': 'default_white'},
+    FmatHintKind.defaultBlack => const {'kind': 'default_black'},
+    FmatHintKind.defaultNormal => const {'kind': 'default_normal'},
+    FmatHintKind.defaultTransparent => const {'kind': 'default_transparent'},
+  };
+}

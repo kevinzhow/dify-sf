@@ -1,0 +1,238 @@
+import 'package:flutter/foundation.dart' show debugPrint, internal;
+
+import 'package:flutter_scene/src/components/component.dart';
+import 'package:flutter_scene/src/physics/pending_registration.dart';
+import 'package:flutter_scene/src/physics/physics_world.dart';
+import 'package:flutter_scene/src/physics/rigid_body.dart';
+import 'package:scene/physics.dart' as sim;
+import 'package:vector_math/vector_math.dart';
+
+/// A collision volume attached to a [Node].
+///
+/// Pairs a [shape] with a [material] and a local pose; a node may carry
+/// several colliders forming a compound. When the node also carries a
+/// [RigidBody] the collider attaches to it (in any add order; the collider
+/// waits for the body); without one it becomes static environment geometry
+/// through an implicit fixed body.
+/// {@category Physics}
+class Collider extends Component implements PendingPhysicsRegistration {
+  Collider({
+    required sim.Shape shape,
+    sim.PhysicsMaterial material = sim.PhysicsMaterial.defaultMaterial,
+    int collisionLayer = 0xFFFFFFFF,
+    int collisionMask = 0xFFFFFFFF,
+    bool isTrigger = false,
+    Matrix4? localPose,
+  }) : _shape = shape,
+       _material = material,
+       _collisionLayer = collisionLayer,
+       _collisionMask = collisionMask,
+       _isTrigger = isTrigger,
+       _localPose = localPose ?? Matrix4.identity();
+
+  PhysicsWorld? _world;
+  final List<int> _handles = [];
+  int? _implicitBodyHandle;
+
+  sim.Shape _shape;
+  sim.PhysicsMaterial _material;
+  int _collisionLayer;
+  int _collisionMask;
+  bool _isTrigger;
+  Matrix4 _localPose;
+
+  /// The owning world while mounted.
+  PhysicsWorld? get world => _world;
+
+  /// The simulation collider handles, empty while unmounted (a compound
+  /// shape may produce several).
+  ///
+  /// Pass them to [world]'s [PhysicsWorld.simulation] (downcast to the
+  /// concrete backend) to reach backend-specific collider features the
+  /// generic surface does not expose.
+  List<int> get handles => List.unmodifiable(_handles);
+
+  sim.Shape get shape => _shape;
+
+  /// Replacing the shape rebuilds the simulation colliders.
+  set shape(sim.Shape value) {
+    _shape = value;
+    _rebuild();
+  }
+
+  sim.PhysicsMaterial get material => _material;
+  set material(sim.PhysicsMaterial value) {
+    _material = value;
+    final world = _world;
+    if (world == null) return;
+    for (final handle in _handles) {
+      world.simulation.setColliderMaterial(handle, value);
+    }
+  }
+
+  /// Bitmask identifying this collider's layer. A contact is generated
+  /// only when each side's layer is set in the other side's mask.
+  int get collisionLayer => _collisionLayer;
+  set collisionLayer(int value) {
+    _collisionLayer = value;
+    _pushFilter();
+  }
+
+  /// Bitmask of layers this collider responds to.
+  int get collisionMask => _collisionMask;
+  set collisionMask(int value) {
+    _collisionMask = value;
+    _pushFilter();
+  }
+
+  void _pushFilter() {
+    final world = _world;
+    if (world == null) return;
+    for (final handle in _handles) {
+      world.simulation.setColliderFilter(
+        handle,
+        _collisionLayer,
+        _collisionMask,
+      );
+    }
+  }
+
+  /// When true this collider emits trigger events but produces no contact
+  /// response. Changing it rebuilds the simulation colliders.
+  bool get isTrigger => _isTrigger;
+  set isTrigger(bool value) {
+    if (value == _isTrigger) return;
+    _isTrigger = value;
+    _rebuild();
+  }
+
+  /// Pose of the collider relative to its owning node. Changing it
+  /// rebuilds the simulation colliders.
+  Matrix4 get localPose => _localPose;
+  set localPose(Matrix4 value) {
+    _localPose = value;
+    _rebuild();
+  }
+
+  void _rebuild() {
+    if (_world == null) return;
+    _destroy();
+    _create();
+  }
+
+  /// Rebuilds onto the sibling [RigidBody] that just registered, when this
+  /// collider mounted first and fell back to an implicit static body.
+  @internal
+  void internalAdoptSiblingBody() {
+    if (_implicitBodyHandle == null) return;
+    _rebuild();
+  }
+
+  void _create() {
+    final world = _world!;
+    final body = node.getComponent<RigidBody>();
+    final int bodyHandle;
+    if (body != null) {
+      final handle = body.handle;
+      if (handle == null) return;
+      bodyHandle = handle;
+    } else {
+      // Static environment geometry, an implicit fixed body at the node.
+      bodyHandle = world.simulation.createBody(
+        target: NodePoseTarget(node),
+        type: sim.BodyType.fixed,
+      );
+      _implicitBodyHandle = bodyHandle;
+    }
+    final created = world.simulation.createColliders(
+      bodyHandle,
+      _shape,
+      material: _material,
+      isTrigger: _isTrigger,
+      localPose: _localPose,
+      collisionLayer: _collisionLayer,
+      collisionMask: _collisionMask,
+    );
+    if (created.isEmpty) {
+      // The backend rejects degenerate input and reports it by handing back
+      // nothing. Without the node in the message the symptom surfaces much
+      // later, as bodies falling through geometry that looks like it has a
+      // collider on it, and the search starts from scratch.
+      final where = node.name.isEmpty
+          ? 'an unnamed node'
+          : 'node "${node.name}"';
+      throw UnsupportedError(
+        '${world.backendName} built no shape for the ${_shape.runtimeType} on '
+        '$where, so the collider would collide with nothing. Causes are a '
+        'triangle mesh with no triangles, a convex hull whose points are all '
+        'collinear or coplanar, and a compound shape with no children.',
+      );
+    }
+    _handles.addAll(created);
+    for (final handle in created) {
+      world.rememberCollider(handle, this);
+    }
+  }
+
+  void _destroy() {
+    final world = _world;
+    if (world == null) return;
+    for (final handle in _handles) {
+      world.forgetCollider(handle);
+      world.simulation.destroyCollider(handle);
+    }
+    _handles.clear();
+    final implicit = _implicitBodyHandle;
+    if (implicit != null) {
+      world.simulation.destroyBody(implicit);
+      _implicitBodyHandle = null;
+    }
+  }
+
+  @override
+  void onMount() {
+    if (_register(silent: false)) {
+      // A character controller that mounted first is waiting on these
+      // handles.
+      retryPendingPhysicsRegistrations();
+    } else {
+      addPendingPhysicsRegistration(this);
+    }
+  }
+
+  @override
+  bool internalRetryPhysicsRegistration() => _register(silent: true);
+
+  bool _register({required bool silent}) {
+    if (_handles.isNotEmpty || _implicitBodyHandle != null) return true;
+    if (!isAttached) return true;
+    final world = _world ?? findAncestorWorld(node);
+    if (world == null) {
+      if (!silent) {
+        debugPrint(
+          'Collider mounted with no PhysicsWorld ancestor; waiting for one',
+        );
+      }
+      return false;
+    }
+    final body = node.getComponent<RigidBody>();
+    if (body != null && body.handle == null) {
+      if (!silent) {
+        debugPrint(
+          'Collider mounted before its sibling RigidBody; waiting for it',
+        );
+      }
+      return false;
+    }
+    _world = world;
+    _create();
+    return _handles.isNotEmpty || _implicitBodyHandle != null;
+  }
+
+  @override
+  void onUnmount() {
+    removePendingPhysicsRegistration(this);
+    _destroy();
+    _world = null;
+  }
+}

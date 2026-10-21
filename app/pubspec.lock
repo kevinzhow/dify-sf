@@ -257,10 +257,9 @@ packages:
   flutter_scene:
     dependency: "direct main"
     description:
-      name: flutter_scene
-      sha256: "6d2a4acb76307b2cf45a6e458fdf61c6bcf02693514656433e5ae67eda9d4056"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../third_party/flutter_scene"
+      relative: true
+    source: path
     version: "0.24.3"
   flutter_svg:
     dependency: "direct main"

@@ -150,6 +150,7 @@ dart run bin/storm.dart --chaos --crashes-per-minute 6 -d 20      # no --url: se
 cd app && flutter analyze && flutter test
 flutter run -d linux -- --server http://127.0.0.1:8080 --doc demo1     # start it twice for two collaborators
 flutter run -d linux -- --demo                    # in-memory server with a simulated collaborator, no setup
+flutter run -d chrome --wasm                      # full Wasm web development
 flutter build linux --release
 ../tool/build_web.sh                              # Dart Wasm + skwasm release
 ```
@@ -162,7 +163,9 @@ including `.wasm`, `.mjs`, assets and renderer files; serve `.wasm` as `applicat
 
 Flutter keeps a JavaScript/CanvasKit compatibility build for browsers that cannot run this Wasm target.
 To verify the actual runtime, check that the browser requests `main.dart.wasm` and a skwasm renderer
-Wasm file without requesting `main.dart.js`. A build succeeding alone does not establish this.
+Wasm file without requesting `main.dart.js`. A build succeeding alone does not establish this. With Playwright/Chromium installed, run
+`python3 tool/verify_web_runtime.py --url <deployed-url> --output <evidence-directory>`
+to check the selected runtime and save a screenshot without changing backend data.
 
 For multithreaded rendering, serve over HTTPS (localhost is also a secure context), with
 `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` (or

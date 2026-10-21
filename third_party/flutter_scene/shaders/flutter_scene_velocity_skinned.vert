@@ -1,0 +1,98 @@
+// Vertex shader for skinned moving objects rendering deformation velocity.
+//
+// Reads current joints texture and previous frame joints texture to compute
+// current and previous deformed clip positions.
+
+uniform VelocityFrameInfo {
+  mat4 current_view_projection;
+  mat4 previous_view_projection;
+  vec4 current_previous_jitter; // xy: current jitter NDC, zw: previous jitter NDC
+  vec4 camera_position;         // xyz: world-space eye
+} frame_info;
+
+uniform VelocitySkinnedModelInfo {
+  mat4 current_model_transform;
+  mat4 previous_model_transform;
+  float current_joint_texture_size;
+  float previous_joint_texture_size;
+  float enable_skinning;
+  float depth_bias; // Material.depthBias
+  // The material's depth-layer offset, matching the depth prepass (see
+  // ApplyDepthOffset).
+  vec4 depth_offset;
+} model_info;
+
+#include <depth_bias.glsl>
+
+uniform sampler2D current_joints_texture;
+uniform sampler2D previous_joints_texture;
+
+in vec3 position;
+in vec4 joints;
+in vec4 weights;
+
+out vec4 v_current_clip;
+out vec4 v_previous_clip;
+out vec4 v_static_clip;
+
+const int kMatrixTexelStride = 4;
+
+mat4 GetJoint(sampler2D tex, float tex_size, float joint_index) {
+  float texel_size_uv = 1.0 / tex_size;
+  float matrix_start = joint_index * float(kMatrixTexelStride);
+  float x = mod(matrix_start, tex_size);
+  float y = floor(matrix_start / tex_size);
+  y = (y + 0.5) * texel_size_uv;
+  return mat4(
+    texture(tex, vec2((x + 0.5) * texel_size_uv, y)),
+    texture(tex, vec2((x + 1.5) * texel_size_uv, y)),
+    texture(tex, vec2((x + 2.5) * texel_size_uv, y)),
+    texture(tex, vec2((x + 3.5) * texel_size_uv, y))
+  );
+}
+
+void main() {
+  vec4 pos = vec4(position, 1.0);
+  vec4 cur_deformed = pos;
+  vec4 prev_deformed = pos;
+
+  if (model_info.enable_skinning > 0.5) {
+    // Normalized as in flutter_scene_skinned_body.glsl so both passes deform
+    // to the same positions.
+    float weight_sum = weights.x + weights.y + weights.z + weights.w;
+    vec4 w = weight_sum > 0.0 ? weights / weight_sum : vec4(1.0, 0.0, 0.0, 0.0);
+
+    mat4 cur_skin =
+      GetJoint(current_joints_texture, model_info.current_joint_texture_size, joints.x) * w.x +
+      GetJoint(current_joints_texture, model_info.current_joint_texture_size, joints.y) * w.y +
+      GetJoint(current_joints_texture, model_info.current_joint_texture_size, joints.z) * w.z +
+      GetJoint(current_joints_texture, model_info.current_joint_texture_size, joints.w) * w.w;
+
+    mat4 prev_skin =
+      GetJoint(previous_joints_texture, model_info.previous_joint_texture_size, joints.x) * w.x +
+      GetJoint(previous_joints_texture, model_info.previous_joint_texture_size, joints.y) * w.y +
+      GetJoint(previous_joints_texture, model_info.previous_joint_texture_size, joints.z) * w.z +
+      GetJoint(previous_joints_texture, model_info.previous_joint_texture_size, joints.w) * w.w;
+
+    cur_deformed = cur_skin * pos;
+    prev_deformed = prev_skin * pos;
+  }
+
+  vec4 cur_world = model_info.current_model_transform * cur_deformed;
+  vec4 prev_world = model_info.previous_model_transform * prev_deformed;
+
+  v_current_clip = frame_info.current_view_projection * cur_world;
+  v_previous_clip = frame_info.previous_view_projection * prev_world;
+  v_static_clip = frame_info.previous_view_projection * cur_world;
+
+  // Rasterize exactly where the depth prepass did (see the unskinned stage).
+  vec3 draw_position = ApplyDepthBias(
+      cur_world.xyz, frame_info.current_view_projection,
+      frame_info.camera_position.xyz, model_info.depth_bias);
+  vec4 clip_position =
+      frame_info.current_view_projection * vec4(draw_position, 1.0);
+  gl_Position = ApplyDepthOffset(
+      clip_position, vec4(model_info.depth_offset.xy, 0.0, 0.0), vec3(0.0),
+      frame_info.current_view_projection, draw_position,
+      frame_info.camera_position.xyz);
+}

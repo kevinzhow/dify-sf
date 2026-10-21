@@ -1,0 +1,358 @@
+{
+  "UnskinnedVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_unskinned.vert"
+  },
+  "SkinnedVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_skinned.vert"
+  },
+  "MorphedUnskinnedVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_morphed_unskinned.vert"
+  },
+  "MorphedSkinnedVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_morphed_skinned.vert"
+  },
+  "UnskinnedDepthVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_unskinned_depth.vert"
+  },
+  "UnlitFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_unlit.frag"
+  },
+  "BillboardVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_billboard.vert"
+  },
+  "LineSegmentsVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_line_segments.vert"
+  },
+  "SpriteFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_sprite.frag"
+  },
+  "StandardFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard.frag"
+  },
+  "StandardCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_cube.frag"
+  },
+  "StandardLightmapFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lightmap.frag"
+  },
+  "StandardLightmapCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lightmap_cube.frag"
+  },
+  "StandardNoShadowFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_no_shadow.frag"
+  },
+  "StandardNoShadowCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_no_shadow_cube.frag"
+  },
+  "StandardLightmapNoShadowFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lightmap_no_shadow.frag"
+  },
+  "StandardLightmapNoShadowCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lightmap_no_shadow_cube.frag"
+  },
+  "StandardLeanFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean.frag"
+  },
+  "StandardLeanCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_cube.frag"
+  },
+  "StandardLeanNoShadowFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_no_shadow.frag"
+  },
+  "StandardLeanNoShadowCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_no_shadow_cube.frag"
+  },
+  "StandardLightmapLeanFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_lightmap.frag"
+  },
+  "StandardLightmapLeanCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_lightmap_cube.frag"
+  },
+  "StandardLightmapLeanNoShadowFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_lightmap_no_shadow.frag"
+  },
+  "StandardLightmapLeanNoShadowCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_standard_lean_lightmap_no_shadow_cube.frag"
+  },
+  "DepthOnlyFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_depth_only.frag"
+  },
+  "DepthOnlyMaskedFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_depth_only_masked.frag"
+  },
+  "CoverageFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_coverage.frag"
+  },
+  "ShadowCopyFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_shadow_copy.frag"
+  },
+  "ShadowCatcherBlurFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_shadow_catcher_blur.frag"
+  },
+  "DofCocFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_dof_coc.frag"
+  },
+  "DofDilateFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_dof_dilate.frag"
+  },
+  "DofGatherFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_dof_gather.frag"
+  },
+  "DofPostFilterFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_dof_postfilter.frag"
+  },
+  "DofCompositeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_dof_composite.frag"
+  },
+  "LinearDepthFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_linear_depth.frag"
+  },
+  "LinearDepthMaskedFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_linear_depth_masked.frag"
+  },
+  "MaskFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_mask.frag"
+  },
+  "MaskMaskedFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_mask_masked.frag"
+  },
+  "DebugSurfaceFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_debug_surface.frag"
+  },
+  "OutlineFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_outline.frag"
+  },
+  "DepthConflictOverlayFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_depth_conflict_overlay.frag"
+  },
+  "GodRaysFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_god_rays.frag"
+  },
+  "ScreenDistortionFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_screen_distortion.frag"
+  },
+  "SsaoFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_ssao.frag"
+  },
+  "GtaoFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_gtao.frag"
+  },
+  "DepthDownsampleFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_depth_downsample.frag"
+  },
+  "SsaoBlurFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_ssao_blur.frag"
+  },
+  "SsrFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_ssr.frag"
+  },
+  "SsrCompositeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_ssr_composite.frag"
+  },
+  "LinearDepthNormalFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_linear_depth_normal.frag"
+  },
+  "LinearDepthNormalMaskedFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_linear_depth_normal_masked.frag"
+  },
+  "FullscreenVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_fullscreen.vert"
+  },
+  "ResolveFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_resolve.frag"
+  },
+  "FxaaFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_fxaa.frag"
+  },
+  "PrefilterEnvFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_prefilter_env.frag"
+  },
+  "PrefilterRadianceCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_prefilter_radiance_cube.frag"
+  },
+  "AutoExposureSeedFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_auto_exposure_seed.frag"
+  },
+  "AutoExposureAdaptFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_auto_exposure_adapt.frag"
+  },
+  "BloomThresholdFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_bloom_threshold.frag"
+  },
+  "BloomDownsampleFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_bloom_downsample.frag"
+  },
+  "BloomUpsampleFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_bloom_upsample.frag"
+  },
+  "SkyboxVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_skybox.vert"
+  },
+  "SkyboxEnvironmentFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_skybox_environment.frag"
+  },
+  "SkyboxEnvironmentCubeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_skybox_environment_cube.frag"
+  },
+  "CubeToEquirectFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_cube_to_equirect.frag"
+  },
+  "ShProjectFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_sh_project.frag"
+  },
+  "ShCompositeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_sh_composite.frag"
+  },
+  "SkyGradientFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_sky_gradient.frag"
+  },
+  "SkyPhysicalFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_sky_physical.frag"
+  },
+  "SplatsVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_splats.vert"
+  },
+  "SplatsFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_splats.frag"
+  },
+  "CopyFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_copy.frag"
+  },
+  "SmaaEdgesFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_smaa_edges.frag"
+  },
+  "SmaaWeightsFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_smaa_weights.frag"
+  },
+  "SmaaBlendFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_smaa_blend.frag"
+  },
+  "LensFlareFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_lens_flare.frag"
+  },
+  "IrradianceInjectVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_irradiance_inject.vert"
+  },
+  "IrradianceInjectFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_irradiance_inject.frag"
+  },
+  "IrradianceInjectDepthFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_irradiance_inject_depth.frag"
+  },
+  "IrradianceBlendFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_irradiance_blend.frag"
+  },
+  "IrradianceBlendDepthFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_irradiance_blend_depth.frag"
+  },
+  "IrradianceFilterFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_irradiance_filter.frag"
+  },
+  "IrradianceStripFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_irradiance_strip.frag"
+  },
+  "VelocityUnskinnedVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_velocity_unskinned.vert"
+  },
+  "VelocitySkinnedVertex": {
+    "type": "vertex",
+    "file": "shaders/flutter_scene_velocity_skinned.vert"
+  },
+  "VelocityFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_velocity.frag"
+  },
+  "TaaFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_taa.frag"
+  },
+  "DisplayReferredCompositeFragment": {
+    "type": "fragment",
+    "file": "shaders/flutter_scene_display_referred_composite.frag"
+  }
+}

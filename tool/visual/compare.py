@@ -9,7 +9,7 @@ Needs, while it runs (start them only for the run):
     $DIFYSF_EMAIL / $DIFYSF_PASSWORD (default alice@example.test / Visual12345: Dify's local account's email, and its
     name "alice", so names, avatars and the workspace's name lay out alike), setting that owner up on a fresh server,
     and hands our app the session the way it keeps one (localStorage `dify-sf/tokens/<server>`)
-  * our web build: app/build/web (flutter build web --profile), served by this script; $OURS_QUERY adds query
+  * our web build: app/build/web (flutter build web --profile --wasm), served by this script; $OURS_QUERY adds query
     parameters to its URL (canvas=widgets: the widget renderer)
 
 For each case: the workflow file (with the case's viewport written into it) is imported into Dify and into dify-sf;

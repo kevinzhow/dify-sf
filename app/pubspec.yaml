@@ -181,6 +181,9 @@ flutter:
 
 # Pinned upstream filter pipeline plus the local SVG extensions; see third_party/flutter_vector_graphics/PATCHES.md.
 dependency_overrides:
+  # Pinned 0.24.3 with the skwasm widget-capture workaround; see its PATCHES.md.
+  flutter_scene:
+    path: ../third_party/flutter_scene
   vector_graphics:
     path: ../third_party/flutter_vector_graphics/packages/vector_graphics
   vector_graphics_codec:

@@ -74,7 +74,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%) | ported | Deviation: Rendered with Flutter Scene (GPU cards with live/overview tiers) instead of React Flow's DOM; geometry and numbers follow React Flow 11. | spec `workflow`, visual `canvas-basic-llm`, visual `canvas-if-else`, `app/test/dify_spec/workflow/base` |
+| Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%) | ported | Deviation: Rendered with Flutter Scene (GPU cards with live/overview tiers) instead of React Flow's DOM; geometry and numbers follow React Flow 11. Web releases use Dart Wasm/skwasm with Flutter's browser fallback; detached card captures are serialized on Wasm to avoid corrupted textures. | spec `workflow`, visual `canvas-basic-llm`, visual `canvas-if-else`, `app/test/dify_spec/workflow/base` |
 | Canvas: dotted background | ported |  | visual `canvas-basic-llm` |
 | Canvas: open at the saved viewport, else fit view | partial | The canvas always fits the graph when a document opens; the viewport is per-user view state and is not stored in the shared document (Dify saves it with the draft). A start viewport can be passed with ?view= / --view. | spec `workflow/utils`, visual `editor-basic-llm` |
 | Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans) | ported |  | `app/test/workflow_editor_test.dart` |
