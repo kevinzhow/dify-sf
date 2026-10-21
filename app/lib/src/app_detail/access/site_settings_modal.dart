@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../auth/auth_controller.dart';
+import '../../files/upload_service.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
@@ -221,7 +223,8 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
   }
 
   Future<void> _pickIcon() async {
-    final v = await pickAppIcon(context, appIcon);
+    final auth = AuthScope.maybeOf(context);
+    final v = await pickAppIcon(context, appIcon, upload: auth == null ? null : appIconUploader(auth));
     if (v != null && mounted) setState(() => appIcon = v);
   }
 

@@ -1,10 +1,5 @@
-/// web/app/account/(commonLayout) (Dify 1.17.1): the Account page (`/account`): its header (logo, "Account", Home, the
-/// avatar menu) and account-page/index.tsx: the profile card, name, email, password and the account's apps. Protocol
-/// 1.8 / 1.12 calls: `PUT /v1/account/name`, `PUT /v1/account/password`, the change-email flow, `GET /v1/apps`.
-///
-/// Not ported, as in Dify's community edition or for want of a server service: uploading an avatar (dify-sf has no file
-/// storage; the avatar is Dify's initial fallback, as Dify with `DISABLE_UPLOAD_IMAGE_AS_ICON`), deleting the account
-/// (Dify Cloud only) and the education badge (Dify Cloud only).
+/// Dify 1.17.1 account page, including the shared crop/upload control for account avatars.
+/// Upload and removal are offered only when the server advertises configured file storage.
 library;
 
 import 'dart:async';
@@ -18,6 +13,8 @@ import '../auth/auth_controller.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
+import '../design/widgets/app_icon_picker.dart';
+import '../files/upload_service.dart';
 import '../settings/settings_kit.dart';
 import 'account_dialogs.dart';
 import 'email_change_modal.dart';
@@ -241,6 +238,32 @@ class _AccountPageBodyState extends State<AccountPageBody> {
     }
   }
 
+  Future<void> _editAvatar(AuthController auth) async {
+    final upload = appIconUploader(auth);
+    if (upload == null) return;
+    await showDifyDialog<void>(
+      context,
+      builder: (dialogContext) => DifyAppIconPicker(
+        imageOnly: true,
+        upload: (file) async {
+          final result = await upload(file);
+          await auth.session.updateProfile(avatar: result.fileId);
+          return result;
+        },
+        onDelete: auth.account?.avatarUrl == null
+            ? null
+            : () async {
+                await auth.session.updateProfile(avatar: '');
+              },
+        onSelect: (_) {
+          Navigator.pop(dialogContext);
+          toast.success(stc(context, 'actionMsg.modifiedSuccessfully'));
+        },
+        onCancel: () => Navigator.pop(dialogContext),
+      ),
+    );
+  }
+
   TextStyle get _title => difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary);
 
   /// A read-only value box (`flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular`) with its action
@@ -319,7 +342,31 @@ class _AccountPageBodyState extends State<AccountPageBody> {
           ),
           child: Row(
             children: [
-              DifyAvatar(name: account.name, url: account.avatarUrl, size: DifyAvatarSize.xxxl),
+              if (features.fileUpload)
+                DifyPressable(
+                  key: const ValueKey('account-edit-avatar'),
+                  semanticLabel: stc(context, 'avatar.editAction'),
+                  onPressed: () => unawaited(_editAvatar(auth)),
+                  builder: (context, hovered, focused) => Stack(
+                    children: [
+                      DifyAvatar(name: account.name, url: account.avatarUrl, size: DifyAvatarSize.xxxl),
+                      if (hovered || focused)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: DifyAvatarEditColors.overlay,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: RemixIcon('pencil-line', size: 20, color: DifyAvatarEditColors.foreground),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+              else
+                DifyAvatar(name: account.name, url: account.avatarUrl, size: DifyAvatarSize.xxxl),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

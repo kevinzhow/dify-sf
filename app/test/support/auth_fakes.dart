@@ -199,8 +199,26 @@ class RecordingAuthApi implements AuthApi {
   }
 
   @override
-  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone}) async {
-    await _call('updateProfile', {'name': ?name, 'interface_language': ?interfaceLanguage, 'timezone': ?timezone});
+  Future<Account> updateProfile(
+    String accessToken, {
+    String? name,
+    String? interfaceLanguage,
+    String? timezone,
+    String? avatar,
+  }) async {
+    await _call('updateProfile', {
+      'name': ?name,
+      'interface_language': ?interfaceLanguage,
+      'timezone': ?timezone,
+      'avatar': ?avatar,
+    });
+    if (avatar != null) {
+      throw const TransportException(
+        'file storage is not configured in this fake',
+        statusCode: 503,
+        code: 'file_storage_not_configured',
+      );
+    }
     await _maybeFail('updateProfile');
     final a = _me(accessToken).copyWith(name: name, interfaceLanguage: interfaceLanguage, timezone: timezone);
     _replace(a);

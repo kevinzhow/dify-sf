@@ -34,8 +34,10 @@ dependencies:
   # Gzip for the embed snippet's hidden inputs on every platform (app-card-utils compressAndEncodeBase64); already
   # pulled in by `image`.
   archive: ^4.5.2
+  hooks: ^2.0.2
 
 dev_dependencies:
+  file_selector_platform_interface: ^2.7.0
   flutter_test:
     sdk: flutter
   integration_test:

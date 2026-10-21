@@ -1159,7 +1159,7 @@ features:
   title: 'Agent v2 panel: roster binding, inline agent, output variables'
   dify: [web/app/components/workflow/nodes/agent-v2, web/app/components/base/emoji-picker/Inner.tsx, web/utils/emoji.ts]
   status: partial
-  reason: 'The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image icons still need a server upload endpoint; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
+  reason: 'The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image uploads exist in M2a, but this agent dialog still needs the agent console host to persist roster icons; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
   evidence: ['spec:web/app/components/workflow/nodes/agent-v2', 'spec:web/app/components/workflow/nodes/agent-v2/components', 'spec:web/app/components/workflow/nodes/agent-v2/components/agent-output-variables', app/test/design/emoji_search_test.dart, app/test/design/app_icon_picker_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart, app/lib/src/design/widgets/emoji_search.dart]
 
@@ -1168,7 +1168,7 @@ features:
   title: 'Agent icon picker: image selection, square crop and upload'
   dify: [web/app/components/base/app-icon-picker/index.tsx, web/app/components/base/app-icon-picker/ImageInput.tsx]
   status: partial
-  reason: 'File selection and square cropping are implemented with an injectable upload callback. The server has no file-upload endpoint; the default app path shows the Dify upload-failure message and retains the selected image, without generating a fake file ID.'
+  reason: 'File selection and square cropping are implemented with an injectable upload callback. M2a supplies authenticated file upload for app/site icons and avatars. The agent roster host is still absent, so its upload callback is not connected and no fake file ID is generated.'
   evidence: [app/test/design/app_icon_picker_test.dart, app/test/dify_spec/workflow/nodes_panel/llm/agent_v2_misc_test.dart]
   ours: [app/lib/src/design/widgets/app_icon_picker.dart, app/lib/src/design/widgets/emoji_catalog.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart]
 
@@ -1342,7 +1342,7 @@ features:
   title: 'File upload / image upload settings'
   dify: [web/app/components/base/features/new-feature-panel/file-upload, web/app/components/base/features/new-feature-panel/image-upload]
   status: ported
-  deviation: The system's upload limits (fileUploadConfig) are Dify's fallbacks; dify-sf has no upload service and does not store the system limits in the document.
+  deviation: The workflow settings still use fallback limits until M2b connects runtime file variables; M2a upload limits apply to stored files and app/account images only.
   evidence: ['spec:web/app/components/base/features/new-feature-panel/file-upload', 'spec:web/app/components/base/features/new-feature-panel/image-upload']
   ours: [app/lib/src/workflow_editor/features/file_upload.dart]
 - id: features.tts
@@ -1774,10 +1774,10 @@ features:
   area: accounts
   title: 'Account page: upload, crop and remove the avatar'
   dify: ['web/app/account/(commonLayout)/account-page/AvatarWithEdit.tsx', 'web/app/account/(commonLayout)/account-page/avatar-image.ts']
-  status: not_ported
-  reason: dify-sf's server has no file storage; avatars are Dify's initial fallback (as Dify with DISABLE_UPLOAD_IMAGE_AS_ICON).
-  evidence: ['spec:web/app/account/(commonLayout)/account-page']
-  ours: []
+  status: ported
+  deviation: 'Enabled only when the server advertises configured file storage. The account persists an own-upload image ID and receives a fresh signed URL. The avatar reuses the app icon crop control in image-only mode; delete requires confirmation.'
+  evidence: ['spec:web/app/account/(commonLayout)/account-page', app/test/design/app_icon_picker_test.dart, packages/collab_client/test/files_test.dart, app/integration_test/files_flow_test.dart]
+  ours: [app/lib/src/account/account_page.dart, app/lib/src/files/upload_service.dart, app/lib/src/design/widgets/app_icon_picker.dart, packages/collab_client/lib/src/files_api.dart]
 - id: accounts.delete-account
   area: accounts
   title: 'Account page: delete the account (email code, feedback)'
@@ -1932,7 +1932,7 @@ features:
   title: 'Create from Blank (Workflow / Chatflow) and the app type icons'
   dify: [web/app/components/app/create-app-modal, web/app/components/app/create-app-dropdown.tsx, web/app/components/app/create-app-dialog-shell.tsx, web/app/components/app/type-selector]
   status: ported
-  deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Image icons need file storage, so the icon picker offers emoji only.
+  deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Configured M2a storage enables image selection, crop and authenticated upload; emoji remains available.
   evidence: ['spec:web/app/components/app/create-app-modal', 'spec:web/app/components/app/type-selector', visual:studio-create-blank-types, visual:studio-create-blank-types-light, visual:studio-create-blank-preview, visual:studio-create-blank-preview-dark, app/test/studio_test.dart]
   ours: [app/lib/src/studio/create_app_modal.dart, app/lib/src/studio/app_icons.dart, app/lib/src/design/widgets/app_icon.dart, app/lib/src/studio/filters.dart]
 - id: app-pages.studio-import
@@ -2107,7 +2107,7 @@ features:
   title: 'Web App settings (Branding): name, icon, description, answer icon, language, chat colour, workflow details, placeholder, copyright, privacy policy, disclaimer'
   dify: [web/app/components/app/overview/settings]
   status: ported
-  deviation: Community edition rules (as Dify self-hosted) - copyright locked, the input placeholder editable; image icons need file storage dify-sf does not have (emoji only).
+  deviation: Community edition rules (as Dify self-hosted) - copyright locked, the input placeholder editable; image icons use the configured M2a upload service and freshly signed URLs.
   evidence: ['spec:web/app/components/app/overview/settings', app/test/access_point_page_test.dart]
   ours: [app/lib/src/app_detail/access/site_settings_modal.dart]
 - id: app-pages.embed-customize
@@ -2352,3 +2352,12 @@ features:
   reason: Tests of Dify's own test helpers, not product code; dify-sf's harnesses are Dart helpers.
   evidence: ['spec:web/app/components/workflow/__tests__/workflow-test-env.spec.tsx']
   ours: []
+
+- id: app-pages.file-storage
+  area: app-pages
+  title: 'M2a files: authenticated multipart upload, signed original delivery and app/site image icons'
+  dify: [api/controllers/console/files.py, api/core/app/workflow/file_runtime.py, web/app/components/base/app-icon-picker]
+  status: ported
+  deviation: 'Local persistent directory plus Postgres metadata; configuration-only signing secret, default 300-second Dify signatures, ranges and safe attachment delivery. UTF-8 text preview is limited to plain formats; PDF/Office extraction and the document-extractor runtime remain unported and explicitly return unsupported. M2b runtime file values and vision are not advertised by this milestone.'
+  evidence: [packages/collab_client/test/files_test.dart, app/test/design/app_icon_picker_test.dart, app/integration_test/files_flow_test.dart]
+  ours: [packages/collab_client/lib/src/files_api.dart, packages/collab_client/lib/src/transport/http_app_detail_api.dart, app/lib/src/files/upload_service.dart, app/lib/src/home_page.dart, app/lib/src/app_detail/access/site_settings_modal.dart]

@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
+
+import '../files_api.dart';
 
 import '../access_api.dart';
 import '../annotations_api.dart';
@@ -736,5 +739,69 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
         ? '${_draft(appId)}/nodes/${HttpConsoleApi._seg(nodeId)}/variables'
         : '${_draft(appId)}/variables';
     await _send('DELETE', path, ok: const [200, 204]);
+  }
+}
+
+class HttpFilesApi extends HttpConsoleApi implements FilesApi {
+  HttpFilesApi(
+    super.baseUrl, {
+    super.client,
+    super.auth,
+    super.timeout = const Duration(seconds: 120),
+  });
+
+  @override
+  Future<FileUploadLimits> limits() async => FileUploadLimits.fromJson(
+    HttpConsoleApi._map(
+      (await _send('GET', '/v1/files/upload', ok: const [200])).json,
+    ),
+  );
+
+  @override
+  Future<UploadedFile> upload(
+    List<int> bytes, {
+    required String filename,
+    String? mimeType,
+  }) async {
+    final multipart = http.MultipartRequest('POST', _url('/v1/files/upload'))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: filename,
+          contentType: mimeType == null ? null : MediaType.parse(mimeType),
+        ),
+      );
+    // AuthenticatedClient replays a plain Request, not a consumed MultipartRequest stream.
+    final payload = await multipart.finalize().toBytes();
+    final request = http.Request('POST', multipart.url)
+      ..headers.addAll(multipart.headers)
+      ..bodyBytes = payload;
+    return UploadedFile.fromJson(
+      HttpConsoleApi._map(
+        (await _send(
+          'POST',
+          '/v1/files/upload',
+          ok: const [201],
+          request: request,
+        )).json,
+      ),
+    );
+  }
+
+  @override
+  Future<String> textPreview(String fileId) async {
+    final body = HttpConsoleApi._map(
+      (await _send(
+        'GET',
+        '/v1/files/${HttpConsoleApi._seg(fileId)}/preview',
+        ok: const [200],
+      )).json,
+    );
+    final content = body['content'];
+    if (content is! String) {
+      throw const TransportException('malformed file preview');
+    }
+    return content;
   }
 }

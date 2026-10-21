@@ -920,13 +920,14 @@ class FakeAuthApi implements AuthApi {
   );
 
   @override
-  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone}) =>
+  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone, String? avatar}) =>
       _call(
         (a) => Account.fromJson(
           a.updateProfile(accessToken, {
             'name': ?name,
             'interface_language': ?interfaceLanguage,
             'timezone': ?timezone,
+            'avatar': ?avatar,
           }),
         ),
       );

@@ -1,5 +1,11 @@
 import 'package:flutter/widgets.dart';
 
+/// AvatarWithEdit.tsx explicitly uses bg-black/50 and text-white in both themes.
+abstract final class DifyAvatarEditColors {
+  static const overlay = Color(0x80000000);
+  static const foreground = Color(0xFFFFFFFF);
+}
+
 /// Avatar sizes (avatar/index.tsx `avatarSizeClasses`): the box and the initial's font size.
 enum DifyAvatarSize {
   xxs(16, 7),

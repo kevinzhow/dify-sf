@@ -56,6 +56,8 @@ class DifyAppIconPicker extends StatefulWidget {
     this.initialEmoji,
     this.upload,
     this.enableImageUpload = true,
+    this.imageOnly = false,
+    this.onDelete,
     this.pickFile,
     required this.onSelect,
     required this.onCancel,
@@ -63,6 +65,10 @@ class DifyAppIconPicker extends StatefulWidget {
   final ({String icon, String? background})? initialEmoji;
   final UploadAppIcon? upload;
   final bool enableImageUpload;
+
+  /// Avatar uses the same crop/upload implementation, without emoji choices.
+  final bool imageOnly;
+  final Future<void> Function()? onDelete;
   final Future<IconFile?> Function()? pickFile;
   final ValueChanged<Map<String, Object?>> onSelect;
   final VoidCallback onCancel;
@@ -76,7 +82,8 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
   late bool _styles = _emoji.isNotEmpty;
   final _catalog = EmojiCatalog.load();
   String _query = '';
-  bool _imageTab = false, _uploading = false;
+  late bool _imageTab = widget.imageOnly;
+  bool _uploading = false;
   IconFile? _file;
   image.Image? _decoded;
   final _transform = TransformationController();
@@ -295,7 +302,8 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
           SizedBox(
             width: _cropSize,
             height: _cropSize,
-            child: ClipRect(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(widget.imageOnly ? _cropSize / 2 : 0),
               child: InteractiveViewer(
                 transformationController: _transform,
                 constrained: false,
@@ -323,7 +331,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_uploading,
     child: DifyDialogSurface(
-      label: _t('emoji'),
+      label: widget.imageOnly ? DifyI18n.tr('common', 'avatar.editAction') : _t('emoji'),
       width: 362,
       height: math.min(462, MediaQuery.sizeOf(context).height - 32),
       padding: EdgeInsets.zero,
@@ -331,7 +339,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
         type: MaterialType.transparency,
         child: Column(
           children: [
-            if (widget.enableImageUpload)
+            if (widget.enableImageUpload && !widget.imageOnly)
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -358,6 +366,23 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
               child: Row(
                 spacing: 8,
                 children: [
+                  if (widget.onDelete != null)
+                    DifyButton(
+                      key: const ValueKey('avatar-delete'),
+                      tone: DifyButtonTone.destructive,
+                      disabled: _uploading,
+                      onPressed: () async {
+                        final removed = await showDifyConfirm(
+                          context,
+                          title: DifyI18n.tr('common', 'avatar.deleteTitle'),
+                          description: DifyI18n.tr('common', 'avatar.deleteDescription'),
+                          onConfirm: widget.onDelete,
+                          lockCancelWhileBusy: true,
+                        );
+                        if (removed && context.mounted) widget.onCancel();
+                      },
+                      child: Text(DifyI18n.tr('common', 'operation.delete')),
+                    ),
                   Expanded(
                     child: DifyButton(disabled: _uploading, onPressed: widget.onCancel, child: Text(_t('cancel'))),
                   ),
@@ -365,6 +390,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                     child: DifyButton(
                       variant: DifyButtonVariant.primary,
                       loading: _uploading,
+                      disabled: _imageTab && _decoded == null,
                       onPressed: _select,
                       child: Text(_t('ok')),
                     ),

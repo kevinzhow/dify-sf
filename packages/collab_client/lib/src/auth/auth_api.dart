@@ -68,7 +68,7 @@ abstract interface class AuthApi {
   /// `PATCH /v1/account/profile` (1.12, Dify's account profile): sets what is given ([name]: 3-30 characters;
   /// [interfaceLanguage]: one of Dify's languages; [timezone]: an IANA name; `400 bad_request` otherwise) and answers the
   /// account.
-  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone});
+  Future<Account> updateProfile(String accessToken, {String? name, String? interfaceLanguage, String? timezone, String? avatar});
 
   /// `POST /v1/account/change-email` (1.12): mails a six-digit code and answers the token for [checkChangeEmailCode].
   /// Without [phase] the code goes to the account's own address ([email] must be it, else `400 invalid_email`); with
@@ -237,14 +237,13 @@ class HttpAuthApi implements AuthApi {
     String accessToken, {
     String? name,
     String? interfaceLanguage,
-    String? timezone,
-  }) async => Account.fromJson(
+    String? timezone, String? avatar}) async => Account.fromJson(
     await _send(
       'PATCH',
       '/v1/account/profile',
       ok: 200,
       token: accessToken,
-      body: {'name': ?name, 'interface_language': ?interfaceLanguage, 'timezone': ?timezone},
+      body: {'name': ?name, 'interface_language': ?interfaceLanguage, 'timezone': ?timezone, 'avatar': ?avatar},
     ),
   );
 

@@ -220,9 +220,9 @@ class AuthSession implements TokenProvider {
   );
 
   /// `PATCH /v1/account/profile` (1.12): name, interface language, time zone; updates [currentAccount].
-  Future<Account> updateProfile({String? name, String? interfaceLanguage, String? timezone}) async {
+  Future<Account> updateProfile({String? name, String? interfaceLanguage, String? timezone, String? avatar}) async {
     final a = await authorized(
-      (t) => api.updateProfile(t, name: name, interfaceLanguage: interfaceLanguage, timezone: timezone),
+      (t) => api.updateProfile(t, name: name, interfaceLanguage: interfaceLanguage, timezone: timezone, avatar: avatar),
     );
     _setAccount(a);
     return a;

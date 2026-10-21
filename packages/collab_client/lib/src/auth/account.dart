@@ -274,6 +274,7 @@ final class SystemFeatures {
     this.enableEmailCodeLogin = false,
     this.isAllowRegister = false,
     this.enableChangeEmail = false,
+    this.fileUpload = false,
     this.workflowRuntime,
   });
 
@@ -285,6 +286,7 @@ final class SystemFeatures {
       enableEmailCodeLogin: m['enable_email_code_login'] == true,
       isAllowRegister: m['is_allow_register'] == true,
       enableChangeEmail: m['enable_change_email'] == true,
+      fileUpload: m['enable_file_upload'] == true,
       workflowRuntime: WorkflowRuntimeFeatures.fromJson(m['workflow_runtime']),
     );
   }
@@ -300,6 +302,7 @@ final class SystemFeatures {
   /// Dify's `enable_change_email` (1.12): the account page offers changing the email (dify-sf: only with mail). Older
   /// servers do not say, which is false.
   final bool enableChangeEmail;
+  final bool fileUpload;
 
   /// dify-sf only (1.13, `workflow_runtime`): what the server's workflow runtime runs; null when it has none (older
   /// servers, or no plugin daemon configured).

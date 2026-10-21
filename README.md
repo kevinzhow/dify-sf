@@ -8,13 +8,13 @@ branch.
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-290 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+291 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
-| ported | 176 |
+| ported | 178 |
 | partial | 48 |
-| not ported | 36 |
+| not ported | 35 |
 | n/a | 17 |
 | dify-sf only | 13 |
 

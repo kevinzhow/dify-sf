@@ -52,6 +52,46 @@ void main() {
     await t.pumpAndSettle();
   }
 
+  testWidgets('avatar image-only mode retries failed save using the retained crop', (t) async {
+    final png = img.encodePng(img.Image(width: 20, height: 10)..clear(img.ColorRgb8(70, 80, 90)));
+    var attempts = 0, selected = false;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Stack(
+          children: [
+            DifyAppIconPicker(
+              imageOnly: true,
+              pickFile: () async => (name: 'avatar.png', bytes: png),
+              upload: (file) async {
+                attempts++;
+                final crop = img.decodePng(file.bytes)!;
+                expect(crop.width, crop.height);
+                if (attempts == 1) throw Exception('network interrupted');
+                return (fileId: 'uploaded-avatar', url: 'https://files.test/signed');
+              },
+              onSelect: (_) => selected = true,
+              onCancel: () {},
+            ),
+            const DifyToastHost(),
+          ],
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('icon-emoji-search')), findsNothing);
+    await t.tap(find.byKey(const ValueKey('app-icon-pick-image')));
+    await t.pumpAndSettle();
+    await t.tap(find.text(tr('ok')));
+    await t.pumpAndSettle();
+    expect(selected, isFalse);
+    expect(attempts, 1);
+    expect(find.byType(Image), findsOneWidget);
+    await t.tap(find.text(tr('ok')));
+    await t.pumpAndSettle();
+    expect(attempts, 2);
+    expect(selected, isTrue);
+  });
+
   testWidgets('searches the original emoji catalog and confirms the chosen icon and color', (t) async {
     Map<String, Object?>? selected;
     await open(t, result: (value) => selected = value);

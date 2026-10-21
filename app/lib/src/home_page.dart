@@ -1,3 +1,4 @@
+import 'files/upload_service.dart';
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
@@ -301,6 +302,7 @@ class _HomePageState extends State<HomePage> {
       key: ValueKey('app-detail-${app.id}'),
       appId: app.id,
       apps: apps,
+      uploadIcon: appIconUploader(auth),
       initialApp: app,
       initialPage: AppDetailPageId.fromPath(path),
       account: account,
@@ -356,6 +358,7 @@ class _HomePageState extends State<HomePage> {
                 : StudioPage(
                     key: const ValueKey('studio-page'),
                     api: apps,
+                    uploadIcon: appIconUploader(AuthScope.of(context)),
                     members: _members,
                     role: account.role,
                     currentUserId: account.id,

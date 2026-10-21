@@ -79,6 +79,7 @@ class OfflineAuthApi implements AuthApi {
     String? name,
     String? interfaceLanguage,
     String? timezone,
+    String? avatar,
   }) async => _offline();
 
   @override
