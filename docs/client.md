@@ -150,8 +150,25 @@ dart run bin/storm.dart --chaos --crashes-per-minute 6 -d 20      # no --url: se
 cd app && flutter analyze && flutter test
 flutter run -d linux -- --server http://127.0.0.1:8080 --doc demo1     # start it twice for two collaborators
 flutter run -d linux -- --demo                    # in-memory server with a simulated collaborator, no setup
-flutter build linux && flutter build web          # both are checked in this branch
+flutter build linux --release
+../tool/build_web.sh                              # Dart Wasm + skwasm release
 ```
+
+Web releases use full Dart Wasm and the skwasm renderer by default. From the repository root, run
+`tool/build_web.sh` (equivalent to `cd app && flutter build web --release --wasm`). Extra Flutter build
+options, such as `--base-href`, can be passed to the script. Deploy the entire `app/build/web/` output,
+including `.wasm`, `.mjs`, assets and renderer files; serve `.wasm` as `application/wasm`. Avoid caching
+`index.html` and `flutter_bootstrap.js` across releases.
+
+Flutter keeps a JavaScript/CanvasKit compatibility build for browsers that cannot run this Wasm target.
+To verify the actual runtime, check that the browser requests `main.dart.wasm` and a skwasm renderer
+Wasm file without requesting `main.dart.js`. A build succeeding alone does not establish this.
+
+For multithreaded rendering, serve over HTTPS (localhost is also a secure context), with
+`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` (or
+`require-corp`, with compatible headers on cross-origin resources). Plain HTTP on a tailnet IP can run
+the full Dart Wasm/skwasm build in single-threaded mode. See the
+[Flutter Wasm deployment documentation](https://docs.flutter.dev/platform-integration/web/wasm).
 
 The web build talks to the server cross-origin; that relies on the server's CORS support (1.1: default allowed
 origins are `http://localhost:*`, `http://127.0.0.1:*`, `http://[::1]:*`, configurable with
@@ -202,7 +219,7 @@ Against the real server (docker compose from commit `9bfa9af`, group commit and 
 
 (With the previous server build, commit 16264c9: 4991 and 5590 commits, p50 140 ms, also 0 violations.)
 
-Builds: `flutter build linux --release` and `flutter build web --release` succeed (a wasm dry run also succeeds).
+Builds: `flutter build linux --release` and `tool/build_web.sh` (Dart Wasm + skwasm release) succeed.
 
 ## Known gaps
 

@@ -5,6 +5,8 @@ an acknowledged edit. This branch holds the pure-Dart collaboration library (`pa
 Flutter app (`app/`, Linux desktop and web) that replicates Dify's workflow editor. The server lives on the `main`
 branch.
 
+Web release builds use full Dart Wasm + skwasm: run `tool/build_web.sh`. Browser compatibility fallback and hosting requirements are described in [the client guide](docs/client.md).
+
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
