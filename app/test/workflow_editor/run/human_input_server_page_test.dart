@@ -259,6 +259,8 @@ void main() {
       }
       await loader.load();
     }
+    // The window is 720×520 physical pixels at DPR 2 (a 360×260 logical page), and the shot is taken at the pixel
+    // ratio the file should have: the PNG is 1440×1040, i.e. the page at 4×, sharp enough to look at the details.
     t.view.physicalSize = const Size(720, 520);
     t.view.devicePixelRatio = 2;
     addTearDown(t.view.reset);
@@ -280,7 +282,7 @@ void main() {
     Future<void> shot(String name) async {
       await t.runAsync(() async {
         final render = boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-        final image = await render.toImage();
+        final image = await render.toImage(pixelRatio: 4);
         final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!;
         Directory(out).createSync(recursive: true);
         File('$out/$name.png').writeAsBytesSync(bytes.buffer.asUint8List());
