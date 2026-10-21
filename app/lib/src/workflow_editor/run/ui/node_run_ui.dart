@@ -7,13 +7,19 @@
 /// held as inspect variables count as set, so a node whose references all have values runs at once.
 library;
 
+import 'dart:async';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
-import '../../../workflow/dify_json.dart' show difyDataOf;
+import '../../../workflow/dify_json.dart' show difyDataOf, jsList;
+import '../../node_panel/bodies/data/data_common.dart' show DataToastType, showDataToast;
+import '../../node_panel/bodies/data/human_input/human_input_kit.dart';
+import '../../node_panel/bodies/data/human_input/human_input_model.dart' show processedHumanInputFormInputs;
+import '../../node_panel/bodies/data/human_input/single_run.dart' show HumanInputRunForm;
 import '../../node_panel/last_run.dart' as no_data;
 import '../../node_panel/bodies/llm/group_host.dart';
 import '../../node_panel/bodies/llm/model_common.dart' as models;
@@ -300,6 +306,66 @@ class NodeSingleRunOverlay extends StatefulWidget {
 class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
   Map<String, Object?> _values = {};
 
+  /// A human input node's generated form (`use-single-run-form-params`): null until "Run this step" asks for it.
+  Map<String, Object?>? _generatedForm;
+
+  /// The values the form was generated with (its `inputs`, sent back with the answers).
+  Map<String, Object?> _generatedWith = const {};
+
+  /// A request of the owner is in flight (the form is being rendered, or the answer is being sent).
+  bool _busy = false;
+
+  /// `handleShowGeneratedForm`: the server renders the node's form with the values its variables need. A refusal or a
+  /// lost connection shows Dify's toast and leaves the before-run form as it was, so the step can be tried again.
+  Future<void> _showGeneratedForm(SingleRunController c, Map<String, Object?> inputs) async {
+    final fetch = HumanInputHost.of(context).fetchGeneratedForm;
+    if (fetch == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final data = await fetch(widget.node.id, inputs);
+      if (!mounted) return;
+      setState(() {
+        _generatedForm = data;
+        _generatedWith = inputs;
+      });
+    } on Object catch (e) {
+      if (mounted) showDataToast(context, DataToastType.error, e is TransportException ? e.message : '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// `handleHumanInputFormSubmit` then `handleAfterHumanInputStepRun`: the answers are saved as the node's variables
+  /// (no run happens), the form closes and the Last Run tab shows them.
+  Future<void> _submitGeneratedForm(SingleRunController c, Map<String, Object?> inputs, String action) async {
+    final submit = HumanInputHost.of(context).submitGeneratedForm;
+    final form = _generatedForm;
+    if (submit == null || form == null || _busy) return;
+    final fromServer = jsList(form['inputs']);
+    setState(() => _busy = true);
+    try {
+      await submit(widget.node.id, {
+        'inputs': _generatedWith,
+        'form_inputs': processedHumanInputFormInputs(
+          fromServer.isNotEmpty ? fromServer : jsList(difyDataOf(widget.node)['inputs']),
+          inputs,
+        ),
+        'action': action,
+      });
+      if (!mounted) return;
+      setState(() => _generatedForm = null);
+      unawaited(c.fetchLastRun());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The form's own error hook: one toast, and the form keeps what was typed for another try.
+  void _showFormError(Object e) {
+    if (!mounted) return;
+    showDataToast(context, DataToastType.error, e is TransportException ? e.message : '$e');
+  }
+
   @override
   Widget build(BuildContext context) {
     final scope = WorkflowRunScope.maybeOf(context);
@@ -312,6 +378,26 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
         if (!c.isShowSingleRun) return const SizedBox.shrink();
         final custom = getCustomRunForm(nodeType: widget.node.type, dataSourceForm: widget.dataSourceForm);
         if (custom != null) return Positioned.fill(child: custom);
+        if (_generatedForm case final form?) {
+          return Positioned.fill(
+            child: RunPanelWrap(
+              nodeName: widget.node.title,
+              onHide: c.hideSingleRun,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: HumanInputRunForm(
+                  nodeName: widget.node.title,
+                  showBackButton: true,
+                  data: form,
+                  busy: _busy,
+                  onBack: () => setState(() => _generatedForm = null),
+                  onSubmit: (inputs, action) => _submitGeneratedForm(c, inputs, action),
+                  onError: _showFormError,
+                ),
+              ),
+            ),
+          );
+        }
         final forms = singleRunFormsOf(
           widget.node,
           widget.doc,
@@ -343,6 +429,7 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
               c.handleRun(data);
               c.hideSingleRun();
             },
+            handleShowGeneratedForm: (inputs) => _showGeneratedForm(c, inputs),
           ),
         );
       },

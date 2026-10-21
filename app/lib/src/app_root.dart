@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collab_client/collab_client.dart' show WorkflowRunApi;
 import 'package:flutter/material.dart';
 
 import 'auth/activate_page.dart';
@@ -8,6 +9,7 @@ import 'auth/auth_controller.dart';
 import 'auth/install_page.dart';
 import 'auth/invite_settings_page.dart';
 import 'auth/reset_password_page.dart';
+import 'human_input/human_input_form_page.dart';
 import 'auth/signin_page.dart';
 import 'auth/unreachable_page.dart';
 import 'auth/widgets/auth_widgets.dart';
@@ -30,6 +32,7 @@ class AppRoot extends StatefulWidget {
     this.authApiFor,
     this.tokenStore,
     this.authRelay,
+    this.humanInputApiFor,
   });
 
   final AppSettings settings;
@@ -51,6 +54,9 @@ class AppRoot extends StatefulWidget {
   /// Where the current controller is published for the [AuthScope] above the navigator (buildApp's), so that pages
   /// pushed over the home page (the Account page, app detail pages, dialogs) see the session too.
   final ValueNotifier<AuthController?>? authRelay;
+
+  /// The API a mailed form link reads and submits with (tests pass one; the page builds an unauthenticated one).
+  final WorkflowRunApi Function(Uri server)? humanInputApiFor;
 
   @override
   State<AppRoot> createState() => _AppRootState();
@@ -118,6 +124,10 @@ class _AppRootState extends State<AppRoot> {
 
   @override
   Widget build(BuildContext context) {
+    // Dify's mailed link (`/form/{token}`) is a page of its own, outside the account: a recipient has none.
+    if (widget.launch?.formToken case final token?) {
+      return HumanInputFormPage(token: token, server: Uri.parse(_auth.server), apiFor: widget.humanInputApiFor);
+    }
     final route = _auth.route;
     final Widget page = switch (route) {
       StartingRoute() => const AuthPageFrame(child: Center(child: DifyLoading())),

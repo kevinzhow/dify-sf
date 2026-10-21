@@ -49,6 +49,44 @@ void main() {
       expect(backs, 1);
     });
 
+    testWidgets('a refused submission keeps the answer and enables the actions again', (t) async {
+      // A closed form or a lost connection: the owner shows the error, and this widget must not stay disabled.
+      var calls = 0;
+      final errors = <Object>[];
+      await pumpComponent(
+        t,
+        HumanInputRunForm(
+          nodeName: 'Review',
+          data: createFormData(),
+          onSubmit: (inputs, action) async {
+            calls++;
+            if (calls == 1) throw StateError('the server refused the answer');
+          },
+          onError: errors.add,
+        ),
+      );
+      await t.enterText(find.byType(EditableText), 'Looks good');
+      await t.tap(find.text('Approve'));
+      await t.pump();
+      // The refusal reached the owner's error hook (its toast), not the zone.
+      expect(errors.single, isA<StateError>());
+      // The typed answer is still there, and the action can be pressed again.
+      expect(find.text('Looks good'), findsOneWidget);
+      final button = t.widget<DifyButton>(find.widgetWithText(DifyButton, 'Approve'));
+      expect(button.disabled, isFalse, reason: 'a failed submission re-enables the actions');
+      await t.tap(find.text('Approve'));
+      await t.pump();
+      expect(calls, 2, reason: 'the answer can be submitted again');
+    });
+
+    testWidgets('busy (the owner has a request out) disables the actions', (t) async {
+      await pumpComponent(
+        t,
+        HumanInputRunForm(nodeName: 'Review', data: createFormData(), busy: true, onSubmit: (_, _) async {}),
+      );
+      expect(t.widget<DifyButton>(find.widgetWithText(DifyButton, 'Approve')).disabled, isTrue);
+    });
+
     testWidgets('submits the selected action with initialized inputs', (t) async {
       await render(t, createFormData());
       await t.tap(find.text('Approve'));

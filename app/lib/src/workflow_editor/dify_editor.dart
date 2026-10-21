@@ -27,6 +27,8 @@ import 'dsl/update_dsl_modal.dart';
 import 'operator/image_export.dart';
 import 'hooks/use_locate_node.dart';
 import 'hooks/use_tool_icon.dart';
+import 'human_input_host_scope.dart';
+import 'node_panel/bodies/data/human_input/single_run.dart' show humanInputFormUrl;
 import 'node_panel/bodies/llm/group_host.dart';
 import 'node_panel/node_panel.dart';
 import 'note_node/note_node.dart';
@@ -274,6 +276,35 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       return _serverInspect = ServerInspectServices(api: runtime.api, appId: controller.docId);
     }
     return _mockService(context, canvas).inspectServices;
+  }
+
+  /// The human-input node's own form (protocol 1.16): the server renders it from the node's config and the values its
+  /// variables need, and saves the answers as the node's draft variables.
+  String _humanInputFormUrl(String nodeId) => humanInputFormUrl(
+    appId: controller.docId,
+    isWorkflowMode: !widget.meta.isChatflow,
+    nodeId: nodeId,
+  );
+
+  Future<Map<String, Object?>> _fetchGeneratedForm(String nodeId, Map<String, Object?> inputs) async {
+    final api = widget.serverRuntime!.api;
+    return api.humanInputFormPreview(_humanInputFormUrl(nodeId), {'inputs': inputs});
+  }
+
+  Future<void> _submitGeneratedForm(String nodeId, Map<String, Object?> body) async {
+    final api = widget.serverRuntime!.api;
+    await api.humanInputFormRun(_humanInputFormUrl(nodeId), body);
+  }
+
+  /// The panel's test mail (`.../human-input/nodes/{node}/delivery-test`): one message of the delivery method, about a
+  /// delivery-test form the server owns. A refusal reaches the test sender's dialog, which keeps its form.
+  Future<void> _sendTestEmail({
+    required String nodeId,
+    required String deliveryId,
+    required Map<String, Object?> inputs,
+  }) async {
+    final api = widget.serverRuntime!.api;
+    await api.humanInputDeliveryTest(controller.docId, nodeId, {'delivery_method_id': deliveryId, 'inputs': inputs});
   }
 
   /// The comments store this editor created (when none was passed in), tied to the controller's session.
@@ -535,7 +566,16 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
                     // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
                     // preview; run state is local view state).
-                    scope: (context, canvas, child) => VariableInspectHost(
+                    scope: (context, canvas, child) => HumanInputHostScope(
+                      store: _comments,
+                      userId: widget.user?.id,
+                      userName: widget.user?.name ?? '',
+                      // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
+                      // the method is in debug mode (`.../delivery-test`).
+                      sendTestEmail: widget.serverRuntime?.humanInput == true ? _sendTestEmail : null,
+                      fetchGeneratedForm: widget.serverRuntime?.humanInput == true ? _fetchGeneratedForm : null,
+                      submitGeneratedForm: widget.serverRuntime?.humanInput == true ? _submitGeneratedForm : null,
+                      child: VariableInspectHost(
                       services: _inspectServices(context, canvas),
                       nodes: () => controller.doc.nodes.values,
                       onViewNode: (nodeId) {
@@ -554,6 +594,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                           child: child,
                         ),
                       ),
+                    ),
                     ),
                     operator: workflowOperatorBuilder(
                       controller,

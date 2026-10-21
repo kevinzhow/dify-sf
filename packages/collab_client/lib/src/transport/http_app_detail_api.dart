@@ -79,7 +79,10 @@ abstract class HttpConsoleApi {
     }
     final http.Response res;
     try {
-      res = await http.Response.fromStream(await _client.send(req).timeout(timeout)).timeout(timeout);
+      // `send` is awaited **outside** `Response.fromStream`: the stream is read in this zone, where the client's own
+      // socket handling (and a test's `runAsync`) runs, instead of in whatever zone `.fromStream` was created in.
+      final streamed = await _client.send(req).timeout(timeout);
+      res = await http.Response.fromStream(streamed).timeout(timeout);
     } on TimeoutException {
       throw TransportException('$method $path timed out', timeout: true);
     } on TransportException {
@@ -602,32 +605,50 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
       ..headers['Content-Type'] = 'application/json'
       ..headers['Accept'] = 'text/event-stream'
       ..body = jsonEncode(body);
+    yield* _frames(req, 'POST', path);
+  }
+
+  /// `sseGet` (`service/base.ts`): a GET stream (`Accept: text/event-stream`), the same frames.
+  Stream<Map<String, Object?>> _getStream(String path, Map<String, List<String>> query) async* {
+    final req = http.Request('GET', _url(path, query))..headers['Accept'] = 'text/event-stream';
+    yield* _frames(req, 'GET', path);
+  }
+
+  Stream<Map<String, Object?>> _frames(http.Request req, String method, String path) async* {
     final http.StreamedResponse res;
     try {
       res = await _client.send(req).timeout(timeout);
     } on TimeoutException {
-      throw TransportException('POST $path timed out', timeout: true);
+      throw TransportException('$method $path timed out', timeout: true);
     } on TransportException {
       rethrow;
     } on Object catch (e) {
-      throw TransportException('POST $path failed: $e');
+      throw TransportException('$method $path failed: $e');
     }
     if (res.statusCode != 200) {
       final text = utf8.decode(await res.stream.toBytes(), allowMalformed: true);
       throw transportErrorOf(res.statusCode, text);
     }
     final parser = SseParser();
-    await for (final chunk in res.stream.cast<List<int>>().transform(utf8.decoder)) {
-      for (final m in parser.add(chunk)) {
-        if (m.event != 'message') continue; // `event: ping`
-        final Object? json;
-        try {
-          json = jsonDecode(m.data);
-        } on FormatException {
-          continue;
+    try {
+      await for (final chunk in res.stream.cast<List<int>>().transform(utf8.decoder)) {
+        for (final m in parser.add(chunk)) {
+          if (m.event != 'message') continue; // `event: ping`
+          final Object? json;
+          try {
+            json = jsonDecode(m.data);
+          } on FormatException {
+            continue;
+          }
+          if (json is Map<String, Object?>) yield json;
         }
-        if (json is Map<String, Object?>) yield json;
       }
+    } on TransportException {
+      rethrow;
+    } on Object catch (e) {
+      // The connection died mid-stream (a server that restarts closes it): the same `TransportException` a refused
+      // connection gives, so the stream's callers have one failure to reason about instead of a raw socket error.
+      throw TransportException('$method $path ended: $e');
     }
   }
 
@@ -740,6 +761,51 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
         : '${_draft(appId)}/variables';
     await _send('DELETE', path, ok: const [200, 204]);
   }
+
+  // ---- human input (1.16) ----
+
+  @override
+  Future<Map<String, Object?>> humanInputForm(String token) async => HttpConsoleApi._map(
+    (await _send('GET', '/v1/form/human_input/${HttpConsoleApi._seg(token)}', ok: const [200])).json,
+  );
+
+  @override
+  Future<void> submitHumanInputForm(String token, Map<String, Object?> body) async => _send(
+    'POST',
+    '/v1/form/human_input/${HttpConsoleApi._seg(token)}',
+    ok: const [200],
+    body: body,
+  );
+
+  /// `sseGet`: the response head within [timeout], then frames for as long as the run lasts (a paused run with
+  /// `continue_on_pause` holds the connection open).
+  @override
+  Stream<Map<String, Object?>> workflowEvents(
+    String runId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  }) => _getStream('/v1/workflow/${HttpConsoleApi._seg(runId)}/events', {
+    'include_state_snapshot': ['$includeStateSnapshot'],
+    'continue_on_pause': ['$continueOnPause'],
+  });
+
+  @override
+  Future<void> humanInputDeliveryTest(String appId, String nodeId, Map<String, Object?> body) async => _send(
+    'POST',
+    '${_draft(appId)}/human-input/nodes/${HttpConsoleApi._seg(nodeId)}/delivery-test',
+    ok: const [200],
+    body: body,
+  );
+
+  @override
+  Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body) async => HttpConsoleApi._map(
+    (await _send('POST', '/v1$url/preview', ok: const [200], body: body)).json,
+  );
+
+  @override
+  Future<Map<String, Object?>> humanInputFormRun(String url, Map<String, Object?> body) async => HttpConsoleApi._map(
+    (await _send('POST', '/v1$url/run', ok: const [200], body: body)).json,
+  );
 }
 
 class HttpFilesApi extends HttpConsoleApi implements FilesApi {

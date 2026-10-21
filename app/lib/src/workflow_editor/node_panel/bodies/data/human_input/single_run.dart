@@ -125,15 +125,34 @@ class HumanInputRunForm extends StatefulWidget {
     required this.nodeName,
     required this.data,
     this.showBackButton = false,
+    this.busy = false,
     this.onBack,
     this.onSubmit,
+    this.onError,
   });
 
   final String nodeName;
   final HumanInputFormData data;
   final bool showBackButton;
+
+  /// A request of the owner is in flight (the form was just fetched, or the answer is being sent): the actions wait.
+  final bool busy;
   final VoidCallback? onBack;
   final Future<void> Function(Map<String, Object?> inputs, String action)? onSubmit;
+
+  /// A refused or lost submission: the owner shows it (its toast), and this widget stays usable — the answers typed so
+  /// far are kept and the actions work again.
+  final void Function(Object error)? onError;
+
+  /// Dify's console form definition (`GET /v1/form/human_input/{token}`: `rendered_content`, `user_actions`, `inputs`,
+  /// `default_values`) as the panel's own JSON (`form_content`, `actions`, `inputs`, `resolved_default_values`): the two
+  /// shapes Dify serves the same form in.
+  static HumanInputFormData definitionOf(HumanInputFormData definition) => {
+    ...definition,
+    'form_content': definition['rendered_content'] ?? definition['form_content'],
+    'actions': definition['actions'] ?? definition['user_actions'] ?? const <Object?>[],
+    'resolved_default_values': definition['resolved_default_values'] ?? definition['default_values'] ?? const <String, Object?>{},
+  };
 
   @override
   State<HumanInputRunForm> createState() => _HumanInputRunFormState();
@@ -153,8 +172,15 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
 
   Future<void> _submit(String action) async {
     setState(() => _submitting = true);
-    await widget.onSubmit?.call({..._inputs}, action);
-    if (mounted) setState(() => _submitting = false);
+    try {
+      await widget.onSubmit?.call({..._inputs}, action);
+    } on Object catch (e) {
+      // A refused or lost submission must not leave the buttons disabled or the future unhandled: the owner shows the
+      // error, the form keeps what was typed, and the action can be pressed again.
+      widget.onError?.call(e);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   Widget _item(String piece) {
@@ -194,7 +220,7 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    final disabled = _submitting || hasInvalidSelectOrFileInput(renderedFormInputs(_fields, _content), _inputs);
+    final disabled = _submitting || widget.busy || hasInvalidSelectOrFileInput(renderedFormInputs(_fields, _content), _inputs);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

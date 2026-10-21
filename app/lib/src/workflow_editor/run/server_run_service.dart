@@ -21,7 +21,12 @@ import 'run_service.dart';
 /// [WorkflowRuntimeFeatures.singleNodeRun], [WorkflowRuntimeFeatures.draftRun]). An app detail service
 /// (`AppDetailContext.service<ServerWorkflowRuntime>()`), present only when the server announces a runtime.
 class ServerWorkflowRuntime {
-  const ServerWorkflowRuntime({required this.api, required this.singleNodeRun, this.draftRun = const {}});
+  const ServerWorkflowRuntime({
+    required this.api,
+    required this.singleNodeRun,
+    this.draftRun = const {},
+    this.humanInput = false,
+  });
 
   final WorkflowRunApi api;
 
@@ -34,6 +39,10 @@ class ServerWorkflowRuntime {
 
   /// Whole runs, their records and the draft variables are the server's (protocol 1.14).
   bool get runsDrafts => draftRun.isNotEmpty;
+
+  /// 1.16: the server runs human input (a draft run pauses at a `human-input` node, its form is submitted there, and a
+  /// reconnect rebuilds the run's state). Without it forms belong to the editor's stand-in.
+  final bool humanInput;
 }
 
 /// [WorkflowRunService] over the server's runtime for app [appId], [fallback] for the rest. [nodeTypeOf] answers a
@@ -182,8 +191,33 @@ class ServerRunService extends WorkflowRunService {
   @override
   Stream<RunEvent> sendChatMessage(ChatMessageRequest request) => fallback.sendChatMessage(request);
 
+  /// 1.16: Dify's `handleResume`: re-subscribed when the run pauses, so the form's answer continues the run.
   @override
-  Stream<RunEvent> workflowEvents(String workflowRunId) => fallback.workflowEvents(workflowRunId);
+  Stream<RunEvent> workflowEvents(
+    String workflowRunId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  }) async* {
+    if (!runtime.humanInput) {
+      yield* fallback.workflowEvents(
+        workflowRunId,
+        includeStateSnapshot: includeStateSnapshot,
+        continueOnPause: continueOnPause,
+      );
+      return;
+    }
+    try {
+      await for (final payload in runtime.api.workflowEvents(
+        workflowRunId,
+        includeStateSnapshot: includeStateSnapshot,
+        continueOnPause: continueOnPause,
+      )) {
+        yield RunEvent.fromJson(payload);
+      }
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 
   @override
   Future<void> stopChatMessageResponding(String taskId) => fallback.stopChatMessageResponding(taskId);
@@ -191,8 +225,16 @@ class ServerRunService extends WorkflowRunService {
   @override
   Future<List<String>> fetchSuggestedQuestions(String messageId) => fallback.fetchSuggestedQuestions(messageId);
 
+  /// 1.16: the form's token names the run's pause on the server; without the capability the stand-in holds the form.
   @override
-  Future<void> submitHumanInputForm(String formToken, DifyJson data) => fallback.submitHumanInputForm(formToken, data);
+  Future<void> submitHumanInputForm(String formToken, DifyJson data) async {
+    if (!runtime.humanInput) return fallback.submitHumanInputForm(formToken, data);
+    try {
+      await runtime.api.submitHumanInputForm(formToken, data);
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 
   @override
   Stream<RunEvent> iterationSingleNodeRun(String nodeId, DifyJson body) => _containerRun('iteration', nodeId, body);

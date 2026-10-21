@@ -15,6 +15,7 @@ class LaunchOptions {
     this.nodeId,
     this.app,
     this.page,
+    this.formToken,
   });
 
   /// The web build's URL query as options; [path] `/activate` (Dify's invitation link `/activate?token=…`) or `#/activate`
@@ -36,7 +37,18 @@ class LaunchOptions {
     nodeId: q['node_id'],
     app: q['app'],
     page: q['page'],
+    // Dify's mailed link is `/form/{token}` (`(humanInputLayout)/form/[token]`): it opens the form, no account needed.
+    formToken: _formTokenOf(path) ?? _formTokenOf(fragment),
   );
+
+  /// The token of Dify's `/form/{token}` page, when the URL is that page.
+  static String? _formTokenOf(String path) {
+    const prefix = '/form/';
+    final i = path.indexOf(prefix);
+    if (i < 0) return null;
+    final token = path.substring(i + prefix.length).split(RegExp(r'[?#/]')).first;
+    return token.isEmpty ? null : token;
+  }
 
   factory LaunchOptions.parse(List<String> args) {
     String? server;
@@ -133,6 +145,9 @@ class LaunchOptions {
   /// `access-point`, `logs`, `annotations`, `overview`); signed in on a server with the apps API.
   final String? app;
   final String? page;
+
+  /// Dify's mailed link (`/form/{token}`): the human input form to show, without an account.
+  final String? formToken;
 
   bool get autoOpen => demo || doc != null;
 

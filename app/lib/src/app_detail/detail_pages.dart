@@ -36,5 +36,6 @@ Map<Type, Object> httpAppDetailServices(
       api: HttpWorkflowRunApi(server, auth: auth),
       singleNodeRun: runtime.singleNodeRun,
       draftRun: runtime.draftRun,
+      humanInput: runtime.humanInput,
     ),
 };

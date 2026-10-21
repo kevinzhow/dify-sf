@@ -6,6 +6,19 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
+/// A human input form definition (protocol 1.16: Dify's FormDefinition plus `expiration_time`).
+const _formJSON = {
+  'form_id': 'n1',
+  'form_content': 'Approve?',
+  'inputs': <Object?>[],
+  'actions': <Object?>[],
+  'rendered_content': 'Approve?',
+  'default_values': <String, Object?>{},
+  'node_title': 'Human Input',
+  'display_in_ui': true,
+  'expiration_time': 1760000000,
+};
+
 /// Protocol 1.13: the workflow runtime's single node run and last run, and its discovery in `system-features`.
 void main() {
   test('1.15 container single runs stream dedicated encoded paths and preserve inputs/refusals', () async {
@@ -285,6 +298,121 @@ void main() {
       expect(events.last['event'], 'workflow_finished');
       final history = await fake.runHistory('a');
       expect((history['data']! as List).single, containsPair('status', 'succeeded'));
+    });
+  });
+
+  group('Protocol 1.16: human input', () {
+    test('workflow_runtime.human_input is parsed, false when the server does not say', () {
+      final yes = WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.16', 'human_input': true})!;
+      expect(yes.humanInput, isTrue);
+      expect(WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.15'})!.humanInput, isFalse);
+      expect(WorkflowRuntimeFeatures.fromJson({'protocol_version': '1.16', 'human_input': 'yes'})!.humanInput, isFalse);
+    });
+
+    test('the form, its submission, the reconnect and the node form use Dify\'s paths', () async {
+      final sent = <http.Request>[];
+      final api = HttpWorkflowRunApi(
+        Uri.parse('http://h:1/'),
+        client: MockClient.streaming((req, body) async {
+          sent.add(req as http.Request);
+          if (req.method == 'GET' && req.url.path.contains('/workflow/')) {
+            return http.StreamedResponse(
+              Stream.fromIterable([
+                utf8.encode('data: {"event":"workflow_paused","workflow_run_id":"r","data":{"reasons":[]}}\n\n'),
+                utf8.encode('data: {"event":"workflow_finished","data":{"status":"succeeded"}}\n\n'),
+              ]),
+              200,
+            );
+          }
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(jsonEncode(req.url.path.contains('/form/human_input/') ? _formJSON : {}))),
+            200,
+          );
+        }),
+      );
+      final form = await api.humanInputForm('t 1');
+      expect(sent.last.method, 'GET');
+      expect(sent.last.url.toString(), 'http://h:1/v1/form/human_input/t%201');
+      expect(form['form_id'], 'n1');
+      await api.submitHumanInputForm('t 1', {
+        'inputs': {'note': 'ok'},
+        'action': 'approve',
+      });
+      expect(sent.last.method, 'POST');
+      expect(sent.last.url.path, '/v1/form/human_input/t%201');
+      expect(jsonDecode(sent.last.body), {
+        'inputs': {'note': 'ok'},
+        'action': 'approve',
+      });
+      final events = await api.workflowEvents('run 1').toList();
+      expect(sent.last.method, 'GET');
+      expect(
+        sent.last.url.toString(),
+        'http://h:1/v1/workflow/run%201/events?include_state_snapshot=true&continue_on_pause=true',
+      );
+      expect(events.map((e) => e['event']), ['workflow_paused', 'workflow_finished']);
+      await api.workflowEvents('r', includeStateSnapshot: false, continueOnPause: false).toList();
+      expect(
+        sent.last.url.toString(),
+        'http://h:1/v1/workflow/r/events?include_state_snapshot=false&continue_on_pause=false',
+      );
+      const url = '/apps/a/workflows/draft/human-input/nodes/n1/form';
+      await api.humanInputFormPreview(url, {
+        'inputs': {'#start.q#': 'hi'},
+      });
+      expect(sent.last.method, 'POST');
+      expect(sent.last.url.path, '/v1$url/preview');
+      await api.humanInputFormRun(url, {
+        'inputs': {'#start.q#': 'hi'},
+        'form_inputs': {'note': 'ok'},
+        'action': 'approve',
+      });
+      expect(sent.last.url.path, '/v1$url/run');
+      await api.humanInputDeliveryTest('a', 'n 1', {'delivery_method_id': 'd1'});
+      expect(sent.last.url.path, '/v1/apps/a/workflows/draft/human-input/nodes/n%201/delivery-test');
+    });
+
+    test('a submitted or expired form is 412 with Dify\'s code', () async {
+      final api = HttpWorkflowRunApi(
+        Uri.parse('http://h:1/'),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'error': {'code': 'human_input_form_submitted', 'message': 'this form has been submitted'},
+            }),
+            412,
+          ),
+        ),
+      );
+      await expectLater(
+        api.humanInputForm('t'),
+        throwsA(
+          isA<TransportException>()
+              .having((e) => e.code, 'code', 'human_input_form_submitted')
+              .having((e) => e.statusCode, 'status', 412),
+        ),
+      );
+      await expectLater(
+        api.submitHumanInputForm('t', {'inputs': {}, 'action': 'approve'}),
+        throwsA(isA<TransportException>().having((e) => e.code, 'code', 'human_input_form_submitted')),
+      );
+    });
+
+    test('the fake answers its forms and records answers and reconnects', () async {
+      final fake = FakeWorkflowRunApi();
+      fake.humanInputForms['t1'] = {'form_id': 'n1', 'form_content': 'Approve?'};
+      expect((await fake.humanInputForm('t1'))['form_id'], 'n1');
+      await fake.submitHumanInputForm('t1', {
+        'inputs': {'note': 'ok'},
+        'action': 'approve',
+      });
+      expect(fake.humanInputAnswers['t1'], containsPair('action', 'approve'));
+      fake.humanInputEvents['r1'] = [
+        {'event': 'workflow_finished', 'data': {'status': 'succeeded'}},
+      ];
+      expect((await fake.workflowEvents('r1').toList()).single['event'], 'workflow_finished');
+      expect(fake.reconnects.single.continueOnPause, isTrue);
+      await expectLater(fake.humanInputForm('nope'), throwsA(isA<TransportException>()));
     });
   });
 }

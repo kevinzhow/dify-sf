@@ -33,6 +33,14 @@ typedef SendTestEmail = Future<void> Function({
   required Map<String, Object?> inputs,
 });
 
+/// The human-input node's own form (`fetchHumanInputNodeStepRunForm`): rendered from the node's config with the values
+/// its variables need (`#node.var#` → value). Null on a host without a server that renders it.
+typedef FetchGeneratedForm = Future<Map<String, Object?>> Function(String nodeId, Map<String, Object?> inputs);
+
+/// Its submission (`submitHumanInputNodeStepRunForm`): `{inputs, form_inputs, action}`; the answers become the node's
+/// draft variables.
+typedef SubmitGeneratedForm = Future<void> Function(String nodeId, Map<String, Object?> body);
+
 /// What the Human Input panel reads from Dify's backend, handed in by the app (each has an empty default).
 class HumanInputHost extends InheritedWidget {
   const HumanInputHost({
@@ -43,6 +51,8 @@ class HumanInputHost extends InheritedWidget {
     this.workspaceName = '',
     this.emailDeliveryEnabled = true,
     this.sendTestEmail,
+    this.fetchGeneratedForm,
+    this.submitGeneratedForm,
     this.onUpgrade,
     required super.child,
   });
@@ -62,6 +72,10 @@ class HumanInputHost extends InheritedWidget {
   /// None: the test sender's Send button is disabled.
   final SendTestEmail? sendTestEmail;
 
+  /// None: the node's "Run this step" does not show a generated form (the editor has no server that renders it).
+  final FetchGeneratedForm? fetchGeneratedForm;
+  final SubmitGeneratedForm? submitGeneratedForm;
+
   /// The upgrade modal's upgrade button (Dify opens the pricing page); none: no upgrade button.
   final VoidCallback? onUpgrade;
 
@@ -78,6 +92,8 @@ class HumanInputHost extends InheritedWidget {
       workspaceName != old.workspaceName ||
       emailDeliveryEnabled != old.emailDeliveryEnabled ||
       sendTestEmail != old.sendTestEmail ||
+      fetchGeneratedForm != old.fetchGeneratedForm ||
+      submitGeneratedForm != old.submitGeneratedForm ||
       onUpgrade != old.onUpgrade;
 }
 
