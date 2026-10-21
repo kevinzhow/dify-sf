@@ -2,6 +2,7 @@ import ast,base64,hashlib,hmac,json,os,secrets,subprocess,time,urllib.request,ur
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Literal
+import uuid
 
 import argparse
 parser=argparse.ArgumentParser(description="Bounded, isolated HTTP/signature/restart acceptance against the production image.")
@@ -73,7 +74,8 @@ try:
     status,features,_=js('GET','/v1/system-features')
     check('real configured file capability',features['enable_file_upload'] is True)
     text=('🌲é中'*1002).encode()
-    file=upload(token,'unicode.txt',text)
+    file=upload(token,'中文-🌲.txt',text)
+    check('unicode filename preserved',file['name']=='中文-🌲.txt')
     status,body,head=request('GET',file['preview_url'])
     check('anonymous signed bytes',status==200 and body==text)
     status,b,_=js('GET','/v1/files/'+file['id']+'/preview',token=token)
@@ -103,7 +105,11 @@ try:
     oracle=namespace['Oracle']()
     u=urllib.parse.urlsplit(file['preview_url']);q={k:v[0] for k,v in urllib.parse.parse_qs(u.query).items()}
     check('Dify 1.17.1 verifies Swift URL',oracle.verify_preview_signature(preview_kind='file',file_id=file['id'],**q))
-    q2=oracle._sign_query(payload='file-preview|'+file['id'])
+    for _ in range(1000):
+        q2=oracle._sign_query(payload='file-preview|'+file['id'])
+        if '-' in q2['sign'] and '_' in q2['sign']:break
+    check('URL-safe alphabet and retained padding', '-' in q2['sign'] and '_' in q2['sign'] and q2['sign'].endswith('='))
+
     original_url=base+'/files/'+file['id']+'/file-preview?'+urllib.parse.urlencode(q2)
     check('Swift verifies original Dify signature',request('GET',original_url)[1]==text)
     check('image kind distinct',request('GET',original_url.replace('/file-preview?','/image-preview?'))[0]==404)
@@ -117,10 +123,25 @@ try:
     sig=base64.urlsafe_b64encode(hmac.new(key.encode(),('file-preview|'+file['id']+'|'+old+'|'+nonce).encode(),hashlib.sha256).digest()).decode()
     expired=base+'/files/'+file['id']+'/file-preview?'+urllib.parse.urlencode({'timestamp':old,'nonce':nonce,'sign':sig})
     check('expired signed URL',request('GET',expired)[0]==404)
+    tenant=str(uuid.UUID(file['tenant_id']));stale=str(uuid.uuid4())
+    creator=str(uuid.UUID(auth['account']['id']))
+    pending_key=tenant+'/'+stale
+    staged=storage/tenant/('.pending-'+stale)
+    staged.write_bytes(b'unfinished')
+    os.chmod(staged,0o600)
+    sql=("INSERT INTO upload_files (id,workspace_id,storage_key,name,size,extension,mime_type,created_by,created_at,sha256)"
+         " VALUES ('"+stale+"','"+tenant+"','"+pending_key+"','unfinished.txt',10,'txt','text/plain','"+creator+"',now()-interval '2 hours','')")
+    run('docker','exec',pg,'psql','-U','collab','-d','collab','-v','ON_ERROR_STOP=1','-c',sql)
     run('docker','kill','--signal','KILL',srv)
     run('docker','rm',srv)
     start()
     check('independent process restart preserves signed bytes',request('GET',original_url)[1]==text)
+    for _ in range(50):
+        remaining=run('docker','exec',pg,'psql','-U','collab','-d','collab','-tAc',"SELECT count(*) FROM upload_files WHERE id='"+stale+"'")
+        if remaining=='0' and not staged.exists():break
+        time.sleep(.1)
+    check('new process reconciles interrupted metadata and staging bytes',remaining=='0' and not staged.exists())
+
     run('docker','stop','--time','10',srv)
     check('production image graceful shutdown',run('docker','inspect','--format','{{.State.ExitCode}}',srv)=='0')
     run('docker','rm',srv)

@@ -1,8 +1,9 @@
 import CollabCore
-import CollabStore
+@testable import CollabStore
 import Crypto
 import Foundation
 import HTTPTypes
+import PostgresNIO
 import Synchronization
 import Testing
 import VaporTesting
@@ -177,6 +178,41 @@ struct FileRouteTests {
             #expect(cleared.status == 200)
             #expect(try await store.account(id: profile.str("id"))?.avatarUrl == nil)
             #expect(try await api.post("/v1/apps", #"{"name":"Bad","mode":"workflow","icon_type":"image","icon":"unknown"}"#, token: owner).status == 400)
+        }
+    }
+
+    @Test func sameFilenameConcurrentUploadsKeepIndependentBytes() async throws {
+        let c = fileConfig()
+        defer { try? FileManager.default.removeItem(atPath: c.files.directory) }
+        try await withFiles(config: c) { api, _, _ in
+            let token = try await api.setupOwner()
+            async let left = upload(api, token, files: [("file", "same.txt", "left")])
+            async let right = upload(api, token, files: [("file", "same.txt", "right")])
+            let (a, b) = try await (left, right)
+            #expect(a.status == 201); #expect(b.status == 201)
+            #expect(a.str("id") != b.str("id"))
+            #expect(a.str("name") == b.str("name"))
+            #expect(try await api.get(localPath(a.str("preview_url"))).text == "left")
+            #expect(try await api.get(localPath(b.str("preview_url"))).text == "right")
+        }
+    }
+
+    @Test func databasePublishFailureNeverReturnsASuccessOrAReadyFile() async throws {
+        let c = fileConfig()
+        defer { try? FileManager.default.removeItem(atPath: c.files.directory) }
+        try await withFiles(config: c) { api, store, routes in
+            let token = try await api.setupOwner()
+            _ = try await store.client.query("ALTER TABLE upload_files ADD CONSTRAINT refuse_ready CHECK (NOT ready)", logger: routes.logger)
+            #expect(try await upload(api, token).status == 503)
+            let pending = try await store.pendingUploads(workspace: uploadWorkspaceId, before: Date().addingTimeInterval(10))
+            #expect(pending.count == 1)
+            let row = try #require(pending.first)
+            #expect(try await store.uploadFile(id: row.id, workspace: uploadWorkspaceId) == nil)
+            #expect(try await routes.blobs.info(key: row.key)?.size == 5)
+            #expect(try await api.get(localPath(try routes.fileSigner().url(id: row.id))).status == 404)
+            _ = try await store.client.query("ALTER TABLE upload_files DROP CONSTRAINT refuse_ready", logger: routes.logger)
+            #expect(try await UploadReconciler.run(store: store, blobs: routes.blobs, now: Date().addingTimeInterval(7200)) == 1)
+            #expect(try await routes.blobs.info(key: row.key) == nil)
         }
     }
 
