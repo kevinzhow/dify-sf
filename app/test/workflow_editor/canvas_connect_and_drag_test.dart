@@ -3,6 +3,8 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/workflow_editor/hooks/use_helpline.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'package:dify_sf_app/src/design/widgets/selection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -58,6 +60,27 @@ void main() {
   });
 
   group('dragging on the canvas', () {
+    testWidgets('page text selection does not take canvas focus after a mouse drag or click', (t) async {
+      final h = await EditorHarness.start(
+        t,
+        [node('a', x: 100, y: 100)],
+        wrap: (editor) => DifySelectionRegion(child: editor),
+      );
+      final from = h.nodeCenter('a');
+      await h.drag(t, from, from + const Offset(40, 30));
+      await EditorHarness.settle(t);
+      final dragged = h.doc.nodes['a']!.x;
+      await t.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await EditorHarness.settle(t);
+      expect(h.doc.nodes['a']!.x, dragged + 5);
+      await t.tapAt(h.nodeCenter('a'));
+      await t.pump();
+      await t.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await EditorHarness.settle(t);
+      expect(h.doc.nodes['a']!.x, dragged);
+      await h.dispose(t);
+    });
+
     testWidgets('shows a helpline while the node is within 5 px of another, snaps onto it, and clears it on drop', (
       t,
     ) async {

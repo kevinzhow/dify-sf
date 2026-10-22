@@ -472,47 +472,56 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
             },
             child: MouseRegion(
               onExit: input.exit,
-              child: Listener(
-                onPointerDown: (e) {
-                  if (input.claimed(e)) return;
-                  _interacting();
-                  _focus.requestFocus();
-                  input.down(e);
-                },
-                onPointerMove: input.move,
-                onPointerUp: input.up,
-                onPointerCancel: input.up,
-                onPointerHover: input.hover,
-                onPointerSignal: input.signal,
-                onPointerPanZoomStart: input.panZoomStart,
-                onPointerPanZoomUpdate: input.panZoomUpdate,
-                behavior: HitTestBehavior.opaque,
-                child: ClipRect(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CanvasBackground(key: const Key('canvas-background'), view: view),
-                      renderer.build(context),
-                      IgnorePointer(
-                        child: ValueListenableBuilder<Rect?>(
-                          valueListenable: input.marquee,
-                          builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
+              // Raw pointer handling below owns canvas drags. Also claim the
+              // gesture arena so an ancestor page SelectionArea cannot take
+              // keyboard focus or start text selection on this drag surface.
+              // Embedded editors still win as the deeper gesture target.
+              child: GestureDetector(
+                onTap: () {},
+                onPanStart: (_) {},
+                onSecondaryTap: () {},
+                child: Listener(
+                  onPointerDown: (e) {
+                    if (input.claimed(e)) return;
+                    _interacting();
+                    _focus.requestFocus();
+                    input.down(e);
+                  },
+                  onPointerMove: input.move,
+                  onPointerUp: input.up,
+                  onPointerCancel: input.up,
+                  onPointerHover: input.hover,
+                  onPointerSignal: input.signal,
+                  onPointerPanZoomStart: input.panZoomStart,
+                  onPointerPanZoomUpdate: input.panZoomUpdate,
+                  behavior: HitTestBehavior.opaque,
+                  child: ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CanvasBackground(key: const Key('canvas-background'), view: view),
+                        renderer.build(context),
+                        IgnorePointer(
+                          child: ValueListenableBuilder<Rect?>(
+                            valueListenable: input.marquee,
+                            builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
+                          ),
                         ),
-                      ),
-                      // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
-                      IgnorePointer(
-                        child: ValueListenableBuilder<(Offset, Offset)?>(
-                          valueListenable: input.connectLine,
-                          builder: (context, line, _) => CustomPaint(
-                            painter: ConnectionLineMarkerPainter(
-                              line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                        // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
+                        IgnorePointer(
+                          child: ValueListenableBuilder<(Offset, Offset)?>(
+                            valueListenable: input.connectLine,
+                            builder: (context, line, _) => CustomPaint(
+                              painter: ConnectionLineMarkerPainter(
+                                line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      a11y.build(),
-                      CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
-                    ],
+                        a11y.build(),
+                        CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
+                      ],
+                    ),
                   ),
                 ),
               ),
