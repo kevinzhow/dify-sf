@@ -150,7 +150,10 @@ def main():
         app = imported['id']
         http = subprocess.Popen([sys.executable, '-m', 'http.server', str(args.web_port), '--bind', '127.0.0.1',
                                  '--directory', str(args.web_build.resolve())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(.3)
+        # Docker's veth/route notifications can reach Chromium after the API
+        # already responds. Let this fixture's network changes settle before
+        # fetching engine/assets; the later server kill remains a real fault.
+        time.sleep(8)
         playwright = sync_playwright().start()
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={'width': 1600, 'height': 1000})
