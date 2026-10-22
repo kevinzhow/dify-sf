@@ -74,7 +74,7 @@ features:
   title: 'Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%)'
   dify: [web/app/components/workflow/index.tsx]
   status: ported
-  deviation: Rendered with Flutter Scene (GPU cards with live/overview tiers) instead of React Flow's DOM; geometry and numbers follow React Flow 11. Web releases use Dart Wasm/skwasm with Flutter's browser fallback; detached card captures are serialized on Wasm to avoid corrupted textures.
+  deviation: Web uses Flutter's retained widget canvas with culling and repaint boundaries, compiled to Dart Wasm/skwasm; geometry and numbers follow React Flow 11. Native GPU builds use Flutter Scene. Scene is an explicit Web diagnostic option (canvas=scene), as detached card captures can produce blank compositor frames during hover.
   evidence: ['spec:web/app/components/workflow', visual:canvas-basic-llm, visual:canvas-if-else, app/test/dify_spec/workflow/base]
   ours: [app/lib/src/canvas/workflow_canvas.dart, app/lib/src/canvas/scene_renderer.dart, app/lib/src/canvas/canvas_controller.dart, tool/build_web.sh, third_party/flutter_scene/PATCHES.md]
 - id: canvas.background
@@ -247,7 +247,7 @@ features:
   title: 'Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier)'
   dify: [web/app/components/workflow/index.tsx]
   status: dify_sf_only
-  reason: dify-sf's own Scene renderer with culling, overview captures and a skeleton tier; Dify renders every node as DOM.
+  reason: The native/opt-in Scene renderer has culling, overview captures and a skeleton tier; Dify renders every node as DOM. This benchmark does not describe the default Web widget canvas.
   evidence: [docs/results]
   ours: [app/lib/src/canvas/scene_renderer.dart, app/lib/src/canvas/spatial_grid.dart]
 

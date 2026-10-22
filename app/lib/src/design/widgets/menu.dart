@@ -52,6 +52,7 @@ class DifyMenuPopup extends StatefulWidget {
       _parent = null;
 
   const DifyMenuPopup._({
+    super.key,
     required this.children,
     this.width,
     this.semanticLabel,
@@ -87,6 +88,7 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
   FocusNode? _ownNode;
   _DifyMenuSubmenuState? _openSub;
   Timer? _subClose;
+  Offset? _pointer;
 
   FocusNode get _node => widget._focusNode ?? (_ownNode ??= FocusNode(debugLabel: 'DifyMenuPopup'));
 
@@ -135,12 +137,20 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
     if (sub == null || sub._row == row) return _subClose?.cancel();
     _subClose?.cancel();
     if (pointer) {
-      // Base UI keeps a submenu open while the pointer crosses towards it (safe polygon); a short grace period
-      // stands in for that.
-      _subClose = Timer(const Duration(milliseconds: 100), () => sub._controller.close());
+      // Match Floating UI's safe-polygon interaction: a diagonal route can
+      // cross another row for longer than a fixed close delay.
+      if (_pointer != null && sub._protects(_pointer!)) return;
+      _scheduleClose(sub);
     } else {
       sub._controller.close();
     }
+  }
+
+  void _scheduleClose(_DifyMenuSubmenuState sub) {
+    if (_subClose?.isActive ?? false) return;
+    _subClose = Timer(const Duration(milliseconds: 100), () {
+      if (mounted && _openSub == sub) sub._controller.close();
+    });
   }
 
   void _unhighlight() {
@@ -187,7 +197,11 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
           focusNode: _node,
           onKeyEvent: _onKey,
           child: MouseRegion(
-            onEnter: (_) => widget._parent?._subClose?.cancel(),
+            onEnter: (e) {
+              _pointer = e.position;
+              widget._parent?._subClose?.cancel();
+            },
+            onHover: (e) => _pointer = e.position,
             child: DefaultTextStyle.merge(
               style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
               child: DifyBlurredBox(

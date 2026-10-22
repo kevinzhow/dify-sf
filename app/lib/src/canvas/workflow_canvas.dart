@@ -139,6 +139,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     super.initState();
     canvas.graph = graph;
     kind = widget.renderer ?? defaultRendererKind();
+    if (CanvasDefaults.reportRect) debugPrint('CANVAS_RENDERER ${kind.name}');
     renderer = _makeRenderer(kind);
     input = CanvasInput(
       controller: c,

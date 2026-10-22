@@ -2,6 +2,7 @@ import 'renderer_choice_io.dart' if (dart.library.js_interop) 'renderer_choice_w
 
 enum CanvasRendererKind { scene, widgets }
 
-/// Flutter Scene, except under `flutter test` (no GPU there) or when DIFYSF_CANVAS=widgets.
+/// The retained widget canvas on Web and in tests. Native GPU builds use
+/// Flutter Scene; Web may opt in with `canvas=scene` for capture diagnostics.
 CanvasRendererKind defaultRendererKind() =>
     impl.preferWidgets() ? CanvasRendererKind.widgets : CanvasRendererKind.scene;

@@ -56,6 +56,75 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
   _MenuRowState? get _row => _triggerNode.context?.findAncestorStateOfType<_MenuRowState>();
   Timer? _hover;
   bool _focusFirst = false;
+  final _popupKey = GlobalKey();
+  Offset? _intentOrigin;
+  bool _tracking = false;
+
+  Rect? _bounds(BuildContext? context) {
+    final box = context?.findRenderObject();
+    return box is RenderBox && box.hasSize ? box.localToGlobal(Offset.zero) & box.size : null;
+  }
+
+  // The pointer may cross an adjacent row while heading diagonally into a
+  // submenu. Keep that corridor open, including the gap between the surfaces.
+  // Interaction model: https://floating-ui.com/docs/usehover#safepolygon
+  bool _protects(Offset point) {
+    final trigger = _bounds(_triggerNode.context);
+    final popup = _bounds(_popupKey.currentContext);
+    if (trigger == null || popup == null) return false;
+    if (trigger.contains(point) || popup.contains(point)) return true;
+    final origin = _intentOrigin;
+    if (origin == null) return false;
+    final r = popup.inflate(0.5);
+    final (Offset a, Offset b) = popup.left >= trigger.right
+        ? (r.topLeft, r.bottomLeft)
+        : popup.right <= trigger.left
+        ? (r.topRight, r.bottomRight)
+        : popup.top >= trigger.bottom
+        ? (r.topLeft, r.topRight)
+        : (r.bottomLeft, r.bottomRight);
+    return (Path()
+          ..moveTo(origin.dx, origin.dy)
+          ..lineTo(a.dx, a.dy)
+          ..lineTo(b.dx, b.dy)
+          ..close())
+        .contains(point);
+  }
+
+  void _track(bool on) {
+    if (_tracking == on) return;
+    _tracking = on;
+    if (on) {
+      _intentOrigin = _parent?._pointer;
+      GestureBinding.instance.pointerRouter.addGlobalRoute(_pointerMoved);
+    } else {
+      GestureBinding.instance.pointerRouter.removeGlobalRoute(_pointerMoved);
+    }
+  }
+
+  void _pointerMoved(PointerEvent event) {
+    if (event is! PointerHoverEvent || !_controller.isOpen) return;
+    final point = event.position;
+    _parent?._pointer = point;
+    if (_bounds(_triggerNode.context)?.contains(point) ?? false) _intentOrigin = point;
+    if (_protects(point)) {
+      _parent?._subClose?.cancel();
+    } else if (_parent case final parent?) {
+      parent._scheduleClose(this);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.open == true) _track(true);
+  }
+
+  @override
+  void didUpdateWidget(DifyMenuSubmenu old) {
+    super.didUpdateWidget(old);
+    if (widget.open != old.open) _track(widget.open == true);
+  }
 
   @override
   void didChangeDependencies() {
@@ -66,6 +135,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
   @override
   void dispose() {
     _hover?.cancel();
+    _track(false);
     if (_parent?._openSub == this) _parent?._openSub = null;
     _triggerNode.dispose();
     _popupNode.dispose();
@@ -100,6 +170,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
       controller: _controller,
       open: widget.open,
       onOpenChange: (open) {
+        _track(open);
         if (open) {
           _parent?._openSub = this;
         } else if (_parent?._openSub == this) {
@@ -141,6 +212,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
         child: widget.label,
       ),
       popupBuilder: (context) => DifyMenuPopup._(
+        key: _popupKey,
         root: root ?? _MenuRoot(_controller, contextMenu: false),
         parent: _parent,
         focusNode: _popupNode,

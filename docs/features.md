@@ -74,7 +74,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
-| Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%) | ported | Deviation: Rendered with Flutter Scene (GPU cards with live/overview tiers) instead of React Flow's DOM; geometry and numbers follow React Flow 11. Web releases use Dart Wasm/skwasm with Flutter's browser fallback; detached card captures are serialized on Wasm to avoid corrupted textures. | spec `workflow`, visual `canvas-basic-llm`, visual `canvas-if-else`, `app/test/dify_spec/workflow/base` |
+| Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%) | ported | Deviation: Web uses Flutter's retained widget canvas with culling and repaint boundaries, compiled to Dart Wasm/skwasm; geometry and numbers follow React Flow 11. Native GPU builds use Flutter Scene. Scene is an explicit Web diagnostic option (canvas=scene), as detached card captures can produce blank compositor frames during hover. | spec `workflow`, visual `canvas-basic-llm`, visual `canvas-if-else`, `app/test/dify_spec/workflow/base` |
 | Canvas: dotted background | ported |  | visual `canvas-basic-llm` |
 | Canvas: open at the saved viewport, else fit view | partial | The canvas always fits the graph when a document opens; the viewport is per-user view state and is not stored in the shared document (Dify saves it with the draft). A start viewport can be passed with ?view= / --view. | spec `workflow/utils`, visual `editor-basic-llm` |
 | Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans) | ported |  | `app/test/workflow_editor_test.dart` |
@@ -97,7 +97,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Read-only workflow preview canvas (templates, Explore, generator) | partial | The preview's components are ported for the parts the editor reuses; the pages that show a standalone read-only preview (template details, Explore try-app, workflow generator) do not exist in dify-sf. | spec `workflow/workflow-preview`, spec `workflow/workflow-preview/components`, spec `workflow/workflow-preview/components/nodes`, spec `workflow/workflow-preview/components/nodes/loop` |
 | Go to anything: command palette node search | not ported | outside current scope (owner to decide); dify-sf has no goto-anything palette. | spec `workflow/hooks/use-workflow-search.spec.tsx` |
 | Workflow generator (generate a graph from a prompt) | not ported | LLM invocation is available to workflow nodes, but the prompt-to-workflow generation service is not implemented. | spec `workflow/workflow-generator` |
-| Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier) | dify-sf only | dify-sf's own Scene renderer with culling, overview captures and a skeleton tier; Dify renders every node as DOM. | `docs/results` |
+| Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier) | dify-sf only | The native/opt-in Scene renderer has culling, overview captures and a skeleton tier; Dify renders every node as DOM. This benchmark does not describe the default Web widget canvas. | `docs/results` |
 
 <a id="node-chrome"></a>
 

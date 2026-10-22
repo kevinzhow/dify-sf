@@ -102,6 +102,12 @@ void main() {
       await mouse.moveTo(t.getCenter(find.text('common.account.appearanceLabel')));
       await t.pump(const Duration(milliseconds: 100));
       await t.pump(const Duration(milliseconds: 1));
+      final from = t.getCenter(find.text('common.account.appearanceLabel'));
+      final to = t.getCenter(find.byKey(const ValueKey('appearance-system')));
+      for (var i = 1; i <= 24; i++) {
+        await mouse.moveTo(Offset.lerp(from, to, i / 24)!);
+        await t.pump(const Duration(milliseconds: 20));
+      }
       for (final mode in ['light', 'dark', 'system']) {
         final option = find.byKey(ValueKey('appearance-$mode'));
         expect(option, findsOneWidget);
@@ -109,6 +115,15 @@ void main() {
         await t.pump(const Duration(milliseconds: 300));
         expect(option, findsOneWidget, reason: 'hovering a child must not close its parent submenu');
       }
+      await mouse.moveTo(const Offset(780, 20));
+      await t.pump(const Duration(milliseconds: 100));
+      await t.pump(const Duration(milliseconds: 200));
+      expect(
+        find.byKey(const ValueKey('appearance-light')),
+        findsNothing,
+        reason: 'leaving the menu corridor must still close the submenu',
+      );
+      expect(find.text('current@example.com'), findsOneWidget);
       await mouse.removePointer();
       await t.pumpWidget(const SizedBox());
     });
