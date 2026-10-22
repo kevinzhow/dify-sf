@@ -1,6 +1,6 @@
 # dify-sf collaboration protocol, version 1.17 (files storage and human-input runtime)
 
-Status: stable for step 1. Breaking changes will be listed in the "Changes" section at the very top of this file.
+Status: additive extensions to the collaboration, console and draft-runtime APIs. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
 This document is the contract between the server (`server/`) and any client (the Flutter app, the headless
 Swift clients used by the chaos/storm harness). It is meant to be sufficient to write a client without
@@ -9,8 +9,12 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+* 1.17 (additive): **local file storage and image settings** ("Files storage and image settings (1.17, M2a)").
+  Configured servers advertise `enable_file_upload`; original uploads have workspace/account authorization,
+  expiring signed previews/downloads, and persisted app icons/account avatars. Runtime file values and vision
+  remain outside M2a. This version also retains the independently gated 1.16 human-input APIs below.
 * 1.16 (additive; clients older than 1.16 are unaffected): **human input** (section 2, "Human input (1.16)"). A
-  `human-input` node pauses the run (`human_input_required` per form, then `workflow_paused`), the run answers unauthored
+  `human-input` node pauses the run (`human_input_required` per form, then `workflow_paused`), clients answer waiting
   forms through `GET/POST /v1/form/human_input/{token}`, and `GET /v1/workflow/{runId}/events` rebuilds a paused run's
   state from its records and follows it across the resume (Dify's `handleResume`). The node's own form, for the panel's
   "Run this step", is rendered and submitted by `.../workflows/draft/human-input/nodes/{node}/form/{preview,run}`. Forms

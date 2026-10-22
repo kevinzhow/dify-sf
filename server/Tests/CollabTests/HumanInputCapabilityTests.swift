@@ -44,6 +44,13 @@ struct HumanInputCapabilityTests {
                     let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: owner)
                     #expect(run.status == 200)
                     #expect(HumanInputRunTests.frames(run.text).contains { $0["event"]?.string == "workflow_paused" })
+                    // Wait for the paused engine's lease to end: its outbound
+                    // delivery path has then finished, even when it ran after SSE.
+                    for _ in 0..<100 {
+                        if await routes.runs.count == 0 { break }
+                        try await Task.sleep(for: .milliseconds(20))
+                    }
+                    #expect(await routes.runs.count == 0)
                     #expect(await routes.deliverPendingHumanInputMail() == 0)
                     #expect(mailbox.all.isEmpty)
                     let test = try await api.post("/v1/apps/\(app)/workflows/draft/human-input/nodes/human/delivery-test", #"{"delivery_method_id":"email"}"#, token: owner)

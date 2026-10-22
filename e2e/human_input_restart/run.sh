@@ -12,11 +12,12 @@
 # process stopped with SIGTERM, a **new** process on the same database, and the answer arriving over HTTP afterwards.
 # It counts the run's side effects (a local HTTP counter service and the node executions) and requires exactly one each.
 #
-# Env: HITL_IMAGE (default dify-sf-dev:local), HITL_PORT (default 18090), HITL_DB_PORT (default 55440),
+# Env: HITL_IMAGE (default dify-sf-dev:local), HITL_PORT (default 18090),
 #      HITL_BUILD_CACHE (default server/.build), HITL_BUILD_MODE (default release), HITL_TAG (unique by default),
 #      HITL_PORT2 (default 18091, scenario 2), HITL_OUT (default e2e/.out/human_input_restart: logs and the raw SSE).
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+HITL_SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+cd "$HITL_SCRIPT_DIR/../.."
 
 IMAGE="${HITL_IMAGE:-dify-sf-dev:local}"
 PORT="${HITL_PORT:-18090}"
@@ -36,7 +37,7 @@ BASE="http://127.0.0.1:$PORT"
 cleanup() {
   for name in "$A" "$B" "$PG"; do
     if [ "$(docker inspect --format '{{index .Config.Labels "dify-sf.hitl"}}' "$name" 2>/dev/null || true)" = "$HITL_RUN_TAG" ]; then
-      docker rm -f "$name" >/dev/null 2>&1 || true
+      docker rm -f -v "$name" >/dev/null 2>&1 || true
     fi
   done
   if [ "$(docker network inspect --format '{{index .Labels "dify-sf.hitl"}}' "$NET" 2>/dev/null || true)" = "$HITL_RUN_TAG" ]; then
@@ -64,7 +65,7 @@ server() { # server <name> <extra env...>
     -e COLLAB_DB_HOST="$PG" -e COLLAB_DB_USER=collab -e COLLAB_DB_PASSWORD=collab -e COLLAB_DB_NAME=collab \
     -e COLLAB_HTTP_HOST=0.0.0.0 -e COLLAB_HTTP_PORT=8080 -e COLLAB_HUMAN_INPUT_WEB_ENABLED=true -e COLLAB_FILES_DIRECTORY=/tmp/uploads -e COLLAB_LOG_LEVEL=info \
     "$@" -p "127.0.0.1:$PORT:8080" -v "$PWD/server":/work:ro -v "$BUILD_CACHE":/work/.build:ro -w /work "$IMAGE" ".build/$BUILD_MODE/collab-server" >/dev/null
-  for _ in $(seq 1 60); do curl -sf "$BASE/v1/system-features" >/dev/null 2>&1 && return 0; sleep 1; done
+  for _ in $(seq 1 60); do curl -sf "$BASE/v1/setup" >/dev/null 2>&1 && return 0; sleep 1; done
   echo "server $name did not start" >&2; docker logs "$name" | tail -20 >&2; exit 1
 }
 
@@ -153,4 +154,4 @@ echo "outputs: $OUTPUT"
 echo "OK: a killed process left an answered pause, and a new process finished it"
 
 # Scenario 2 lives in its own file (a readable second half) and shares this script's image and output directory.
-HITL_IMAGE="$IMAGE" HITL_OUT="$OUT" bash "$(dirname "$0")/scenario2.sh"
+HITL_IMAGE="$IMAGE" HITL_OUT="$OUT" bash "$HITL_SCRIPT_DIR/scenario2.sh"

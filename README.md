@@ -3,7 +3,12 @@
 A Swift + Flutter reimplementation of Dify's workflow studio. Its core promise: **an edit the server acknowledged is never lost,
 stale clients never silently overwrite newer data, and all clients converge.**
 
-This repository currently contains step 1: the server-side collaboration kernel and its test/chaos/benchmark harness.
+The server provides collaborative editing, accounts and workspace settings, application drafts and history, model
+provider configuration, a Swift workflow runtime, and local file uploads with signed previews. The Flutter studio
+lives on the `client/step1` branch. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
+use the configured sandbox and SSRF proxy. Human-input web forms and email delivery have separate, default-off
+rollout flags. Runtime files/vision, tools, published end-user runs and the remaining conversation features are not
+yet complete. The sections below describe configuration and the supported boundaries.
 
 * `docs/protocol.md` - the wire protocol (HTTP `POST` for ops, SSE for updates). Clients are written from this.
 * `docs/architecture.md` - how the server works and why.
@@ -115,6 +120,7 @@ remain unported and outside M2; original files can still be stored and downloade
 HTTP contract, security boundaries and recovery behavior.
 
 Human input rollout: `COLLAB_HUMAN_INPUT_WEB_ENABLED=false` and `COLLAB_HUMAN_INPUT_EMAIL_ENABLED=false` by default.
-Enable web forms separately from outbound email. Web-only workflows can run without a model daemon; LLM execution
+Enable web forms separately from outbound email. Email delivery remains a separate acceptance workstream; keep
+its flag off until that work is complete. Web-only workflows can run without a model daemon; LLM execution
 is not advertised in that configuration. Periodic recovery starts after migration/startup work and retries accepted
 answers after transient database failures. See the [protocol](docs/protocol.md#human-input-116).

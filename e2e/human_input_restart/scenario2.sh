@@ -19,7 +19,7 @@ BASE2="http://127.0.0.1:$PORT2"
 cleanup2() {
   for name in "$A2" "$B2" "$PG2" "$ECHO2"; do
     if [ "$(docker inspect --format '{{index .Config.Labels "dify-sf.hitl"}}' "$name" 2>/dev/null || true)" = "$HITL_RUN_TAG" ]; then
-      docker rm -f "$name" >/dev/null 2>&1 || true
+      docker rm -f -v "$name" >/dev/null 2>&1 || true
     fi
   done
   if [ "$(docker network inspect --format '{{index .Labels "dify-sf.hitl"}}' "$NET2" 2>/dev/null || true)" = "$HITL_RUN_TAG" ]; then
@@ -57,7 +57,7 @@ start2() { # start2 <name> <extra env...>
     -e COLLAB_DB_HOST="$PG2" -e COLLAB_DB_USER=collab -e COLLAB_DB_PASSWORD=collab -e COLLAB_DB_NAME=collab \
     -e COLLAB_HTTP_HOST=0.0.0.0 -e COLLAB_HTTP_PORT=8080 -e COLLAB_HUMAN_INPUT_WEB_ENABLED=true -e COLLAB_FILES_DIRECTORY=/tmp/uploads -e COLLAB_LOG_LEVEL=info \
     "$@" -p "127.0.0.1:$PORT2:8080" -v "$PWD/server":/work:ro -v "$BUILD_CACHE":/work/.build:ro -w /work "$IMAGE" ".build/$BUILD_MODE/collab-server" >/dev/null
-  for _ in $(seq 1 90); do curl -sf "$BASE2/v1/system-features" >/dev/null 2>&1 && return 0; sleep 1; done
+  for _ in $(seq 1 90); do curl -sf "$BASE2/v1/setup" >/dev/null 2>&1 && return 0; sleep 1; done
   echo "server $name did not start" >&2; docker logs "$name" | tail -20 >&2; exit 1
 }
 
