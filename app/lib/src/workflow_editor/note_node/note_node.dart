@@ -207,6 +207,9 @@ class _NoteNodeState extends State<NoteNode> {
             Positioned.fromRect(
               rect: noteResizeButton(data.size),
               child: GestureDetector(
+                // Resize from the actual pointer-down corner, including travel
+                // before this handle wins against the canvas gesture recognizer.
+                dragStartBehavior: DragStartBehavior.down,
                 onPanStart: (_) {
                   _resizeFrom = data.size;
                   _drag = Offset.zero;
