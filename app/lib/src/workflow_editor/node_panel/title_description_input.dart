@@ -115,14 +115,14 @@ class _TitleInputState extends State<TitleInput> with _Draft<TitleInput> {
         borderRadius: BorderRadius.circular(DifyRadius.md),
         boxShadow: focused ? DifyShadows.xs : null,
       ),
-      child: TextField(
+      child: DifyTextField(
         controller: controller,
         focusNode: focus,
         style: style,
         cursorColor: DifyColors.textPrimary,
         cursorWidth: 1,
         maxLines: 1,
-        decoration: InputDecoration.collapsed(
+        decoration: DifyFieldDecoration.collapsed(
           hintText: DifyI18n.tr('workflow', 'common.addTitle'),
           hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
         ),
@@ -195,7 +195,7 @@ class _DescriptionInputState extends State<DescriptionInput> with _Draft<Descrip
         borderRadius: BorderRadius.circular(DifyRadius.lg),
         boxShadow: focused ? DifyShadows.xs : null,
       ),
-      child: TextField(
+      child: DifyTextField(
         controller: controller,
         focusNode: focus,
         style: style,
@@ -204,7 +204,7 @@ class _DescriptionInputState extends State<DescriptionInput> with _Draft<Descrip
         minLines: 1,
         maxLines: null,
         keyboardType: TextInputType.multiline,
-        decoration: InputDecoration.collapsed(
+        decoration: DifyFieldDecoration.collapsed(
           hintText: DifyI18n.tr('workflow', 'common.addDescription'),
           hintStyle: style.copyWith(color: DifyColors.textQuaternary),
         ),

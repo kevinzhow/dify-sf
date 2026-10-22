@@ -9,6 +9,9 @@ ThemeData difyTheme({String? fontFamily, Brightness brightness = Brightness.ligh
   final base = ThemeData(
     colorSchemeSeed: const Color(0xFF3F51B5),
     useMaterial3: true,
+    // CSS input padding is platform independent. Material's desktop default
+    // compact density otherwise subtracts 8px and shifts multiline text by 4px.
+    visualDensity: VisualDensity.standard,
     fontFamily: fontFamily,
     brightness: brightness,
   );

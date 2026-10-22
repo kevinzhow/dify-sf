@@ -754,7 +754,7 @@ class _HeaderButton extends StatelessWidget {
         width: 24,
         height: 24,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: on ? (destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
           borderRadius: BorderRadius.circular(radius),
           boxShadow: difyFocusRing(focused, width: 1),

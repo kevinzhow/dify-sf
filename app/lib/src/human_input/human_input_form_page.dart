@@ -162,7 +162,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
         ),
       ),
     };
-    return Scaffold(
+    return DifyPage(
       backgroundColor: DifyColors.backgroundBody,
       body: SafeArea(
         child: Stack(

@@ -2,7 +2,7 @@
 
 UI is built from `app/lib/src/design/` first. `check.py` scans `app/lib/src/**/*.dart` (not `*.g.dart`), with
 comments and strings blanked, and compares the hits per (rule, file) with `allowlist.tsv`. The allowlist is a
-ratchet: counts may only go down.
+ratchet: counts may only go down. Direct Material controls in business code are prohibited, including the former dev shell; `material-widget` has no exceptions. Framework text entry, selection, page hosts and desktop routes are owned by `design/`, with Dify styling and explicit layout defaults.
 
 ```sh
 python3 tool/design/check.py              # = --check: exit 1 on a new hit, a raised count, a stale or bad row

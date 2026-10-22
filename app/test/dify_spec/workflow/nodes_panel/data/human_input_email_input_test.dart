@@ -31,7 +31,8 @@ void main() {
   );
 
   Finder field() => find.descendant(of: find.byKey(const ValueKey('email-input')), matching: find.byType(EditableText));
-  String? hint(WidgetTester t) => t.widget<TextField>(find.byKey(const ValueKey('email-input'))).decoration!.hintText;
+  String? hint(WidgetTester t) =>
+      t.widget<DifyTextField>(find.byKey(const ValueKey('email-input'))).decoration.hintText;
   const external = {'type': 'external', 'email': 'existing@example.com'};
 
   group('human-input/delivery-method/recipient/email-input', () {

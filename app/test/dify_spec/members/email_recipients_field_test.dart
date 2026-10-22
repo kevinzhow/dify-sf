@@ -67,7 +67,7 @@ void main() {
   group('EmailRecipientsField', () {
     testWidgets('describes how to add multiple email addresses', (t) async {
       await _render(t);
-      expect(t.widget<TextField>(emailInput).keyboardType, TextInputType.emailAddress);
+      expect(t.widget<DifyTextField>(emailInput).keyboardType, TextInputType.emailAddress);
       final node = find.semantics.byPredicate(
         (n) => n.getSemanticsData().flagsCollection.isTextField && n.label.contains('common.members.emailRecipients'),
       );
@@ -304,7 +304,7 @@ void main() {
 
     testWidgets('disables every editing action while the composer is frozen', (t) async {
       await _render(t, disabled: true);
-      expect(t.widget<TextField>(emailInput).enabled, isFalse);
+      expect(t.widget<DifyTextField>(emailInput).enabled, isFalse);
     });
   });
 }

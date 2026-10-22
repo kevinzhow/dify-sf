@@ -6,7 +6,6 @@ library;
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/material.dart' show InputDecoration, TextField;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -637,14 +636,14 @@ class _VarGroupItemState extends State<VarGroupItem> {
           border: Border.all(color: DifyColors.utilColorsGrayGray300),
         ),
         alignment: Alignment.centerLeft,
-        child: TextField(
+        child: DifyTextField(
           controller: _name,
           focusNode: _nameFocus,
           autofocus: true,
           maxLength: 30,
           maxLengthEnforcement: MaxLengthEnforcement.enforced,
           style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textPrimary),
-          decoration: const InputDecoration.collapsed(hintText: '').copyWith(counterText: ''),
+          decoration: const DifyFieldDecoration.collapsed(hintText: '').copyWith(counterText: ''),
           onChanged: _nameChange,
         ),
       );

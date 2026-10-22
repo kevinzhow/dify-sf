@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
@@ -980,7 +982,7 @@ class SessionBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (pill && s.link != LinkState.live) ...[
-            Icon(Icons.circle, size: 8, color: color),
+            RemixIcon('circle-fill', size: 8, color: color),
             const SizedBox(width: 4),
             Text(label, style: _small),
             DifyButton(
@@ -993,8 +995,8 @@ class SessionBadge extends StatelessWidget {
           ],
           if (menu)
             Flexible(
-              child: MenuAnchor(
-                menuChildren: [
+              child: DifyDropdownMenu(
+                children: [
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -1003,7 +1005,7 @@ class SessionBadge extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.circle, size: 8, color: color, key: const Key('link-dot')),
+                            RemixIcon('circle-fill', size: 8, color: color, key: const Key('link-dot')),
                             const SizedBox(width: 6),
                             Text(label, key: const Key('link-state'), style: _small),
                             const SizedBox(width: 12),
@@ -1033,7 +1035,7 @@ class SessionBadge extends StatelessWidget {
                             key: const Key('back-to-documents'),
                             variant: DifyButtonVariant.ghost,
                             size: DifyButtonSize.small,
-                            leading: const Icon(Icons.arrow_back, size: 16),
+                            leading: const RemixIcon('arrow-left-line', size: 16),
                             onPressed: () => Navigator.of(context).maybePop(),
                             child: const Text('Documents'),
                           ),
@@ -1041,7 +1043,7 @@ class SessionBadge extends StatelessWidget {
                     ),
                   ),
                 ],
-                builder: (context, menu, _) => anchor != null
+                builder: (context, menu) => anchor != null
                     ? GestureDetector(
                         key: const Key('session-menu'),
                         behavior: HitTestBehavior.opaque,
@@ -1054,8 +1056,8 @@ class SessionBadge extends StatelessWidget {
                           key: const Key('session-menu'),
                           label: 'Collaboration session',
                           size: DifyIconButtonSize.sm,
-                          icon: Icon(
-                            Icons.cloud_done_outlined,
+                          icon: RemixIcon(
+                            'cloud-line',
                             size: 16,
                             color: s.link == LinkState.live ? DifyColors.textTertiary : color,
                           ),

@@ -446,7 +446,7 @@ class _PlainConditionInputState extends State<PlainConditionInput> {
         borderRadius: BorderRadius.circular(DifyRadius.lg),
         border: Border.all(color: DifyColors.componentsInputBorderHover),
       ),
-      child: TextField(
+      child: DifyTextField(
         controller: _text,
         focusNode: _focus,
         readOnly: widget.readOnly,
@@ -457,9 +457,7 @@ class _PlainConditionInputState extends State<PlainConditionInput> {
         onChanged: (_) => _draft.touch(),
         onSubmitted: (_) => _commit(),
         cursorWidth: 1,
-        decoration: const InputDecoration(
-          isCollapsed: true,
-          border: InputBorder.none,
+        decoration: const DifyFieldDecoration(
           contentPadding: EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         ),
       ),

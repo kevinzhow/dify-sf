@@ -14,8 +14,8 @@ Web release builds use full Dart Wasm + skwasm: run `tool/build_web.sh`. Browser
 
 | Status | Features |
 |---|---|
-| ported | 178 |
-| partial | 49 |
+| ported | 177 |
+| partial | 50 |
 | not ported | 34 |
 | n/a | 17 |
 | dify-sf only | 13 |

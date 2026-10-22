@@ -10,7 +10,7 @@ import '../../canvas/canvas_graph.dart';
 import '../../cards/bodies/note_body.dart'
     show NoteResizeGlyph, isNoteCard, noteMinHeight, noteMinWidth, noteResizeButton;
 import '../../design/dify_tokens.g.dart';
-import '../../design/widgets/widgets.dart' show difyFocusRing;
+import '../../design/widgets/widgets.dart' show difyFocusRing, DifyFocusDecoration;
 import '../../editor/editor_controller.dart';
 import '../../editor/undo_manager.dart' show HistoryEvent;
 import '../../i18n/dify_i18n.dart';
@@ -280,7 +280,7 @@ class _NodeResizerState extends State<_NodeResizer> {
                   _keyboardResize(LogicalKeyboardKey.home);
                 },
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: DifyFocusDecoration(
                     color: _hovered ? DifyColors.stateBaseHover : null,
                     borderRadius: BorderRadius.circular(DifyRadius.md),
                     boxShadow: difyFocusRing(_focus.hasFocus),

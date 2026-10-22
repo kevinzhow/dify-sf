@@ -9,7 +9,7 @@ import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart' show Material, MaterialType;
+
 import 'package:flutter/widgets.dart';
 
 import '../../design/css_metrics.dart';
@@ -134,7 +134,7 @@ class AccessPointCard extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 272),
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: DifyColors.backgroundSectionBurn,
           borderRadius: BorderRadius.circular(DifyRadius.xl),
           boxShadow: difyFocusRing(highlighted),
@@ -608,8 +608,7 @@ class ShareQrCodeState extends State<ShareQrCode> {
           onPressed: _toggle,
         ),
       ),
-      popupBuilder: (context) => Material(
-        type: MaterialType.transparency,
+      popupBuilder: (context) => DifySurface(
         child: Container(
           key: const ValueKey('qrcode-panel'),
           width: 232,

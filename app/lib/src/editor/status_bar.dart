@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
@@ -21,18 +23,18 @@ class StatusBar extends StatelessWidget {
     };
     final theme = Theme.of(context);
     final small = theme.textTheme.bodySmall!;
-    return Material(
+    return DifySurface(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Container(
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            Tooltip(
-              message: s.lastError ?? 'connected to $serverLabel',
+            DifyTooltip(
+              content: Text(s.lastError ?? 'connected to $serverLabel'),
               child: Row(
                 children: [
-                  Icon(Icons.circle, size: 10, color: color, key: const Key('link-dot')),
+                  RemixIcon('circle-fill', size: 10, color: color, key: const Key('link-dot')),
                   const SizedBox(width: 6),
                   Text(
                     label,
@@ -43,12 +45,11 @@ class StatusBar extends StatelessWidget {
               ),
             ),
             if (s.link != LinkState.live)
-              TextButton(
+              DifyButton(
+                variant: DifyButtonVariant.ghost,
                 key: const Key('reconnect-now'),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 24),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
+                size: DifyButtonSize.small,
+                paddingX: 8,
                 onPressed: controller.reconnectNow,
                 child: const Text('Reconnect now'),
               ),

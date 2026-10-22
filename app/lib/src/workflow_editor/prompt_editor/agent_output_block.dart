@@ -6,7 +6,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Material, MaterialType, TextField, InputDecoration;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -322,9 +321,8 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
                       child: Semantics(
                         label: _w('nodes.agent.outputVars.nameLabel'),
                         textField: true,
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: TextField(
+                        child: DifySurface(
+                          child: DifyTextField(
                             controller: draft,
                             focusNode: nameFocus,
                             textAlign: TextAlign.center,
@@ -333,7 +331,7 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
                             cursorColor: violet700,
                             cursorWidth: 1,
                             onChanged: (v) => _latestDraftName = v,
-                            decoration: InputDecoration.collapsed(
+                            decoration: DifyFieldDecoration.collapsed(
                               hintText: _w('nodes.agent.outputVars.namePlaceholder'),
                               hintStyle: nameStyle.copyWith(color: violet700.withValues(alpha: 0.5)),
                             ),

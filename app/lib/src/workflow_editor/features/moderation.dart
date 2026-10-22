@@ -466,7 +466,7 @@ class _ModerationSettingModalState extends State<ModerationSettingModal> {
                   builder: (context, hovered, focused) => Container(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(
+                    decoration: DifyFocusDecoration(
                       color: hovered ? DifyColors.stateBaseHover : null,
                       borderRadius: BorderRadius.circular(DifyRadius.lg),
                       boxShadow: difyFocusRing(focused),
@@ -545,7 +545,7 @@ class _ProviderOption extends StatelessWidget {
       builder: (context, hovered, focused) => Container(
         constraints: const BoxConstraints(minHeight: 68),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: selected
               ? DifyColors.componentsOptionCardOptionSelectedBg
               : hovered

@@ -210,9 +210,8 @@ class _NoteEditorState extends State<NoteEditor> {
           c.handleClick(meta: k.isMetaPressed || k.isControlPressed);
         },
         // TextField needs a Material; this one draws nothing.
-        child: Material(
-          type: MaterialType.transparency,
-          child: TextField(
+        child: DifySurface(
+          child: DifyTextField(
             key: _field,
             controller: c,
             focusNode: _scope.focusNode,
@@ -223,7 +222,7 @@ class _NoteEditorState extends State<NoteEditor> {
             style: style,
             cursorColor: DifyColors.primary600, // caret-primary-600
             cursorWidth: 1,
-            decoration: const InputDecoration.collapsed(hintText: null),
+            decoration: const DifyFieldDecoration.collapsed(hintText: null),
           ),
         ),
       ),

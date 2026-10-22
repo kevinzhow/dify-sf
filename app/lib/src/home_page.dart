@@ -1,4 +1,5 @@
 import 'files/upload_service.dart';
+
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
@@ -240,7 +241,7 @@ class _HomePageState extends State<HomePage> {
     final signedIn = _auth?.account;
     final account = demo && signedIn != null ? signedIn.copyWith(role: AccountRole.owner) : signedIn;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      difyPageRoute<void>(
         // The schedule trigger reads the account's time zone (Dify's `userProfile.timezone`).
         builder: (_) => Builder(
           builder: (context) => ScheduleHost(
@@ -284,7 +285,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openApp(AppInfo app, {required String path}) async {
     await _remember();
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _appDetail(app, path)));
+    await Navigator.of(context).push(difyPageRoute<void>(builder: (_) => _appDetail(app, path)));
   }
 
   Map<Type, Object> _appDetailServices(AuthController auth) {
@@ -311,7 +312,7 @@ class _HomePageState extends State<HomePage> {
       canCreateApp: AppPermissionKeys.canCreate(account?.role),
       environmentVariables: _environmentVariables,
       openApp: (copy, path) => unawaited(
-        Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => _appDetail(copy, path))),
+        Navigator.of(context).pushReplacement(difyPageRoute<void>(builder: (_) => _appDetail(copy, path))),
       ),
       editor: (context, host) => ValueListenableBuilder(
         valueListenable: host.app,
@@ -346,7 +347,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final account = AuthScope.of(context).account;
     final apps = _apps;
-    return Scaffold(
+    return DifyPage(
       backgroundColor: DifyColors.backgroundBody,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -374,7 +375,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _form(BuildContext context) {
     final server = AuthScope.of(context).server;
-    return Material(
+    return DifySurface(
       color: DifyColors.backgroundBody,
       child: Center(
         child: ConstrainedBox(
@@ -393,15 +394,17 @@ class _HomePageState extends State<HomePage> {
                 style: const TextStyle(color: Colors.black45),
               ),
               const SizedBox(height: 24),
-              TextField(
+              DifyTextField(
                 key: const Key('doc-field'),
                 controller: _doc,
-                decoration: const InputDecoration(labelText: 'Document id', border: OutlineInputBorder()),
+                decoration: const DifyFieldDecoration(
+                  labelText: 'Document id',
+                  outlined: true,
+                ),
                 onSubmitted: (_) => _open(create: true),
               ),
-              SwitchListTile(
+              DifyLabeledSwitch(
                 key: const Key('journal-switch'),
-                contentPadding: EdgeInsets.zero,
                 title: const Text('Keep a local journal'),
                 subtitle: Text(
                   _journaled
@@ -420,14 +423,15 @@ class _HomePageState extends State<HomePage> {
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton(
+                    child: DifyButton(
+                      variant: DifyButtonVariant.primary,
                       key: const Key('open-button'),
                       onPressed: _busy ? null : () => _open(create: true),
                       child: const Text('Open / create'),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  OutlinedButton(
+                  DifyButton(
                     key: const Key('new-button'),
                     onPressed: _busy ? null : _newDocument,
                     child: const Text('New document'),
@@ -435,13 +439,15 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               const SizedBox(height: 8),
-              TextButton.icon(
+              DifyButton(
+                variant: DifyButtonVariant.ghost,
                 key: const Key('import-dsl-button'),
                 onPressed: _busy ? null : _importDifyDsl,
-                icon: const Icon(Icons.upload_file_outlined),
-                label: const Text('Import a Dify workflow file…'),
+                leading: const RemixIcon('upload-line'),
+                child: const Text('Import a Dify workflow file…'),
               ),
-              TextButton(
+              DifyButton(
+                variant: DifyButtonVariant.ghost,
                 key: const Key('demo-button'),
                 onPressed: _busy ? null : _demo,
                 child: const Text('Try the demo (in-memory server, simulated collaborator Bo)'),
@@ -585,9 +591,8 @@ Widget buildApp(
   final authRelay = ValueNotifier<AuthController?>(session);
   return ListenableBuilder(
     listenable: appTheme,
-    builder: (context, _) => MaterialApp(
+    builder: (context, _) => DifyApplication(
       title: 'dify-sf',
-      debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
       theme: difyTheme(
@@ -595,7 +600,6 @@ Widget buildApp(
         brightness: appTheme.isDark ? Brightness.dark : Brightness.light,
       ),
       // next-themes' disableTransitionOnChange: the new theme shows at once.
-      themeAnimationDuration: Duration.zero,
       home: AppRoot(
         settings: settings,
         launch: launch,
@@ -657,25 +661,30 @@ class _ImportDslDialogState extends State<_ImportDslDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return DifyContentDialog(
       title: const Text('Import a Dify workflow file'),
       content: SizedBox(
         width: 560,
-        child: TextField(
+        child: DifyTextField(
           key: const Key('import-dsl-text'),
           controller: _text,
           maxLines: 16,
           minLines: 8,
           style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-          decoration: const InputDecoration(
+          decoration: const DifyFieldDecoration(
             hintText: 'Paste the YAML exported from Dify (Studio → app → Export DSL)',
-            border: OutlineInputBorder(),
+            outlined: true,
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(
+        DifyButton(
+          variant: DifyButtonVariant.ghost,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        DifyButton(
+          variant: DifyButtonVariant.primary,
           key: const Key('import-dsl-confirm'),
           onPressed: () => Navigator.pop(context, _text.text),
           child: const Text('Import'),

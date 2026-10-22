@@ -547,7 +547,7 @@ class _EmailInputState extends State<EmailInput> {
     final input = SizedBox(
       width: 166,
       height: 24,
-      child: TextField(
+      child: DifyTextField(
         key: const ValueKey('email-input'),
         controller: _text,
         focusNode: _focus,
@@ -555,9 +555,7 @@ class _EmailInputState extends State<EmailInput> {
         style: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
         cursorColor: DifyColors.primary600, // caret-primary-600
         cursorWidth: 1,
-        decoration: InputDecoration(
-          isCollapsed: true,
-          border: InputBorder.none,
+        decoration: DifyFieldDecoration(
           contentPadding: const EdgeInsets.all(4),
           hintText: placeholder,
           hintStyle: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextPlaceholder),
@@ -661,8 +659,8 @@ class EmailItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMe = email == address;
-    return Tooltip(
-      message: address,
+    return DifyTooltip(
+      content: Text(address),
       child: Container(
         height: 24,
         padding: const EdgeInsets.all(4),

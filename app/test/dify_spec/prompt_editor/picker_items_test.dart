@@ -1,3 +1,4 @@
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 // dify-spec: web/app/components/base/prompt-editor/plugins/component-picker-block/__tests__/menu.spec.tsx
 // dify-spec: web/app/components/base/prompt-editor/plugins/component-picker-block/__tests__/prompt-option.spec.tsx
 // dify-spec: web/app/components/base/prompt-editor/plugins/component-picker-block/__tests__/variable-option.spec.tsx
@@ -19,9 +20,12 @@ Future<void> _hover(WidgetTester t, Finder f) async {
 
 /// The spans of a VariableMenuItem title: before, the highlighted match, after.
 List<TextSpan> _spans(WidgetTester t, String title) {
-  final rich = t.widget<Text>(find.descendant(of: find.byTooltip(title), matching: find.byType(Text)));
+  final rich = t.widget<Text>(find.descendant(of: _tooltip(title), matching: find.byType(Text)));
   return (rich.textSpan! as TextSpan).children!.cast<TextSpan>();
 }
+
+Finder _tooltip(String title) =>
+    find.byWidgetPredicate((w) => w is DifyTooltip && w.content is Text && (w.content as Text).data == title);
 
 void main() {
   group('PickerBlockMenuOption', () {
@@ -132,7 +136,7 @@ void main() {
       testWidgets('should render the title correctly', (t) async {
         await render(t, item());
         expect(find.text('Variable Name', findRichText: true), findsOneWidget);
-        expect(find.byTooltip('Variable Name'), findsOneWidget);
+        expect(_tooltip('Variable Name'), findsOneWidget);
       });
 
       testWidgets('should render the icon when provided', (t) async {
@@ -176,13 +180,13 @@ void main() {
     group('Events', () {
       testWidgets('should trigger onClick when clicked', (t) async {
         await render(t, item());
-        await t.tap(find.byTooltip('Variable Name'));
+        await t.tap(_tooltip('Variable Name'));
         expect(clicks, 1);
       });
 
       testWidgets('should trigger onMouseEnter when mouse enters', (t) async {
         await render(t, item());
-        await _hover(t, find.byTooltip('Variable Name'));
+        await _hover(t, _tooltip('Variable Name'));
         expect(enters, 1);
       });
     });

@@ -1,9 +1,11 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 import 'dart:convert';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
-import '../design/widgets/dialog.dart' show DifyDialogTransition, materialDialogBarrierColor, showDifyDialog;
 import 'editor_controller.dart';
 import 'graph_info.dart';
 import 'synced_text_field.dart';
@@ -35,10 +37,11 @@ class ConfigEditor extends StatelessWidget {
           ),
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
+          child: DifyButton(
+            variant: DifyButtonVariant.ghost,
             key: const Key('add-field'),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add field'),
+            leading: const RemixIcon('add-line', size: 18),
+            child: const Text('Add field'),
             onPressed: () => _addField(context),
           ),
         ),
@@ -78,18 +81,26 @@ class _NameDialogState extends State<_NameDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => DifyContentDialog(
     title: Text(widget.title),
-    content: TextField(
+    content: DifyTextField(
       key: const Key('name-dialog-field'),
       controller: _text,
       autofocus: true,
-      decoration: InputDecoration(hintText: widget.hint),
+      decoration: DifyFieldDecoration(hintText: widget.hint),
       onSubmitted: (v) => Navigator.pop(context, v),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-      FilledButton(onPressed: () => Navigator.pop(context, _text.text), child: const Text('Add')),
+      DifyButton(
+        variant: DifyButtonVariant.ghost,
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      DifyButton(
+        variant: DifyButtonVariant.primary,
+        onPressed: () => Navigator.pop(context, _text.text),
+        child: const Text('Add'),
+      ),
     ],
   );
 }
@@ -147,10 +158,8 @@ class _ValueEditor extends StatelessWidget {
           },
         );
       case VBool(:final value):
-        return SwitchListTile(
+        return DifyLabeledSwitch(
           key: ValueKey('cfg-${node.id}-${path.join('.')}'),
-          dense: true,
-          contentPadding: EdgeInsets.zero,
           title: Text(label),
           value: value,
           onChanged: (v) => _set(VBool(v)),
@@ -158,16 +167,20 @@ class _ValueEditor extends StatelessWidget {
       case VNull():
         return _row(
           Text('$label: null', style: const TextStyle(color: Colors.black54)),
-          trailing: IconButton(
-            tooltip: 'Set to empty text',
-            icon: const Icon(Icons.edit, size: 18),
+          trailing: DifyIconButton(
+            size: DifyIconButtonSize.lg,
+            label: 'Set to empty text',
+            icon: const RemixIcon('edit-line', size: 18),
             onPressed: () => _set(const VString('')),
           ),
         );
       case VRef(:final ref):
         return _row(
-          InputDecorator(
-            decoration: InputDecoration(labelText: label, isDense: true, border: const OutlineInputBorder()),
+          DifyFieldBox(
+            decoration: DifyFieldDecoration(
+              labelText: label,
+              outlined: true,
+            ),
             child: _RefChip(controller: controller, ref: ref),
           ),
           trailing: Row(
@@ -177,12 +190,13 @@ class _ValueEditor extends StatelessWidget {
                 controller: controller,
                 selfNodeId: node.id,
                 tooltip: 'Pick another variable',
-                icon: Icons.swap_horiz,
+                icon: 'swap-line',
                 onPick: (r, base) => _set(VRef(r), base: base),
               ),
-              IconButton(
-                tooltip: 'Replace with text',
-                icon: const Icon(Icons.close, size: 18),
+              DifyIconButton(
+                size: DifyIconButtonSize.lg,
+                label: 'Replace with text',
+                icon: const RemixIcon('close-line', size: 18),
                 onPressed: () => _set(const VString('')),
               ),
             ],
@@ -190,11 +204,10 @@ class _ValueEditor extends StatelessWidget {
         );
       case VBroken(:final ref):
         return _row(
-          InputDecorator(
-            decoration: InputDecoration(
+          DifyFieldBox(
+            decoration: DifyFieldDecoration(
               labelText: label,
-              isDense: true,
-              border: const OutlineInputBorder(),
+              outlined: true,
               errorText: 'Broken reference',
             ),
             child: _BrokenChip(controller: controller, ref: ref),
@@ -208,10 +221,10 @@ class _ValueEditor extends StatelessWidget {
         );
       case VMap(:final entries):
         final keys = entries.keys.toList()..sort();
-        return InputDecorator(
-          decoration: InputDecoration(
+        return DifyFieldBox(
+          decoration: DifyFieldDecoration(
             labelText: label,
-            border: const OutlineInputBorder(),
+            outlined: true,
             contentPadding: const EdgeInsets.all(8),
           ),
           child: Column(
@@ -233,11 +246,10 @@ class _ValueEditor extends StatelessWidget {
       case VItems(:final items):
         return _ItemsEditor(controller: controller, node: node, path: path, label: label, items: items);
       case VList():
-        return InputDecorator(
-          decoration: InputDecoration(
+        return DifyFieldBox(
+          decoration: DifyFieldDecoration(
             labelText: '$label (list, read-only)',
-            border: const OutlineInputBorder(),
-            isDense: true,
+            outlined: true,
           ),
           child: Text(jsonEncode(value.toJson()), style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
         );
@@ -264,9 +276,8 @@ class _RefChip extends StatelessWidget {
     return Wrap(
       spacing: 6,
       children: [
-        Chip(
-          visualDensity: VisualDensity.compact,
-          avatar: const Icon(Icons.data_object, size: 16),
+        DifyValueChip(
+          avatar: const RemixIcon('braces-line', size: 16),
           label: Text('${exists ? controller.titleOf(ref.node) : ref.node} › ${ref.output}'),
         ),
       ],
@@ -292,7 +303,7 @@ class _BrokenChip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.link_off, size: 16, color: red),
+          RemixIcon('link-unlink', size: 16, color: red),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
@@ -325,10 +336,10 @@ class _ItemsEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: InputDecoration(
+    return DifyFieldBox(
+      decoration: DifyFieldDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        outlined: true,
         contentPadding: const EdgeInsets.all(8),
       ),
       child: Column(
@@ -342,10 +353,11 @@ class _ItemsEditor extends StatelessWidget {
             ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton.icon(
+            child: DifyButton(
+              variant: DifyButtonVariant.ghost,
               key: Key('add-item-${path.join('.')}'),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text('Add ${label.endsWith('s') ? label.substring(0, label.length - 1) : 'item'}'),
+              leading: const RemixIcon('add-line', size: 18),
+              child: Text('Add ${label.endsWith('s') ? label.substring(0, label.length - 1) : 'item'}'),
               onPressed: () => controller.insertItem(
                 node.id,
                 path,
@@ -416,10 +428,11 @@ class _ItemRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (v is VMap) Expanded(child: body) else body,
-        IconButton(
+        DifyIconButton(
+          size: DifyIconButtonSize.lg,
           key: Key('remove-item-${item.id}'),
-          tooltip: 'Remove',
-          icon: const Icon(Icons.delete_outline, size: 20),
+          label: 'Remove',
+          icon: const RemixIcon('delete-bin-line', size: 20),
           onPressed: () => controller.removeItem(node.id, path, item.id),
         ),
       ],

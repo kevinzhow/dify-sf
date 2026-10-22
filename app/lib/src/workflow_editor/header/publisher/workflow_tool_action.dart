@@ -153,7 +153,7 @@ class _ManageInTools extends StatelessWidget {
       return Container(
         height: 24,
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: hovered ? DifyColors.componentsButtonTertiaryBgHover : null,
           borderRadius: BorderRadius.circular(DifyRadius.md),
           boxShadow: difyFocusRing(focused && !disabled),

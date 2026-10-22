@@ -6,7 +6,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
@@ -302,7 +301,7 @@ class ModelSelectorPopupSurface extends StatelessWidget {
             borderRadius: BorderRadius.circular(DifyRadius.xl),
             boxShadow: DifyShadows.lg,
           ),
-          child: Material(type: MaterialType.transparency, child: child),
+          child: DifySurface(child: child),
         ),
       ),
     ),

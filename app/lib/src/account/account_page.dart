@@ -5,7 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show AppInfo, AppListQuery, AppsApi;
-import 'package:flutter/material.dart' show Material, MaterialPageRoute, MaterialType;
+
 import 'package:flutter/widgets.dart';
 
 import '../auth/auth_api.dart';
@@ -21,7 +21,7 @@ import 'email_change_modal.dart';
 
 /// Opens the Account page on the app's navigator (Dify's `<Link href="/account">`).
 Future<void> openAccountPage(BuildContext context, {AppsApi? apps}) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AccountPage(apps: apps)));
+    Navigator.of(context).push(difyPageRoute<void>(builder: (_) => AccountPage(apps: apps)));
 
 /// The page: `flex h-full flex-col bg-background-body`, the sticky header (`min-h-14`) and the scrolling content on
 /// `bg-components-panel-bg` (`mx-auto w-full max-w-160 px-6 pt-12`). [onHome] leaves it (back to the app by default);
@@ -35,8 +35,7 @@ class AccountPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final home = onHome ?? () => Navigator.of(context).maybePop();
-    return Material(
-      type: MaterialType.transparency,
+    return DifySurface(
       // `useDocumentTitle(t('menus.account'))`: the page's name for assistive technology.
       child: Semantics(
         label: stc(context, 'menus.account'),

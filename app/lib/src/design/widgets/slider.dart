@@ -185,7 +185,7 @@ class _DifySliderState extends State<DifySlider> {
                           child: Container(
                             width: 8,
                             height: 20,
-                            decoration: BoxDecoration(
+                            decoration: DifyFocusDecoration(
                               color: w.disabled
                                   ? DifyColors.componentsSliderKnobDisabled
                                   : _hovered

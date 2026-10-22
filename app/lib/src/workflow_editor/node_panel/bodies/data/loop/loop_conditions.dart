@@ -971,16 +971,14 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
               : Stack(
                   alignment: Alignment.centerRight,
                   children: [
-                    TextField(
+                    DifyTextField(
                       controller: _text,
                       focusNode: _focus,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.eE+-]'))],
                       style: difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextFilled),
                       cursorWidth: 1,
-                      decoration: InputDecoration(
-                        isCollapsed: true,
-                        border: InputBorder.none,
+                      decoration: DifyFieldDecoration(
                         contentPadding: EdgeInsets.fromLTRB(8, 4, w.unit == null ? 8 : 24, 4),
                         hintText: wf('nodes.ifElse.enterValue'),
                         hintStyle: placeholder,

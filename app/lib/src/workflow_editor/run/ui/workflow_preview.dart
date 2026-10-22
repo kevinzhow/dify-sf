@@ -83,7 +83,7 @@ DifyTab runPanelTab({
       child: Container(
         margin: const EdgeInsets.only(right: 24),
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           border: Border(
             bottom: BorderSide(
               width: 2,

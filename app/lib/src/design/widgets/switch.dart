@@ -68,7 +68,7 @@ class DifySwitch extends StatelessWidget {
           height: size.track.height,
           padding: EdgeInsets.all(size.padding),
           alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
+          decoration: DifyFocusDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(size.radius),
             boxShadow: difyFocusRing(focused),

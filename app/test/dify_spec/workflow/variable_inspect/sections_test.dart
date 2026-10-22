@@ -1,3 +1,4 @@
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 // dify-spec: web/app/components/workflow/variable-inspect/__tests__/value-content-sections.spec.tsx
 // dify-spec: web/app/components/workflow/variable-inspect/__tests__/display-content.spec.tsx
 // dify-spec: web/app/components/workflow/variable-inspect/__tests__/large-data-alert.spec.tsx
@@ -172,7 +173,7 @@ void main() {
 
       expect(find.text('workflow.debug.variableInspect.largeData'), findsOneWidget);
       expect(
-        t.widget<Tooltip>(find.byType(Tooltip)).message,
+        (t.widget<DifyTooltip>(find.byType(DifyTooltip)).content as Text).data,
         'workflow.debug.variableInspect.largeData',
         reason: 'the message is its own title',
       );
@@ -183,7 +184,10 @@ void main() {
       await InspectHarness().pump(t, const LargeDataAlert(textHasNoExport: true));
 
       expect(find.text('workflow.debug.variableInspect.largeDataNoExport'), findsOneWidget);
-      expect(t.widget<Tooltip>(find.byType(Tooltip)).message, 'workflow.debug.variableInspect.largeDataNoExport');
+      expect(
+        (t.widget<DifyTooltip>(find.byType(DifyTooltip)).content as Text).data,
+        'workflow.debug.variableInspect.largeDataNoExport',
+      );
       expect(find.text('WORKFLOW.DEBUG.VARIABLEINSPECT.EXPORT'), findsNothing);
     });
   });

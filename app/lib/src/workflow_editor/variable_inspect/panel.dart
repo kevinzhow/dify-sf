@@ -755,9 +755,9 @@ class InspectRight extends StatelessWidget {
                         DifyText('/', DifyType.systemSmRegular, color: DifyColors.textQuaternary),
                       ],
                       Flexible(
-                        child: Tooltip(
-                          message: '${v['name']}',
-                          waitDuration: const Duration(milliseconds: 600),
+                        child: DifyTooltip(
+                          content: Text('${v['name']}'),
+                          delay: const Duration(milliseconds: 600),
                           child: DifyText(
                             '${v['name']}',
                             DifyType.systemSmSemibold,

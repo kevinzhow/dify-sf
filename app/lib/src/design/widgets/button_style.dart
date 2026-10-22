@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
-import 'form_control_shared.dart' show difyFocusRingShadow;
+import 'form_control_shared.dart' show difyFocusRingShadow, DifyFocusDecoration;
 import 'surface.dart';
 
 /// dify-ui button variants (button/index.tsx, icon-button/variants.ts). [plain] is IconButton's `default` (a bare
@@ -226,7 +226,7 @@ class DifyButtonSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(radius);
     Widget box = DecoratedBox(
-      decoration: BoxDecoration(
+      decoration: DifyFocusDecoration(
         color: look.background,
         borderRadius: r,
         boxShadow: [

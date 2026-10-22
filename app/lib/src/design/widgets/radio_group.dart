@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../dify_tokens.g.dart';
-import 'form_control_shared.dart' show difyFocusRingShadow;
+import 'form_control_shared.dart' show difyFocusRingShadow, DifyFocusDecoration;
 import 'text.dart';
 
 /// An item's state, for [DifyRadioItem.builder].
@@ -357,7 +357,7 @@ class _DifyRadioControlState extends State<DifyRadioControl> {
     final dot = Container(
       width: 16,
       height: 16,
-      decoration: BoxDecoration(
+      decoration: DifyFocusDecoration(
         shape: BoxShape.circle,
         color: bg,
         border: Border.all(color: border, width: checked ? 5 : 1),

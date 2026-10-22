@@ -1,3 +1,6 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 import 'dart:async';
 import 'dart:math';
 
@@ -136,10 +139,10 @@ class DemoBackend implements Backend {
   /// App-bar actions of the demo.
   List<Widget> actions(BuildContext context, EditorController c, VoidCallback crashAndRestart) {
     return [
-      PopupMenuButton<String>(
+      DifyActionMenu<String>(
         key: const Key('demo-menu'),
         tooltip: 'Demo controls',
-        icon: const Icon(Icons.science_outlined),
+        icon: const RemixIcon('flask-line'),
         onSelected: (v) {
           final selected = c.selectedNodeId ?? 'llm';
           switch (v) {
@@ -159,12 +162,12 @@ class DemoBackend implements Backend {
           }
         },
         itemBuilder: (_) => [
-          PopupMenuItem(value: 'offline', child: Text(offline ? 'Go back online' : 'Go offline')),
-          const PopupMenuItem(value: 'bo-prompt', child: Text('Bo rewrites the selected node\'s prompt')),
-          const PopupMenuItem(value: 'bo-title', child: Text('Bo renames the selected node')),
-          const PopupMenuItem(value: 'bo-delete', child: Text('Bo deletes the selected node')),
-          const PopupMenuItem(value: 'bo-random', child: Text('Toggle Bo\'s random edits')),
-          const PopupMenuItem(value: 'crash', child: Text('Crash the app and restart')),
+          DifyMenuOption(value: 'offline', child: Text(offline ? 'Go back online' : 'Go offline')),
+          const DifyMenuOption(value: 'bo-prompt', child: Text('Bo rewrites the selected node\'s prompt')),
+          const DifyMenuOption(value: 'bo-title', child: Text('Bo renames the selected node')),
+          const DifyMenuOption(value: 'bo-delete', child: Text('Bo deletes the selected node')),
+          const DifyMenuOption(value: 'bo-random', child: Text('Toggle Bo\'s random edits')),
+          const DifyMenuOption(value: 'crash', child: Text('Crash the app and restart')),
         ],
       ),
     ];

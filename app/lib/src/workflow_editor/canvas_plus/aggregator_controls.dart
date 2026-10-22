@@ -180,8 +180,7 @@ class AggregatorPopupHost extends StatelessWidget {
   }
 }
 
-Widget _variablePopup({required List<VarGroup> vars, required VarSelected onChange, String? popupFor}) => Material(
-  type: MaterialType.transparency,
+Widget _variablePopup({required List<VarGroup> vars, required VarSelected onChange, String? popupFor}) => DifySurface(
   child: VarReferencePopup(vars: vars, onChange: onChange, popupFor: popupFor),
 );
 

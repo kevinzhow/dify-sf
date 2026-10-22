@@ -319,7 +319,7 @@ class _CurlPanelState extends State<CurlPanel> {
           ),
           child: Semantics(
             label: wf('nodes.http.curl.title'),
-            child: TextField(
+            child: DifyTextField(
               controller: _text,
               focusNode: _focus,
               maxLines: null,
@@ -328,9 +328,7 @@ class _CurlPanelState extends State<CurlPanel> {
               cursorColor: DifyColors.primary600, // dify-ui Textarea: caret-primary-600
               cursorWidth: 1,
               textAlignVertical: TextAlignVertical.top,
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
+              decoration: DifyFieldDecoration(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 hintText: wf('nodes.http.curl.placeholder'),
                 hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),

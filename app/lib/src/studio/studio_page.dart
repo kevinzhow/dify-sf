@@ -6,7 +6,7 @@ library;
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
-import 'package:flutter/material.dart' show Material, MaterialType;
+
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
@@ -220,8 +220,7 @@ class StudioPageState extends State<StudioPage> {
       services: _services,
       child: DslDropZone(
         drop: drop,
-        child: Material(
-          type: MaterialType.transparency,
+        child: DifySurface(
           child: ColoredBox(
             color: DifyColors.backgroundBody,
             child: Stack(

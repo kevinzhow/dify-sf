@@ -103,8 +103,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 480, maxHeight: MediaQuery.sizeOf(context).height * 0.8),
-          child: Material(
-            type: MaterialType.transparency,
+          child: DifySurface(
             child: Semantics(
               container: true,
               role: SemanticsRole.dialog,
@@ -265,7 +264,7 @@ class _DifyTextControlState extends State<DifyTextControl> {
         ? (DifyColors.componentsInputBgHover, DifyColors.componentsInputBorderHover)
         : (DifyColors.componentsInputBgNormal, Colors.transparent);
     final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
-    final field = TextField(
+    final field = DifyTextField(
       controller: widget.controller,
       focusNode: _focus,
       style: style,
@@ -275,7 +274,7 @@ class _DifyTextControlState extends State<DifyTextControl> {
       expands: widget.multiline,
       textAlignVertical: TextAlignVertical.top,
       keyboardType: widget.multiline ? TextInputType.multiline : TextInputType.text,
-      decoration: InputDecoration.collapsed(
+      decoration: DifyFieldDecoration.collapsed(
         hintText: widget.placeholder,
         hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
       ),

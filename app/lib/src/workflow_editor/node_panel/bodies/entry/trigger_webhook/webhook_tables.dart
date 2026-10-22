@@ -348,7 +348,7 @@ class _InputCellState extends State<_InputCell> {
         child: SizedBox(
           height: 24,
           child: Center(
-            child: TextField(
+            child: DifyTextField(
               controller: _controller,
               focusNode: _focus,
               enabled: !widget.disabled,
@@ -358,7 +358,7 @@ class _InputCellState extends State<_InputCell> {
               inputFormatters: widget.varName ? [varNameFormatter] : null,
               onChanged: widget.onChanged,
               onSubmitted: (_) => _focus.unfocus(),
-              decoration: InputDecoration.collapsed(
+              decoration: DifyFieldDecoration.collapsed(
                 hintText: widget.placeholder,
                 hintStyle: style.copyWith(color: DifyColors.textQuaternary),
               ),
@@ -631,7 +631,7 @@ class _ParagraphInputState extends State<ParagraphInput> {
           ),
           Padding(
             padding: const EdgeInsets.only(left: 24),
-            child: TextField(
+            child: DifyTextField(
               controller: _controller,
               focusNode: _focus,
               enabled: !widget.disabled,
@@ -642,7 +642,7 @@ class _ParagraphInputState extends State<ParagraphInput> {
               cursorColor: DifyColors.textSecondary, // paragraph-input.tsx: the default caret (text-text-secondary)
               cursorWidth: 1,
               onChanged: widget.onChange,
-              decoration: InputDecoration.collapsed(
+              decoration: DifyFieldDecoration.collapsed(
                 hintText: widget.placeholder,
                 hintStyle: text.copyWith(color: DifyColors.textQuaternary),
               ),

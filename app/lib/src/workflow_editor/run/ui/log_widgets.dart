@@ -37,7 +37,7 @@ class _ContainerLogButton extends StatelessWidget {
     onPressed: onPressed,
     builder: (context, hovered, focused) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
+      decoration: DifyFocusDecoration(
         color: DifyColors.componentsButtonTertiaryBgHover,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
         boxShadow: difyFocusRing(focused),
@@ -306,7 +306,7 @@ class AgentLogTrigger extends StatelessWidget {
           onShowAgentOrToolLog({'message_id': nodeInfo['id'], 'children': nodeInfo['agentLog'] ?? const []}),
       builder: (context, hovered, focused) => Container(
         width: double.infinity,
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: DifyColors.componentsButtonTertiaryBg,
           borderRadius: BorderRadius.circular(10),
           boxShadow: difyFocusRing(focused),

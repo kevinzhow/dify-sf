@@ -313,7 +313,7 @@ class AppDetailPageState extends State<AppDetailPage> {
     final title = '${appDetailPageTitle(page)} · ${app?.name ?? _c('menus.appDetail')}';
     return DifyDocumentTitle(
       title: title,
-      child: Scaffold(
+      child: DifyPage(
         backgroundColor: DifyColors.backgroundBody,
         body: DetailSidebarFrame(
           account: widget.account,

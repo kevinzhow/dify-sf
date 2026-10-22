@@ -9,7 +9,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:collab_client/collab_client.dart';
-import 'package:flutter/material.dart' show Colors, Material, MaterialType;
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 
 import '../design/dify_icon.dart';
@@ -40,8 +40,7 @@ Future<T?> showCreateAppDialogShell<T>(BuildContext context, {required String ti
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Material(
-              type: MaterialType.transparency,
+            child: DifySurface(
               child: Semantics(
                 container: true,
                 scopesRoute: true,

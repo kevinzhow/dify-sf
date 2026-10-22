@@ -48,9 +48,9 @@ class LargeDataAlert extends StatelessWidget {
           RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
           const SizedBox(width: 4),
           Expanded(
-            child: Tooltip(
-              message: text,
-              waitDuration: const Duration(milliseconds: 600),
+            child: DifyTooltip(
+              content: Text(text),
+              delay: const Duration(milliseconds: 600),
               child: DifyText(text, DifyType.systemXsRegular),
             ),
           ),
@@ -166,9 +166,8 @@ class _InspectTextareaState extends State<InspectTextarea> {
                   ),
             boxShadow: focused && !w.bare ? DifyShadows.xs : null,
           ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: TextField(
+          child: DifySurface(
+            child: DifyTextField(
               controller: _text,
               focusNode: _focus,
               enabled: !w.disabled,
@@ -181,9 +180,7 @@ class _InspectTextareaState extends State<InspectTextarea> {
               style: style,
               cursorColor: DifyColors.primary600, // caret-primary-600
               cursorWidth: 1,
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
+              decoration: DifyFieldDecoration(
                 contentPadding: w.bare
                     ? EdgeInsets.only(top: w.topPadding ?? 0)
                     : EdgeInsets.fromLTRB(12, w.topPadding ?? 8, 12, 8),
@@ -339,7 +336,7 @@ class _DisplayContentState extends State<DisplayContent> {
       // dify-sf has no Markdown renderer or chunk cards yet: the preview shows the text as it is.
       (ViewMode.preview, _) => SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: SelectableText(
+        child: DifySelectableText(
           markdown ? w.mdString ?? '' : _prettyJson(w.jsonString),
           style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textPrimary),
         ),

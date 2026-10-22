@@ -46,7 +46,7 @@ Cases beyond the canvas (cases.json):
   * "invite": true: an invitation is created on both sides first; "{token}" and "{email}" in "page" paths and queries
     are its own on each side (deleted again afterwards).
 """
-import argparse, base64, functools, http.server, json, os, pathlib, re, sys, threading, time
+import argparse, base64, functools, http.server, io, json, os, pathlib, re, sys, threading, time
 import numpy as np
 import requests
 from PIL import Image, ImageChops
@@ -61,6 +61,7 @@ EXTRA = os.environ.get('OURS_QUERY', '')
 DSF = float(os.environ.get('VISUAL_DSF', '2'))
 # The theme of both sides (--theme): 'light' (the browsers' default colour scheme) or 'dark'.
 THEME = 'light'
+LOCALE = 'en-US'
 
 
 class Browsers:
@@ -77,8 +78,8 @@ class Browsers:
             self.browsers[size] = self.playwright.chromium.launch(
                 args=[f'--force-device-scale-factor={DSF:g}', f'--window-size={size[0]},{size[1]}'])
         if THEME == 'dark':
-            return self.browsers[size].new_context(no_viewport=True, color_scheme='dark')
-        return self.browsers[size].new_context(no_viewport=True)
+            return self.browsers[size].new_context(no_viewport=True, color_scheme='dark', locale=LOCALE)
+        return self.browsers[size].new_context(no_viewport=True, locale=LOCALE)
 
     def close(self):
         for b in self.browsers.values():
@@ -88,7 +89,7 @@ class Browsers:
 def dify_session():
     s = requests.Session()
     pw = base64.b64encode(os.environ['DIFY_PASSWORD'].encode()).decode()
-    r = s.post(f'{DIFY}/console/api/login', json={'email': os.environ['DIFY_EMAIL'], 'password': pw, 'remember_me': True, 'language': 'en-US'})
+    r = s.post(f'{DIFY}/console/api/login', json={'email': os.environ['DIFY_EMAIL'], 'password': pw, 'remember_me': True, 'language': LOCALE})
     r.raise_for_status()
     csrf = s.cookies.get('csrf_token')
     if csrf:
@@ -220,7 +221,7 @@ def locate(page, loc):
     if isinstance(loc, str):
         return page.locator(loc).first
     if 'role' in loc:
-        return page.get_by_role(loc['role'], name=loc['name'], exact=loc.get('exact', True)).first
+        return page.get_by_role(loc['role'], **({'name': loc['name'], 'exact': loc.get('exact', True)} if 'name' in loc else {})).first
     return page.get_by_text(loc['text'], exact=loc.get('exact', True)).first
 
 
@@ -235,8 +236,10 @@ def run_dify_steps(page, steps, box):
                 try:
                     el.wait_for(state='visible', timeout=30000)
                 except Exception:
-                    page.screenshot(path='/tmp/visual-step-failed.png')
-                    raise RuntimeError(f'step {i} {st}: not found (Dify page in /tmp/visual-step-failed.png)')
+                    failure_dir = ROOT / 'build/visual-failures'
+                    failure_dir.mkdir(parents=True, exist_ok=True)
+                    page.screenshot(path=str(failure_dir / 'step-failed.png'))
+                    raise RuntimeError(f'step {i} {st}: not found (Dify page in build/visual-failures/step-failed.png)')
                 r = el.bounding_box()
                 ax, ay = st.get('at', [r['width'] / 2, r['height'] / 2])
                 x, y = r['x'] + ax, r['y'] + ay
@@ -344,7 +347,8 @@ def capture_dify(browsers, s, app_id, case, out, invite=None):
         ctx.add_init_script("localStorage.setItem('theme', 'dark')")
     pg_case = case.get('page')
     if not pg_case or pg_case.get('signedIn', True):
-        ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies])
+        ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies if c.name != 'locale'])
+    ctx.add_cookies([{'name': 'locale', 'value': LOCALE, 'url': DIFY}])
     page = ctx.new_page()
     add_routes(page, case, 'dify')
     if pg_case:
@@ -388,6 +392,7 @@ def capture_dify(browsers, s, app_id, case, out, invite=None):
     out.with_suffix('.steps.json').write_text(json.dumps(steps))
     if steps:
         page.wait_for_timeout(800)
+    capture_controls(page, case, 'dify', out)
     shot(page, box, case, out)
     # Where Dify draws text (every non-empty text node on the page: canvas, header, node panel), relative to the
     # captured region.
@@ -453,7 +458,7 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
     page.on('console', lambda m: bars.append(m.text) if m.text.startswith('NODE_CONTROL ') else None)
     log = []
     page.on('console', lambda m: log.append(m.text) if m.text.startswith('VISUAL_') else None)
-    theme = '&theme=dark' if THEME == 'dark' else ''
+    theme = ('&theme=dark' if THEME == 'dark' else '') + '&lang=' + LOCALE
     if pg_case:
         query = fill(pg_case.get('ours', ''), invite)
         page.goto(f'{base}/?server={SF}&visual=1' + (f'&{query}' if query else '') + (f'&{EXTRA}' if EXTRA else '')
@@ -480,6 +485,7 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
     if steps:
         run_our_steps(page, steps, box, log)
         page.wait_for_timeout(1200)
+    capture_controls(page, case, 'ours', out)
     shot(page, box, case, out)
     if views:
         print(f'  ours at rest: {views[-1]}{"" if settled or pg_case else " (never settled)"}')
@@ -511,6 +517,150 @@ def node_run_mask(line, box, case):
     return [(rect[0] - ox) * DSF, (rect[1] - oy) * DSF, (rect[2] - ox) * DSF, (rect[3] - oy) * DSF]
 
 
+def control_locator(page, spec):
+    loc = dict(spec)
+    if isinstance(loc.get('name'), dict):
+        loc['name'] = loc['name'][LOCALE]
+    el = page.locator(loc['css']).first if 'css' in loc else locate(page, loc)
+    for _ in range(loc.get('ancestor', 0)):
+        el = el.locator('xpath=..')
+    return el
+
+
+def keyboard_focus_control(page, target, side, out):
+    """Exercise real keyboard traversal; DOM focus alone does not focus Flutter's canvas widget."""
+    if side == 'dify':
+        page.keyboard.press('Tab')
+        target.focus()
+        return
+    trace = []
+    expected = np.array((48, 114, 255) if THEME == 'dark' else (0, 51, 255))
+    for index in range(80):
+        page.keyboard.press('Tab')
+        page.wait_for_timeout(65)
+        bounds = target.bounding_box()
+        clip = dict(x=bounds['x'] - 2, y=bounds['y'] - 2,
+                    width=bounds['width'] + 4, height=bounds['height'] + 4)
+        pixels = np.array(Image.open(io.BytesIO(page.screenshot(clip=clip))).convert('RGB')).astype(int)
+        ring_pixels = int(np.sum(np.abs(pixels - expected).max(axis=2) <= 3))
+        trace.append(dict(tabs=index + 1, ringPixels=ring_pixels,
+                          active=page.evaluate("() => ({tag:document.activeElement?.tagName,label:document.activeElement?.getAttribute('aria-label')})")))
+        if ring_pixels >= 20:
+            out.with_suffix('.focus.json').write_text(json.dumps(trace, indent=2))
+            return
+    out.with_suffix('.focus.json').write_text(json.dumps(trace, indent=2))
+    raise RuntimeError('Keyboard traversal did not paint the target focus ring; this is not a focused capture.')
+
+
+def capture_controls(page, case, side, out):
+    """Tight, unmasked controls alongside the original page crop and absolute geometry."""
+    controls = case.get('controls', {})
+    if side == 'ours' and controls:
+        placeholder = page.locator('flt-semantics-placeholder')
+        if placeholder.count():
+            placeholder.evaluate('(el) => el.click()')
+        page.wait_for_timeout(300)
+    for action in ('focus', 'open'):
+        key = case.get('control_' + action)
+        if key:
+            target = control_locator(page, controls[key][side])
+            target.wait_for(state='visible')
+            if action == 'focus':
+                keyboard_focus_control(page, target, side, out)
+            else:
+                target.click()
+            page.wait_for_timeout(350)
+    metadata = page.evaluate('''() => ({
+      devicePixelRatio, width: innerWidth, height: innerHeight,
+      visualViewportScale: visualViewport?.scale, userAgent: navigator.userAgent
+    })''')
+    metadata.update(locale=LOCALE, theme=THEME, state=case.get('control_focus') or case.get('control_open') or 'default', controls={})
+    cdp = None
+    if side == 'dify' and controls:
+        cdp = page.context.new_cdp_session(page)
+        cdp.send('DOM.enable')
+        cdp.send('CSS.enable')
+    for key, spec in controls.items():
+        el = control_locator(page, spec[side])
+        try:
+            el.wait_for(state='visible', timeout=15000)
+        except Exception:
+            page.screenshot(path=str(out.with_name(out.stem + '.missing-control.png')))
+            out.with_name(out.stem + '.semantics.txt').write_text(page.locator('body').inner_text())
+            raise
+        bounds = el.bounding_box()
+        item = {'bounds': bounds}
+        if key == 'search':
+            item['ancestors'] = el.evaluate('''el => {
+              const out=[]; for(let p=el;p && out.length<7;p=p.parentElement) {
+                const r=p.getBoundingClientRect();
+                out.push({tag:p.tagName,slot:p.dataset.slot,label:p.getAttribute('aria-label'),
+                          x:r.x,y:r.y,width:r.width,height:r.height});
+              } return out;
+            }''')
+        if side == 'dify':
+            item['css'] = el.evaluate('''el => {
+              const cs = getComputedStyle(el);
+              return {font:cs.font, fontFamily:cs.fontFamily, fontSize:cs.fontSize,
+                      fontWeight:cs.fontWeight, lineHeight:cs.lineHeight,
+                      letterSpacing:cs.letterSpacing, padding:cs.padding,
+                      borderRadius:cs.borderRadius};
+            }''')
+            el.evaluate('(el,key) => el.setAttribute("data-visual-audit",key)', key)
+            root = cdp.send('DOM.getDocument')['root']['nodeId']
+            selector = f'[data-visual-audit="{key}"]'
+            if key == 'sort':
+                selector += ' .font-medium'
+                item['activeTextCss'] = el.locator('.font-medium').evaluate(
+                    "el => ({fontSize:getComputedStyle(el).fontSize,fontWeight:getComputedStyle(el).fontWeight,lineHeight:getComputedStyle(el).lineHeight})")
+            node = cdp.send('DOM.querySelector', {'nodeId':root, 'selector':selector})['nodeId']
+            if node:
+                item['platformFonts'] = cdp.send('CSS.getPlatformFontsForNode', {'nodeId':node})['fonts']
+        else:
+            item['fontNote'] = 'Flutter draws text on canvas; semantics DOM fonts are not painter fonts.'
+        page.screenshot(path=str(out.with_name(out.stem + '.' + key + '.png')),
+                        clip={'x':bounds['x']-2,'y':bounds['y']-2,
+                              'width':bounds['width']+4,'height':bounds['height']+4})
+        metadata['controls'][key] = item
+    out.with_suffix('.environment.json').write_text(json.dumps(metadata, indent=2))
+    if cdp:
+        cdp.detach()
+
+
+def validate_environments(reference, actual):
+    """Reject stale captures or browser scaling before comparing their pixels."""
+    for side in (reference, actual):
+        if side['locale'] != LOCALE or side['theme'] != THEME:
+            raise ValueError('Capture locale/theme does not match this run; re-capture the reference.')
+        if abs(side['devicePixelRatio'] - DSF) > .01 or abs(side['visualViewportScale'] - 1) > .01:
+            raise ValueError('Capture DPR/zoom does not match this run.')
+    if any(reference[k] != actual[k] for k in ('width', 'height', 'userAgent')):
+        raise ValueError('Capture browsers or viewport sizes differ; re-capture both sides.')
+
+
+def control_scores(web, ours):
+    """Geometry differences are failures, never rescaled away to improve a score."""
+    a = json.loads(web.with_suffix('.environment.json').read_text())
+    b = json.loads(ours.with_suffix('.environment.json').read_text())
+    validate_environments(a, b)
+    result = {}
+    for key, reference in a['controls'].items():
+        original, actual = reference['bounds'], b['controls'][key]['bounds']
+        delta = {k:actual[k]-original[k] for k in ('x','y','width','height')}
+        wa = web.with_name(web.stem + '.' + key + '.png')
+        ob = ours.with_name(ours.stem + '.' + key + '.png')
+        size_a, size_b = Image.open(wa).size, Image.open(ob).size
+        # Different dimensions are reported directly; interpolation could hide a
+        # width/height regression or change text stroke weight.
+        score = similarity(wa,ob)[0] if size_a == size_b else None
+        result[key] = {'reference':original,'actual':actual,'delta':delta,
+                       'referencePixels':size_a,'actualPixels':size_b,
+                       'allPixelsWithin16':score,
+                       'sizeMatches':all(abs(delta[k]) <= .5 for k in ('width','height')),
+                       'geometryMatches':all(abs(delta[k]) <= .5 for k in ('x','y','width','height'))}
+    return result
+
+
 def shot(page, box, case, out):
     ox, oy, w, h = case['region']
     page.screenshot(path=str(out), clip={'x': box['x'] + ox, 'y': box['y'] + oy, 'width': w, 'height': h})
@@ -540,6 +690,18 @@ def similarity(a, b, text_rects=(), masks=()):
     return same, non_text, heat
 
 
+def threshold_failures(rows, components, non_text_limit=None, all_limit=None):
+    failures = [i for i, non_text, all_pixels in rows
+                if (non_text_limit is not None and non_text * 100 < non_text_limit)
+                or (all_limit is not None and all_pixels * 100 < all_limit)]
+    for case_id, controls in components.items():
+        for key, control in controls.items():
+            if not control['geometryMatches'] or (all_limit is not None and
+                (control['allPixelsWithin16'] is None or control['allPixelsWithin16'] * 100 < all_limit)):
+                failures.append(case_id + '/' + key)
+    return failures
+
+
 def main():
     sys.stdout.reconfigure(line_buffering=True)
     ap = argparse.ArgumentParser()
@@ -550,19 +712,27 @@ def main():
                     help='web build to serve; use a fixed copy when another job may rebuild the app')
     ap.add_argument('--theme', choices=('light', 'dark'), default='light',
                     help='dark: the cases marked "dark" only, both sides in the dark theme')
+    ap.add_argument('--locale', default='en-US', help='UI language on both sides (default en-US)')
+    ap.add_argument('--fail-under', type=float, help='Fail if any non-text score is below this percentage (0..100); otherwise report only')
+    ap.add_argument('--fail-all-under', type=float, help='Also fail on the score including text; never silently mask a typography requirement')
     ap.add_argument('--reuse-dify', action='store_true',
                     help="reuse the Dify captures already in --out (no Dify needed): re-shoot ours only")
     ap.add_argument('--reuse-dify-from', metavar='DIR',
                     help='--reuse-dify with the Dify captures of DIR (copied into --out), e.g. the widget renderer '
                          'against the captures the scene renderer was compared with')
     a = ap.parse_args()
-    global THEME
-    THEME = a.theme
+    global THEME, LOCALE
+    THEME, LOCALE = a.theme, a.locale
+    for threshold in (a.fail_under, a.fail_all_under):
+        if threshold is not None and not 0 <= threshold <= 100:
+            ap.error("score thresholds must be between 0 and 100")
     cases = json.loads(pathlib.Path(a.cases).read_text())
     if THEME == 'dark':
         cases = [c for c in cases if c.get('dark')]
     if a.only:
         cases = [c for c in cases if c['id'] in a.only.split(',')]
+    if not cases:
+        ap.error('no cases selected')
     out = pathlib.Path(a.out or ROOT / ('build/visual-dark' if THEME == 'dark' else 'build/visual'))
     (out / 'visual-testing-results/react').mkdir(parents=True, exist_ok=True)
     (out / 'visual-testing-results/android').mkdir(parents=True, exist_ok=True)
@@ -578,6 +748,7 @@ def main():
     s = None if a.reuse_dify else dify_session()
     server, base = serve(a.ours_build)
     rows = []
+    components = {}
     with sync_playwright() as p:
         browsers = Browsers(p)
         for c in cases:
@@ -628,6 +799,8 @@ def main():
             text_rects = json.loads(web.with_suffix('.text.json').read_text())
             masks = json.loads(ours.with_suffix('.mask.json').read_text())
             same, non_text, heat = similarity(web, ours, text_rects, masks)
+            if c.get('controls'):
+                components[c['id']] = control_scores(web, ours)
             heat.save(out / 'diff' / f'{c["id"]}.png')
             rows.append((c['id'], non_text, same))
             unmasked = f' (unmasked non-text {similarity(web, ours, text_rects)[1] * 100:.2f}%)' if masks else ''
@@ -635,10 +808,16 @@ def main():
         browsers.close()
     server.shutdown()
     (out / 'report.md').write_text(
-        f'Theme: {THEME}\n\n'
-        '| case | non-text pixels within 16/255 (pass: 99.5%) | all pixels |\n|---|---|---|\n'
+        f'Theme: {THEME}; locale: {LOCALE}\n\n'
+        '| case | non-text pixels within 16/255 | all pixels |\n|---|---|---|\n'
         + ''.join(f'| {i} | {n * 100:.2f}% | {v * 100:.2f}% |\n' for i, n, v in rows))
+    (out / 'controls.json').write_text(json.dumps(components, indent=2))
+    failures = threshold_failures(rows, components, a.fail_under, a.fail_all_under)
+    if failures:
+        print('Visual threshold failed: ' + ', '.join(failures), file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

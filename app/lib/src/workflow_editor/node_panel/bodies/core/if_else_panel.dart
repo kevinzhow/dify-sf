@@ -379,7 +379,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: w.cases.length,
       itemBuilder: (context, i) => _case(i, w.cases[i]),
-      proxyDecorator: (child, _, _) => Material(color: DifyColors.componentsPanelBg, child: child),
+      proxyDecorator: (child, _, _) => DifySurface(color: DifyColors.componentsPanelBg, child: child),
       onReorderItem: (from, to) {
         if (from == to) return;
         final list = [...w.cases];
@@ -1141,16 +1141,14 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
       field = Stack(
         alignment: Alignment.centerRight,
         children: [
-          TextField(
+          DifyTextField(
             controller: _text,
             focusNode: _focus,
             onChanged: w.onValueChange,
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             style: style,
             cursorWidth: 1,
-            decoration: InputDecoration(
-              isCollapsed: true,
-              border: InputBorder.none,
+            decoration: DifyFieldDecoration(
               contentPadding: EdgeInsets.fromLTRB(8, 3, w.unit == null ? 8 : 24, 3),
               hintText: tw('$_p.enterValue'),
               hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),

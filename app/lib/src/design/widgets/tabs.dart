@@ -96,7 +96,7 @@ class DifyTab extends StatelessWidget {
         height: height,
         padding: padding ?? const EdgeInsets.only(top: 10, bottom: 8),
         alignment: height == null ? null : Alignment.center,
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           border: Border(
             bottom: BorderSide(color: active ? DifyColors.componentsTabActive : const Color(0x00000000), width: 2),
           ),
@@ -107,7 +107,7 @@ class DifyTab extends StatelessWidget {
       DifyTabStyle.pill => Container(
         height: height ?? 32,
         padding: padding ?? const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: active ? DifyColors.stateBaseActive : null,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
           boxShadow: difyFocusRing(focused),

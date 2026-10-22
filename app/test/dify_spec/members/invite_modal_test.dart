@@ -78,7 +78,7 @@ void main() {
       expect(find.semantics.byPredicate((n) => n.label == 'common.members.inviteTeamMember'), findsWidgets);
       expect(find.text('common.members.inviteTeamMemberTip'), findsOneWidget);
       expect(find.byType(InviteForm), findsOneWidget);
-      expect(t.widget<TextField>(emailInput).keyboardType, TextInputType.emailAddress);
+      expect(t.widget<DifyTextField>(emailInput).keyboardType, TextInputType.emailAddress);
     });
 
     testWidgets('should place initial focus in the email composer', (t) async {
@@ -223,7 +223,7 @@ void main() {
       await pasteText(t, 'user@example.com, another@example.com');
       await _selectAdminRole(t);
       await _send(t);
-      expect(t.widget<TextField>(emailInput).enabled, isFalse);
+      expect(t.widget<DifyTextField>(emailInput).enabled, isFalse);
       expect(buttonEnabled('common.members.role'), isFalse);
       expect(buttonEnabled('common.operation.remove user@example.com'), isFalse);
       expect(buttonEnabled('common.members.sendInviteCount'), isFalse);

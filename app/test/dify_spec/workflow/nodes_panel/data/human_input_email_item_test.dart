@@ -46,7 +46,7 @@ void main() {
         ),
       );
 
-      expect(find.byWidgetPredicate((w) => w is Tooltip && w.message == 'missing@example.com'), findsOneWidget);
+      expect(find.byWidgetPredicate((w) => w is DifyTooltip && w.content is Text && (w.content as Text).data == 'missing@example.com'), findsOneWidget);
       expect(find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'error-warning-fill'), findsOneWidget);
       expect(named('common.operation.remove'), findsNothing);
     });

@@ -171,7 +171,7 @@ class _InputNumberWithSliderState extends State<InputNumberWithSlider> {
             child: Semantics(
               label: w.label,
               textField: true,
-              child: TextField(
+              child: DifyTextField(
                 controller: _text,
                 focusNode: _focus,
                 enabled: !w.readonly,
@@ -179,7 +179,7 @@ class _InputNumberWithSliderState extends State<InputNumberWithSlider> {
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.eE+-]'))],
                 style: difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextFilled),
                 cursorWidth: 1,
-                decoration: const InputDecoration(isCollapsed: true, border: InputBorder.none),
+                decoration: const DifyFieldDecoration(),
                 onChanged: (s) => w.onChange(double.tryParse(s.trim()) ?? double.nan),
               ),
             ),
@@ -326,7 +326,7 @@ class _SelectBox extends StatelessWidget {
     builder: (context, hovered, focused) => Container(
       height: 36,
       padding: EdgeInsets.symmetric(horizontal: large ? 16 : 8),
-      decoration: BoxDecoration(
+      decoration: DifyFocusDecoration(
         color: hovered || open || focused ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal,
         borderRadius: BorderRadius.circular(large ? 10 : 8),
         boxShadow: difyFocusRing(focused),
@@ -611,16 +611,14 @@ class _OptionInputState extends State<_OptionInput> {
     child: SizedBox(
       height: 36,
       child: Center(
-        child: TextField(
+        child: DifyTextField(
           controller: _controller,
           onChanged: widget.onChanged,
           style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
           // No caret class: Chrome's caret is the text colour.
           cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
-          decoration: const InputDecoration(
-            isCollapsed: true,
-            border: InputBorder.none,
+          decoration: const DifyFieldDecoration(
             contentPadding: EdgeInsets.only(left: 6, right: 8),
           ),
         ),

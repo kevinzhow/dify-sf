@@ -3,7 +3,7 @@
 library;
 
 import 'package:collab_client/collab_client.dart' show AppModes, AppSortBy, Member;
-import 'package:flutter/material.dart' show Colors, Material, MaterialType;
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -36,20 +36,19 @@ Widget _chip({
 }) => Container(
   height: 32,
   padding: padding,
-  decoration: BoxDecoration(
+  decoration: DifyFocusDecoration(
     color: selected
         ? (hovered || popupOpen ? hoverSelected ?? DifyColors.stateBaseHover : DifyColors.componentsButtonSecondaryBg)
         : (hovered || popupOpen ? DifyColors.componentsInputBgHover : DifyColors.componentsInputBgNormal),
     borderRadius: BorderRadius.circular(DifyRadius.lg),
     border: Border.all(
-      color: focused
-          ? DifyColors.stateAccentSolid
-          : selected
-          ? DifyColors.componentsButtonSecondaryBorder
-          : Colors.transparent,
-      width: focused ? 2 : Css.hairline,
+      color: selected ? DifyColors.componentsButtonSecondaryBorder : Colors.transparent,
+      width: Css.hairline,
     ),
-    boxShadow: selected ? DifyShadows.xs : null,
+    boxShadow: [
+      if (selected) ...DifyShadows.xs,
+      if (focused) difyFocusRingShadow(),
+    ],
   ),
   child: DefaultTextStyle.merge(
     style: _chipText.copyWith(color: DifyColors.textTertiary),
@@ -163,32 +162,29 @@ class _AppSortFilterState extends State<AppSortFilter> {
         builder: (context, hovered, focused) => Container(
           height: 32,
           padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
-          decoration: BoxDecoration(
+          decoration: DifyFocusDecoration(
             color: hovered || _open ? DifyColors.stateBaseHover : DifyColors.componentsInputBgNormal,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
-            border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+            boxShadow: focused ? [difyFocusRingShadow()] : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
                 padding: const EdgeInsets.all(4),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: sortByLabel,
-                        style: TextStyle(color: DifyColors.textTertiary),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 4, // app-sort-filter.tsx: gap-1, independent of glyph/locale.
+                  children: [
+                    Text(sortByLabel, style: _chipText.copyWith(color: DifyColors.textTertiary)),
+                    Text(
+                      active,
+                      style: _chipText.copyWith(
+                        color: DifyColors.textSecondary,
+                        fontWeight: DifyTw.fontMedium.style.fontWeight,
                       ),
-                      const TextSpan(text: '  '),
-                      TextSpan(
-                        text: active,
-                        style: difyTextStyle(DifyTw.fontMedium, DifyColors.textSecondary), // `font-medium`
-                      ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  style: _chipText,
+                    ),
+                  ],
                 ),
               ),
               RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
@@ -403,8 +399,7 @@ class _CreatorsFilterState extends State<CreatorsFilter> {
           blur: 5,
           borderRadius: BorderRadius.circular(DifyRadius.xl),
           decoration: DifyMenuPopup.decoration,
-          child: Material(
-            type: MaterialType.transparency,
+          child: DifySurface(
             child: SizedBox(
               width: 280,
               child: Column(

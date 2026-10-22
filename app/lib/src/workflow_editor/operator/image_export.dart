@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -234,8 +236,7 @@ Future<Uint8List> _capture(BuildContext context, Size size, double ratio, Widget
         data: MediaQuery.of(context).copyWith(size: size),
         child: Directionality(
           textDirection: Directionality.of(context),
-          child: Material(
-            type: MaterialType.transparency,
+          child: DifySurface(
             child: TickerMode(enabled: false, child: Overlay(initialEntries: [entry])),
           ),
         ),
@@ -289,7 +290,7 @@ Future<void> showCanvasImagePreview(BuildContext context, CanvasImageExport imag
             Expanded(child: Text(image.name)),
             DifyIconButton(
               label: DifyI18n.tr('common', 'operation.close'),
-              icon: const Icon(Icons.close, size: 18),
+              icon: const RemixIcon('close-line', size: 18),
               onPressed: () => Navigator.pop(context),
             ),
           ],

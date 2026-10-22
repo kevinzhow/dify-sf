@@ -6,7 +6,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Material, MaterialType, TextField, InputDecoration, InputBorder;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -882,16 +881,13 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
                     child: Semantics(
                       label: _a('roster.searchLabel'),
                       textField: true,
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: TextField(
+                      child: DifySurface(
+                        child: DifyTextField(
                           controller: _search,
                           autofocus: true,
                           onChanged: _onSearch,
                           style: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
-                          decoration: InputDecoration(
-                            isCollapsed: true,
-                            border: InputBorder.none,
+                          decoration: DifyFieldDecoration(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                             hintText: _a('roster.nodeSelector.searchPlaceholder'),
                             hintStyle: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextPlaceholder),

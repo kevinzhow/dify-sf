@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 // dify-spec: web/app/components/app/overview/embedded/__tests__/index.spec.tsx
 // dify-spec: web/app/components/app/overview/settings/__tests__/index.spec.tsx
 import 'dart:convert';
@@ -50,7 +52,7 @@ Future<_EmbedRig> _renderEmbedded(WidgetTester t, {List<Map<String, Object?>> hi
   return rig;
 }
 
-String _pre(WidgetTester t) => t.widget<SelectableText>(find.byKey(const ValueKey('embedded-pre'))).data!;
+String _pre(WidgetTester t) => t.widget<DifySelectableText>(find.byKey(const ValueKey('embedded-pre'))).data;
 
 Future<void> _option(WidgetTester t, EmbeddedOption o) async {
   await t.tap(find.byKey(ValueKey('embedded-option-${o.name}')));

@@ -5,7 +5,6 @@ library;
 
 import 'dart:math';
 
-import 'package:flutter/material.dart' show ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -467,9 +466,8 @@ class _ConfigPromptState extends State<ConfigPrompt> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ReorderableListView(
+        DifyReorderableList(
           shrinkWrap: true,
-          buildDefaultDragHandles: false,
           physics: const NeverScrollableScrollPhysics(),
           onReorderItem: _onReorder,
           proxyDecorator: (child, _, _) => Opacity(opacity: 0.5, child: child),

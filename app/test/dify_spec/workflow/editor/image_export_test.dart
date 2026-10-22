@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 // dify-spec: web/app/components/workflow/operator/__tests__/more-actions.spec.tsx
 import 'dart:convert';
 
@@ -48,7 +50,9 @@ void main() {
       expect(saved, isTrue);
       expect(find.byType(Image), findsOneWidget);
       expect(find.text('Example-whole-workflow.png'), findsOneWidget);
-      await t.tap(find.byIcon(Icons.close));
+      await t.tap(
+        find.byWidgetPredicate((w) => w is DifyIconButton && w.label == DifyI18n.tr('common', 'operation.close')),
+      );
       await t.pumpAndSettle();
       await done;
       expect(find.byType(Image), findsNothing);

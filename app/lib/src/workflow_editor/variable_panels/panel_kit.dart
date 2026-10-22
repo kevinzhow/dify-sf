@@ -321,8 +321,7 @@ class VariableModalSurface extends StatelessWidget {
   final Widget? close;
 
   @override
-  Widget build(BuildContext context) => Material(
-    type: MaterialType.transparency,
+  Widget build(BuildContext context) => DifySurface(
     child: Container(
       width: width,
       decoration: BoxDecoration(
@@ -454,7 +453,7 @@ class _PlainTextareaState extends State<PlainTextarea> {
           ),
           boxShadow: focused ? DifyShadows.xs : null,
         ),
-        child: TextField(
+        child: DifyTextField(
           controller: _text,
           focusNode: _focus,
           onChanged: widget.onChanged,
@@ -464,9 +463,7 @@ class _PlainTextareaState extends State<PlainTextarea> {
           style: style,
           cursorColor: DifyColors.primary600, // caret-primary-600
           cursorWidth: 1,
-          decoration: InputDecoration(
-            isCollapsed: true,
-            border: InputBorder.none,
+          decoration: DifyFieldDecoration(
             contentPadding: const EdgeInsets.all(7),
             hintText: widget.placeholder,
             hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),

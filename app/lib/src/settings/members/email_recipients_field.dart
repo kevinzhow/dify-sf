@@ -3,7 +3,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart' show Colors, InputBorder, InputDecoration, TextField, VisualDensity;
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -342,7 +342,7 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
             child: SizedBox(
               height: 24,
               child: Center(
-                child: TextField(
+                child: DifyTextField(
                   key: const ValueKey('email-recipients-input'),
                   controller: _controller,
                   focusNode: _input,
@@ -358,11 +358,8 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
                   cursorColor: DifyColors.primary600, // `caret-primary-600` (the Input's)
                   cursorWidth: 1,
                   maxLines: 1,
-                  decoration: InputDecoration(
-                    isCollapsed: true,
-                    border: InputBorder.none,
+                  decoration: DifyFieldDecoration(
                     contentPadding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.standard,
                     hintText: rs.isEmpty ? stc(context, 'members.emailPlaceholder') : null,
                     hintStyle: textStyle.copyWith(color: DifyColors.componentsInputTextPlaceholder),
                     counterText: '',

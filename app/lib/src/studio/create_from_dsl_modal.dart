@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:collab_client/collab_client.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/material.dart' show Material, MaterialType;
+
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -659,8 +659,7 @@ class DslUploaderState extends State<DslUploader> {
         ),
       );
     }
-    return Material(
-      type: MaterialType.transparency,
+    return DifySurface(
       child: DropTarget(
         enable: !widget.disabled,
         onDragEntered: (_) => dragEnter(),

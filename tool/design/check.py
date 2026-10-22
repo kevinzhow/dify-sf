@@ -50,9 +50,14 @@ TEXT_STYLE_ARGS_RE = re.compile(r'\b(?:fontSize|fontWeight|height|letterSpacing)
 DIALOG_RE = re.compile(
     r'(?<![\w$.])(?:showDialog|showGeneralDialog|showModalBottomSheet|showMenu|showCupertinoDialog)' + GENERIC)
 MATERIAL_RE = re.compile(
-    r'(?<![\w$.])(?:AlertDialog|SimpleDialog|Dialog|Switch|Checkbox|Radio|Slider|DropdownButton\w*|TabBar|Tooltip'
-    r'|PopupMenuButton|ElevatedButton|TextButton|OutlinedButton|FilledButton|IconButton|CircularProgressIndicator'
-    r'|LinearProgressIndicator|SnackBar|Chip|InputDecoration)' + GENERIC)
+    r'(?<![\w$])(?:[a-zA-Z_]\w*\.)?(?:Material|MaterialApp|MaterialPageRoute|CupertinoPageRoute|Scaffold|AppBar'
+    r'|TextField|TextFormField|InputDecorator|InputDecoration|SelectableText|SelectionArea|Scrollbar|ScrollbarTheme'
+    r'|ReorderableListView|MenuAnchor|MenuItemButton|SubmenuButton|AlertDialog|SimpleDialog|Dialog|Switch(?:ListTile)?'
+    r'|Checkbox(?:ListTile)?|Radio(?:ListTile)?|Slider|DropdownButton\w*|TabBar|Tooltip|PopupMenuButton|PopupMenuItem'
+    r'|ElevatedButton|TextButton|OutlinedButton|FilledButton|IconButton|CircularProgressIndicator'
+    r'|LinearProgressIndicator|SnackBar|Chip|ListTile|Card|InkWell|Badge|AdaptiveTextSelectionToolbar)'
+    r'(?:\.[a-zA-Z_]\w*)?' + GENERIC)
+
 COMPONENT_TOKEN_RE = re.compile(
     r'\bDifyColors\.components(?:Checkbox|Radio|Toggle|Slider|SegmentedControl|BadgeStatusLight|Input)\w*')
 DIFY_CLASS_RE = re.compile(r'\b(?:class|mixin|enum)\s+(Dify\w+)')
@@ -247,6 +252,8 @@ def read_allowlist(path):
             errors.append(f'{where}: expected 4 tab-separated fields (rule, path, max_count, reason)')
             continue
         rule, rel, count, reason = parts
+        if rule == 'material-widget':
+            errors.append(f'{where}: material-widget exceptions are prohibited; use design/ components')
         if rule not in RULES:
             errors.append(f'{where}: unknown rule {rule!r}')
         if not count.isdigit() or int(count) == 0:
@@ -308,6 +315,8 @@ def run(argv=None, root=REPO, out=sys.stdout, err=sys.stderr):
         new_rows, log = {}, []
         for key in sorted(set(rows) | set(counts)):
             have, row = counts.get(key, 0), rows.get(key)
+            if key[0] == 'material-widget' and have:
+                continue  # No --allow-increase waiver for direct Material controls.
             if row is None:
                 if args.allow_increase and have:
                     why = default_reason(*key) if args.reason == 'todo' else args.reason

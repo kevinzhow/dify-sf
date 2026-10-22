@@ -333,8 +333,7 @@ class _InputFieldChipState extends State<InputFieldChip> {
       builder: (context) {
         _dialog = context;
         return Center(
-          child: Material(
-            type: MaterialType.transparency,
+          child: DifySurface(
             child: InputFieldEditor(
               scope: w.scope,
               payload: w.formInput,
@@ -470,8 +469,7 @@ Future<Map<String, Object?>?> showInputFieldDialog(
 }) => showDifyDialog<Map<String, Object?>>(
   context,
   builder: (context) => Center(
-    child: Material(
-      type: MaterialType.transparency,
+    child: DifySurface(
       child: InputFieldEditor(
         scope: scope,
         payload: payload,

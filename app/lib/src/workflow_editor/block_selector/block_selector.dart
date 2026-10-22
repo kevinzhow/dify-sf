@@ -7,7 +7,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -388,8 +387,7 @@ class BlockSelectorCard extends StatelessWidget {
         border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
         boxShadow: DifyShadows.lg,
       ),
-      child: Material(
-        type: MaterialType.transparency,
+      child: DifySurface(
         child: BlockSelectorPanels(
           tabs: tabs,
           defaultTab: initialTab,

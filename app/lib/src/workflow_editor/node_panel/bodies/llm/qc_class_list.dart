@@ -3,7 +3,6 @@
 /// dragging or from the keyboard, the rename hint and "Add Class".
 library;
 
-import 'package:flutter/material.dart' show ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -447,9 +446,8 @@ class _ClassListState extends State<ClassList> {
           },
         ),
         if (!_collapsed)
-          ReorderableListView(
+          DifyReorderableList(
             shrinkWrap: true,
-            buildDefaultDragHandles: false,
             physics: const NeverScrollableScrollPhysics(),
             onReorderItem: _onReorder,
             proxyDecorator: (child, _, _) => child,

@@ -197,8 +197,7 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
           right: width + 8,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height - 116),
-            child: Material(
-              type: MaterialType.transparency,
+            child: DifySurface(
               child: FormContentPreview(
                 content: jsStr(props.data['form_content']) ?? '',
                 formInputs: jsList(props.data['inputs']),
@@ -224,7 +223,7 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
           right: 4,
           bottom: 8,
           width: width,
-          child: Material(
+          child: DifySurface(
             color: DifyColors.componentsPanelBg,
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
             child: _formContentSection(context, expanded: true),

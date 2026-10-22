@@ -3,7 +3,6 @@
 /// place with the OutputEditCard.
 library;
 
-import 'package:flutter/material.dart' show Material, MaterialType, TextField, InputDecoration, InputBorder;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -453,18 +452,15 @@ class _LineInputState extends State<_LineInput> {
               borderRadius: BorderRadius.circular(DifyRadius.md),
             )
           : null,
-      child: Material(
-        type: MaterialType.transparency,
-        child: TextField(
+      child: DifySurface(
+        child: DifyTextField(
           controller: _text,
           focusNode: widget.focusNode,
           onChanged: widget.onChanged,
           style: widget.style,
           cursorWidth: 1,
           maxLines: 1,
-          decoration: InputDecoration(
-            isCollapsed: true,
-            border: InputBorder.none,
+          decoration: DifyFieldDecoration(
             hintText: widget.placeholder,
             hintStyle: widget.style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
           ),

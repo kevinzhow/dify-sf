@@ -13,12 +13,14 @@
 /// macOS: Menlo 12 / 18 px; Windows: Consolas 14 / 19 px).
 library;
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Colors, Scrollbar, ScrollbarTheme, ScrollbarThemeData;
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -515,33 +517,23 @@ class CodeEditorViewState extends State<CodeEditorView> {
           child: ClipRect(
             child: Stack(
               children: [
-                ScrollbarTheme(
-                  data: ScrollbarThemeData(
-                    thickness: const WidgetStatePropertyAll(CodeEditorMetrics.verticalScrollbarWidth),
-                    radius: Radius.zero,
-                    crossAxisMargin: 0,
-                    mainAxisMargin: 0,
-                    minThumbLength: 20,
-                    thumbColor: WidgetStateProperty.resolveWith(
-                      (s) => s.contains(WidgetState.dragged)
-                          ? VsTheme.scrollbarSliderActive
-                          : s.contains(WidgetState.hovered)
-                          ? VsTheme.scrollbarSliderHover
-                          : VsTheme.scrollbarSlider,
-                    ),
+                ValueListenableBuilder(
+                  valueListenable: _hovering,
+                  builder: (context, hovering, child) => DifyEditorScrollbar(
+                    controller: _scroll,
+                    visible: hovering,
+                    width: CodeEditorMetrics.verticalScrollbarWidth,
+                    color: VsTheme.scrollbarSlider,
+                    hoverColor: VsTheme.scrollbarSliderHover,
+                    activeColor: VsTheme.scrollbarSliderActive,
+                    child: child!,
                   ),
-                  // Monaco shows the slider while the pointer is over the editor (and while scrolling).
-                  child: ValueListenableBuilder(
-                    valueListenable: _hovering,
-                    builder: (context, hovering, child) =>
-                        Scrollbar(controller: _scroll, thumbVisibility: hovering, child: child!),
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false, overscroll: false),
-                      child: SingleChildScrollView(
-                        controller: _scroll,
-                        physics: const ClampingScrollPhysics(),
-                        child: content,
-                      ),
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false, overscroll: false),
+                    child: SingleChildScrollView(
+                      controller: _scroll,
+                      physics: const ClampingScrollPhysics(),
+                      child: content,
                     ),
                   ),
                 ),

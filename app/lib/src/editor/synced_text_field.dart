@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -34,7 +36,7 @@ class SyncedTextField extends StatefulWidget {
   final int? minLines;
   final bool monospace;
   final Duration debounce;
-  final InputDecoration? decoration;
+  final DifyFieldDecoration? decoration;
   final TextInputType? keyboardType;
 
   @override
@@ -89,17 +91,17 @@ class _SyncedTextFieldState extends State<SyncedTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return DifyTextField(
       controller: _controller,
       focusNode: _focus,
       maxLines: widget.maxLines,
       minLines: widget.minLines,
       keyboardType: widget.keyboardType,
       style: widget.monospace ? const TextStyle(fontFamily: 'monospace', fontSize: 13) : null,
-      decoration: (widget.decoration ?? const InputDecoration()).copyWith(
+      decoration: (widget.decoration ?? const DifyFieldDecoration()).copyWith(
         labelText: widget.label,
-        isDense: true,
-        border: const OutlineInputBorder(),
+
+        outlined: true,
       ),
       onChanged: _onChanged,
       onSubmitted: (_) => _flush(),

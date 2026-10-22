@@ -62,11 +62,11 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Version history](#versions) | 2 |  |  |  |  | 2 |
 | [Accounts, sign-in & members](#accounts) | 10 |  | 6 | 2 | 1 | 19 |
 | [Settings tabs & workspace](#settings) | 3 | 4 | 5 | 3 |  | 15 |
-| [App-level pages outside the editor](#app-pages) | 16 | 8 | 6 | 4 | 2 | 36 |
+| [App-level pages outside the editor](#app-pages) | 15 | 9 | 6 | 4 | 2 | 36 |
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 2 | 1 | 1 |  | 9 |
-| **Total** | **178** | **49** | **34** | **17** | **13** | **291** |
+| **Total** | **177** | **50** | **34** | **17** | **13** | **291** |
 
 <a id="canvas"></a>
 
@@ -618,7 +618,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Studio app list: card grid, starred row, infinite scroll, skeletons, empty states | partial | Ported (30 per page, next page while has_more, starred row of 100, "All Apps", first empty state and "No apps here", the 10 s refetch of Dify's collaboration mode). Not part of dify-sf, by owner decision or because dify-sf has no such service: tags (filter, card strip, management), templates (Create from Template, the template empty-state card, Learn Dify, marketplace template import), the online editors' avatars on cards (Dify polls an endpoint dify-sf does not have), the step-by-step tour and the Snippets link. Deviation: "Edited <time>" (sort Last modified) also moves on every committed graph edit (the server bumps updated_at; Dify only on app-row changes). | spec `apps`, spec `base/infinite-scroll-sentinel`, `app/test/studio_test.dart` |
-| Studio filters: types, creators, sort, search | ported | Deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing. | spec `apps/creators-filter.spec.tsx`, spec `base/search-input`, spec `apps/list.spec.tsx` |
+| Studio filters: types, creators, sort, search | partial | Behavior is ported; the new Chinese/English local control captures expose unresolved typography/baseline differences. Whole-Studio visual parity has not been accepted. Deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing. | spec `apps/creators-filter.spec.tsx`, spec `base/search-input`, spec `apps/list.spec.tsx` |
 | Create from Blank (Workflow / Chatflow) and the app type icons | ported | Deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Configured M2a storage enables image selection, crop and authenticated upload; emoji remains available. | spec `app/create-app-modal`, spec `app/type-selector`, visual `studio-create-blank-types`, visual `studio-create-blank-types-light`, visual `studio-create-blank-preview`, visual `studio-create-blank-preview-dark`, `app/test/studio_test.dart` |
 | Import DSL: file or URL, drag and drop onto the page, DSL version confirmation | ported | Deviation: A URL is fetched by the client (dify-sf's import takes file content), so on the web it is subject to the site's CORS rules. | spec `app/create-from-dsl-modal`, spec `apps/hooks`, visual `studio-import-dsl`, visual `studio-import-dsl-dark`, visual `studio-import-dsl-dialog`, visual `studio-import-dsl-dialog-dark`, `app/test/studio_test.dart` |
 | App card actions: star, Edit info, Duplicate, Export DSL (secrets confirmation), Delete (type the name) | ported | Deviation: Open in Explore, Access config and Switch are left out (no Explore, no web-app access control, and dify-sf holds no chat / completion apps). | spec `explore/create-app-modal`, spec `app/duplicate-modal`, spec `app`, spec `apps/app-card.spec.tsx` |

@@ -474,7 +474,7 @@ class _CellInputState extends State<_CellInput> {
             : _hovered
             ? DifyColors.stateBaseHover
             : null,
-        child: TextField(
+        child: DifyTextField(
           controller: _text,
           focusNode: _focus,
           onChanged: widget.onChanged,
@@ -483,9 +483,7 @@ class _CellInputState extends State<_CellInput> {
           maxLines: 1,
           cursorColor: DifyColors.primary600, // caret-primary-600
           cursorWidth: 1,
-          decoration: InputDecoration(
-            isCollapsed: true,
-            border: InputBorder.none,
+          decoration: DifyFieldDecoration(
             contentPadding: EdgeInsets.fromLTRB(8, 6, widget.paddingRight, 6),
             hintText: widget.placeholder,
             hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),

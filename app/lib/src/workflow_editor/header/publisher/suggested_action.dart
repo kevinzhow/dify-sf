@@ -165,7 +165,7 @@ class SuggestedAction extends StatelessWidget {
           curve: Curves.easeOut,
           constraints: const BoxConstraints(minHeight: 40),
           padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
+          decoration: DifyFocusDecoration(
             color: active ? DifyColors.stateBaseHover : Colors.transparent,
             borderRadius: radius,
             boxShadow: difyFocusRing(focused && (!disabled || focusableWhenDisabled)),
@@ -229,7 +229,7 @@ class SuggestedAction extends StatelessWidget {
               final color = active ? DifyColors.textAccent : DifyColors.textTertiary;
               return Container(
                 width: 36,
-                decoration: BoxDecoration(
+                decoration: DifyFocusDecoration(
                   color: active ? DifyColors.stateBaseHover : null,
                   border: Border(
                     left: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),

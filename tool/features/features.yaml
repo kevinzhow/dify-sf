@@ -1924,7 +1924,8 @@ features:
   area: app-pages
   title: 'Studio filters: types, creators, sort, search'
   dify: [web/app/components/apps/app-type-filter.tsx, web/app/components/apps/creators-filter.tsx, web/app/components/apps/app-sort-filter.tsx, web/app/components/base/search-input]
-  status: ported
+  status: partial
+  reason: Behavior is ported; the new Chinese/English local control captures expose unresolved typography/baseline differences. Whole-Studio visual parity has not been accepted.
   deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing.
   evidence: ['spec:web/app/components/apps/__tests__/creators-filter.spec.tsx', 'spec:web/app/components/base/search-input', 'spec:web/app/components/apps/__tests__/list.spec.tsx']
   ours: [app/lib/src/studio/filters.dart, app/lib/src/studio/search_input.dart, app/lib/src/design/widgets/search_input.dart]

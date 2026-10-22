@@ -41,7 +41,7 @@ class DifyCheckboxBox extends StatelessWidget {
     return Container(
       width: 16,
       height: 16,
-      decoration: BoxDecoration(
+      decoration: DifyFocusDecoration(
         color: bg,
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(4),

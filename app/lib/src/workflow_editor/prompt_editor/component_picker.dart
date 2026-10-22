@@ -2,7 +2,6 @@
 /// prompt-option.tsx, variable-option.tsx): the workflow variables, then the special blocks and app variables.
 library;
 
-import 'package:flutter/material.dart' show Tooltip;
 import 'package:flutter/widgets.dart';
 
 import '../../design/css_metrics.dart';
@@ -171,9 +170,9 @@ class _VariableMenuItemState extends State<VariableMenuItem> {
               if (w.icon != null) Padding(padding: const EdgeInsets.only(right: 8), child: w.icon),
               Expanded(
                 // `title={title}`: the full name on hover.
-                child: Tooltip(
-                  message: w.title,
-                  waitDuration: const Duration(milliseconds: 600),
+                child: DifyTooltip(
+                  content: Text(w.title),
+                  delay: const Duration(milliseconds: 600),
                   child: Text.rich(
                     TextSpan(
                       children: [

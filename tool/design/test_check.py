@@ -59,7 +59,18 @@ class RuleTest(unittest.TestCase):
     def test_material_widgets(self):
         src = ('Radio<String>(value: v); Tooltip(message: m); IconButton(onPressed: p); DifyIconButton();'
                ' DropdownButtonFormField(items: i); InputDecoration(); _Checkbox(); x.Switch();')
-        self.assertEqual(rules('a.dart', src), ['material-widget'] * 5)
+        self.assertEqual(rules('a.dart', src), ['material-widget'] * 6)
+
+    def test_material_input_route_and_aliases_cannot_bypass_the_rule(self):
+        src = 'TextField(); InputDecoration.collapsed(hintText: x); m.MaterialPageRoute<void>(builder: b); Scaffold(); DifyTextField();'
+        self.assertEqual(rules('a.dart', src), ['material-widget'] * 4)
+
+    def test_material_allowlist_waiver_is_invalid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'allowlist.tsv'
+            path.write_text('material-widget\ta.dart\t1\tdev-shell\n')
+            _, errors = check.read_allowlist(path)
+            self.assertTrue(any('prohibited' in e for e in errors))
 
     def test_component_token(self):
         src = 'DifyColors.componentsCheckboxBgChecked; DifyColors.componentsPanelBg; DifyColors.componentsInputBgNormal;'

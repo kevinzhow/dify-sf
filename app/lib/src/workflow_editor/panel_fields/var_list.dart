@@ -400,7 +400,7 @@ class _SortHandleState extends State<_SortHandle> {
             child: Container(
               width: 24,
               height: 24,
-              decoration: BoxDecoration(
+              decoration: DifyFocusDecoration(
                 color: widget.pressed ? DifyColors.stateBaseHover : null,
                 borderRadius: BorderRadius.circular(DifyRadius.md),
                 boxShadow: difyFocusRing(_focused),

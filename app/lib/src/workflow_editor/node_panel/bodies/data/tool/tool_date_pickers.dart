@@ -126,7 +126,7 @@ class _ToolDatePickerState extends State<ToolDatePicker> {
                 builder: (context, hovered, focused) => Container(
                   height: 32,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
+                  decoration: DifyFocusDecoration(
                     color: hovered && !w.readOnly || c.isOpen
                         ? DifyColors.stateBaseHover
                         : DifyColors.componentsInputBgNormal,
@@ -279,7 +279,7 @@ class _RangeEndState extends State<_RangeEnd> {
                 height: 28,
                 padding: EdgeInsets.only(left: 4, right: clearable ? 22 : 4),
                 alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(
+                decoration: DifyFocusDecoration(
                   color: (hovered && !w.readOnly) || c.isOpen ? DifyColors.stateBaseHover : null,
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
                   boxShadow: difyFocusRing(focused),

@@ -342,7 +342,7 @@ class _Handle extends StatelessWidget {
           child: Container(
             width: 24,
             height: 24,
-            decoration: BoxDecoration(
+            decoration: DifyFocusDecoration(
               color: pressed ? DifyColors.stateBaseHover : null,
               borderRadius: BorderRadius.circular(DifyRadius.md),
               boxShadow: difyFocusRing(focusNode.hasFocus),

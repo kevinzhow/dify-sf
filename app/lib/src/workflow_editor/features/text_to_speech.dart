@@ -149,8 +149,7 @@ class FeaturePopover extends StatelessWidget {
           borderRadius: BorderRadius.circular(DifyRadius.xxl),
           boxShadow: DifyShadows.n2xl,
         ),
-        child: Material(
-          type: MaterialType.transparency,
+        child: DifySurface(
           child: scrollable
               ? SingleChildScrollView(padding: const EdgeInsets.all(16), child: content)
               : Padding(padding: const EdgeInsets.all(16), child: content),

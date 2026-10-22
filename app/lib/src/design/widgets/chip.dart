@@ -71,7 +71,7 @@ class _DifyChipState extends State<DifyChip> {
                 final chip = Container(
                   constraints: BoxConstraints(minHeight: 32, minWidth: widget.minWidth ?? 0),
                   padding: EdgeInsets.fromLTRB(8, 4, hasValue ? 24 : 8, 4),
-                  decoration: BoxDecoration(
+                  decoration: DifyFocusDecoration(
                     color: hasValue
                         ? (active
                               ? DifyColors.componentsButtonSecondaryBgHover
@@ -79,16 +79,14 @@ class _DifyChipState extends State<DifyChip> {
                         : (active ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal),
                     borderRadius: BorderRadius.circular(DifyRadius.lg),
                     border: Border.all(
-                      color: focused
-                          ? DifyColors.stateAccentSolid
-                          : hasValue
+                      color: hasValue
                           ? (active
                                 ? DifyColors.componentsButtonSecondaryBorderHover
                                 : DifyColors.componentsButtonSecondaryBorder)
                           : const Color(0x00000000),
-                      width: focused ? 2 : Css.hairline,
+                      width: Css.hairline,
                     ),
-                    boxShadow: hasValue ? DifyShadows.xs : null,
+                    boxShadow: [if (hasValue) ...DifyShadows.xs, if (focused) difyFocusRingShadow()],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,

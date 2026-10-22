@@ -1,3 +1,5 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
@@ -13,14 +15,14 @@ class VariablePickerButton extends StatefulWidget {
     required this.selfNodeId,
     required this.onPick,
     this.tooltip = 'Insert variable',
-    this.icon = Icons.data_object,
+    this.icon = 'braces-line',
   });
 
   final EditorController controller;
   final String selfNodeId;
   final void Function(OutputRef ref, int baseSeq) onPick;
   final String tooltip;
-  final IconData icon;
+  final String icon;
 
   @override
   State<VariablePickerButton> createState() => _VariablePickerButtonState();
@@ -32,14 +34,14 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
   @override
   Widget build(BuildContext context) {
     final doc = widget.controller.doc;
-    final options = <PopupMenuEntry<OutputRef>>[];
+    final options = <DifyMenuOption<OutputRef>>[];
     for (final id in doc.nodes.keys.toList()..sort()) {
       if (id == widget.selfNodeId) continue;
       final node = doc.nodes[id]!;
       final outputs = outputNames(node);
       if (outputs.isEmpty) continue;
       options.add(
-        PopupMenuItem<OutputRef>(
+        DifyMenuOption<OutputRef>(
           enabled: false,
           height: 28,
           child: Text(
@@ -50,14 +52,14 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
       );
       for (final o in outputs) {
         options.add(
-          PopupMenuItem<OutputRef>(
+          DifyMenuOption<OutputRef>(
             key: ValueKey('var-${node.id}-$o'),
             value: OutputRef(node.id, o),
             height: 32,
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                const Icon(Icons.subdirectory_arrow_right, size: 14),
+                const RemixIcon('corner-down-right-line', size: 14),
                 const SizedBox(width: 6),
                 Text(o),
               ],
@@ -66,13 +68,13 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
         );
       }
     }
-    return PopupMenuButton<OutputRef>(
+    return DifyActionMenu<OutputRef>(
       tooltip: widget.tooltip,
-      icon: Icon(widget.icon, size: 20),
+      icon: RemixIcon(widget.icon, size: 20),
       onOpened: () => _openedAt = widget.controller.seenVersion,
       onSelected: (ref) => widget.onPick(ref, _openedAt),
       itemBuilder: (_) => options.isEmpty
-          ? [const PopupMenuItem<OutputRef>(enabled: false, child: Text('No variables available'))]
+          ? [const DifyMenuOption<OutputRef>(enabled: false, child: Text('No variables available'))]
           : options,
     );
   }

@@ -604,7 +604,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                           child: Container(
                             width: 24,
                             height: 24,
-                            decoration: BoxDecoration(
+                            decoration: DifyFocusDecoration(
                               color: w.pressed ? DifyColors.stateAccentHover : null,
                               borderRadius: BorderRadius.circular(DifyRadius.md),
                               boxShadow: difyFocusRing(_handleFocused),
@@ -619,9 +619,8 @@ class _QuestionRowState extends State<_QuestionRow> {
                   ),
                 ),
                 Expanded(
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: TextField(
+                  child: DifySurface(
+                    child: DifyTextField(
                       controller: _controller,
                       focusNode: _focus,
                       autofocus: w.autofocus,
@@ -629,9 +628,7 @@ class _QuestionRowState extends State<_QuestionRow> {
                       style: difyTextStyle(DifyTw.textSmLeading36, DifyColors.textSecondary),
                       cursorColor: DifyColors.textSecondary,
                       cursorWidth: 1,
-                      decoration: InputDecoration(
-                        isCollapsed: true,
-                        border: InputBorder.none,
+                      decoration: DifyFieldDecoration(
                         contentPadding: const EdgeInsets.only(left: 6, right: 32),
                         hintText: ad('openingStatement.openingQuestionPlaceholder'),
                         hintStyle: difyTextStyle(DifyTw.textSmLeading36, DifyColors.componentsInputTextPlaceholder),

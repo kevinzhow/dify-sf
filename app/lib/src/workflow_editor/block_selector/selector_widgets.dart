@@ -6,7 +6,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Material, MaterialType;
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -866,7 +866,7 @@ class _PreviewCardScopeState extends State<PreviewCardScope> with SingleTickerPr
             key: _lastCard?.key,
             width: 224,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Material(type: MaterialType.transparency, child: _lastCard ?? const SizedBox.shrink()),
+            child: DifySurface(child: _lastCard ?? const SizedBox.shrink()),
           ),
         ),
       ),

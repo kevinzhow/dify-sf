@@ -725,16 +725,14 @@ class _ConstantFieldState extends State<_ConstantField> {
             borderRadius: BorderRadius.circular(DifyRadius.lg),
           ),
           alignment: Alignment.centerLeft,
-          child: TextField(
+          child: DifyTextField(
             controller: _text,
             focusNode: focusNode,
             readOnly: readonly,
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             onChanged: onChanged,
             style: difyTextStyle(DifyTw.text13, DifyColors.textSecondary),
-            decoration: const InputDecoration(
-              isCollapsed: true,
-              border: InputBorder.none,
+            decoration: const DifyFieldDecoration(
               contentPadding: EdgeInsets.all(8),
             ),
           ),

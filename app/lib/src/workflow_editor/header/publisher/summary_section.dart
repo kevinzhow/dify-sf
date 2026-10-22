@@ -204,7 +204,7 @@ class PublisherSummarySection extends StatelessWidget {
                       width: 16,
                       height: 16,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(
+                      decoration: DifyFocusDecoration(
                         borderRadius: BorderRadius.circular(DifyRadius.sm),
                         boxShadow: difyFocusRing(focused),
                       ),
@@ -225,7 +225,7 @@ class PublisherSummarySection extends StatelessWidget {
                       builder: (context, hovered, focused) {
                         final color = hovered ? DifyColors.textAccentSecondary : DifyColors.textAccent;
                         return Container(
-                          decoration: BoxDecoration(
+                          decoration: DifyFocusDecoration(
                             borderRadius: BorderRadius.circular(DifyRadius.sm),
                             boxShadow: difyFocusRing(focused),
                           ),

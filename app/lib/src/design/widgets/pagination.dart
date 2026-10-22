@@ -109,7 +109,7 @@ class _DifyPaginationState extends State<DifyPagination> {
     builder: (context, hovered, focused) => Container(
       width: 28,
       height: 28,
-      decoration: BoxDecoration(
+      decoration: DifyFocusDecoration(
         color: disabled
             ? DifyColors.componentsButtonSecondaryBgDisabled
             : hovered
@@ -117,16 +117,14 @@ class _DifyPaginationState extends State<DifyPagination> {
             : DifyColors.componentsButtonSecondaryBg,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
         border: Border.all(
-          color: focused
-              ? DifyColors.stateAccentSolid
-              : disabled
+          color: disabled
               ? DifyColors.componentsButtonSecondaryBorderDisabled
               : hovered
               ? DifyColors.componentsButtonSecondaryBorderHover
               : DifyColors.componentsButtonSecondaryBorder,
-          width: focused ? 2 : Css.hairline,
+          width: Css.hairline,
         ),
-        boxShadow: disabled ? null : DifyShadows.xs,
+        boxShadow: [if (!disabled) ...DifyShadows.xs, if (focused) difyFocusRingShadow()],
       ),
       child: Center(
         child: RemixIcon(
@@ -184,10 +182,10 @@ class _DifyPaginationState extends State<DifyPagination> {
                 _c('pagination.editPageNumber', {'page': page, 'totalPages': total}),
             onPressed: () => setState(() => _editing = true),
             builder: (context, hovered, focused) => DecoratedBox(
-              decoration: BoxDecoration(
+              decoration: DifyFocusDecoration(
                 color: hovered ? DifyColors.stateBaseHoverAlt : null,
                 borderRadius: BorderRadius.circular(DifyRadius.lg),
-                border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+                boxShadow: focused ? [difyFocusRingShadow()] : null,
               ),
               child: MouseRegion(cursor: SystemMouseCursors.text, child: summary),
             ),
@@ -303,14 +301,14 @@ class _PageButton extends StatelessWidget {
           height: 32,
           constraints: const BoxConstraints(minWidth: 32),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          decoration: BoxDecoration(
+          decoration: DifyFocusDecoration(
             color: hovered
                 ? DifyColors.componentsButtonGhostBgHover
                 : current
                 ? DifyColors.componentsButtonTertiaryBg
                 : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
-            border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+            boxShadow: focused ? [difyFocusRingShadow()] : null,
           ),
           child: Center(
             child: Text(

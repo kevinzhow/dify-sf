@@ -1,3 +1,6 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -72,12 +75,12 @@ class _NoticeCardState extends State<_NoticeCard> {
     final n = widget.notice;
     final scheme = Theme.of(context).colorScheme;
     final (bg, fg, icon) = switch (n.kind) {
-      NoticeKind.conflict => (Colors.amber.shade50, Colors.amber.shade900, Icons.merge_type),
-      NoticeKind.refused => (scheme.errorContainer, scheme.onErrorContainer, Icons.block),
-      NoticeKind.lost => (scheme.errorContainer, scheme.onErrorContainer, Icons.report_problem),
-      NoticeKind.info => (scheme.secondaryContainer, scheme.onSecondaryContainer, Icons.info_outline),
+      NoticeKind.conflict => (Colors.amber.shade50, Colors.amber.shade900, 'git-merge-line'),
+      NoticeKind.refused => (scheme.errorContainer, scheme.onErrorContainer, 'forbid-line'),
+      NoticeKind.lost => (scheme.errorContainer, scheme.onErrorContainer, 'error-warning-line'),
+      NoticeKind.info => (scheme.secondaryContainer, scheme.onSecondaryContainer, 'information-line'),
     };
-    return Material(
+    return DifySurface(
       elevation: 3,
       color: bg,
       borderRadius: BorderRadius.circular(8),
@@ -89,7 +92,7 @@ class _NoticeCardState extends State<_NoticeCard> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 20, color: fg),
+                RemixIcon(icon, size: 20, color: fg),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -119,13 +122,15 @@ class _NoticeCardState extends State<_NoticeCard> {
                       ),
                     ),
                   if (n.canReapply)
-                    TextButton(
+                    DifyButton(
+                      variant: DifyButtonVariant.ghost,
                       key: const Key('reapply'),
                       onPressed: () => widget.controller.reapply(n),
                       child: const Text('Re-apply on latest'),
                     ),
                   if (!n.awaitingVerdict)
-                    TextButton(
+                    DifyButton(
+                      variant: DifyButtonVariant.ghost,
                       key: const Key('discard'),
                       onPressed: () => widget.controller.removeNotice(n),
                       child: Text(n.op == null ? 'Dismiss' : 'Discard'),

@@ -206,8 +206,7 @@ class ToolSchemaModal extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 960, maxHeight: MediaQuery.sizeOf(context).height * 0.9),
-        child: Material(
-          type: MaterialType.transparency,
+        child: DifySurface(
           child: Semantics(
             container: true,
             role: SemanticsRole.dialog,

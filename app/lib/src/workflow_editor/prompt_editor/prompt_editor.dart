@@ -870,7 +870,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
     }
   }
 
-  Widget _contextMenu(BuildContext context, EditableTextState s) => AdaptiveTextSelectionToolbar.buttonItems(
+  Widget _contextMenu(BuildContext context, EditableTextState s) => DifySelectionMenu(
     anchors: s.contextMenuAnchors,
     buttonItems: [
       for (final i in s.contextMenuButtonItems)
@@ -991,7 +991,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       },
       child: DefaultSelectionStyle(
         selectionColor: chipSelected ? Colors.transparent : const Color(0xFFB4D5FE),
-        child: TextField(
+        child: DifyTextField(
           controller: controller,
           focusNode: focusNode,
           readOnly: !w.editable,
@@ -1012,7 +1012,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
           ),
           cursorColor: DifyColors.textSecondary,
           cursorWidth: 1,
-          decoration: const InputDecoration.collapsed(hintText: null),
+          decoration: const DifyFieldDecoration.collapsed(hintText: null),
           contextMenuBuilder: _contextMenu,
         ),
       ),
@@ -1074,8 +1074,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       constraints: BoxConstraints(minHeight: w.minHeight),
       child: w.height == null ? field : SizedBox(height: w.height, child: field),
     );
-    return Material(
-      type: MaterialType.transparency,
+    return DifySurface(
       child: _withShortcutPopups(
         OverlayPortal.overlayChildLayoutBuilder(
           controller: _portal,

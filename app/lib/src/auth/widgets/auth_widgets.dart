@@ -6,7 +6,6 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -528,8 +527,7 @@ class _AuthCard extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Material(
-    type: MaterialType.transparency,
+  Widget build(BuildContext context) => DifySurface(
     child: ColoredBox(
       color: DifyColors.backgroundDefaultBurn,
       child: Padding(

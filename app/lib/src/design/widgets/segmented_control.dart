@@ -139,7 +139,7 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
                             : textColor;
                         return Container(
                           padding: itemPadding,
-                          decoration: BoxDecoration(
+                          decoration: DifyFocusDecoration(
                             color: checked
                                 ? DifyColors.componentsSegmentedControlItemActiveBg
                                 : hovered && !unavailable

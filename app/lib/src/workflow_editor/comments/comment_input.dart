@@ -3,7 +3,7 @@
 library;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart' show InputBorder, InputDecoration, TextField;
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -330,7 +330,7 @@ class _MentionInputState extends State<MentionInput> {
           onKeyEvent: _key,
           canRequestFocus: false,
           skipTraversal: true,
-          child: TextField(
+          child: DifyTextField(
             controller: _text,
             focusNode: _focus,
             enabled: !off,
@@ -341,9 +341,7 @@ class _MentionInputState extends State<MentionInput> {
             maxLines: 4,
             keyboardType: TextInputType.multiline,
             onTap: () => _textChanged(),
-            decoration: InputDecoration(
-              isCollapsed: true,
-              border: InputBorder.none,
+            decoration: DifyFieldDecoration(
               contentPadding: EdgeInsets.fromLTRB(4, 4, padRight, padBottom),
               hintText: widget.placeholder ?? tw('comments.placeholder.add'),
               hintStyle: _style.copyWith(color: DifyColors.textTertiary),

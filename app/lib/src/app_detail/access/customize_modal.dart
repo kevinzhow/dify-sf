@@ -2,7 +2,6 @@
 /// on Vercel with the app's id, key and API URL, or build a front end on the API.
 library;
 
-import 'package:flutter/material.dart' show SelectableText;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -179,7 +178,7 @@ class CustomizeModal extends StatelessWidget {
                                 decoration: box.copyWith(color: DifyColors.backgroundSection),
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
-                                  child: SelectableText(
+                                  child: DifySelectableText(
                                     env,
                                     // `text-xs font-medium text-text-secondary`
                                     style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),

@@ -4,7 +4,6 @@
 /// backdrop; Escape asks to close, and so does a backdrop click unless pointer dismissal is off.
 library;
 
-import 'package:flutter/material.dart' show Material, MaterialType;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -76,8 +75,7 @@ class _ControlledOverlayState extends State<ControlledOverlay> {
           bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => widget.onClose?.call()},
           child: FocusScope(
             autofocus: true,
-            child: Material(
-              type: MaterialType.transparency,
+            child: DifySurface(
               child: Builder(builder: widget.builder),
             ),
           ),

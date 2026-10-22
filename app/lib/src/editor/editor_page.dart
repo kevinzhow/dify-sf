@@ -1,3 +1,6 @@
+import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart'
@@ -9,8 +12,6 @@ import '../app_detail/detail_page_slot.dart';
 import '../auth/auth_api.dart';
 import '../settings/model_provider/model_provider_env.dart';
 import '../auth/auth_controller.dart';
-import '../design/widgets/dialog.dart' show DifyDialogTransition, materialDialogBarrierColor, showDifyDialog;
-import '../design/widgets/toast.dart';
 import '../i18n/dify_i18n.dart';
 import '../online_events.dart';
 import '../open_url.dart';
@@ -309,7 +310,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    return Scaffold(body: _body(context, c));
+    return DifyPage(body: _body(context, c));
   }
 
   /// Shows the current state as a Dify workflow file, ready to copy into Dify's "Import DSL".
@@ -326,13 +327,13 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       context,
       barrierColor: materialDialogBarrierColor,
       transition: DifyDialogTransition.fade,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => DifyContentDialog(
         title: const Text('Dify workflow file'),
         content: SizedBox(
           width: 640,
           height: 420,
           child: SingleChildScrollView(
-            child: SelectableText(
+            child: DifySelectableText(
               yaml,
               key: const Key('export-dsl-text'),
               style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
@@ -340,7 +341,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
           ),
         ),
         actions: [
-          TextButton(
+          DifyButton(
+            variant: DifyButtonVariant.ghost,
             key: const Key('export-dsl-copy'),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: yaml));
@@ -351,7 +353,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
             },
             child: const Text('Copy'),
           ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          DifyButton(variant: DifyButtonVariant.ghost, onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );
@@ -368,22 +370,23 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     final access = _access;
     return [
       if (access.canEdit)
-        PopupMenuButton<String>(
+        DifyActionMenu<String>(
           key: const Key('add-node-menu'),
           tooltip: 'Add node',
-          icon: const Icon(Icons.add_box_outlined),
+          icon: const RemixIcon('add-box-line'),
           onSelected: (type) =>
               c.addNode(type, x: 120 + (c.doc.nodes.length % 5) * 40, y: 280 + (c.doc.nodes.length % 4) * 40),
           itemBuilder: (_) => [
             for (final t in const ['start', 'llm', 'code', 'answer'])
-              PopupMenuItem(value: t, child: Text('Add $t node')),
+              DifyMenuOption(value: t, child: Text('Add $t node')),
           ],
         ),
       if (widget.backend.supportsDifyDsl && access.canImportExportDsl)
-        IconButton(
+        DifyIconButton(
+          size: DifyIconButtonSize.lg,
           key: const Key('export-dsl'),
-          tooltip: 'Export as a Dify workflow file',
-          icon: const Icon(Icons.file_download_outlined),
+          label: 'Export as a Dify workflow file',
+          icon: const RemixIcon('download-line'),
           onPressed: () => unawaited(_exportDifyDsl(context)),
         ),
       if (widget.extraActions != null) ...widget.extraActions!(context, c, () => unawaited(_crashAndRestart())),
@@ -423,7 +426,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off, size: 48, color: Colors.black38),
+            const RemixIcon('cloud-off-line', size: 48, color: Colors.black38),
             const SizedBox(height: 12),
             Text('Could not open "${widget.docId}"', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
@@ -436,12 +439,12 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _open, child: const Text('Retry')),
+            DifyButton(variant: DifyButtonVariant.primary, onPressed: _open, child: const Text('Retry')),
           ],
         ),
       );
     }
-    if (c == null) return const Center(child: CircularProgressIndicator());
+    if (c == null) return const Center(child: DifyLoading());
     if (!c.ready) {
       // Until the document arrives: the session controls (offline, reconnect) and its notices stay reachable.
       return Stack(
@@ -449,7 +452,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
           const Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [CircularProgressIndicator(), SizedBox(height: 12), Text('Loading the document…')],
+              children: [DifyLoading(), SizedBox(height: 12), Text('Loading the document…')],
             ),
           ),
           Positioned(

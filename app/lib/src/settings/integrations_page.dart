@@ -9,7 +9,7 @@ library;
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart' show Colors, Material, MaterialType;
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -68,8 +68,7 @@ class IntegrationsSettingModal extends StatelessWidget {
   Widget build(BuildContext context) {
     void close() => onCancel != null ? onCancel!() : Navigator.of(context).maybePop();
     final title = _t('settings.integrations');
-    return Material(
-      type: MaterialType.transparency,
+    return DifySurface(
       child: Semantics(
         container: true,
         scopesRoute: true,

@@ -208,7 +208,7 @@ class UploadMethodRadioGroup extends StatelessWidget {
                 height: 32,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
+                decoration: DifyFocusDecoration(
                   color: s.checked
                       ? DifyColors.componentsOptionCardOptionSelectedBg
                       : hovered

@@ -7,7 +7,7 @@ library;
 
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart' show Colors, Material, MaterialType;
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -130,8 +130,7 @@ class _AccountSettingState extends State<AccountSetting> {
     final items = _items;
     final active = items.firstWhere((i) => i.tab == _tab, orElse: () => items.first);
     final sidebarWidth = mobile ? 44.0 : 224.0;
-    return Material(
-      type: MaterialType.transparency,
+    return DifySurface(
       child: Semantics(
         container: true,
         scopesRoute: true,

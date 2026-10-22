@@ -116,7 +116,7 @@ class VersionHistoryFilterItem extends StatelessWidget {
       onPressed: () => onClick(item.key),
       builder: (context, hovered, focused) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
+        decoration: DifyFocusDecoration(
           color: hovered ? DifyColors.stateBaseHover : null,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
           boxShadow: difyFocusRing(focused),
@@ -541,7 +541,7 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
                 w.onClick(item);
               },
               builder: (context, hovered, focused) => Container(
-                decoration: BoxDecoration(
+                decoration: DifyFocusDecoration(
                   borderRadius: BorderRadius.circular(DifyRadius.lg),
                   boxShadow: difyFocusRing(focused),
                 ),

@@ -101,31 +101,6 @@ component-token	workflow_editor/variable_panels/chat_variable_modal.dart	1	todo:
 component-token	workflow_editor/variable_panels/chat_variable_values.dart	2	todo:step3
 component-token	workflow_editor/variable_panels/panel_kit.dart	7	todo:step3
 dify-class	workflow_editor/header/publisher/version_info_modal.dart	1	todo:step2
-material-widget	demo/demo_backend.dart	1	todo:step3
-material-widget	editor/config_editor.dart	13	dev-shell
-material-widget	editor/editor_page.dart	8	dev-shell
-material-widget	editor/notice_overlay.dart	2	dev-shell
-material-widget	editor/status_bar.dart	2	dev-shell
-material-widget	editor/synced_text_field.dart	1	dev-shell
-material-widget	editor/variable_picker.dart	1	dev-shell
-material-widget	home_page.dart	8	dev-shell
-material-widget	settings/members/email_recipients_field.dart	1	todo:step3
-material-widget	workflow_editor/comments/comment_input.dart	1	todo:step3
-material-widget	workflow_editor/features/conversation_opener.dart	1	todo:step3
-material-widget	workflow_editor/node_panel/bodies/core/if_else_panel.dart	1	todo:step3
-material-widget	workflow_editor/node_panel/bodies/data/http/http_dialogs.dart	1	todo:step3
-material-widget	workflow_editor/node_panel/bodies/data/human_input/email_config.dart	2	todo:step3
-material-widget	workflow_editor/node_panel/bodies/data/list_operator/list_operator_widgets.dart	1	todo:step3
-material-widget	workflow_editor/node_panel/bodies/data/loop/loop_conditions.dart	1	todo:step3
-material-widget	workflow_editor/node_panel/bodies/llm/agent_v2_outputs.dart	1	todo:step3
-material-widget	workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart	1	todo:step3
-material-widget	workflow_editor/panel_fields/form_controls.dart	2	todo:step3
-material-widget	workflow_editor/panel_fields/var_reference_picker.dart	1	todo:step3
-material-widget	workflow_editor/prompt_editor/component_picker.dart	1	todo:step3
-material-widget	workflow_editor/variable_inspect/panel.dart	1	todo:step3
-material-widget	workflow_editor/variable_inspect/value_content.dart	2	todo:step3
-material-widget	workflow_editor/variable_panels/chat_variable_values.dart	1	todo:step3
-material-widget	workflow_editor/variable_panels/panel_kit.dart	1	todo:step3
 raw-text-style	app_detail/overview/app_chart_canvas.dart	2	third-party:echarts axis/tooltip metrics, including dynamically measured number text sizes and account font family
 raw-text-style	cards/bodies/note_text.dart	1	legit:user-authored Lexical rich text font size and formatting; not fixed application typography
 raw-text-style	editor/config_editor.dart	2	dev-shell

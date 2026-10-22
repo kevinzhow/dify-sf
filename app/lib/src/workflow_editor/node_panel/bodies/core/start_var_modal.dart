@@ -382,8 +382,7 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
   @override
   Widget build(BuildContext context) {
     final maxHeight = MediaQuery.sizeOf(context).height - 32;
-    return Material(
-      type: MaterialType.transparency,
+    return DifySurface(
       child: CallbackShortcuts(
         bindings: {const SingleActivator(LogicalKeyboardKey.escape): widget.onClose},
         child: Focus(
