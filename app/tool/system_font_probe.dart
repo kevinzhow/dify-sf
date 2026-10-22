@@ -1,6 +1,10 @@
 // Standalone research probe. It does not select this path for production text.
 // Build: tool/build_web.sh --target tool/system_font_probe.dart --output <dir>
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
+
+
+import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 
 import 'package:dify_sf_app/src/design/dify_theme.dart';
@@ -16,23 +20,37 @@ const _samples = [
   '中文 English 混排　用户名称',
 ];
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final mode = Uri.base.queryParameters['fallback'] ?? 'current';
+  if (mode == 'file') {
+    final loader = FontLoader('DifyFallbackProbe');
+    final response = await http.get(Uri.base.resolve('font-probe.otf'));
+    if (response.statusCode != 200) throw StateError('Probe font HTTP ${response.statusCode}');
+    loader.addFont(Future.value(ByteData.sublistView(response.bodyBytes)));
+    await loader.load();
+  }
   cardFontFamily = 'Noto Sans';
   runApp(
     DifyApplication(
       theme: difyTheme(fontFamily: 'Noto Sans'),
-      home: const _Probe(),
+      home: _Probe(mode: mode),
       title: 'Dify system font research probe',
     ),
   );
 }
 
 class _Probe extends StatelessWidget {
-  const _Probe();
+  const _Probe({required this.mode});
+  final String mode;
   @override
   Widget build(BuildContext context) {
     final lang = Uri.base.queryParameters['lang'] ?? 'zh-Hans';
+    final fallback = switch (mode) {
+      'name' => const ['DifyCssLocal', 'Noto Sans CJK JP', 'PingFang SC', 'Microsoft YaHei'],
+      'file' => const ['DifyFallbackProbe'],
+      _ => const <String>[],
+    };
     final locale = Locale.fromSubtags(
       languageCode: lang.split('-').first,
       scriptCode: lang.contains('Hans')
@@ -46,7 +64,7 @@ class _Probe extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(16),
-            child: Text('系统字体研究原型：左边浏览器原生文字，右边当前 Flutter 文字。不会读取或上传字体文件。', style: TextStyle(fontSize: 16, height: 1.5)),
+            child: Text('系统字体研究原型：左边浏览器原生文字，右边当前 Flutter 文字。不读取或上传本机字体文件。', style: TextStyle(fontSize: 16, height: 1.5)),
           ),
           Expanded(
             child: Row(
@@ -97,7 +115,10 @@ class _Probe extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('当前 Flutter / Noto Sans ($lang)', style: const TextStyle(fontSize: 18, height: 28 / 18)),
+                          Text(
+                            'Flutter / Noto Sans ($lang, $mode)',
+                            style: const TextStyle(fontSize: 18, height: 28 / 18),
+                          ),
                           const SizedBox(height: 16),
                           for (final size in [13.0, 14.0, 16.0])
                             for (final text in _samples)
@@ -112,6 +133,7 @@ class _Probe extends StatelessWidget {
                                       locale: locale,
                                       style: TextStyle(
                                         fontSize: size,
+                                        fontFamilyFallback: fallback,
                                         fontWeight: FontWeight.w400,
                                         height:
                                             (size == 13

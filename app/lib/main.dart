@@ -6,6 +6,7 @@ import 'src/canvas/workflow_canvas.dart';
 import 'src/cards/dify_cards.dart';
 import 'src/design/dify_icon.dart';
 import 'src/design/dify_theme_mode.dart';
+import 'src/design/platform_input.dart';
 import 'src/i18n/dify_i18n.dart';
 import 'src/home_page.dart';
 import 'src/auth/auth_api.dart' show TokenStore;
@@ -19,6 +20,7 @@ import 'src/settings.dart';
 /// are fine: each claims its own journal slot.
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDifyPlatformInput();
   final settings = await AppSettings.load();
   final options =
       (kIsWeb

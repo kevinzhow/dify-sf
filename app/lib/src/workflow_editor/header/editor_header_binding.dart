@@ -14,7 +14,7 @@ import 'header_data.dart';
 ///
 /// * "Auto-Saved HH:mm:ss" ([WorkflowStore.draftUpdatedAt]) is when the server last acknowledged one of our edits
 ///   (initially, when the document first loaded); "Syncing data…" ([WorkflowStore.isSyncingWorkflowDraft]) shows
-///   while edits are unacknowledged.
+///   for sustained unacknowledged edits. Brief per-operation acknowledgements must not flash the header.
 /// * [graph] holds the nodes and the checklist (Dify's useChecklist over the document, also mirrored to the store's
 ///   `checklistItems`), recomputed when the document changes.
 /// * [syncWorkflowDraft] is Dify's draft-save barrier before publishing: it waits until every edit is acknowledged.
@@ -36,6 +36,31 @@ class EditorHeaderBinding {
   final graph = ValueNotifier(WorkflowGraphFacts.empty);
   Document? _doc;
   final _idle = <Completer<bool>>[];
+  Timer? _showSync, _hideSync;
+
+  // Presentation only: the save barrier below always reads the actual pending operations.
+  // A fast acknowledgement stays silent; short gaps in a longer transfer keep one stable status.
+  void _syncPresentation(bool pending) {
+    if (pending) {
+      _hideSync?.cancel();
+      _hideSync = null;
+      if (!store.isSyncingWorkflowDraft.value && _showSync == null) {
+        _showSync = Timer(const Duration(milliseconds: 500), () {
+          _showSync = null;
+          if (controller.status.pending > 0) store.setIsSyncingWorkflowDraft(true);
+        });
+      }
+    } else {
+      _showSync?.cancel();
+      _showSync = null;
+      if (store.isSyncingWorkflowDraft.value && _hideSync == null) {
+        _hideSync = Timer(const Duration(milliseconds: 250), () {
+          _hideSync = null;
+          if (controller.status.pending == 0) store.setIsSyncingWorkflowDraft(false);
+        });
+      }
+    }
+  }
 
   void _saved() => store.setDraftUpdatedAt(DateTime.now().millisecondsSinceEpoch ~/ 1000);
 
@@ -43,7 +68,7 @@ class EditorHeaderBinding {
     if (!controller.ready) return;
     if (store.draftUpdatedAt.value == 0) _saved();
     final pending = controller.status.pending > 0;
-    store.setIsSyncingWorkflowDraft(pending);
+    _syncPresentation(pending);
     if (!pending) {
       for (final c in _idle) {
         c.complete(true);
@@ -94,6 +119,8 @@ class EditorHeaderBinding {
   void cancelSelection() => controller.selectNode(null);
 
   void dispose() {
+    _showSync?.cancel();
+    _hideSync?.cancel();
     controller.removeListener(_update);
     unawaited(_events.cancel());
     for (final c in _idle) {

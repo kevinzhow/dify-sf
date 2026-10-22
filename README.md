@@ -10,12 +10,12 @@ Web release builds use full Dart Wasm + skwasm: run `tool/build_web.sh`. Browser
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-291 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+292 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
 | ported | 177 |
-| partial | 50 |
+| partial | 51 |
 | not ported | 34 |
 | n/a | 17 |
 | dify-sf only | 13 |

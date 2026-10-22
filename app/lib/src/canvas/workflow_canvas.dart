@@ -436,86 +436,90 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = constraints.biggest;
-        if (size != view.viewport) {
-          final old = view.viewport;
-          view.viewport = size;
-          // Like React Flow, a resize keeps the top-left corner of the view where it is (not the middle).
-          if (!old.isEmpty) {
-            view.shiftCenterDuringLayout(Offset(size.width - old.width, size.height - old.height) / (2 * view.scale));
+    // React Flow nodes are drag targets (user-select:none); embedded text editors
+    // still own their EditableText selection. Page text outside the canvas is selectable.
+    return SelectionContainer.disabled(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.biggest;
+          if (size != view.viewport) {
+            final old = view.viewport;
+            view.viewport = size;
+            // Like React Flow, a resize keeps the top-left corner of the view where it is (not the middle).
+            if (!old.isEmpty) {
+              view.shiftCenterDuringLayout(Offset(size.width - old.width, size.height - old.height) / (2 * view.scale));
+            }
+            if (CanvasDefaults.reportRect) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final box = context.findRenderObject() as RenderBox?;
+                if (box == null || !box.hasSize) return;
+                final o = box.localToGlobal(Offset.zero);
+                debugPrint('CANVAS_RECT ${o.dx},${o.dy},${box.size.width},${box.size.height}');
+              });
+            }
+            if (!_fitted && graph.length > 0) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _fit() : null);
+            }
+            WidgetsBinding.instance.addPostFrameCallback((_) => a11y.viewMoved());
           }
-          if (CanvasDefaults.reportRect) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final box = context.findRenderObject() as RenderBox?;
-              if (box == null || !box.hasSize) return;
-              final o = box.localToGlobal(Offset.zero);
-              debugPrint('CANVAS_RECT ${o.dx},${o.dy},${box.size.width},${box.size.height}');
-            });
-          }
-          if (!_fitted && graph.length > 0) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _fit() : null);
-          }
-          WidgetsBinding.instance.addPostFrameCallback((_) => a11y.viewMoved());
-        }
-        return Focus(
-          focusNode: _focus,
-          // Keys typed into a live card (the note editor) are not the canvas's.
-          onKeyEvent: (node, e) {
-            if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
-            _interacting();
-            return input.key(node, e);
-          },
-          child: MouseRegion(
-            onExit: input.exit,
-            child: Listener(
-              onPointerDown: (e) {
-                if (input.claimed(e)) return;
-                _interacting();
-                _focus.requestFocus();
-                input.down(e);
-              },
-              onPointerMove: input.move,
-              onPointerUp: input.up,
-              onPointerCancel: input.up,
-              onPointerHover: input.hover,
-              onPointerSignal: input.signal,
-              onPointerPanZoomStart: input.panZoomStart,
-              onPointerPanZoomUpdate: input.panZoomUpdate,
-              behavior: HitTestBehavior.opaque,
-              child: ClipRect(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CanvasBackground(key: const Key('canvas-background'), view: view),
-                    renderer.build(context),
-                    IgnorePointer(
-                      child: ValueListenableBuilder<Rect?>(
-                        valueListenable: input.marquee,
-                        builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
+          return Focus(
+            focusNode: _focus,
+            // Keys typed into a live card (the note editor) are not the canvas's.
+            onKeyEvent: (node, e) {
+              if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
+              _interacting();
+              return input.key(node, e);
+            },
+            child: MouseRegion(
+              onExit: input.exit,
+              child: Listener(
+                onPointerDown: (e) {
+                  if (input.claimed(e)) return;
+                  _interacting();
+                  _focus.requestFocus();
+                  input.down(e);
+                },
+                onPointerMove: input.move,
+                onPointerUp: input.up,
+                onPointerCancel: input.up,
+                onPointerHover: input.hover,
+                onPointerSignal: input.signal,
+                onPointerPanZoomStart: input.panZoomStart,
+                onPointerPanZoomUpdate: input.panZoomUpdate,
+                behavior: HitTestBehavior.opaque,
+                child: ClipRect(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CanvasBackground(key: const Key('canvas-background'), view: view),
+                      renderer.build(context),
+                      IgnorePointer(
+                        child: ValueListenableBuilder<Rect?>(
+                          valueListenable: input.marquee,
+                          builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
+                        ),
                       ),
-                    ),
-                    // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
-                    IgnorePointer(
-                      child: ValueListenableBuilder<(Offset, Offset)?>(
-                        valueListenable: input.connectLine,
-                        builder: (context, line, _) => CustomPaint(
-                          painter: ConnectionLineMarkerPainter(
-                            line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                      // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
+                      IgnorePointer(
+                        child: ValueListenableBuilder<(Offset, Offset)?>(
+                          valueListenable: input.connectLine,
+                          builder: (context, line, _) => CustomPaint(
+                            painter: ConnectionLineMarkerPainter(
+                              line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    a11y.build(),
-                    CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
-                  ],
+                      a11y.build(),
+                      CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

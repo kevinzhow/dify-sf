@@ -354,9 +354,11 @@ class _DifyPressableState extends State<DifyPressable> {
               onTapUp: _enabled ? (_) => setState(() => _pressed = false) : null,
               onTapCancel: _enabled ? () => setState(() => _pressed = false) : null,
               onTap: _enabled ? _activate : null,
-              child: widget.semanticLabel == null
-                  ? widget.builder(context, _hovered || _pressed, _focused)
-                  : ExcludeSemantics(child: widget.builder(context, _hovered || _pressed, _focused)),
+              child: SelectionContainer.disabled(
+                child: widget.semanticLabel == null
+                    ? widget.builder(context, _hovered || _pressed, _focused)
+                    : ExcludeSemantics(child: widget.builder(context, _hovered || _pressed, _focused)),
+              ),
             ),
           ),
         ),

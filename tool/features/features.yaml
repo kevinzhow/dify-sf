@@ -659,7 +659,7 @@ features:
   title: 'Header: layout, editing title (Auto-Saved / Syncing), scroll to selected node'
   dify: [web/app/components/workflow/header/index.tsx, web/app/components/workflow/header/editing-title.tsx, web/app/components/workflow/header/scroll-to-selected-node-button.tsx]
   status: ported
-  deviation: The auto-saved line opens dify-sf's session menu (link state, unsaved edits, seq); 'Syncing' means edits await the server's acknowledgement.
+  deviation: The auto-saved line opens dify-sf's session menu (link state, unsaved edits, seq); 'Syncing' reports sustained unacknowledged edits after 500ms and clears after a 250ms quiet gap; the publishing barrier always uses actual pending operations.
   evidence: ['spec:web/app/components/workflow/header', visual:editor-basic-llm]
   ours: [app/lib/src/workflow_editor/header/workflow_header.dart, app/lib/src/workflow_editor/header/titles.dart, app/lib/src/workflow_editor/dify_editor.dart]
 - id: header.online-users
@@ -668,7 +668,7 @@ features:
   dify: [web/app/components/workflow/header/online-users.tsx]
   status: partial
   reason: The widget is ported, but dify-sf has no presence of other users yet, so it shows the signed-in user only and there is no cursor to jump to.
-  evidence: [app/test/workflow_header_binding_test.dart]
+  evidence: [app/test/workflow_header_binding_test.dart, app/test/dify_spec/workflow/header/online_users_geometry_test.dart]
   ours: [app/lib/src/workflow_editor/header/online_users.dart]
 - id: header.run-mode
   area: header
@@ -2363,3 +2363,12 @@ features:
   deviation: 'Local persistent directory plus Postgres metadata; configuration-only signing secret, default 300-second Dify signatures, ranges and safe attachment delivery. UTF-8 text preview is limited to plain formats; PDF/Office extraction and the document-extractor runtime remain unported and explicitly return unsupported. M2b runtime file values and vision are not advertised by this milestone.'
   evidence: [packages/collab_client/test/files_test.dart, app/test/design/app_icon_picker_test.dart, app/integration_test/files_flow_test.dart]
   ours: [packages/collab_client/lib/src/files_api.dart, packages/collab_client/lib/src/transport/http_app_detail_api.dart, app/lib/src/files/upload_service.dart, app/lib/src/home_page.dart, app/lib/src/app_detail/access/site_settings_modal.dart]
+
+- id: design.text-selection
+  area: design
+  title: 'Page text selection and copy with a shared Dify context menu'
+  dify: [web/app/components/base/markdown/index.tsx]
+  status: partial
+  reason: Pages, dialogs and drawers use a shared selection region for plain/rich text and Markdown, preserving block separators and local input editing. Canvas drag targets and buttons exclude passive text selection. Full virtualized-list, table-copy and browser/input-method parity is not yet accepted.
+  evidence: [app/test/design/page_selection_test.dart, app/test/workflow_header_sync_feedback_test.dart]
+  ours: [app/lib/src/design/widgets/selection.dart, app/lib/src/design/widgets/page.dart, app/lib/src/design/widgets/page_route.dart, app/lib/src/design/widgets/dialog.dart, app/lib/src/design/widgets/drawer.dart, app/lib/src/design/platform_input.dart]

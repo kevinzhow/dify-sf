@@ -258,19 +258,22 @@ class _NameTip extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => DifyBlurredBox(
-    blur: 10,
-    borderRadius: BorderRadius.circular(DifyRadius.md),
-    decoration: BoxDecoration(
-      color: DifyColors.componentsTooltipBg,
-      border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-      borderRadius: BorderRadius.circular(DifyRadius.md),
-      boxShadow: DifyShadows.lg,
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 220 - 24, minHeight: 28),
-      child: Center(widthFactor: 1, child: child),
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 220),
+    child: SizedBox(
+      height: 28,
+      child: DifyBlurredBox(
+        blur: 10,
+        borderRadius: BorderRadius.circular(DifyRadius.md),
+        decoration: BoxDecoration(
+          color: DifyColors.componentsTooltipBg,
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+          borderRadius: BorderRadius.circular(DifyRadius.md),
+          boxShadow: DifyShadows.lg,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Center(widthFactor: 1, heightFactor: 1, child: child),
+      ),
     ),
   );
 }

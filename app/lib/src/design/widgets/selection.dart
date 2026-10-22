@@ -2,9 +2,85 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show SelectedContent, Selectable, MatrixUtils;
 
 import '../dify_tokens.g.dart';
 import 'widgets.dart';
+
+/// One selection region per page/dialog, so ordinary Text and Markdown Text.rich
+/// support cross-paragraph selection. EditableText keeps its own editing selection.
+class DifySelectionRegion extends StatefulWidget {
+  const DifySelectionRegion({super.key, required this.child, this.onSelectionChanged});
+  final Widget child;
+  final ValueChanged<SelectedContent?>? onSelectionChanged;
+
+  @override
+  State<DifySelectionRegion> createState() => _DifySelectionRegionState();
+}
+
+class _DifySelectionRegionState extends State<DifySelectionRegion> {
+  final _blocks = _DifySelectionDelegate();
+  @override
+  void dispose() {
+    _blocks.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SelectionArea(
+    onSelectionChanged: widget.onSelectionChanged,
+    contextMenuBuilder: (context, state) => DifySelectionMenu(
+      anchors: state.contextMenuAnchors,
+      buttonItems: state.contextMenuButtonItems,
+    ),
+    child: SelectionContainer(delegate: _blocks, child: widget.child),
+  );
+}
+
+/// Flutter concatenates separate Text widgets without separators. Keep inline
+/// fragments together, but preserve a line break between vertically distinct
+/// selected blocks instead of copying "first paragraphsecond paragraph".
+class _DifySelectionDelegate extends StaticSelectionContainerDelegate {
+  Iterable<Selectable> _leaves(Iterable<Selectable> children) sync* {
+    for (final child in children) {
+      // Scrollable installs its own selection container. Preserve boundaries
+      // within it too, using the public container/delegate API.
+      if (child is State<SelectionContainer>) {
+        final delegate = (child as State<SelectionContainer>).widget.delegate;
+        if (delegate is MultiSelectableSelectionContainerDelegate && delegate != this) {
+          yield* _leaves(delegate.selectables);
+          continue;
+        }
+      }
+      yield child;
+    }
+  }
+
+  @override
+  SelectedContent? getSelectedContent() {
+    final result = StringBuffer();
+    Rect? previous;
+    var endsWithNewline = false;
+    for (final child in _leaves(selectables)) {
+      final text = child.getSelectedContent()?.plainText;
+      if (text == null || text.isEmpty) continue;
+      final rects = child.value.selectionRects;
+      final transform = child.getTransformTo(null);
+      final first = rects.isEmpty ? null : MatrixUtils.transformRect(transform, rects.first);
+      if (previous != null &&
+          first != null &&
+          first.top >= previous.bottom - 0.5 &&
+          !endsWithNewline &&
+          !text.startsWith('\n')) {
+        result.write('\n');
+      }
+      result.write(text);
+      endsWithNewline = text.endsWith('\n');
+      if (rects.isNotEmpty) previous = MatrixUtils.transformRect(transform, rects.last);
+    }
+    return result.isEmpty ? null : SelectedContent(plainText: result.toString());
+  }
+}
 
 Widget difySelectionToolbar(BuildContext context, EditableTextState state) => DifySelectionMenu(
   anchors: state.contextMenuAnchors,

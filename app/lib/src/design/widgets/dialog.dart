@@ -65,7 +65,7 @@ Future<T?> showDifyDialog<T>(
     DifyDialogTransition.none => child,
   },
   pageBuilder: (context, _, _) => !closeOnEscape
-      ? FocusScope(autofocus: true, child: builder(context))
+      ? FocusScope(autofocus: true, child: DifySelectionRegion(child: builder(context)))
       : Shortcuts(
           shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
           child: Actions(
@@ -77,7 +77,7 @@ Future<T?> showDifyDialog<T>(
                 },
               ),
             },
-            child: FocusScope(autofocus: true, child: builder(context)),
+            child: FocusScope(autofocus: true, child: DifySelectionRegion(child: builder(context))),
           ),
         ),
 );

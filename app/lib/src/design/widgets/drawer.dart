@@ -49,7 +49,7 @@ Future<T?> showDifyDrawer<T>(
         alignment: Alignment.centerRight,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
-          child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop()),
+          child: DifySelectionRegion(child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop())),
         ),
       ),
     ),

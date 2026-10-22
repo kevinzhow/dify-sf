@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../dify_tokens.g.dart';
+import 'selection.dart';
 
 /// Inert host for text selection/overlays; it supplies no Material component
 /// padding, shape, elevation or tint. Dify call sites own their CSS surface.
@@ -57,7 +58,7 @@ class DifyApplication extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: title,
-    home: home,
+    home: DifySelectionRegion(child: home),
     theme: theme,
     navigatorKey: navigatorKey,
     builder: builder,
