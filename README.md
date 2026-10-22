@@ -19,12 +19,12 @@ yet complete. The sections below describe configuration and the supported bounda
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-291 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
+292 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
 
 | Status | Features |
 |---|---|
 | ported | 177 |
-| partial | 50 |
+| partial | 51 |
 | not ported | 34 |
 | n/a | 17 |
 | dify-sf only | 13 |
