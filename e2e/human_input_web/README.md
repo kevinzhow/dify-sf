@@ -16,6 +16,10 @@ Python Playwright and its Chromium browser. Use the machine's agreed resource
 wrapper; the fixture separately limits its own containers. Ports default to
 localhost 19092/18992 and can be changed with `--server-port`/`--web-port`.
 
+Use `--production-image --image <release-image>` to test the shipped entrypoint and
+its bundled binary/model catalog instead; `--runtime-cache` is unnecessary then.
+The image's default user is preserved in this mode.
+
 The light-theme case kills the server while a form is open, attempts an actual
 submit while offline, starts another server process against the same private
 database, and waits for the browser's events request to reconnect. A database

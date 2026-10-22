@@ -24,14 +24,16 @@ from playwright.sync_api import sync_playwright
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--runtime-cache', type=Path, required=True)
+    parser.add_argument('--runtime-cache', type=Path)
     parser.add_argument('--web-build', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--image', default='dify-sf-dev:local')
+    parser.add_argument('--production-image', action='store_true', help='Use the image entrypoint and bundled binary instead of a mounted release cache')
     parser.add_argument('--server-port', type=int, default=19092)
     parser.add_argument('--web-port', type=int, default=18992)
     args = parser.parse_args()
-    assert (args.runtime_cache / 'release/collab-server').is_file()
+    if not args.production_image:
+        assert args.runtime_cache and (args.runtime_cache / 'release/collab-server').is_file()
     assert (args.web_build / 'main.dart.wasm').is_file()
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -81,17 +83,23 @@ def main():
 
     def start(name):
         names.append(name)
-        command('docker', 'run', '-d', '--name', name, '--label', 'raft.owner=Winnie', '--network', net,
-                '--memory', '1g', '--cpus', '.75', '--user', str(os.getuid()) + ':' + str(os.getgid()),
+        argv = ['docker', 'run', '-d', '--name', name, '--label', 'raft.owner=Winnie', '--network', net,
+                '--memory', '1g', '--cpus', '.75',
+                *([] if args.production_image else ['--user', str(os.getuid()) + ':' + str(os.getgid())]),
                 '-e', 'HOME=/tmp', '-e', 'COLLAB_DB_HOST=' + pg, '-e', 'COLLAB_DB_USER=collab',
                 '-e', 'COLLAB_DB_PASSWORD=collab', '-e', 'COLLAB_DB_NAME=collab',
                 '-e', 'COLLAB_HTTP_HOST=0.0.0.0', '-e', 'COLLAB_HTTP_PORT=8080',
                 '-e', 'COLLAB_HUMAN_INPUT_WEB_ENABLED=true', '-e', 'COLLAB_HUMAN_INPUT_EMAIL_ENABLED=false',
                 '-e', 'COLLAB_FILES_DIRECTORY=/tmp/uploads', '-e', 'COLLAB_CORS_ALLOWED_ORIGINS=' + site,
-                '-p', '127.0.0.1:' + str(args.server_port) + ':8080',
-                '-v', str(root / 'server') + ':/work:ro',
-                '-v', str(args.runtime_cache.resolve()) + ':/work/.build:ro',
-                '-w', '/work', args.image, '.build/release/collab-server')
+                '-p', '127.0.0.1:' + str(args.server_port) + ':8080']
+        if args.production_image:
+            # Exercise the shipped entrypoint and its bundled model catalog.
+            argv += [args.image]
+        else:
+            argv += ['-v', str(root / 'server') + ':/work:ro',
+                     '-v', str(args.runtime_cache.resolve()) + ':/work/.build:ro',
+                     '-w', '/work', args.image, '.build/release/collab-server']
+        command(*argv)
         for _ in range(100):
             try:
                 if request('GET', '/v1/setup', authenticated=False)[0] == 200:
