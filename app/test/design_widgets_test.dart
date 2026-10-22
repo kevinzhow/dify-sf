@@ -97,7 +97,13 @@ void main() {
         find.descendant(of: find.byType(DifyButtonSurface), matching: find.byType(DecoratedBox)).first,
       );
       final shadows = (box.decoration as BoxDecoration).boxShadow!;
-      expect(shadows.last, BoxShadow(spreadRadius: 2, color: DifyColors.stateAccentSolid));
+      expect(
+        box.decoration,
+        isA<DifyFocusDecoration>(),
+        reason: 'CSS ring paints outside without tinting the interior',
+      );
+      expect(shadows.last.spreadRadius, 2);
+      expect(shadows.last.color, DifyColors.stateAccentSolid);
       await t.sendKeyEvent(LogicalKeyboardKey.enter);
       expect(taps, 1);
     });

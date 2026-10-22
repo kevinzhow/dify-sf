@@ -110,7 +110,7 @@ class _CanvasPlusButtonsState extends State<CanvasPlusButtons> {
     final c = widget.canvas, graph = c.graph;
     if (graph == null) return const SizedBox.shrink();
     return ListenableBuilder(
-      listenable: Listenable.merge([c.view, c.selection, c.selection.hoveredEdge, widget.controller]),
+      listenable: Listenable.merge([c.view, c.visualChanges, c.selection, c.selection.hoveredEdge, widget.controller]),
       builder: (context, _) {
         final hovered = {?c.selection.hovered, if (c.selection.nodes.length == 1) c.selection.nodes.first};
         final hoveredEdge = c.selection.hoveredEdge.value;

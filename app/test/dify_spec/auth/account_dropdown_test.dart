@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 // dify-spec: web/app/components/header/account-dropdown/__tests__/index.spec.tsx
 import 'package:dify_sf_app/src/auth/account_dropdown.dart';
 import 'package:dify_sf_app/src/auth/auth_api.dart';
@@ -83,6 +84,33 @@ void main() {
       );
       expect(find.text('common.settings.preferences'), findsOneWidget);
       expect(find.text('common.account.appearanceLabel'), findsOneWidget);
+    });
+
+    testWidgets('pointer can enter the Appearance submenu and linger on every option', (t) async {
+      final theme = AppTheme(DifyThemeMode.system, remember: false);
+      addTearDown(theme.dispose);
+      await renderAuth(
+        t,
+        await authOn(RecordingAuthApi()),
+        _atBottom(const AccountSection(account: _profile)),
+        theme: theme,
+      );
+      await t.tap(find.byKey(const ValueKey('account-trigger')));
+      await settleAuth(t, 3);
+      final mouse = await t.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(t.getCenter(find.text('common.account.appearanceLabel')));
+      await t.pump(const Duration(milliseconds: 100));
+      await t.pump(const Duration(milliseconds: 1));
+      for (final mode in ['light', 'dark', 'system']) {
+        final option = find.byKey(ValueKey('appearance-$mode'));
+        expect(option, findsOneWidget);
+        await mouse.moveTo(t.getCenter(option));
+        await t.pump(const Duration(milliseconds: 300));
+        expect(option, findsOneWidget, reason: 'hovering a child must not close its parent submenu');
+      }
+      await mouse.removePointer();
+      await t.pumpWidget(const SizedBox());
     });
 
     testWidgets('the Appearance submenu sets light, dark or system', (t) async {

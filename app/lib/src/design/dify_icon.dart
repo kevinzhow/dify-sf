@@ -173,3 +173,18 @@ String blockGlyph(String type) =>
       'human-input' => 'human-in-loop',
       _ => 'variable-x', // variable assigner/aggregator, tool, iteration/loop start, trigger plugin
     }}';
+
+/// A solid status dot, drawn directly rather than loading a nonexistent icon.
+class DifySolidDot extends StatelessWidget {
+  const DifySolidDot({super.key, required this.color, this.size = 8});
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: DecoratedBox(
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    ),
+  );
+}

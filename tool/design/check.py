@@ -66,7 +66,7 @@ DIFY_CLASS_OK = re.compile(
 IMPORT_RE = re.compile(r'''^[ \t]*(?:import|export)\s+(['"])([^'"\n]+)\1''', re.M)
 
 RULES = ['color-literal', 'box-shadow', 'raw-text-style', 'dialog-route', 'material-widget', 'component-token',
-         'dify-class', 'design-import']
+         'dify-class', 'design-import', 'focus-ring']
 
 
 def _close_paren(text, i):
@@ -95,6 +95,10 @@ def scan_file(rel, src):
     """[(rule, offset)] for one file. `rel` is relative to app/lib/src."""
     code = strip(src)
     hits = []
+    for m in re.finditer(r'(?<![\w$.])BoxDecoration\(', code):
+        end, _ = _close_paren(code, m.end())
+        if re.search(r'difyFocusRing(?:Shadow)?\(', code[m.end():end]):
+            hits.append(('focus-ring', m.start()))
     if rel.startswith(DESIGN):
         for m in IMPORT_RE.finditer(src):
             if not code[m.start():m.end()].strip():
@@ -252,8 +256,8 @@ def read_allowlist(path):
             errors.append(f'{where}: expected 4 tab-separated fields (rule, path, max_count, reason)')
             continue
         rule, rel, count, reason = parts
-        if rule == 'material-widget':
-            errors.append(f'{where}: material-widget exceptions are prohibited; use design/ components')
+        if rule in ('material-widget', 'focus-ring'):
+            errors.append(f'{where}: {rule} exceptions are prohibited; use design/ components')
         if rule not in RULES:
             errors.append(f'{where}: unknown rule {rule!r}')
         if not count.isdigit() or int(count) == 0:
@@ -315,7 +319,7 @@ def run(argv=None, root=REPO, out=sys.stdout, err=sys.stderr):
         new_rows, log = {}, []
         for key in sorted(set(rows) | set(counts)):
             have, row = counts.get(key, 0), rows.get(key)
-            if key[0] == 'material-widget' and have:
+            if key[0] in ('material-widget', 'focus-ring') and have:
                 continue  # No --allow-increase waiver for direct Material controls.
             if row is None:
                 if args.allow_increase and have:

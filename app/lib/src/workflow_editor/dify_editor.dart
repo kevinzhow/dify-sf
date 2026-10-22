@@ -982,7 +982,7 @@ class SessionBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (pill && s.link != LinkState.live) ...[
-            RemixIcon('circle-fill', size: 8, color: color),
+            DifySolidDot(size: 8, color: color),
             const SizedBox(width: 4),
             Text(label, style: _small),
             DifyButton(
@@ -1005,7 +1005,7 @@ class SessionBadge extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            RemixIcon('circle-fill', size: 8, color: color, key: const Key('link-dot')),
+                            DifySolidDot(size: 8, color: color, key: const Key('link-dot')),
                             const SizedBox(width: 6),
                             Text(label, key: const Key('link-state'), style: _small),
                             const SizedBox(width: 12),

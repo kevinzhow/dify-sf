@@ -34,7 +34,7 @@ class StatusBar extends StatelessWidget {
               content: Text(s.lastError ?? 'connected to $serverLabel'),
               child: Row(
                 children: [
-                  RemixIcon('circle-fill', size: 10, color: color, key: const Key('link-dot')),
+                  DifySolidDot(size: 10, color: color, key: const Key('link-dot')),
                   const SizedBox(width: 6),
                   Text(
                     label,

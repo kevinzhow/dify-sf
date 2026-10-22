@@ -72,6 +72,11 @@ class RuleTest(unittest.TestCase):
             _, errors = check.read_allowlist(path)
             self.assertTrue(any('prohibited' in e for e in errors))
 
+    def test_css_focus_ring_requires_its_outside_only_decoration(self):
+        for rel in ('studio/a.dart', 'design/widgets/a.dart'):
+            self.assertEqual(rules(rel, 'BoxDecoration(boxShadow: difyFocusRing(focused));'), ['focus-ring'])
+            self.assertEqual(rules(rel, 'DifyFocusDecoration(boxShadow: difyFocusRing(focused));'), [])
+
     def test_component_token(self):
         src = 'DifyColors.componentsCheckboxBgChecked; DifyColors.componentsPanelBg; DifyColors.componentsInputBgNormal;'
         self.assertEqual(rules('a.dart', src), ['component-token'] * 2)

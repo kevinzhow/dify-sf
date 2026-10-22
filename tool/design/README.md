@@ -41,7 +41,7 @@ precise before merging. Each row is `rule<TAB>path under app/lib/src<TAB>max_cou
 Reasons (required, one of):
 
 - `third-party:<lib>`: values copied from a library or the browser (Monaco, reactflow, github-markdown-css).
-- `dev-shell`: the Material dev shell (`home_page.dart`, `editor/`), not a Dify screen.
+- `dev-shell`: development-only launch/collaboration utilities (`home_page.dart`, `editor/`); never an exception to the direct Material-control prohibition.
 - `dify-hardcoded:<dify path>`: Dify hard-codes the same literal; cite the file under `dify-src/`.
 - `legit:<why>`: allowed by design (for example `legit:transparent`).
 - `todo:step<N>`: baseline debt, removed by step N of the migration plan (1 moves into design/, 2 extracts private
@@ -49,3 +49,5 @@ Reasons (required, one of):
 
 The goal is an allowlist with only `third-party`, `dev-shell` and `legit` rows (`dify-hardcoded` literals move into
 design/ as named constants that cite the Dify file).
+
+Focus rings use `DifyFocusDecoration` with `difyFocusRing` / `difyFocusRingShadow`. They are outside-only strokes, including during animations. A plain `BoxDecoration` with a solid focus shadow fills the area underneath a translucent control and changes its background; the check rejects that combination.

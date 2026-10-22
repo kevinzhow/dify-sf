@@ -362,8 +362,18 @@ class SceneRenderer extends CanvasRenderer {
     final n = graph.slots[slot];
     final card = _cardNodes[slot];
     if (n == null || card == null) return;
-    _dropExact(slot);
     final lift = _lift(slot);
+    final exact = _exact[slot];
+    if (exact != null) {
+      if (exact.key != _exactKey(n)) {
+        _dropExact(slot);
+      } else {
+        // Hover and selection do not move the card in screen space. Its
+        // existing live subtree recaptures its changed chrome; retaining the
+        // displayed texture avoids flashing back to the coarser base capture.
+        exact.node.position = exact.node.position.clone()..z = -lift;
+      }
+    }
     // Captures cover everything drawn for the node (the visual rectangle) plus room for the shadow.
     final padded = n.visual.size + const Offset(2 * SceneTuning.capturePad, 2 * SceneTuning.capturePad);
     final center = n.visual.center;
