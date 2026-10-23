@@ -84,6 +84,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
   late CanvasRendererKind kind;
   late CanvasRenderer renderer;
   final _focus = FocusNode(debugLabel: 'canvas');
+  bool _gestureBelongsToCanvas = false;
   bool _fitted = false;
   late final _positionAnimation = AnimationController(vsync: this, duration: const Duration(milliseconds: 200))
     ..addListener(_positionFrame)
@@ -477,12 +478,22 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
               // keyboard focus or start text selection on this drag surface.
               // Embedded editors still win as the deeper gesture target.
               child: GestureDetector(
-                onTap: () {},
-                onPanStart: (_) {},
+                // The ancestor selection recognizer can focus on its tap-down
+                // deadline before losing the arena. Restore focus when our
+                // canvas gesture wins, including a slow press before moving.
+                onTap: () {
+                  if (_gestureBelongsToCanvas && !_focus.hasFocus) _focus.requestFocus();
+                },
+                onPanStart: (_) {
+                  if (_gestureBelongsToCanvas && !_focus.hasFocus) _focus.requestFocus();
+                },
                 onSecondaryTap: () {},
                 child: Listener(
                   onPointerDown: (e) {
-                    if (input.claimed(e)) return;
+                    // Live editors/resize handles claim their pointer before
+                    // this listener. Their winning gesture must keep its focus.
+                    _gestureBelongsToCanvas = !input.claimed(e);
+                    if (!_gestureBelongsToCanvas) return;
                     _interacting();
                     _focus.requestFocus();
                     input.down(e);
