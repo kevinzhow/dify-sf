@@ -222,9 +222,20 @@ class HumanInputContentItem extends StatelessWidget {
 /// HumanInputForm: the content pieces with their fields, then the actions (`flex flex-wrap gap-1 py-1`), disabled
 /// while submitting, without a form token, or while a rendered select / file input has no (uploaded) value.
 class HumanInputForm extends StatefulWidget {
-  const HumanInputForm({super.key, required this.formData, this.onSubmit, this.pickFile, this.itemBuilder});
+  const HumanInputForm({
+    super.key,
+    required this.formData,
+    this.onSubmit,
+    this.pickFile,
+    this.itemBuilder,
+    this.requireParagraph = false,
+  });
 
   final DifyJson formData;
+
+  /// Public web forms require a paragraph too; console/debug forms retain
+  /// Dify's select/file-only validation (loaded-form-content.tsx).
+  final bool requireParagraph;
   final HumanInputFormSubmit? onSubmit;
   final RunFilePicker? pickFile;
 
@@ -278,7 +289,12 @@ class _HumanInputFormState extends State<HumanInputForm> {
   @override
   Widget build(BuildContext context) {
     final token = jsStr(widget.formData['form_token']) ?? '';
-    final disabled = _submitting || token.isEmpty || hasInvalidSelectOrFileInput(_rendered, _inputs);
+    final disabled =
+        _submitting ||
+        token.isEmpty ||
+        (widget.requireParagraph
+            ? hasInvalidRequiredHumanInput(_rendered, _inputs)
+            : hasInvalidSelectOrFileInput(_rendered, _inputs));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import '../dify_icon.dart';
+import '../css_metrics.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
 import 'icon_button.dart';
@@ -764,7 +765,7 @@ class _ActionButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(DifyRadius.md),
       decoration: BoxDecoration(
         color: hovered ? DifyColors.stateBaseHover : DifyColors.componentsButtonSecondaryBg,
-        border: Border.all(color: DifyColors.componentsButtonSecondaryBorder, width: 0.5),
+        border: Border.all(color: DifyColors.componentsButtonSecondaryBorder, width: Css.hairline),
         borderRadius: BorderRadius.circular(DifyRadius.md),
         boxShadow: [for (final s in DifyShadows.xs) s.copyWith(color: DifyColors.shadowShadow3)],
       ),

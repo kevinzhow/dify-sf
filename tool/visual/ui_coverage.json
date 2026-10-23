@@ -767,12 +767,15 @@
         "controls.surface.light.en-US",
         "controls.surface.dark.en-US",
         "controls.surface.light.zh-Hans",
-        "controls.surface.dark.zh-Hans"
+        "controls.surface.dark.zh-Hans",
+        "pages.integrations-models.light.en-US",
+        "pages.integrations-models.dark.en-US"
       ],
       "publicClasses": [
-        "DifyBlurredBox"
+        "DifyBlurredBox",
+        "DifyBlueGlassSurface"
       ],
-      "scope": "shared visual family; representative declared states, not every possible prop combination"
+      "scope": "blurred surface fixtures and actual active navigation on the Integrations page"
     },
     {
       "source": "app/lib/src/design/widgets/switch.dart",

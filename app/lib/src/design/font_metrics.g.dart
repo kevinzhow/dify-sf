@@ -59,3 +59,61 @@ const bundledXHeights = <String, Map<int, double>>{
     700: 543 / 1000,
   },
 };
+const bundledAverageCharWidths = <String, Map<int, double>>{
+  'Noto Sans': {
+    400: 577 / 1000,
+    700: 614 / 1000,
+  },
+  'DejaVu Sans Mono': {
+    400: 1233 / 2048,
+  },
+  'Dify CJK SC': {
+    400: 989 / 1000,
+    700: 990 / 1000,
+  },
+  'Dify CJK TC': {
+    400: 984 / 1000,
+    700: 985 / 1000,
+  },
+  'Dify CJK HK': {
+    400: 984 / 1000,
+    700: 985 / 1000,
+  },
+  'Dify CJK JP': {
+    400: 982 / 1000,
+    700: 983 / 1000,
+  },
+  'Dify CJK KR': {
+    400: 945 / 1000,
+    700: 945 / 1000,
+  },
+};
+const bundledMaxCharWidths = <String, Map<int, double>>{
+  'Noto Sans': {
+    400: 3421 / 1000,
+    700: 3444 / 1000,
+  },
+  'DejaVu Sans Mono': {
+    400: 2614 / 2048,
+  },
+  'Dify CJK SC': {
+    400: 3930 / 1000,
+    700: 3939 / 1000,
+  },
+  'Dify CJK TC': {
+    400: 3930 / 1000,
+    700: 3939 / 1000,
+  },
+  'Dify CJK HK': {
+    400: 3930 / 1000,
+    700: 3939 / 1000,
+  },
+  'Dify CJK JP': {
+    400: 3930 / 1000,
+    700: 3939 / 1000,
+  },
+  'Dify CJK KR': {
+    400: 3930 / 1000,
+    700: 3939 / 1000,
+  },
+};

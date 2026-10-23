@@ -59,7 +59,11 @@ void main() {
     await t.pumpAndSettle();
     // The console definition has no `actions`: the page has to read `user_actions`, or a mailed form has no button.
     expect(find.text('Approve'), findsOneWidget, reason: 'the console definition\'s action is the button');
-    expect(find.textContaining('Please review:'), findsOneWidget, reason: 'the rendered content is what the page shows');
+    expect(
+      find.textContaining('Please review:'),
+      findsOneWidget,
+      reason: 'the rendered content is what the page shows',
+    );
     await t.enterText(find.byType(EditableText), 'looks good');
     await t.pump();
     await t.tap(find.text('Approve'));
@@ -68,6 +72,38 @@ void main() {
       'inputs': {'review': 'looks good'},
       'action': 'approve',
     });
+  });
+
+  testWidgets('public form keeps the source app header, 720px card, expiry and required paragraph', (t) async {
+    await useAppFonts();
+    final api = FakeWorkflowRunApi()
+      ..humanInputForms[_token] = {
+        ..._consoleForm,
+        'site': {
+          'site': {'title': 'Approval app', 'icon_type': 'emoji', 'icon': 'robot_face'},
+        },
+        'expiration_time': 1893456000,
+      };
+    await renderRun(
+      t,
+      HumanInputFormPage(token: _token, server: Uri.parse('https://dify.example'), apiFor: (_) => api),
+      size: const Size(1000, 900),
+    );
+    await t.pumpAndSettle();
+    expect(find.text('Approval app'), findsOneWidget);
+    final card = find.byKey(const Key('human-form-content-card'));
+    expect(t.getSize(card).width, 720);
+    expect(t.getTopLeft(card).dy - t.getTopLeft(find.byType(HumanInputFormPage)).dy, 80);
+    expect(find.byKey(const Key('expiration-time')), findsOneWidget);
+    await t.tap(find.text('Approve'));
+    await t.pumpAndSettle();
+    expect(api.humanInputAnswers, isEmpty, reason: 'empty public paragraph cannot submit');
+    await t.enterText(find.byType(EditableText), 'Approved');
+    await t.pump();
+    await t.tap(find.text('Approve'));
+    await t.pumpAndSettle();
+    expect(api.humanInputAnswers[_token], isNotNull);
+    expect(t.getSize(find.byKey(const Key('human-form-status-card'))).height, 320);
   });
 
   test('a /form/<token> link carries the form token', () {
@@ -104,7 +140,11 @@ void main() {
   testWidgets('an expired form gets its own state', (t) async {
     await useAppFonts();
     final api = FakeWorkflowRunApi()
-      ..humanInputFormError = const TransportException('this form has expired', statusCode: 412, code: 'human_input_form_expired');
+      ..humanInputFormError = const TransportException(
+        'this form has expired',
+        statusCode: 412,
+        code: 'human_input_form_expired',
+      );
     await renderRun(
       t,
       HumanInputFormPage(token: _token, server: Uri.parse('https://dify.example'), apiFor: (_) => api),

@@ -7,6 +7,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/auth/auth_controller.dart';
 import 'package:dify_sf_app/src/home_page.dart';
+import 'package:dify_sf_app/src/settings/integrations_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/settings.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
@@ -78,6 +79,22 @@ Future<void> _leaveEditor(WidgetTester t) async {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('Integrations is a normal page with persistent navigation and returns to Studio', (t) async {
+    final w = await _workspace();
+    await _pump(t, w.api, w.auth);
+    await t.tap(find.byKey(const ValueKey('main-nav-integrations')));
+    await settle(t);
+    expect(find.byType(IntegrationsPage), findsOneWidget);
+    expect(find.byType(IntegrationsSettingModal), findsNothing);
+    expect(find.byKey(const ValueKey('main-nav-studio')), findsOneWidget);
+    expect(t.widget<MainNavLink>(find.byKey(const ValueKey('main-nav-integrations'))).active, isTrue);
+    await t.tap(find.byKey(const ValueKey('main-nav-studio')));
+    await settle(t);
+    expect(find.byType(IntegrationsPage), findsNothing);
+    expect(find.byKey(const ValueKey('studio-page')), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+  });
 
   testWidgets('the Studio is home: it lists the apps, a card opens the editor, and back is the Studio again', (
     t,

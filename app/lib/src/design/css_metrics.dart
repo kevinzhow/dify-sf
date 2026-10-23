@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import 'dify_fonts.dart';
+import 'css_border_stub.dart' if (dart.library.js_interop) 'css_border_web.dart';
 
 /// Where Chrome turns CSS lengths into pixels differently from Flutter (Dify is the specification as Chrome shows
 /// it): border widths snap to device pixels, and a line of text puts its baseline on rounded font metrics.
@@ -11,6 +14,8 @@ abstract final class Css {
   /// A border width as Chrome lays it out and draws it: rounded down to device pixels, but never below one.
   static double border(double width) {
     if (width <= 0) return 0;
+    final native = browserBorderWidth(width);
+    if (native != null) return native;
     final dpr = devicePixelRatio;
     final px = (width * dpr).floor();
     return (px < 1 ? 1 : px) / dpr;
@@ -28,6 +33,35 @@ abstract final class Css {
   /// A flex child with `min-width:auto` keeps this width even when its declared width is 100%; siblings with
   /// flex-shrink (such as IconButton) give up space first. Measured in the pinned Dify 1.17.1 browser fixture.
   static const inputMinContentWidth = 174.640625;
+
+  /// Blink's size=20 intrinsic input width, before padding/borders. The primary
+  /// font's OpenType average and bounding-box width are rounded at the current
+  /// font size (LayoutTextControlSingleLine::PreferredContentLogicalWidth).
+  /// This is independent of the placeholder; a CSS grid still keeps the input's
+  /// intrinsic contribution when a hidden text mirror is shorter.
+  static double nativeInputWidth(TextStyle style, TextScaler scaler, {int size = 20}) {
+    style = DifyFonts.resolveStyle(style);
+    final fontSize = scaler.scale(style.fontSize ?? 14);
+    final average = DifyFonts.averageCharWidthRatio(style);
+    final maximum = DifyFonts.maxCharWidthRatio(style);
+    if (average != null && maximum != null) {
+      final charWidth = (average * fontSize).roundToDouble();
+      return (charWidth * size).ceilToDouble() + (maximum * fontSize).roundToDouble() - charWidth;
+    }
+    // Native, unbundled fonts: the CSS ch fallback uses the current primary 0.
+    final probe = TextPainter(
+      text: TextSpan(text: '0', style: style),
+      textScaler: scaler,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final width = probe.width * size;
+    probe.dispose();
+    return math.max(0, width);
+  }
+
+  /// Flutter BoxShadow uses sigma = radius*0.57735+0.5; CSS blur uses
+  /// sigma = blur/2 (the same conversion as gen_dify_tokens.py).
+  static double shadowBlur(double css) => css <= 0 ? 0 : math.max(.001, (css / 2 - .5) / .57735);
 
   /// CSS's baseline from the selected primary face, including native fonts.
   static ({double above, double below}) textLine(

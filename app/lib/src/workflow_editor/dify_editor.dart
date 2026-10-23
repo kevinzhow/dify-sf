@@ -1,7 +1,11 @@
+import 'header/format.dart';
 import 'run/ui/before_run_form.dart' show RunFilePicker, RunFilePickerScope;
+
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 
 import 'dart:async';
+
+import '../auth/account_time.dart';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
@@ -889,6 +893,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
     return WorkflowHeader(
       canvas: widget.canvas,
       data: WorkflowHeaderData(
+        formatters: HeaderFormatters(formatTime: AccountTime.of(context).formatTime),
         graph: b.graph,
         onRun: run?.handleStartRunFromOption,
         onRunInChatflow: run?.handleWorkflowStartRunInChatflow,

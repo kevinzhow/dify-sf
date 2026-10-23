@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
 import '../dify_icon.dart';
+import '../css_metrics.dart';
 import '../dify_tokens.g.dart';
 import 'widgets.dart';
 import '../../i18n/dify_i18n.dart';
@@ -93,7 +94,7 @@ class _DifyCalendarState extends State<DifyCalendar> {
         decoration: BoxDecoration(
           color: DifyColors.componentsPanelBg,
           borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
           boxShadow: DifyShadows.lg,
         ),
         child: Column(
@@ -113,10 +114,12 @@ class _DifyCalendarState extends State<DifyCalendar> {
                           mainAxisSize: MainAxisSize.min,
                           spacing: 2,
                           children: [
-                            DifyText(
-                              centerCap: true,
-                              '${_time('months.${calendarMonthKeys[_month.month - 1]}')} ${_month.year}',
-                              DifyType.systemMdSemibold,
+                            Flexible(
+                              child: DifyText(
+                                centerCap: true,
+                                '${_time('months.${calendarMonthKeys[_month.month - 1]}')} ${_month.year}',
+                                DifyType.systemMdSemibold,
+                              ),
                             ),
                             RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
                           ],
@@ -125,10 +128,17 @@ class _DifyCalendarState extends State<DifyCalendar> {
                     ),
                   ),
                   for (final (icon, by) in const [('arrow-up-s-line', -1), ('arrow-down-s-line', 1)])
-                    DifyIconButton(
-                      label: icon,
+                    DifyPressable(
+                      semanticLabel: icon,
                       onPressed: () => _shift(by),
-                      icon: RemixIcon(icon, size: 18, color: DifyColors.textSecondary),
+                      builder: (context, hovered, focused) => Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: hovered ? DifyColors.stateBaseHover : null,
+                          borderRadius: BorderRadius.circular(DifyRadius.lg),
+                        ),
+                        child: RemixIcon(icon, size: 18, color: DifyColors.textSecondary),
+                      ),
                     ),
                 ],
               ),
@@ -136,9 +146,12 @@ class _DifyCalendarState extends State<DifyCalendar> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: DifyColors.dividerRegular, width: 0.5)),
+                border: Border(
+                  bottom: BorderSide(color: DifyColors.dividerRegular, width: Css.hairline),
+                ),
               ),
               child: Row(
+                spacing: 2,
                 children: [
                   for (final d in calendarDayKeys)
                     Expanded(
@@ -206,7 +219,7 @@ class _DayItem extends StatelessWidget {
     onPressed: onTap,
     semanticLabel: formatDateOnly(day),
     builder: (context, hovered, focused) => Container(
-      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
         color: selected
             ? DifyColors.componentsButtonPrimaryBg
@@ -216,6 +229,7 @@ class _DayItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(DifyRadius.lg),
       ),
       child: Stack(
+        clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
           DifyText(
@@ -230,7 +244,7 @@ class _DayItem extends StatelessWidget {
           ),
           if (today)
             Positioned(
-              bottom: 4,
+              bottom: -4,
               child: Container(
                 width: 4,
                 height: 4,

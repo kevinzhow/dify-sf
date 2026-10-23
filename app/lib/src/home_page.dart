@@ -31,6 +31,7 @@ import 'launch_options.dart';
 import 'session_factory.dart';
 import 'settings.dart';
 import 'settings/integrations_page.dart';
+import 'settings/model_provider/model_provider_env.dart';
 import 'settings/workspace_card.dart';
 import 'settings/workspace_members.dart';
 import 'studio/studio_page.dart';
@@ -86,6 +87,7 @@ class _HomePageState extends State<HomePage> {
   String? _error;
   bool _busy = false;
   bool _mobileNavOpen = false;
+  bool _showIntegrations = false;
 
   @override
   void initState() {
@@ -350,8 +352,26 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final account = AuthScope.of(context).account;
     final apps = _apps;
-    final nav = account == null ? null : MainNavFrame(account: account, models: _models, members: _members, apps: apps);
-    final content = apps == null || account == null
+    final nav = account == null
+        ? null
+        : MainNavFrame(
+            account: account,
+            models: _models,
+            members: _members,
+            apps: apps,
+            integrationsActive: _showIntegrations,
+            onIntegrations: () => setState(() {
+              _showIntegrations = true;
+              _mobileNavOpen = false;
+            }),
+            onStudio: () => setState(() {
+              _showIntegrations = false;
+              _mobileNavOpen = false;
+            }),
+          );
+    final content = _showIntegrations && _models != null
+        ? ModelProviderScope(env: ModelProviderEnv.forRole(_models!, account?.role), child: const IntegrationsPage())
+        : apps == null || account == null
         ? _form(context)
         : StudioPage(
             key: const ValueKey('studio-page'),
@@ -515,7 +535,18 @@ class _HomePageState extends State<HomePage> {
 /// its menu opens the workspace settings), the Integrations link (the model providers) and the account section at the
 /// bottom (`py-3 pr-1 pl-3`). Dify's search, its other navigation links, web apps and help menu are not part of dify-sf.
 class MainNavFrame extends StatefulWidget {
-  const MainNavFrame({super.key, required this.account, this.models, this.members, this.apps});
+  const MainNavFrame({
+    super.key,
+    required this.account,
+    this.models,
+    this.members,
+    this.apps,
+    this.onStudio,
+    this.onIntegrations,
+    this.integrationsActive = false,
+  });
+  final VoidCallback? onStudio, onIntegrations;
+  final bool integrationsActive;
   final Account account;
 
   /// The session's apps: the Account page lists them ("Account's data").
@@ -580,6 +611,18 @@ class _MainNavFrameState extends State<MainNavFrame> {
           padding: const EdgeInsets.all(8),
           child: WorkspaceCard(members: _members!),
         ),
+        if (widget.onStudio != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: MainNavLink(
+              key: const ValueKey('main-nav-studio'),
+              label: DifyI18n.tr('common', 'mainNav.studio'),
+              icon: 'vender/main-nav/studio-v2',
+              activeIcon: 'vender/main-nav/studio-v2-active',
+              active: !widget.integrationsActive,
+              onTap: widget.onStudio!,
+            ),
+          ),
         if (widget.models case final models?)
           Padding(
             padding: const EdgeInsets.all(8),
@@ -588,7 +631,10 @@ class _MainNavFrameState extends State<MainNavFrame> {
               label: DifyI18n.tr('common', 'mainNav.integrations'),
               icon: 'vender/main-nav/integrations-v2',
               activeIcon: 'vender/main-nav/integrations-v2-active',
-              onTap: () => showModelProviderSettings(context, models: models, role: _members!.myRole),
+              active: widget.integrationsActive,
+              onTap:
+                  widget.onIntegrations ??
+                  () => showModelProviderSettings(context, models: models, role: _members!.myRole),
             ),
           ),
         const Spacer(),
@@ -753,7 +799,7 @@ class _ImportDslDialogState extends State<_ImportDslDialog> {
 
 /// main-nav/components/nav-link.tsx: `h-8 rounded-[10px] px-2 py-1.5 gap-2`, the 20 px icon and the label
 /// (`system-md-medium text-components-main-nav-nav-button-text`, hover `bg-components-main-nav-nav-button-bg-hover`).
-/// dify-sf's links open settings rather than pages, so none is ever the current page.
+/// Active page state uses the original active icon, background, border and text tokens.
 class MainNavLink extends StatelessWidget {
   const MainNavLink({
     super.key,
@@ -761,37 +807,60 @@ class MainNavLink extends StatelessWidget {
     required this.icon,
     required this.activeIcon,
     required this.onTap,
+    this.active = false,
   });
 
   final String label, icon, activeIcon;
   final VoidCallback onTap;
+  final bool active;
 
   @override
   Widget build(BuildContext context) => DifyPressable(
     semanticLabel: label,
     onPressed: onTap,
-    builder: (context, hovered, focused) => Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: hovered ? DifyColors.componentsMainNavNavButtonBgHover : DifyColors.componentsMainNavNavButtonBg,
-        borderRadius: BorderRadius.circular(10),
-        border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
-      ),
-      child: Row(
-        spacing: 8,
-        children: [
-          DifyIcon(icon, size: 20, color: DifyColors.componentsMainNavNavButtonText),
-          Expanded(
-            child: DifyTextLine(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: difyTextStyle(DifyType.systemMdMedium, DifyColors.componentsMainNavNavButtonText),
+    builder: (context, hovered, focused) {
+      final content = Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: active
+              ? null
+              : hovered
+              ? DifyColors.componentsMainNavNavButtonBgHover
+              : DifyColors.componentsMainNavNavButtonBg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        foregroundDecoration: focused
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
+              )
+            : null,
+        child: Row(
+          spacing: 8,
+          children: [
+            DifyIcon(
+              active ? activeIcon : icon,
+              size: 20,
+              color: active ? DifyColors.saasDifyBlueInverted : DifyColors.componentsMainNavNavButtonText,
             ),
-          ),
-        ],
-      ),
-    ),
+            Expanded(
+              child: DifyTextLine(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: active
+                    ? null
+                    : difyTextStyle(DifyType.systemMdMedium, DifyColors.componentsMainNavNavButtonText),
+              ),
+            ),
+          ],
+        ),
+      );
+      return Semantics(
+        selected: active,
+        child: active ? DifyBlueGlassSurface(child: content) : content,
+      );
+    },
   );
 }

@@ -33,6 +33,11 @@ abstract final class DifyFonts {
     return faces[nearest];
   }
 
+  static double? averageCharWidthRatio(TextStyle style) =>
+      _metric(bundledAverageCharWidths, style.fontFamily, style.fontWeight);
+  static double? maxCharWidthRatio(TextStyle style) =>
+      _metric(bundledMaxCharWidths, style.fontFamily, style.fontWeight);
+
   static double? capHeightRatio(String? family, FontWeight? weight) => _metric(bundledCapHeights, family, weight);
   static double? xHeightRatio(TextStyle style) {
     final effective = resolveStyle(style);

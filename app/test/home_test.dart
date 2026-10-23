@@ -2,6 +2,8 @@ import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/home_page.dart';
 import 'package:dify_sf_app/src/launch_options.dart';
 import 'package:dify_sf_app/src/settings.dart';
+import 'package:dify_sf_app/src/workflow_editor/header/titles.dart';
+import 'package:dify_sf_app/src/workflow_editor/header/header_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,6 +20,32 @@ Future<void> settle(WidgetTester t, [int ms = 2000]) async {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('the real editor header follows account timezone changes instead of the host clock', (t) async {
+    await useAppFonts();
+    t.view.physicalSize = const Size(1600, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    final settings = await AppSettings.load();
+    final demo = DemoBackend(withBo: false);
+    final auth = await signedInAuth();
+    auth.useLocalAccount(auth.account!.copyWith(timezone: 'America/New_York'));
+    await t.pumpWidget(buildApp(settings, backendFor: (_) => demo, auth: auth));
+    await t.enterText(find.byKey(const Key('doc-field')), 'timezone-workflow');
+    await t.tap(find.byKey(const Key('open-button')));
+    await settle(t);
+    String savedTime() =>
+        WorkflowHeaderScope.of(t.element(find.byType(EditingTitle).first)).formatters
+            .formatTime(1714564800, 'HH:mm:ss');
+    expect(savedTime(), '08:00:00'); // 2024-05-01 12:00 UTC, New York daylight saving.
+    auth.useLocalAccount(auth.account!.copyWith(timezone: 'Asia/Tokyo'));
+    await settle(t);
+    expect(savedTime(), '21:00:00');
+    await t.pumpWidget(const SizedBox());
+    await demo.dispose();
+    auth.dispose();
+    await t.pump(const Duration(seconds: 20));
+  });
 
   testWidgets('rejects document ids the protocol does not allow', (t) async {
     await useAppFonts();

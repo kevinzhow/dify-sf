@@ -1,6 +1,8 @@
 /// Dify's TagInput (web/app/components/base/tag-input).
 library;
 
+import 'dart:math' as math;
+
 import 'dart:ui' show SemanticsValidationResult;
 
 import 'package:flutter/material.dart';
@@ -124,31 +126,43 @@ class _DifyTagInputState extends State<DifyTagInput> {
           text: TextSpan(text: shown, style: style),
           textDirection: TextDirection.ltr,
           maxLines: 1,
+          textScaler: MediaQuery.textScalerOf(context),
         )..layout();
-        final width = p.width.ceilToDouble() + 2;
+        final width = math.max(p.width, Css.nativeInputWidth(style, MediaQuery.textScalerOf(context)));
         p.dispose();
         return SizedBox(
           width: width.clamp(0, w.isInWorkflow ? 146 : 300),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: TextField(
-              controller: _text,
-              focusNode: _focus,
-              style: style,
-              strutStyle: Css.lineStrut(style, textScaler: MediaQuery.textScalerOf(context), centerCap: true),
-              cursorColor: const Color(0xFF295EFF),
-              cursorWidth: 1,
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
-                visualDensity: VisualDensity.standard,
-                hint: DifyTextLine(placeholder, style: hintStyle, centerCap: true),
+            padding: _special
+                ? const EdgeInsets.symmetric(horizontal: 7, vertical: 5)
+                : const EdgeInsets.symmetric(vertical: 4),
+            child: ColoredBox(
+              // The original non-special input leaves the browser's Field
+              // canvas visible; Tab-mode explicitly makes it transparent.
+              color: _special
+                  ? const Color(0x00000000)
+                  : DifyColors.isDark
+                  ? const Color(0xFF3B3B3B)
+                  : const Color(0xFFFFFFFF),
+              child: TextField(
+                controller: _text,
+                focusNode: _focus,
+                style: style,
+                strutStyle: Css.lineStrut(style, textScaler: MediaQuery.textScalerOf(context), centerCap: true),
+                cursorColor: const Color(0xFF295EFF),
+                cursorWidth: 1,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  visualDensity: VisualDensity.standard,
+                  hint: DifyTextLine(placeholder, style: hintStyle, centerCap: true),
+                ),
+                // Enter adds the tag and keeps the focus (no blur, which would add again).
+                onEditingComplete: () {},
+                onSubmitted: (v) {
+                  if (!_special) _newTag(v);
+                },
               ),
-              // Enter adds the tag and keeps the focus (no blur, which would add again).
-              onEditingComplete: () {},
-              onSubmitted: (v) {
-                if (!_special) _newTag(v);
-              },
             ),
           ),
         );
@@ -190,7 +204,10 @@ class _DifyTagInputState extends State<DifyTagInput> {
                       builder: (context, hovered, focused) => SizedBox(
                         width: 16,
                         height: 16,
-                        child: Center(child: RemixIcon('close-line', size: 14, color: DifyColors.textTertiary)),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 2),
+                          child: RemixIcon('close-line', size: 14, color: DifyColors.textTertiary),
+                        ),
                       ),
                     ),
                 ],
@@ -199,7 +216,7 @@ class _DifyTagInputState extends State<DifyTagInput> {
           if (!w.disableAdd)
             Container(
               margin: const EdgeInsets.only(top: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: _special ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
               decoration: _special
                   ? BoxDecoration(
                       borderRadius: BorderRadius.circular(DifyRadius.md),
