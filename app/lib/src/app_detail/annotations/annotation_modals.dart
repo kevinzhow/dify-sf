@@ -706,6 +706,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
           rows: [
             for (final hit in _hits)
               DifyTableRow(
+                cellPadding: EdgeInsets.zero,
                 nowrap: true,
                 cells: [
                   c(hit.question ?? '', truncate: true),

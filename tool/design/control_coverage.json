@@ -450,14 +450,14 @@
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
     "surface.dart": {
-      "kind": "layout-or-non-text",
+      "kind": "text-composition",
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/variable_inspect_test.dart",
         "app/test/dify_spec/dify_ui/toast_test.dart",
         "app/test/dify_spec/workflow/header/online_users_geometry_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+      "note": "Blurred/glass/chat surfaces and branding footer are shared design-system controls. Real provider/form page captures exercise labels; no business state or API transport in these controls."
     },
     "switch.dart": {
       "kind": "gallery",
@@ -563,6 +563,15 @@
         "app/test/design_typography_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
+    },
+    "main_nav_link.dart": {
+      "kind": "text-composition",
+      "note": "Primary-navigation labels reuse DifyTextLine; shared active glass/rings never shift layout. Real English/Chinese page captures and keyboard/font-scale geometry regression.",
+      "evidence": [
+        "app/test/design/source_rules_stage2_test.dart",
+        "app/test/studio_test.dart",
+        "tool/visual/page_cases.json"
+      ]
     }
   }
 }

@@ -118,34 +118,9 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
   Map<String, Object?> get _site => _object(jsGet(_form?['site'], 'site'));
   Map<String, Object?> get _branding => _object(jsGet(_form?['site'], 'custom_config'));
 
-  Widget _footer({bool customBrand = false}) {
-    if (customBrand && _branding['remove_webapp_brand'] == true) return const SizedBox.shrink();
-    final logo = customBrand ? jsStr(_branding['replace_webapp_logo']) : null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        spacing: 6,
-        children: [
-          DifyText(
-            DifyI18n.tr('share', 'chat.poweredBy'),
-            DifyType.system2xsMediumUppercase,
-            color: DifyColors.textTertiary,
-          ),
-          if (logo != null && logo.isNotEmpty)
-            Image.network(logo, height: 20, semanticLabel: 'logo')
-          else
-            const DifyLogo(size: DifyLogoSize.small),
-        ],
-      ),
-    );
-  }
-
-  BoxDecoration get _cardDecoration => BoxDecoration(
-    gradient: DifyGradients.chatBubbleBg,
-    borderRadius: BorderRadius.circular(20),
-    border: Border.all(color: DifyColors.dividerSubtle),
-    boxShadow: DifyShadows.lg,
+  Widget _footer({bool customBrand = false}) => DifyBrandingFooter(
+    removeBrand: customBrand && _branding['remove_webapp_brand'] == true,
+    logoUrl: customBrand ? jsStr(_branding['replace_webapp_logo']) : null,
   );
 
   Widget _card(String title, String? tip, {required String icon, Color? iconColor, bool submission = true}) =>
@@ -160,11 +135,10 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
+                    DifyChatBubbleSurface(
                       key: const Key('human-form-status-card'),
                       height: 320,
                       padding: const EdgeInsets.fromLTRB(40, 40, 40, 36),
-                      decoration: _cardDecoration,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: 16,
@@ -234,10 +208,9 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
+                  DifyChatBubbleSurface(
                     key: const Key('human-form-content-card'),
                     padding: const EdgeInsets.all(16),
-                    decoration: _cardDecoration,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,

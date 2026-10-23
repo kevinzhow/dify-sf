@@ -34,6 +34,23 @@ abstract final class Css {
   /// flex-shrink (such as IconButton) give up space first. Measured in the pinned Dify 1.17.1 browser fixture.
   static const inputMinContentWidth = 174.640625;
 
+  /// The browser's native input canvas under the requested native colour
+  /// scheme, as the original TagInput leaves it visible (`appearance-none`).
+  /// Native targets use the matching Chromium Field defaults.
+  static Color inputBackground(bool dark) {
+    final css = browserInputBackground(dark);
+    final channels = css == null ? <String>[] : RegExp(r'[\d.]+').allMatches(css).map((m) => m[0]!).toList();
+    if (channels.length >= 3) {
+      return Color.from(
+        alpha: channels.length > 3 ? double.parse(channels[3]) : 1,
+        red: double.parse(channels[0]) / 255,
+        green: double.parse(channels[1]) / 255,
+        blue: double.parse(channels[2]) / 255,
+      );
+    }
+    return dark ? const Color(0xFF3B3B3B) : const Color(0xFFFFFFFF);
+  }
+
   /// Blink's size=20 intrinsic input width, before padding/borders. The primary
   /// font's OpenType average and bounding-box width are rounded at the current
   /// font size (LayoutTextControlSingleLine::PreferredContentLogicalWidth).

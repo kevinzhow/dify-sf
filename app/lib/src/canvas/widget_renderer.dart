@@ -218,12 +218,15 @@ class WidgetRenderer extends CanvasRenderer {
                 // would hide it.
                 if (selected && !n.layout.underlay)
                   Positioned.fromRect(
-                    rect: Rect.fromLTWH(card.dx - 1, card.dy - 1, n.size.width + 2, n.size.height + 2),
+                    rect: (card & n.size).inflate(n.layout.selectionBorderWidth),
                     child: IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                          border: Border.all(color: DifyColors.componentsOptionCardOptionSelectedBorder),
+                          border: Border.all(
+                            color: DifyColors.componentsOptionCardOptionSelectedBorder,
+                            width: n.layout.selectionBorderWidth,
+                          ),
                         ),
                       ),
                     ),

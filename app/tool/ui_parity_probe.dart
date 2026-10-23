@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 import 'package:dify_sf_app/src/design/dify_fonts.dart';
+import 'package:dify_sf_app/src/design/css_metrics.dart';
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/design/dify_icon.dart';
@@ -434,6 +435,7 @@ class _FixtureState extends State<_Fixture> {
         'data-ui-parity',
         jsonEncode({
           'case': widget.kind,
+          'cssHairline': Css.hairline,
           'bounds': {'x': p.dx, 'y': p.dy, 'width': r.size.width, 'height': r.size.height},
           'source': 'actual-design-widgets',
           'widgetTypes': widgetTypes.toList()..sort(),

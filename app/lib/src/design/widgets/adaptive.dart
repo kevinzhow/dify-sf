@@ -6,6 +6,10 @@ import 'package:flutter/widgets.dart';
 /// browser split-screen must update it without changing saved desktop widths.
 abstract final class DifyAdaptive {
   static const compactWidth = 720.0;
+
+  /// Tailwind's `sm:` media query is relative to the full viewport, not a panel.
+  static const smallMediaWidth = 640.0;
+  static bool smallMediaOf(BuildContext context) => MediaQuery.sizeOf(context).width >= smallMediaWidth;
   static double widthOf(BuildContext context) => DifyViewport.maybeWidthOf(context) ?? MediaQuery.sizeOf(context).width;
   static bool compactOf(BuildContext context) => widthOf(context) < compactWidth;
   static bool toolbarCompactOf(BuildContext context) => MediaQuery.sizeOf(context).width < 1280;

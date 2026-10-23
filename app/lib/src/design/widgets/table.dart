@@ -356,7 +356,7 @@ class _RenderAutoTableCells extends RenderBox
 /// A [DifyTable] column: its [header] cell's content (null: an empty cell) inside [headerPadding] (`py-1.5 pl-3` by
 /// default), and its [width] (`w-*` on its cells; null: automatic).
 class DifyTableColumn {
-  const DifyTableColumn({this.header, this.width, this.headerPadding = const EdgeInsets.fromLTRB(12, 6, 0, 6)});
+  const DifyTableColumn({this.header, this.width, this.headerPadding = const EdgeInsets.fromLTRB(12, 6, 1, 6)});
 
   final Widget? header;
   final double? width;
@@ -405,7 +405,11 @@ class DifyTable extends StatelessWidget {
           headerDecoration ??
           BoxDecoration(color: DifyColors.backgroundSectionBurn, borderRadius: BorderRadius.circular(DifyRadius.lg)),
       child: DefaultTextStyle.merge(
-        style: difyTextStyle(headerStyle ?? DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
+        // A native <th> is bold unless the caller explicitly styles its text.
+        style: difyTextStyle(
+          headerStyle ?? DifyType.systemXsMediumUppercase,
+          DifyColors.textTertiary,
+        ).copyWith(fontWeight: headerStyle == null ? FontWeight.w700 : headerStyle!.style.fontWeight),
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: headerHeight),
           child: DifyAutoTableCells(
@@ -441,7 +445,11 @@ class DifyTable extends StatelessWidget {
                 ),
               ],
             )
-          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_header(), ...rows]);
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [_header(), ...rows],
+            );
       // A Container insets the body by the border (CSS: the border is outside the rows).
       if (decoration case final d?) body = Container(decoration: d, child: body);
       final table = DifyAutoTableScope(
@@ -481,12 +489,17 @@ class DifyTableRow extends StatefulWidget {
     this.divider = true,
     this.dividerColor,
     this.nowrap = false,
+    this.cellPadding = const EdgeInsets.all(1),
   });
 
   final List<Widget> cells;
   final VoidCallback? onTap;
   final bool? selected;
   final bool hoverable, divider, nowrap;
+
+  /// Native <td> default padding. Callers porting a class with explicit p-*
+  /// supply zero here and retain that padding on their own cell widgets.
+  final EdgeInsetsGeometry cellPadding;
   final Color? dividerColor;
 
   @override
@@ -506,7 +519,10 @@ class _DifyTableRowState extends State<DifyTableRow> {
       ),
       child: DefaultTextStyle.merge(
         style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
-        child: DifyAutoTableCells(nowrap: w.nowrap, children: w.cells),
+        child: DifyAutoTableCells(
+          nowrap: w.nowrap,
+          children: [for (final cell in w.cells) Padding(padding: w.cellPadding, child: cell)],
+        ),
       ),
     );
     if (w.onTap != null) row = GestureDetector(behavior: HitTestBehavior.opaque, onTap: w.onTap, child: row);

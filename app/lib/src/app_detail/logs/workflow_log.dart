@@ -481,6 +481,7 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
     final elapsed = ((run['elapsed_time'] as num?) ?? 0).toDouble();
     final trigger = _triggers.putIfAbsent(id, () => FocusNode(debugLabel: 'log $id'));
     return DifyTableRow(
+      cellPadding: EdgeInsets.zero,
       key: ValueKey('workflow-log-row-$id'),
       selected: _current == id,
       onTap: () => _open(log),

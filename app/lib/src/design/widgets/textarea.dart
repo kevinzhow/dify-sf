@@ -24,6 +24,7 @@ class DifyTextarea extends StatefulWidget {
     this.minHeight = 80,
     this.verticalPadding = 8,
     this.maxLength,
+    this.textStyle = DifyType.systemSmRegular,
   });
 
   /// The text shown; a different value replaces what is typed.
@@ -36,6 +37,7 @@ class DifyTextarea extends StatefulWidget {
 
   /// `maxLength`: typing stops there.
   final int? maxLength;
+  final DifyTextStyle textStyle;
 
   @override
   State<DifyTextarea> createState() => _DifyTextareaState();
@@ -74,7 +76,7 @@ class _DifyTextareaState extends State<DifyTextarea> {
     final w = widget;
     final focused = _focused && !w.disabled, hovered = _hovered && !w.disabled;
     final style = difyTextStyle(
-      DifyType.systemSmRegular,
+      w.textStyle,
       w.disabled ? DifyColors.componentsInputTextFilledDisabled : DifyColors.componentsInputTextFilled,
     );
     return Semantics(

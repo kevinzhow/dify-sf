@@ -23,20 +23,26 @@ abstract final class DifyColors {
   static Color get textSecondary => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF354052);
 
   /// `text-tertiary`
-  static Color get textTertiary => _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF676F83);
+  static Color get textTertiary =>
+      _dark ? const Color.from(alpha: 0.6, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF676F83);
 
   /// `text-quaternary`
-  static Color get textQuaternary =>
-      _dark ? const Color.fromARGB(102, 200, 206, 218) : const Color.fromARGB(76, 16, 24, 40);
+  static Color get textQuaternary => _dark
+      ? const Color.from(alpha: 0.4, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.3, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `text-empty-state-icon`
-  static Color get textEmptyStateIcon => _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
+  static Color get textEmptyStateIcon =>
+      _dark ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFD0D5DC);
 
   /// `text-primary-on-surface`
-  static Color get textPrimaryOnSurface => _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get textPrimaryOnSurface => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `text-secondary-on-surface`
-  static Color get textSecondaryOnSurface => const Color.fromARGB(230, 255, 255, 255);
+  static Color get textSecondaryOnSurface =>
+      const Color.from(alpha: 0.9, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `text-destructive`
   static Color get textDestructive => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
@@ -66,14 +72,17 @@ abstract final class DifyColors {
   static Color get textAccentLightModeOnly => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF0033FF);
 
   /// `text-placeholder`
-  static Color get textPlaceholder => _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFF98A2B2);
+  static Color get textPlaceholder =>
+      _dark ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF98A2B2);
 
   /// `text-disabled`
-  static Color get textDisabled => _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
+  static Color get textDisabled =>
+      _dark ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFD0D5DC);
 
   /// `text-text-selected`
-  static Color get textTextSelected =>
-      _dark ? const Color.fromARGB(76, 8, 90, 252) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get textTextSelected => _dark
+      ? const Color.from(alpha: 0.3, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `text-logo-text`
   static Color get textLogoText => _dark ? const Color(0xFFE9E9EC) : const Color(0xFF18222F);
@@ -82,15 +91,17 @@ abstract final class DifyColors {
   static Color get textInverted => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
 
   /// `text-inverted-dimmed`
-  static Color get textInvertedDimmed =>
-      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color.fromARGB(242, 0, 0, 0);
+  static Color get textInvertedDimmed => _dark
+      ? const Color.from(alpha: 0.8, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `background-body`
   static Color get backgroundBody => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF2F4F7);
 
   /// `background-body-transparent`
-  static Color get backgroundBodyTransparent =>
-      _dark ? const Color.fromARGB(0, 29, 29, 32) : const Color.fromARGB(0, 242, 244, 247);
+  static Color get backgroundBodyTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 29 / 255, green: 29 / 255, blue: 32 / 255)
+      : const Color.from(alpha: 0.0, red: 242 / 255, green: 244 / 255, blue: 247 / 255);
 
   /// `background-default`
   static Color get backgroundDefault => _dark ? const Color(0xFF222225) : const Color(0xFFFFFFFF);
@@ -99,8 +110,9 @@ abstract final class DifyColors {
   static Color get backgroundDefaultHover => _dark ? const Color(0xFF27272B) : const Color(0xFFF9FAFB);
 
   /// `background-default-hover-alpha-0`
-  static Color get backgroundDefaultHoverAlpha0 =>
-      _dark ? const Color.fromARGB(0, 39, 39, 43) : const Color.fromARGB(0, 249, 250, 251);
+  static Color get backgroundDefaultHoverAlpha0 => _dark
+      ? const Color.from(alpha: 0.0, red: 39 / 255, green: 39 / 255, blue: 43 / 255)
+      : const Color.from(alpha: 0.0, red: 249 / 255, green: 250 / 255, blue: 251 / 255);
 
   /// `background-default-subtle`
   static Color get backgroundDefaultSubtle => _dark ? const Color(0xFF222225) : const Color(0xFFFCFCFD);
@@ -115,58 +127,71 @@ abstract final class DifyColors {
   static Color get backgroundDefaultDimmed => _dark ? const Color(0xFF27272B) : const Color(0xFFE9EBF0);
 
   /// `background-default-lighter`
-  static Color get backgroundDefaultLighter =>
-      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(128, 255, 255, 255);
+  static Color get backgroundDefaultLighter => _dark
+      ? const Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `background-section`
-  static Color get backgroundSection => _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color(0xFFF9FAFB);
+  static Color get backgroundSection =>
+      _dark ? const Color.from(alpha: 0.4, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFF9FAFB);
 
   /// `background-section-burn`
-  static Color get backgroundSectionBurn => _dark ? const Color.fromARGB(153, 24, 24, 27) : const Color(0xFFF2F4F7);
+  static Color get backgroundSectionBurn =>
+      _dark ? const Color.from(alpha: 0.6, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFF2F4F7);
 
   /// `background-section-burn-inverted`
   static Color get backgroundSectionBurnInverted => _dark ? const Color(0xFF27272B) : const Color(0xFFF2F4F7);
 
   /// `background-soft`
-  static Color get backgroundSoft => _dark ? const Color.fromARGB(64, 24, 24, 27) : const Color(0xFFF9FAFB);
+  static Color get backgroundSoft =>
+      _dark ? const Color.from(alpha: 0.25, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFF9FAFB);
 
   /// `background-neutral-subtle`
   static Color get backgroundNeutralSubtle => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF9FAFB);
 
   /// `background-surface-white`
-  static Color get backgroundSurfaceWhite =>
-      _dark ? const Color.fromARGB(230, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get backgroundSurfaceWhite => _dark
+      ? const Color.from(alpha: 0.9, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `background-sidenav-bg`
-  static Color get backgroundSidenavBg =>
-      _dark ? const Color.fromARGB(235, 39, 39, 42) : const Color.fromARGB(204, 255, 255, 255);
+  static Color get backgroundSidenavBg => _dark
+      ? const Color.from(alpha: 0.92, red: 39 / 255, green: 39 / 255, blue: 42 / 255)
+      : const Color.from(alpha: 0.8, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `background-overlay-fullscreen`
-  static Color get backgroundOverlayFullscreen =>
-      _dark ? const Color.fromARGB(247, 39, 39, 42) : const Color.fromARGB(242, 249, 250, 251);
+  static Color get backgroundOverlayFullscreen => _dark
+      ? const Color.from(alpha: 0.97, red: 39 / 255, green: 39 / 255, blue: 42 / 255)
+      : const Color.from(alpha: 0.95, red: 249 / 255, green: 250 / 255, blue: 251 / 255);
 
   /// `background-overlay-backdrop`
-  static Color get backgroundOverlayBackdrop =>
-      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(242, 242, 244, 247);
+  static Color get backgroundOverlayBackdrop => _dark
+      ? const Color.from(alpha: 0.95, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.95, red: 242 / 255, green: 244 / 255, blue: 247 / 255);
 
   /// `background-overlay`
-  static Color get backgroundOverlay =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(153, 16, 24, 40);
+  static Color get backgroundOverlay => _dark
+      ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.6, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `background-overlay-alt`
-  static Color get backgroundOverlayAlt =>
-      _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color.fromARGB(102, 16, 24, 40);
+  static Color get backgroundOverlayAlt => _dark
+      ? const Color.from(alpha: 0.4, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.4, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `background-overlay-destructive`
-  static Color get backgroundOverlayDestructive => const Color.fromARGB(76, 240, 68, 56);
+  static Color get backgroundOverlayDestructive =>
+      const Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `background-interaction-from-bg-1`
-  static Color get backgroundInteractionFromBg1 =>
-      _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get backgroundInteractionFromBg1 => _dark
+      ? const Color.from(alpha: 0.4, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `background-interaction-from-bg-2`
-  static Color get backgroundInteractionFromBg2 =>
-      _dark ? const Color.fromARGB(36, 24, 24, 27) : const Color.fromARGB(36, 200, 206, 218);
+  static Color get backgroundInteractionFromBg2 => _dark
+      ? const Color.from(alpha: 0.14, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `background-gradient-bg-fill-chat-bg-1`
   static Color get backgroundGradientBgFillChatBg1 => _dark ? const Color(0xFF222225) : const Color(0xFFF9FAFB);
@@ -175,100 +200,124 @@ abstract final class DifyColors {
   static Color get backgroundGradientBgFillChatBg2 => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF2F4F7);
 
   /// `background-gradient-bg-fill-chat-bubble-bg-1`
-  static Color get backgroundGradientBgFillChatBubbleBg1 =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color(0xFFFFFFFF);
+  static Color get backgroundGradientBgFillChatBubbleBg1 => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `background-gradient-bg-fill-chat-bubble-bg-2`
-  static Color get backgroundGradientBgFillChatBubbleBg2 =>
-      _dark ? const Color.fromARGB(5, 200, 206, 218) : const Color.fromARGB(153, 255, 255, 255);
+  static Color get backgroundGradientBgFillChatBubbleBg2 => _dark
+      ? const Color.from(alpha: 0.02, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `background-gradient-bg-fill-debug-bg-1`
-  static Color get backgroundGradientBgFillDebugBg1 =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get backgroundGradientBgFillDebugBg1 => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `background-gradient-bg-fill-debug-bg-2`
-  static Color get backgroundGradientBgFillDebugBg2 =>
-      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(36, 200, 206, 218);
+  static Color get backgroundGradientBgFillDebugBg2 => _dark
+      ? const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `background-gradient-mask-gray`
-  static Color get backgroundGradientMaskGray =>
-      _dark ? const Color.fromARGB(20, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get backgroundGradientMaskGray => _dark
+      ? const Color.from(alpha: 0.08, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `background-gradient-mask-transparent`
-  static Color get backgroundGradientMaskTransparent =>
-      _dark ? const Color.fromARGB(0, 0, 0, 0) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get backgroundGradientMaskTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `background-gradient-mask-transparent-dark`
-  static Color get backgroundGradientMaskTransparentDark => const Color.fromARGB(0, 0, 0, 0);
+  static Color get backgroundGradientMaskTransparentDark =>
+      const Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `background-gradient-mask-side-panel-1`
-  static Color get backgroundGradientMaskSidePanel1 =>
-      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(5, 16, 24, 40);
+  static Color get backgroundGradientMaskSidePanel1 => _dark
+      ? const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.02, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `background-gradient-mask-side-panel-2`
-  static Color get backgroundGradientMaskSidePanel2 =>
-      _dark ? const Color.fromARGB(230, 24, 24, 27) : const Color.fromARGB(76, 16, 24, 40);
+  static Color get backgroundGradientMaskSidePanel2 => _dark
+      ? const Color.from(alpha: 0.9, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.3, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `background-gradient-mask-input-clear-1`
   static Color get backgroundGradientMaskInputClear1 => _dark ? const Color(0xFF393A3E) : const Color(0xFFE9EBF0);
 
   /// `background-gradient-mask-input-clear-2`
-  static Color get backgroundGradientMaskInputClear2 =>
-      _dark ? const Color.fromARGB(0, 57, 58, 62) : const Color.fromARGB(0, 233, 235, 240);
+  static Color get backgroundGradientMaskInputClear2 => _dark
+      ? const Color.from(alpha: 0.0, red: 57 / 255, green: 58 / 255, blue: 62 / 255)
+      : const Color.from(alpha: 0.0, red: 233 / 255, green: 235 / 255, blue: 240 / 255);
 
   /// `state-base-hover-subtle`
-  static Color get stateBaseHoverSubtle =>
-      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(20, 200, 206, 218);
+  static Color get stateBaseHoverSubtle => _dark
+      ? const Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `state-base-hover`
-  static Color get stateBaseHover =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get stateBaseHover => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `state-base-hover-alt`
-  static Color get stateBaseHoverAlt =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
+  static Color get stateBaseHoverAlt => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.4, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `state-base-active`
-  static Color get stateBaseActive =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
+  static Color get stateBaseActive => _dark
+      ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.4, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `state-base-handle`
-  static Color get stateBaseHandle =>
-      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color.fromARGB(51, 16, 24, 40);
+  static Color get stateBaseHandle => _dark
+      ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `state-base-handle-hover`
-  static Color get stateBaseHandleHover =>
-      _dark ? const Color.fromARGB(128, 200, 206, 218) : const Color.fromARGB(76, 16, 24, 40);
+  static Color get stateBaseHandleHover => _dark
+      ? const Color.from(alpha: 0.5, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.3, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `state-accent-hover`
-  static Color get stateAccentHover => _dark ? const Color.fromARGB(36, 8, 90, 252) : const Color(0xFFE9F0FF);
+  static Color get stateAccentHover =>
+      _dark ? const Color.from(alpha: 0.14, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFE9F0FF);
 
   /// `state-accent-hover-alt`
-  static Color get stateAccentHoverAlt => _dark ? const Color.fromARGB(64, 8, 90, 252) : const Color(0xFFD0DFFF);
+  static Color get stateAccentHoverAlt =>
+      _dark ? const Color.from(alpha: 0.25, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFD0DFFF);
 
   /// `state-accent-active`
-  static Color get stateAccentActive =>
-      _dark ? const Color.fromARGB(36, 8, 90, 252) : const Color.fromARGB(20, 0, 51, 255);
+  static Color get stateAccentActive => _dark
+      ? const Color.from(alpha: 0.14, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.08, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `state-accent-active-alt`
-  static Color get stateAccentActiveAlt =>
-      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get stateAccentActiveAlt => _dark
+      ? const Color.from(alpha: 0.2, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `state-accent-solid`
   static Color get stateAccentSolid => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `state-destructive-hover`
-  static Color get stateDestructiveHover => _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEF3F2);
+  static Color get stateDestructiveHover =>
+      _dark ? const Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEF3F2);
 
   /// `state-destructive-hover-transparent`
-  static Color get stateDestructiveHoverTransparent =>
-      _dark ? const Color.fromARGB(0, 240, 68, 56) : const Color.fromARGB(0, 254, 243, 242);
+  static Color get stateDestructiveHoverTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.0, red: 254 / 255, green: 243 / 255, blue: 242 / 255);
 
   /// `state-destructive-hover-alt`
-  static Color get stateDestructiveHoverAlt => _dark ? const Color.fromARGB(64, 240, 68, 56) : const Color(0xFFFEE4E2);
+  static Color get stateDestructiveHoverAlt =>
+      _dark ? const Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEE4E2);
 
   /// `state-destructive-active`
-  static Color get stateDestructiveActive => _dark ? const Color.fromARGB(76, 240, 68, 56) : const Color(0xFFFECDCA);
+  static Color get stateDestructiveActive =>
+      _dark ? const Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFECDCA);
 
   /// `state-destructive-solid`
   static Color get stateDestructiveSolid => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
@@ -277,71 +326,88 @@ abstract final class DifyColors {
   static Color get stateDestructiveBorder => _dark ? const Color(0xFFF97066) : const Color(0xFFFDA29B);
 
   /// `state-warning-hover`
-  static Color get stateWarningHover => _dark ? const Color.fromARGB(36, 247, 144, 9) : const Color(0xFFFFFAEB);
+  static Color get stateWarningHover =>
+      _dark ? const Color.from(alpha: 0.14, red: 247 / 255, green: 144 / 255, blue: 9 / 255) : const Color(0xFFFFFAEB);
 
   /// `state-warning-hover-transparent`
-  static Color get stateWarningHoverTransparent =>
-      _dark ? const Color.fromARGB(0, 247, 144, 9) : const Color.fromARGB(0, 255, 250, 235);
+  static Color get stateWarningHoverTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 250 / 255, blue: 235 / 255);
 
   /// `state-warning-hover-alt`
-  static Color get stateWarningHoverAlt => _dark ? const Color.fromARGB(64, 247, 144, 9) : const Color(0xFFFEF0C7);
+  static Color get stateWarningHoverAlt =>
+      _dark ? const Color.from(alpha: 0.25, red: 247 / 255, green: 144 / 255, blue: 9 / 255) : const Color(0xFFFEF0C7);
 
   /// `state-warning-active`
-  static Color get stateWarningActive => _dark ? const Color.fromARGB(76, 247, 144, 9) : const Color(0xFFFEDF89);
+  static Color get stateWarningActive =>
+      _dark ? const Color.from(alpha: 0.3, red: 247 / 255, green: 144 / 255, blue: 9 / 255) : const Color(0xFFFEDF89);
 
   /// `state-warning-solid`
   static Color get stateWarningSolid => const Color(0xFFF79009);
 
   /// `state-success-hover`
-  static Color get stateSuccessHover => _dark ? const Color.fromARGB(36, 23, 178, 106) : const Color(0xFFECFDF3);
+  static Color get stateSuccessHover =>
+      _dark ? const Color.from(alpha: 0.14, red: 23 / 255, green: 178 / 255, blue: 106 / 255) : const Color(0xFFECFDF3);
 
   /// `state-success-hover-alt`
-  static Color get stateSuccessHoverAlt => _dark ? const Color.fromARGB(64, 23, 178, 106) : const Color(0xFFDCFAE6);
+  static Color get stateSuccessHoverAlt =>
+      _dark ? const Color.from(alpha: 0.25, red: 23 / 255, green: 178 / 255, blue: 106 / 255) : const Color(0xFFDCFAE6);
 
   /// `state-success-active`
-  static Color get stateSuccessActive => _dark ? const Color.fromARGB(76, 23, 178, 106) : const Color(0xFFABEFC6);
+  static Color get stateSuccessActive =>
+      _dark ? const Color.from(alpha: 0.3, red: 23 / 255, green: 178 / 255, blue: 106 / 255) : const Color(0xFFABEFC6);
 
   /// `state-success-solid`
   static Color get stateSuccessSolid => _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `workflow-workflow-progress-bg-1`
-  static Color get workflowWorkflowProgressBg1 =>
-      _dark ? const Color.fromARGB(64, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get workflowWorkflowProgressBg1 => _dark
+      ? const Color.from(alpha: 0.25, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-workflow-progress-bg-2`
-  static Color get workflowWorkflowProgressBg2 =>
-      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(10, 200, 206, 218);
+  static Color get workflowWorkflowProgressBg2 => _dark
+      ? const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-block-bg`
   static Color get workflowBlockBg => _dark ? const Color(0xFF27272B) : const Color(0xFFFCFCFD);
 
   /// `workflow-block-bg-transparent`
-  static Color get workflowBlockBgTransparent =>
-      _dark ? const Color.fromARGB(245, 39, 39, 43) : const Color.fromARGB(230, 252, 252, 253);
+  static Color get workflowBlockBgTransparent => _dark
+      ? const Color.from(alpha: 0.96, red: 39 / 255, green: 39 / 255, blue: 43 / 255)
+      : const Color.from(alpha: 0.9, red: 252 / 255, green: 252 / 255, blue: 253 / 255);
 
   /// `workflow-block-border`
-  static Color get workflowBlockBorder => _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get workflowBlockBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `workflow-block-border-highlight`
-  static Color get workflowBlockBorderHighlight =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get workflowBlockBorderHighlight => _dark
+      ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `workflow-block-parma-bg`
-  static Color get workflowBlockParmaBg => _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFF2F4F7);
+  static Color get workflowBlockParmaBg => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF2F4F7);
 
   /// `workflow-block-wrapper-bg-1`
   static Color get workflowBlockWrapperBg1 => _dark ? const Color(0xFF27272B) : const Color(0xFFE9EBF0);
 
   /// `workflow-block-wrapper-bg-2`
-  static Color get workflowBlockWrapperBg2 =>
-      _dark ? const Color.fromARGB(51, 39, 39, 43) : const Color.fromARGB(51, 233, 235, 240);
+  static Color get workflowBlockWrapperBg2 => _dark
+      ? const Color.from(alpha: 0.2, red: 39 / 255, green: 39 / 255, blue: 43 / 255)
+      : const Color.from(alpha: 0.2, red: 233 / 255, green: 235 / 255, blue: 240 / 255);
 
   /// `workflow-link-line-normal`
   static Color get workflowLinkLineNormal => _dark ? const Color(0xFF676F83) : const Color(0xFFD0D5DC);
 
   /// `workflow-link-line-normal-transparent`
-  static Color get workflowLinkLineNormalTransparent =>
-      _dark ? const Color.fromARGB(51, 103, 111, 131) : const Color.fromARGB(51, 208, 213, 220);
+  static Color get workflowLinkLineNormalTransparent => _dark
+      ? const Color.from(alpha: 0.2, red: 103 / 255, green: 111 / 255, blue: 131 / 255)
+      : const Color.from(alpha: 0.2, red: 208 / 255, green: 213 / 255, blue: 220 / 255);
 
   /// `workflow-link-line-active`
   static Color get workflowLinkLineActive => _dark ? const Color(0xFF3072FF) : const Color(0xFF085AFC);
@@ -374,157 +440,194 @@ abstract final class DifyColors {
   static Color get workflowLinkLineErrorHandle => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `workflow-minimap-block`
-  static Color get workflowMinimapBlock =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(76, 200, 206, 218);
+  static Color get workflowMinimapBlock => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-minimap-bg`
   static Color get workflowMinimapBg => _dark ? const Color(0xFF27272B) : const Color(0xFFE9EBF0);
 
   /// `workflow-display-glass-1`
-  static Color get workflowDisplayGlass1 =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(31, 255, 255, 255);
+  static Color get workflowDisplayGlass1 => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `workflow-display-glass-2`
-  static Color get workflowDisplayGlass2 =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(128, 255, 255, 255);
+  static Color get workflowDisplayGlass2 => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `workflow-display-highlight`
-  static Color get workflowDisplayHighlight =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(128, 255, 255, 255);
+  static Color get workflowDisplayHighlight => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `workflow-display-outline`
-  static Color get workflowDisplayOutline =>
-      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(13, 0, 0, 0);
+  static Color get workflowDisplayOutline => _dark
+      ? const Color.from(alpha: 0.95, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.05, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `workflow-display-vignette-dark`
-  static Color get workflowDisplayVignetteDark =>
-      _dark ? const Color.fromARGB(102, 0, 0, 0) : const Color.fromARGB(31, 0, 0, 0);
+  static Color get workflowDisplayVignetteDark => _dark
+      ? const Color.from(alpha: 0.4, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.12, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `workflow-display-success-bg`
-  static Color get workflowDisplaySuccessBg => _dark ? const Color.fromARGB(51, 23, 178, 106) : const Color(0xFFECFDF3);
+  static Color get workflowDisplaySuccessBg =>
+      _dark ? const Color.from(alpha: 0.2, red: 23 / 255, green: 178 / 255, blue: 106 / 255) : const Color(0xFFECFDF3);
 
   /// `workflow-display-success-bg-line-pattern`
-  static Color get workflowDisplaySuccessBgLinePattern =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 23, 178, 106);
+  static Color get workflowDisplaySuccessBgLinePattern => _dark
+      ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.3, red: 23 / 255, green: 178 / 255, blue: 106 / 255);
 
   /// `workflow-display-success-border-1`
-  static Color get workflowDisplaySuccessBorder1 =>
-      _dark ? const Color.fromARGB(230, 23, 178, 106) : const Color.fromARGB(204, 23, 178, 106);
+  static Color get workflowDisplaySuccessBorder1 => _dark
+      ? const Color.from(alpha: 0.9, red: 23 / 255, green: 178 / 255, blue: 106 / 255)
+      : const Color.from(alpha: 0.8, red: 23 / 255, green: 178 / 255, blue: 106 / 255);
 
   /// `workflow-display-success-border-2`
-  static Color get workflowDisplaySuccessBorder2 =>
-      _dark ? const Color.fromARGB(204, 23, 178, 106) : const Color.fromARGB(128, 23, 178, 106);
+  static Color get workflowDisplaySuccessBorder2 => _dark
+      ? const Color.from(alpha: 0.8, red: 23 / 255, green: 178 / 255, blue: 106 / 255)
+      : const Color.from(alpha: 0.5, red: 23 / 255, green: 178 / 255, blue: 106 / 255);
 
   /// `workflow-display-success-vignette-color`
-  static Color get workflowDisplaySuccessVignetteColor =>
-      _dark ? const Color.fromARGB(64, 23, 178, 106) : const Color.fromARGB(51, 23, 178, 106);
+  static Color get workflowDisplaySuccessVignetteColor => _dark
+      ? const Color.from(alpha: 0.25, red: 23 / 255, green: 178 / 255, blue: 106 / 255)
+      : const Color.from(alpha: 0.2, red: 23 / 255, green: 178 / 255, blue: 106 / 255);
 
   /// `workflow-display-error-bg`
-  static Color get workflowDisplayErrorBg => _dark ? const Color.fromARGB(51, 240, 68, 56) : const Color(0xFFFEF3F2);
+  static Color get workflowDisplayErrorBg =>
+      _dark ? const Color.from(alpha: 0.2, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEF3F2);
 
   /// `workflow-display-error-bg-line-pattern`
-  static Color get workflowDisplayErrorBgLinePattern =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 240, 68, 56);
+  static Color get workflowDisplayErrorBgLinePattern => _dark
+      ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `workflow-display-error-border-1`
-  static Color get workflowDisplayErrorBorder1 =>
-      _dark ? const Color.fromARGB(230, 240, 68, 56) : const Color.fromARGB(204, 240, 68, 56);
+  static Color get workflowDisplayErrorBorder1 => _dark
+      ? const Color.from(alpha: 0.9, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.8, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `workflow-display-error-border-2`
-  static Color get workflowDisplayErrorBorder2 =>
-      _dark ? const Color.fromARGB(204, 240, 68, 56) : const Color.fromARGB(128, 240, 68, 56);
+  static Color get workflowDisplayErrorBorder2 => _dark
+      ? const Color.from(alpha: 0.8, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.5, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `workflow-display-error-vignette-color`
-  static Color get workflowDisplayErrorVignetteColor =>
-      _dark ? const Color.fromARGB(64, 240, 68, 56) : const Color.fromARGB(51, 240, 68, 56);
+  static Color get workflowDisplayErrorVignetteColor => _dark
+      ? const Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.2, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `workflow-display-warning-bg`
-  static Color get workflowDisplayWarningBg => _dark ? const Color.fromARGB(51, 247, 144, 9) : const Color(0xFFFFFAEB);
+  static Color get workflowDisplayWarningBg =>
+      _dark ? const Color.from(alpha: 0.2, red: 247 / 255, green: 144 / 255, blue: 9 / 255) : const Color(0xFFFFFAEB);
 
   /// `workflow-display-warning-bg-line-pattern`
-  static Color get workflowDisplayWarningBgLinePattern =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 247, 144, 9);
+  static Color get workflowDisplayWarningBgLinePattern => _dark
+      ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.3, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `workflow-display-warning-border-1`
-  static Color get workflowDisplayWarningBorder1 =>
-      _dark ? const Color.fromARGB(230, 247, 144, 9) : const Color.fromARGB(204, 247, 144, 9);
+  static Color get workflowDisplayWarningBorder1 => _dark
+      ? const Color.from(alpha: 0.9, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.8, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `workflow-display-warning-border-2`
-  static Color get workflowDisplayWarningBorder2 =>
-      _dark ? const Color.fromARGB(204, 247, 144, 9) : const Color.fromARGB(128, 247, 144, 9);
+  static Color get workflowDisplayWarningBorder2 => _dark
+      ? const Color.from(alpha: 0.8, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.5, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `workflow-display-warning-vignette-color`
-  static Color get workflowDisplayWarningVignetteColor =>
-      _dark ? const Color.fromARGB(64, 247, 144, 9) : const Color.fromARGB(51, 247, 144, 9);
+  static Color get workflowDisplayWarningVignetteColor => _dark
+      ? const Color.from(alpha: 0.25, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.2, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `workflow-display-normal-bg`
-  static Color get workflowDisplayNormalBg => _dark ? const Color.fromARGB(51, 11, 165, 236) : const Color(0xFFF0F9FF);
+  static Color get workflowDisplayNormalBg =>
+      _dark ? const Color.from(alpha: 0.2, red: 11 / 255, green: 165 / 255, blue: 236 / 255) : const Color(0xFFF0F9FF);
 
   /// `workflow-display-normal-bg-line-pattern`
-  static Color get workflowDisplayNormalBgLinePattern =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 11, 165, 236);
+  static Color get workflowDisplayNormalBgLinePattern => _dark
+      ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.3, red: 11 / 255, green: 165 / 255, blue: 236 / 255);
 
   /// `workflow-display-normal-border-1`
-  static Color get workflowDisplayNormalBorder1 =>
-      _dark ? const Color.fromARGB(230, 11, 165, 236) : const Color.fromARGB(204, 11, 165, 236);
+  static Color get workflowDisplayNormalBorder1 => _dark
+      ? const Color.from(alpha: 0.9, red: 11 / 255, green: 165 / 255, blue: 236 / 255)
+      : const Color.from(alpha: 0.8, red: 11 / 255, green: 165 / 255, blue: 236 / 255);
 
   /// `workflow-display-normal-border-2`
-  static Color get workflowDisplayNormalBorder2 =>
-      _dark ? const Color.fromARGB(204, 11, 165, 236) : const Color.fromARGB(128, 11, 165, 236);
+  static Color get workflowDisplayNormalBorder2 => _dark
+      ? const Color.from(alpha: 0.8, red: 11 / 255, green: 165 / 255, blue: 236 / 255)
+      : const Color.from(alpha: 0.5, red: 11 / 255, green: 165 / 255, blue: 236 / 255);
 
   /// `workflow-display-normal-vignette-color`
-  static Color get workflowDisplayNormalVignetteColor =>
-      _dark ? const Color.fromARGB(64, 11, 165, 236) : const Color.fromARGB(51, 11, 165, 236);
+  static Color get workflowDisplayNormalVignetteColor => _dark
+      ? const Color.from(alpha: 0.25, red: 11 / 255, green: 165 / 255, blue: 236 / 255)
+      : const Color.from(alpha: 0.2, red: 11 / 255, green: 165 / 255, blue: 236 / 255);
 
   /// `workflow-display-disabled-bg`
   static Color get workflowDisplayDisabledBg =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color(0xFFF9FAFB);
+      _dark ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFF9FAFB);
 
   /// `workflow-display-disabled-bg-line-pattern`
-  static Color get workflowDisplayDisabledBgLinePattern =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color.fromARGB(76, 200, 206, 218);
+  static Color get workflowDisplayDisabledBgLinePattern => _dark
+      ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-display-disabled-border-1`
-  static Color get workflowDisplayDisabledBorder1 => const Color.fromARGB(153, 200, 206, 218);
+  static Color get workflowDisplayDisabledBorder1 =>
+      const Color.from(alpha: 0.6, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-display-disabled-border-2`
-  static Color get workflowDisplayDisabledBorder2 =>
-      _dark ? const Color.fromARGB(64, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
+  static Color get workflowDisplayDisabledBorder2 => _dark
+      ? const Color.from(alpha: 0.25, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.4, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-display-disabled-vignette-color`
-  static Color get workflowDisplayDisabledVignetteColor =>
-      _dark ? const Color.fromARGB(64, 200, 206, 218) : const Color.fromARGB(102, 200, 206, 218);
+  static Color get workflowDisplayDisabledVignetteColor => _dark
+      ? const Color.from(alpha: 0.25, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.4, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `workflow-display-disabled-outline`
-  static Color get workflowDisplayDisabledOutline =>
-      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(0, 0, 0, 0);
+  static Color get workflowDisplayDisabledOutline => _dark
+      ? const Color.from(alpha: 0.95, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `workflow-canvas-workflow-dot-color`
-  static Color get workflowCanvasWorkflowDotColor =>
-      _dark ? const Color.fromARGB(28, 133, 133, 173) : const Color.fromARGB(38, 133, 133, 173);
+  static Color get workflowCanvasWorkflowDotColor => _dark
+      ? const Color.from(alpha: 0.11, red: 133 / 255, green: 133 / 255, blue: 173 / 255)
+      : const Color.from(alpha: 0.15, red: 133 / 255, green: 133 / 255, blue: 173 / 255);
 
   /// `workflow-canvas-workflow-bg`
   static Color get workflowCanvasWorkflowBg => _dark ? const Color(0xFF1D1D20) : const Color(0xFFF2F4F7);
 
   /// `workflow-canvas-workflow-top-bar-1`
-  static Color get workflowCanvasWorkflowTopBar1 =>
-      _dark ? const Color.fromARGB(230, 29, 29, 32) : const Color.fromARGB(230, 242, 244, 247);
+  static Color get workflowCanvasWorkflowTopBar1 => _dark
+      ? const Color.from(alpha: 0.9, red: 29 / 255, green: 29 / 255, blue: 32 / 255)
+      : const Color.from(alpha: 0.9, red: 242 / 255, green: 244 / 255, blue: 247 / 255);
 
   /// `workflow-canvas-workflow-top-bar-2`
-  static Color get workflowCanvasWorkflowTopBar2 =>
-      _dark ? const Color.fromARGB(20, 29, 29, 32) : const Color.fromARGB(13, 242, 244, 247);
+  static Color get workflowCanvasWorkflowTopBar2 => _dark
+      ? const Color.from(alpha: 0.08, red: 29 / 255, green: 29 / 255, blue: 32 / 255)
+      : const Color.from(alpha: 0.05, red: 242 / 255, green: 244 / 255, blue: 247 / 255);
 
   /// `workflow-canvas-canvas-overlay`
-  static Color get workflowCanvasCanvasOverlay =>
-      _dark ? const Color.fromARGB(204, 29, 29, 32) : const Color.fromARGB(204, 242, 244, 247);
+  static Color get workflowCanvasCanvasOverlay => _dark
+      ? const Color.from(alpha: 0.8, red: 29 / 255, green: 29 / 255, blue: 32 / 255)
+      : const Color.from(alpha: 0.8, red: 242 / 255, green: 244 / 255, blue: 247 / 255);
 
   /// `workflow-debug-run-status-bg`
-  static Color get workflowDebugRunStatusBg =>
-      _dark ? const Color.fromARGB(102, 230, 46, 5) : const Color.fromARGB(20, 255, 68, 5);
+  static Color get workflowDebugRunStatusBg => _dark
+      ? const Color.from(alpha: 0.4, red: 230 / 255, green: 46 / 255, blue: 5 / 255)
+      : const Color.from(alpha: 0.08, red: 255 / 255, green: 68 / 255, blue: 5 / 255);
 
   /// `workflow-debug-run-status-bg-alt`
-  static Color get workflowDebugRunStatusBgAlt =>
-      _dark ? const Color.fromARGB(128, 255, 46, 0) : const Color.fromARGB(36, 255, 68, 5);
+  static Color get workflowDebugRunStatusBgAlt => _dark
+      ? const Color.from(alpha: 0.5, red: 255 / 255, green: 46 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.14, red: 255 / 255, green: 68 / 255, blue: 5 / 255);
 
   /// `workflow-debug-breakpoint`
   static Color get workflowDebugBreakpoint => _dark ? const Color(0xFFFF692E) : const Color(0xFFE62E05);
@@ -533,22 +636,26 @@ abstract final class DifyColors {
   static Color get workflowDebugText => _dark ? const Color(0xFFFF9C66) : const Color(0xFFE62E05);
 
   /// `workflow-debug-text-disabled`
-  static Color get workflowDebugTextDisabled => const Color.fromARGB(51, 255, 68, 5);
+  static Color get workflowDebugTextDisabled =>
+      const Color.from(alpha: 0.2, red: 255 / 255, green: 68 / 255, blue: 5 / 255);
 
   /// `workflow-test-run-run-status-bg`
-  static Color get workflowTestRunRunStatusBg =>
-      _dark ? const Color.fromARGB(128, 8, 90, 252) : const Color.fromARGB(20, 0, 51, 255);
+  static Color get workflowTestRunRunStatusBg => _dark
+      ? const Color.from(alpha: 0.5, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.08, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `workflow-test-run-paused-bg`
-  static Color get workflowTestRunPausedBg =>
-      _dark ? const Color.fromARGB(76, 247, 144, 9) : const Color.fromARGB(36, 247, 144, 9);
+  static Color get workflowTestRunPausedBg => _dark
+      ? const Color.from(alpha: 0.3, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.14, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `workflow-test-run-paused-text`
   static Color get workflowTestRunPausedText => _dark ? const Color(0xFFFDB022) : const Color(0xFFDC6803);
 
   /// `workflow-test-run-run-status-bg-alt`
-  static Color get workflowTestRunRunStatusBgAlt =>
-      _dark ? const Color.fromARGB(230, 45, 90, 190) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get workflowTestRunRunStatusBgAlt => _dark
+      ? const Color.from(alpha: 0.9, red: 45 / 255, green: 90 / 255, blue: 190 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `workflow-test-run-text`
   static Color get workflowTestRunText => _dark ? const Color(0xFFD0DFFF) : const Color(0xFF002CDE);
@@ -593,110 +700,127 @@ abstract final class DifyColors {
   static Color get componentsIconBgMidnightSolid => _dark ? const Color(0xFF5D698D) : const Color(0xFF828DAD);
 
   /// `components-icon-bg-red-soft`
-  static Color get componentsIconBgRedSoft => _dark ? const Color.fromARGB(51, 240, 68, 56) : const Color(0xFFFEF3F2);
+  static Color get componentsIconBgRedSoft =>
+      _dark ? const Color.from(alpha: 0.2, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEF3F2);
 
   /// `components-icon-bg-rose-soft`
-  static Color get componentsIconBgRoseSoft => _dark ? const Color.fromARGB(51, 246, 61, 104) : const Color(0xFFFFF1F3);
+  static Color get componentsIconBgRoseSoft =>
+      _dark ? const Color.from(alpha: 0.2, red: 246 / 255, green: 61 / 255, blue: 104 / 255) : const Color(0xFFFFF1F3);
 
   /// `components-icon-bg-pink-soft`
-  static Color get componentsIconBgPinkSoft => _dark ? const Color.fromARGB(51, 238, 70, 188) : const Color(0xFFFDF2FA);
+  static Color get componentsIconBgPinkSoft =>
+      _dark ? const Color.from(alpha: 0.2, red: 238 / 255, green: 70 / 255, blue: 188 / 255) : const Color(0xFFFDF2FA);
 
   /// `components-icon-bg-orange-dark-soft`
   static Color get componentsIconBgOrangeDarkSoft =>
-      _dark ? const Color.fromARGB(51, 255, 68, 5) : const Color(0xFFFFF4ED);
+      _dark ? const Color.from(alpha: 0.2, red: 255 / 255, green: 68 / 255, blue: 5 / 255) : const Color(0xFFFFF4ED);
 
   /// `components-icon-bg-orange-soft`
   static Color get componentsIconBgOrangeSoft =>
-      _dark ? const Color.fromARGB(51, 247, 144, 9) : const Color(0xFFFFFAEB);
+      _dark ? const Color.from(alpha: 0.2, red: 247 / 255, green: 144 / 255, blue: 9 / 255) : const Color(0xFFFFFAEB);
 
   /// `components-icon-bg-yellow-soft`
   static Color get componentsIconBgYellowSoft =>
-      _dark ? const Color.fromARGB(51, 234, 170, 8) : const Color(0xFFFEFBE8);
+      _dark ? const Color.from(alpha: 0.2, red: 234 / 255, green: 170 / 255, blue: 8 / 255) : const Color(0xFFFEFBE8);
 
   /// `components-icon-bg-green-soft`
   static Color get componentsIconBgGreenSoft =>
-      _dark ? const Color.fromARGB(51, 102, 198, 28) : const Color(0xFFF3FEE7);
+      _dark ? const Color.from(alpha: 0.2, red: 102 / 255, green: 198 / 255, blue: 28 / 255) : const Color(0xFFF3FEE7);
 
   /// `components-icon-bg-teal-soft`
-  static Color get componentsIconBgTealSoft => _dark ? const Color.fromARGB(51, 21, 183, 158) : const Color(0xFFF0FDF9);
+  static Color get componentsIconBgTealSoft =>
+      _dark ? const Color.from(alpha: 0.2, red: 21 / 255, green: 183 / 255, blue: 158 / 255) : const Color(0xFFF0FDF9);
 
   /// `components-icon-bg-blue-light-soft`
   static Color get componentsIconBgBlueLightSoft =>
-      _dark ? const Color.fromARGB(51, 11, 165, 236) : const Color(0xFFF0F9FF);
+      _dark ? const Color.from(alpha: 0.2, red: 11 / 255, green: 165 / 255, blue: 236 / 255) : const Color(0xFFF0F9FF);
 
   /// `components-icon-bg-blue-soft`
-  static Color get componentsIconBgBlueSoft => _dark ? const Color.fromARGB(51, 0, 51, 255) : const Color(0xFFE9F0FF);
+  static Color get componentsIconBgBlueSoft =>
+      _dark ? const Color.from(alpha: 0.2, red: 0 / 255, green: 51 / 255, blue: 255 / 255) : const Color(0xFFE9F0FF);
 
   /// `components-icon-bg-indigo-soft`
   static Color get componentsIconBgIndigoSoft =>
-      _dark ? const Color.fromARGB(51, 97, 114, 243) : const Color(0xFFEEF4FF);
+      _dark ? const Color.from(alpha: 0.2, red: 97 / 255, green: 114 / 255, blue: 243 / 255) : const Color(0xFFEEF4FF);
 
   /// `components-icon-bg-violet-soft`
   static Color get componentsIconBgVioletSoft =>
-      _dark ? const Color.fromARGB(51, 135, 91, 247) : const Color(0xFFF5F3FF);
+      _dark ? const Color.from(alpha: 0.2, red: 135 / 255, green: 91 / 255, blue: 247 / 255) : const Color(0xFFF5F3FF);
 
   /// `components-icon-bg-midnight-soft`
   static Color get componentsIconBgMidnightSoft =>
-      _dark ? const Color.fromARGB(51, 130, 141, 173) : const Color(0xFFF0F2F5);
+      _dark ? const Color.from(alpha: 0.2, red: 130 / 255, green: 141 / 255, blue: 173 / 255) : const Color(0xFFF0F2F5);
 
   /// `components-avatar-default-avatar-bg`
   static Color get componentsAvatarDefaultAvatarBg => _dark ? const Color(0xFF222225) : const Color(0xFFD0D5DC);
 
   /// `components-avatar-mask-darkmode-dimmed`
-  static Color get componentsAvatarMaskDarkmodeDimmed =>
-      _dark ? const Color.fromARGB(31, 0, 0, 0) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsAvatarMaskDarkmodeDimmed => _dark
+      ? const Color.from(alpha: 0.12, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-avatar-shape-fill-stop-0`
-  static Color get componentsAvatarShapeFillStop0 =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsAvatarShapeFillStop0 => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-avatar-shape-fill-stop-100`
-  static Color get componentsAvatarShapeFillStop100 =>
-      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color.fromARGB(230, 255, 255, 255);
+  static Color get componentsAvatarShapeFillStop100 => _dark
+      ? const Color.from(alpha: 0.8, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.9, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-avatar-bg-mask-stop-0`
-  static Color get componentsAvatarBgMaskStop0 =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(31, 255, 255, 255);
+  static Color get componentsAvatarBgMaskStop0 => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-avatar-bg-mask-stop-100`
-  static Color get componentsAvatarBgMaskStop100 =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(20, 255, 255, 255);
+  static Color get componentsAvatarBgMaskStop100 => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-chat-input-audio-bg`
-  static Color get componentsChatInputAudioBg => _dark ? const Color.fromARGB(51, 0, 51, 255) : const Color(0xFFE9F0FF);
+  static Color get componentsChatInputAudioBg =>
+      _dark ? const Color.from(alpha: 0.2, red: 0 / 255, green: 51 / 255, blue: 255 / 255) : const Color(0xFFE9F0FF);
 
   /// `components-chat-input-audio-bg-alt`
   static Color get componentsChatInputAudioBgAlt =>
-      _dark ? const Color.fromARGB(230, 24, 24, 27) : const Color(0xFFFCFCFD);
+      _dark ? const Color.from(alpha: 0.9, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFFCFCFD);
 
   /// `components-chat-input-audio-wave-default`
-  static Color get componentsChatInputAudioWaveDefault =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(51, 0, 51, 255);
+  static Color get componentsChatInputAudioWaveDefault => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-chat-input-audio-wave-active`
   static Color get componentsChatInputAudioWaveActive => _dark ? const Color(0xFF6694FF) : const Color(0xFF0033FF);
 
   /// `components-chat-input-bg-mask-1`
-  static Color get componentsChatInputBgMask1 =>
-      _dark ? const Color.fromARGB(10, 24, 24, 27) : const Color.fromARGB(3, 255, 255, 255);
+  static Color get componentsChatInputBgMask1 => _dark
+      ? const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.01, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-chat-input-bg-mask-2`
   static Color get componentsChatInputBgMask2 =>
-      _dark ? const Color.fromARGB(153, 24, 24, 27) : const Color(0xFFF2F4F7);
+      _dark ? const Color.from(alpha: 0.6, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFF2F4F7);
 
   /// `components-chat-input-border`
   static Color get componentsChatInputBorder =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color(0xFFFFFFFF);
+      _dark ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFFFFFFF);
 
   /// `components-label-gray`
-  static Color get componentsLabelGray => _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFF2F4F7);
+  static Color get componentsLabelGray => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFF2F4F7);
 
   /// `components-premium-badge-highlight-stop-0`
-  static Color get componentsPremiumBadgeHighlightStop0 => const Color.fromARGB(31, 255, 255, 255);
+  static Color get componentsPremiumBadgeHighlightStop0 =>
+      const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-highlight-stop-100`
-  static Color get componentsPremiumBadgeHighlightStop100 =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(76, 255, 255, 255);
+  static Color get componentsPremiumBadgeHighlightStop100 => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.3, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-orange-bg-stop-0`
   static Color get componentsPremiumBadgeOrangeBgStop0 => const Color(0xFFFF692E);
@@ -705,8 +829,9 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeOrangeBgStop100 => const Color(0xFFE04F16);
 
   /// `components-premium-badge-orange-stroke-stop-0`
-  static Color get componentsPremiumBadgeOrangeStrokeStop0 =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeOrangeStrokeStop0 => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-orange-stroke-stop-100`
   static Color get componentsPremiumBadgeOrangeStrokeStop100 =>
@@ -732,8 +857,9 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeOrangeBgStop100Hover => const Color(0xFFB93815);
 
   /// `components-premium-badge-orange-stroke-stop-0-hover`
-  static Color get componentsPremiumBadgeOrangeStrokeStop0Hover =>
-      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeOrangeStrokeStop0Hover => _dark
+      ? const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-orange-stroke-stop-100-hover`
   static Color get componentsPremiumBadgeOrangeStrokeStop100Hover =>
@@ -746,8 +872,9 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeBlueBgStop100 => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-premium-badge-blue-stroke-stop-0`
-  static Color get componentsPremiumBadgeBlueStrokeStop0 =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeBlueStrokeStop0 => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-blue-stroke-stop-100`
   static Color get componentsPremiumBadgeBlueStrokeStop100 => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
@@ -771,8 +898,9 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeBlueBgStop100Hover => const Color(0xFF002CDE);
 
   /// `components-premium-badge-blue-stroke-stop-0-hover`
-  static Color get componentsPremiumBadgeBlueStrokeStop0Hover =>
-      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeBlueStrokeStop0Hover => _dark
+      ? const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-blue-stroke-stop-100-hover`
   static Color get componentsPremiumBadgeBlueStrokeStop100Hover =>
@@ -785,8 +913,9 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeIndigoBgStop100 => _dark ? const Color(0xFF3538CD) : const Color(0xFF444CE7);
 
   /// `components-premium-badge-indigo-stroke-stop-0`
-  static Color get componentsPremiumBadgeIndigoStrokeStop0 =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeIndigoStrokeStop0 => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-indigo-stroke-stop-100`
   static Color get componentsPremiumBadgeIndigoStrokeStop100 =>
@@ -813,8 +942,9 @@ abstract final class DifyColors {
       _dark ? const Color(0xFF3538CD) : const Color(0xFF2D31A6);
 
   /// `components-premium-badge-indigo-stroke-stop-0-hover`
-  static Color get componentsPremiumBadgeIndigoStrokeStop0Hover =>
-      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeIndigoStrokeStop0Hover => _dark
+      ? const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-indigo-stroke-stop-100-hover`
   static Color get componentsPremiumBadgeIndigoStrokeStop100Hover =>
@@ -827,8 +957,9 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeGreyBgStop100 => _dark ? const Color(0xFF495464) : const Color(0xFF676F83);
 
   /// `components-premium-badge-grey-stroke-stop-0`
-  static Color get componentsPremiumBadgeGreyStrokeStop0 =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeGreyStrokeStop0 => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-grey-stroke-stop-100`
   static Color get componentsPremiumBadgeGreyStrokeStop100 => _dark ? const Color(0xFF495464) : const Color(0xFF676F83);
@@ -852,30 +983,36 @@ abstract final class DifyColors {
   static Color get componentsPremiumBadgeGreyBgStop100Hover => const Color(0xFF354052);
 
   /// `components-premium-badge-grey-stroke-stop-0-hover`
-  static Color get componentsPremiumBadgeGreyStrokeStop0Hover =>
-      _dark ? const Color.fromARGB(128, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPremiumBadgeGreyStrokeStop0Hover => _dark
+      ? const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-premium-badge-grey-stroke-stop-100-hover`
   static Color get componentsPremiumBadgeGreyStrokeStop100Hover =>
       _dark ? const Color(0xFF676F83) : const Color(0xFF354052);
 
   /// `components-dropzone-bg`
-  static Color get componentsDropzoneBg => _dark ? const Color.fromARGB(102, 24, 24, 27) : const Color(0xFFF9FAFB);
+  static Color get componentsDropzoneBg =>
+      _dark ? const Color.from(alpha: 0.4, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFF9FAFB);
 
   /// `components-dropzone-bg-alt`
-  static Color get componentsDropzoneBgAlt => _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color(0xFFF2F4F7);
+  static Color get componentsDropzoneBgAlt =>
+      _dark ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFF2F4F7);
 
   /// `components-dropzone-bg-accent`
-  static Color get componentsDropzoneBgAccent =>
-      _dark ? const Color.fromARGB(51, 0, 51, 255) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsDropzoneBgAccent => _dark
+      ? const Color.from(alpha: 0.2, red: 0 / 255, green: 51 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-dropzone-border`
-  static Color get componentsDropzoneBorder =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsDropzoneBorder => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-dropzone-border-alt`
-  static Color get componentsDropzoneBorderAlt =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(51, 16, 24, 40);
+  static Color get componentsDropzoneBorderAlt => _dark
+      ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-dropzone-border-accent`
   static Color get componentsDropzoneBorderAccent => const Color(0xFF6694FF);
@@ -884,27 +1021,32 @@ abstract final class DifyColors {
   static Color get componentsPanelBg => _dark ? const Color(0xFF222225) : const Color(0xFFFFFFFF);
 
   /// `components-panel-bg-transparent`
-  static Color get componentsPanelBgTransparent =>
-      _dark ? const Color.fromARGB(0, 34, 34, 37) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsPanelBgTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 34 / 255, green: 34 / 255, blue: 37 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-panel-bg-alt`
   static Color get componentsPanelBgAlt => _dark ? const Color(0xFF222225) : const Color(0xFFF9FAFB);
 
   /// `components-panel-bg-blur`
-  static Color get componentsPanelBgBlur =>
-      _dark ? const Color.fromARGB(242, 44, 44, 48) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPanelBgBlur => _dark
+      ? const Color.from(alpha: 0.95, red: 44 / 255, green: 44 / 255, blue: 48 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-panel-bg-blur-burn`
-  static Color get componentsPanelBgBlurBurn =>
-      _dark ? const Color.fromARGB(230, 31, 31, 35) : const Color.fromARGB(230, 255, 255, 255);
+  static Color get componentsPanelBgBlurBurn => _dark
+      ? const Color.from(alpha: 0.9, red: 31 / 255, green: 31 / 255, blue: 35 / 255)
+      : const Color.from(alpha: 0.9, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-panel-border`
-  static Color get componentsPanelBorder =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsPanelBorder => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-panel-border-subtle`
-  static Color get componentsPanelBorderSubtle =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsPanelBorderSubtle => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-panel-gradient-1`
   static Color get componentsPanelGradient1 => _dark ? const Color(0xFF27272B) : const Color(0xFFFFFFFF);
@@ -916,26 +1058,30 @@ abstract final class DifyColors {
   static Color get componentsPanelOnPanelItemBg => _dark ? const Color(0xFF27272B) : const Color(0xFFFFFFFF);
 
   /// `components-panel-on-panel-item-bg-transparent`
-  static Color get componentsPanelOnPanelItemBgTransparent =>
-      _dark ? const Color.fromARGB(242, 44, 44, 48) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsPanelOnPanelItemBgTransparent => _dark
+      ? const Color.from(alpha: 0.95, red: 44 / 255, green: 44 / 255, blue: 48 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-panel-on-panel-item-bg-hover`
   static Color get componentsPanelOnPanelItemBgHover => _dark ? const Color(0xFF3A3A40) : const Color(0xFFF9FAFB);
 
   /// `components-panel-on-panel-item-bg-hover-transparent`
-  static Color get componentsPanelOnPanelItemBgHoverTransparent =>
-      _dark ? const Color.fromARGB(0, 58, 58, 64) : const Color.fromARGB(0, 249, 250, 251);
+  static Color get componentsPanelOnPanelItemBgHoverTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 58 / 255, green: 58 / 255, blue: 64 / 255)
+      : const Color.from(alpha: 0.0, red: 249 / 255, green: 250 / 255, blue: 251 / 255);
 
   /// `components-panel-on-panel-item-bg-destructive-hover-transparent`
-  static Color get componentsPanelOnPanelItemBgDestructiveHoverTransparent =>
-      _dark ? const Color.fromARGB(0, 255, 251, 250) : const Color.fromARGB(0, 254, 243, 242);
+  static Color get componentsPanelOnPanelItemBgDestructiveHoverTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 255 / 255, green: 251 / 255, blue: 250 / 255)
+      : const Color.from(alpha: 0.0, red: 254 / 255, green: 243 / 255, blue: 242 / 255);
 
   /// `components-panel-on-panel-item-bg-alt`
   static Color get componentsPanelOnPanelItemBgAlt => _dark ? const Color(0xFF3A3A40) : const Color(0xFFF9FAFB);
 
   /// `components-marketplace-header-bg`
-  static Color get componentsMarketplaceHeaderBg =>
-      _dark ? const Color.fromARGB(230, 31, 31, 35) : const Color.fromARGB(250, 255, 255, 255);
+  static Color get componentsMarketplaceHeaderBg => _dark
+      ? const Color.from(alpha: 0.9, red: 31 / 255, green: 31 / 255, blue: 35 / 255)
+      : const Color.from(alpha: 0.98, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-card-bg`
   static Color get componentsCardBg => _dark ? const Color(0xFF222225) : const Color(0xFFFCFCFD);
@@ -944,22 +1090,29 @@ abstract final class DifyColors {
   static Color get componentsCardBgAlt => _dark ? const Color(0xFF27272B) : const Color(0xFFFFFFFF);
 
   /// `components-card-bg-transparent`
-  static Color get componentsCardBgTransparent =>
-      _dark ? const Color.fromARGB(0, 34, 34, 37) : const Color.fromARGB(0, 252, 252, 253);
+  static Color get componentsCardBgTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 34 / 255, green: 34 / 255, blue: 37 / 255)
+      : const Color.from(alpha: 0.0, red: 252 / 255, green: 252 / 255, blue: 253 / 255);
 
   /// `components-card-bg-alt-transparent`
-  static Color get componentsCardBgAltTransparent =>
-      _dark ? const Color.fromARGB(0, 39, 39, 43) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsCardBgAltTransparent => _dark
+      ? const Color.from(alpha: 0.0, red: 39 / 255, green: 39 / 255, blue: 43 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-card-border`
-  static Color get componentsCardBorder => _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsCardBorder => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-actionbar-border`
-  static Color get componentsActionbarBorder =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsActionbarBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-actionbar-bg`
-  static Color get componentsActionbarBg => _dark ? const Color(0xFF222225) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsActionbarBg => _dark
+      ? const Color(0xFF222225)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-actionbar-bg-accent`
   static Color get componentsActionbarBgAccent => _dark ? const Color(0xFF27272B) : const Color(0xFFF5F8FF);
@@ -968,38 +1121,44 @@ abstract final class DifyColors {
   static Color get componentsActionbarBorderAccent => _dark ? const Color(0xFF3072FF) : const Color(0xFFA0BDFF);
 
   /// `components-input-bg-normal`
-  static Color get componentsInputBgNormal =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(64, 200, 206, 218);
+  static Color get componentsInputBgNormal => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.25, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-input-bg-hover`
-  static Color get componentsInputBgHover =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 200, 206, 218);
+  static Color get componentsInputBgHover => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-input-bg-active`
-  static Color get componentsInputBgActive => _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFF9FAFB);
+  static Color get componentsInputBgActive => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF9FAFB);
 
   /// `components-input-bg-disabled`
-  static Color get componentsInputBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 200, 206, 218);
+  static Color get componentsInputBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-input-bg-destructive`
-  static Color get componentsInputBgDestructive =>
-      _dark ? const Color.fromARGB(3, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsInputBgDestructive => _dark
+      ? const Color.from(alpha: 0.01, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-input-text-filled`
   static Color get componentsInputTextFilled => _dark ? const Color(0xFFF4F4F5) : const Color(0xFF101828);
 
   /// `components-input-text-placeholder`
   static Color get componentsInputTextPlaceholder =>
-      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFF98A2B2);
+      _dark ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF98A2B2);
 
   /// `components-input-text-disabled`
   static Color get componentsInputTextDisabled =>
-      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
+      _dark ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFD0D5DC);
 
   /// `components-input-text-filled-disabled`
   static Color get componentsInputTextFilledDisabled =>
-      _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF676F83);
+      _dark ? const Color.from(alpha: 0.6, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF676F83);
 
   /// `components-input-text-filled-blue`
   static Color get componentsInputTextFilledBlue => _dark ? const Color(0xFF6694FF) : const Color(0xFF0033FF);
@@ -1026,17 +1185,20 @@ abstract final class DifyColors {
   static Color get componentsProgressBrandBorder => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-progress-brand-bg`
-  static Color get componentsProgressBrandBg =>
-      _dark ? const Color.fromARGB(10, 8, 90, 252) : const Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsProgressBrandBg => _dark
+      ? const Color.from(alpha: 0.04, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.04, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-progress-white-progress`
   static Color get componentsProgressWhiteProgress => const Color(0xFFFFFFFF);
 
   /// `components-progress-white-border`
-  static Color get componentsProgressWhiteBorder => const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsProgressWhiteBorder =>
+      const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-progress-white-bg`
-  static Color get componentsProgressWhiteBg => const Color.fromARGB(3, 255, 255, 255);
+  static Color get componentsProgressWhiteBg =>
+      const Color.from(alpha: 0.01, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-progress-gray-progress`
   static Color get componentsProgressGrayProgress => const Color(0xFF98A2B2);
@@ -1045,7 +1207,8 @@ abstract final class DifyColors {
   static Color get componentsProgressGrayBorder => const Color(0xFF98A2B2);
 
   /// `components-progress-gray-bg`
-  static Color get componentsProgressGrayBg => const Color.fromARGB(5, 200, 206, 218);
+  static Color get componentsProgressGrayBg =>
+      const Color.from(alpha: 0.02, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-progress-warning-progress`
   static Color get componentsProgressWarningProgress => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
@@ -1054,7 +1217,8 @@ abstract final class DifyColors {
   static Color get componentsProgressWarningBorder => _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `components-progress-warning-bg`
-  static Color get componentsProgressWarningBg => const Color.fromARGB(10, 247, 144, 9);
+  static Color get componentsProgressWarningBg =>
+      const Color.from(alpha: 0.04, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `components-progress-error-progress`
   static Color get componentsProgressErrorProgress => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
@@ -1063,39 +1227,48 @@ abstract final class DifyColors {
   static Color get componentsProgressErrorBorder => _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `components-progress-error-bg`
-  static Color get componentsProgressErrorBg => const Color.fromARGB(10, 240, 68, 56);
+  static Color get componentsProgressErrorBg =>
+      const Color.from(alpha: 0.04, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-progress-bar-progress`
-  static Color get componentsProgressBarProgress =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsProgressBarProgress => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-progress-bar-progress-highlight`
-  static Color get componentsProgressBarProgressHighlight =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(51, 0, 51, 255);
+  static Color get componentsProgressBarProgressHighlight => _dark
+      ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-progress-bar-progress-solid`
-  static Color get componentsProgressBarProgressSolid =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFF0033FF);
+  static Color get componentsProgressBarProgressSolid => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFF0033FF);
 
   /// `components-progress-bar-border`
-  static Color get componentsProgressBarBorder =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsProgressBarBorder => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-progress-bar-bg`
-  static Color get componentsProgressBarBg =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsProgressBarBg => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.04, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-button-button-seam`
-  static Color get componentsButtonButtonSeam =>
-      _dark ? const Color.fromARGB(38, 0, 0, 0) : const Color.fromARGB(8, 0, 0, 0);
+  static Color get componentsButtonButtonSeam => _dark
+      ? const Color.from(alpha: 0.15, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.03, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `components-button-primary-text`
-  static Color get componentsButtonPrimaryText =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsButtonPrimaryText => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-button-primary-text-disabled`
-  static Color get componentsButtonPrimaryTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(153, 255, 255, 255);
+  static Color get componentsButtonPrimaryTextDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-button-primary-bg`
   static Color get componentsButtonPrimaryBg => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
@@ -1104,122 +1277,146 @@ abstract final class DifyColors {
   static Color get componentsButtonPrimaryBgHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-button-primary-bg-disabled`
-  static Color get componentsButtonPrimaryBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsButtonPrimaryBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-button-primary-border`
-  static Color get componentsButtonPrimaryBorder =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonPrimaryBorder => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-primary-border-hover`
-  static Color get componentsButtonPrimaryBorderHover =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsButtonPrimaryBorderHover => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-primary-border-disabled`
-  static Color get componentsButtonPrimaryBorderDisabled =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsButtonPrimaryBorderDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-button-secondary-text`
   static Color get componentsButtonSecondaryText =>
-      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color(0xFF354052);
+      _dark ? const Color.from(alpha: 0.8, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFF354052);
 
   /// `components-button-secondary-text-disabled`
-  static Color get componentsButtonSecondaryTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(64, 16, 24, 40);
+  static Color get componentsButtonSecondaryTextDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.25, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-secondary-bg`
-  static Color get componentsButtonSecondaryBg =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsButtonSecondaryBg => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-button-secondary-bg-hover`
   static Color get componentsButtonSecondaryBgHover =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFF9FAFB);
+      _dark ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFF9FAFB);
 
   /// `components-button-secondary-bg-disabled`
-  static Color get componentsButtonSecondaryBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF9FAFB);
+  static Color get componentsButtonSecondaryBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF9FAFB);
 
   /// `components-button-secondary-border`
-  static Color get componentsButtonSecondaryBorder =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsButtonSecondaryBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-secondary-border-hover`
-  static Color get componentsButtonSecondaryBorderHover =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(51, 16, 24, 40);
+  static Color get componentsButtonSecondaryBorderHover => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.2, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-secondary-border-disabled`
-  static Color get componentsButtonSecondaryBorderDisabled =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonSecondaryBorderDisabled => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-secondary-accent-text`
   static Color get componentsButtonSecondaryAccentText =>
-      _dark ? const Color.fromARGB(204, 255, 255, 255) : const Color(0xFF0033FF);
+      _dark ? const Color.from(alpha: 0.8, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFF0033FF);
 
   /// `components-button-secondary-accent-text-disabled`
   static Color get componentsButtonSecondaryAccentTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFA0BDFF);
+      _dark ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFA0BDFF);
 
   /// `components-button-secondary-accent-bg`
-  static Color get componentsButtonSecondaryAccentBg =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsButtonSecondaryAccentBg => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-button-secondary-accent-bg-hover`
-  static Color get componentsButtonSecondaryAccentBgHover =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFF2F4F7);
+  static Color get componentsButtonSecondaryAccentBgHover => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF2F4F7);
 
   /// `components-button-secondary-accent-bg-disabled`
-  static Color get componentsButtonSecondaryAccentBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF9FAFB);
+  static Color get componentsButtonSecondaryAccentBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF9FAFB);
 
   /// `components-button-secondary-accent-border`
-  static Color get componentsButtonSecondaryAccentBorder =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsButtonSecondaryAccentBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-secondary-accent-border-hover`
-  static Color get componentsButtonSecondaryAccentBorderHover =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsButtonSecondaryAccentBorderHover => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-secondary-accent-border-disabled`
-  static Color get componentsButtonSecondaryAccentBorderDisabled =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonSecondaryAccentBorderDisabled => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-tertiary-text`
   static Color get componentsButtonTertiaryText => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF354052);
 
   /// `components-button-tertiary-text-disabled`
-  static Color get componentsButtonTertiaryTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(64, 16, 24, 40);
+  static Color get componentsButtonTertiaryTextDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.25, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-tertiary-bg`
-  static Color get componentsButtonTertiaryBg =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFF2F4F7);
+  static Color get componentsButtonTertiaryBg => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF2F4F7);
 
   /// `components-button-tertiary-bg-hover`
-  static Color get componentsButtonTertiaryBgHover =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color(0xFFE9EBF0);
+  static Color get componentsButtonTertiaryBgHover => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFE9EBF0);
 
   /// `components-button-tertiary-bg-disabled`
-  static Color get componentsButtonTertiaryBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF9FAFB);
+  static Color get componentsButtonTertiaryBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF9FAFB);
 
   /// `components-button-ghost-text`
   static Color get componentsButtonGhostText => _dark ? const Color(0xFFD9D9DE) : const Color(0xFF354052);
 
   /// `components-button-ghost-text-disabled`
-  static Color get componentsButtonGhostTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(64, 16, 24, 40);
+  static Color get componentsButtonGhostTextDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.25, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-ghost-bg-hover`
-  static Color get componentsButtonGhostBgHover =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get componentsButtonGhostBgHover => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-button-destructive-primary-text`
-  static Color get componentsButtonDestructivePrimaryText =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsButtonDestructivePrimaryText => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-button-destructive-primary-text-disabled`
-  static Color get componentsButtonDestructivePrimaryTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(153, 255, 255, 255);
+  static Color get componentsButtonDestructivePrimaryTextDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-button-destructive-primary-bg`
   static Color get componentsButtonDestructivePrimaryBg => const Color(0xFFD92D20);
@@ -1230,78 +1427,89 @@ abstract final class DifyColors {
 
   /// `components-button-destructive-primary-bg-disabled`
   static Color get componentsButtonDestructivePrimaryBgDisabled =>
-      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEE4E2);
+      _dark ? const Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEE4E2);
 
   /// `components-button-destructive-primary-border`
-  static Color get componentsButtonDestructivePrimaryBorder =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(10, 24, 24, 27);
+  static Color get componentsButtonDestructivePrimaryBorder => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255);
 
   /// `components-button-destructive-primary-border-hover`
-  static Color get componentsButtonDestructivePrimaryBorderHover =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(20, 24, 24, 27);
+  static Color get componentsButtonDestructivePrimaryBorderHover => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 24 / 255, green: 24 / 255, blue: 27 / 255);
 
   /// `components-button-destructive-primary-border-disabled`
-  static Color get componentsButtonDestructivePrimaryBorderDisabled =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsButtonDestructivePrimaryBorderDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-button-destructive-secondary-text`
   static Color get componentsButtonDestructiveSecondaryText =>
       _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `components-button-destructive-secondary-text-disabled`
-  static Color get componentsButtonDestructiveSecondaryTextDisabled => const Color.fromARGB(51, 240, 68, 56);
+  static Color get componentsButtonDestructiveSecondaryTextDisabled =>
+      const Color.from(alpha: 0.2, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-button-destructive-secondary-bg`
-  static Color get componentsButtonDestructiveSecondaryBg =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsButtonDestructiveSecondaryBg => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-button-destructive-secondary-bg-hover`
   static Color get componentsButtonDestructiveSecondaryBgHover =>
-      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEF3F2);
+      _dark ? const Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEF3F2);
 
   /// `components-button-destructive-secondary-bg-disabled`
   static Color get componentsButtonDestructiveSecondaryBgDisabled =>
-      _dark ? const Color.fromARGB(20, 240, 68, 56) : const Color(0xFFFEF3F2);
+      _dark ? const Color.from(alpha: 0.08, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEF3F2);
 
   /// `components-button-destructive-secondary-border`
-  static Color get componentsButtonDestructiveSecondaryBorder =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(20, 24, 24, 27);
+  static Color get componentsButtonDestructiveSecondaryBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 24 / 255, green: 24 / 255, blue: 27 / 255);
 
   /// `components-button-destructive-secondary-border-hover`
-  static Color get componentsButtonDestructiveSecondaryBorderHover =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(64, 240, 68, 56);
+  static Color get componentsButtonDestructiveSecondaryBorderHover => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-button-destructive-secondary-border-disabled`
-  static Color get componentsButtonDestructiveSecondaryBorderDisabled =>
-      _dark ? const Color.fromARGB(20, 240, 68, 56) : const Color.fromARGB(10, 240, 68, 56);
+  static Color get componentsButtonDestructiveSecondaryBorderDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.04, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-button-destructive-tertiary-text`
   static Color get componentsButtonDestructiveTertiaryText => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `components-button-destructive-tertiary-text-disabled`
-  static Color get componentsButtonDestructiveTertiaryTextDisabled => const Color.fromARGB(51, 240, 68, 56);
+  static Color get componentsButtonDestructiveTertiaryTextDisabled =>
+      const Color.from(alpha: 0.2, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-button-destructive-tertiary-bg`
   static Color get componentsButtonDestructiveTertiaryBg =>
-      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEE4E2);
+      _dark ? const Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEE4E2);
 
   /// `components-button-destructive-tertiary-bg-hover`
   static Color get componentsButtonDestructiveTertiaryBgHover =>
-      _dark ? const Color.fromARGB(64, 240, 68, 56) : const Color(0xFFFECDCA);
+      _dark ? const Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFECDCA);
 
   /// `components-button-destructive-tertiary-bg-disabled`
-  static Color get componentsButtonDestructiveTertiaryBgDisabled =>
-      _dark ? const Color.fromARGB(20, 240, 68, 56) : const Color.fromARGB(10, 240, 68, 56);
+  static Color get componentsButtonDestructiveTertiaryBgDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.04, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-button-destructive-ghost-text`
   static Color get componentsButtonDestructiveGhostText => _dark ? const Color(0xFFF97066) : const Color(0xFFD92D20);
 
   /// `components-button-destructive-ghost-text-disabled`
-  static Color get componentsButtonDestructiveGhostTextDisabled => const Color.fromARGB(51, 240, 68, 56);
+  static Color get componentsButtonDestructiveGhostTextDisabled =>
+      const Color.from(alpha: 0.2, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-button-destructive-ghost-bg-hover`
   static Color get componentsButtonDestructiveGhostBgHover =>
-      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color(0xFFFEE4E2);
+      _dark ? const Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255) : const Color(0xFFFEE4E2);
 
   /// `components-button-indigo-bg`
   static Color get componentsButtonIndigoBg => const Color(0xFF444CE7);
@@ -1310,16 +1518,19 @@ abstract final class DifyColors {
   static Color get componentsButtonIndigoBgHover => _dark ? const Color(0xFF6172F3) : const Color(0xFF3538CD);
 
   /// `components-button-indigo-bg-disabled`
-  static Color get componentsButtonIndigoBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(36, 97, 114, 243);
+  static Color get componentsButtonIndigoBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.14, red: 97 / 255, green: 114 / 255, blue: 243 / 255);
 
   /// `components-button-debug-text`
-  static Color get componentsButtonDebugText =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsButtonDebugText => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-button-debug-text-disabled`
-  static Color get componentsButtonDebugTextDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(153, 255, 255, 255);
+  static Color get componentsButtonDebugTextDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-button-debug-bg`
   static Color get componentsButtonDebugBg => const Color(0xFFFF4405);
@@ -1328,27 +1539,34 @@ abstract final class DifyColors {
   static Color get componentsButtonDebugBgHover => _dark ? const Color(0xFFFF692E) : const Color(0xFFE62E05);
 
   /// `components-button-debug-bg-disabled`
-  static Color get componentsButtonDebugBgDisabled =>
-      _dark ? const Color.fromARGB(20, 255, 68, 5) : const Color.fromARGB(51, 255, 68, 5);
+  static Color get componentsButtonDebugBgDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 68 / 255, blue: 5 / 255)
+      : const Color.from(alpha: 0.2, red: 255 / 255, green: 68 / 255, blue: 5 / 255);
 
   /// `components-button-debug-border`
-  static Color get componentsButtonDebugBorder =>
-      _dark ? const Color.fromARGB(31, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsButtonDebugBorder => _dark
+      ? const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-debug-border-hover`
-  static Color get componentsButtonDebugBorderHover =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get componentsButtonDebugBorderHover => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-button-debug-border-disabled`
-  static Color get componentsButtonDebugBorderDisabled =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsButtonDebugBorderDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-checkbox-icon`
-  static Color get componentsCheckboxIcon => _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsCheckboxIcon => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-checkbox-icon-disabled`
-  static Color get componentsCheckboxIconDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(128, 255, 255, 255);
+  static Color get componentsCheckboxIconDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-checkbox-bg`
   static Color get componentsCheckboxBg => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
@@ -1357,43 +1575,49 @@ abstract final class DifyColors {
   static Color get componentsCheckboxBgHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-checkbox-bg-disabled`
-  static Color get componentsCheckboxBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFF2F4F7);
+  static Color get componentsCheckboxBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF2F4F7);
 
   /// `components-checkbox-bg-disabled-checked`
   static Color get componentsCheckboxBgDisabledChecked =>
-      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color(0xFFA0BDFF);
+      _dark ? const Color.from(alpha: 0.2, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFA0BDFF);
 
   /// `components-checkbox-bg-unchecked`
-  static Color get componentsCheckboxBgUnchecked =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsCheckboxBgUnchecked => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-checkbox-bg-unchecked-hover`
-  static Color get componentsCheckboxBgUncheckedHover =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsCheckboxBgUncheckedHover => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-checkbox-border`
   static Color get componentsCheckboxBorder =>
-      _dark ? const Color.fromARGB(102, 255, 255, 255) : const Color(0xFFD0D5DC);
+      _dark ? const Color.from(alpha: 0.4, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFD0D5DC);
 
   /// `components-checkbox-border-hover`
   static Color get componentsCheckboxBorderHover =>
-      _dark ? const Color.fromARGB(153, 255, 255, 255) : const Color(0xFF98A2B2);
+      _dark ? const Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFF98A2B2);
 
   /// `components-checkbox-border-disabled`
-  static Color get componentsCheckboxBorderDisabled =>
-      _dark ? const Color.fromARGB(3, 255, 255, 255) : const Color.fromARGB(10, 24, 24, 27);
+  static Color get componentsCheckboxBorderDisabled => _dark
+      ? const Color.from(alpha: 0.01, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255);
 
   /// `components-radio-bg`
-  static Color get componentsRadioBg => const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsRadioBg => const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-radio-bg-hover`
-  static Color get componentsRadioBgHover =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsRadioBgHover => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-radio-bg-disabled`
-  static Color get componentsRadioBgDisabled =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsRadioBgDisabled => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-radio-border-checked`
   static Color get componentsRadioBorderChecked => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
@@ -1403,18 +1627,20 @@ abstract final class DifyColors {
 
   /// `components-radio-border-checked-disabled`
   static Color get componentsRadioBorderCheckedDisabled =>
-      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color(0xFFA0BDFF);
+      _dark ? const Color.from(alpha: 0.2, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFA0BDFF);
 
   /// `components-radio-border`
-  static Color get componentsRadioBorder => _dark ? const Color.fromARGB(102, 255, 255, 255) : const Color(0xFFD0D5DC);
+  static Color get componentsRadioBorder =>
+      _dark ? const Color.from(alpha: 0.4, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFD0D5DC);
 
   /// `components-radio-border-hover`
   static Color get componentsRadioBorderHover =>
-      _dark ? const Color.fromARGB(153, 255, 255, 255) : const Color(0xFF98A2B2);
+      _dark ? const Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFF98A2B2);
 
   /// `components-radio-border-disabled`
-  static Color get componentsRadioBorderDisabled =>
-      _dark ? const Color.fromARGB(3, 255, 255, 255) : const Color.fromARGB(10, 24, 24, 27);
+  static Color get componentsRadioBorderDisabled => _dark
+      ? const Color.from(alpha: 0.01, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255);
 
   /// `components-toggle-knob`
   static Color get componentsToggleKnob => _dark ? const Color(0xFFF4F4F5) : const Color(0xFFFFFFFF);
@@ -1423,8 +1649,9 @@ abstract final class DifyColors {
   static Color get componentsToggleKnobHover => _dark ? const Color(0xFFFEFEFE) : const Color(0xFFFFFFFF);
 
   /// `components-toggle-knob-disabled`
-  static Color get componentsToggleKnobDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsToggleKnobDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-toggle-bg`
   static Color get componentsToggleBg => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
@@ -1433,40 +1660,45 @@ abstract final class DifyColors {
   static Color get componentsToggleBgHover => _dark ? const Color(0xFF3072FF) : const Color(0xFF002CDE);
 
   /// `components-toggle-bg-disabled`
-  static Color get componentsToggleBgDisabled =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFD0DFFF);
+  static Color get componentsToggleBgDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFD0DFFF);
 
   /// `components-toggle-bg-unchecked`
   static Color get componentsToggleBgUnchecked =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFE9EBF0);
+      _dark ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFE9EBF0);
 
   /// `components-toggle-bg-unchecked-hover`
   static Color get componentsToggleBgUncheckedHover =>
-      _dark ? const Color.fromARGB(76, 255, 255, 255) : const Color(0xFFD0D5DC);
+      _dark ? const Color.from(alpha: 0.3, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFD0D5DC);
 
   /// `components-toggle-bg-unchecked-disabled`
-  static Color get componentsToggleBgUncheckedDisabled =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFF2F4F7);
+  static Color get componentsToggleBgUncheckedDisabled => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFF2F4F7);
 
   /// `components-option-card-option-bg`
-  static Color get componentsOptionCardOptionBg =>
-      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color(0xFFFCFCFD);
+  static Color get componentsOptionCardOptionBg => _dark
+      ? const Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFFCFCFD);
 
   /// `components-option-card-option-border`
   static Color get componentsOptionCardOptionBorder =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color(0xFFE9EBF0);
+      _dark ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFE9EBF0);
 
   /// `components-option-card-option-bg-hover`
-  static Color get componentsOptionCardOptionBgHover =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFFFFFFF);
+  static Color get componentsOptionCardOptionBgHover => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-option-card-option-border-hover`
   static Color get componentsOptionCardOptionBorderHover =>
-      _dark ? const Color.fromARGB(76, 200, 206, 218) : const Color(0xFFD0D5DC);
+      _dark ? const Color.from(alpha: 0.3, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFFD0D5DC);
 
   /// `components-option-card-option-selected-bg`
-  static Color get componentsOptionCardOptionSelectedBg =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsOptionCardOptionSelectedBg => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-option-card-option-selected-border`
   static Color get componentsOptionCardOptionSelectedBorder =>
@@ -1476,117 +1708,140 @@ abstract final class DifyColors {
   static Color get componentsSliderKnob => _dark ? const Color(0xFFF4F4F5) : const Color(0xFFFFFFFF);
 
   /// `components-slider-knob-border`
-  static Color get componentsSliderKnobBorder =>
-      _dark ? const Color.fromARGB(51, 16, 24, 40) : const Color.fromARGB(36, 16, 24, 40);
+  static Color get componentsSliderKnobBorder => _dark
+      ? const Color.from(alpha: 0.2, red: 16 / 255, green: 24 / 255, blue: 40 / 255)
+      : const Color.from(alpha: 0.14, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-slider-knob-border-hover`
-  static Color get componentsSliderKnobBorderHover =>
-      _dark ? const Color.fromARGB(76, 16, 24, 40) : const Color.fromARGB(51, 16, 24, 40);
+  static Color get componentsSliderKnobBorderHover => _dark
+      ? const Color.from(alpha: 0.3, red: 16 / 255, green: 24 / 255, blue: 40 / 255)
+      : const Color.from(alpha: 0.2, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-slider-knob-hover`
   static Color get componentsSliderKnobHover => _dark ? const Color(0xFFFEFEFE) : const Color(0xFFFFFFFF);
 
   /// `components-slider-knob-disabled`
-  static Color get componentsSliderKnobDisabled =>
-      _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsSliderKnobDisabled => _dark
+      ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-slider-range`
   static Color get componentsSliderRange => _dark ? const Color(0xFF085AFC) : const Color(0xFF0033FF);
 
   /// `components-slider-track`
-  static Color get componentsSliderTrack => _dark ? const Color.fromARGB(51, 255, 255, 255) : const Color(0xFFE9EBF0);
+  static Color get componentsSliderTrack =>
+      _dark ? const Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFFE9EBF0);
 
   /// `components-tooltip-bg`
-  static Color get componentsTooltipBg =>
-      _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsTooltipBg => _dark
+      ? const Color.from(alpha: 0.95, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-kbd-bg-gray`
-  static Color get componentsKbdBgGray =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsKbdBgGray => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-kbd-bg-white`
-  static Color get componentsKbdBgWhite => const Color.fromARGB(31, 255, 255, 255);
+  static Color get componentsKbdBgWhite =>
+      const Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-menu-item-text`
-  static Color get componentsMenuItemText => _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF495464);
+  static Color get componentsMenuItemText =>
+      _dark ? const Color.from(alpha: 0.6, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF495464);
 
   /// `components-menu-item-text-hover`
   static Color get componentsMenuItemTextHover =>
-      _dark ? const Color.fromARGB(204, 200, 206, 218) : const Color(0xFF354052);
+      _dark ? const Color.from(alpha: 0.8, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF354052);
 
   /// `components-menu-item-text-active`
-  static Color get componentsMenuItemTextActive =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFF18222F);
+  static Color get componentsMenuItemTextActive => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFF18222F);
 
   /// `components-menu-item-text-active-accent`
-  static Color get componentsMenuItemTextActiveAccent =>
-      _dark ? const Color.fromARGB(242, 255, 255, 255) : const Color(0xFF18222F);
+  static Color get componentsMenuItemTextActiveAccent => _dark
+      ? const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFF18222F);
 
   /// `components-menu-item-bg-hover`
-  static Color get componentsMenuItemBgHover =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get componentsMenuItemBgHover => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-menu-item-bg-active`
-  static Color get componentsMenuItemBgActive =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 0, 51, 255);
+  static Color get componentsMenuItemBgActive => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.08, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-segmented-control-bg-normal`
-  static Color get componentsSegmentedControlBgNormal =>
-      _dark ? const Color.fromARGB(178, 24, 24, 27) : const Color.fromARGB(51, 200, 206, 218);
+  static Color get componentsSegmentedControlBgNormal => _dark
+      ? const Color.from(alpha: 0.7, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `components-segmented-control-item-active-bg`
-  static Color get componentsSegmentedControlItemActiveBg =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsSegmentedControlItemActiveBg => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-segmented-control-item-active-border`
-  static Color get componentsSegmentedControlItemActiveBorder =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color(0xFFFFFFFF);
+  static Color get componentsSegmentedControlItemActiveBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-segmented-control-item-active-accent-bg`
   static Color get componentsSegmentedControlItemActiveAccentBg =>
-      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color(0xFFFFFFFF);
+      _dark ? const Color.from(alpha: 0.2, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFFFFFFF);
 
   /// `components-segmented-control-item-active-accent-border`
   static Color get componentsSegmentedControlItemActiveAccentBorder =>
-      _dark ? const Color.fromARGB(76, 8, 90, 252) : const Color(0xFFFFFFFF);
+      _dark ? const Color.from(alpha: 0.3, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFFFFFFF);
 
   /// `components-badge-white-to-dark`
   static Color get componentsBadgeWhiteToDark =>
-      _dark ? const Color.fromARGB(204, 24, 24, 27) : const Color(0xFFFFFFFF);
+      _dark ? const Color.from(alpha: 0.8, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFFFFFFF);
 
   /// `components-badge-white-to-dark-alpha`
-  static Color get componentsBadgeWhiteToDarkAlpha =>
-      _dark ? const Color.fromARGB(0, 24, 24, 27) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsBadgeWhiteToDarkAlpha => _dark
+      ? const Color.from(alpha: 0.0, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-badge-bg-green-soft`
-  static Color get componentsBadgeBgGreenSoft =>
-      _dark ? const Color.fromARGB(36, 23, 178, 106) : const Color.fromARGB(20, 23, 178, 106);
+  static Color get componentsBadgeBgGreenSoft => _dark
+      ? const Color.from(alpha: 0.14, red: 23 / 255, green: 178 / 255, blue: 106 / 255)
+      : const Color.from(alpha: 0.08, red: 23 / 255, green: 178 / 255, blue: 106 / 255);
 
   /// `components-badge-bg-orange-soft`
-  static Color get componentsBadgeBgOrangeSoft =>
-      _dark ? const Color.fromARGB(36, 247, 144, 9) : const Color.fromARGB(20, 247, 144, 9);
+  static Color get componentsBadgeBgOrangeSoft => _dark
+      ? const Color.from(alpha: 0.14, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.08, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `components-badge-bg-red-soft`
-  static Color get componentsBadgeBgRedSoft =>
-      _dark ? const Color.fromARGB(36, 240, 68, 56) : const Color.fromARGB(20, 240, 68, 56);
+  static Color get componentsBadgeBgRedSoft => _dark
+      ? const Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.08, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-badge-bg-blue-light-soft`
-  static Color get componentsBadgeBgBlueLightSoft =>
-      _dark ? const Color.fromARGB(36, 11, 165, 236) : const Color.fromARGB(20, 11, 165, 236);
+  static Color get componentsBadgeBgBlueLightSoft => _dark
+      ? const Color.from(alpha: 0.14, red: 11 / 255, green: 165 / 255, blue: 236 / 255)
+      : const Color.from(alpha: 0.08, red: 11 / 255, green: 165 / 255, blue: 236 / 255);
 
   /// `components-badge-bg-gray-soft`
-  static Color get componentsBadgeBgGraySoft =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsBadgeBgGraySoft => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-badge-bg-dimm`
-  static Color get componentsBadgeBgDimm =>
-      _dark ? const Color.fromARGB(8, 255, 255, 255) : const Color.fromARGB(13, 255, 255, 255);
+  static Color get componentsBadgeBgDimm => _dark
+      ? const Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-badge-status-light-border-outer`
   static Color get componentsBadgeStatusLightBorderOuter => _dark ? const Color(0xFF222225) : const Color(0xFFFFFFFF);
 
   /// `components-badge-status-light-high-light`
-  static Color get componentsBadgeStatusLightHighLight => const Color.fromARGB(76, 255, 255, 255);
+  static Color get componentsBadgeStatusLightHighLight =>
+      const Color.from(alpha: 0.3, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-badge-status-light-success-bg`
   static Color get componentsBadgeStatusLightSuccessBg => _dark ? const Color(0xFF17B26A) : const Color(0xFF47CD89);
@@ -1596,8 +1851,9 @@ abstract final class DifyColors {
       _dark ? const Color(0xFF47CD89) : const Color(0xFF17B26A);
 
   /// `components-badge-status-light-success-halo`
-  static Color get componentsBadgeStatusLightSuccessHalo =>
-      _dark ? const Color.fromARGB(76, 23, 178, 106) : const Color.fromARGB(64, 23, 178, 106);
+  static Color get componentsBadgeStatusLightSuccessHalo => _dark
+      ? const Color.from(alpha: 0.3, red: 23 / 255, green: 178 / 255, blue: 106 / 255)
+      : const Color.from(alpha: 0.25, red: 23 / 255, green: 178 / 255, blue: 106 / 255);
 
   /// `components-badge-status-light-warning-bg`
   static Color get componentsBadgeStatusLightWarningBg => _dark ? const Color(0xFFF79009) : const Color(0xFFFDB022);
@@ -1607,8 +1863,9 @@ abstract final class DifyColors {
       _dark ? const Color(0xFFFDB022) : const Color(0xFFF79009);
 
   /// `components-badge-status-light-warning-halo`
-  static Color get componentsBadgeStatusLightWarningHalo =>
-      _dark ? const Color.fromARGB(76, 247, 144, 9) : const Color.fromARGB(64, 247, 144, 9);
+  static Color get componentsBadgeStatusLightWarningHalo => _dark
+      ? const Color.from(alpha: 0.3, red: 247 / 255, green: 144 / 255, blue: 9 / 255)
+      : const Color.from(alpha: 0.25, red: 247 / 255, green: 144 / 255, blue: 9 / 255);
 
   /// `components-badge-status-light-error-bg`
   static Color get componentsBadgeStatusLightErrorBg => _dark ? const Color(0xFFF04438) : const Color(0xFFF97066);
@@ -1618,8 +1875,9 @@ abstract final class DifyColors {
       _dark ? const Color(0xFFF97066) : const Color(0xFFF04438);
 
   /// `components-badge-status-light-error-halo`
-  static Color get componentsBadgeStatusLightErrorHalo =>
-      _dark ? const Color.fromARGB(76, 240, 68, 56) : const Color.fromARGB(64, 240, 68, 56);
+  static Color get componentsBadgeStatusLightErrorHalo => _dark
+      ? const Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255)
+      : const Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255);
 
   /// `components-badge-status-light-normal-bg`
   static Color get componentsBadgeStatusLightNormalBg => _dark ? const Color(0xFF0BA5EC) : const Color(0xFF36BFFA);
@@ -1629,8 +1887,9 @@ abstract final class DifyColors {
       _dark ? const Color(0xFF36BFFA) : const Color(0xFF0BA5EC);
 
   /// `components-badge-status-light-normal-halo`
-  static Color get componentsBadgeStatusLightNormalHalo =>
-      _dark ? const Color.fromARGB(76, 11, 165, 236) : const Color.fromARGB(64, 11, 165, 236);
+  static Color get componentsBadgeStatusLightNormalHalo => _dark
+      ? const Color.from(alpha: 0.3, red: 11 / 255, green: 165 / 255, blue: 236 / 255)
+      : const Color.from(alpha: 0.25, red: 11 / 255, green: 165 / 255, blue: 236 / 255);
 
   /// `components-badge-status-light-disabled-bg`
   static Color get componentsBadgeStatusLightDisabledBg => _dark ? const Color(0xFF676F83) : const Color(0xFF98A2B2);
@@ -1640,8 +1899,9 @@ abstract final class DifyColors {
       _dark ? const Color(0xFF98A2B2) : const Color(0xFF676F83);
 
   /// `components-badge-status-light-disabled-halo`
-  static Color get componentsBadgeStatusLightDisabledHalo =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsBadgeStatusLightDisabledHalo => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-tab-active`
   static Color get componentsTabActive => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
@@ -1653,89 +1913,109 @@ abstract final class DifyColors {
   static Color get componentsMainNavTextActive => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF0033FF);
 
   /// `components-main-nav-nav-button-border`
-  static Color get componentsMainNavNavButtonBorder =>
-      _dark ? const Color.fromARGB(20, 255, 255, 255) : const Color.fromARGB(242, 255, 255, 255);
+  static Color get componentsMainNavNavButtonBorder => _dark
+      ? const Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.95, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-main-nav-nav-button-text`
   static Color get componentsMainNavNavButtonText =>
-      _dark ? const Color.fromARGB(153, 200, 206, 218) : const Color(0xFF495464);
+      _dark ? const Color.from(alpha: 0.6, red: 200 / 255, green: 206 / 255, blue: 218 / 255) : const Color(0xFF495464);
 
   /// `components-main-nav-nav-button-text-active`
   static Color get componentsMainNavNavButtonTextActive => _dark ? const Color(0xFFF4F4F5) : const Color(0xFF0033FF);
 
   /// `components-main-nav-nav-button-bg`
-  static Color get componentsMainNavNavButtonBg => const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsMainNavNavButtonBg =>
+      const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-main-nav-nav-button-bg-hover`
-  static Color get componentsMainNavNavButtonBgHover =>
-      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get componentsMainNavNavButtonBgHover => _dark
+      ? const Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `components-main-nav-nav-button-bg-active`
-  static Color get componentsMainNavNavButtonBgActive =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFFCFCFD);
+  static Color get componentsMainNavNavButtonBgActive => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFFCFCFD);
 
   /// `components-main-nav-nav-user-border`
-  static Color get componentsMainNavNavUserBorder =>
-      _dark ? const Color.fromARGB(13, 255, 255, 255) : const Color(0xFFFFFFFF);
+  static Color get componentsMainNavNavUserBorder => _dark
+      ? const Color.from(alpha: 0.05, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `components-main-nav-glass-inner-glow`
-  static Color get componentsMainNavGlassInnerGlow =>
-      _dark ? const Color.fromARGB(13, 210, 219, 255) : const Color.fromARGB(76, 255, 255, 255);
+  static Color get componentsMainNavGlassInnerGlow => _dark
+      ? const Color.from(alpha: 0.05, red: 210 / 255, green: 219 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.3, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-shadow-reflection`
-  static Color get componentsMainNavGlassShadowReflection =>
-      _dark ? const Color.fromARGB(10, 210, 219, 255) : const Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsMainNavGlassShadowReflection => _dark
+      ? const Color.from(alpha: 0.04, red: 210 / 255, green: 219 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.04, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-shadow-reflection-glow`
-  static Color get componentsMainNavGlassShadowReflectionGlow =>
-      _dark ? const Color.fromARGB(5, 255, 255, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsMainNavGlassShadowReflectionGlow => _dark
+      ? const Color.from(alpha: 0.02, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-text-glow`
-  static Color get componentsMainNavGlassTextGlow =>
-      _dark ? const Color.fromARGB(69, 245, 246, 255) : const Color.fromARGB(46, 49, 70, 255);
+  static Color get componentsMainNavGlassTextGlow => _dark
+      ? const Color.from(alpha: 0.27, red: 245 / 255, green: 246 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.18, red: 49 / 255, green: 70 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-surface-first`
-  static Color get componentsMainNavGlassSurfaceFirst =>
-      _dark ? const Color.fromARGB(20, 196, 207, 255) : const Color.fromARGB(20, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceFirst => _dark
+      ? const Color.from(alpha: 0.08, red: 196 / 255, green: 207 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-surface-middle-1`
-  static Color get componentsMainNavGlassSurfaceMiddle1 =>
-      _dark ? const Color.fromARGB(31, 210, 219, 255) : const Color.fromARGB(31, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceMiddle1 => _dark
+      ? const Color.from(alpha: 0.12, red: 210 / 255, green: 219 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.12, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-surface-middle-2`
-  static Color get componentsMainNavGlassSurfaceMiddle2 =>
-      _dark ? const Color.fromARGB(26, 210, 219, 255) : const Color.fromARGB(26, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceMiddle2 => _dark
+      ? const Color.from(alpha: 0.1, red: 210 / 255, green: 219 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.1, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-surface-end`
-  static Color get componentsMainNavGlassSurfaceEnd =>
-      _dark ? const Color.fromARGB(20, 196, 207, 255) : const Color.fromARGB(20, 0, 51, 255);
+  static Color get componentsMainNavGlassSurfaceEnd => _dark
+      ? const Color.from(alpha: 0.08, red: 196 / 255, green: 207 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-edge-reflection-first`
-  static Color get componentsMainNavGlassEdgeReflectionFirst =>
-      _dark ? const Color.fromARGB(0, 92, 124, 255) : const Color.fromARGB(0, 0, 51, 255);
+  static Color get componentsMainNavGlassEdgeReflectionFirst => _dark
+      ? const Color.from(alpha: 0.0, red: 92 / 255, green: 124 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-edge-reflection-middle`
-  static Color get componentsMainNavGlassEdgeReflectionMiddle =>
-      _dark ? const Color.fromARGB(204, 210, 219, 255) : const Color.fromARGB(153, 0, 51, 255);
+  static Color get componentsMainNavGlassEdgeReflectionMiddle => _dark
+      ? const Color.from(alpha: 0.8, red: 210 / 255, green: 219 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.6, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-edge-reflection-end`
-  static Color get componentsMainNavGlassEdgeReflectionEnd =>
-      _dark ? const Color.fromARGB(0, 92, 124, 255) : const Color.fromARGB(0, 0, 51, 255);
+  static Color get componentsMainNavGlassEdgeReflectionEnd => _dark
+      ? const Color.from(alpha: 0.0, red: 92 / 255, green: 124 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-edge-highlight-first`
-  static Color get componentsMainNavGlassEdgeHighlightFirst =>
-      _dark ? const Color.fromARGB(38, 196, 207, 255) : const Color.fromARGB(250, 255, 255, 255);
+  static Color get componentsMainNavGlassEdgeHighlightFirst => _dark
+      ? const Color.from(alpha: 0.15, red: 196 / 255, green: 207 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.98, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-edge-highlight-middle`
-  static Color get componentsMainNavGlassEdgeHighlightMiddle =>
-      _dark ? const Color.fromARGB(0, 72, 108, 255) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get componentsMainNavGlassEdgeHighlightMiddle => _dark
+      ? const Color.from(alpha: 0.0, red: 72 / 255, green: 108 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-main-nav-glass-edge-highlight-end`
-  static Color get componentsMainNavGlassEdgeHighlightEnd =>
-      _dark ? const Color.fromARGB(13, 196, 207, 255) : const Color.fromARGB(107, 255, 255, 255);
+  static Color get componentsMainNavGlassEdgeHighlightEnd => _dark
+      ? const Color.from(alpha: 0.05, red: 196 / 255, green: 207 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.42, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `components-chart-bg`
-  static Color get componentsChartBg => _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color(0xFFFFFFFF);
+  static Color get componentsChartBg =>
+      _dark ? const Color.from(alpha: 0.95, red: 24 / 255, green: 24 / 255, blue: 27 / 255) : const Color(0xFFFFFFFF);
 
   /// `components-chart-line`
   static Color get componentsChartLine => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
@@ -1744,34 +2024,43 @@ abstract final class DifyColors {
   static Color get componentsChartCurrent1 => _dark ? const Color(0xFF3072FF) : const Color(0xFF0033FF);
 
   /// `components-chart-current-2`
-  static Color get componentsChartCurrent2 => _dark ? const Color.fromARGB(76, 8, 90, 252) : const Color(0xFFD0DFFF);
+  static Color get componentsChartCurrent2 =>
+      _dark ? const Color.from(alpha: 0.3, red: 8 / 255, green: 90 / 255, blue: 252 / 255) : const Color(0xFFD0DFFF);
 
   /// `components-chart-area-1`
-  static Color get componentsChartArea1 =>
-      _dark ? const Color.fromARGB(51, 8, 90, 252) : const Color.fromARGB(36, 0, 51, 255);
+  static Color get componentsChartArea1 => _dark
+      ? const Color.from(alpha: 0.2, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.14, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `components-chart-area-2`
-  static Color get componentsChartArea2 =>
-      _dark ? const Color.fromARGB(10, 8, 90, 252) : const Color.fromARGB(10, 0, 51, 255);
+  static Color get componentsChartArea2 => _dark
+      ? const Color.from(alpha: 0.04, red: 8 / 255, green: 90 / 255, blue: 252 / 255)
+      : const Color.from(alpha: 0.04, red: 0 / 255, green: 51 / 255, blue: 255 / 255);
 
   /// `divider-subtle`
-  static Color get dividerSubtle =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get dividerSubtle => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `divider-regular`
-  static Color get dividerRegular =>
-      _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get dividerRegular => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `divider-deep`
-  static Color get dividerDeep =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(36, 16, 24, 40);
+  static Color get dividerDeep => _dark
+      ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.14, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `divider-intense`
-  static Color get dividerIntense =>
-      _dark ? const Color.fromARGB(102, 200, 206, 218) : const Color.fromARGB(76, 16, 24, 40);
+  static Color get dividerIntense => _dark
+      ? const Color.from(alpha: 0.4, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.3, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `divider-burn`
-  static Color get dividerBurn => _dark ? const Color.fromARGB(242, 24, 24, 27) : const Color.fromARGB(10, 16, 24, 40);
+  static Color get dividerBurn => _dark
+      ? const Color.from(alpha: 0.95, red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+      : const Color.from(alpha: 0.04, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `divider-solid`
   static Color get dividerSolid => _dark ? const Color(0xFF3A3A40) : const Color(0xFFD0D5DC);
@@ -1780,55 +2069,82 @@ abstract final class DifyColors {
   static Color get dividerSolidAlt => _dark ? const Color(0xFF747481) : const Color(0xFF98A2B2);
 
   /// `divider-accent`
-  static Color get dividerAccent => _dark ? const Color.fromARGB(36, 200, 206, 218) : const Color(0xFFE5EAFF);
+  static Color get dividerAccent => _dark
+      ? const Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFE5EAFF);
 
   /// `effects-highlight`
-  static Color get effectsHighlight => _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color(0xFFFFFFFF);
+  static Color get effectsHighlight => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color(0xFFFFFFFF);
 
   /// `effects-highlight-subtle`
-  static Color get effectsHighlightSubtle =>
-      _dark ? const Color.fromARGB(10, 200, 206, 218) : const Color.fromARGB(128, 255, 255, 255);
+  static Color get effectsHighlightSubtle => _dark
+      ? const Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.5, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `effects-highlight-lightmode-off`
-  static Color get effectsHighlightLightmodeOff =>
-      _dark ? const Color.fromARGB(20, 200, 206, 218) : const Color.fromARGB(0, 255, 255, 255);
+  static Color get effectsHighlightLightmodeOff => _dark
+      ? const Color.from(alpha: 0.08, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255);
 
   /// `effects-image-frame`
   static Color get effectsImageFrame => const Color(0xFFFFFFFF);
 
   /// `effects-icon-border`
-  static Color get effectsIconBorder =>
-      _dark ? const Color.fromARGB(38, 255, 255, 255) : const Color.fromARGB(20, 16, 24, 40);
+  static Color get effectsIconBorder => _dark
+      ? const Color.from(alpha: 0.15, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255);
 
   /// `shadow-shadow-1`
-  static Color get shadowShadow1 => _dark ? const Color.fromARGB(13, 0, 0, 0) : const Color.fromARGB(8, 9, 9, 11);
+  static Color get shadowShadow1 => _dark
+      ? const Color.from(alpha: 0.05, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.03, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-2`
-  static Color get shadowShadow2 => _dark ? const Color.fromARGB(20, 0, 0, 0) : const Color.fromARGB(10, 9, 9, 11);
+  static Color get shadowShadow2 => _dark
+      ? const Color.from(alpha: 0.08, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.04, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-3`
-  static Color get shadowShadow3 => _dark ? const Color.fromARGB(26, 0, 0, 0) : const Color.fromARGB(13, 9, 9, 11);
+  static Color get shadowShadow3 => _dark
+      ? const Color.from(alpha: 0.1, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.05, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-4`
-  static Color get shadowShadow4 => _dark ? const Color.fromARGB(31, 0, 0, 0) : const Color.fromARGB(15, 9, 9, 11);
+  static Color get shadowShadow4 => _dark
+      ? const Color.from(alpha: 0.12, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.06, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-5`
-  static Color get shadowShadow5 => _dark ? const Color.fromARGB(41, 0, 0, 0) : const Color.fromARGB(20, 9, 9, 11);
+  static Color get shadowShadow5 => _dark
+      ? const Color.from(alpha: 0.16, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.08, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-6`
-  static Color get shadowShadow6 => _dark ? const Color.fromARGB(51, 0, 0, 0) : const Color.fromARGB(26, 9, 9, 11);
+  static Color get shadowShadow6 => _dark
+      ? const Color.from(alpha: 0.2, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.1, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-7`
-  static Color get shadowShadow7 => _dark ? const Color.fromARGB(61, 0, 0, 0) : const Color.fromARGB(31, 9, 9, 11);
+  static Color get shadowShadow7 => _dark
+      ? const Color.from(alpha: 0.24, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.12, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-8`
-  static Color get shadowShadow8 => _dark ? const Color.fromARGB(71, 0, 0, 0) : const Color.fromARGB(36, 9, 9, 11);
+  static Color get shadowShadow8 => _dark
+      ? const Color.from(alpha: 0.28, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.14, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-9`
-  static Color get shadowShadow9 => _dark ? const Color.fromARGB(92, 0, 0, 0) : const Color.fromARGB(46, 9, 9, 11);
+  static Color get shadowShadow9 => _dark
+      ? const Color.from(alpha: 0.36, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.18, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `shadow-shadow-10`
-  static Color get shadowShadow10 => _dark ? const Color.fromARGB(102, 0, 0, 0) : const Color.fromARGB(13, 9, 9, 11);
+  static Color get shadowShadow10 => _dark
+      ? const Color.from(alpha: 0.4, red: 0 / 255, green: 0 / 255, blue: 0 / 255)
+      : const Color.from(alpha: 0.05, red: 9 / 255, green: 9 / 255, blue: 11 / 255);
 
   /// `third-party-aws`
   static Color get thirdPartyAws => const Color(0xFF141F2E);
@@ -1894,8 +2210,9 @@ abstract final class DifyColors {
   static Color get utilColorsOrangeOrange700 => _dark ? const Color(0xFFF7B27A) : const Color(0xFFB93815);
 
   /// `util-colors-orange-orange-100-transparent`
-  static Color get utilColorsOrangeOrange100Transparent =>
-      _dark ? const Color.fromARGB(0, 119, 41, 23) : const Color.fromARGB(0, 253, 234, 215);
+  static Color get utilColorsOrangeOrange100Transparent => _dark
+      ? const Color.from(alpha: 0.0, red: 119 / 255, green: 41 / 255, blue: 23 / 255)
+      : const Color.from(alpha: 0.0, red: 253 / 255, green: 234 / 255, blue: 215 / 255);
 
   /// `util-colors-pink-pink-50`
   static Color get utilColorsPinkPink50 => _dark ? const Color(0xFF4E0D30) : const Color(0xFFFDF2FA);
@@ -2357,14 +2674,16 @@ abstract final class DifyColors {
   static Color get saasBackground => _dark ? const Color(0xFF0B0B0E) : const Color(0xFFFFFFFF);
 
   /// `saas-background-inverted`
-  static Color get saasBackgroundInverted => _dark ? const Color.fromARGB(230, 255, 255, 255) : const Color(0xFF0B0B0E);
+  static Color get saasBackgroundInverted =>
+      _dark ? const Color.from(alpha: 0.9, red: 255 / 255, green: 255 / 255, blue: 255 / 255) : const Color(0xFF0B0B0E);
 
   /// `saas-background-inverted-hover`
   static Color get saasBackgroundInvertedHover => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF222225);
 
   /// `saas-pricing-grid-bg`
-  static Color get saasPricingGridBg =>
-      _dark ? const Color.fromARGB(51, 200, 206, 218) : const Color.fromARGB(128, 200, 206, 218);
+  static Color get saasPricingGridBg => _dark
+      ? const Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255)
+      : const Color.from(alpha: 0.5, red: 200 / 255, green: 206 / 255, blue: 218 / 255);
 
   /// `saas-dify-blue-static`
   static Color get saasDifyBlueStatic => const Color(0xFF0033FF);
@@ -2379,8 +2698,9 @@ abstract final class DifyColors {
   static Color get saasDifyBlueInverted => _dark ? const Color(0xFFFFFFFF) : const Color(0xFF0033FF);
 
   /// `saas-dify-blue-inverted-dimmed`
-  static Color get saasDifyBlueInvertedDimmed =>
-      _dark ? const Color.fromARGB(224, 255, 255, 255) : const Color(0xFF0033FF);
+  static Color get saasDifyBlueInvertedDimmed => _dark
+      ? const Color.from(alpha: 0.88, red: 255 / 255, green: 255 / 255, blue: 255 / 255)
+      : const Color(0xFF0033FF);
 
   /// `dify-logo-blue`
   static Color get difyLogoBlue => _dark ? const Color(0xFFE8E8E8) : const Color(0xFF0033FF);
@@ -2389,10 +2709,12 @@ abstract final class DifyColors {
   static Color get difyLogoBlack => _dark ? const Color(0xFFE8E8E8) : const Color(0xFF000000);
 
   /// `dify-logo-outline-1`
-  static Color get difyLogoOutline1 => _dark ? const Color(0xFFFFFFFF) : const Color.fromARGB(0, 0, 0, 0);
+  static Color get difyLogoOutline1 =>
+      _dark ? const Color(0xFFFFFFFF) : const Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `dify-logo-outline-2`
-  static Color get difyLogoOutline2 => _dark ? const Color(0xFFE8E8E8) : const Color.fromARGB(0, 0, 0, 0);
+  static Color get difyLogoOutline2 =>
+      _dark ? const Color(0xFFE8E8E8) : const Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255);
 
   /// `brand-color-opacity-50`
   static Color get brandColorOpacity50 => _dark ? const Color(0xFF020821) : const Color(0xFFF3F5FD);
@@ -3063,37 +3385,112 @@ abstract final class DifyType {
 /// converted so Flutter blurs as much as the browser does.
 abstract final class DifyShadows {
   static const xs = [
-    BoxShadow(offset: Offset(0, 1), blurRadius: 0.866, spreadRadius: 0, color: Color.fromARGB(13, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 1),
+      blurRadius: 0.866,
+      spreadRadius: 0,
+      color: Color.from(alpha: 0.05, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const primaryButton = [
-    BoxShadow(offset: Offset(0, 2), blurRadius: 0.866, spreadRadius: -1, color: Color.fromARGB(31, 0, 0, 0)),
-    BoxShadow(offset: Offset(0, 1), blurRadius: 0.001, spreadRadius: -1, color: Color.fromARGB(31, 0, 0, 0)),
+    BoxShadow(
+      offset: Offset(0, 2),
+      blurRadius: 0.866,
+      spreadRadius: -1,
+      color: Color.from(alpha: 0.12, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+    ),
+    BoxShadow(
+      offset: Offset(0, 1),
+      blurRadius: 0.001,
+      spreadRadius: -1,
+      color: Color.from(alpha: 0.12, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+    ),
   ];
   static const sm = [
-    BoxShadow(offset: Offset(0, 1), blurRadius: 0.866, spreadRadius: 0, color: Color.fromARGB(15, 16, 24, 40)),
-    BoxShadow(offset: Offset(0, 1), blurRadius: 1.7321, spreadRadius: 0, color: Color.fromARGB(26, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 1),
+      blurRadius: 0.866,
+      spreadRadius: 0,
+      color: Color.from(alpha: 0.06, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
+    BoxShadow(
+      offset: Offset(0, 1),
+      blurRadius: 1.7321,
+      spreadRadius: 0,
+      color: Color.from(alpha: 0.1, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const smNoBottom = [
-    BoxShadow(offset: Offset(0, -1), blurRadius: 0.866, spreadRadius: 0, color: Color.fromARGB(15, 16, 24, 40)),
-    BoxShadow(offset: Offset(0, -1), blurRadius: 1.7321, spreadRadius: 0, color: Color.fromARGB(26, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, -1),
+      blurRadius: 0.866,
+      spreadRadius: 0,
+      color: Color.from(alpha: 0.06, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
+    BoxShadow(
+      offset: Offset(0, -1),
+      blurRadius: 1.7321,
+      spreadRadius: 0,
+      color: Color.from(alpha: 0.1, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const md = [
-    BoxShadow(offset: Offset(0, 2), blurRadius: 2.5981, spreadRadius: -2, color: Color.fromARGB(15, 16, 24, 40)),
-    BoxShadow(offset: Offset(0, 4), blurRadius: 6.0622, spreadRadius: -2, color: Color.fromARGB(26, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 2),
+      blurRadius: 2.5981,
+      spreadRadius: -2,
+      color: Color.from(alpha: 0.06, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
+    BoxShadow(
+      offset: Offset(0, 4),
+      blurRadius: 6.0622,
+      spreadRadius: -2,
+      color: Color.from(alpha: 0.1, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const lg = [
-    BoxShadow(offset: Offset(0, 4), blurRadius: 4.3301, spreadRadius: -2, color: Color.fromARGB(8, 16, 24, 40)),
-    BoxShadow(offset: Offset(0, 12), blurRadius: 12.9904, spreadRadius: -4, color: Color.fromARGB(20, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 4),
+      blurRadius: 4.3301,
+      spreadRadius: -2,
+      color: Color.from(alpha: 0.03, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
+    BoxShadow(
+      offset: Offset(0, 12),
+      blurRadius: 12.9904,
+      spreadRadius: -4,
+      color: Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const xl = [
-    BoxShadow(offset: Offset(0, 8), blurRadius: 6.0622, spreadRadius: -4, color: Color.fromARGB(8, 16, 24, 40)),
-    BoxShadow(offset: Offset(0, 20), blurRadius: 19.9186, spreadRadius: -4, color: Color.fromARGB(20, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 8),
+      blurRadius: 6.0622,
+      spreadRadius: -4,
+      color: Color.from(alpha: 0.03, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
+    BoxShadow(
+      offset: Offset(0, 20),
+      blurRadius: 19.9186,
+      spreadRadius: -4,
+      color: Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const n2xl = [
-    BoxShadow(offset: Offset(0, 24), blurRadius: 40.7032, spreadRadius: -12, color: Color.fromARGB(46, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 24),
+      blurRadius: 40.7032,
+      spreadRadius: -12,
+      color: Color.from(alpha: 0.18, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static const n3xl = [
-    BoxShadow(offset: Offset(0, 32), blurRadius: 54.5596, spreadRadius: -12, color: Color.fromARGB(36, 16, 24, 40)),
+    BoxShadow(
+      offset: Offset(0, 32),
+      blurRadius: 54.5596,
+      spreadRadius: -12,
+      color: Color.from(alpha: 0.14, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+    ),
   ];
   static List<BoxShadow> get statusIndicatorGreenShadow => [
     BoxShadow(
@@ -3174,12 +3571,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get chatbotBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(230, 34, 34, 37), Color.fromARGB(230, 29, 29, 32)],
+          colors: [
+            Color.from(alpha: 0.9, red: 34 / 255, green: 34 / 255, blue: 37 / 255),
+            Color.from(alpha: 0.9, red: 29 / 255, green: 29 / 255, blue: 32 / 255),
+          ],
           stops: [0, 0.9048],
         )
       : const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(230, 249, 250, 251), Color.fromARGB(230, 242, 244, 247)],
+          colors: [
+            Color.from(alpha: 0.9, red: 249 / 255, green: 250 / 255, blue: 251 / 255),
+            Color.from(alpha: 0.9, red: 242 / 255, green: 244 / 255, blue: 247 / 255),
+          ],
           stops: [0, 0.9048],
         );
 
@@ -3187,12 +3590,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get chatBubbleBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(255, 42, 43, 48), Color.fromARGB(255, 37, 38, 42)],
+          colors: [
+            Color.from(alpha: 1.0, red: 42 / 255, green: 43 / 255, blue: 48 / 255),
+            Color.from(alpha: 1.0, red: 37 / 255, green: 38 / 255, blue: 42 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 180,
-          colors: [Color(0xFFFFFFFF), Color.fromARGB(153, 255, 255, 255)],
+          colors: [
+            Color(0xFFFFFFFF),
+            Color.from(alpha: 0.6, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3200,12 +3609,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get chatInputMask => DifyColors._dark
       ? const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(10, 24, 24, 27), Color.fromARGB(153, 24, 24, 27)],
+          colors: [
+            Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+            Color.from(alpha: 0.6, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(3, 255, 255, 255), Color(0xFFF2F4F7)],
+          colors: [
+            Color.from(alpha: 0.01, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+            Color(0xFFF2F4F7),
+          ],
           stops: [0, 1],
         );
 
@@ -3213,12 +3628,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get workflowProcessBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(64, 24, 24, 27), Color.fromARGB(10, 24, 24, 27)],
+          colors: [
+            Color.from(alpha: 0.25, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+            Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(51, 200, 206, 218), Color.fromARGB(10, 200, 206, 218)],
+          colors: [
+            Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+            Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3226,12 +3647,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get workflowProcessPausedBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(36, 247, 144, 9), Color.fromARGB(0, 247, 144, 9)],
+          colors: [
+            Color.from(alpha: 0.14, red: 247 / 255, green: 144 / 255, blue: 9 / 255),
+            Color.from(alpha: 0.0, red: 247 / 255, green: 144 / 255, blue: 9 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color(0xFFFFFAEB), Color.fromARGB(0, 255, 250, 235)],
+          colors: [
+            Color(0xFFFFFAEB),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 250 / 255, blue: 235 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3239,12 +3666,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get workflowProcessFailedBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(36, 240, 68, 56), Color.fromARGB(0, 240, 68, 56)],
+          colors: [
+            Color.from(alpha: 0.14, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color(0xFFFEF3F2), Color.fromARGB(0, 254, 243, 242)],
+          colors: [
+            Color(0xFFFEF3F2),
+            Color.from(alpha: 0.0, red: 254 / 255, green: 243 / 255, blue: 242 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3252,12 +3685,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get workflowRunFailedBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 98,
-          colors: [Color.fromARGB(31, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.12, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 0.2601],
         )
       : const CssLinearGradient(
           angle: 98,
-          colors: [Color.fromARGB(26, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.1, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 0.2601],
         );
 
@@ -3265,12 +3704,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get workflowBatchFailedBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3278,21 +3723,37 @@ abstract final class DifyGradients {
   static CssLinearGradient get marketplaceDividerBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(36, 200, 206, 218), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
   /// `marketplace-plugin-empty`
   static CssLinearGradient get marketplacePluginEmpty => DifyColors._dark
-      ? const CssLinearGradient(angle: 180, colors: [Color.fromARGB(0, 0, 0, 0), Color(0xFF222225)], stops: [0, 1])
+      ? const CssLinearGradient(
+          angle: 180,
+          colors: [
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+            Color(0xFF222225),
+          ],
+          stops: [0, 1],
+        )
       : const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFCFCFD)],
+          colors: [
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+            Color(0xFFFCFCFD),
+          ],
           stops: [0, 1],
         );
 
@@ -3300,12 +3761,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get toastSuccessBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 23, 178, 106), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 23 / 255, green: 178 / 255, blue: 106 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 23, 178, 106), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 23 / 255, green: 178 / 255, blue: 106 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3313,12 +3780,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get toastWarningBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 247, 144, 9), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 247 / 255, green: 144 / 255, blue: 9 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 247, 144, 9), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 247 / 255, green: 144 / 255, blue: 9 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3326,30 +3799,50 @@ abstract final class DifyGradients {
   static CssLinearGradient get toastErrorBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
   /// `toast-info-bg`
   static CssLinearGradient get toastInfoBg => DifyColors._dark
-      ? const CssLinearGradient(angle: 92, colors: [Color.fromARGB(76, 11, 165, 236)], stops: [0])
-      : const CssLinearGradient(angle: 92, colors: [Color.fromARGB(64, 11, 165, 236)], stops: [0]);
+      ? const CssLinearGradient(
+          angle: 92,
+          colors: [Color.from(alpha: 0.3, red: 11 / 255, green: 165 / 255, blue: 236 / 255)],
+          stops: [0],
+        )
+      : const CssLinearGradient(
+          angle: 92,
+          colors: [Color.from(alpha: 0.25, red: 11 / 255, green: 165 / 255, blue: 236 / 255)],
+          stops: [0],
+        );
 
   /// `account-teams-bg`
   static CssLinearGradient get accountTeamsBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 271,
-          colors: [Color.fromARGB(230, 34, 34, 37), Color.fromARGB(230, 29, 29, 32)],
+          colors: [
+            Color.from(alpha: 0.9, red: 34 / 255, green: 34 / 255, blue: 37 / 255),
+            Color.from(alpha: 0.9, red: 29 / 255, green: 29 / 255, blue: 32 / 255),
+          ],
           stops: [-0.001, 0.9826],
         )
       : const CssLinearGradient(
           angle: 271,
-          colors: [Color.fromARGB(230, 249, 250, 251), Color.fromARGB(230, 242, 244, 247)],
+          colors: [
+            Color.from(alpha: 0.9, red: 249 / 255, green: 250 / 255, blue: 251 / 255),
+            Color.from(alpha: 0.9, red: 242 / 255, green: 244 / 255, blue: 247 / 255),
+          ],
           stops: [-0.001, 0.9826],
         );
 
@@ -3362,12 +3855,20 @@ abstract final class DifyGradients {
   static CssLinearGradient get appDetailOverlayBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 270,
-          colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(5, 24, 24, 27), Color.fromARGB(138, 24, 24, 27)],
+          colors: [
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+            Color.from(alpha: 0.02, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+            Color.from(alpha: 0.54, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+          ],
           stops: [0, 0.08, 1],
         )
       : const CssLinearGradient(
           angle: 270,
-          colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(3, 16, 24, 40), Color.fromARGB(46, 16, 24, 40)],
+          colors: [
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+            Color.from(alpha: 0.01, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+            Color.from(alpha: 0.18, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+          ],
           stops: [0, 0.08, 1],
         );
 
@@ -3375,12 +3876,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get datasetWarningMessageBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 247, 144, 9), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 247 / 255, green: 144 / 255, blue: 9 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 247, 144, 9), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 247 / 255, green: 144 / 255, blue: 9 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3388,12 +3895,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get datasetChunkProcessSuccessBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 23, 178, 106), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 23 / 255, green: 178 / 255, blue: 106 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 23, 178, 106), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 23 / 255, green: 178 / 255, blue: 106 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3401,12 +3914,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get datasetChunkProcessErrorBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(76, 240, 68, 56), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.3, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(64, 240, 68, 56), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.25, red: 240 / 255, green: 68 / 255, blue: 56 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3419,12 +3938,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get datasetChildChunkExpandBtnBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(64, 24, 24, 27), Color.fromARGB(10, 24, 24, 27)],
+          colors: [
+            Color.from(alpha: 0.25, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+            Color.from(alpha: 0.04, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(51, 200, 206, 218), Color.fromARGB(10, 200, 206, 218)],
+          colors: [
+            Color.from(alpha: 0.2, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+            Color.from(alpha: 0.04, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3445,10 +3970,20 @@ abstract final class DifyGradients {
 
   /// `dataset-chunk-list-mask-bg`
   static CssLinearGradient get datasetChunkListMaskBg => DifyColors._dark
-      ? const CssLinearGradient(angle: 180, colors: [Color.fromARGB(0, 34, 34, 37), Color(0xFF222225)], stops: [0, 1])
+      ? const CssLinearGradient(
+          angle: 180,
+          colors: [
+            Color.from(alpha: 0.0, red: 34 / 255, green: 34 / 255, blue: 37 / 255),
+            Color(0xFF222225),
+          ],
+          stops: [0, 1],
+        )
       : const CssLinearGradient(
           angle: 180,
-          colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFCFCFD)],
+          colors: [
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+            Color(0xFFFCFCFD),
+          ],
           stops: [0, 1],
         );
 
@@ -3456,12 +3991,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get lineDividerBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(36, 200, 206, 218), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3469,12 +4010,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get accessAppIconMaskBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 135,
-          colors: [Color.fromARGB(51, 255, 255, 255), Color.fromARGB(8, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.2, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+            Color.from(alpha: 0.03, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 135,
-          colors: [Color.fromARGB(31, 255, 255, 255), Color.fromARGB(20, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.12, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+            Color.from(alpha: 0.08, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3486,7 +4033,10 @@ abstract final class DifyGradients {
   /// `premium-badge-background`
   static CssLinearGradient get premiumBadgeBackground => const CssLinearGradient(
     angle: 95,
-    colors: [Color.fromARGB(230, 152, 162, 178), Color.fromARGB(230, 103, 111, 131)],
+    colors: [
+      Color.from(alpha: 0.9, red: 152 / 255, green: 162 / 255, blue: 178 / 255),
+      Color.from(alpha: 0.9, red: 103 / 255, green: 111 / 255, blue: 131 / 255),
+    ],
     stops: [0, 1.0558],
   );
 
@@ -3494,19 +4044,28 @@ abstract final class DifyGradients {
   static CssLinearGradient get premiumTextBackground => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(242, 249, 250, 251), Color.fromARGB(242, 233, 235, 240)],
+          colors: [
+            Color.from(alpha: 0.95, red: 249 / 255, green: 250 / 255, blue: 251 / 255),
+            Color.from(alpha: 0.95, red: 233 / 255, green: 235 / 255, blue: 240 / 255),
+          ],
           stops: [0, 0.9778],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(242, 252, 252, 253), Color.fromARGB(242, 242, 244, 247)],
+          colors: [
+            Color.from(alpha: 0.95, red: 252 / 255, green: 252 / 255, blue: 253 / 255),
+            Color.from(alpha: 0.95, red: 242 / 255, green: 244 / 255, blue: 247 / 255),
+          ],
           stops: [0, 0.9778],
         );
 
   /// `price-enterprise-background`
   static CssLinearGradient get priceEnterpriseBackground => const CssLinearGradient(
     angle: 180,
-    colors: [Color.fromARGB(0, 185, 211, 234), Color.fromARGB(235, 180, 209, 234)],
+    colors: [
+      Color.from(alpha: 0.0, red: 185 / 255, green: 211 / 255, blue: 234 / 255),
+      Color.from(alpha: 0.92, red: 180 / 255, green: 209 / 255, blue: 234 / 255),
+    ],
     stops: [0, 1],
   );
 
@@ -3514,12 +4073,20 @@ abstract final class DifyGradients {
   static CssLinearGradient get gridMaskBackground => DifyColors._dark
       ? const CssLinearGradient(
           angle: 0,
-          colors: [Color.fromARGB(0, 0, 0, 0), Color.fromARGB(26, 24, 24, 25), Color.fromARGB(26, 24, 24, 25)],
+          colors: [
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+            Color.from(alpha: 0.1, red: 24 / 255, green: 24 / 255, blue: 25 / 255),
+            Color.from(alpha: 0.1, red: 24 / 255, green: 24 / 255, blue: 25 / 255),
+          ],
           stops: [0, 0.6225, 1],
         )
       : const CssLinearGradient(
           angle: 0,
-          colors: [Color(0xFFFFFFFF), Color.fromARGB(26, 217, 217, 217), Color.fromARGB(26, 217, 217, 217)],
+          colors: [
+            Color(0xFFFFFFFF),
+            Color.from(alpha: 0.1, red: 217 / 255, green: 217 / 255, blue: 217 / 255),
+            Color.from(alpha: 0.1, red: 217 / 255, green: 217 / 255, blue: 217 / 255),
+          ],
           stops: [0, 0.6225, 1],
         );
 
@@ -3527,12 +4094,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get nodeDataSourceBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 100,
-          colors: [Color.fromARGB(255, 39, 39, 43), Color.fromARGB(51, 39, 39, 43)],
+          colors: [
+            Color.from(alpha: 1.0, red: 39 / 255, green: 39 / 255, blue: 43 / 255),
+            Color.from(alpha: 0.2, red: 39 / 255, green: 39 / 255, blue: 43 / 255),
+          ],
           stops: [0, 1],
         )
       : const CssLinearGradient(
           angle: 100,
-          colors: [Color(0xFFE9EBF0), Color.fromARGB(51, 233, 235, 240)],
+          colors: [
+            Color(0xFFE9EBF0),
+            Color.from(alpha: 0.2, red: 233 / 255, green: 235 / 255, blue: 240 / 255),
+          ],
           stops: [0, 1],
         );
 
@@ -3540,12 +4113,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get tagSelectorMaskBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(0, 34, 34, 37), Color(0xFF222225)],
+          colors: [
+            Color.from(alpha: 0.0, red: 34 / 255, green: 34 / 255, blue: 37 / 255),
+            Color(0xFF222225),
+          ],
           stops: [0, 0.77027],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(0, 252, 252, 253), Color(0xFFFCFCFD)],
+          colors: [
+            Color.from(alpha: 0.0, red: 252 / 255, green: 252 / 255, blue: 253 / 255),
+            Color(0xFFFCFCFD),
+          ],
           stops: [0, 0.77027],
         );
 
@@ -3553,12 +4132,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get tagSelectorMaskHoverBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(0, 39, 39, 43), Color(0xFF27272B)],
+          colors: [
+            Color.from(alpha: 0.0, red: 39 / 255, green: 39 / 255, blue: 43 / 255),
+            Color(0xFF27272B),
+          ],
           stops: [0, 0.77027],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(0, 255, 255, 255), Color(0xFFFFFFFF)],
+          colors: [
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+            Color(0xFFFFFFFF),
+          ],
           stops: [0, 0.77027],
         );
 
@@ -3566,12 +4151,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get pipelineTemplateCardHoverBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 0,
-          colors: [Color.fromARGB(255, 58, 58, 64), Color.fromARGB(0, 58, 58, 64)],
+          colors: [
+            Color.from(alpha: 1.0, red: 58 / 255, green: 58 / 255, blue: 64 / 255),
+            Color.from(alpha: 0.0, red: 58 / 255, green: 58 / 255, blue: 64 / 255),
+          ],
           stops: [0.6027, 1],
         )
       : const CssLinearGradient(
           angle: 0,
-          colors: [Color.fromARGB(255, 249, 250, 251), Color.fromARGB(0, 249, 250, 251)],
+          colors: [
+            Color.from(alpha: 1.0, red: 249 / 255, green: 250 / 255, blue: 251 / 255),
+            Color.from(alpha: 0.0, red: 249 / 255, green: 250 / 255, blue: 251 / 255),
+          ],
           stops: [0.6027, 1],
         );
 
@@ -3579,12 +4170,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get pipelineAddDocumentsTitleBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(255, 54, 191, 250), Color.fromARGB(255, 41, 109, 255)],
+          colors: [
+            Color.from(alpha: 1.0, red: 54 / 255, green: 191 / 255, blue: 250 / 255),
+            Color.from(alpha: 1.0, red: 41 / 255, green: 109 / 255, blue: 255 / 255),
+          ],
           stops: [0, 0.9778],
         )
       : const CssLinearGradient(
           angle: 92,
-          colors: [Color.fromARGB(242, 11, 165, 236), Color.fromARGB(242, 21, 90, 239)],
+          colors: [
+            Color.from(alpha: 0.95, red: 11 / 255, green: 165 / 255, blue: 236 / 255),
+            Color.from(alpha: 0.95, red: 21 / 255, green: 90 / 255, blue: 239 / 255),
+          ],
           stops: [0, 0.9778],
         );
 
@@ -3594,23 +4191,41 @@ abstract final class DifyGradients {
       : const CssLinearGradient(angle: 95, colors: [Color(0xFF0033FF), Color(0xFF0033FF)], stops: [0.2947, 1.0531]);
 
   /// `billing-plan-card-premium-bg`
-  static CssLinearGradient get billingPlanCardPremiumBg =>
-      const CssLinearGradient(angle: 180, colors: [Color(0xFFFF9900), Color.fromARGB(0, 255, 153, 0)], stops: [0, 1]);
+  static CssLinearGradient get billingPlanCardPremiumBg => const CssLinearGradient(
+    angle: 180,
+    colors: [
+      Color(0xFFFF9900),
+      Color.from(alpha: 0.0, red: 255 / 255, green: 153 / 255, blue: 0 / 255),
+    ],
+    stops: [0, 1],
+  );
 
   /// `billing-plan-card-enterprise-bg`
-  static CssLinearGradient get billingPlanCardEnterpriseBg =>
-      const CssLinearGradient(angle: 180, colors: [Color(0xFF0033FF), Color.fromARGB(0, 0, 51, 255)], stops: [0, 1]);
+  static CssLinearGradient get billingPlanCardEnterpriseBg => const CssLinearGradient(
+    angle: 180,
+    colors: [
+      Color(0xFF0033FF),
+      Color.from(alpha: 0.0, red: 0 / 255, green: 51 / 255, blue: 255 / 255),
+    ],
+    stops: [0, 1],
+  );
 
   /// `knowledge-pipeline-creation-footer-bg`
   static CssLinearGradient get knowledgePipelineCreationFooterBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 90,
-          colors: [Color.fromARGB(255, 34, 34, 37), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 1.0, red: 34 / 255, green: 34 / 255, blue: 37 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0.0489, 1],
         )
       : const CssLinearGradient(
           angle: 90,
-          colors: [Color(0xFFFCFCFD), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color(0xFFFCFCFD),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0.0489, 1],
         );
 
@@ -3618,12 +4233,18 @@ abstract final class DifyGradients {
   static CssLinearGradient get chatAnswerHumanInputFormDividerBg => DifyColors._dark
       ? const CssLinearGradient(
           angle: 0,
-          colors: [Color.fromARGB(36, 200, 206, 218), Color.fromARGB(0, 0, 0, 0)],
+          colors: [
+            Color.from(alpha: 0.14, red: 200 / 255, green: 206 / 255, blue: 218 / 255),
+            Color.from(alpha: 0.0, red: 0 / 255, green: 0 / 255, blue: 0 / 255),
+          ],
           stops: [0, 2.125],
         )
       : const CssLinearGradient(
           angle: 0,
-          colors: [Color.fromARGB(20, 16, 24, 40), Color.fromARGB(0, 255, 255, 255)],
+          colors: [
+            Color.from(alpha: 0.08, red: 16 / 255, green: 24 / 255, blue: 40 / 255),
+            Color.from(alpha: 0.0, red: 255 / 255, green: 255 / 255, blue: 255 / 255),
+          ],
           stops: [0, 2.125],
         );
 }

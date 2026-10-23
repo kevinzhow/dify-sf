@@ -182,6 +182,7 @@ class SceneRenderer extends CanvasRenderer {
 
   late final _RoundedFrames _statusFrames;
   late final _RoundedFrames _selectedFrames;
+  late final _RoundedFrames _simpleSelectedFrames;
   late final InstancedMesh _markers;
   // One marker instance per connected handle: (slot, handle id or '' for the target handle) -> instance.
   final _markerAt = <(int, String), int>{};
@@ -229,6 +230,7 @@ class SceneRenderer extends CanvasRenderer {
     // The status border is the card's own 1 px border; the selected frame the 1 px around it.
     _statusFrames = _RoundedFrames(scene, thickness: 1);
     _selectedFrames = _RoundedFrames(scene, thickness: 1);
+    _simpleSelectedFrames = _RoundedFrames(scene, thickness: 2);
     _markers = InstancedMesh(
       geometry: _unitQuad,
       material: UnlitMaterial()..alphaMode = AlphaMode.blend,
@@ -335,6 +337,7 @@ class SceneRenderer extends CanvasRenderer {
     _skeleton[slot] = null;
     _statusFrames.clear(slot);
     _selectedFrames.clear(slot);
+    _simpleSelectedFrames.clear(slot);
     _setSpinners(slot, const []);
     for (final k in [..._markerAt.keys.where((k) => k.$1 == slot)]) {
       _dropMarker(k);
@@ -577,11 +580,15 @@ class SceneRenderer extends CanvasRenderer {
     final n = graph.slots[slot];
     if (n == null || !selection.nodes.contains(slot) || n.layout.underlay) {
       _selectedFrames.clear(slot);
+      _simpleSelectedFrames.clear(slot);
       return;
     }
-    _selectedFrames.set(
+    final isSimple = n.layout.selectionBorderWidth == 2;
+    final frames = isSimple ? _simpleSelectedFrames : _selectedFrames;
+    (isSimple ? _selectedFrames : _simpleSelectedFrames).clear(slot);
+    frames.set(
       slot,
-      n.rect.inflate(1),
+      n.rect.inflate(n.layout.selectionBorderWidth),
       DifyRadius.xxl,
       srgb(n.run.value.tint(DifyColors.componentsOptionCardOptionSelectedBorder)),
       _frameLift(slot, n, -0.15),

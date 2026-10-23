@@ -1,5 +1,5 @@
 import unittest
-from check_ui_coverage import validate,validate_public_classes
+from check_ui_coverage import validate,validate_public_classes,validate_design_ownership
 from pathlib import Path
 import tempfile
 
@@ -26,4 +26,14 @@ class InventoryContract(unittest.TestCase):
             inventory={'exports':[{'source':'control.dart','publicClasses':['Known']}]}
             errors=validate_public_classes(inventory,root)
         self.assertTrue(any('NewControl' in e for e in errors))
+    def test_page_local_copy_of_shared_control_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);base=root/'app/lib/src';(base/'design').mkdir(parents=True)
+            (base/'design/control.dart').write_text('class SharedControl {}')
+            (base/'home_page.dart').write_text('class SharedControl {}')
+            inventory={'exports':[{'publicClasses':['SharedControl']}]}
+            errors=validate_design_ownership(inventory,root)
+            self.assertTrue(any('home_page.dart' in e for e in errors))
+            (base/'home_page.dart').write_text("import 'design/control.dart';\nclass HomePage {}")
+            self.assertEqual(validate_design_ownership(inventory,root),[])
 if __name__=='__main__' :unittest.main()

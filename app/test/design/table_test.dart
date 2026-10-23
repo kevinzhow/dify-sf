@@ -53,6 +53,6 @@ void main() {
     final a = t.getTopLeft(find.byKey(const ValueKey('short')));
     final b = t.getTopLeft(find.byKey(const ValueKey('a much longer cell')));
     expect(a.dx, b.dx);
-    expect(t.getTopLeft(find.text('B')).dx, a.dx + 12); // the header's `pl-3`
+    expect(t.getTopLeft(find.text('B')).dx, a.dx + 11); // th pl-3, minus the native td padding of 1
   });
 }

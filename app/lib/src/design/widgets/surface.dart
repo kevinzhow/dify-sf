@@ -4,6 +4,8 @@ import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
 import '../css_metrics.dart';
+import '../dify_icon.dart';
+import '../../i18n/dify_i18n.dart';
 import 'text.dart';
 
 /// A box with `backdrop-blur-[blur px]` behind it: the backdrop is blurred inside [borderRadius], the decoration
@@ -172,4 +174,84 @@ class _BlueGlassRings extends CustomPainter {
 
   @override
   bool shouldRepaint(_BlueGlassRings old) => old.radius != radius || old.dark != dark;
+}
+
+/// The shared `rounded-[20px] border-divider-subtle bg-chat-bubble-bg
+/// shadow-lg` surface. Callers supply content/padding; no form or API state.
+class DifyChatBubbleSurface extends StatelessWidget {
+  const DifyChatBubbleSurface({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.height});
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    padding: padding,
+    decoration: BoxDecoration(
+      gradient: DifyGradients.chatBubbleBg,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: DifyColors.dividerSubtle),
+      boxShadow: DifyShadows.lg,
+    ),
+    child: child,
+  );
+}
+
+/// Public-form branding-footer.tsx: px-2/py-3, inner px-1/gap-1.5,
+/// the system-2xs uppercase label and small Dify (or caller-supplied) logo.
+class DifyBrandingFooter extends StatelessWidget {
+  const DifyBrandingFooter({super.key, this.removeBrand = false, this.logoUrl, this.label});
+  final bool removeBrand;
+  final String? logoUrl, label;
+
+  @override
+  Widget build(BuildContext context) {
+    if (removeBrand) return const SizedBox.shrink();
+    final logo = logoUrl;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        spacing: 6,
+        children: [
+          DifyText(
+            label ?? DifyI18n.tr('share', 'chat.poweredBy'),
+            DifyType.system2xsMediumUppercase,
+            color: DifyColors.textTertiary,
+          ),
+          if (logo != null && logo.isNotEmpty)
+            Image.network(logo, height: 20, semanticLabel: 'logo')
+          else
+            const DifyLogo(size: DifyLogoSize.small),
+        ],
+      ),
+    );
+  }
+}
+
+/// A replaced inline element whose baseline is its bottom border (native
+/// textarea with overflow:auto). CSS also retains the surrounding text strut's
+/// descent below it. Flex/grid callers use their child directly instead.
+class DifyInlineReplacedBox extends StatelessWidget {
+  const DifyInlineReplacedBox({
+    super.key,
+    required this.child,
+    this.lineStyle = const TextStyle(fontSize: 16, height: 1.5),
+  });
+  final Widget child;
+
+  /// Dify's document strut defaults to the browser's 16px/24px. A caller with
+  /// an explicit CSS text utility can supply that same utility here.
+  final TextStyle lineStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.textScalerOf(context).scale(lineStyle.fontSize!);
+    final line = Css.textLine(size, size * lineStyle.height!, style: lineStyle);
+    return Padding(
+      padding: EdgeInsets.only(bottom: line.below.clamp(0, double.infinity)),
+      child: child,
+    );
+  }
 }

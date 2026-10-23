@@ -17,6 +17,7 @@ class CardLayout {
     this.sources = const {'source': CanvasNode.defaultHandleY},
     this.target = true,
     this.underlay = false,
+    this.selectionBorderWidth = 1,
   }) : visual = visual ?? card;
 
   /// The card (hit testing, frames).
@@ -34,6 +35,10 @@ class CardLayout {
   /// Drawn under the edges and every other node, selected or not, without the selected frame (the card shows its
   /// own selection): Dify's notes (`.react-flow__node-custom-note { z-index: -1 }`).
   final bool underlay;
+
+  /// The outer wrapper's CSS border: ordinary nodes use `border`, whereas
+  /// SimpleNode (loop-end) uses `border-2` even before it is selected.
+  final double selectionBorderWidth;
 }
 
 /// One node as the canvas sees it. Slots are reused when nodes go and come, so renderers can keep per-slot

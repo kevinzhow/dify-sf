@@ -173,6 +173,7 @@ extension on _AnnotationListState {
       ),
     );
     return DifyTableRow(
+      cellPadding: EdgeInsets.zero,
       key: ValueKey('annotation-row-${item.id}'),
       nowrap: true,
       onTap: () => widget.onView(item),

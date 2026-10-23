@@ -139,11 +139,7 @@ class _DifyTagInputState extends State<DifyTagInput> {
             child: ColoredBox(
               // The original non-special input leaves the browser's Field
               // canvas visible; Tab-mode explicitly makes it transparent.
-              color: _special
-                  ? const Color(0x00000000)
-                  : DifyColors.isDark
-                  ? const Color(0xFF3B3B3B)
-                  : const Color(0xFFFFFFFF),
+              color: _special ? const Color(0x00000000) : Css.inputBackground(DifyColors.isDark),
               child: TextField(
                 controller: _text,
                 focusNode: _focus,

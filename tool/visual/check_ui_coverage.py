@@ -41,9 +41,22 @@ def validate_public_classes(inventory,root=ROOT):
         if actual!=declared:errors.append(f"Public class inventory changed in {item['source']}: new={sorted(actual-declared)}, stale={sorted(declared-actual)}")
     return errors
 
+def validate_design_ownership(inventory,root=ROOT):
+    # A shared control has one implementation in design/. A page-local copy
+    # would bypass its typography, focus and source-parity regression coverage.
+    names={name for item in inventory.get('exports',[]) for name in item.get('publicClasses',[])}
+    errors=[]
+    base=root/'app/lib/src'
+    for path in base.rglob('*.dart'):
+        if 'design' in path.relative_to(base).parts:continue
+        classes=set(re.findall(r'^(?:(?:abstract|sealed|final|base|interface) )*class ([A-Z]\w*)',path.read_text(),re.M))
+        for name in sorted(classes & names):
+            errors.append(f'Shared control {name} must be implemented in design/, not {path.relative_to(root)}')
+    return errors
+
 def main():
     folder=Path(__file__).parent;inventory=json.loads((folder/'ui_coverage.json').read_text());catalogs=[json.loads((folder/name).read_text()) for name in inventory['catalogs']]
-    errors=validate(inventory,catalogs,sources())+validate_public_classes(inventory)
+    errors=validate(inventory,catalogs,sources())+validate_public_classes(inventory)+validate_design_ownership(inventory)
     if errors:raise SystemExit('\n'.join(errors))
     print('Declared source coverage complete: '+', '.join(f'{len(inventory[k])} {k}' for k in ['exports','pages','nodeBodies'])+'. Capture success must be checked separately.')
 if __name__=='__main__':main()

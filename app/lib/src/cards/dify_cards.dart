@@ -220,13 +220,13 @@ class DifyCards extends CardSpec {
     final body = bodyOf(node.type);
     final chrome = body.chrome;
     // React Flow's node element is the selection frame; the card sits 1 px inside it, entry nodes below their label.
-    final top = isEntry(node.type) ? _entryLabel + 1 : 1.0;
+    final top = isEntry(node.type) ? _entryLabel + 1 : (chrome == CardChrome.simple ? 2.0 : 1.0);
     final card = switch (chrome) {
       CardChrome.container => Offset(1, 1) & body.cardSize(ctx)!,
       CardChrome.marker || CardChrome.flatMarker => const Rect.fromLTWH(0, 4, 44, 44),
       CardChrome.bodyOnly => Rect.fromLTWH(1, 1, width, 2 * border + body.height(ctx)),
       CardChrome.base || CardChrome.simple => Rect.fromLTWH(
-        1,
+        chrome == CardChrome.simple ? 2 : 1,
         top,
         width,
         border +
@@ -264,6 +264,7 @@ class DifyCards extends CardSpec {
             )
           : card,
       sources: sources,
+      selectionBorderWidth: chrome == CardChrome.simple ? 2 : 1,
       target: body.target,
     );
   }

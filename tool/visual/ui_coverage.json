@@ -769,11 +769,18 @@
         "controls.surface.light.zh-Hans",
         "controls.surface.dark.zh-Hans",
         "pages.integrations-models.light.en-US",
-        "pages.integrations-models.dark.en-US"
+        "pages.integrations-models.dark.en-US",
+        "pages.human-form.light.en-US",
+        "pages.human-form.dark.en-US",
+        "pages.human-form-completed.light.en-US",
+        "pages.human-form-completed.dark.en-US"
       ],
       "publicClasses": [
         "DifyBlurredBox",
-        "DifyBlueGlassSurface"
+        "DifyBlueGlassSurface",
+        "DifyChatBubbleSurface",
+        "DifyBrandingFooter",
+        "DifyInlineReplacedBox"
       ],
       "scope": "blurred surface fixtures and actual active navigation on the Integrations page"
     },
@@ -964,6 +971,20 @@
         "DifyWorkspaceAvatar"
       ],
       "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/main_nav_link.dart",
+      "visual": true,
+      "publicClasses": [
+        "MainNavLink"
+      ],
+      "cases": [
+        "pages.integrations-models.light.en-US",
+        "pages.integrations-models.dark.en-US",
+        "pages.studio-toolbar-default.light.zh-Hans",
+        "pages.studio-toolbar-default.dark.zh-Hans"
+      ],
+      "scope": "actual active primary-navigation control on English/Chinese product pages; pointer/keyboard/font-scale regression"
     }
   ],
   "pages": [
@@ -1150,8 +1171,7 @@
       ],
       "publicClasses": [
         "HomePage",
-        "MainNavFrame",
-        "MainNavLink"
+        "MainNavFrame"
       ]
     },
     {

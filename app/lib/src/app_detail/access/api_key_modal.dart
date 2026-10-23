@@ -269,6 +269,7 @@ class ApiKeyTable extends StatelessWidget {
       rows: [
         for (final (i, key) in apiKeys.indexed)
           DifyTableRow(
+            cellPadding: EdgeInsets.zero,
             hoverable: false,
             dividerColor: DifyColors.dividerRegular,
             divider: i != apiKeys.length - 1,

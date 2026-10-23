@@ -631,6 +631,7 @@ class _ConversationListState extends State<ConversationList> {
               );
               final trigger = _triggers.putIfAbsent(id, () => FocusNode(debugLabel: 'conversation $id'));
               return DifyTableRow(
+                cellPadding: EdgeInsets.zero,
                 key: ValueKey('chat-log-row-$id'),
                 selected: _current == id,
                 onTap: () => _open(id),

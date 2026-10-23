@@ -9,11 +9,10 @@ import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
 import '../../../../../workflow/dify_json.dart';
-import '../data_common.dart' show cm;
 import 'human_input_kit.dart';
 import 'human_input_model.dart';
 import 'user_action.dart';
-import '../../../../run/ui/human_input_content.dart' show HumanInputFieldRenderer;
+import '../../../../run/ui/human_input_content.dart' show HumanInputContentItem;
 
 /// A before-run input (`InputVar`): `variable` is `#a.b#` (may be missing on broken data).
 typedef RunInputVar = Map<String, Object?>;
@@ -185,41 +184,12 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
     }
   }
 
-  Widget _item(String piece) {
-    final m = RegExp(r'\{\{#\$output\.([^#]+)#\}\}').firstMatch(piece);
-    if (m == null) return DifyTextLine(piece, style: difyStyle(DifyType.bodyMdRegular, DifyColors.textPrimary));
-    final name = m[1]!;
-    final field = _fields.where((f) => inputNameOf(f) == name).firstOrNull;
-    if (field == null) return const SizedBox.shrink();
-    if (isSelectFormInput(field)) {
-      final options = [for (final o in jsList(jsGet(jsGet(field, 'option_source'), 'value'))) jsKey(o)];
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Semantics(
-          label: name,
-          child: DifySelect<String>(
-            value: _inputs[name] is String && (_inputs[name] as String).isNotEmpty ? _inputs[name] as String : null,
-            options: [for (final o in options) (value: o, label: o)],
-            placeholder: cm('placeholder.select'),
-            onChanged: (v) => setState(() => _inputs[name] = v),
-          ),
-        ),
-      );
-    }
-    if (isParagraphFormInput(field)) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: DifyTextarea(
-          value: _inputs[name] is String ? _inputs[name] as String : '',
-          semanticLabel: name,
-          onChanged: (v) => setState(() => _inputs[name] = v),
-        ),
-      );
-    }
-    return HumanInputFieldRenderer(
-      field: field, value: _inputs[name], onChange: (value) => setState(() => _inputs[name] = value),
-    );
-  }
+  Widget _item(String piece) => HumanInputContentItem(
+    content: piece,
+    formInputFields: _fields,
+    inputs: _inputs,
+    onInputChange: (name, value) => setState(() => _inputs[name] = value),
+  );
 
   @override
   Widget build(BuildContext context) {

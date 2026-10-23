@@ -138,6 +138,7 @@ class HumanInputFieldRenderer extends StatelessWidget {
     if (isParagraphFormInput(field)) {
       return DifyTextarea(
         key: const Key('content-item-textarea'),
+        textStyle: DifyAdaptive.smallMediaOf(context) ? DifyType.systemXsRegular : DifyType.systemSmRegular,
         value: value is String ? value! as String : '',
         semanticLabel: name,
         minHeight: 104,
@@ -207,14 +208,15 @@ class HumanInputContentItem extends StatelessWidget {
     final name = m[1]!;
     final field = formInputFields.where((f) => inputNameOf(f) == name).firstOrNull;
     if (field == null) return const SizedBox.shrink();
+    final control = HumanInputFieldRenderer(
+      field: field,
+      value: inputs[name],
+      pickFile: pickFile,
+      onChange: (v) => onInputChange(name, v),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: HumanInputFieldRenderer(
-        field: field,
-        value: inputs[name],
-        pickFile: pickFile,
-        onChange: (v) => onInputChange(name, v),
-      ),
+      child: isParagraphFormInput(field) ? DifyInlineReplacedBox(child: control) : control,
     );
   }
 }

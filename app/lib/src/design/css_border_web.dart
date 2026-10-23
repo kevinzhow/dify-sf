@@ -27,3 +27,26 @@ double? browserBorderWidth(double width) {
     probe.remove();
   }
 }
+
+final _fieldBackgrounds = <bool, String>{};
+
+String? browserInputBackground(bool dark) {
+  final body = web.document.body;
+  if (body == null) return null;
+  if (_fieldBackgrounds[dark] case final value?) return value;
+  final probe = web.HTMLInputElement();
+  probe.style
+    ..position = 'absolute'
+    ..visibility = 'hidden'
+    ..pointerEvents = 'none'
+    ..appearance = 'none'
+    ..colorScheme = dark ? 'dark' : 'light';
+  try {
+    body.appendChild(probe);
+    final value = web.window.getComputedStyle(probe).backgroundColor;
+    _fieldBackgrounds[dark] = value;
+    return value;
+  } finally {
+    probe.remove();
+  }
+}

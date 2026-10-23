@@ -36,7 +36,7 @@ def color(value):
     if m:
         r, g, b, a = m.groups()
         a = 1.0 if a is None else (float(a[:-1]) / 100 if a.endswith('%') else float(a))
-        return f'Color.fromARGB({round(a * 255)}, {r}, {g}, {b})'
+        return f'Color.from(alpha: {a!r}, red: {r} / 255, green: {g} / 255, blue: {b} / 255)'
     return None
 
 out = []
@@ -156,7 +156,7 @@ def shadows(value, theme=False):
         x, y, blur, spread, col = m.groups()
         col = col.strip()
         m2 = re.fullmatch(r'rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)', col)
-        c = f'Color.fromARGB({round(float(m2.group(4)) * 255)}, {m2.group(1)}, {m2.group(2)}, {m2.group(3)})' if m2 else color(col)
+        c = f'Color.from(alpha: {float(m2.group(4))!r}, red: {m2.group(1)} / 255, green: {m2.group(2)} / 255, blue: {m2.group(3)} / 255)' if m2 else color(col)
         if c is None:
             # A theme colour (`var(--color-*)`, e.g. the status indicators' halos): its DifyColors getter.
             mv = re.fullmatch(r'var\(--color-([a-z0-9-]+)\)', col)
