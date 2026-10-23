@@ -291,7 +291,7 @@ class StudioPageState extends State<StudioPage> {
           },
         ),
         StudioSearchInput(
-          width: DifyAdaptive.compactOf(context) ? MediaQuery.sizeOf(context).width - 24 : 200,
+          width: DifyAdaptive.compactOf(context) ? DifyAdaptive.widthOf(context) - 24 : 200,
           value: list.keywords,
           semanticLabel: _a('gotoAnything.actions.searchApplications'),
           onChange: (v) {

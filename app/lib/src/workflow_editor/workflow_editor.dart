@@ -223,7 +223,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: DifyAdaptive.toolbarCompactOf(context) ? 104 : 56,
+                  height: 56,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Align(alignment: Alignment.center, child: w.header!(context, canvas)),
@@ -264,7 +264,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                 ),
               if (w.panels != null)
                 Positioned(
-                  top: DifyAdaptive.toolbarCompactOf(context) ? 104 : 56,
+                  top: 56,
                   right: 0,
                   bottom: 4,
                   child: w.panels!(context, canvas),
@@ -274,7 +274,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
               const Positioned.fill(child: WorkflowConfirm()),
             ],
           );
-          return w.scope?.call(context, canvas, stack) ?? stack;
+          return DifyViewport(width: constraints.maxWidth, child: w.scope?.call(context, canvas, stack) ?? stack);
         },
       ),
     );

@@ -247,7 +247,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
         // Desktop can show several side-by-side panels. On a phone keep their
         // independent state and make the whole rail horizontally reachable.
         return SizedBox(
-          width: MediaQuery.sizeOf(context).width,
+          width: DifyAdaptive.widthOf(context),
           child: SingleChildScrollView(
             key: const ValueKey('compact-panel-rail'),
             scrollDirection: Axis.horizontal,

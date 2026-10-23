@@ -126,29 +126,27 @@ class HeaderInNormal extends StatelessWidget {
               );
             },
           ),
-        if (!compact) ?data.middle,
+        ?data.middle,
         if (data.canReleaseAndVersion) VersionHistoryButton(onClick: () => startRestoring(store, data, canvas)),
       ],
     );
     if (compact) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        spacing: 8,
+      // Preserve the original title / selected-node / action hierarchy in one
+      // 56 px band. Only its overflow scrolls; controls keep their original
+      // grouping and order, including Features/Publish before version history.
+      return Row(
         children: [
-          Row(
-            children: [
-              Expanded(child: data.title ?? const EditingTitle()),
-              ?data.middle,
-            ],
-          ),
-          DifyToolbarStrip(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 8,
-              children: [
-                const ScrollToSelectedNodeButton(),
-                actions,
-              ],
+          Flexible(child: data.title ?? const EditingTitle()),
+          Expanded(
+            flex: 3,
+            child: DifyToolbarStrip(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const ScrollToSelectedNodeButton(),
+                  GapBefore(gap: 8, child: actions),
+                ],
+              ),
             ),
           ),
         ],

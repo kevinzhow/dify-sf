@@ -160,7 +160,7 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
   Widget build(BuildContext context) {
     final compact = DifyAdaptive.compactOf(context);
     final preview = !compact && previewOpen;
-    final visibleExpanded = compact || _expanded || preview;
+    final visibleExpanded = compact ? _mobileOpen : _expanded || preview;
     final duration = _transitionDisabled ? Duration.zero : const Duration(milliseconds: 150);
     const curve = Cubic(0.4, 0, 0.2, 1);
     final panelRadius = BorderRadius.circular(DifyRadius.lg);
@@ -200,27 +200,20 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
       ),
     );
     if (compact) {
+      // Keep Dify's original 64 px collapsed rail at the left. Expanding on a
+      // phone previews the same 240 px panel over the page, without a top row
+      // or a write to the user's remembered desktop navigation width.
       return Stack(
         fit: StackFit.expand,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          Row(
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: DetailSidebarToggleButton(
-                  expand: false,
-                  icon: (color) => svgIcon(sidebarLeftArrowSvg, color: color),
-                  onToggle: toggle,
-                ),
-              ),
+              const SizedBox(width: 64),
               Expanded(child: widget.child),
             ],
           ),
-          if (_mobileOpen) ...[
-            Positioned.fill(child: DifyDrawerBackdrop(onTap: toggle)),
-            Positioned(left: 4, top: 4, bottom: 4, width: 240, child: panel),
-          ],
+          if (_mobileOpen) Positioned.fill(child: DifyDrawerBackdrop(onTap: toggle)),
+          Positioned(left: 4, top: 4, bottom: 4, width: _mobileOpen ? 240 : 56, child: panel),
         ],
       );
     }

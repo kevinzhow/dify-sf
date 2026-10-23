@@ -370,21 +370,42 @@ class _HomePageState extends State<HomePage> {
           ? Stack(
               fit: StackFit.expand,
               children: [
-                Column(
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (nav != null)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: DetailSidebarToggleButton(
-                          expand: false,
-                          icon: (color) => svgIcon(sidebarLeftArrowSvg, color: color),
-                          onToggle: () => setState(() => _mobileNavOpen = !_mobileNavOpen),
-                        ),
+                    if (nav != null) const SizedBox(width: 64),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => DifyViewport(width: constraints.maxWidth, child: content),
                       ),
-                    Expanded(child: content),
+                    ),
                   ],
                 ),
+                if (nav != null)
+                  Positioned(
+                    left: 4,
+                    top: 4,
+                    bottom: 4,
+                    width: 56,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: DifyColors.componentsPanelBg,
+                        borderRadius: BorderRadius.circular(DifyRadius.lg),
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                            child: DetailSidebarToggleButton(
+                              expand: false,
+                              icon: (color) => svgIcon(sidebarLeftArrowSvg, color: color),
+                              onToggle: () => setState(() => _mobileNavOpen = !_mobileNavOpen),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (_mobileNavOpen && nav != null) ...[
                   Positioned.fill(child: DifyDrawerBackdrop(onTap: () => setState(() => _mobileNavOpen = false))),
                   Align(alignment: Alignment.centerLeft, child: nav),

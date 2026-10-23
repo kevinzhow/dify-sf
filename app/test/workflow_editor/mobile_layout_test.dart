@@ -1,4 +1,8 @@
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
+import 'package:dify_sf_app/src/app_detail/app_sidebar.dart';
+import 'package:dify_sf_app/src/app_detail/detail_sidebar.dart';
+import 'package:dify_sf_app/src/workflow_editor/header/header_buttons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
@@ -13,6 +17,64 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/app_fonts.dart';
 
 void main() {
+  for (final width in [320.0, 390.0, 640.0]) {
+    testWidgets('phone $width keeps the sidebar left and the header on one band', (t) async {
+      await useAppFonts();
+      SharedPreferences.setMockInitialValues({detailSidebarStorageKey: 'expand'});
+      t.view.physicalSize = Size(width, 844);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final demo = DemoBackend(withBo: false);
+      await t.pumpWidget(
+        DifyApplication(
+          theme: difyTheme(),
+          home: DetailSidebarFrame(
+            renderTop: (context, expand, toggle) => AppDetailTop(expand: expand, onToggle: toggle, onHome: () {}),
+            renderSection: (context, expand) => const SizedBox.shrink(),
+            accountSection: (context, compact) => const SizedBox.shrink(),
+            child: EditorPage(backend: demo, docId: 'demo', clientId: 'original-layout', journaled: false),
+          ),
+        ),
+      );
+      Future<void> settle() async {
+        for (var i = 0; i < 15; i++) {
+          await t.pump(const Duration(milliseconds: 100));
+        }
+      }
+
+      await settle();
+      expect(t.takeException(), isNull);
+      final canvas = find.byType(WorkflowCanvas);
+      expect(t.getRect(canvas).left, 64);
+      expect(t.getRect(canvas).top, 0);
+      final toggle = find.byWidgetPredicate((w) => w is DetailSidebarToggleButton && !w.expand);
+      final top = t.getCenter(toggle).dy;
+      expect(top, 28);
+      expect(t.getCenter(find.byType(HeaderInNormal)).dy, top);
+      await t.tap(toggle);
+      await settle();
+      final close = find.byWidgetPredicate((w) => w is DetailSidebarToggleButton && w.expand);
+      expect(close, findsOneWidget);
+      await t.tap(close);
+      await settle();
+      expect((await SharedPreferences.getInstance()).getString(detailSidebarStorageKey), 'expand');
+      final strip = find.descendant(of: find.byType(HeaderInNormal), matching: find.byType(DifyToolbarStrip));
+      await t.drag(strip, const Offset(-1000, 0));
+      await settle();
+      expect(t.getRect(find.byType(VersionHistoryButton)).right, lessThanOrEqualTo(width));
+      final c = t.widget<DifyWorkflowEditor>(find.byType(DifyWorkflowEditor)).controller;
+      c.selectNode(c.doc.nodes.values.first.id);
+      await settle();
+      expect(t.takeException(), isNull);
+      final rect = t.getRect(find.byType(WorkflowNodePanel));
+      expect(rect.left, greaterThanOrEqualTo(64));
+      expect(rect.right, lessThanOrEqualTo(width));
+      await t.pumpWidget(const SizedBox());
+      await demo.dispose();
+      await t.pump(const Duration(seconds: 20));
+    });
+  }
+
   testWidgets('phone panels and history headers remain usable', (t) async {
     await useAppFonts();
     t.view.physicalSize = const Size(390, 844);
