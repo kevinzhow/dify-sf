@@ -24,8 +24,8 @@ yet complete. The sections below describe configuration and the supported bounda
 | Status | Features |
 |---|---|
 | ported | 177 |
-| partial | 51 |
-| not ported | 34 |
+| partial | 52 |
+| not ported | 33 |
 | n/a | 17 |
 | dify-sf only | 13 |
 
