@@ -2370,5 +2370,5 @@ features:
   dify: [web/app/components/base/markdown/index.tsx]
   status: partial
   reason: Pages, dialogs and drawers use a shared selection region for plain/rich text and Markdown, preserving block separators and local input editing. Canvas drag targets and buttons exclude passive text selection. Full virtualized-list, table-copy and browser/input-method parity is not yet accepted.
-  evidence: [app/test/design/page_selection_test.dart, app/test/workflow_header_sync_feedback_test.dart]
+  evidence: [app/test/design/page_selection_test.dart, app/test/workflow_editor/page_selection_canvas_test.dart, app/test/workflow_editor/canvas_connect_and_drag_test.dart]
   ours: [app/lib/src/design/widgets/selection.dart, app/lib/src/design/widgets/page.dart, app/lib/src/design/widgets/page_route.dart, app/lib/src/design/widgets/dialog.dart, app/lib/src/design/widgets/drawer.dart, app/lib/src/design/platform_input.dart]
