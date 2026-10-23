@@ -4,7 +4,7 @@
 // api/core/app/apps/base_app_generator.py (_prepare_user_inputs, _validate_inputs), api/core/app/apps/workflow/
 // app_runner.py (the draft run's pool). See ../NOTICE.md.
 //
-// Not ported: file inputs (no file storage before P5: `file` / `file-list` values are refused), `MAX_VARIABLE_SIZE` on
+// Not ported: `MAX_VARIABLE_SIZE` on
 // environment and conversation variables (the editor already limits them).
 
 import Foundation
@@ -106,8 +106,11 @@ public enum WorkflowBootstrap {
                 if let max = v.maxLength, max > 0, (value.string ?? "").count > max {
                     throw InvalidInput("\(v.variable) in input form must be less than \(max) characters")
                 }
-            case "file", "file-list":
-                throw InvalidInput("\(v.variable): file inputs are not supported by this server yet")
+            case "file":
+                guard RuntimeFile.isFile(value) else { throw InvalidInput("\(v.variable) in input form must be a file") }
+            case "file-list":
+                guard let items = value.array, items.allSatisfy(RuntimeFile.isFile) else { throw InvalidInput("\(v.variable) in input form must be a list of files") }
+                if let limit = v.maxLength, limit > 0, items.count > limit { throw InvalidInput("\(v.variable) in input form must be less than \(limit) files") }
             case "checkbox":
                 switch value {
                 case .string(let s):

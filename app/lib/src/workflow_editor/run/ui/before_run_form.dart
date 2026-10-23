@@ -63,10 +63,10 @@ List<DifyJson> getProcessedFiles(List<Object?> files) => [
   for (final f in files.whereType<Map>())
     if (f['progress'] != -1)
       {
-        'type': f['supportFileType'],
-        'transfer_method': f['transferMethod'],
+        'type': f['supportFileType'] ?? f['type'],
+        'transfer_method': f['transferMethod'] ?? f['transfer_method'],
         'url': f['url'] ?? '',
-        'upload_file_id': f['uploadedId'] ?? '',
+        'upload_file_id': f['uploadedId'] ?? f['upload_file_id'] ?? f['related_id'] ?? '',
       },
 ];
 
@@ -236,6 +236,14 @@ bool? checkInputsForm(
 
 /// Picks files for a file input (the app's uploader); null: the upload buttons are disabled (no uploads in dify-sf).
 typedef RunFilePicker = Future<DifyJson?> Function(String transferMethod);
+
+class RunFilePickerScope extends InheritedWidget {
+  const RunFilePickerScope({super.key, required this.pickFile, required super.child});
+  final RunFilePicker? pickFile;
+  static RunFilePicker? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<RunFilePickerScope>()?.pickFile;
+  @override
+  bool updateShouldNotify(RunFilePickerScope oldWidget) => pickFile != oldWidget.pickFile;
+}
 
 /// FormItem: the label (with "Optional" / "Optional & hidden") over the input of [payload]'s type.
 class RunFormItem extends StatelessWidget {
@@ -425,6 +433,7 @@ class RunFormItem extends StatelessWidget {
               else
                 ..._list.whereType<DifyJson>(),
             ],
+            allowedMethods: (payload['allowed_file_upload_methods'] as List? ?? const []).whereType<String>().toList(),
             limit: type == InputVarType.singleFile
                 ? 1
                 : (inStepRun || isIteratorItemFile ? 5 : (payload['max_length'] as num?)?.toInt() ?? 5),
@@ -583,23 +592,39 @@ class RunBoolInput extends StatelessWidget {
 
 /// FileUploaderInAttachmentWrapper: "Upload from computer" and "Paste file link" (disabled at the limit or without a
 /// [pickFile]), then the files with remove buttons.
-class RunFileInput extends StatelessWidget {
-  const RunFileInput({super.key, required this.files, required this.limit, required this.onChange, this.pickFile});
+class RunFileInput extends StatefulWidget {
+  const RunFileInput({super.key, required this.files, required this.limit, required this.onChange, this.pickFile, this.allowedMethods = const []});
   final List<DifyJson> files;
   final int limit;
+  final List<String> allowedMethods;
   final ValueChanged<List<DifyJson>> onChange;
   final RunFilePicker? pickFile;
 
   @override
+  State<RunFileInput> createState() => _RunFileInputState();
+}
+class _RunFileInputState extends State<RunFileInput> {
+  bool _busy = false;
+  @override
   Widget build(BuildContext context) {
-    final full = files.length >= limit;
+    final files = widget.files;
+    final picker = widget.pickFile ?? RunFilePickerScope.of(context);
+    final full = files.length >= widget.limit;
+    bool allowed(String method) => widget.allowedMethods.isEmpty || widget.allowedMethods.contains(method);
     Widget option(String method, String icon, String label) => Expanded(
       child: DifyButton(
         variant: DifyButtonVariant.tertiary,
-        disabled: full || pickFile == null,
+        disabled: _busy || full || picker == null || !allowed(method),
         onPressed: () async {
-          final file = await pickFile?.call(method);
-          if (file != null) onChange([...files, file]);
+          setState(() => _busy = true);
+          try {
+            final file = await picker?.call(method);
+            if (file != null && mounted) widget.onChange([...widget.files, file]);
+          } on Object catch (e) {
+            if (mounted) toast.error('$e');
+          } finally {
+            if (mounted) setState(() => _busy = false);
+          }
         },
         leading: RemixIcon(icon, size: 16),
         child: DifyTextLine(DifyI18n.tr('common', label), overflow: TextOverflow.ellipsis),
@@ -643,7 +668,7 @@ class RunFileInput extends StatelessWidget {
                   DifyIconButton(
                     label: DifyI18n.tr('common', 'operation.remove'),
                     icon: const RemixIcon('delete-bin-line', size: 16),
-                    onPressed: () => onChange([...files]..remove(f)),
+                    onPressed: _busy ? null : () => widget.onChange([...files]..remove(f)),
                   ),
                 ],
               ),
@@ -718,9 +743,9 @@ class _RunImageUploaderState extends State<RunImageUploader> {
     final local = face(
       'vender/line/images/image-plus',
       DifyI18n.tr('common', 'imageUploader.uploadFromComputer'),
-      disabled: full || widget.pickFile == null,
+      disabled: full || (widget.pickFile ?? RunFilePickerScope.of(context)) == null,
       onTap: () async {
-        final f = await widget.pickFile?.call(TransferMethod.localFile);
+        final f = await (widget.pickFile ?? RunFilePickerScope.of(context))?.call(TransferMethod.localFile);
         if (f != null) widget.onChange([...widget.files, f]);
       },
     );
@@ -763,7 +788,7 @@ class _RunImageUploaderState extends State<RunImageUploader> {
               variant: DifyButtonVariant.primary,
               disabled: _link.isEmpty,
               onPressed: () {
-                final ok = RegExp(r'^(https?|ftp)://').hasMatch(_link);
+                final ok = RegExp(r'^https?://').hasMatch(_link);
                 setState(() {
                   _open = false;
                   if (ok) {

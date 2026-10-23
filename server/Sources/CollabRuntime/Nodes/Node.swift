@@ -118,14 +118,16 @@ public struct RuntimeServices: Sendable {
     /// HTTP for the HTTP request node (Dify: through `ssrf_proxy`).
     public var http: (any RuntimeHTTPClient)?
     public var humanInput: (any HumanInputRuntime)?
+    public var files: (any RuntimeFiles)?
 
     public init(models: (any ModelRuntime)? = nil, jinja2: (any Jinja2TemplateRenderer)? = nil, codeExecutor: (any CodeExecutor)? = nil,
-                http: (any RuntimeHTTPClient)? = nil, humanInput: (any HumanInputRuntime)? = nil) {
+                http: (any RuntimeHTTPClient)? = nil, humanInput: (any HumanInputRuntime)? = nil, files: (any RuntimeFiles)? = nil) {
         self.models = models
         self.jinja2 = jinja2
         self.codeExecutor = codeExecutor
         self.http = http
         self.humanInput = humanInput
+        self.files = files
     }
 
     public func requireModels() throws -> any ModelRuntime {
@@ -177,7 +179,7 @@ public struct BuiltinNodeFactory: NodeFactory {
             let data = try LLMNodeData(config.data)
             let models = try services.requireModels()
             let (instance, schema) = try await LLMNode.prepareModel(data.model, models: models)
-            return LLMNode(id: config.id, data: data, instance: instance, schema: schema, models: models, jinja2: services.jinja2)
+            return LLMNode(id: config.id, data: data, instance: instance, schema: schema, models: models, jinja2: services.jinja2, files: services.files)
         case NodeType.ifElse: return try await makeIfElse(config, graph: graph)
         case NodeType.variableAggregator, NodeType.legacyVariableAggregator: return try await makeVariableAggregator(config, graph: graph)
         case NodeType.variableAssigner: return try await makeVariableAssigner(config, graph: graph)

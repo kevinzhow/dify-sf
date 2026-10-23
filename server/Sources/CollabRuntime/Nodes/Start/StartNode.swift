@@ -58,6 +58,11 @@ public struct StartNode: RuntimeNode {
         }
         var outputs = context.pool.flatten(unprefixedNodeId: id)
         for (k, v) in inputs { outputs[k] = v }
-        await emit(.completed(NodeRunResult(status: .succeeded, inputs: inputs, outputs: outputs)))
+        var result = NodeRunResult(status: .succeeded, inputs: inputs, outputs: outputs)
+        result.outputTypes["sys.files"] = .arrayFile
+        for variable in variables where variable.type == "file-list" && inputs[variable.variable]?.array != nil {
+            result.outputTypes[variable.variable] = .arrayFile
+        }
+        await emit(.completed(result))
     }
 }

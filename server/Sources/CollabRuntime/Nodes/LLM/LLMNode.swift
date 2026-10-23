@@ -3,8 +3,7 @@
 // api/core/app/llm/model_access.py (fetch_model_config), api/core/prompt/utils/prompt_message_util.py
 // (prompt_messages_to_prompt_for_saving). See ../../NOTICE.md.
 //
-// Not ported yet: conversation memory (Dify gives single-step runs none), vision and multimodal output files (no file
-// storage before P5), LLM polling, Jinja2 prompts without a renderer (they need the code sandbox).
+// Not ported yet: conversation memory, multimodal model output files, LLM polling, and Jinja2 prompts without an injected renderer.
 
 import Foundation
 
@@ -26,6 +25,7 @@ public struct LLMNode: RuntimeNode {
     public let schema: AIModelEntity
     let models: any ModelRuntime
     let jinja2: (any Jinja2TemplateRenderer)?
+    let files: (any RuntimeFiles)?
     /// Dify's `default_query_selector` for the memory query (`sys.query`).
     let defaultQuerySelector = ["sys", "query"]
 
@@ -34,13 +34,14 @@ public struct LLMNode: RuntimeNode {
     public var base: BaseNodeData { data.base }
 
     public init(id: String, data: LLMNodeData, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime,
-                jinja2: (any Jinja2TemplateRenderer)? = nil) {
+                jinja2: (any Jinja2TemplateRenderer)? = nil, files: (any RuntimeFiles)? = nil) {
         self.id = id
         self.data = data
         self.instance = instance
         self.schema = schema
         self.models = models
         self.jinja2 = jinja2
+        self.files = files
     }
 
     // MARK: - Model (Dify's fetch_model_config)
@@ -263,12 +264,13 @@ public struct LLMNode: RuntimeNode {
         for s in data.jinja2Variables { _ = try requiredVariable(s, pool) }
     }
 
-    /// `llm_utils.fetch_files`: no file values exist before P5, so this only rejects a variable of another type.
+    /// `llm_utils.fetch_files`: only a File or Array[File] is a file source.
     static func fetchFiles(_ pool: VariablePool, _ selector: [String]) throws -> [JSONValue] {
         guard let v = pool.get(selector) else { return [] }
         switch v.valueType {
         case .none, .arrayAny: return []
-        case .file, .arrayFile: return []
+        case .file: return [v.value]
+        case .arrayFile: return v.value.array ?? []
         default: throw NodeError("InvalidVariableTypeError", "Invalid variable type: <class 'graphon.variables.segments.\(segmentClassName(v.valueType))'>")
         }
     }
@@ -367,12 +369,13 @@ public struct LLMNode: RuntimeNode {
     func fetchPromptMessages(sysQuery: String?, context: String, template: LLMNodeData.PromptTemplate,
                              pool: VariablePool) async throws -> [PromptMessage] {
         var messages: [PromptMessage]
+        var imageBytes = 0
         switch template {
         case .chat(let ms):
-            messages = try await listMessages(ms, context: context, pool: pool)
+            messages = try await listMessages(ms, context: context, pool: pool, imageBytes: &imageBytes)
             // Conversation memory: none in this runtime yet (Dify's single-step runs have none either).
             if let q = sysQuery, !q.isEmpty {
-                messages += try await listMessages([.init(text: q, role: .user, editionType: "basic", jinja2Text: nil)], context: "", pool: pool)
+                messages += try await listMessages([.init(text: q, role: .user, editionType: "basic", jinja2Text: nil)], context: "", pool: pool, imageBytes: &imageBytes)
             }
         case .completion(let m):
             let text: String
@@ -388,6 +391,14 @@ public struct LLMNode: RuntimeNode {
             if let q = sysQuery, !q.isEmpty { data = q + "\n" + data }
             messages = [PromptMessage(role: .user, content: .parts([.text(data)]))]
         }
+        if data.vision.enabled {
+            let content = try await imageParts(Self.fetchFiles(pool, data.vision.variableSelector), used: &imageBytes)
+            if !content.isEmpty {
+                if let last = messages.last, last.role == .user, case .parts(let parts) = last.content {
+                    messages[messages.count - 1].content = .parts(content + parts)
+                } else { messages.append(PromptMessage(role: .user, content: .parts(content))) }
+            }
+        }
         let filtered = filter(messages)
         if filtered.isEmpty {
             throw NodeError("NoPromptFoundError",
@@ -397,7 +408,7 @@ public struct LLMNode: RuntimeNode {
     }
 
     /// `handle_list_messages`.
-    func listMessages(_ ms: [LLMNodeData.PromptTemplateMessage], context: String, pool: VariablePool) async throws -> [PromptMessage] {
+    func listMessages(_ ms: [LLMNodeData.PromptTemplateMessage], context: String, pool: VariablePool, imageBytes: inout Int) async throws -> [PromptMessage] {
         var out: [PromptMessage] = []
         for m in ms {
             let role = m.role ?? .user
@@ -407,10 +418,37 @@ public struct LLMNode: RuntimeNode {
                 continue
             }
             let template = m.text.replacingOccurrences(of: Self.contextPlaceholder, with: context)
-            let plain = VariableTemplate.convert(pool, template).text
-            if !plain.isEmpty { out.append(try Self.message(role, .parts([.text(plain)]))) }
+            let group = VariableTemplate.convert(pool, template)
+            if !group.text.isEmpty { out.append(try Self.message(role, .parts([.text(group.text)]))) }
+            var selected: [JSONValue] = []
+            for segment in group.value {
+                if segment.valueType == .file { selected.append(segment.value) }
+                if segment.valueType == .arrayFile { selected += segment.value.array ?? [] }
+            }
+            let content = try await imageParts(selected, used: &imageBytes)
+            if !content.isEmpty { out.append(try Self.message(role, .parts(content))) }
         }
         return out
+    }
+
+    /// The self-hosted prompt budget includes inline file references and the separate vision selector together.
+    static let maximumImagePromptBytes = 20 * 1024 * 1024
+    func imageParts(_ selected: [JSONValue], used: inout Int) async throws -> [PromptMessageContent] {
+        guard schema.supports(contentType: "image"), !selected.isEmpty else { return [] }
+        guard let files else { throw RuntimeFileError("File storage is not configured") }
+        var parts: [PromptMessageContent] = []
+        for value in selected {
+            let file = try await files.resolve(value, config: nil)
+            guard file.type == "image" else { continue }
+            guard file.size >= 0, file.size <= Self.maximumImagePromptBytes - used else { throw RuntimeFileError("Vision input exceeds the total image size limit") }
+            let bytes = try await files.bytes(file.json)
+            guard bytes.count <= Self.maximumImagePromptBytes - used else { throw RuntimeFileError("Vision input exceeds the total image size limit") }
+            used += bytes.count
+            parts.append(.image(base64Data: Data(bytes).base64EncodedString(),
+                                format: file.extensionName.trimmingCharacters(in: CharacterSet(charactersIn: ".")),
+                                mimeType: file.mimeType, filename: file.filename, detail: data.vision.detail))
+        }
+        return parts
     }
 
     /// `_combine_message_content_with_role`.
@@ -447,13 +485,25 @@ public struct LLMNode: RuntimeNode {
 
     /// Dify's `PromptMessageUtil.prompt_messages_to_prompt_for_saving` (the `prompts` of the process data).
     static func serializePrompts(mode: String, _ messages: [PromptMessage]) -> JSONValue {
+        func savedFiles(_ message: PromptMessage) -> [JSONValue] {
+            guard case .parts(let parts) = message.content else { return [] }
+            return parts.compactMap { part in
+                guard case .image(let base64, _, let mime, _, let detail) = part else { return nil }
+                let data = "data:" + mime + ";base64," + base64
+                return ["type": "image", "data": .string(String(data.prefix(10)) + "...[TRUNCATED]..." + String(data.suffix(10))),
+                        "detail": .string(detail)]
+            }
+        }
         if mode == "chat" {
             return .array(messages.map { m in
-                ["role": .string(m.role.rawValue), "text": .string(m.textContent), "files": .array([])]
+                ["role": .string(m.role.rawValue), "text": .string(m.textContent), "files": .array(savedFiles(m))]
             })
         }
         guard let first = messages.first else { return .array([]) }
-        return .array([["role": "user", "text": .string(first.textContent)]])
+        var prompt: JSONObject = ["role": "user", "text": .string(first.textContent)]
+        let files = savedFiles(first)
+        if !files.isEmpty { prompt["files"] = .array(files) }
+        return .array([.object(prompt)])
     }
 
     // MARK: - Single-step mapping

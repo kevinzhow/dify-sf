@@ -1,3 +1,4 @@
+import 'run/ui/before_run_form.dart' show RunFilePicker, RunFilePickerScope;
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 
 import 'dart:async';
@@ -139,6 +140,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.onExportDsl,
     this.onImportDsl,
     this.pickDslFile,
+    this.pickRunFile,
     this.saveImage,
     this.models,
     this.modelProviderEnv,
@@ -178,6 +180,7 @@ class DifyWorkflowEditor extends StatefulWidget {
   final Future<void> Function(bool includeSecret)? onExportDsl;
   final WorkflowImport? onImportDsl;
   final PickDslFile? pickDslFile;
+  final RunFilePicker? pickRunFile;
   final SaveCanvasImage? saveImage;
 
   final EditorController controller;
@@ -618,7 +621,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                             service: _runService(context, canvas),
                             isChatMode: () => widget.meta.isChatflow,
                             fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
-                            child: child,
+                            child: RunFilePickerScope(pickFile: widget.pickRunFile, child: child),
                           ),
                         ),
                       ),

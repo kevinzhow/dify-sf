@@ -8,13 +8,20 @@ public enum PromptMessageRole: String, Sendable, Hashable {
     case system, user, assistant, tool
 }
 
-/// One part of a multi-part message (`PromptMessageContent`); only text before files exist (P5).
+/// Text or an actual, bounded image payload in a multipart model message.
 public enum PromptMessageContent: Sendable, Hashable {
     case text(String)
 
-    public var type: String { "text" }
+    case image(base64Data: String, format: String, mimeType: String, filename: String, detail: String)
+
+    public var type: String { if case .image = self { return "image" }; return "text" }
     public var json: JSONValue {
-        switch self { case .text(let s): return ["type": "text", "data": .string(s)] }
+        switch self {
+        case .text(let s): return ["type": "text", "data": .string(s)]
+        case .image(let bytes, let format, let mime, let name, let detail):
+            return ["type": "image", "base64_data": .string(bytes), "url": "", "format": .string(format),
+                    "mime_type": .string(mime), "filename": .string(name), "detail": .string(detail)]
+        }
     }
 }
 

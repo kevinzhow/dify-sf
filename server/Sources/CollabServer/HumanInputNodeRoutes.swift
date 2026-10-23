@@ -80,7 +80,11 @@ extension Routes {
                 try pool.add(selector, segment)
             }
         }
-        do { try SingleStepRun.mapUserInputs(mapping, inputs, &pool) } catch let e as SingleStepRun.InvalidInput {
+        var normalized = inputs
+        if let files = runtimeServices(appId: appId, userId: userId).files {
+            normalized = try await files.canonicalize(.object(inputs), allowInputMappings: true).object ?? [:]
+        }
+        do { try SingleStepRun.mapUserInputs(mapping, normalized, &pool) } catch let e as SingleStepRun.InvalidInput {
             throw Self.invalidParam(e.description)
         }
         return pool
@@ -219,14 +223,17 @@ extension Routes {
         let pool = try await humanInputPool(appId: a.id, userId: p.id, nodeId: nodeId, form: form, inputs: inputs, exported: exported)
         let result: NodeRunResult
         do {
-            result = try form.completion(action: action, values: formInputs, renderedContent: form.renderedContent(pool: pool))
+            let normalized = try await form.normalizedFiles(formInputs, using: runtimeServices(appId: a.id, userId: p.id).files)
+            result = try form.completion(action: action, values: normalized, renderedContent: form.renderedContent(pool: pool))
         } catch let e as HumanInputFormConfig.InvalidSubmission {
+            throw Self.invalidFormData(e.description)
+        } catch let e as RuntimeFileError {
             throw Self.invalidFormData(e.description)
         }
         let outputs = result.outputs ?? [:]
         do {
             try await saveDraftVariables(appId: a.id, userId: p.id, docSeq: seq, nodeId: nodeId, nodeType: NodeType.humanInput,
-                                         executionId: UUID().uuidString.lowercased(), processData: nil, outputs: outputs)
+                                         executionId: UUID().uuidString.lowercased(), processData: nil, outputs: outputs, outputTypes: result.outputTypes)
         } catch {
             logger.error("saving the draft variables of human input node \(nodeId) failed: \(error)")
         }

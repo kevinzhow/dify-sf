@@ -106,7 +106,10 @@ public struct LLMNodeData: Sendable {
             vision.enabled = v["enabled"]?.bool ?? false
             if let c = v["configs"]?.object {
                 if let sel = c["variable_selector"]?.array { vision.variableSelector = sel.compactMap(\.string) }
-                if let d = c["detail"]?.string { vision.detail = d }
+                if let d = c["detail"]?.string {
+                    guard ["low", "high"].contains(d) else { throw NodeDataError("vision.configs.detail: expected low or high") }
+                    vision.detail = d
+                }
             }
         }
         structuredOutput = data["structured_output"]?.object

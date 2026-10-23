@@ -39,12 +39,13 @@ extension Routes {
         let routes = self
         let appId = a.id, userId = p.id
         let run = ContainerSingleRun(graph: graph, environmentVariables: workflow["environment_variables"]?.array ?? [],
-                                     factory: BuiltinNodeFactory(services: runtimeServices(appId: a.id)),
+                                     factory: BuiltinNodeFactory(services: runtimeServices(appId: a.id, userId: p.id)),
                                      variableLoader: { selectors in try await routes.loadDraftVariables(appId: appId, userId: userId, selectors: selectors) })
         let runId = UUID().uuidString.lowercased()
         let prepared: ContainerSingleRun.Prepared
         do {
-            prepared = try await run.prepare(nodeId: nodeId, kind: kind, userInputs: inputs, runId: runId)
+            let values = try await runtimeServices(appId: a.id, userId: p.id).files?.canonicalize(.object(inputs), allowInputMappings: true).object ?? inputs
+            prepared = try await run.prepare(nodeId: nodeId, kind: kind, userInputs: values, runId: runId)
         } catch let e as ContainerSingleRun.InvalidInput {
             throw Self.invalidParam(e.description)
         } catch let e as DraftVariableError {

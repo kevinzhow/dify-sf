@@ -37,21 +37,40 @@ public struct VariablePool: Sendable {
         variables[selector[0]] = list
     }
 
-    public mutating func add(_ selector: [String], _ value: JSONValue) throws { try add(selector, Segment.build(value)) }
+    public mutating func add(_ selector: [String], _ value: JSONValue) throws {
+        if selector == [Self.systemNodeId, "files"], value.array != nil { try add(selector, Segment(.arrayFile, value)) }
+        else { try add(selector, Segment.build(value)) }
+    }
 
     /// `get(selector)`: nil when absent, when the selector is shorter than two, or when a nested key is missing.
     public func get(_ selector: [String]) -> Segment? {
         guard selector.count >= Self.selectorsLength,
               let segment = variables[selector[0]]?.first(where: { $0.name == selector[1] })?.segment else { return nil }
         if selector.count == Self.selectorsLength { return segment }
-        // Files have attributes (`file.url`, ...); no files before P5.
-        if segment.valueType == .file { return nil }
+        // Only graphon file attributes are public; a storage reference is never an attribute.
+        if segment.valueType == .file {
+            guard selector.count == 3 else { return nil }
+            let attr = selector[2] == "name" ? "filename" : selector[2]
+            guard ["type", "size", "filename", "mime_type", "transfer_method", "url", "extension", "related_id"].contains(attr),
+                  let value = segment.value[attr] else { return nil }
+            return Segment.build(value)
+        }
         var current: JSONValue = segment.value
         for attr in selector.dropFirst(2) {
             guard case .object(let o) = current, let next = o[attr] else { return nil }
             current = next
         }
         return Segment.build(current)
+    }
+
+    /// Restore durable identities through the current workspace adapter before any consumer sees their links.
+    public mutating func materializeFiles(using files: any RuntimeFiles) async throws {
+        for node in nodeOrder {
+            for (name, segment) in variables[node] ?? [] {
+                let value = try await files.canonicalize(segment.value)
+                try add([node, name], Segment(segment.valueType, value))
+            }
+        }
     }
 
     public func contains(_ selector: [String]) -> Bool { get(selector) != nil }

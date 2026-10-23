@@ -8,7 +8,7 @@ import Foundation
 /// A drained engine's durable state. Services and node instances are rebuilt from the saved graph; they are never
 /// serialized. JSON values use literal text to preserve Python object order and `1` versus `1.0`; segment types are explicit.
 public struct GraphEngineSnapshot: Sendable {
-    let state: EngineSnapshotRecord
+    var state: EngineSnapshotRecord
 
     public struct Invalid: Error, CustomStringConvertible, Sendable {
         public var description: String
@@ -51,6 +51,14 @@ public struct GraphEngineSnapshot: Sendable {
             if let frame = state.frames[key.frameId], let pool = state.pools[frame.poolId] { return pool }
         }
         return variablePool()
+    }
+
+    public mutating func materializeFiles(using files: any RuntimeFiles) async throws {
+        for id in Array(state.pools.keys) {
+            guard var pool = state.pools[id] else { continue }
+            try await pool.materializeFiles(using: files)
+            state.pools[id] = pool
+        }
     }
 
     public func encoded() throws -> Data {

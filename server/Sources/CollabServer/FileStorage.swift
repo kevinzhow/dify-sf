@@ -47,8 +47,14 @@ struct FileStorageConfig: Sendable {
     static let video: Set<String> = ["mp4", "mov", "mpeg", "mpg", "webm", "mkv", "avi"]
     static let text: Set<String> = ["txt", "md", "markdown", "json", "csv", "html", "htm"]
 
-    func limit(for ext: String) -> Int {
-        let mib = Self.images.contains(ext) ? imageMiB : Self.video.contains(ext) ? videoMiB : Self.audio.contains(ext) ? audioMiB : fileMiB
+    func limit(for ext: String, mime: String? = nil) -> Int {
+        var mib = Self.images.contains(ext) ? imageMiB : Self.video.contains(ext) ? videoMiB : Self.audio.contains(ext) ? audioMiB : fileMiB
+        // A misleading extension must not enlarge the limit for an image/audio/video MIME bucket.
+        if let mime {
+            if mime.hasPrefix("image/") { mib = min(mib, imageMiB) }
+            if mime.hasPrefix("audio/") { mib = min(mib, audioMiB) }
+            if mime.hasPrefix("video/") { mib = min(mib, videoMiB) }
+        }
         return min(mib, 1024) * 1024 * 1024
     }
 

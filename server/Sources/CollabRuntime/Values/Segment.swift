@@ -31,8 +31,8 @@ public enum SegmentType: String, Sendable, Hashable, Codable, CaseIterable {
     public var exposed: SegmentType { self == .integer || self == .float ? .number : self }
 }
 
-/// A runtime value with its type (graphon's `Segment` subclasses). Files are not modelled yet (protocol: no file storage
-/// before phase P5); a value is plain JSON.
+/// A runtime value with its type (graphon's `Segment` subclasses). File values carry opaque record identities,
+/// materialized by a scoped adapter; their durable representation remains plain JSON.
 public struct Segment: Hashable, Sendable, Codable {
     public var valueType: SegmentType
     public var value: JSONValue
@@ -52,7 +52,7 @@ public struct Segment: Hashable, Sendable, Codable {
         case .bool: return Segment(.boolean, v)
         case .int: return Segment(.integer, v)
         case .double: return Segment(.float, v)
-        case .object: return Segment(.object, v)
+        case .object: return Segment(RuntimeFile.isFile(v) ? .file : .object, v)
         case .array(let items):
             let built = items.map(build)
             // `all(isinstance(item, ArraySegment))` is also true for an empty list.
@@ -100,6 +100,8 @@ public struct Segment: Hashable, Sendable, Codable {
     public var markdown: String {
         switch valueType {
         case .none: return ""
+        case .file: return RuntimeFile.markdown(value)
+        case .arrayFile: return (value.array ?? []).map(RuntimeFile.markdown).joined(separator: "\n")
         case .object: return value.pythonJSONDumps(indent: 2)
         case .arrayAny, .arrayString, .arrayNumber, .arrayObject, .arrayBoolean:
             return (value.array ?? []).map { "- " + PythonText.str($0) }.joined(separator: "\n")

@@ -101,38 +101,43 @@ extension Routes {
         guard !config.files.blockedExtensions.contains(ext) else {
             throw Self.bad("file_extension_blocked", "The file extension is blocked for security reasons.")
         }
-        guard item.file.body.count <= config.files.limit(for: ext) else {
+        let rawMIME = item.file.headerFields[.contentType]?.split(separator: ";").first.map(String.init) ?? "application/octet-stream"
+        let mime = Self.fileMIME(rawMIME, ext: ext)
+        guard item.file.body.count <= config.files.limit(for: ext, mime: mime) else {
             throw ServerError.http(status: 413, code: "file_too_large", message: "File size exceeded.")
         }
         var name = item.filename
         if name.count > 200 { name = String(name.split(separator: ".").first?.prefix(200) ?? "") + "." + ext }
-        let rawMIME = item.file.headerFields[.contentType]?.split(separator: ";").first.map(String.init) ?? "application/octet-stream"
-        let mime = Self.fileMIME(rawMIME, ext: ext)
         let id = UUID().uuidString.lowercased()
         let file = StoredUploadFile(id: id, workspaceId: uploadWorkspaceId, key: "\(uploadWorkspaceId)/\(id)", name: name,
             size: Int64(item.file.body.count), extensionName: ext, mimeType: mime, createdBy: p.id,
             sha256: SHA256.hash(data: item.file.body).map { String(format: "%02x", $0) }.joined())
+        try await persistUpload(file, bytes: item.file.body)
+        return try json(fileJSON(file), status: .created)
+    }
+
+    /// Shared publication/compensation path for browser uploads and runtime-produced/downloaded bytes.
+    func persistUpload(_ file: StoredUploadFile, bytes: Data) async throws {
         try await storeCall { try await store.insertUploadFile(file) }
         do {
-            try await blobs.putAtomic(key: file.key, bytes: item.file.body)
+            try await blobs.putAtomic(key: file.key, bytes: bytes)
         } catch {
             // The row cannot be ready yet, so compensating it cannot remove a published file.
             // Retain metadata if deletion fails, so maintenance can retry after restart.
-            if let key = try? await store.claimPendingUploadCleanup(id: id, workspace: uploadWorkspaceId) {
+            if let key = try? await store.claimPendingUploadCleanup(id: file.id, workspace: file.workspaceId) {
                 do {
                     try await blobs.delete(key: key)
-                    _ = try await store.removePendingUpload(id: id, workspace: uploadWorkspaceId)
+                    _ = try await store.removePendingUpload(id: file.id, workspace: file.workspaceId)
                 } catch { logger.warning("unfinished file cleanup will be retried") }
             }
             logger.warning("file upload could not be written")
             throw ServerError.http(status: 503, code: "file_write_failed", message: "The file could not be saved. Retry the upload.")
         }
         // An uncertain UPDATE may have committed: preserve the bytes rather than deleting a now-ready file.
-        guard try await storeCall({ try await store.markUploadReady(id, workspace: uploadWorkspaceId) }) else {
+        guard try await storeCall({ try await store.markUploadReady(file.id, workspace: file.workspaceId) }) else {
             try? await blobs.delete(key: file.key)
             throw ServerError.http(status: 503, code: "file_write_failed", message: "The file could not be published.")
         }
-        return try json(fileJSON(file), status: .created)
     }
 
     static func fileMIME(_ supplied: String, ext: String) -> String {

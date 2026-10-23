@@ -80,8 +80,9 @@ extension Routes {
         let routes = self
         let appId = a.id, userId = p.id
         let run = SingleStepRun(graph: graph, environmentVariables: exported["workflow"]?["environment_variables"]?.array ?? [],
-                                factory: BuiltinNodeFactory(services: runtimeServices(appId: a.id)),
-                                variableLoader: { selectors in try await routes.loadDraftVariables(appId: appId, userId: userId, selectors: selectors) })
+                                factory: BuiltinNodeFactory(services: runtimeServices(appId: a.id, userId: p.id)),
+                                variableLoader: { selectors in try await routes.loadDraftVariables(appId: appId, userId: userId, selectors: selectors) },
+                                files: runtimeServices(appId: a.id, userId: p.id).files)
         let execution: NodeExecution
         do {
             execution = try await run.run(nodeId: nodeId, userInputs: inputs, userId: p.id, appId: a.id)
@@ -115,13 +116,13 @@ extension Routes {
         if execution.status == .succeeded || execution.status == .exception {
             do {
                 try await saveDraftVariables(appId: a.id, userId: p.id, docSeq: snapshot.seq, nodeId: execution.nodeId, nodeType: execution.nodeType,
-                                             executionId: execution.id, processData: execution.processData, outputs: execution.outputs ?? [:])
+                                             executionId: execution.id, processData: execution.processData, outputs: execution.outputs ?? [:], outputTypes: execution.outputTypes)
             } catch {
                 logger.error("saving draft variables of \(execution.id) failed: \(error)")
             }
         }
         let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
-        return rawJSON(execution.responseJSON(createdByAccount: account))
+        return await fileJSONResponse(execution.responseJSON(createdByAccount: account), userId: p.id)
     }
 
     /// `GET /v1/apps/{app}/workflows/draft/nodes/{node}/last-run` (any member): the node's newest execution, `404` if none.
@@ -132,7 +133,7 @@ extension Routes {
         let stored: StoredNodeExecution?
         do { stored = try await store.lastNodeExecution(doc: a.id, nodeId: nodeId) } catch { throw ServerError.unavailable("\(error)") }
         guard let e = stored else { throw ServerError.missing("last run not found") }
-        return rawJSON(Self.executionJSON(e))
+        return await fileJSONResponse(Self.executionJSON(e), userId: p.id)
     }
 
     /// A stored execution as Dify's `WorkflowRunNodeExecutionResponse`.

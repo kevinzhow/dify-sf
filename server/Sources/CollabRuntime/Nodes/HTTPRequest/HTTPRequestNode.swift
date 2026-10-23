@@ -2,9 +2,7 @@
 // executor.py; the request body encoding follows httpx 0.28 (Dify's pin), which graphon hands the parts to.
 // See ../../NOTICE.md.
 //
-// Not ported (file storage comes in P5): file bodies (`binary` fails "cannot fetch file", form-data file fields find
-// no file and are skipped, as graphon does for non-file values) and file responses (the node fails, see
-// `fileResponseError`); `json_repair` (a JSON body must be valid JSON after variable substitution).
+// Not ported: `json_repair` (a JSON body must be valid JSON after variable substitution).
 
 import Foundation
 
@@ -44,6 +42,7 @@ struct HTTPRequestExecutor {
     var logParams: [(String, String)]?
     var headers = OrderedStrings()
     var logHeaders = OrderedStrings()
+    var binaryContent: [UInt8]?
     var content: String?
     var logContent: String?
     var formData: OrderedStrings?
@@ -152,17 +151,43 @@ struct HTTPRequestExecutor {
             guard let parsed = try? JSONValue.parse(text) else { throw HTTPRequestNodeError.body("Failed to parse JSON: \(text)") }
             json = parsed == .null ? nil : parsed
         case "binary":
-            let item = try Self.single(body.data, "binary")
-            // No file values before file storage (P5): `get_file` finds none.
-            throw HTTPRequestNodeError("FileFetchError", "cannot fetch file with selector \(PythonText.repr(.array(item.file.map(JSONValue.string))))")
+            _ = try Self.single(body.data, "binary") // File bytes are loaded asynchronously before invocation.
         case "x-www-form-urlencoded":
             (formData, logFormData) = convertKV(body.data, textOnly: false)
         case "form-data":
             (formData, logFormData) = convertKV(body.data, textOnly: true)
-            // File fields resolve to no file value (P5), so only the placeholder part is sent, as graphon does then.
+            // Keep graphon's placeholder when there are no selected file values.
             files = [("__multipart_placeholder__", "", [], "application/octet-stream")]
         default:
             break
+        }
+    }
+
+    mutating func loadFileBodies(_ runtime: (any RuntimeFiles)?) async throws {
+        guard let body = data.body else { return }
+        if body.type == "binary" {
+            let item = try Self.single(body.data, "binary")
+            guard let selected = pool.get(item.file), selected.valueType == .file, let runtime else {
+                throw HTTPRequestNodeError("FileFetchError", "cannot fetch file with selector \(PythonText.repr(.array(item.file.map(JSONValue.string))))")
+            }
+            let file = try await runtime.resolve(selected.value, config: nil)
+            guard file.size <= config.maxBinarySize else { throw HTTPRequestNodeError.body("Binary file size exceeded") }
+            binaryContent = try await runtime.bytes(file.json)
+        } else if body.type == "form-data" {
+            var parts: [(String, String, [UInt8], String)] = []
+            var total = 0
+            for item in body.data where item.type == "file" {
+                guard let selected = pool.get(item.file) else { continue }
+                let values = selected.valueType == .file ? [selected.value] : selected.valueType == .arrayFile ? (selected.value.array ?? []) : []
+                for value in values {
+                    guard let runtime else { throw HTTPRequestNodeError("FileFetchError", "File storage is not configured") }
+                    let file = try await runtime.resolve(value, config: nil)
+                    total += file.size
+                    guard total <= config.maxBinarySize else { throw HTTPRequestNodeError.body("Multipart file size exceeded") }
+                    parts.append((convert(item.key).text, file.filename, try await runtime.bytes(file.json), file.mimeType))
+                }
+            }
+            if !parts.isEmpty { files = parts }
         }
     }
 
@@ -239,6 +264,7 @@ struct HTTPRequestExecutor {
 
     /// httpx `encode_request(content, data, files, json)` -> (body, default headers).
     func encodedBody() -> ([UInt8]?, [(String, String)]) {
+        if let binaryContent { return (binaryContent, []) }
         if let content { return (Array(content.utf8), []) }
         if let files, !files.isEmpty {
             let boundary = (0..<16).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
@@ -350,19 +376,21 @@ public struct HTTPRequestNode: RuntimeNode {
     public let data: HTTPRequestNodeData
     let client: any RuntimeHTTPClient
     let config: HTTPRequestNodeConfig
+    let fileRuntime: (any RuntimeFiles)?
 
     public var nodeType: String { NodeType.httpRequest }
     public var base: BaseNodeData { data.base }
     public var retryEnabled: Bool { data.base.retryConfig.retryEnabled }
 
-    /// A response that is a file (P5: no file storage to keep it in).
-    static let fileResponseError = "The response is a file; file responses are not supported by this server yet"
+    /// A file response requires configured storage; unsupported configuration must not look like an empty success.
+    static let fileResponseError = "File storage is not configured for HTTP file responses"
 
-    public init(id: String, data: JSONObject, client: any RuntimeHTTPClient) throws {
+    public init(id: String, data: JSONObject, client: any RuntimeHTTPClient, files: (any RuntimeFiles)? = nil) throws {
         self.id = id
         self.data = try HTTPRequestNodeData(data)
         self.client = client
         config = client.requestConfig
+        fileRuntime = files
     }
 
     /// `_get_request_timeout`: the node's timeouts, 0 / missing ones the configured maxima.
@@ -375,23 +403,36 @@ public struct HTTPRequestNode: RuntimeNode {
     public func run(_ context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws {
         var processData = JSONObject()
         do {
-            let executor = try HTTPRequestExecutor(data: data, timeout: requestTimeout, pool: context.pool, config: config)
+            var executor = try HTTPRequestExecutor(data: data, timeout: requestTimeout, pool: context.pool, config: config)
+            try await executor.loadFileBodies(fileRuntime)
             processData["request"] = .string(executor.toLog())
             let response = try await executor.invoke(client)
+            var responseFiles: [JSONValue] = []
             if response.isFile {
-                await emit(.completed(NodeRunResult(status: .failed, processData: ["request": .string(executor.toLog())],
-                                                    error: Self.fileResponseError, errorType: "HttpRequestNodeError")))
-                return
+                guard let fileRuntime else {
+                    await emit(.completed(NodeRunResult(status: .failed, processData: ["request": .string(executor.toLog())],
+                                                        error: Self.fileResponseError, errorType: "HttpRequestNodeError")))
+                    return
+                }
+                let suggested = response.contentDisposition?.filename ?? URL(string: executor.url)?.lastPathComponent ?? ""
+                let ext = (suggested as NSString).pathExtension
+                let mime = response.contentType.components(separatedBy: ";")[0]
+                let suffix = ext.isEmpty ? (["image/png": "png", "image/jpeg": "jpg", "application/pdf": "pdf", "text/plain": "txt"][mime] ?? "bin") : ext
+                let file = try await fileRuntime.save(bytes: response.content, filename: UUIDHex.make() + "." + suffix,
+                                                     mimeType: mime, sourceURL: nil)
+                responseFiles = [file.json]
             }
-            let outputs: JSONObject = ["status_code": .int(response.status), "body": .string(response.text), "headers": .object(response.headers),
-                                       "files": .array([])]
+            let outputs: JSONObject = ["status_code": .int(response.status), "body": .string(response.isFile ? "" : response.text),
+                                       "headers": .object(response.headers), "files": .array(responseFiles)]
             if !response.isSuccess && (base.errorStrategy != nil || retryEnabled) {
                 await emit(.completed(NodeRunResult(status: .failed, processData: ["request": .string(executor.toLog())], outputs: outputs,
                                                     error: "Request failed with status code \(response.status)",
                                                     errorType: "HTTPResponseCodeError")))
                 return
             }
-            await emit(.completed(NodeRunResult(status: .succeeded, processData: ["request": .string(executor.toLog())], outputs: outputs)))
+            var result = NodeRunResult(status: .succeeded, processData: ["request": .string(executor.toLog())], outputs: outputs)
+            result.outputTypes["files"] = .arrayFile
+            await emit(.completed(result))
         } catch let e as HTTPRequestNodeError {
             await emit(.completed(NodeRunResult(status: .failed, processData: processData, error: e.message, errorType: e.kind)))
         }
@@ -428,6 +469,6 @@ extension BuiltinNodeFactory {
     /// Dify's factory: the SSRF-proxied client (`graphon_ssrf_proxy`) and `HTTP_REQUEST_*`.
     func makeHTTPRequest(_ config: NodeConfig, graph: GraphConfig) async throws -> any RuntimeNode {
         guard let http = services.http else { throw ServiceNotConfigured(service: .http) }
-        return try HTTPRequestNode(id: config.id, data: config.data, client: http)
+        return try HTTPRequestNode(id: config.id, data: config.data, client: http, files: services.files)
     }
 }

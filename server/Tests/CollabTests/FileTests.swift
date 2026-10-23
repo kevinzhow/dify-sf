@@ -1,4 +1,5 @@
 import CollabCore
+import CollabRuntime
 @testable import CollabStore
 import Crypto
 import Foundation
@@ -315,5 +316,182 @@ private final class FailingFileStore: BlobStore {
     func delete(key: String) async throws {
         if failDeletion.withLock({ $0 }) { throw BlobStoreError.missing }
         try await local.delete(key: key)
+    }
+}
+
+@Suite("Runtime file route boundaries", .enabled(if: testDbHost != nil))
+struct RuntimeFileRouteTests {
+    static let yaml = """
+    app: {mode: workflow, name: Runtime files}
+    kind: app
+    version: 0.3.1
+    workflow:
+      features:
+        file_upload: {enabled: true, allowed_file_types: [image, document], allowed_file_upload_methods: [local_file], number_limits: 2}
+      graph:
+        edges:
+        - {id: e1, source: start, sourceHandle: source, target: end, targetHandle: target}
+        nodes:
+        - id: start
+          data:
+            type: start
+            title: Start
+            variables:
+            - {label: File, variable: file, type: file, required: true, allowed_file_types: [document], allowed_file_upload_methods: [local_file]}
+            - {label: Files, variable: many, type: file-list, max_length: 2, allowed_file_types: [document], required: true}
+        - id: end
+          data:
+            type: end
+            title: End
+            outputs:
+            - {variable: one, value_selector: [start, file]}
+            - {variable: many, value_selector: [start, many]}
+            - {variable: system_files, value_selector: [sys, files]}
+    """
+
+    @Test func scopedIdentityNeverTrustsClientMetadataPathOrExpiredURL() async throws {
+        let c = fileConfig()
+        defer { try? FileManager.default.removeItem(atPath: c.files.directory) }
+        try await withFiles(config: c) { api, store, routes in
+            let token = try await api.setupOwner()
+            let me = try await api.get("/v1/account", token: token)
+            let uploaded = try await upload(api, token, files: [("file", "original.txt", "binary\u{0}é")])
+            let id = uploaded.str("id")
+            let files = ServerWorkflowFiles(routes: routes, userId: me.str("id"))
+            let forged: JSONValue = ["transfer_method": "local_file", "upload_file_id": .string(id), "filename": "fake.png",
+                                     "mime_type": "image/png", "size": 1, "url": "http://expired.test", "storage_key": "/etc/passwd"]
+            let resolved = try await files.resolve(forged, config: ["allowed_file_types": ["document"]])
+            #expect(resolved.filename == "original.txt" && resolved.type == "document" && resolved.size == "binary\u{0}é".utf8.count)
+            #expect(resolved.url != "http://expired.test")
+            let remoteReference: JSONValue = ["transfer_method": "remote_url", "upload_file_id": .string(id), "remote_url": "http://untrusted.test"]
+            let remote = try await files.resolve(remoteReference, config: nil)
+            #expect(remote.remoteURL == remote.url && remote.remoteURL != nil)
+            #expect(try await files.bytes(remote.json) == Array("binary\u{0}é".utf8))
+            #expect(try await files.bytes(resolved.json) == Array("binary\u{0}é".utf8))
+            await #expect(throws: RuntimeFileError.self) { try await files.resolve(forged, config: ["allowed_file_types": ["image"]]) }
+            let alien = ServerWorkflowFiles(routes: routes, userId: me.str("id"), workspace: UUID().uuidString.lowercased())
+            await #expect(throws: RuntimeFileError.self) { try await alien.resolve(forged, config: nil) }
+            let teammate = try await api.member("files-teammate@example.com", role: "editor", inviter: token)
+            // Console files belong to the workspace, not only their uploader (public/end-user scope is a later task).
+            let teammateFiles = ServerWorkflowFiles(routes: routes, userId: teammate.id)
+            #expect(try await teammateFiles.resolve(forged, config: nil).recordId == id)
+            let row = try #require(try await store.uploadFile(id: id, workspace: uploadWorkspaceId))
+            try await routes.blobs.delete(key: row.key)
+            await #expect(throws: RuntimeFileError.self) { try await files.resolve(forged, config: nil) }
+            let projected = await routes.projectRuntimeFiles(resolved.json, userId: me.str("id"))
+            #expect(projected["url"] == "")
+        }
+    }
+
+    @Test func actualUploadWholeRunDraftCacheSingleStepAndHistory() async throws {
+        let c = fileConfig()
+        defer { try? FileManager.default.removeItem(atPath: c.files.directory) }
+        try await withFiles(config: c) { api, store, routes in
+            let token = try await api.setupOwner()
+            let imported = try await api.post("/v1/apps/imports", JSONValue.object(["mode": "yaml-content", "yaml_content": .string(Self.yaml)]).compactJSON(), token: token)
+            let app = try #require(imported.str("app_id").isEmpty ? nil : imported.str("app_id"))
+            let uploaded = try await upload(api, token)
+            let file: JSONValue = ["transfer_method": "local_file", "upload_file_id": .string(uploaded.str("id"))]
+            let head = try await store.documentHead(app)
+            let bad = try await api.post("/v1/apps/\(app)/workflows/draft/run", JSONValue.object(["inputs": ["file": file, "many": [file, file, file]]]).compactJSON(), token: token)
+            #expect(bad.status == 400, "\(bad.text)")
+            let run = try await api.post("/v1/apps/\(app)/workflows/draft/run", JSONValue.object(["inputs": ["file": file, "many": [file]], "files": [file]]).compactJSON(), token: token)
+            #expect(run.status == 200, "\(run.text)")
+            let events = RunRouteTests.events(run.text)
+            let terminal = try #require(events.last)
+            #expect(terminal["data"]?["status"] == "succeeded", "\(terminal)")
+            #expect(terminal["data"]?["outputs"]?["one"]?["related_id"] == .string(uploaded.str("id")))
+            #expect(terminal["data"]?["outputs"]?["many"]?.array?.count == 1)
+            #expect(terminal["data"]?["outputs"]?["system_files"]?.array?.first?["filename"] == "notes.txt")
+            #expect(try await store.documentHead(app) == head)
+            let runId = try #require(terminal["workflow_run_id"]?.string)
+            let variables = try JSONValue.parse(try await api.get("/v1/apps/\(app)/workflows/draft/nodes/start/variables", token: token).text)
+            let cached = try #require(variables["items"]?.array?.first { $0["name"] == "file" })
+            #expect(cached["value_type"] == "file")
+            let oneId = try #require(cached["id"]?.string)
+            // The edit accepts a backing reference and revalidates it; caches never turn a stale link into an input URL.
+            let edited = try await api.patch("/v1/apps/\(app)/workflows/draft/variables/\(oneId)", JSONValue.object(["value": file]).compactJSON(), token: token)
+            #expect(edited.status == 200, "\(edited.text)")
+            let single = try await api.post("/v1/apps/\(app)/workflows/draft/nodes/end/run", #"{"inputs":{}}"#, token: token)
+            #expect(single.status == 200 && single.text.contains("__dify__file__"), "\(single.text)")
+            let history = try JSONValue.parse(try await api.get("/v1/apps/\(app)/workflow-runs/\(runId)", token: token).text)
+            let link = try #require(history["outputs"]?["one"]?["url"]?.string)
+            #expect(try await api.get(localPath(link)).status == 200)
+            let replay = RunRouteTests.events(try await api.get("/v1/workflow/\(runId)/events?include_state_snapshot=true", token: token).text)
+            let replayLink = try #require(replay.last?["data"]?["outputs"]?["one"]?["url"]?.string)
+            #expect(try await api.get(localPath(replayLink)).status == 200)
+            let me = try await api.get("/v1/account", token: token)
+            let stored = try #require(try await store.uploadFile(id: uploaded.str("id"), workspace: uploadWorkspaceId))
+            let scope = ServerWorkflowFiles(routes: routes, userId: me.str("id"))
+            #expect(try await scope.bytes(["transfer_method": "local_file", "upload_file_id": .string(stored.id)]) == Array("hello".utf8))
+        }
+    }
+}
+
+@Suite("Human input runtime files", .enabled(if: testDbHost != nil))
+struct HumanInputRuntimeFileRouteTests {
+    @Test func fileAnswerIsValidatedBeforePersistingAndIsRestoredIntoTheActualRun() async throws {
+        var c = fileConfig(); c.humanInputWebEnabled = true; c.humanInputEmailEnabled = false
+        defer { try? FileManager.default.removeItem(atPath: c.files.directory) }
+        let frozen = c
+        try await withFiles(config: frozen) { api, store, routes in
+            let token = try await api.setupOwner()
+            let yaml = HumanInputRunTests.appYAML()
+                .replacingOccurrences(of: "{type: paragraph, output_variable_name: reply}", with: "{type: file, output_variable_name: reply, allowed_file_types: [document], allowed_file_upload_methods: [local_file]}")
+            let imported = try await api.post("/v1/apps/imports", JSONValue.object(["mode": "yaml-content", "yaml_content": .string(yaml)]).compactJSON(), token: token)
+            let app = try #require(imported.str("app_id").isEmpty ? nil : imported.str("app_id"))
+            let uploaded = try await upload(api, token)
+            let file: JSONValue = ["transfer_method": "local_file", "upload_file_id": .string(uploaded.str("id"))]
+            let preview = try await api.post(HumanInputNodeRouteTests.path(app, "run"), JSONValue.object([
+                "inputs": [:], "form_inputs": ["reply": file], "action": "approve"]).compactJSON(), token: token)
+            #expect(preview.status == 200 && preview.text.contains("__dify__file__"), "\(preview.text)")
+            let started = try await api.post("/v1/apps/\(app)/workflows/draft/run", #"{"inputs":{}}"#, token: token)
+            let frames = HumanInputRunTests.frames(started.text)
+            let required = try #require(frames.first { $0["event"] == "human_input_required" })
+            let runId = try #require(required["workflow_run_id"]?.string)
+            let formToken = try #require(required["data"]?["form_token"]?.string)
+            #expect(frames.last?["event"] == "workflow_paused")
+            let bad: JSONValue = ["transfer_method": "local_file", "upload_file_id": .string(UUID().uuidString.lowercased())]
+            let refused = try await api.post("/v1/form/human_input/\(formToken)", JSONValue.object(["inputs": ["reply": bad], "action": "approve"]).compactJSON(), token: token)
+            #expect(refused.status == 400 && refused.errorCode == "invalid_form_data", "\(refused.text)")
+            #expect(try await store.humanInputForms(workflowRunId: runId).first?.status == .waiting)
+            let answered = try await api.post("/v1/form/human_input/\(formToken)", JSONValue.object(["inputs": ["reply": file], "action": "approve"]).compactJSON(), token: token)
+            #expect(answered.status == 200, "\(answered.text)")
+            for _ in 0..<100 {
+                if try await store.workflowRun(id: runId)?.status == "succeeded" { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            let finished = try #require(try await store.workflowRun(id: runId))
+            #expect(finished.status == "succeeded", "\(finished.error ?? "")")
+            let output = try JSONValue.parse(finished.outputs ?? "{}")
+            #expect(output["reply"]?["related_id"] == .string(uploaded.str("id")))
+            let answer = try #require(try await store.humanInputForms(workflowRunId: runId).first)
+            let stored = try JSONValue.parse(answer.submittedInputs ?? "{}")
+            #expect(RuntimeFile.isFile(stored["reply"] ?? .null))
+            let me = try await api.get("/v1/account", token: token)
+            #expect(try await ServerWorkflowFiles(routes: routes, userId: me.str("id")).bytes(output["reply"] ?? .null) == Array("hello".utf8))
+        }
+    }
+}
+
+
+@Suite("Runtime file MIME size boundaries", .enabled(if: testDbHost != nil))
+struct RuntimeFileMIMEBoundsTests {
+    @Test func imageMimeCannotBorrowTheLargerDocumentLimit() async throws {
+        var c = fileConfig(); c.files.imageMiB = 0
+        defer { try? FileManager.default.removeItem(atPath: c.files.directory) }
+        let config = c
+        try await withFiles(config: config) { api, _, routes in
+            let token = try await api.setupOwner()
+            let data = multipart([( "file", "misnamed.txt", "x")]).replacingOccurrences(of: "application/octet-stream", with: "image/png")
+            let uploaded = try await api.send(.post, "/v1/files/upload", data, token: token,
+                                               headers: [("Content-Type", "multipart/form-data; boundary=test-boundary")])
+            #expect(uploaded.status == 413 && uploaded.errorCode == "file_too_large")
+            let user = try await api.get("/v1/account", token: token)
+            let files = ServerWorkflowFiles(routes: routes, userId: user.str("id"))
+            await #expect(throws: RuntimeFileError.self) {
+                try await files.save(bytes: [1], filename: "misnamed.txt", mimeType: "image/png", sourceURL: nil)
+            }
+        }
     }
 }

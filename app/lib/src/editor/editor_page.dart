@@ -12,6 +12,7 @@ import '../app_detail/detail_page_slot.dart';
 import '../auth/auth_api.dart';
 import '../settings/model_provider/model_provider_env.dart';
 import '../auth/auth_controller.dart';
+import '../files/upload_service.dart';
 import '../i18n/dify_i18n.dart';
 import '../online_events.dart';
 import '../open_url.dart';
@@ -472,6 +473,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       controller: c,
       serverLabel: widget.backend.label,
       allowMockRuns: widget.backend is DemoRunBackend,
+      pickRunFile: runtimeFilePicker(context, AuthScope.maybeOf(context)),
       actions: _actions(context, c),
       meta: switch (widget.appName) {
         final name? when name != _meta.appName => DocMeta(

@@ -275,3 +275,11 @@ enum PyStr {
         return (netloc, String(rest), query)
     }
 }
+
+
+/// Reuses the HTTP node's Content-Disposition/RFC 5987 parsing for remote file imports as well.
+public enum RuntimeFileHeaders {
+    public static func filename(in headers: [(name: String, value: String)]) -> String? {
+        HTTPNodeResponse(RuntimeHTTPResponse(status: 200, headers: headers, body: [])).contentDisposition?.filename
+    }
+}

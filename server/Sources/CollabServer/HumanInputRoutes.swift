@@ -177,17 +177,22 @@ extension Routes {
             throw Self.invalidFormData("action is required")
         }
         let form = form0
+        var normalizedValues = values
         // `submit_form_by_token`: `ensure_form_active` first, then the field validation.
         try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
         // Dify validates against the form's own definition before the row is touched, so an invalid value answers 400
         // and leaves the form waiting.
         do {
-            try Self.formConfig(form).validateSubmission(action: action, values: values)
+            let formConfig = try Self.formConfig(form)
+            // Anonymous recipient upload scopes belong to email delivery; never let a token borrow console files.
+            if formConfig.requiresFileStorage && p == nil { throw RuntimeFileError("File inputs require an authenticated console account") }
+            normalizedValues = try await formConfig.normalizedFiles(values, using: p.map { ServerWorkflowFiles(routes: self, userId: $0.id) })
+            try formConfig.validateSubmission(action: action, values: normalizedValues)
         } catch {
             throw Self.invalidFormData("\(error)")
         }
 
-        let inputsText = String(decoding: try WireJSON.encode(JSONValue.object(values)), as: UTF8.self)
+        let inputsText = String(decoding: try WireJSON.encode(JSONValue.object(normalizedValues)), as: UTF8.self)
         // The store re-checks the deadlines after taking the run's lock; the config value is the global one.
         // Who answered: the account, or the member a recipient row names; an external recipient has none.
         let answeredBy = p?.id ?? recipient?.referenceId ?? ""

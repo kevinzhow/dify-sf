@@ -13,10 +13,12 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
+import '../../files/file_links.dart';
 import '../code_editor/editor_view.dart';
 import '../code_editor/language.dart';
 import '../node_panel/bodies/llm/llm_json_schema.dart' show SchemaErrorMessage;
 import '../panel_fields/file_upload_setting.dart' show formatFileSize;
+import '../run/ui/before_run_form.dart' show RunFilePickerScope;
 import '../panel_fields/form_controls.dart' show BoolValue;
 import '../store/store.dart';
 import 'inspect_vars.dart';
@@ -530,7 +532,7 @@ class JsonEditorSection extends StatelessWidget {
 
 /// FileEditorSection: FileUploaderInAttachmentWrapper (`max-w-115`): "Upload from computer" and "Paste file link"
 /// (through [VariableInspectServices.uploadFile]; disabled at the limit), then the files.
-class FileEditorSection extends StatelessWidget {
+class FileEditorSection extends StatefulWidget {
   const FileEditorSection({
     super.key,
     required this.currentVar,
@@ -546,6 +548,17 @@ class FileEditorSection extends StatelessWidget {
   final bool textEditorDisabled;
   final ValueChanged<List<DifyJson>> onChange;
 
+  @override
+  State<FileEditorSection> createState() => _FileEditorSectionState();
+}
+class _FileEditorSectionState extends State<FileEditorSection> {
+  bool _busy = false;
+  DifyJson get currentVar => widget.currentVar;
+  List<DifyJson> get fileValue => widget.fileValue;
+  DifyJson? get fileUploadConfig => widget.fileUploadConfig;
+  bool get textEditorDisabled => widget.textEditorDisabled;
+  ValueChanged<List<DifyJson>> get onChange => widget.onChange;
+
   int get _limit => currentVar['value_type'] == 'file'
       ? 1
       : switch (fileUploadConfig?['workflow_file_upload_limit']) {
@@ -556,14 +569,22 @@ class FileEditorSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final services = VariableInspectScope.maybeOf(context)?.crud.services ?? VariableInspectServices.none;
+    final picker = RunFilePickerScope.of(context);
     final full = fileValue.length >= _limit;
     Widget option(String method, String icon, String label) => Expanded(
       child: DifyButton(
         variant: DifyButtonVariant.tertiary,
-        disabled: full,
+        disabled: _busy || full || textEditorDisabled,
         onPressed: () async {
-          final file = await services.uploadFile(method);
-          if (file != null) onChange([...fileValue, file]);
+          setState(() => _busy = true);
+          try {
+            final file = await (picker?.call(method) ?? services.uploadFile(method));
+            if (file != null && mounted) onChange([...fileValue, file]);
+          } on Object catch (e) {
+            if (mounted) toast.error('$e');
+          } finally {
+            if (mounted) setState(() => _busy = false);
+          }
         },
         leading: RemixIcon(icon, size: 16),
         child: DifyTextLine(DifyI18n.tr('common', label), overflow: TextOverflow.ellipsis),
@@ -590,7 +611,7 @@ class FileEditorSection extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 4),
                 child: _FileItem(
                   file: f,
-                  onRemove: textEditorDisabled ? null : () => onChange([...fileValue]..remove(f)),
+                  onRemove: textEditorDisabled || _busy ? null : () => onChange([...fileValue]..remove(f)),
                 ),
               ),
           ],
@@ -638,7 +659,11 @@ class _FileItem extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: DifyText(name, DifyType.systemXsMedium, color: DifyColors.textSecondary),
+                    child: DifyPressable(
+                      semanticLabel: name,
+                      onPressed: runtimeFileLink(file['url']) == null ? null : () => openRuntimeFile(file['url'] as String),
+                      builder: (context, hovered, focused) => DifyText(name, DifyType.systemXsMedium, color: DifyColors.textSecondary),
+                    ),
                   ),
                   DifyText(
                     [if (ext.isNotEmpty) ext, if (size is num && size > 0) formatFileSize(size)].join(' • '),

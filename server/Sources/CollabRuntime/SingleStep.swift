@@ -17,6 +17,7 @@ public struct NodeExecution: Sendable {
     public var inputs: JSONObject?
     public var processData: JSONObject?
     public var outputs: JSONObject?
+    public var outputTypes: [String: SegmentType] = [:]
     public var status: NodeExecutionStatus
     public var error: String?
     /// Seconds.
@@ -69,21 +70,24 @@ public struct NodeExecution: Sendable {
 }
 
 /// Running one node of a draft on its own (Dify's "run this step"): Dify's `WorkflowService.run_draft_workflow_node` over
-/// `WorkflowEntry.single_step_run`, without the draft-variable cache (a later phase).
+/// `WorkflowEntry.single_step_run`; the optional loader supplies cached inputs and the scoped file adapter resolves file identities.
 public struct SingleStepRun: Sendable {
     public var graph: GraphConfig
     /// The draft's environment variables (`workflow.environment_variables`, secret values included).
     public var environmentVariables: [JSONValue]
     public var factory: any NodeFactory
+    public var files: (any RuntimeFiles)?
     /// Dify's `VariableLoader` (draft variables): values the node reads that neither the request nor the pool has.
     public var variableLoader: (@Sendable ([[String]]) async throws -> [(selector: [String], segment: Segment)])?
 
     public init(graph: GraphConfig, environmentVariables: [JSONValue], factory: any NodeFactory,
-                variableLoader: (@Sendable ([[String]]) async throws -> [(selector: [String], segment: Segment)])? = nil) {
+                variableLoader: (@Sendable ([[String]]) async throws -> [(selector: [String], segment: Segment)])? = nil,
+                files: (any RuntimeFiles)? = nil) {
         self.graph = graph
         self.environmentVariables = environmentVariables
         self.factory = factory
         self.variableLoader = variableLoader
+        self.files = files
     }
 
     public struct NodeNotFound: Error, CustomStringConvertible, Sendable {
@@ -113,7 +117,6 @@ public struct SingleStepRun: Sendable {
             throw UnsupportedNodeType(nodeType: config.type)
         }
         try pool.add([VariablePool.systemNodeId, "workflow_run_id"], .string(UUID().uuidString.lowercased()))
-        try pool.add([VariablePool.systemNodeId, "files"], .array([]))
         for v in environmentVariables {
             guard let name = v["name"]?.string else { continue }
             try pool.add([VariablePool.environmentNodeId, name], v["value"] ?? .null)
@@ -134,7 +137,12 @@ public struct SingleStepRun: Sendable {
                 }
             }
         }
-        try Self.mapUserInputs(mapping, userInputs, &pool)
+        if pool.get([VariablePool.systemNodeId, "files"]) == nil { try pool.add([VariablePool.systemNodeId, "files"], .array([])) }
+        var canonicalInputs = userInputs
+        if let files {
+            for (key, value) in userInputs { canonicalInputs[key] = try await files.canonicalize(value, allowInputMappings: true) }
+        }
+        try Self.mapUserInputs(mapping, canonicalInputs, &pool)
 
         let box = ResultBox()
         await NodeRunner.run(node, executionId: executionId, context: NodeRunContext(pool: pool, userId: userId, appId: appId)) { event in
@@ -151,6 +159,7 @@ public struct SingleStepRun: Sendable {
             execution.inputs = result.inputs.isEmpty ? nil : result.inputs
             execution.processData = result.processData.isEmpty ? nil : result.processData
             execution.outputs = result.outputs.isEmpty ? nil : result.outputs
+            execution.outputTypes = result.outputTypes
             execution.metadata = result.metadata
             execution.status = result.status
             if result.status == .exception { execution.error = result.error }

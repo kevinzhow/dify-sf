@@ -22,6 +22,10 @@ public struct EndNode: RuntimeNode {
         }
     }
 
+    public func variableMapping(graph: GraphConfig) -> [(key: String, selector: [String])] {
+        outputs.filter { $0.selector.count >= VariablePool.selectorsLength }.map { (id + ".#" + $0.selector.joined(separator: ".") + "#", $0.selector) }
+    }
+
     public var streamingTemplate: ResponseTemplate? { .fromEndOutputs(outputs) }
 
     public func run(_ context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws {
@@ -29,6 +33,8 @@ public struct EndNode: RuntimeNode {
         for (variable, selector) in outputs {
             out[variable] = context.pool.get(selector)?.object ?? .null
         }
-        await emit(.completed(NodeRunResult(status: .succeeded, inputs: out, outputs: out)))
+        var result = NodeRunResult(status: .succeeded, inputs: out, outputs: out)
+        for (name, selector) in outputs { result.outputTypes[name] = context.pool.get(selector)?.valueType }
+        await emit(.completed(result))
     }
 }

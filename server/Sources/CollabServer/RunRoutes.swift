@@ -23,8 +23,9 @@ extension Routes {
 
     /// The services nodes call: models (plugin daemon) when configured, the code sandbox (Jinja2 too) and HTTP through the
     /// SSRF proxy.
-    func runtimeServices(appId: String) -> RuntimeServices {
+    func runtimeServices(appId: String, userId: String? = nil) -> RuntimeServices {
         var services = config.runtimeServices.services(models: nil)
+        if let userId, config.files.isConfigured { services.files = ServerWorkflowFiles(routes: self, userId: userId) }
         if runtimeConfigured {
             let daemon = PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
                                             timeoutSeconds: config.pluginDaemonTimeoutSeconds)
@@ -41,12 +42,12 @@ extension Routes {
     /// the single-node and container paths, and by graphs built before a run exists).
     func runServices(appId: String, runId: String, docId: String, userId: String, pending: PendingHumanInputForms,
                      decisions: [String: StoredHumanInputForm] = [:], resuming: Bool = false) -> RuntimeServices {
-        var services = runtimeServices(appId: appId)
+        var services = runtimeServices(appId: appId, userId: userId)
         if config.humanInputWebEnabled || resuming {
             services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
                                                       pending: pending, decisions: decisions,
                                                       // Draft runs are Dify's debugger; published runs come with M5.
-                                                      isDebugger: true)
+                                                      isDebugger: true, files: services.files)
         }
         return services
     }
@@ -65,6 +66,7 @@ extension Routes {
         case let e as any NodeRunError: return Self.invalidParam(e.description)
         case let e as RuntimeGraph.ValidationError: return Self.invalidParam(e.description)
         case let e as GraphConfig.Invalid: return Self.invalidParam(e.description)
+        case let e as RuntimeFileError: return Self.invalidParam(e.description)
         case let e as WorkflowBootstrap.InvalidInput: return Self.invalidParam(e.description)
         case let e as ServerError: return e
         default: return .unavailable("\(error)")
@@ -95,8 +97,8 @@ extension Routes {
         guard let inputsValue = b["inputs"], inputsValue != .null else { throw Self.invalidParam("missing inputs") }
         guard case .object(let rawInputs) = inputsValue else { throw ServerError.badRequest("inputs must be an object") }
         if let files = b["files"], files != .null {
-            guard case .array(let list) = files else { throw ServerError.badRequest("files must be a list") }
-            if !list.isEmpty { throw Self.invalidParam("file inputs are not supported by this server yet") }
+            guard case .array = files else { throw ServerError.badRequest("files must be a list") }
+
         }
 
         // One consistent read: the document at seq N, rendered as Dify's workflow.
@@ -105,7 +107,7 @@ extension Routes {
         let prepared: PreparedRun
         let pending = PendingHumanInputForms()
         do {
-            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs,
+            prepared = try await PreparedRun.make(workflow: workflow, rawInputs: rawInputs, files: b["files"]?.array ?? [],
                                                   services: runServices(appId: a.id, runId: runId, docId: a.id, userId: p.id,
                                                                         pending: pending),
                                                   userId: p.id, appId: a.id, workflowId: a.id, runId: runId)
@@ -245,8 +247,13 @@ extension Routes {
                                                                         maxSteps: config.runtimeMaxSteps,
                                                                         maxTimeSeconds: config.runtimeMaxTimeSeconds),
                                  commands: commands, userId: userId, appId: appId)
-        let snapshot: GraphEngineSnapshot
-        do { snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8)) } catch {
+        var snapshot: GraphEngineSnapshot
+        do {
+            snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8))
+            if let files = runtimeServices(appId: appId, userId: userId).files {
+                try await snapshot.materializeFiles(using: files)
+            }
+        } catch {
             logger.error("run \(runId) has a pause snapshot that does not decode: \(error)")
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil,
                                                error: "the paused run's snapshot does not decode: \(error)",
@@ -416,7 +423,7 @@ extension Routes {
             "created_at": Self.epochSeconds(r.createdAt), "finished_at": r.finishedAt.map(Self.epochSeconds) ?? .null,
             "exceptions_count": .int(r.exceptionsCount),
         ]
-        return rawJSON(detail)
+        return await fileJSONResponse(detail, userId: p.id)
     }
 
     /// `GET /v1/apps/{app}/workflow-runs/{run}/node-executions` (any member): `{"data": [WorkflowRunNodeExecutionResponse]}`,
@@ -427,7 +434,7 @@ extension Routes {
         guard let id = req.parameters.get("run") else { return rawJSON(["data": []]) }
         let list: [StoredNodeExecution]
         do { list = try await store.nodeExecutions(doc: a.id, run: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
-        return rawJSON(["data": .array(list.flatMap(RetryHistory.traces))])
+        return await fileJSONResponse(["data": .array(list.flatMap(RetryHistory.traces))], userId: p.id)
     }
 
     static func epochSeconds(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
@@ -444,10 +451,13 @@ extension Routes {
                                status: String, result: NodeRunResult) async {
         // Dify saves succeeded and exception results, with the outputs as a run projects them (a start node: its inputs).
         guard status == "succeeded" || status == "exception" else { return }
-        let outputs = nodeType == NodeType.start ? result.inputs : result.outputs
+        var outputs = nodeType == NodeType.start ? result.inputs : result.outputs
+        if nodeType == NodeType.start {
+            for (name, value) in result.outputs where name.hasPrefix("sys.") { outputs[name] = value }
+        }
         do {
             try await saveDraftVariables(appId: appId, userId: userId, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType,
-                                         executionId: executionId, processData: result.processData, outputs: outputs)
+                                         executionId: executionId, processData: result.processData, outputs: outputs, outputTypes: result.outputTypes)
         } catch {
             logger.error("saving draft variables of \(executionId) failed: \(error)")
         }
@@ -463,22 +473,43 @@ struct PreparedRun: Sendable {
     /// The run's inputs as Dify stores and streams them: the user inputs and `sys.*`.
     var workflowInputs: JSONObject
 
-    static func make(workflow: JSONValue, rawInputs: JSONObject, services: RuntimeServices, userId: String, appId: String,
+    static func make(workflow: JSONValue, rawInputs: JSONObject, files: [JSONValue] = [], services: RuntimeServices, userId: String, appId: String,
                      workflowId: String, runId: String, query: String? = nil) async throws -> PreparedRun {
         let config = try GraphConfig(json: workflow["graph"] ?? .null)
         let rootId = try RuntimeGraph.defaultRootId(config)
         let graph = try await RuntimeGraph.build(config, rootId: rootId, factory: BuiltinNodeFactory(services: services))
         let variables = (graph.node(rootId) as? StartNode)?.variables ?? []
-        let inputs = try WorkflowBootstrap.prepareUserInputs(rawInputs, variables: variables)
-        var systemValues: [(String, JSONValue?)] = [("files", .array([])), ("user_id", .string(userId)), ("app_id", .string(appId)),
+        var normalized = rawInputs
+        for variable in variables where ["file", "file-list"].contains(variable.type) {
+            guard let value = rawInputs[variable.variable] ?? variable.defaultValue, value != .null else { continue }
+            if !variable.required && value == "" { continue }
+            guard let fileRuntime = services.files else { throw RuntimeFileError("File storage is not configured") }
+            if variable.type == "file" {
+                normalized[variable.variable] = try await fileRuntime.resolve(value, config: variable.json).json
+            } else {
+                guard let items = value.array else { throw WorkflowBootstrap.InvalidInput("\(variable.variable) in input form must be a list of files") }
+                normalized[variable.variable] = .array(try await fileRuntime.resolveList(items, config: variable.json))
+            }
+        }
+        let inputs = try WorkflowBootstrap.prepareUserInputs(normalized, variables: variables)
+        let systemFiles: [JSONValue]
+        if files.isEmpty { systemFiles = [] }
+        else {
+            guard let fileRuntime = services.files else { throw RuntimeFileError("File storage is not configured") }
+            systemFiles = try await fileRuntime.resolveList(files, config: workflow["features"]?["file_upload"]?.object)
+        }
+        var systemValues: [(String, JSONValue?)] = [("files", .array(systemFiles)), ("user_id", .string(userId)), ("app_id", .string(appId)),
                                                     ("timestamp", .int(Int(Date().timeIntervalSince1970))),
                                                     ("workflow_id", .string(workflowId)), ("workflow_execution_id", .string(runId))]
         if let query { systemValues.insert(("query", .string(query)), at: 0) }
         let system = WorkflowBootstrap.systemVariables(systemValues)
         let environment = try (workflow["environment_variables"]?.array ?? []).map(WorkflowBootstrap.variable)
         let conversation = try (workflow["conversation_variables"]?.array ?? []).map(WorkflowBootstrap.variable)
-        let pool = try WorkflowBootstrap.pool(system: system, environment: environment, conversation: conversation, rootId: rootId,
+        var pool = try WorkflowBootstrap.pool(system: system, environment: environment, conversation: conversation, rootId: rootId,
                                               inputs: inputs)
+        for variable in variables where variable.type == "file-list" {
+            if let value = inputs[variable.variable], value.array != nil { try pool.add([rootId, variable.variable], Segment(.arrayFile, value)) }
+        }
         var workflowInputs = inputs
         for (k, v) in system where k != "conversation_id" { workflowInputs["sys.\(k)"] = v }
         return PreparedRun(graph: graph, pool: pool, workflowInputs: workflowInputs)

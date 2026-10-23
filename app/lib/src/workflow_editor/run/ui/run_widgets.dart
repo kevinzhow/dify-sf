@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/widgets.dart';
 
+import '../../../files/file_links.dart';
 import '../../../design/dify_icon.dart';
 import '../../../design/dify_tokens.g.dart';
 import '../../../i18n/dify_i18n.dart';
@@ -36,20 +37,22 @@ List<DifyJson> getProcessedFilesFromResponse(List<DifyJson> files) => [
 /// FileList (file-uploader-in-chat-input/file-list.tsx): `flex flex-wrap gap-2` of 144 x 68 file cards (name in two
 /// lines, the type icon, "EXT · size").
 class RunFileList extends StatelessWidget {
-  const RunFileList({super.key, required this.files});
+  const RunFileList({super.key, required this.files, this.onOpen});
   final List<DifyJson> files;
+  final ValueChanged<String>? onOpen;
 
   @override
   Widget build(BuildContext context) => Wrap(
     spacing: 8,
     runSpacing: 8,
-    children: [for (final f in files) _FileCard(file: f)],
+    children: [for (final f in files) _FileCard(file: f, onOpen: onOpen)],
   );
 }
 
 class _FileCard extends StatelessWidget {
-  const _FileCard({required this.file});
+  const _FileCard({required this.file, this.onOpen});
   final DifyJson file;
+  final ValueChanged<String>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +60,11 @@ class _FileCard extends StatelessWidget {
     final dot = name.lastIndexOf('.');
     final ext = dot < 0 ? '' : name.substring(dot + 1).toUpperCase();
     final size = file['size'];
-    return Semantics(
-      label: name,
-      child: Container(
+    final url = runtimeFileLink(file['url']);
+    return DifyPressable(
+      semanticLabel: name,
+      onPressed: url == null ? null : () { if (onOpen != null) { onOpen!(url); } else { openRuntimeFile(url); } },
+      builder: (context, hovered, focused) => Container(
         width: 144,
         height: 68,
         padding: const EdgeInsets.all(8),

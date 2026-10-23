@@ -4,8 +4,8 @@
 
 import Foundation
 
-/// Dify's form configuration, kept separately from the engine's HITL decision. File definitions are retained but
-/// require the file-storage adapter (P5); the text/select path never accepts an unvalidated file reference.
+/// Dify's form configuration, kept separately from the engine's HITL decision. File values are materialized by the
+/// scoped service before submission is persisted, and revalidated by that service when the run resumes.
 public struct HumanInputFormConfig: Sendable {
     public let base: BaseNodeData
     public let content: String
@@ -149,8 +149,12 @@ public struct HumanInputFormConfig: Sendable {
                 if source["type"] == "constant", !(source["value"]?.array ?? []).contains(.string(text)) {
                     throw InvalidSubmission(description: "Invalid value for select input '\(name)': \(text)")
                 }
-            case "file", "file-list":
-                throw InvalidSubmission(description: "File input '\(name)' requires file storage")
+            case "file":
+                guard RuntimeFile.isFile(value) else { throw InvalidSubmission(description: "Invalid file input '\(name)'") }
+            case "file-list":
+                guard let items = value.array, items.allSatisfy(RuntimeFile.isFile) else {
+                    throw InvalidSubmission(description: "Invalid file list input '\(name)'")
+                }
             default: break
             }
         }
@@ -178,7 +182,7 @@ public struct HumanInputFormConfig: Sendable {
         for name in fields {
             let value = restored[name] ?? .null
             // All text input classes use Python's str; missing values become empty text.
-            rendered = rendered.replacingOccurrences(of: "{{#$output." + name + "#}}", with: value == .null ? "" : PythonText.str(value))
+            rendered = rendered.replacingOccurrences(of: "{{#$output." + name + "#}}", with: value == .null ? "" : (RuntimeFile.isFile(value) || Segment.build(value).valueType == .arrayFile ? Segment.build(value).markdown : PythonText.str(value)))
         }
         let title = actions.first { $0["id"] == .string(action) }!["title"]!.string!
         var outputs = restored
@@ -186,7 +190,27 @@ public struct HumanInputFormConfig: Sendable {
         outputs[Self.actionValueField] = .string(title)
         outputs[Self.renderedContentField] = .string(rendered)
         var result = NodeRunResult(status: .succeeded, inputs: restored, outputs: outputs)
+        for input in inputs where input["type"] == "file-list" {
+            if let name = input["output_variable_name"]?.string { result.outputTypes[name] = .arrayFile }
+        }
         result.edgeSourceHandle = action
+        return result
+    }
+
+    /// Dify service-level normalization: field restrictions are checked before an answer is persisted.
+    public func normalizedFiles(_ values: JSONObject, using files: (any RuntimeFiles)?) async throws -> JSONObject {
+        var result = values
+        for input in inputs {
+            guard let name = input["output_variable_name"]?.string, let value = values[name] else { continue }
+            let type = input["type"]?.string ?? "paragraph"
+            guard type == "file" || type == "file-list" else { continue }
+            guard let files else { throw InvalidSubmission(description: "File input '\(name)' requires file storage") }
+            if type == "file" { result[name] = try await files.resolve(value, config: input).json }
+            else {
+                guard let list = value.array else { throw InvalidSubmission(description: "File list input '\(name)' must be a list") }
+                result[name] = .array(try await files.resolveList(list, config: input))
+            }
+        }
         return result
     }
 

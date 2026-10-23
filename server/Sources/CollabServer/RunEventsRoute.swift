@@ -46,7 +46,7 @@ extension Routes {
         // must not allocate a channel and a keep-alive pinger that nothing would ever close.
         if ["succeeded", "failed", "stopped", "partial-succeeded"].contains(run.status) {
             // One frame and close, whatever was asked: there is nothing left to follow.
-            return try Self.streaming([RunExecution.sse(try finishedFrame(run))])
+            return try Self.streaming([RunExecution.sse(try await finishedFrame(run))])
         }
 
         // Subscribe first, then read the persisted state; the frames published from the mark on are the window this
@@ -64,7 +64,7 @@ extension Routes {
             // allocated is released here, or it would keep a pinger for a run nobody can follow any more.
             await live.finish()
             await runChannels.remove(runId)
-            return try Self.streaming([RunExecution.sse(try finishedFrame(state))])
+            return try Self.streaming([RunExecution.sse(try await finishedFrame(state))])
         }
 
         var snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseGeneration: nil)
@@ -169,7 +169,13 @@ extension Routes {
                                         createdAt: run.createdAt, elapsed: 0,
                                         inputs: waiting.map { Self.resolvedInputs($0, pauseSnapshot: pause.snapshot) })]))
         }
-        return SnapshotFrames(frames: frames, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
+        var projected: [String] = []
+        for frame in frames {
+            guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
+                  let value = try? JSONValue.parse(Data(line.dropFirst(6).utf8)) else { projected.append(frame); continue }
+            projected.append(RunExecution.sse(await projectRuntimeFiles(value, userId: run.createdBy ?? "")))
+        }
+        return SnapshotFrames(frames: projected, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
                               pauseGeneration: pauseGeneration)
     }
 
@@ -181,7 +187,7 @@ extension Routes {
     func finishRunWithoutEngine(_ runId: String) async -> Bool {
         guard let run = try? await store.workflowRun(id: runId) else { return false }
         let terminal: JSONValue
-        do { terminal = try finishedFrame(run) } catch { return false }
+        do { terminal = try await finishedFrame(run) } catch { return false }
         let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         await channel.publish(RunExecution.sse(terminal))
         await channel.finish()
@@ -195,17 +201,17 @@ extension Routes {
                       totalSteps: pause.totalSteps)
     }
 
-    func finishedFrame(_ run: StoredWorkflowRun) throws -> JSONValue {
+    func finishedFrame(_ run: StoredWorkflowRun) async throws -> JSONValue {
         let account: JSONValue = ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
                                   "email": .string(run.createdByEmail ?? "")]
-        return ["event": "workflow_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
+        return await projectRuntimeFiles(["event": "workflow_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
                 "data": ["id": .string(run.id), "workflow_id": .string(run.workflowId), "status": .string(run.status),
                          "outputs": (try? JSONValue.parse(run.outputs ?? "{}")) ?? .object([:]),
                          "error": run.error.map(JSONValue.string) ?? .null, "elapsed_time": .double(run.elapsedTime),
                          "total_tokens": .int(run.totalTokens), "total_steps": .int(run.totalSteps),
                          "created_by": account, "created_at": .int(Int(run.createdAt.timeIntervalSince1970)),
                          "finished_at": run.finishedAt.map { .int(Int($0.timeIntervalSince1970)) } ?? .null,
-                         "exceptions_count": .int(run.exceptionsCount), "files": []]]
+                         "exceptions_count": .int(run.exceptionsCount), "files": []]], userId: run.createdBy ?? "")
     }
 
     static var eventHeaders: HTTPFields {

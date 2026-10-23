@@ -163,6 +163,7 @@ class HumanInputFieldRenderer extends StatelessWidget {
       return RunFileInput(
         files: entries(value),
         limit: 1,
+        allowedMethods: jsList(jsGet(field, 'allowed_file_upload_methods')).whereType<String>().toList(),
         pickFile: pickFile,
         onChange: (files) => onChange(files.isEmpty ? null : HumanInputFile.fromJson(files.first)),
       );
@@ -172,6 +173,7 @@ class HumanInputFieldRenderer extends StatelessWidget {
       return RunFileInput(
         files: entries(value),
         limit: limit == 0 ? 5 : limit,
+        allowedMethods: jsList(jsGet(field, 'allowed_file_upload_methods')).whereType<String>().toList(),
         pickFile: pickFile,
         onChange: (files) => onChange([for (final f in files) HumanInputFile.fromJson(f)]),
       );

@@ -35,14 +35,14 @@ extension Routes {
     /// document seq `docSeq`. `outputs` as the run reports them (a start node in a draft run: its inputs; in a single-step
     /// run: its whole outputs). `enclosingNodeId`: the iteration or loop the node is in.
     func saveDraftVariables(appId: String, userId: String, docSeq: Int, nodeId: String, nodeType: String, executionId: String,
-                            enclosingNodeId: String? = nil, processData: JSONObject?, outputs: JSONObject?) async throws {
+                            enclosingNodeId: String? = nil, processData: JSONObject?, outputs: JSONObject?, outputTypes: [String: SegmentType] = [:]) async throws {
         let vars = try DraftVariableRules.variables(nodeId: nodeId, nodeType: nodeType, executionId: executionId, enclosingNodeId: enclosingNodeId,
                                                     processData: processData, outputs: outputs)
         let now = Date()
         // Each variable a little newer than the previous one, as Dify's per-row timestamps (lists are newest first).
         let rows = vars.enumerated().map { i, v in
             StoredDraftVariable(id: UUID().uuidString.lowercased(), docId: appId, userId: userId, nodeId: v.nodeId, name: v.name,
-                                description: v.description, valueType: v.valueType.rawValue, value: v.value.compactJSON(), visible: v.visible,
+                                description: v.description, valueType: (outputTypes[v.nodeId == nodeId ? v.name : v.nodeId + "." + v.name] ?? v.valueType).rawValue, value: v.value.compactJSON(), visible: v.visible,
                                 editable: v.editable, nodeExecutionId: v.nodeExecutionId, docSeq: docSeq,
                                 createdAt: now.addingTimeInterval(Double(i) * 0.00001), updatedAt: now)
         }
@@ -54,7 +54,14 @@ extension Routes {
     func loadDraftVariables(appId: String, userId: String, selectors: [[String]]) async throws -> [(selector: [String], segment: Segment)] {
         guard !selectors.isEmpty else { return [] }
         let rows = try await store.draftVariables(doc: appId, user: userId, selectors: selectors)
-        return rows.map { r in ([r.nodeId, r.name], Self.draftSegment(r)) }
+        var result: [(selector: [String], segment: Segment)] = []
+        let files = runtimeServices(appId: appId, userId: userId).files
+        for row in rows {
+            let segment = Self.draftSegment(row)
+            let value = try await files?.canonicalize(segment.value) ?? segment.value
+            result.append(([row.nodeId, row.name], Segment(segment.valueType, value)))
+        }
+        return result
     }
 
     /// `prefill_conversation_variable_default_values`: the draft's conversation variables as `userId`'s draft variables,
@@ -153,7 +160,7 @@ extension Routes {
         let page = try queryInt(q, "page", 1, 1...100_000)
         let limit = try queryInt(q, "limit", 20, 1...100)
         let (rows, total) = try await draftStore { try await store.draftVariablesPage(doc: a.id, user: p.id, page: page, limit: limit) }
-        return rawJSON(["items": .array(rows.map { Self.draftVariableJSON($0, withValue: false) }), "total": total.map(JSONValue.int) ?? .null])
+        return await fileJSONResponse(["items": .array(rows.map { Self.draftVariableJSON($0, withValue: false) }), "total": total.map(JSONValue.int) ?? .null], userId: p.id)
     }
 
     private func deleteAllDraftVariables(_ req: Request) async throws -> Response {
@@ -174,7 +181,7 @@ extension Routes {
     private func nodeDraftVariables(_ req: Request) async throws -> Response {
         let (p, a) = try await draftPrerequisite(req)
         let node = try draftNodeId(req)
-        return rawJSON(Self.draftList(try await draftStore { try await store.draftVariables(doc: a.id, user: p.id, node: node) }))
+        return await fileJSONResponse(Self.draftList(try await draftStore { try await store.draftVariables(doc: a.id, user: p.id, node: node) }), userId: p.id)
     }
 
     private func deleteNodeDraftVariables(_ req: Request) async throws -> Response {
@@ -186,7 +193,7 @@ extension Routes {
 
     private func getDraftVariable(_ req: Request) async throws -> Response {
         let (p, a) = try await draftPrerequisite(req)
-        return rawJSON(Self.draftVariableJSON(try await ownedDraftVariable(req, p, a), withValue: true))
+        return await fileJSONResponse(Self.draftVariableJSON(try await ownedDraftVariable(req, p, a), withValue: true), userId: p.id)
     }
 
     /// `PATCH .../variables/{id}` `{"name"?, "value"?}`: an editable variable's new name and/or value (the value must fit the
@@ -205,13 +212,16 @@ extension Routes {
         default: throw Self.invalidParam("name must be a string")
         }
         let rawValue = b["value"].flatMap { $0 == .null ? nil : $0 }
-        if newName == nil && rawValue == nil { return rawJSON(Self.draftVariableJSON(v, withValue: true)) }
+        if newName == nil && rawValue == nil { return await fileJSONResponse(Self.draftVariableJSON(v, withValue: true), userId: p.id) }
         guard v.editable else { throw Self.invalidParam("variable not support updating, id=\(v.id)") }
         var segment: Segment?
         if let rawValue {
             let type = SegmentType(rawValue: v.valueType) ?? .none
-            if type == .file || type == .arrayFile { throw Self.invalidParam("file values are not supported by this server yet") }
-            do { segment = try DraftVariableRules.buildSegment(type: type, value: rawValue) } catch {
+            do {
+                let value = try await runtimeServices(appId: a.id, userId: p.id).files?.canonicalize(rawValue, allowInputMappings: type == .file || type == .arrayFile) ?? rawValue
+                if (type == .file || type == .arrayFile) && !config.files.isConfigured { throw RuntimeFileError("File storage is not configured") }
+                segment = try DraftVariableRules.buildSegment(type: type, value: value)
+            } catch {
                 throw Self.invalidParam("\(error)")
             }
         }
@@ -224,7 +234,7 @@ extension Routes {
                                                 edited: true)
         }
         guard let updated else { throw ServerError.missing("variable not found, id=\(v.id)") }
-        return rawJSON(Self.draftVariableJSON(updated, withValue: true))
+        return await fileJSONResponse(Self.draftVariableJSON(updated, withValue: true), userId: p.id)
     }
 
     private func deleteDraftVariable(_ req: Request) async throws -> Response {
@@ -253,7 +263,7 @@ extension Routes {
                                                     edited: false)
             }
             guard let r else { return Self.noContent() }
-            return rawJSON(Self.draftVariableJSON(r, withValue: true))
+            return await fileJSONResponse(Self.draftVariableJSON(r, withValue: true), userId: p.id)
         }
         if kind == "conversation" {
             // _reset_conv_var: the draft's default, or gone.
@@ -264,13 +274,13 @@ extension Routes {
             return try await reset(to: built.segment)
         }
         // _reset_node_var_or_sys_var
-        if !v.editable { return rawJSON(Self.draftVariableJSON(v, withValue: true)) }
+        if !v.editable { return await fileJSONResponse(Self.draftVariableJSON(v, withValue: true), userId: p.id) }
         guard let executionId = v.nodeExecutionId else { return try await deleted() }
         guard let execution = try await draftStore({ try await store.nodeExecutionOutputs(id: executionId) }) else { return try await deleted() }
         let outputs = execution.outputs.flatMap { try? JSONValue.parse($0) }?.object ?? [:]
         let key: String
         if kind == "node" {
-            if execution.nodeType == NodeType.variableAssigner { return rawJSON(Self.draftVariableJSON(v, withValue: true)) }
+            if execution.nodeType == NodeType.variableAssigner { return await fileJSONResponse(Self.draftVariableJSON(v, withValue: true), userId: p.id) }
             key = v.name
         } else {
             key = "sys.\(v.name)"
@@ -285,16 +295,16 @@ extension Routes {
     private func conversationDraftVariables(_ req: Request) async throws -> Response {
         let (p, a) = try await draftPrerequisite(req)
         try await prefillConversationDraftVariables(appId: a.id, userId: p.id, viewer: p.id)
-        return rawJSON(Self.draftList(try await draftStore {
+        return await fileJSONResponse(Self.draftList(try await draftStore {
             try await store.draftVariables(doc: a.id, user: p.id, node: VariablePool.conversationNodeId)
-        }))
+        }), userId: p.id)
     }
 
     private func systemDraftVariables(_ req: Request) async throws -> Response {
         let (p, a) = try await draftPrerequisite(req)
-        return rawJSON(Self.draftList(try await draftStore {
+        return await fileJSONResponse(Self.draftList(try await draftStore {
             try await store.draftVariables(doc: a.id, user: p.id, node: VariablePool.systemNodeId)
-        }))
+        }), userId: p.id)
     }
 
     /// `GET .../environment-variables`: the draft's environment variables (secrets masked, as the editor shows them).
@@ -310,6 +320,6 @@ extension Routes {
                 "edited": false, "visible": true, "editable": true,
             ]
         }
-        return rawJSON(["items": .array(out)])
+        return await fileJSONResponse(["items": .array(out)], userId: p.id)
     }
 }

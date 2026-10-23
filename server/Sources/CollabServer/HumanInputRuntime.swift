@@ -51,13 +51,14 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
     /// Dify's `node_runtime._display_in_ui`: under the debugger a form is always shown; elsewhere the enabled Web App
     /// delivery decides (a published run additionally requires the site to be enabled, which M5 wires).
     public var isDebugger: Bool
+    public var files: (any RuntimeFiles)?
     /// The answers **this** resume claimed (`claimResume`'s decisions), by execution id. A resume decides from this fixed
     /// view and nothing else: a submission that arrives after the claim belongs to the next pause, so the node re-pauses
     /// instead of completing on an answer the claim did not take.
     public var decisions: [String: StoredHumanInputForm]
 
     public init(store: PostgresStore, workflowRunId: String, docId: String, userId: String, pending: PendingHumanInputForms,
-                decisions: [String: StoredHumanInputForm] = [:], isDebugger: Bool = true) {
+                decisions: [String: StoredHumanInputForm] = [:], isDebugger: Bool = true, files: (any RuntimeFiles)? = nil) {
         self.store = store
         self.workflowRunId = workflowRunId
         self.docId = docId
@@ -65,6 +66,7 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
         self.pending = pending
         self.decisions = decisions
         self.isDebugger = isDebugger
+        self.files = files
     }
 
     public func decide(form: HumanInputFormConfig, context: HumanInputContext) async throws -> HumanInputDecision {
@@ -75,7 +77,8 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
         if let decided = decisions[executionId] {
             switch decided.status {
             case .submitted:
-                let values = (try? JSONValue.parse(decided.submittedInputs ?? "{}"))?.object ?? [:]
+                let stored = (try? JSONValue.parse(decided.submittedInputs ?? "{}"))?.object ?? [:]
+                let values = try await form.normalizedFiles(stored, using: files)
                 return .completed(try form.completion(action: decided.submittedAction ?? "", values: values,
                                                       renderedContent: decided.renderedContent))
             case .timedOut:

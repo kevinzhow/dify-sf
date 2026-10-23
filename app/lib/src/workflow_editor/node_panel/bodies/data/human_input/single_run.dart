@@ -13,6 +13,7 @@ import '../data_common.dart' show cm;
 import 'human_input_kit.dart';
 import 'human_input_model.dart';
 import 'user_action.dart';
+import '../../../../run/ui/human_input_content.dart' show HumanInputFieldRenderer;
 
 /// A before-run input (`InputVar`): `variable` is `#a.b#` (may be missing on broken data).
 typedef RunInputVar = Map<String, Object?>;
@@ -215,7 +216,9 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
         ),
       );
     }
-    return DifyTextLine(name);
+    return HumanInputFieldRenderer(
+      field: field, value: _inputs[name], onChange: (value) => setState(() => _inputs[name] = value),
+    );
   }
 
   @override
