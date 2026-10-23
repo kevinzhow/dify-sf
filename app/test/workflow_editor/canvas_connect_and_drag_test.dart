@@ -66,8 +66,11 @@ void main() {
         [node('a', x: 100, y: 100)],
         wrap: (editor) => DifySelectionRegion(child: editor),
       );
-      final from = h.nodeCenter('a');
-      await h.drag(t, from, from + const Offset(40, 30));
+      for (var i = 0; i < 8; i++) {
+        final from = h.nodeCenter('a');
+        await h.drag(t, from, from + const Offset(12, 7), steps: 2);
+        await t.pump(const Duration(milliseconds: 180));
+      }
       await EditorHarness.settle(t);
       final dragged = h.doc.nodes['a']!.x;
       await t.sendKeyEvent(LogicalKeyboardKey.arrowRight);
@@ -79,7 +82,7 @@ void main() {
       await EditorHarness.settle(t);
       expect(h.doc.nodes['a']!.x, dragged);
       await h.dispose(t);
-    });
+    }, variant: TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
     testWidgets('shows a helpline while the node is within 5 px of another, snaps onto it, and clears it on drop', (
       t,
