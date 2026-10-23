@@ -1,0 +1,15 @@
+# Enable real external execution explicitly; the base stack has no dangling runtime URLs.
+# docker compose -f docker-compose.yml -f docker-compose.runtime.yml --profile runtime up -d
+services:
+  server:
+    environment:
+      COLLAB_PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      COLLAB_SANDBOX_URL: http://sandbox:8194
+      COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
+    depends_on:
+      plugin_daemon:
+        condition: service_healthy
+      sandbox:
+        condition: service_healthy
+      ssrf_proxy:
+        condition: service_healthy

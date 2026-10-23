@@ -1,5 +1,6 @@
 # Release build of collab-server. Build and runtime stages use the same Swift 6.4 / Ubuntu base (same glibc).
 FROM swift:6.4 AS build
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends libcurl4-openssl-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 # The whole package: SwiftPM validates every target directory (incl. Tests) even for a single product.
 COPY server/ ./
@@ -7,6 +8,7 @@ ARG SWIFT_BUILD_JOBS=2
 RUN swift build -c release --product collab-server --jobs $SWIFT_BUILD_JOBS
 
 FROM swift:6.4-slim
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends libcurl4t64 && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/.build/release/collab-server /usr/local/bin/collab-server
 # Protocol 1.9: the vendored model provider definitions (SwiftPM resource bundle of CollabModels), found next to the binary.
 COPY --from=build /src/.build/release/DifySF_CollabModels.bundle /usr/local/bin/DifySF_CollabModels.bundle

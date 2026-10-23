@@ -1,53 +1,67 @@
-# Runtime services (docker compose profile `runtime`)
+# Runtime services
 
-The workflow runtime of dify-sf (graph engine, nodes, variable pool, streaming) is written in Swift. For what a Swift
-reimplementation would only copy badly, the server calls Dify's own peripheral services over HTTP, the way Dify's api
-does. They ship as an optional profile of `docker-compose.yml`:
+The Swift server owns workflow execution, state, streaming and persistence. It reuses Dify 1.17.1's peripheral services for models and code. The base stack leaves the three runtime URLs empty; enabling a Docker profile alone does not configure a running server.
 
+## Start the complete profile
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.runtime.yml --profile runtime up -d --build
+# Stop without removing persisted databases, installed plugins or uploads:
+docker compose -f docker-compose.yml -f docker-compose.runtime.yml --profile runtime down
 ```
-COLLAB_PLUGIN_DAEMON_URL=http://plugin_daemon:5002 \
-docker compose --profile runtime up -d          # Postgres + server + the four services below
-docker compose --profile runtime down           # stop (volumes stay)
-```
 
-Without the profile the stack is Postgres + server, as before (editing, collaboration, everything but running models,
-code and tools).
+Use one project name consistently. Do not run these commands against another developer's stack or existing user volumes as a test fixture. Set private secrets through a protected environment file before a real deployment; the repository's development defaults are not production credentials. Preserve the existing `COLLAB_SECRETS_KEY`, PostgreSQL and upload volumes when upgrading an installation.
 
-| service | image | what for | memory cap | storage |
-|---|---|---|---|---|
-| `plugin_daemon` | `langgenius/dify-plugin-daemon:0.6.10-local` | runs model and tool plugins (one Python process per plugin); the server invokes LLMs and tools through it (`POST /plugin/<tenant>/dispatch/llm/invoke`, ...) | 1 GiB | database `dify_plugin` in the Postgres above (created by the daemon on first start); installed plugins and their Python environments in volume `plugin_storage` |
-| `redis` | `redis:6-alpine` | needed by the plugin daemon only (the server needs no Redis) | 64 MiB | none (`--save ""`) |
-| `sandbox` | `langgenius/dify-sandbox:0.2.15` | Python / Node.js / Jinja2 execution for code and template nodes and Jinja2 prompts | 256 MiB | volume `sandbox_dependencies` |
-| `ssrf_proxy` | `ubuntu/squid` | forward proxy refusing private, loopback and link-local destinations: the sandbox's only way out, and the proxy of HTTP request nodes | 128 MiB | none |
+The overlay sets the server's daemon/sandbox/proxy URLs and waits for healthy dependencies. Daemon health means its HTTP service is ready, not that a particular model plugin has been installed or its credentials are valid. Validate installation with a controlled local model before offering that provider.
 
-Networks: the sandbox is only on the internal network `ssrf_proxy_network` (no route out except through the proxy);
-the server is on both networks.
+| Service | Pinned version | Memory cap | CPU cap | State |
+|---|---|---:|---:|---|
+| server | repository build | 1024 MiB | 1 | uploads volume; runs/credentials in PostgreSQL |
+| postgres | PostgreSQL 15 Alpine digest | 512 MiB | 0.5 | application and development plugin databases |
+| plugin_daemon | 0.6.10-local digest | 1024 MiB | 1 | `dify_plugin` database, `plugin_storage` |
+| redis | Redis 6 Alpine digest | 64 MiB | 0.2 | daemon cache; persistence disabled |
+| sandbox | 0.2.15 digest | 256 MiB | 0.5 | `sandbox_dependencies` |
+| ssrf_proxy | Ubuntu Squid digest | 128 MiB | 0.2 | no cache; entrypoint forwards proxy-owned log files |
 
-## Configuration
+The complete development profile is capped at 3008 MiB and 3.4 CPUs, excluding a browser/build/test process. Swap is disabled for capped services. Images are pinned by digest in the compose file; do not silently replace `latest` or upgrade an existing PostgreSQL volume. Actual usage must also be measured for the installed plugin set. Extra plugins have their own Python processes and can require a larger reviewed budget.
 
-| variable (compose) | default | meaning |
-|---|---|---|
-| `COLLAB_PLUGIN_DAEMON_KEY` | a development key | shared secret: daemon `SERVER_KEY` = the server's `X-Api-Key`. Set your own for any real deployment. |
-| `COLLAB_PLUGIN_INNER_API_KEY` | a development key | the daemon's key for calls back into the server (plugin -> LLM/tool/app/file "backwards invocation"; not implemented by dify-sf yet, model providers do not need it) |
-| `COLLAB_SANDBOX_KEY` | a development key | the sandbox's `API_KEY` = the server's `X-Api-Key` for it |
-| `COLLAB_REDIS_PASSWORD` | a development password | Redis password (daemon only) |
-| `COLLAB_PLUGIN_DAEMON_PORT` | 5002 | daemon published on 127.0.0.1 (for a server running outside docker, and for tests) |
-| `PIP_MIRROR_URL` | empty | PyPI mirror for plugin and sandbox dependencies |
+The sandbox is only on the internal proxy network. The server and Squid bridge it to the application network; sandbox egress goes through Squid. Model plugins have their own application-network egress because model endpoints may intentionally be local. Daemon management is published only on localhost; the sandbox and proxy have no published ports.
 
-The server sees `COLLAB_PLUGIN_DAEMON_URL` (empty unless set: no model runtime; `http://plugin_daemon:5002` with the
-profile), `COLLAB_PLUGIN_DAEMON_KEY`,
-`COLLAB_SANDBOX_URL` (`http://sandbox:8194`), `COLLAB_SANDBOX_KEY` and `COLLAB_SSRF_PROXY_URL` (`http://ssrf_proxy:3128`).
+## Configuration and readiness
 
-## Plugins
+| Server configuration | Meaning |
+|---|---|
+| `COLLAB_PLUGIN_DAEMON_URL` | e.g. `http://plugin_daemon:5002`; empty means no model service |
+| `COLLAB_PLUGIN_DAEMON_KEY` | must match daemon `SERVER_KEY` |
+| `COLLAB_PLUGIN_DAEMON_TENANT` | tenant where the provider plugin is installed; default `00000000-0000-0000-0000-000000000001` |
+| `COLLAB_PLUGIN_DAEMON_TIMEOUT_SECONDS` | upper bound for a model daemon dispatch |
+| `COLLAB_SANDBOX_URL` | e.g. `http://sandbox:8194`; empty means code/Jinja2 execution is unavailable |
+| `COLLAB_SANDBOX_KEY` | must match sandbox `API_KEY` |
+| `COLLAB_SANDBOX_{CONNECT,READ,WRITE}_TIMEOUT_SECONDS` | sandbox request deadlines |
+| `COLLAB_SSRF_PROXY_URL` | e.g. `http://ssrf_proxy:3128`; empty retains the documented direct-HTTP mode, without SSRF protection |
+| `COLLAB_REDIS_PASSWORD` | daemon Redis authentication |
+| `COLLAB_PLUGIN_INNER_API_KEY` | reserved backwards-invocation credential; that API is not implemented |
 
-The daemon verifies signatures (`FORCE_VERIFYING_SIGNATURE=true`): only packages signed by Dify (marketplace) install.
-Installing a plugin needs the network once: the package (Dify marketplace, or a local `.difypkg`) and its Python wheels
-(PyPI or `PIP_MIRROR_URL`); the result stays in `plugin_storage`. Installs are per tenant: dify-sf (one workspace per server) uses
-`COLLAB_PLUGIN_DAEMON_TENANT` as the daemon's tenant id. `e2e/setup_ours.py` shows the whole path (upload, install, validate credentials, invoke) with
-the pinned `langgenius/openai_api_compatible` 0.0.68 package (`e2e/plugins.lock.json`).
+Check PostgreSQL with `pg_isready`, Redis with authenticated `PING`, daemon `/health/check`, sandbox `/health`, and Squid's process/configuration check. A complete readiness check also performs a real local model invocation, code execution and HTTP request through the proxy; a listening port cannot prove those paths work.
 
-## Measured memory
+Provider credentials remain in the server's encrypted store. The daemon key, sandbox key and model-provider key serve different purposes. Missing configuration, rejected credentials, unavailable dependencies and unsupported operations must show a real error. The remote client never substitutes a successful local run or simulated history; only the explicitly selected local demo uses mocks. Persistent Chatflow and unimplemented triggers/tools remain later phases.
 
-Measured 2026-10-19 with `e2e/stack.sh mem` (each container's cgroup) after a plugin install and LLM invocations:
-server 7, Postgres 11, plugin daemon with one plugin process 74, sandbox 6, Redis 2 MiB of process memory (~0.1 GiB
-in total; ~0.5 GiB with page cache, which the sandbox fills up to its cap). Details: `docs/results/e2e-harness.md`.
+## Provider plugin installation
+
+Keep signature verification enabled. `e2e/plugins.lock.json` pins the signed `langgenius/openai_api_compatible` 0.0.68 package and SHA256; `e2e/lib/plugins.py` verifies downloaded/cached bytes, and `e2e/lib/daemon.py` uploads and installs them for a tenant. `e2e/setup_ours.py` exercises install, model schema/credential validation and a streamed invocation against the local deterministic test provider. It is a test setup command, not a command to run with a user's paid credentials.
+
+A warm package/virtual-environment volume survives restarts. For offline/restricted-network setups, supply the exact signed package from a trusted cache and verify the lock's digest; do not disable signatures to work around download errors. The first install also needs its Python dependencies, from PyPI or `PIP_MIRROR_URL`. Installing the compatible-provider plugin does not automatically install every provider listed by the settings catalog. Other providers require their own trusted, pinned plugin before invocation.
+
+## HTTP transport and protection
+
+AsyncHTTPClient 1.35.0's proxy API always uses CONNECT, including for clear HTTP. Squid correctly refuses CONNECT on a normal HTTP endpoint. HTTP request nodes therefore reuse system libcurl through a small C binding; model and sandbox clients keep their existing adapters. HTTP uses forward-proxy requests, HTTPS uses CONNECT. The server never shells out, puts request credentials in process arguments or writes request temporary files. [AsyncHTTPClient's proxy contract](https://github.com/swift-server/async-http-client/blob/4603a8036d921ea999fadb742931546c341f4bd7/Sources/AsyncHTTPClient/HTTPClient%2BProxy.swift), [libcurl proxy configuration](https://curl.se/libcurl/c/CURLOPT_PROXY.html).
+
+An explicit proxy applies to every destination, ignoring inherited `NO_PROXY`; an invalid proxy is an error, never a direct-request fallback. Protocols and redirects are limited to HTTP/HTTPS. Redirects retain the httpx method/header policy and one overall budget. libcurl manages redirect cookies in an isolated per-request jar; cookies never persist across unrelated workflow requests. At most 16 native transfers run concurrently; queueing counts against the deadline. Response bytes/headers are bounded, TLS verification follows node configuration, and cancellation interrupts the real transfer. A proxy denial is distinguished from an upstream server's ordinary 403. [libcurl NO_PROXY semantics](https://curl.se/libcurl/c/CURLOPT_NOPROXY.html).
+
+Private/loopback/link-local/multicast destinations and unsafe ports remain denied. CONNECT remains restricted to port 443. The isolated HTTP capture fixture allows only its named local origins before the private-address rule; that exception is never installed in the trial/normal profile. Do not loosen the production proxy to make a test pass.
+
+## Reproducible checks
+
+`e2e/runtime_services/matrix.md` defines the phase-1 exit. `origin.py` extends the existing deterministic model server with HTTP capture, redirects, statuses, size and stalled-response endpoints. `smoke.py --base ... --stub ... --out ...` requires a dedicated empty fixture database/account; it never uses the real trial account. Its `private/` directory contains fixture login state and must not be published.
+
+`RuntimeProxyIntegrationTests` runs against actual Squid and the fixture when `TEST_RUNTIME_PROXY_URL`, `TEST_RUNTIME_ORIGIN_URL`, and `TEST_RUNTIME_OTHER_URL` are provided. It checks forward HTTP, real body bytes, ordinary 403 versus denial, HTTP/HTTPS private destinations, redirects and credential isolation, size, timeout and cancellation. Existing golden traces and runtime unit/integration tests continue to cover the engine; local deterministic model results do not claim external-provider quality or paid-provider validation.

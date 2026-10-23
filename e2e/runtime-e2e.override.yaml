@@ -5,6 +5,8 @@ services:
   server:
     environment:
       COLLAB_PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      COLLAB_SANDBOX_URL: http://sandbox:8194
+      COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
     networks:
       - default
       - ssrf_proxy_network

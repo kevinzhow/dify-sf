@@ -62,6 +62,10 @@ runtime (protocols 1.13–1.16): `COLLAB_PLUGIN_DAEMON_URL` / `_KEY` / `_TENANT`
 input's `COLLAB_WEBAPP_BASE_URL` (the form link in the mail) and `COLLAB_HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS` (604800; 0
 disables).
 
+The complete, digest-pinned runtime profile and its readiness/resource checks are described in
+[Runtime services](docs/runtime-services.md). Start it with both `docker-compose.yml` and
+`docker-compose.runtime.yml`; the base stack leaves runtime dependencies unconfigured.
+
 ## Test
 
 ```sh
