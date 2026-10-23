@@ -163,6 +163,27 @@ options, such as `--base-href`, can be passed to the script. Deploy the entire `
 including `.wasm`, `.mjs`, assets and renderer files; serve `.wasm` as `application/wasm`. Avoid caching
 `index.html` and `flutter_bootstrap.js` across releases.
 
+The Web bootstrap opts iOS/iPadOS 26.6+ into Dart Wasm/skwasm after checking the
+browser's actual Wasm GC, exception handling, JS String Builtins (including
+streaming compilation) and WebGL capabilities. Safari's frozen OS user-agent
+token is not used as an upper bound; its browser Version token and native
+feature tests determine eligibility. Desktop Safari/Firefox keep Flutter's
+existing selection, as do Android and desktop Chromium. This changes Web
+assets only, not an iOS native deployment target or the installed OS.
+
+If iOS Wasm initialization fails before the first rendered frame, the page
+reloads once with `renderer=canvaskit`, preserving its route and other query
+parameters. That URL also provides an explicit compatibility override. Errors
+after startup do not reload an active document. Remove the override to retry
+the normal selection. Deploy `wasm_policy.mjs` with the rest of the build;
+avoid caching it across releases as well.
+
+`node --test tool/test_wasm_policy.mjs` checks the policy and recovery lifecycle.
+`python3 tool/verify_ios_wasm_web.py --build app/build/web --output <evidence-directory>`
+checks actual artifact selection, download failures and recovery in Chromium
+with browser identity fixtures. These tests do not establish actual Safari
+compatibility or iPhone performance; device acceptance remains separate.
+
 Flutter keeps a JavaScript/CanvasKit compatibility build for browsers that cannot run this Wasm target.
 To verify the actual runtime, check that the browser requests `main.dart.wasm` and a skwasm renderer
 Wasm file without requesting `main.dart.js`. A build succeeding alone does not establish this. With Playwright/Chromium installed, run
