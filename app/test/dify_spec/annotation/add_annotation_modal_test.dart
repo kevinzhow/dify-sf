@@ -7,6 +7,7 @@ import 'package:flutter/material.dart' show TextField;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+import '../../support/field_hints.dart';
 
 const _queryPlaceholder = 'appAnnotation.addModal.queryPlaceholder';
 const _answerPlaceholder = 'appAnnotation.addModal.answerPlaceholder';
@@ -119,7 +120,7 @@ void main() {
       );
       expect(find.text('appAnnotation.addModal.answerName'), findsOneWidget);
       // The field has a value, so its hint (the placeholder) is set but not drawn.
-      expect(t.widget<TextField>(find.byType(TextField)).decoration!.hintText, _answerPlaceholder);
+      expect(hintTextOf(t.widget<TextField>(find.byType(TextField))), _answerPlaceholder);
       expect(find.text('Existing answer'), findsOneWidget);
     });
 

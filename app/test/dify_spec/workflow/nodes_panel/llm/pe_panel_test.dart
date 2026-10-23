@@ -22,6 +22,7 @@ import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../../support/field_hints.dart';
 import 'harness.dart';
 import 'qc_pe_test_kit.dart';
 
@@ -108,7 +109,7 @@ Finder _descInput() => find.descendant(
   of: find.byWidgetPredicate(
     (w) =>
         w is TextField &&
-        w.decoration?.hintText == 'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
+        hintTextOf(w) == 'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
   ),
   matching: find.byType(EditableText),
 );

@@ -12,6 +12,8 @@ import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../support/field_hints.dart';
+
 export '../../dify_test_i18n.dart';
 
 /// An op the panels asked the controller for: `insert` / `update` / `remove` an item, or `set` a config field.
@@ -198,7 +200,7 @@ Finder buttonNamed(String label) {
 
 /// The text field showing [placeholder] (`getByPlaceholderText`).
 Finder byPlaceholder(String placeholder) => find.byWidgetPredicate(
-  (w) => w is TextField && w.decoration?.hintText == placeholder,
+  (w) => w is TextField && hintTextOf(w) == placeholder,
   description: 'field "$placeholder"',
 );
 

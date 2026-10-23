@@ -583,7 +583,7 @@ void main() {
 
     testWidgets('renders empty text for paragraph and select placeholders with non-string values', (t) async {
       await item(t, r'{{#$output.summary#}}', {'summary': attachment});
-      expect(t.widget<Text>(find.byKey(const Key('submitted-field-summary'))).data, '');
+      expect(t.widget<DifyTextLine>(find.byKey(const Key('submitted-field-summary'))).data, '');
       await item(t, r'{{#$output.decision#}}', {'decision': evidence});
       expect(t.widget<DifySelect<String>>(find.byType(DifySelect<String>)).value, isNull);
     });
@@ -709,7 +709,7 @@ void main() {
         'submitted_data': {'answer': 'approved'},
       });
       expect(find.byKey(const Key('submitted-form-content')), findsOneWidget);
-      expect(t.widget<Text>(find.byKey(const Key('submitted-field-answer'))).data, 'approved');
+      expect(t.widget<DifyTextLine>(find.byKey(const Key('submitted-field-answer'))).data, 'approved');
       expect(find.byKey(const Key('submitted-content')), findsNothing);
     });
 
@@ -743,7 +743,7 @@ void main() {
         'submitted_data': {'answer': 'approved'},
       });
       expect(find.byKey(const Key('submitted-field-values')), findsOneWidget);
-      expect(t.widget<Text>(find.byKey(const Key('submitted-field-answer'))).data, 'approved');
+      expect(t.widget<DifyTextLine>(find.byKey(const Key('submitted-field-answer'))).data, 'approved');
       expect(find.byKey(const Key('submitted-content')), findsNothing);
     });
   });

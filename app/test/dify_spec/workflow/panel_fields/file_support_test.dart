@@ -14,6 +14,8 @@ import 'harness.dart';
 
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
+import '../../../support/field_hints.dart';
+
 Map<String, Object?> _payload([Map<String, Object?> overrides = const {}]) => {
   'allowed_file_upload_methods': ['local_file'],
   'max_length': 2,
@@ -110,7 +112,7 @@ void main() {
           ),
         );
         final input = find.descendant(of: find.byType(DifyTagInput), matching: find.byType(TextField));
-        expect(t.widget<TextField>(input).decoration?.hintText, _ad('file.custom.createPlaceholder'));
+        expect(hintTextOf(t.widget<TextField>(input)), _ad('file.custom.createPlaceholder'));
         await t.enterText(input, 'csv');
         FocusManager.instance.primaryFocus?.unfocus();
         await t.pump();

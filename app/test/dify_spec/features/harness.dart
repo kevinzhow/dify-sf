@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/field_hints.dart';
+
 export '../dify_test_i18n.dart';
 
 /// The specs' `defaultFeatures`: every feature present and off.
@@ -168,7 +170,7 @@ Finder byDisplayValue(String text) =>
 
 /// The text field with [placeholder] (`getByPlaceholderText`).
 Finder byPlaceholder(String pattern) => find.byWidgetPredicate(
-  (w) => w is TextField && w.decoration?.hintText != null && RegExp(pattern).hasMatch(w.decoration!.hintText!),
+  (w) => w is TextField && hintTextOf(w) != null && RegExp(pattern).hasMatch(hintTextOf(w)!),
   description: 'field /$pattern/',
 );
 

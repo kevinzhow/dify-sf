@@ -9,6 +9,8 @@ import '../harness.dart';
 
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 
+import '../../../support/field_hints.dart';
+
 const configuredOpenai = [
   {
     'provider': 'langgenius/openai/openai',
@@ -526,7 +528,7 @@ void main() {
         'feature.moderation.modal.content.output',
       });
       await renderModal(t, defaultData);
-      expect(t.widgetList<TextField>(find.byType(TextField)).first.decoration!.hintText, '');
+      expect(hintTextOf(t.widgetList<TextField>(find.byType(TextField)).first), '');
     });
   });
 }

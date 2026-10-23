@@ -5,6 +5,7 @@
 // (React Flow's nodes in Dify) comes from `getHumanInputNodeData`.
 import 'dart:ui' show Tristate;
 
+import 'package:dify_sf_app/src/design/widgets/text_line.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/human_input_content.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/workflow_store.dart' show DifyJson;
 import 'package:flutter/material.dart';
@@ -175,7 +176,7 @@ void main() {
       expect(find.byKey(const Key('executed-action')), findsNWidgets(2));
       final summaries = find.byKey(const Key('submitted-field-summary'));
       expect(summaries, findsNWidgets(2));
-      expect(t.widget<Text>(summaries.first).data, 'Approved by Alice');
+      expect(t.widget<DifyTextLine>(summaries.first).data, 'Approved by Alice');
       final collapse = find.bySemanticsLabel('share.chat.collapse Approval');
       await t.tap(collapse);
       await t.pump();

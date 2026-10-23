@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
+import '../../../support/field_hints.dart';
 
 const defaultConfig = {'enabled': false, 'preset_response': ''};
 
@@ -98,7 +99,7 @@ void main() {
     testWidgets('should fallback to empty placeholder when translation is empty', (t) async {
       DifyI18n.current = _EmptyFor({'feature.moderation.modal.content.placeholder'});
       await renderContent(t, config: const {'enabled': true, 'preset_response': ''});
-      expect(t.widget<TextField>(textbox).decoration!.hintText, '');
+      expect(hintTextOf(t.widget<TextField>(textbox)), '');
     });
   });
 }

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
+import '../../../support/field_hints.dart';
 
 const defaultData = {
   'enabled': true,
@@ -148,7 +149,7 @@ void main() {
       await renderModal(t, modal());
       await tap(t, byText(r'variableConfig\.addOption'));
       final input = find.byWidgetPredicate(
-        (w) => w is TextField && w.controller?.text == '' && w.decoration?.hintText != null,
+        (w) => w is TextField && w.controller?.text == '' && hintTextOf(w) != null,
       );
       expect(t.widget<TextField>(input).focusNode!.hasFocus, isTrue);
       expect(borderOf(t, input), isNot(DifyColors.componentsInputBorderDestructive));
