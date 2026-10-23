@@ -25,6 +25,8 @@ void main() {
   late DemoBackend demo;
 
   Future<void> frames(WidgetTester t, [int n = 10]) async {
+    await t.pump();
+    await t.pump();
     for (var i = 0; i < n; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }

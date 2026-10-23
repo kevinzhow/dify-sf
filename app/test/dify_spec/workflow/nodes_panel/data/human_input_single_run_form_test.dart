@@ -158,8 +158,12 @@ void main() {
       expect(submits, isEmpty);
 
       await t.tap(find.byType(DifySelect<String>));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       await t.tap(find.text('approve').last);
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       await t.tap(find.text('Approve'));
       await t.pump();

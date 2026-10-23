@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 
 import '../css_metrics.dart';
 
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -137,6 +137,7 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
     if (sub == null || sub._row == row) return _subClose?.cancel();
     _subClose?.cancel();
     if (pointer) {
+      if (!sub._hoverDriven) return;
       // Match Floating UI's safe-polygon interaction: a diagonal route can
       // cross another row for longer than a fixed close delay.
       if (_pointer != null && sub._protects(_pointer!)) return;
@@ -185,7 +186,14 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
       children: widget.children,
     );
     column = SingleChildScrollView(padding: const EdgeInsets.symmetric(vertical: 4), child: column);
-    column = widget.width != null ? SizedBox(width: widget.width, child: column) : IntrinsicWidth(child: column);
+    Widget surface = DifyBlurredBox(
+      blur: 5,
+      borderRadius: r,
+      decoration: DifyMenuPopup.decoration,
+      child: ClipRRect(borderRadius: r, child: column),
+    );
+    // CSS widths include the border; the surface insets its content itself.
+    surface = widget.width != null ? SizedBox(width: widget.width, child: surface) : IntrinsicWidth(child: surface);
     return _MenuScope(
       popup: this,
       child: Semantics(
@@ -203,13 +211,9 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
             },
             onHover: (e) => _pointer = e.position,
             child: DefaultTextStyle.merge(
+              textAlign: TextAlign.start,
               style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
-              child: DifyBlurredBox(
-                blur: 5,
-                borderRadius: r,
-                decoration: DifyMenuPopup.decoration,
-                child: ClipRRect(borderRadius: r, child: column),
-              ),
+              child: surface,
             ),
           ),
         ),

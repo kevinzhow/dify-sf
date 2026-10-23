@@ -53,6 +53,9 @@ Future<WorkflowStore> renderWorkflowComponent(
 /// Lets popups finish their transitions.
 Future<void> settle(WidgetTester t) async {
   await t.pump();
+  // Mount controlled portals and start their ticker before advancing time.
+  await t.pump();
+  await t.pump();
   await t.pump(const Duration(milliseconds: 300));
 }
 

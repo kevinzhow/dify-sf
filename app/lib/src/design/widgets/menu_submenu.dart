@@ -21,6 +21,7 @@ class DifyMenuSubmenu extends StatefulWidget {
     this.semanticLabel,
     this.popupLabel,
     this.paddingX = 8,
+    this.marginX = 4,
   });
 
   final Widget label;
@@ -44,6 +45,9 @@ class DifyMenuSubmenu extends StatefulWidget {
   /// A call site's `px-*` over the trigger row's `px-2`.
   final double paddingX;
 
+  /// A call site's `mx-*` over the shared trigger's `mx-1`.
+  final double marginX;
+
   @override
   State<DifyMenuSubmenu> createState() => _DifyMenuSubmenuState();
 }
@@ -59,10 +63,13 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
   final _popupKey = GlobalKey();
   Offset? _intentOrigin;
   bool _tracking = false;
+  bool _hoverDriven = false;
 
   Rect? _bounds(BuildContext? context) {
     final box = context?.findRenderObject();
-    return box is RenderBox && box.hasSize ? box.localToGlobal(Offset.zero) & box.size : null;
+    return box is RenderBox && box.hasSize
+        ? MatrixUtils.transformRect(box.getTransformTo(null), Offset.zero & box.size)
+        : null;
   }
 
   // The pointer may cross an adjacent row while heading diagonally into a
@@ -103,7 +110,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
   }
 
   void _pointerMoved(PointerEvent event) {
-    if (event is! PointerHoverEvent || !_controller.isOpen) return;
+    if (event is! PointerHoverEvent || event.kind != PointerDeviceKind.mouse || !_controller.isOpen) return;
     final point = event.position;
     _parent?._pointer = point;
     if (_bounds(_triggerNode.context)?.contains(point) ?? false) _intentOrigin = point;
@@ -115,15 +122,9 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.open == true) _track(true);
-  }
-
-  @override
   void didUpdateWidget(DifyMenuSubmenu old) {
     super.didUpdateWidget(old);
-    if (widget.open != old.open) _track(widget.open == true);
+    if (widget.open != old.open) _track(widget.open == true && _hoverDriven);
   }
 
   @override
@@ -142,14 +143,18 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
     super.dispose();
   }
 
-  void _open({bool keyboard = false}) {
+  void _open({bool keyboard = false, bool hover = false}) {
     _hover?.cancel();
     if (widget.disabled) return;
     final other = _parent?._openSub;
     if (other != null && other != this) other._controller.close(instant: true);
     _parent?._subClose?.cancel();
+    // A touch, accessibility or keyboard activation owns its open state.
+    // Compatibility mouse events must not hand it to a hover-close timer.
+    _hoverDriven = hover;
     _focusFirst = keyboard;
     _controller.open();
+    _track(_controller.isOpen && _hoverDriven);
     if (keyboard && _controller.isOpen) {
       // Already open: move into it.
       _popupNode.context?.findAncestorStateOfType<_DifyMenuPopupState>()?._move(1, from: -1);
@@ -159,7 +164,9 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
   String? get _name {
     if (widget.popupLabel != null || widget.semanticLabel != null) return widget.popupLabel ?? widget.semanticLabel;
     final l = widget.label;
-    return l is Text ? l.data : null;
+    if (l is DifyTextLine) return l.data ?? l.textSpan?.toPlainText();
+    if (l is DifyText) return difyTransform(l.style, l.text);
+    return l is Text ? l.data ?? l.textSpan?.toPlainText() : null;
   }
 
   @override
@@ -170,7 +177,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
       controller: _controller,
       open: widget.open,
       onOpenChange: (open) {
-        _track(open);
+        _track(open && _hoverDriven);
         if (open) {
           _parent?._openSub = this;
         } else if (_parent?._openSub == this) {
@@ -199,7 +206,7 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
         onHover: (inside) {
           _hover?.cancel();
           if (inside && !controller.isOpen) {
-            _hover = Timer(const Duration(milliseconds: 100), _open);
+            _hover = Timer(const Duration(milliseconds: 100), () => _open(hover: true));
           }
         },
         onKey: (e) {
@@ -223,6 +230,9 @@ class _DifyMenuSubmenuState extends State<DifyMenuSubmenu> {
         children: widget.children,
       ),
     );
-    return Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: floating);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: widget.marginX),
+      child: floating,
+    );
   }
 }

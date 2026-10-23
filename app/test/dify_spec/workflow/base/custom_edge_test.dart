@@ -50,9 +50,13 @@ void main() {
     await mouse.moveTo(t.getCenter(plus));
     await t.pump(const Duration(milliseconds: 100));
     await t.tap(plus);
+    await t.pump();
+    await t.pump();
     await t.pump(const Duration(milliseconds: 400));
     expect(find.byType(BlockSelectorCard), findsOneWidget);
     await t.tap(find.descendant(of: find.byType(BlockSelectorCard), matching: find.text(_title('template-transform'))));
+    await t.pump();
+    await t.pump();
     await t.pump(const Duration(milliseconds: 500));
     final added = c.doc.nodes.values.singleWhere((n) => n.type == 'template-transform');
     expect(c.doc.edges.values.where((e) => e.source == 'code' && e.target == added.id), hasLength(1));
@@ -88,12 +92,16 @@ void main() {
       await mouse.moveTo(t.getCenter(plus));
       await t.pump(const Duration(milliseconds: 100));
       await t.tap(plus);
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 400));
       expect(find.byType(BlockSelectorCard), findsOneWidget);
       expect(t.widget<BlockSelectorCard>(find.byType(BlockSelectorCard)).selector.showStartTab, isFalse);
       await t.tap(
         find.descendant(of: find.byType(BlockSelectorCard), matching: find.text(_title('template-transform'))),
       );
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 500));
       final added = c.doc.nodes.values.singleWhere((n) => n.type == 'template-transform');
       expect(c.doc.edges.values.where((e) => e.source == 'start' && e.target == added.id), hasLength(1));

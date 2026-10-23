@@ -215,8 +215,12 @@ void main() {
     Future<void> choose(WidgetTester t, String text) async {
       await t.tap(find.textContaining(RegExp(r'^\d+%$')).first);
       await t.pump();
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 200));
       await t.tap(find.descendant(of: menu(), matching: find.text(text)));
+      await t.pump();
+      await t.pump();
       await t.pump();
       await t.pump(const Duration(milliseconds: 200));
     }

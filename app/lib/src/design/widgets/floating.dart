@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -249,6 +251,9 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       controller: _portal,
       overlayLocation: OverlayChildLocation.rootOverlay,
       overlayChildBuilder: (context, info) {
+        // Portal descendants are inside every ancestor popup, not only the
+        // immediate parent. Keep the complete tree in the same tap regions.
+        final groups = <Object>{...?_FloatingGroup.of(context), _group};
         final anchor = widget.pointAnchor
             ? (_point ?? Offset.zero) & Size.zero
             : MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
@@ -263,19 +268,17 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
             return KeyEventResult.ignored;
           },
           child: _FloatingGroup(
-            group: _group,
+            groups: groups,
             child: Builder(builder: widget.popupBuilder),
           ),
         );
-        popup = TapRegion(
-          groupId: _group,
-          onTapOutside: widget.dismissible ? (_) => _request(false) : null,
-          child: popup,
-        );
-        // A popup opened from inside another one (a select in a popover) is part of it, as in Base UI: taps in it
-        // are not outside taps of the outer popup.
-        final parent = _FloatingGroup.of(context);
-        if (parent != null && parent != _group) popup = TapRegion(groupId: parent, child: popup);
+        for (final group in groups) {
+          popup = TapRegion(
+            groupId: group,
+            onTapOutside: group == _group && widget.dismissible ? (_) => _request(false) : null,
+            child: popup,
+          );
+        }
         return DifyFloatingLayout(
           anchor: anchor,
           placement: widget.placement,
@@ -295,13 +298,13 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
 
 /// The tap region group of the popup [child] is in.
 class _FloatingGroup extends InheritedWidget {
-  const _FloatingGroup({required this.group, required super.child});
-  final Object group;
+  const _FloatingGroup({required this.groups, required super.child});
+  final Set<Object> groups;
 
-  static Object? of(BuildContext context) => context.getInheritedWidgetOfExactType<_FloatingGroup>()?.group;
+  static Set<Object>? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_FloatingGroup>()?.groups;
 
   @override
-  bool updateShouldNotify(_FloatingGroup old) => group != old.group;
+  bool updateShouldNotify(_FloatingGroup old) => groups.length != old.groups.length || !groups.containsAll(old.groups);
 }
 
 /// Lays a popup out against [anchor] in the overlay ([computeFloatingPosition]) and paints the open/close
@@ -379,7 +382,39 @@ class RenderDifyFloatingLayout extends RenderShiftedBox {
   Rect get semanticBounds {
     final child = this.child;
     if (child == null || !child.hasSize || _config.animation.value <= 0) return Rect.zero;
-    return (child.parentData! as BoxParentData).offset & child.size;
+    return MatrixUtils.transformRect(_childTransform, Offset.zero & child.size);
+  }
+
+  // Like RenderTransform, all consumers use the same child-to-parent matrix.
+  // A paint-only scale leaves pointer/hover and Web accessibility at stale
+  // coordinates throughout the transition, including the submenu corridor.
+  Matrix4 get _childTransform {
+    final child = this.child!;
+    final offset = (child.parentData! as BoxParentData).offset;
+    final transform = Matrix4.translationValues(offset.dx, offset.dy, 0);
+    if (_config.scale && _config.animation.value < 1) {
+      final scale = 0.95 + 0.05 * _config.animation.value;
+      final origin = _position!.origin(child.size, _config.anchor).alongSize(child.size);
+      transform
+        ..translateByDouble(origin.dx, origin.dy, 0, 1)
+        ..scaleByDouble(scale, scale, 1, 1)
+        ..translateByDouble(-origin.dx, -origin.dy, 0, 1);
+    }
+    return transform;
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) => transform.multiply(_childTransform);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null || _config.animation.value <= 0) return false;
+    return result.addWithPaintTransform(
+      transform: _childTransform,
+      position: position,
+      hitTest: (result, transformed) => child.hitTest(result, position: transformed),
+    );
   }
 
   @override
@@ -397,10 +432,14 @@ class RenderDifyFloatingLayout extends RenderShiftedBox {
       alignOffset: c.alignOffset,
       collision: c.collision,
     );
-    child.layout(BoxConstraints.loose(size), parentUsesSize: true);
+    final popupBounds = Size(
+      math.max(0, size.width - 2 * difyFloatingCollisionPadding),
+      math.max(0, size.height - 2 * difyFloatingCollisionPadding),
+    );
+    child.layout(BoxConstraints.loose(popupBounds), parentUsesSize: true);
     var p = place();
     if (c.constrainHeight && child.size.height > p.availableHeight) {
-      child.layout(BoxConstraints.loose(Size(size.width, p.availableHeight)), parentUsesSize: true);
+      child.layout(BoxConstraints.loose(Size(popupBounds.width, p.availableHeight)), parentUsesSize: true);
       p = place();
     }
     _position = p;
@@ -413,16 +452,8 @@ class RenderDifyFloatingLayout extends RenderShiftedBox {
     if (child == null) return;
     final t = _config.animation.value;
     if (t <= 0) return;
-    final childOffset = (child.parentData! as BoxParentData).offset;
     void paintChild(PaintingContext ctx, Offset o) {
-      if (!_config.scale || t >= 1) return ctx.paintChild(child, o + childOffset);
-      final s = 0.95 + 0.05 * t;
-      final origin = _position!.origin(child.size, _config.anchor).alongSize(child.size) + childOffset + o;
-      final m = Matrix4.identity()
-        ..translateByDouble(origin.dx, origin.dy, 0, 1)
-        ..scaleByDouble(s, s, 1, 1)
-        ..translateByDouble(-origin.dx, -origin.dy, 0, 1);
-      ctx.pushTransform(needsCompositing, Offset.zero, m, (c2, _) => c2.paintChild(child, o + childOffset));
+      ctx.pushTransform(needsCompositing, o, _childTransform, (context, offset) => context.paintChild(child, offset));
     }
 
     if (t >= 1) return paintChild(context, offset);

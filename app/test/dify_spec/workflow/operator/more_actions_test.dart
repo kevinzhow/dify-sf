@@ -33,11 +33,15 @@ void main() {
     Future<void> openMenu(WidgetTester t) async {
       await t.tap(pressable('common.moreActions'));
       await t.pump();
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 200));
     }
 
     Future<void> choose(WidgetTester t, String label, int index) async {
       await t.tap(find.text(label).at(index));
+      await t.pump();
+      await t.pump();
       await t.pump();
       await t.pump(const Duration(milliseconds: 200));
     }
@@ -57,6 +61,8 @@ void main() {
 
       expect(await focusButton(t, 'common.moreActions'), isTrue);
       await t.sendKeyEvent(LogicalKeyboardKey.enter);
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 200));
 
       expect(find.text('common.exportImage'), findsNothing);
@@ -89,6 +95,8 @@ void main() {
       await openMenu(t);
       store.setCanvasReadOnly(true);
       await t.tap(find.text('common.exportJPEG').first);
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 200));
 
       expect(exports, isEmpty);

@@ -77,6 +77,8 @@ EditorController _controller(WidgetTester t) =>
 Future<void> openSession(WidgetTester t) async {
   if (find.byKey(const Key('link-state')).evaluate().isNotEmpty) return;
   await t.tap(find.byKey(const Key('session-menu')));
+  await t.pump();
+  await t.pump();
   await t.pump(const Duration(milliseconds: 300));
 }
 

@@ -70,7 +70,9 @@ class _MenuRowState extends State<_MenuRow> {
   }
 
   void _activate(bool keyboard) {
-    if (!widget.disabled) widget.onActivate?.call(keyboard);
+    if (widget.disabled) return;
+    _node.requestFocus();
+    widget.onActivate?.call(keyboard);
   }
 
   @override
@@ -115,6 +117,9 @@ class _MenuRowState extends State<_MenuRow> {
         role: widget.role,
         label: widget.semanticLabel,
         enabled: !widget.disabled,
+        focusable: !widget.disabled,
+        focused: _node.hasFocus,
+        onFocus: widget.disabled ? null : _node.requestFocus,
         checked: widget.checked,
         inMutuallyExclusiveGroup: widget.role == SemanticsRole.menuItemRadio ? true : null,
         onTap: widget.disabled ? null : () => _activate(false),
@@ -139,13 +144,14 @@ class _MenuRowState extends State<_MenuRow> {
           },
           child: MouseRegion(
             cursor: widget.disabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
-            onEnter: (_) {
-              if (widget.disabled) return;
+            onEnter: (event) {
+              if (widget.disabled || event.kind != PointerDeviceKind.mouse) return;
               _pointer = true;
               _node.requestFocus();
               widget.onHover?.call(true);
             },
-            onExit: (_) {
+            onExit: (event) {
+              if (event.kind != PointerDeviceKind.mouse) return;
               widget.onHover?.call(false);
               if (_node.hasFocus) _popup?._unhighlight();
             },

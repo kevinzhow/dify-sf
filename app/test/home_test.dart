@@ -56,6 +56,8 @@ void main() {
     await settle(t);
     expect(find.byKey(const ValueKey('node-start')), findsOneWidget);
     await t.tap(find.byKey(const Key('session-menu')));
+    await t.pump();
+    await t.pump();
     await t.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('volatile · s-'), findsOneWidget, reason: 'a server-issued id, shown in the status bar');
 
@@ -66,6 +68,8 @@ void main() {
 
     if (find.byKey(const Key('back-to-documents')).evaluate().isEmpty) {
       await t.tap(find.byKey(const Key('session-menu')));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
     }
     await t.tap(find.byKey(const Key('back-to-documents')));

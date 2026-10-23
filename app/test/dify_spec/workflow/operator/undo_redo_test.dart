@@ -84,6 +84,8 @@ void main() {
 
       await t.tap(pressable('changeHistory.title'));
       await t.pump();
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 200));
 
       final rows = [for (final e in historyEntries(history)) historyEntryText(history, e)];
@@ -106,6 +108,8 @@ void main() {
       await pumpWithStore(t, WorkflowStore(), ViewWorkflowHistory(history: TestHistory()));
 
       await t.tap(pressable('changeHistory.title'));
+      await t.pump();
+      await t.pump();
       await t.pump();
       await t.pump(const Duration(milliseconds: 200));
 

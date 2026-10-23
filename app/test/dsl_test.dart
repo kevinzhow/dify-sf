@@ -60,6 +60,8 @@ void main() {
     expect(find.byKey(const ValueKey('node-start')), findsOneWidget, reason: 'the imported document is open');
 
     await t.tap(find.byKey(const Key('session-menu')));
+    await t.pump();
+    await t.pump();
     await t.pump(const Duration(milliseconds: 300));
     await t.tap(find.byKey(const Key('export-dsl')));
     await settle(t, 500);
@@ -70,6 +72,8 @@ void main() {
 
     if (find.byKey(const Key('back-to-documents')).evaluate().isEmpty) {
       await t.tap(find.byKey(const Key('session-menu')));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
     }
     await t.tap(find.byKey(const Key('back-to-documents')));

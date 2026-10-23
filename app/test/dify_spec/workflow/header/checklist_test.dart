@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
+import 'harness.dart' as harness;
+
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 
 const _plugin = ChecklistItem(
   id: 'plugin-1',
@@ -25,7 +28,26 @@ const _broken = ChecklistItem(
   canNavigate: true,
 );
 
+// Use real translations in the constrained popup. Full translation keys are
+// much wider than the actual button label and conceal transition/layout issues.
+String _tr(String key) => DifyI18n.tr('workflow', key.substring('workflow.'.length));
+Future<WorkflowStore> renderWorkflowComponent(
+  WidgetTester t,
+  Widget widget, {
+  WorkflowHeaderData data = const WorkflowHeaderData(),
+  void Function(WorkflowStore)? initialStoreState,
+}) => harness.renderWorkflowComponent(
+  t,
+  widget,
+  data: data,
+  initialStoreState: initialStoreState,
+  testTranslator: false,
+);
+
 void main() {
+  setUp(() async {
+    await DifyI18n.load('en-US');
+  });
   group('WorkflowChecklist', () {
     late List<String> selected;
     WorkflowHeaderData data() {
@@ -42,7 +64,7 @@ void main() {
           data: data(),
         );
         expect(find.text('2'), findsOneWidget);
-        await t.tap(find.bySemanticsLabel('workflow.panel.checklist'));
+        await t.tap(find.bySemanticsLabel(_tr('workflow.panel.checklist')));
         await settle(t);
         expect(find.byType(ChecklistPluginGroup), findsOneWidget);
         expect(find.text('Missing Plugin'), findsOneWidget);
@@ -59,7 +81,7 @@ void main() {
         WorkflowChecklist(disabled: false, items: const [_plugin, _broken], onItemClick: clicked.add),
         data: data(),
       );
-      await t.tap(find.bySemanticsLabel('workflow.panel.checklist'));
+      await t.tap(find.bySemanticsLabel(_tr('workflow.panel.checklist')));
       await settle(t);
       await t.tap(find.text('Needs configuration'));
       expect(clicked.single.id, 'node-1');
@@ -73,7 +95,7 @@ void main() {
         WorkflowChecklist(disabled: false, items: [_plugin, inline]),
         data: data(),
       );
-      await t.tap(find.bySemanticsLabel('workflow.panel.checklist'));
+      await t.tap(find.bySemanticsLabel(_tr('workflow.panel.checklist')));
       await settle(t);
       await t.tap(find.text('Needs configuration'));
       expect(selected, ['node-1']);
@@ -82,9 +104,9 @@ void main() {
 
     testWidgets('should render the resolved state when there are no checklist warnings', (t) async {
       await renderWorkflowComponent(t, const WorkflowChecklist(disabled: false, items: []), data: data());
-      await t.tap(find.bySemanticsLabel('workflow.panel.checklist'));
+      await t.tap(find.bySemanticsLabel(_tr('workflow.panel.checklist')));
       await settle(t);
-      expect(find.text('workflow.panel.checklistResolved'), findsOneWidget);
+      expect(find.text(_tr('workflow.panel.checklistResolved')), findsOneWidget);
     });
 
     testWidgets('should ignore popover open changes when the checklist is disabled', (t) async {
@@ -94,10 +116,10 @@ void main() {
         data: data(),
       );
       expect(find.text('2'), findsOneWidget);
-      expect(isEnabled(t, 'workflow.panel.checklist'), isFalse);
+      expect(isEnabled(t, _tr('workflow.panel.checklist')), isFalse);
       await t.tap(find.text('2'), warnIfMissed: false);
       await settle(t);
-      expect(find.text('workflow.panel.checklistDescription'), findsNothing);
+      expect(find.text(_tr('workflow.panel.checklistDescription')), findsNothing);
     });
   });
 
@@ -125,8 +147,8 @@ void main() {
         ),
       );
       expect(find.text('Needs configuration'), findsOneWidget);
-      expect(find.text('workflow.common.needConnectTip'), findsOneWidget);
-      expect(find.text('workflow.panel.goToFix'), findsNWidgets(2));
+      expect(find.text(_tr('workflow.common.needConnectTip')), findsOneWidget);
+      expect(find.text(_tr('workflow.panel.goToFix')), findsNWidgets(2));
       expect(isButton(t, find.text('Needs configuration')), isTrue);
       await t.tap(find.text('Needs configuration'));
       expect(clicked.single.id, 'node-1');
@@ -154,7 +176,7 @@ void main() {
       );
       await t.tap(find.text('Needs configuration'));
       expect(clicked, isEmpty);
-      expect(find.text('workflow.panel.goToFix'), findsNothing);
+      expect(find.text(_tr('workflow.panel.goToFix')), findsNothing);
       expect(isButton(t, find.text('Needs configuration')), isFalse);
     });
   });
@@ -187,7 +209,7 @@ void main() {
         item('node-2', 'langgenius/test-plugin:1.0.0@sha256'),
         item('node-3', 'langgenius/another-plugin:2.0.0@sha256'),
       ]);
-      await t.tap(find.text('workflow.nodes.agent.pluginInstaller.install'));
+      await t.tap(find.text(_tr('workflow.nodes.agent.pluginInstaller.install')));
       expect(store.dependencies.value, [
         {
           'type': 'marketplace',
@@ -210,14 +232,14 @@ void main() {
 
     testWidgets('should keep install button disabled when no identifier is available', (t) async {
       await render(t, [item('node-1', null)]);
-      expect(isEnabled(t, 'workflow.nodes.agent.pluginInstaller.install'), isFalse);
-      await t.tap(find.text('workflow.nodes.agent.pluginInstaller.install'), warnIfMissed: false);
+      expect(isEnabled(t, _tr('workflow.nodes.agent.pluginInstaller.install')), isFalse);
+      await t.tap(find.text(_tr('workflow.nodes.agent.pluginInstaller.install')), warnIfMissed: false);
       expect(store.dependencies.value, isEmpty);
     });
 
     testWidgets('should omit the version when the marketplace identifier does not include one', (t) async {
       await render(t, [item('node-1', 'langgenius/test-plugin@sha256')]);
-      await t.tap(find.text('workflow.nodes.agent.pluginInstaller.install'));
+      await t.tap(find.text(_tr('workflow.nodes.agent.pluginInstaller.install')));
       expect(store.dependencies.value, [
         {
           'type': 'marketplace',

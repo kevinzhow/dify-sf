@@ -6,7 +6,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../account/account_page.dart';
-import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_theme_mode.dart';
 import '../design/dify_tokens.g.dart';
@@ -238,8 +237,9 @@ class AppearanceSubmenu extends StatelessWidget {
       placement: DifyPlacement.rightStart,
       sideOffset: 6,
       // `w-34.75`, border-box.
-      width: 139 - 2 * Css.hairline,
+      width: 139,
       paddingX: 12,
+      marginX: 0,
       leading: RemixIcon('sun-line', size: 16, color: DifyColors.textTertiary),
       label: label('account.appearanceLabel'),
       semanticLabel: _tc(context, 'account.appearanceLabel'),

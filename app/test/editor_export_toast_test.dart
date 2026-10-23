@@ -50,8 +50,12 @@ void main() {
           await t.pump(const Duration(milliseconds: 100));
         }
         await t.tap(find.byKey(const Key('session-menu')));
+        await t.pump();
+        await t.pump();
         await t.pump(const Duration(milliseconds: 300));
         await t.tap(find.byKey(const Key('export-dsl')));
+        await t.pump();
+        await t.pump();
         await t.pump(const Duration(milliseconds: 300));
         if (!fail) {
           expect(find.byKey(const Key('export-dsl-text')), findsOneWidget);
@@ -59,6 +63,8 @@ void main() {
           await t.pump();
           expect(clipboard.where((c) => c.method == 'Clipboard.setData').single.arguments, {'text': 'kind: app'});
         }
+        await t.pump();
+        await t.pump();
         await t.pump(const Duration(milliseconds: 600));
         expect(find.text(fail ? 'Export failed: Bad state: offline' : 'Copied the workflow file'), findsOneWidget);
         expect(

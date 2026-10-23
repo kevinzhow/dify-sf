@@ -32,3 +32,17 @@ python -m unittest discover -s tool/visual -p test_compare.py -v
 ```
 
 These regression tests reject background dilution, text-only masking and rescaled size mismatches, as well as wrong-language/zoomed references.
+
+## Menu interaction audit
+
+`app/test/design/menu_interaction_regression_test.dart` verifies nested tap-region membership (pointer and platform semantics actions), alignment, border-box widths, viewport constraints, keyboard/focus return, pointer cancellation, mouse-only hover, and shared paint/hit/semantics transforms during animations. It is included in the normal complete client suite and `tool/test_control_typography.sh`.
+
+The browser fixture uses the actual account/appearance menu, dropdown, nested menus, popovers, checkbox/radio items, context menu and select. It has no backend or real account. Build and serve it separately from the production application:
+
+```sh
+./tool/build_web.sh --no-pub --target tool/menu_interaction_probe.dart --output /path/on/disk/menu-probe
+python3 -m http.server 18081 --bind 127.0.0.1 --directory /path/on/disk/menu-probe
+python tool/visual/menu_interactions.py --url http://127.0.0.1:18081 --out /path/on/disk/menu-results
+```
+
+Run builds and browsers under the machine's resource limits. The script covers light/dark at 320, 390, 414, 640 and 1440 CSS pixels, real Chromium touch/long-press or mouse/right-click events, and keyboard dismissal. It reproduces the touch-open/hover-close conflict without assuming that emulation proves the precise event sequence on a physical Android device. Supplement this fixture with actual Studio/editor/settings page checks and reference screenshots; it does not establish whole-application parity.

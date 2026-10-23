@@ -113,9 +113,13 @@ void main() {
       );
       await _focusAndTrigger(t, LogicalKeyboardKey.slash);
       await t.tap(find.text('open menu'));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       // The menu is a popup of its own in the overlay; a press in it is not outside the shortcut popup.
       await t.tap(find.text('portal-child'));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       expect(picked, 1);
       expect(find.text('open menu'), findsOneWidget);

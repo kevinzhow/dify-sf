@@ -106,13 +106,9 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
           placement: w.placement,
           sideOffset: w.sideOffset,
           alignOffset: w.alignOffset,
-          // MenuPopup's surface adds a one-pixel border on each side; the select's width is border-box.
-          width:
-              (w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : 240)).clamp(
-                2.0,
-                (MediaQuery.sizeOf(context).width - 10).clamp(2.0, double.infinity),
-              ) -
-              2,
+          // The popup and trigger both use CSS border-box dimensions. The
+          // shared floating layout owns viewport collision constraints.
+          width: w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : 240),
           builder: (context, controller) => _SelectTrigger(
             text: selected == null ? w.placeholder ?? '' : _label(selected.label),
             placeholder: selected == null,

@@ -133,6 +133,8 @@ void main() {
     expect(find.text('an editor'), findsOneWidget);
     await auth.sessionExpired();
     await t.pump();
+    await t.pump();
+    await t.pump();
     await t.pump(const Duration(milliseconds: 500));
     expect(find.text('an editor'), findsNothing);
     expect(find.byKey(const ValueKey('signin-submit')), findsOneWidget);
@@ -165,6 +167,8 @@ void main() {
     expect(await store.read('http://fake'), isNotNull);
 
     await t.tap(find.byKey(const ValueKey('account-trigger')));
+    await t.pump();
+    await t.pump();
     await t.pump(const Duration(milliseconds: 300));
     expect(find.text('kim@example.com'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('account-logout')));

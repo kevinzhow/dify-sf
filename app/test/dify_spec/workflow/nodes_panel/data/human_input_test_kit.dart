@@ -135,6 +135,9 @@ Finder named(String label) => find.bySemanticsLabel(label);
 /// Taps the control named [label].
 Future<void> tapNamed(WidgetTester t, String label) async {
   await t.tap(named(label).first);
+  // Mount controlled portals and start their ticker before advancing time.
+  await t.pump();
+  await t.pump();
   await t.pump(const Duration(milliseconds: 300));
 }
 

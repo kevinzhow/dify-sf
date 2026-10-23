@@ -91,6 +91,9 @@ DifyAlign _flip(DifyAlign a) => switch (a) {
 
 bool _vertical(DifySide s) => s == DifySide.top || s == DifySide.bottom;
 
+/// Base UI's shared collision padding, used for both sizing and placement.
+const difyFloatingCollisionPadding = 5.0;
+
 /// Positions a [popup] of this size against [anchor] within [bounds] the way Base UI's positioner (Floating UI's
 /// offset, flip, shift and size middleware, collision padding 5) does. LTR only.
 DifyFloatingPosition computeFloatingPosition({
@@ -101,7 +104,7 @@ DifyFloatingPosition computeFloatingPosition({
   double sideOffset = 0,
   double alignOffset = 0,
   DifyCollision collision = DifyCollision.dropdown,
-  double padding = 5,
+  double padding = difyFloatingCollisionPadding,
 }) {
   Offset at(DifySide side, DifyAlign align) {
     final cross = align == DifyAlign.end ? -alignOffset : alignOffset;
@@ -192,6 +195,15 @@ DifyFloatingPosition computeFloatingPosition({
     var x = o.dx;
     if (detach) x = clamp(x, padding, bounds.width - padding - popup.width);
     o = Offset(x, y);
+  }
+
+  // If neither side can fit (for example a third menu in a narrow viewport),
+  // flipping alone leaves actions unreachable. Keep the chosen side and clamp
+  // its main axis too; normal placements retain their anchor relationship.
+  if (_vertical(side)) {
+    o = Offset(o.dx, clamp(o.dy, padding, bounds.height - padding - popup.height));
+  } else {
+    o = Offset(clamp(o.dx, padding, bounds.width - padding - popup.width), o.dy);
   }
 
   final available = switch (side) {

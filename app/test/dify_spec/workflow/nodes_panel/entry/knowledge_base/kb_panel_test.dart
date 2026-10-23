@@ -130,8 +130,12 @@ void main() {
     testWidgets('choosing a chunk structure and an index method writes the node data', (t) async {
       await render(t, {...knowledgeBaseDefaultValue});
       await t.tap(find.text('workflow.nodes.knowledgeBase.chooseChunkStructure'));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       await t.tap(find.text('datasetCreation.stepTwo.parentChild'));
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       Map<String, Object?> data() => NodePanelProps(
         node: h['knowledge-base-1']!,

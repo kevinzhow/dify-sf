@@ -55,6 +55,8 @@ void main() {
 
       await t.enterText(field(), 'member');
       await t.pump();
+      await t.pump();
+      await t.pump();
       await t.pump(const Duration(milliseconds: 300));
       expect(find.byType(MemberList), findsOneWidget);
       await t.tap(find.text('Member Two'));

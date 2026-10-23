@@ -9,7 +9,6 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_theme_mode.dart';
 import '../../design/dify_tokens.g.dart';
@@ -489,7 +488,7 @@ class ThemeSelector extends StatelessWidget {
     return DifyDropdownMenu(
       placement: DifyPlacement.bottomEnd,
       sideOffset: 6,
-      width: 144 - 2 * Css.hairline,
+      width: 144,
       builder: (context, controller) => DifyIconButton(
         key: const ValueKey('theme-selector'),
         label: tr('theme.theme'),
