@@ -1,7 +1,9 @@
 # Replicating Dify's workflow editor in Flutter
 
+The current cross-client/server delivery plan is [the migration plan on main](https://github.com/kevinzhow/dify-sf/blob/main/docs/migration-plan.md). This document retains the editor specification and historical acceptance outline. Font work is paused by the current direction. Full-site visual parity and Scene performance for the current Web default have not been accepted.
+
 Goal: the Flutter client is Dify 1.17.1's workflow editor, look and behaviour, on the dify-sf collaborative document
-and the Flutter Scene canvas. Dify Web is the specification; any deviation needs Kevin.
+and the Flutter canvas. Web defaults to the retained widget renderer on full Dart Wasm/skwasm; the Scene path remains available separately. Dify Web is the specification; deviations are recorded explicitly.
 
 ## Baseline
 
@@ -26,7 +28,7 @@ and the Flutter Scene canvas. Dify Web is the specification; any deviation needs
 * Visual: Playwright opens the same workflow file (the 24 Dify samples plus large generated ones) in a local Dify
   1.17.1 and in our web build, same Chromium, viewport, scale, fonts and fake data; screenshots per page, component
   and state (hover, selected, dragging, panel open, error); `alignment-audit.py` (edge and text-line alignment) plus
-  perceptual diff; pass = non-text similarity at least 99.5%; passing shots become golden baselines.
+  perceptual diff; keep full-region and tight control scores, including text. Same font/locale/viewport/state and geometry are required; a non-text score alone does not prove visual parity. The strict current control target is 99.5%, with actual failures retained; fonts remain deferred under the current pause. Passing shots may become golden baselines only for their stated scope.
 * Dify's own unit tests: every case of Dify's vitest specs for the workflow editor, the model provider page and
   dify-ui (3823 cases) is ported to Dart with the same names, or listed as not applicable with a reason;
   `tool/dify_spec/ledger.py` reports the counts. A module counts as done when its Dify specs pass.
