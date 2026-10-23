@@ -15,9 +15,10 @@ a=json.loads(auth.read_text());client=DifySF(args.base,a['email'],a['password'])
 (private/'session.json').write_text(json.dumps({'email':a['email'],'password':a['password'],'headers':client.s.headers}));(private/'session.json').chmod(0o600)
 checks=[];apps={}
 def node(id,type,**data):return {'id':id,'data':{'type':type,'title':id,**data},'position':{'x':80+len(id)*40,'y':120}}
-def graph(nodes,edges=None):
+def graph(nodes,edges=None,name="Runtime phase1 verified (local test model)"):
+ for i,item in enumerate(nodes):item['position']={'x':80+i*280,'y':160}
  edges=edges or list(zip([x['id'] for x in nodes][:-1],[x['id'] for x in nodes][1:]))
- return {'kind':'app','version':'0.3.1','app':{'mode':'workflow','name':'Runtime acceptance (local test model)'},'workflow':{'features':{},'environment_variables':[],'conversation_variables':[],'graph':{'nodes':nodes,'edges':[{'id':s+'-'+t,'source':s,'sourceHandle':'source','target':t,'targetHandle':'target'} for s,t in edges]}}}
+ return {'kind':'app','version':'0.3.1','app':{'mode':'workflow','name':name},'workflow':{'features':{},'environment_variables':[],'conversation_variables':[],'graph':{'nodes':nodes,'edges':[{'id':s+'-'+t,'source':s,'sourceHandle':'source','target':t,'targetHandle':'target'} for s,t in edges]}}}
 start=node('start','start',variables=[{'variable':'q','type':'text-input','label':'q','required':True}])
 llm=node('llm','llm',model={'provider':'langgenius/openai_api_compatible/openai_api_compatible','name':'stub-chat','mode':'chat','completion_params':{'temperature':0}},prompt_template=[{'role':'user','text':'[[stub:fixed]] {{#start.q#}}'}],context={'enabled':False,'variable_selector':[]},vision={'enabled':False})
 py=node('python','code',code_language='python3',code='def main(q: str):\n    return {"result": "python:" + q}\n',variables=[{'variable':'q','value_selector':['start','q']}],outputs={'result':{'type':'string','children':None}})
@@ -34,7 +35,7 @@ out=finished[0]['outputs'];assert out['text']=='This is the fixed stub answer.' 
 body=json.loads(out['http']);assert body['body']=='python:hello',body
 requests=stub.requests();assert any('[[stub:fixed]] hello' in json.dumps(x) for x in requests),requests;save('model-requests',requests);checks.append('whole-real-services')
 # A private destination must be rejected by Squid, even though the fixture host alone is allowed.
-blocked=json.loads(json.dumps(http));blocked['data']['url']='http://127.0.0.1:8080/healthz';blocked['data']['body']={'type':'none','data':[]};blockedapp=client.import_dsl(graph([start,blocked]));blockedresult=client.run_node(blockedapp,'http',{});save('ssrf-blocked',blockedresult);assert blockedresult['status']=='failed' and 'SSRF' in blockedresult['error'],blockedresult;checks.append('ssrf-private-blocked')
+blocked=json.loads(json.dumps(http));blocked['data']['url']='http://127.0.0.1:8080/healthz';blocked['data']['body']={'type':'none','data':[]};blockedapp=client.import_dsl(graph([start,blocked],name='Runtime SSRF rejection fixture'));blockedresult=client.run_node(blockedapp,'http',{});save('ssrf-blocked',blockedresult);assert blockedresult['status']=='failed' and 'SSRF' in blockedresult['error'],blockedresult;checks.append('ssrf-private-blocked')
 run_id=next(e['workflow_run_id'] for e in frames if e.get('workflow_run_id'));detail=client.s.get(f'/v1/apps/{app}/workflow-runs/{run_id}');save('run-detail',detail);assert detail['status']=='succeeded' and detail['outputs']==out
 save('result',{'checks':checks,'app':app,'run':run_id,'apps':apps,'outputs':out,'errors':[],'model':'deterministic local test via real signed plugin','credentialsOrTokensIncluded':False})
 print('PASS:',', '.join(checks),flush=True)
