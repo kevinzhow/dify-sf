@@ -156,7 +156,9 @@ flutter build linux --release
 ```
 
 Web releases use full Dart Wasm and the skwasm renderer by default. From the repository root, run
-`tool/build_web.sh` (equivalent to `cd app && flutter build web --release --wasm`). Extra Flutter build
+`tool/build_web.sh` (equivalent to `cd app && flutter build web --release --wasm --no-web-resources-cdn`).
+The renderer is served from the deployed `canvaskit/` directory, so loading the application does not depend
+on reaching Google's renderer CDN. Extra Flutter build
 options, such as `--base-href`, can be passed to the script. Deploy the entire `app/build/web/` output,
 including `.wasm`, `.mjs`, assets and renderer files; serve `.wasm` as `application/wasm`. Avoid caching
 `index.html` and `flutter_bootstrap.js` across releases.

@@ -431,57 +431,63 @@ class _DifyToastHostState extends State<DifyToastHost> {
             right: widget.right ?? (screen.width >= 640 ? 32 : 16),
             width: width,
             bottom: 0,
-            child: Semantics(
-              container: true,
-              explicitChildNodes: true,
-              label: 'Notifications',
-              liveRegion: true,
-              child: MouseRegion(
-                hitTestBehavior: HitTestBehavior.deferToChild,
-                onEnter: (_) => _hover(true),
-                onExit: (_) => _hover(false),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // The 8 px gaps between expanded toasts keep them expanded (Base UI's `after:` strips).
-                    if (_expanded && active.isNotEmpty)
-                      Positioned(top: 0, left: 0, right: 0, height: bottom, child: const AbsorbPointer()),
-                    for (final e in _entries.reversed)
-                      Positioned(
-                        key: ObjectKey(e),
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        // The transform is outermost: hits land where the toast is drawn.
-                        child: _ToastFrame(
-                          target: _target(e, frontHeight, width),
-                          instant: e.dragging,
-                          child: (content) => IgnorePointer(
-                            ignoring: e.ending || e.index >= widget.limit,
-                            child: GestureDetector(
-                              onPanStart: (_) {
-                                e.dragging = true;
-                                _syncExpanded();
-                              },
-                              onPanUpdate: (d) => setState(() {
-                                // swipeDirection up and right: movement the other ways does not move it.
-                                final s = e.swipe + d.delta;
-                                e.swipe = Offset(math.max(0, s.dx), math.min(0, s.dy));
-                              }),
-                              onPanEnd: (_) => _swipeEnd(e),
-                              onPanCancel: () => _swipeEnd(e),
-                              child: _ToastCard(
-                                data: e.data,
-                                content: content,
-                                onClose: () => _close(e.data.id),
-                                onHeight: (h) => _measured(e, h),
+            // A labelled semantics node for this full-height positioning area
+            // becomes a Web DOM hit target, even when the toast stack is empty.
+            // Announce only the actual cards below.
+            child: MouseRegion(
+              hitTestBehavior: HitTestBehavior.deferToChild,
+              onEnter: (_) => _hover(true),
+              onExit: (_) => _hover(false),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // The 8 px gaps between expanded toasts keep them expanded (Base UI's `after:` strips).
+                  if (_expanded && active.isNotEmpty)
+                    Positioned(top: 0, left: 0, right: 0, height: bottom, child: const AbsorbPointer()),
+                  for (final e in _entries.reversed)
+                    Positioned(
+                      key: ObjectKey(e),
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      // The transform is outermost: hits land where the toast is drawn.
+                      child: _ToastFrame(
+                        target: _target(e, frontHeight, width),
+                        instant: e.dragging,
+                        child: (content) => ExcludeSemantics(
+                          excluding: e.ending || e.index >= widget.limit,
+                          child: Semantics(
+                            container: true,
+                            explicitChildNodes: true,
+                            label: 'Notifications',
+                            liveRegion: true,
+                            child: IgnorePointer(
+                              ignoring: e.ending || e.index >= widget.limit,
+                              child: GestureDetector(
+                                onPanStart: (_) {
+                                  e.dragging = true;
+                                  _syncExpanded();
+                                },
+                                onPanUpdate: (d) => setState(() {
+                                  // swipeDirection up and right: movement the other ways does not move it.
+                                  final s = e.swipe + d.delta;
+                                  e.swipe = Offset(math.max(0, s.dx), math.min(0, s.dy));
+                                }),
+                                onPanEnd: (_) => _swipeEnd(e),
+                                onPanCancel: () => _swipeEnd(e),
+                                child: _ToastCard(
+                                  data: e.data,
+                                  content: content,
+                                  onClose: () => _close(e.data.id),
+                                  onHeight: (h) => _measured(e, h),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           ),

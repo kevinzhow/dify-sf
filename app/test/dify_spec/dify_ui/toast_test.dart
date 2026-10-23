@@ -48,6 +48,25 @@ Widget underlying(EdgeInsets at, Size size, VoidCallback onPressed) => Positione
 
 void main() {
   group('@langgenius/dify-ui/toast', () {
+    testWidgets('notification semantics cover visible cards, never the empty positioning area', (t) async {
+      final semantics = t.ensureSemantics();
+      final manager = DifyToastManager();
+      final notify = DifyToast(manager);
+      await render(t, [DifyToastHost(manager: manager, timeout: Duration.zero)]);
+      expect(find.semantics.byLabel('Notifications').evaluate(), isEmpty);
+
+      final id = notify.success('Saved');
+      await settle(t);
+      final notification = find.semantics.byLabel('Notifications').evaluate().single;
+      expect(notification.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
+      expect(notification.rect.height, lessThanOrEqualTo(t.getSize(card('Saved')).height + 1));
+
+      notify.dismiss(id);
+      await settle(t);
+      expect(find.semantics.byLabel('Notifications').evaluate(), isEmpty);
+      semantics.dispose();
+    });
+
     testWidgets('should render a success toast when called through the typed shortcut', (t) async {
       final semantics = t.ensureSemantics();
       await render(t, [const DifyToastHost()]);
