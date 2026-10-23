@@ -25,3 +25,9 @@
 回归包含缩放锚点与边界、连续多种手势、取消与手指数变化、拖动的一步撤销、长按菜单、窄屏面板、旋转与键盘，以及桌面选择、焦点、注释编辑与导航。当前用户账号、数据库、上传卷及凭据不用于测试数据重置。
 
 字体按用户指令暂停；本轮不以移动端工作顺带改变字体方案。
+
+## Flutter Web 横向滚动兼容
+
+Flutter 3.47.6 的 Web semantics 同步在横向滚动时也写 `scrollTop`，造成辅助功能 DOM 的纵向坐标偏移。`app/web/semantics_scroll_compat.js` 仅为 Flutter 创建的 semantics 元素安装局部适配：检测引擎横向 overflow 标记后将这次赋值用于 `scrollLeft`，纵向滚动和普通 DOM 沿用浏览器行为，不关闭辅助功能。没有修改共享 SDK。
+
+来源：[Flutter SemanticScrollable.update](https://github.com/flutter/flutter/blob/5fc346839b5d0eef006ed8404392afb4dfae428d/engine/src/flutter/lib/web_ui/lib/src/engine/semantics/scrollable.dart)。上游按轴同步后，应移除此适配并复跑真实横向手势、发布弹层与纵向面板用例；`tool/verify_semantics_scroll_web.py` 使用 Playwright 检查横向点击目标及纵向行为。
