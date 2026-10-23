@@ -1,5 +1,9 @@
 # Runtime files (M2b)
 
+Delivered on 2026-10-23 in code commit `5131f3a` (task #13 awaits review). The existing Web trial uses the frozen formal Wasm build and production image `sha256:0012f4ac58e5dad6bd4d1c1529bef8ce82683ab139b1ad051a2d73bb626d9476`. Existing accounts, application/runtime history, upload volume, application encryption key and file-signing key were preserved; 20 protected table fingerprints were unchanged across the switch.
+
+Final verification: 434 server tests in 88 suites, 5,936 client tests (3 external-environment skips), 10 real proxy tests, 10 file-boundary checks, and the actual Wasm chooser/retry/new-process-resume/history/preview workflow. Runtime checks used the exact production image; model requests used a deterministic local endpoint through the real signed plugin. Actual trial smoke testing remained unauthenticated and made no backend writes. Email remains off.
+
 Runtime files reuse the authenticated upload API, local blob store, atomic publication, upload limits and preview signer from protocol 1.17. No storage path supplied in a workflow, request or historical opaque reference is used as a disk path.
 
 ## Identity and access
