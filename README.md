@@ -5,7 +5,7 @@ stale clients never silently overwrite newer data, and all clients converge.**
 
 The server provides collaborative editing, accounts and workspace settings, application drafts and history, model
 provider configuration, a Swift workflow runtime, and local file uploads with signed previews. The Flutter studio (`app/`) and pure-Dart libraries (`packages/`) live alongside the Swift server
-on `main`. The former `client/step1` branch is retained for historical compatibility; new delivery integrates on `main`. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
+on `main`. New delivery integrates on `main`; the completed `client/step1` and feature branches have been removed after merge. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
 use the configured sandbox and SSRF proxy. Human-input web forms and email delivery have separate, default-off
 rollout flags. Runtime files/vision, tools, published end-user runs and the remaining conversation features are not
 yet complete. The sections below describe configuration and the supported boundaries.
