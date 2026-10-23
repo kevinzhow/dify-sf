@@ -1,5 +1,7 @@
 # Persistent console Chatflow (protocol 1.18)
 
+Delivered on 2026-10-23 in code commit `9c6d61f` (task #14 awaits review). The existing Web trial uses the frozen formal Wasm build and production image `sha256:a2c6deef4fd429b88bc800282d1cedcb275d1f0daca26ce9684db712b4978933`. Current keys, the original database/upload volumes and all pre-existing columns of 21 protected tables were preserved.
+
 Console Chatflow debug uses the existing Swift graph engine, model/plugin adapters, runtime files, human-input snapshots and SSE follower. It does not execute a parallel browser engine or replace a refused remote operation with demo data. Servers advertise `workflow_runtime.chatflow`; clients default that capability to false for older servers.
 
 ## Durable turns and isolation
