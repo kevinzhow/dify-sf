@@ -32,6 +32,7 @@ class DifyBadge extends StatelessWidget {
       child: DifyText(
         capitalize ? cssCapitalize(text) : text,
         uppercase ? DifyType.system2xsMediumUppercase : DifyType.systemXsMedium,
+        centerCap: true,
         color: color ?? DifyColors.textTertiary,
       ),
     ),

@@ -134,7 +134,11 @@ class _DifyTextFieldState extends State<DifyTextField> {
       style: DifyFonts.resolveStyle(style),
       strutStyle:
           w.strutStyle ??
-          Css.lineStrut(DefaultTextStyle.of(context).style.merge(style), textScaler: MediaQuery.textScalerOf(context)),
+          Css.lineStrut(
+            DefaultTextStyle.of(context).style.merge(style),
+            textScaler: MediaQuery.textScalerOf(context),
+            centerCap: w.maxLines == 1,
+          ),
       onChanged: w.onChanged,
       onSubmitted: w.onSubmitted,
       onEditingComplete: w.onEditingComplete,
@@ -172,6 +176,7 @@ class _DifyTextFieldState extends State<DifyTextField> {
         hint: d.hintText == null
             ? null
             : DifyTextLine(
+                centerCap: w.maxLines == 1,
                 d.hintText!,
                 style: d.hintStyle ?? style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
                 strutStyle: w.strutStyle,
@@ -234,7 +239,10 @@ class DifyFieldBox extends StatelessWidget {
         if (d.labelText != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: DifyTextLine(d.labelText!, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+            child: DifyTextLine(
+              d.labelText!,
+              style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+            ),
           ),
         Container(
           padding: d.contentPadding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

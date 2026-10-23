@@ -40,6 +40,7 @@ class DifyText extends StatelessWidget {
     super.key,
     this._color,
     this.align,
+    this.centerCap = false,
     this.maxLines = 1,
   });
   final String text;
@@ -47,6 +48,7 @@ class DifyText extends StatelessWidget {
   final Color? _color;
   Color get color => _color ?? DifyColors.textPrimary;
   final TextAlign? align;
+  final bool centerCap;
   final int? maxLines;
 
   @override
@@ -55,6 +57,7 @@ class DifyText extends StatelessWidget {
     return DifyTextLine(
       difyTransform(style, text),
       style: s,
+      centerCap: centerCap,
       textAlign: align,
       maxLines: maxLines,
       overflow: maxLines == null ? null : TextOverflow.ellipsis,

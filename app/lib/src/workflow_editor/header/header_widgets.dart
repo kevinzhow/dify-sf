@@ -36,7 +36,7 @@ class HeaderPressable extends StatelessWidget {
     onPressed: onPressed ?? () {},
     disabled: disabled,
     semanticLabel: semanticLabel,
-    builder: (context, hovered, focused) => builder(context, hovered && !disabled),
+    builder: (context, hovered, focused) => DifyControlLabelScope(child: builder(context, hovered && !disabled)),
   );
 }
 

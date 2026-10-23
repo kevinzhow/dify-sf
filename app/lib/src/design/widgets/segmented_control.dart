@@ -161,7 +161,9 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
                             child: DefaultTextStyle.merge(
                               style: difyTextStyle(DifyType.systemSmMedium, color),
                               child: ExcludeSemantics(
-                                child: _Tint(color: color, child: s.child),
+                                child: DifyControlLabelScope(
+                                  child: _Tint(color: color, child: s.child),
+                                ),
                               ),
                             ),
                           ),

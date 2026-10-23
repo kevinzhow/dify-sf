@@ -91,7 +91,10 @@ class _MenuRowState extends State<_MenuRow> {
           ?widget.leading,
           // The label takes the free width, which puts the trailing part at the end (`ms-auto`).
           Expanded(
-            child: Align(alignment: AlignmentDirectional.centerStart, child: widget.child),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: DifyControlLabelScope(child: widget.child),
+            ),
           ),
           ?widget.trailing,
         ],

@@ -178,7 +178,9 @@ class _CheckRow extends StatelessWidget {
             spacing: 8,
             children: [
               DifyCheckboxBox(checked: checked, disabled: disabled),
-              Expanded(child: DifyText(label, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
+              Expanded(
+                child: DifyText(label, DifyType.systemSmMedium, centerCap: true, color: DifyColors.textSecondary),
+              ),
             ],
           ),
         ),

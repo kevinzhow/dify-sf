@@ -15,3 +15,21 @@ python tool/fonts/build_cjk.py --cache /var/tmp/Winnie/<task>/upstream
 The generator verifies pinned input bytes, preserves the upstream cmap and hhea metrics, and records output digests. Brotli quality 6 trades a little compression for substantially less build CPU; WOFF2 is lossless at every quality. The deployed app has no Python dependency.
 
 Sources: [pinned Noto deployment formats](https://github.com/notofonts/noto-cjk/blob/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/README.md), [Flutter FontLoader](https://api.flutter.dev/flutter/services/FontLoader-class.html), [StrutStyle](https://api.flutter.dev/flutter/painting/StrutStyle-class.html).
+
+## Shared control alignment metrics
+
+Run `build_metrics.py` with the same FontTools environment to regenerate
+`app/lib/src/design/font_metrics.g.dart` and `metrics.json` from the **actual
+bundled font bytes**. Every entry records the family/weight, units per em,
+OpenType `sCapHeight` / `sxHeight`, source hash and path. Legacy faces without
+those OS/2 fields use the OpenType-defined H/x outline fallback. Ratios must
+never be adjusted by eye.
+
+Compact labels use the cap/alphabetic text edge described by
+[CSS Inline Layout](https://www.w3.org/TR/css-inline-3/#text-box-edge), preserving
+fractional values and a consistent baseline across translations and fallback
+runs. Normal paragraphs and multiline editors retain CSS line boxes. Inline
+chips use their current face's x-height and measured line metrics. Unknown
+native faces retain engine layout rather than inheriting another font's profile.
+Flutter does not currently expose tight glyph outlines through GlyphInfo;
+its layout bounds must not be treated as visible ink bounds.

@@ -114,6 +114,7 @@ class _DifyCalendarState extends State<DifyCalendar> {
                           spacing: 2,
                           children: [
                             DifyText(
+                              centerCap: true,
                               '${_time('months.${calendarMonthKeys[_month.month - 1]}')} ${_month.year}',
                               DifyType.systemMdSemibold,
                             ),
@@ -142,6 +143,7 @@ class _DifyCalendarState extends State<DifyCalendar> {
                   for (final d in calendarDayKeys)
                     Expanded(
                       child: DifyText(
+                        centerCap: true,
                         _time('daysInWeek.$d'),
                         DifyType.system2xsMedium,
                         color: DifyColors.textTertiary,
@@ -217,6 +219,7 @@ class _DayItem extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           DifyText(
+            centerCap: true,
             '${day.day}',
             DifyType.systemSmMedium,
             color: selected

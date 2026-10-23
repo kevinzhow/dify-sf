@@ -3,6 +3,16 @@ import 'package:flutter/widgets.dart';
 import '../css_metrics.dart';
 import '../dify_fonts.dart';
 
+/// Optical alignment for compact control labels. It changes only the shared
+/// strut baseline, keeping the line box, hit area and focus geometry unchanged.
+/// Body paragraphs and editors continue to use the normal CSS baseline.
+class DifyControlLabelScope extends InheritedWidget {
+  const DifyControlLabelScope({super.key, required super.child});
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<DifyControlLabelScope>() != null;
+  @override
+  bool updateShouldNotify(DifyControlLabelScope oldWidget) => false;
+}
+
 /// Ordinary Dify text. The browser's line box and primary-font baseline are
 /// shared by labels, buttons and plain rich text, including CJK fallback runs.
 /// Flutter still owns selection, semantics, shaping, wrapping and scaling.
@@ -11,6 +21,7 @@ class DifyTextLine extends StatelessWidget {
     String this.data, {
     super.key,
     this.style,
+    this.centerCap = false,
     this.strutStyle,
     this.textAlign,
     this.textDirection,
@@ -30,6 +41,7 @@ class DifyTextLine extends StatelessWidget {
     InlineSpan this.textSpan, {
     super.key,
     this.style,
+    this.centerCap = false,
     this.strutStyle,
     this.textAlign,
     this.textDirection,
@@ -48,6 +60,7 @@ class DifyTextLine extends StatelessWidget {
   final String? data;
   final InlineSpan? textSpan;
   final TextStyle? style;
+  final bool centerCap;
   final StrutStyle? strutStyle;
   final TextAlign? textAlign;
   final TextDirection? textDirection;
@@ -80,7 +93,9 @@ class DifyTextLine extends StatelessWidget {
     final span = textSpan;
     final strut =
         strutStyle ??
-        (span != null && _hasIndependentMetrics(span, effective) ? null : Css.lineStrut(effective, textScaler: scaler));
+        (span != null && _hasIndependentMetrics(span, effective)
+            ? null
+            : Css.lineStrut(effective, textScaler: scaler, centerCap: centerCap || DifyControlLabelScope.of(context)));
     if (span != null) {
       return Text.rich(
         span,

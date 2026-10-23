@@ -151,6 +151,7 @@ TextField difyTextField({
   strutStyle: Css.lineStrut(
     DefaultTextStyle.of(context).style.merge(style),
     textScaler: MediaQuery.textScalerOf(context),
+    centerCap: true,
   ),
   cursorColor: const Color(0xFF155EEF), // caret-primary-600
   cursorWidth: 1,
@@ -164,6 +165,7 @@ TextField difyTextField({
     hint: placeholder == null
         ? null
         : DifyTextLine(
+            centerCap: true,
             placeholder,
             style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
             maxLines: 1,

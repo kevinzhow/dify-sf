@@ -135,9 +135,15 @@ class _DifyTagInputState extends State<DifyTagInput> {
               controller: _text,
               focusNode: _focus,
               style: style,
+              strutStyle: Css.lineStrut(style, textScaler: MediaQuery.textScalerOf(context), centerCap: true),
               cursorColor: const Color(0xFF295EFF),
               cursorWidth: 1,
-              decoration: InputDecoration.collapsed(hintText: placeholder, hintStyle: hintStyle),
+              decoration: InputDecoration(
+                isCollapsed: true,
+                border: InputBorder.none,
+                visualDensity: VisualDensity.standard,
+                hint: DifyTextLine(placeholder, style: hintStyle, centerCap: true),
+              ),
               // Enter adds the tag and keeps the focus (no blur, which would add again).
               onEditingComplete: () {},
               onSubmitted: (v) {
@@ -176,7 +182,7 @@ class _DifyTagInputState extends State<DifyTagInput> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DifyText(item, DifyType.systemXsRegular, color: DifyColors.textSecondary),
+                  DifyText(item, DifyType.systemXsRegular, centerCap: true, color: DifyColors.textSecondary),
                   if (!w.disableRemove)
                     DifyPressable(
                       semanticLabel: '${DifyI18n.tr('common', 'operation.remove')} $item',

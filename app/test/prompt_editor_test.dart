@@ -11,7 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/prompt_editor/harness.dart';
-import 'dify_spec/workflow/nodes_panel/data/human_input_test_kit.dart' show pumpComponent;
+import 'dify_spec/workflow/nodes_panel/data/human_input_test_kit.dart' show pumpComponent, host;
 import 'support/app_fonts.dart';
 
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
@@ -195,6 +195,14 @@ void main() {
               nodeId: 'n',
               onFormInputItemRemove: (_) {},
               onFormInputItemRename: (_, _) {},
+            ),
+          ),
+          // This geometry fixture loads Noto Sans; its inherited face must also
+          // be Noto Sans, matching Dify's theme rather than Material's Roboto.
+          wrap: (child) => host(
+            DefaultTextStyle.merge(
+              style: const TextStyle(fontFamily: 'Noto Sans'),
+              child: child,
             ),
           ),
         );

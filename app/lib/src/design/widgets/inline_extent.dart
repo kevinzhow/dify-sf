@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../css_metrics.dart';
+import '../dify_fonts.dart';
 
 /// CSS's intrinsic block height for editable text containing `vertical-align:middle` inline boxes.
 /// SkParagraph rounds line advances to whole logical pixels; Blink retains 1/64 px values.
@@ -22,19 +23,22 @@ class CssInlineExtent extends SingleChildRenderObjectWidget {
   final List<int> inlineOffsets;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => RenderCssInlineExtent(fontSize, lineHeight, inlineOffsets);
+  RenderObject createRenderObject(BuildContext context) =>
+      RenderCssInlineExtent(fontSize, lineHeight, inlineOffsets, DefaultTextStyle.of(context).style);
 
   @override
   void updateRenderObject(BuildContext context, covariant RenderCssInlineExtent renderObject) =>
-      renderObject.update(fontSize, lineHeight, inlineOffsets);
+      renderObject.update(fontSize, lineHeight, inlineOffsets, DefaultTextStyle.of(context).style);
 }
 
 class RenderCssInlineExtent extends RenderProxyBox {
-  RenderCssInlineExtent(this.fontSize, this.lineHeight, this.inlineOffsets);
+  RenderCssInlineExtent(this.fontSize, this.lineHeight, this.inlineOffsets, [this.textStyle = const TextStyle()]);
+  TextStyle textStyle;
   double fontSize, lineHeight;
   List<int> inlineOffsets;
 
-  void update(double font, double height, List<int> offsets) {
+  void update(double font, double height, List<int> offsets, [TextStyle style = const TextStyle()]) {
+    textStyle = style;
     fontSize = font;
     lineHeight = height;
     inlineOffsets = offsets;
@@ -58,8 +62,9 @@ class RenderCssInlineExtent extends RenderProxyBox {
     final field = editable;
     if (field == null) return;
     final text = field.text?.toPlainText() ?? '';
+    final actualStyle = textStyle.merge(field.text?.style);
     final lines = <TextRange, ({double above, double below})>{};
-    final strut = Css.textLine(fontSize, lineHeight);
+    final strut = Css.textLine(fontSize, lineHeight, style: actualStyle);
     var offset = 0;
     while (true) {
       final range = field.getLineAtOffset(TextPosition(offset: offset));
@@ -73,7 +78,9 @@ class RenderCssInlineExtent extends RenderProxyBox {
     }
     if (boxes.length != inlineOffsets.length) return;
     // Blink's LayoutUnit quantizes font-derived x-height to 1/64 CSS px.
-    final halfXHeight = (fontSize * 0.536 / 2 * 64).round() / 64;
+    final xHeight = DifyFonts.xHeightRatio(actualStyle);
+    if (xHeight == null) return; // Unknown native faces keep the engine's intrinsic extent.
+    final halfXHeight = (fontSize * xHeight / 2 * 64).round() / 64;
     for (var i = 0; i < boxes.length; i++) {
       // CanvasKit can assign the leading edge at a soft wrap to the previous
       // line. The trailing edge with upstream affinity identifies the box's line.

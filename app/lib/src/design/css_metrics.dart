@@ -29,16 +29,19 @@ abstract final class Css {
   /// flex-shrink (such as IconButton) give up space first. Measured in the pinned Dify 1.17.1 browser fixture.
   static const inputMinContentWidth = 174.640625;
 
-  // Noto Sans (Dify's font stack on Linux, and ours): hhea ascent 1069, descent 293 per 1000 units.
-  static const _ascent = 1.069, _descent = 0.293;
-
-  /// A text line's space above and below the baseline in Chrome: ascent and descent are rounded to whole pixels
-  /// first, and the leading (line height minus both) is split with the odd pixel below.
-  static ({double above, double below}) textLine(double fontSize, double lineHeight) {
-    final a = (_ascent * fontSize).roundToDouble(), d = (_descent * fontSize).roundToDouble();
+  /// CSS's baseline from the selected primary face, including native fonts.
+  static ({double above, double below}) textLine(
+    double fontSize,
+    double lineHeight, {
+    TextStyle style = const TextStyle(),
+  }) {
+    final m = fontMetrics(style);
+    final a = (m.ascent * fontSize).roundToDouble(), d = (m.descent * fontSize).roundToDouble();
     final above = a + ((lineHeight - a - d) / 2).floorToDouble();
     return (above: above, below: lineHeight - above);
   }
+
+  static ({double ascent, double descent}) fontMetrics(TextStyle style) => _metrics(DifyFonts.resolveStyle(style));
 
   // Metrics are measured from the selected primary font, never from a fixed
   // Latin hhea constant. Fallback glyphs share that CSS strut; they do not add
@@ -72,14 +75,25 @@ abstract final class Css {
   /// Measures the actual primary face (also for native platform/mono fonts),
   /// and accounts for accessibility scaling before rounding browser metrics.
   /// Font size and line height remain independent: no per-string translation.
-  static StrutStyle? lineStrut(TextStyle style, {TextScaler textScaler = TextScaler.noScaling}) {
+  static StrutStyle? lineStrut(
+    TextStyle style, {
+    TextScaler textScaler = TextScaler.noScaling,
+    bool centerCap = false,
+  }) {
     style = DifyFonts.resolveStyle(style);
     final size = style.fontSize, height = style.height;
     if (size == null || height == null || height <= 0) return null;
     final m = _metrics(style);
     final scaledSize = textScaler.scale(size), lineHeight = scaledSize * height;
     final a = (m.ascent * scaledSize).roundToDouble(), d = (m.descent * scaledSize).roundToDouble();
-    final baseline = a + ((lineHeight - a - d) / 2).floorToDouble();
+    var baseline = a + ((lineHeight - a - d) / 2).floorToDouble();
+    final cap = centerCap ? DifyFonts.capHeightRatio(style.fontFamily, style.fontWeight) : null;
+    if (cap != null) {
+      // Equivalent to centering a cap/alphabetic trimmed text box (CSS
+      // Inline Layout). Keep the font-derived fractional value: no per-label
+      // offsets, fixed font ratios or device-independent pixel nudges.
+      baseline = (lineHeight + scaledSize * cap) / 2;
+    }
     final difference = m.ascent - m.descent;
     if (difference.abs() < .00001) return null;
     final scaledStrut = 2 * (baseline - lineHeight / 2) / difference;

@@ -126,7 +126,7 @@ class DifyTab extends StatelessWidget {
       disabled: disabled,
       focusableWhenDisabled: focusableWhenDisabled,
       onPressed: onPressed,
-      builder: (context, hovered, focused) => _look(hovered, focused),
+      builder: (context, hovered, focused) => DifyControlLabelScope(child: _look(hovered, focused)),
     );
     if (onKeyEvent case final onKey?) {
       pressable = Focus(

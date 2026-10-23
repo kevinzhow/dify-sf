@@ -260,7 +260,9 @@ class _SelectTriggerState extends State<_SelectTrigger> {
                 spacing: 2,
                 children: [
                   Expanded(
-                    child: DifyTextLine(w.text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: DifyControlLabelScope(
+                      child: DifyTextLine(w.text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
                   ),
                   if (!w.readonly)
                     RemixIcon(

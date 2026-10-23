@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../dify_tokens.g.dart';
 import 'form_control_shared.dart' show difyFocusRingShadow, DifyFocusDecoration;
 import 'surface.dart';
+import 'text_line.dart';
 
 /// dify-ui button variants (button/index.tsx, icon-button/variants.ts). [plain] is IconButton's `default` (a bare
 /// glyph that tints on hover); Button has no such variant.
@@ -247,7 +248,7 @@ class DifyButtonSurface extends StatelessWidget {
       data: IconThemeData(color: look.foreground),
       child: DefaultTextStyle.merge(
         style: TextStyle(color: look.foreground),
-        child: box,
+        child: DifyControlLabelScope(child: box),
       ),
     );
   }

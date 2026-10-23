@@ -43,6 +43,7 @@ class DifyKbd extends StatelessWidget {
         child: Center(
           widthFactor: 1,
           child: DifyTextLine(
+            centerCap: true,
             cssCapitalize(text),
             maxLines: 1,
             softWrap: false,

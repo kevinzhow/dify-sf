@@ -198,6 +198,7 @@ class _DifyNumberFieldState extends State<DifyNumberField> with DifyControlledTe
                   constraints: const BoxConstraints(maxWidth: 56),
                   child: DifyTextLine(
                     w.unit!,
+                    centerCap: true,
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.clip,
