@@ -3,6 +3,8 @@
 /// and the open thread.
 library;
 
+import 'dart:ui' show SemanticsHitTestBehavior;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -180,61 +182,72 @@ class _CommentLayerState extends State<CommentLayer> {
     _pruneFocus(source);
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _popups,
-      overlayChildBuilder: (context, info) => _popupsLayer(
-        source,
-        actions,
-        MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize),
+      // Positioning surfaces remain mounted when no comment is open. Their
+      // empty Web semantics nodes must let pointer events reach the page;
+      // actual comment inputs and controls keep their own interactive nodes.
+      overlayChildBuilder: (context, info) => Semantics(
+        explicitChildNodes: true,
+        hitTestBehavior: SemanticsHitTestBehavior.transparent,
+        child: _popupsLayer(
+          source,
+          actions,
+          MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize),
+        ),
       ),
-      child: ListenableBuilder(
-        listenable: Listenable.merge([
-          store.controlMode,
-          store.isCommentPlacing,
-          store.activeCommentId,
-          store.showResolvedComments,
-          store.showUserComments,
-        ]),
-        builder: (context, _) {
-          final commentMode = store.controlMode.value == ControlMode.comment;
-          final activeId = store.activeCommentId.value;
-          final showAll = store.showUserComments.value || commentMode;
-          return Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              Positioned.fill(
-                child: Listener(
-                  behavior: HitTestBehavior.translucent,
-                  onPointerDown: _pointerDown,
-                  onPointerUp: _pointerUp,
-                  onPointerCancel: (_) => _down = null,
-                  onPointerMove: _track,
-                  child: MouseRegion(
-                    opaque: false,
-                    hitTestBehavior: HitTestBehavior.translucent,
-                    cursor: commentMode ? SystemMouseCursors.none : MouseCursor.defer,
-                    onEnter: (_) => _setOverPane(true),
-                    onExit: (_) => _setOverPane(false),
-                    onHover: _track,
+      child: Semantics(
+        explicitChildNodes: true,
+        hitTestBehavior: SemanticsHitTestBehavior.transparent,
+        child: ListenableBuilder(
+          listenable: Listenable.merge([
+            store.controlMode,
+            store.isCommentPlacing,
+            store.activeCommentId,
+            store.showResolvedComments,
+            store.showUserComments,
+          ]),
+          builder: (context, _) {
+            final commentMode = store.controlMode.value == ControlMode.comment;
+            final activeId = store.activeCommentId.value;
+            final showAll = store.showUserComments.value || commentMode;
+            return Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                Positioned.fill(
+                  child: Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: _pointerDown,
+                    onPointerUp: _pointerUp,
+                    onPointerCancel: (_) => _down = null,
+                    onPointerMove: _track,
+                    child: MouseRegion(
+                      opaque: false,
+                      hitTestBehavior: HitTestBehavior.translucent,
+                      cursor: commentMode ? SystemMouseCursors.none : MouseCursor.defer,
+                      onEnter: (_) => _setOverPane(true),
+                      onExit: (_) => _setOverPane(false),
+                      onHover: _track,
+                    ),
                   ),
                 ),
-              ),
-              for (final c in actions.visibleComments)
-                if (showAll || c.id == activeId)
-                  CommentIcon(
-                    key: ValueKey(c.id),
-                    comment: c,
-                    source: source,
-                    view: view,
-                    isActive: c.id == activeId,
-                    focusNode: _focusOf(c.id),
-                    formatTimeFromNow: widget.formatTimeFromNow,
-                    onClick: () => actions.open(c),
-                    onPositionUpdate: (to) => actions.move(c.id, to),
-                  ),
-              // Only over the canvas itself (index.tsx `isMouseOverCanvas`).
-              if (_overPane) const CommentCursor(),
-            ],
-          );
-        },
+                for (final c in actions.visibleComments)
+                  if (showAll || c.id == activeId)
+                    CommentIcon(
+                      key: ValueKey(c.id),
+                      comment: c,
+                      source: source,
+                      view: view,
+                      isActive: c.id == activeId,
+                      focusNode: _focusOf(c.id),
+                      formatTimeFromNow: widget.formatTimeFromNow,
+                      onClick: () => actions.open(c),
+                      onPositionUpdate: (to) => actions.move(c.id, to),
+                    ),
+                // Only over the canvas itself (index.tsx `isMouseOverCanvas`).
+                if (_overPane) const CommentCursor(),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

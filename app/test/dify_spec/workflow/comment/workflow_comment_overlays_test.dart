@@ -9,6 +9,10 @@ import 'package:dify_sf_app/src/workflow_editor/comments/comment_thread.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/semantics.dart';
+
+import 'dart:ui' show SemanticsHitTestBehavior;
+
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../dify_test_i18n.dart';
@@ -41,6 +45,38 @@ void main() {
     }
     await settle(t);
   }
+
+  testWidgets('an empty comment popup layer cannot become a full viewport Web hit target', (t) async {
+    final semantics = t.ensureSemantics();
+    await pumpComments(
+      t,
+      Stack(
+        children: [Positioned.fill(child: CommentLayer(canvas: canvas))],
+      ),
+      store: store,
+      comments: h.store('user-1'),
+    );
+    await settle(t);
+    final viewport = t.view.physicalSize / t.view.devicePixelRatio;
+    final targets = <SemanticsNode>[];
+    void visit(SemanticsNode n) {
+      var hasChildren = false;
+      n.visitChildren((child) {
+        hasChildren = true;
+        visit(child);
+        return true;
+      });
+      if (!hasChildren &&
+          n.rect.size == viewport &&
+          n.getSemanticsData().hitTestBehavior == SemanticsHitTestBehavior.defer) {
+        targets.add(n);
+      }
+    }
+
+    visit(t.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!);
+    expect(targets, isEmpty, reason: 'Web turns an otherwise empty deferred leaf into pointer-events:auto');
+    semantics.dispose();
+  });
 
   group('Workflow edge event wiring', () {
     testWidgets('should render comment overlays and execute comment actions in comment mode', (t) async {
