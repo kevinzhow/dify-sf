@@ -52,7 +52,9 @@ Widget _chip({
   ),
   child: DefaultTextStyle.merge(
     style: _chipText.copyWith(color: DifyColors.textTertiary),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [child]),
+    child: DifyControlLabelScope(
+      child: Row(mainAxisSize: MainAxisSize.min, children: [child]),
+    ),
   ),
 );
 
@@ -167,28 +169,30 @@ class _AppSortFilterState extends State<AppSortFilter> {
             borderRadius: BorderRadius.circular(DifyRadius.lg),
             boxShadow: focused ? [difyFocusRingShadow()] : null,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 4, // app-sort-filter.tsx: gap-1, independent of glyph/locale.
-                  children: [
-                    DifyTextLine(sortByLabel, style: _chipText.copyWith(color: DifyColors.textTertiary)),
-                    DifyTextLine(
-                      active,
-                      style: _chipText.copyWith(
-                        color: DifyColors.textSecondary,
-                        fontWeight: DifyTw.fontMedium.style.fontWeight,
+          child: DifyControlLabelScope(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 4, // app-sort-filter.tsx: gap-1, independent of glyph/locale.
+                    children: [
+                      DifyTextLine(sortByLabel, style: _chipText.copyWith(color: DifyColors.textTertiary)),
+                      DifyTextLine(
+                        active,
+                        style: _chipText.copyWith(
+                          color: DifyColors.textSecondary,
+                          fontWeight: DifyTw.fontMedium.style.fontWeight,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
-            ],
+                RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
+              ],
+            ),
           ),
         ),
       ),
