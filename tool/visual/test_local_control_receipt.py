@@ -10,6 +10,15 @@ class LocalCropContract(unittest.TestCase):
     def test_same_crop_keeps_both_controls_and_their_position_difference(self):
         css,pixels=common_crop(self.case())
         self.assertEqual(css,(1,3,11,10));self.assertEqual(pixels,(2,6,22,20))
+    def test_unobserved_open_tooltip_retains_every_stage_pixel(self):
+        case=self.case();case['surface']='tooltip'
+        self.assertEqual(common_crop(case),((0,0,20,20),(0,0,40,40)))
+        case['captures']['react']['admission']['overlayRoleBounds']=[{'rect':{'x':1,'y':10,'width':9,'height':6}}]
+        self.assertEqual(common_crop(case),((0,0,20,20),(0,0,40,40)))
+        case['captures']['flutter-web']['admission']['overlayRoleBounds']=[{'rect':{'x':2,'y':11,'width':0,'height':6}}]
+        self.assertEqual(common_crop(case),((0,0,20,20),(0,0,40,40)))
+        case['captures']['flutter-web']['admission']['overlayRoleBounds'][0]['rect']['width']=8
+        self.assertNotEqual(common_crop(case)[0],(0,0,20,20))
     def test_crop_pixels_remain_identical_to_the_original_submatrix(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);case=self.case();image=Image.new('RGBA',(40,40))

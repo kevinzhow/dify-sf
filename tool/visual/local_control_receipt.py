@@ -14,7 +14,19 @@ from pathlib import Path
 from PIL import Image
 
 
+# These fixture cases explicitly show a floating surface. Some original tooltip
+# implementations paint without a role=tooltip. Missing semantic geometry is
+# not proof that the floating pixels are absent: retain the complete stage.
+FLOATING_SURFACES={'tooltip','infotip','popover','menu','menu-submenu','context-menu','select-open','dialog','alert-dialog','drawer','toast','command-dialog'}
+
+def requires_full_stage(case):
+    return case.get('surface') in FLOATING_SURFACES and any(
+        not any(r['rect']['width']>0 and r['rect']['height']>0 for r in c['admission'].get('overlayRoleBounds',[])) for c in case['captures'].values())
+
 def common_crop(case):
+    if requires_full_stage(case):
+        v=case['viewport'];d=v['density']
+        return (0,0,v['width'],v['height']),(0,0,round(v['width']*d),round(v['height']*d))
     rects=[]
     for capture in case['captures'].values():
         facts=capture['admission'];rects.append(facts['componentBounds'])
@@ -31,19 +43,21 @@ def common_crop(case):
 def build(receipt,out):
     if out.exists():raise ValueError('Fresh crop directory required; preserve earlier attempts')
     out.mkdir(parents=True);result=copy.deepcopy(receipt);result['name']='Dify controls — common local crops, with full stage retained separately';result['runId']+='-controls-local';result['cases']=[];proof=[]
-    result['project']['localCropContract']='SECOND view only: union of both observed control/overlay rectangles + 2 CSS px stroke margin, clipped to stage. Both PNGs get the identical integer pixel crop. No resize or masks. Full stage report must also be reviewed.'
+    result['project']['localCropContract']='SECOND view only: union of both observed control/overlay rectangles + 2 CSS px stroke margin, clipped to stage. Both PNGs get the identical integer pixel crop. An open floating fixture with no observed popup rectangle in either provider keeps the complete stage instead. No resize or masks. Full stage report must also be reviewed.'
     for raw in receipt['cases']:
         if not raw['id'].startswith('controls.'):continue
         case=copy.deepcopy(raw);case['category']='Shared controls — local view';case['tags']=[*case.get('tags',[]),'local-view']
         if len(case['captures'])==2:
+            fallback=requires_full_stage(case)
             css,pixels=common_crop(case)
+            case['localViewScope']='full-stage fallback: open floating surface has no observed semantic rectangle in at least one provider' if fallback else 'common observed union crop'
             for provider,capture in case['captures'].items():
                 src=Path(capture['image']);dest=out/provider/src.name;dest.parent.mkdir(exist_ok=True)
                 with Image.open(src) as image:
                     if image.size!=(case['viewport']['width']*case['viewport']['density'],case['viewport']['height']*case['viewport']['density']):raise ValueError('Unexpected original stage dimensions')
                     image.crop(pixels).save(dest)
-                capture['image']=str(dest.resolve());capture['crop']={'cssLTRB':css,'pixelLTRB':pixels,'fullContextSha256':hashlib.sha256(src.read_bytes()).hexdigest(),'fullContextCase':case['id'],'method':'common observed union crop; no resize or pixel edits'}
-                proof.append({'case':case['id'],'provider':provider,'original':str(src),'originalSha256':capture['crop']['fullContextSha256'],'pixelLTRB':pixels,'cropSha256':hashlib.sha256(dest.read_bytes()).hexdigest()})
+                capture['image']=str(dest.resolve());capture['crop']={'cssLTRB':css,'pixelLTRB':pixels,'fullContextSha256':hashlib.sha256(src.read_bytes()).hexdigest(),'fullContextCase':case['id'],'method':case['localViewScope']+'; no resize or pixel edits'}
+                proof.append({'case':case['id'],'provider':provider,'original':str(src),'originalSha256':capture['crop']['fullContextSha256'],'pixelLTRB':pixels,'scope':case['localViewScope'],'cropSha256':hashlib.sha256(dest.read_bytes()).hexdigest()})
         else:
             # A local view cannot hide a missing provider or manufacture a comparison.
             case['captures']={};case['captureErrors']=[*case.get('captureErrors',[]),{'error':'Local pair unavailable because the stage pair is incomplete'}]
