@@ -7,8 +7,8 @@ The server provides collaborative editing, accounts and workspace settings, appl
 provider configuration, a Swift workflow runtime, and local file uploads with signed previews. The Flutter studio (`app/`) and pure-Dart libraries (`packages/`) live alongside the Swift server
 on `main`. New delivery integrates on `main`; the completed `client/step1` and feature branches have been removed after merge. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
 use the configured sandbox and SSRF proxy. Human-input web forms and email delivery have separate, default-off
-rollout flags. Runtime files/vision, tools, published end-user runs and the remaining conversation features are not
-yet complete. The sections below describe configuration and the supported boundaries.
+rollout flags. Runtime files/vision and durable console Chatflow conversations reuse the same workflow engine and
+storage. Tools and published end-user execution/log aggregation remain separate delivery phases. The sections below describe configuration and the supported boundaries.
 
 * `docs/protocol.md` - the wire protocol (HTTP `POST` for ops, SSE for updates). Clients are written from this.
 * `docs/architecture.md` - how the server works and why.
@@ -84,6 +84,9 @@ The complete, digest-pinned runtime profile and its readiness/resource checks ar
 [Runtime services](docs/runtime-services.md). Start it with both `docker-compose.yml` and
 `docker-compose.runtime.yml`; the base stack leaves runtime dependencies unconfigured.
 
+[Persistent console Chatflow](docs/chatflow-runtime.md) documents protocol 1.18, durable parent-thread memory,
+conversation isolation, reconnect and restart behavior, and the explicit boundary to published/end-user apps.
+
 ## Test
 
 ```sh
@@ -137,8 +140,8 @@ The account/app image controls retain their 3 MiB image limit and square crop. A
 uploaded image; app/site icons can share ready images in the workspace. Missing storage configuration hides
 avatar editing and refuses uploads explicitly.
 
-This milestone does not yet enable runtime file values, model vision, HTTP file bodies, or human-input files
-(M2b). UTF-8 plain text has a 3000-codepoint preview. PDF/Office extraction and the document-extractor runtime
+Runtime files (M2b) support persisted file values, model vision, HTTP file bodies/responses, and human-input files.
+UTF-8 plain text has a 3000-codepoint preview. PDF/Office extraction and the document-extractor runtime
 remain unported and outside M2; original files can still be stored and downloaded. See docs/protocol.md for the
 HTTP contract, security boundaries and recovery behavior.
 

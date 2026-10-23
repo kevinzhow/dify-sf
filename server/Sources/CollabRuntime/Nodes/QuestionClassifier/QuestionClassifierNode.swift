@@ -2,8 +2,8 @@
 // graphon/nodes/question_classifier/question_classifier_node.py, entities.py, template_prompts.py; Dify 1.17.1
 // (api/core/workflow/node_factory.py: the model and prompt serializer it gets). See ../../NOTICE.md.
 //
-// Not ported: conversation memory (workflows and single runs have none), vision files (P5), and the token count of
-// `_calculate_rest_token` (it only sizes the memory window, so no `llm/num_tokens` call is made).
+// Vision attachments in classifier prompts remain outside this port; durable conversation memory uses the shared
+// provider and the model's real token counter.
 
 import Foundation
 
@@ -25,11 +25,14 @@ public struct QuestionClassifierNode: RuntimeNode {
     let instance: ModelInstance
     let schema: AIModelEntity
     let models: any ModelRuntime
+    let files: (any RuntimeFiles)?
+    let memory: (any ConversationMemory)?
+    let memoryConfig: LLMNodeData.Memory?
 
     public var nodeType: String { NodeType.questionClassifier }
     public var executionType: NodeExecutionType { .branch }
 
-    public init(id: String, data: JSONObject, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime) throws {
+    public init(id: String, data: JSONObject, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime, memory: (any ConversationMemory)? = nil, files: (any RuntimeFiles)? = nil) throws {
         self.id = id
         base = try BaseNodeData(data)
         model = try LLMPrompting.model(data)
@@ -47,6 +50,9 @@ public struct QuestionClassifierNode: RuntimeNode {
         self.instance = instance
         self.schema = schema
         self.models = models
+        self.files = files
+        self.memory = memory
+        self.memoryConfig = ConversationPromptMemory.config(data["memory"])
     }
 
     static let systemPrompt = """
@@ -143,9 +149,9 @@ public struct QuestionClassifierNode: RuntimeNode {
         """
 
     /// `_get_prompt_template` (no memory: empty histories).
-    func promptMessages(query: String, instruction: String, pool: VariablePool) throws -> [PromptMessage] {
+    func promptMessages(query: String, instruction: String, pool: VariablePool, histories: String = "") throws -> [PromptMessage] {
         let categories = JSONValue.array(classes.map { ["category_id": .string($0.id), "category_name": .string($0.name)] }).pythonJSONDumps()
-        let values = ["histories": "", "input_text": query, "categories": categories, "classification_instructions": instruction]
+        let values = ["histories": histories, "input_text": query, "categories": categories, "classification_instructions": instruction]
         let messages: [PromptMessage]
         if model.mode == "chat" {
             messages = try LLMPrompting.listMessages([
@@ -171,7 +177,18 @@ public struct QuestionClassifierNode: RuntimeNode {
             guard let q = queryValue, q.isTruthy else { return "" }
             return PythonText.str(q)
         }()
-        let messages = try promptMessages(query: queryText, instruction: renderedInstruction, pool: pool)
+        var histories = ""
+        if let memory {
+            var config = memoryConfig ?? .init(rolePrefix: nil, windowEnabled: false, windowSize: nil, queryPromptTemplate: nil)
+            if config.windowSize != nil { config.windowEnabled = true }
+            let baseline = try promptMessages(query: queryText, instruction: renderedInstruction, pool: pool)
+            var bytes = 0
+            let history = try await ConversationPromptMemory.messages(memory: memory, config: config, models: models,
+                instance: modelInstance, schema: schema, prompt: baseline, files: files, imageBytes: &bytes)
+            histories = ConversationPromptMemory.text(history, config: config)
+        }
+        let raw = try promptMessages(query: queryText, instruction: renderedInstruction, pool: pool, histories: ConversationPromptMemory.placeholder)
+        let messages = ConversationPromptMemory.inserting(histories, into: raw)
         let inputs: JSONObject = ["query": queryValue ?? .null, "model_provider": .string(modelInstance.provider),
                                   "model_name": .string(modelInstance.modelName)]
         let rendered = classes.map { c in ClassConfig(id: c.id, name: VariableTemplate.convert(pool, c.name).text, label: c.label) }
@@ -231,6 +248,6 @@ extension BuiltinNodeFactory {
         let models = try services.requireModels()
         let m = try LLMPrompting.model(config.data)
         let (instance, schema) = try await LLMNode.prepareModel(m, models: models)
-        return try QuestionClassifierNode(id: config.id, data: config.data, instance: instance, schema: schema, models: models)
+        return try QuestionClassifierNode(id: config.id, data: config.data, instance: instance, schema: schema, models: models, memory: services.memory, files: services.files)
     }
 }

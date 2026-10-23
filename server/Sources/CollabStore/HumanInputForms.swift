@@ -237,7 +237,7 @@ extension PostgresStore {
     /// Serializes every writer of one run's pause and forms on the run's own row, in the order run → forms. Two
     /// submissions arriving together, and a submission racing a pause that is still being written, all queue here; that
     /// is what makes the wake flag below exact instead of a snapshot read before the lock.
-    private func lockRun(_ run: String, _ c: PostgresConnection) async throws {
+    func lockRun(_ run: String, _ c: PostgresConnection) async throws {
         let rows = try await c.query("SELECT id FROM workflow_runs WHERE id = \(run) FOR UPDATE", logger: self.logger)
         var found = false
         for try await _ in rows { found = true }
@@ -317,6 +317,7 @@ extension PostgresStore {
                 _ = try await c.query("""
                     UPDATE workflow_runs SET status = 'paused' WHERE id = \(workflowRunId)
                     """, logger: self.logger)
+                _ = try await c.query("UPDATE app_chat_conversations SET lease_until = NULL WHERE active_run_id = \(workflowRunId)", logger: self.logger)
                 _ = try await c.query("""
                     INSERT INTO workflow_pauses (workflow_run_id, generation, doc_id, node_id, snapshot, execution_ids,
                         total_tokens, total_steps, elapsed_time, outputs, created_at)

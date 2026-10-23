@@ -1,0 +1,107 @@
+{
+  "image": "sha256:ceede5b903afaa20348f7ad80ebf847379dc56d886a99b9ec6a08913dacd7732",
+  "cases": [
+    {
+      "name": "sequential",
+      "messages": [
+        {
+          "id": "new",
+          "parent_message_id": "b"
+        },
+        {
+          "id": "b",
+          "parent_message_id": "a"
+        },
+        {
+          "id": "a",
+          "parent_message_id": null
+        }
+      ],
+      "thread": [
+        "new",
+        "b",
+        "a"
+      ]
+    },
+    {
+      "name": "regenerated-root",
+      "messages": [
+        {
+          "id": "new",
+          "parent_message_id": null
+        },
+        {
+          "id": "b",
+          "parent_message_id": "a"
+        },
+        {
+          "id": "a",
+          "parent_message_id": null
+        }
+      ],
+      "thread": [
+        "new"
+      ]
+    },
+    {
+      "name": "branch",
+      "messages": [
+        {
+          "id": "new",
+          "parent_message_id": "a"
+        },
+        {
+          "id": "b",
+          "parent_message_id": "a"
+        },
+        {
+          "id": "a",
+          "parent_message_id": null
+        }
+      ],
+      "thread": [
+        "new",
+        "a"
+      ]
+    },
+    {
+      "name": "nil-sentinel",
+      "messages": [
+        {
+          "id": "new",
+          "parent_message_id": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "id": "b",
+          "parent_message_id": "a"
+        },
+        {
+          "id": "a",
+          "parent_message_id": null
+        }
+      ],
+      "thread": [
+        "new",
+        "b",
+        "a"
+      ]
+    },
+    {
+      "name": "window-cut",
+      "messages": [
+        {
+          "id": "new",
+          "parent_message_id": "b"
+        },
+        {
+          "id": "b",
+          "parent_message_id": "a"
+        }
+      ],
+      "thread": [
+        "new",
+        "b"
+      ]
+    }
+  ]
+}

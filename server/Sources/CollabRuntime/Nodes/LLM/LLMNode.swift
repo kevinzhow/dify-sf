@@ -3,7 +3,7 @@
 // api/core/app/llm/model_access.py (fetch_model_config), api/core/prompt/utils/prompt_message_util.py
 // (prompt_messages_to_prompt_for_saving). See ../../NOTICE.md.
 //
-// Not ported yet: conversation memory, multimodal model output files, LLM polling, and Jinja2 prompts without an injected renderer.
+// Not ported yet: multimodal model output files, LLM polling, and Jinja2 prompts without an injected renderer.
 
 import Foundation
 
@@ -25,6 +25,7 @@ public struct LLMNode: RuntimeNode {
     public let schema: AIModelEntity
     let models: any ModelRuntime
     let jinja2: (any Jinja2TemplateRenderer)?
+    let memory: (any ConversationMemory)?
     let files: (any RuntimeFiles)?
     /// Dify's `default_query_selector` for the memory query (`sys.query`).
     let defaultQuerySelector = ["sys", "query"]
@@ -34,7 +35,7 @@ public struct LLMNode: RuntimeNode {
     public var base: BaseNodeData { data.base }
 
     public init(id: String, data: LLMNodeData, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime,
-                jinja2: (any Jinja2TemplateRenderer)? = nil, files: (any RuntimeFiles)? = nil) {
+                jinja2: (any Jinja2TemplateRenderer)? = nil, files: (any RuntimeFiles)? = nil, memory: (any ConversationMemory)? = nil) {
         self.id = id
         self.data = data
         self.instance = instance
@@ -42,6 +43,7 @@ public struct LLMNode: RuntimeNode {
         self.models = models
         self.jinja2 = jinja2
         self.files = files
+        self.memory = memory
     }
 
     // MARK: - Model (Dify's fetch_model_config)
@@ -87,7 +89,7 @@ public struct LLMNode: RuntimeNode {
             nodeInputs["model_name"] = .string(model.modelName)
 
             let promptMessages = try await fetchPromptMessages(sysQuery: resolveMemoryQuery(pool), context: contextText ?? "",
-                                                               template: template, pool: pool)
+                                                               template: template, pool: pool, modelInstance: model)
             // Structured output (Dify's invoke_llm_with_structured_output): the schema goes to the model natively or as a
             // system prompt; the whole answer is parsed into `structured_output` at the end.
             var invokeModel = model
@@ -367,13 +369,17 @@ public struct LLMNode: RuntimeNode {
     // MARK: - Prompt (fetch_prompt_messages)
 
     func fetchPromptMessages(sysQuery: String?, context: String, template: LLMNodeData.PromptTemplate,
-                             pool: VariablePool) async throws -> [PromptMessage] {
+                             pool: VariablePool, modelInstance: ModelInstance? = nil) async throws -> [PromptMessage] {
+        let memoryModel = modelInstance ?? instance
         var messages: [PromptMessage]
         var imageBytes = 0
         switch template {
         case .chat(let ms):
             messages = try await listMessages(ms, context: context, pool: pool, imageBytes: &imageBytes)
-            // Conversation memory: none in this runtime yet (Dify's single-step runs have none either).
+            if let memory, let config = data.memory {
+                messages += try await ConversationPromptMemory.messages(memory: memory, config: config, models: models,
+                    instance: memoryModel, schema: schema, files: files, imageBytes: &imageBytes)
+            }
             if let q = sysQuery, !q.isEmpty {
                 messages += try await listMessages([.init(text: q, role: .user, editionType: "basic", jinja2Text: nil)], context: "", pool: pool, imageBytes: &imageBytes)
             }
@@ -386,7 +392,14 @@ public struct LLMNode: RuntimeNode {
             }
             var data = text
             // _merge_completion_memory with no memory: "#histories#" -> "", else "" + "\n" + text.
-            let memoryText = ""
+            var memoryText = ""
+            if let memory, let config = self.data.memory {
+                guard config.rolePrefix != nil else { throw NodeError("MemoryRolePrefixRequiredError", "Memory role prefix is required for completion model.") }
+                let history = try await ConversationPromptMemory.messages(memory: memory, config: config, models: models,
+                    instance: memoryModel, schema: schema,
+                    files: files, imageBytes: &imageBytes)
+                memoryText = ConversationPromptMemory.text(history, config: config)
+            }
             data = data.contains("#histories#") ? data.replacingOccurrences(of: "#histories#", with: memoryText) : memoryText + "\n" + data
             if let q = sysQuery, !q.isEmpty { data = q + "\n" + data }
             messages = [PromptMessage(role: .user, content: .parts([.text(data)]))]

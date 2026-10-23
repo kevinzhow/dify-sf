@@ -20,6 +20,12 @@ struct SnapshotFrames: Sendable {
     /// The pause the snapshot described, by its database generation: a later pause is another generation and must not be
     /// filtered by this one (two resumes can re-pause inside the same second).
     var pauseGeneration: Int?
+    var chat: StoredChatMessage? = nil
+}
+
+struct ChatReasoningCursor: Sendable {
+    var nodeId: String
+    var bytes: Int
 }
 
 extension Routes {
@@ -46,7 +52,7 @@ extension Routes {
         // must not allocate a channel and a keep-alive pinger that nothing would ever close.
         if ["succeeded", "failed", "stopped", "partial-succeeded"].contains(run.status) {
             // One frame and close, whatever was asked: there is nothing left to follow.
-            return try Self.streaming([RunExecution.sse(try await finishedFrame(run))])
+            return try Self.streaming(try await terminalFrames(run))
         }
 
         // Subscribe first, then read the persisted state; the frames published from the mark on are the window this
@@ -64,7 +70,7 @@ extension Routes {
             // allocated is released here, or it would keep a pinger for a run nobody can follow any more.
             await live.finish()
             await runChannels.remove(runId)
-            return try Self.streaming([RunExecution.sse(try await finishedFrame(state))])
+            return try Self.streaming(try await terminalFrames(state))
         }
 
         var snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseGeneration: nil)
@@ -87,14 +93,35 @@ extension Routes {
             for await frame in subscription {
                 let isWindow = index < coveredUpTo
                 let generation = await live.pauseGeneration(at: index)
+                let chatOffset = await live.chatOffset(at: index)
+                let reasoning = await live.chatReasoning(at: index)
                 index += 1
-                if isWindow && Self.isCovered(frame, snapshot: covered, pauseGeneration: generation) { continue }
-                try await writer.write(frame)
-                if frame.contains("\"event\":\"workflow_finished\"") { break }
+                guard let reconciled = Self.reconcileChatFrame(frame, snapshot: covered, answerOffset: chatOffset, reasoning: reasoning) else { continue }
+                if isWindow && Self.isCovered(reconciled, snapshot: covered, pauseGeneration: generation) { continue }
+                try await writer.write(reconciled)
+                if frame.contains("\"event\":\"message_end\"") { break }
+                if state.type != "chat" && frame.contains("\"event\":\"workflow_finished\"") { break }
                 if frame.contains("\"event\":\"workflow_paused\"") && !continueOnPause { break }
             }
         }, count: nil)
         return Response(status: .ok, headers: Self.eventHeaders, body: body)
+    }
+
+    /// Coverage belongs to the durable text revision, not its publication time. A chunk can be committed before the
+    /// snapshot read and published after `coveredUpTo`; its monotonic byte cursor still proves it is already included.
+    static func reconcileChatFrame(_ frame: String, snapshot: SnapshotFrames, answerOffset: Int?, reasoning: ChatReasoningCursor?) -> String? {
+        guard let message = snapshot.chat else { return frame }
+        if let answerOffset, answerOffset <= message.answer.utf8.count { return nil }
+        if let reasoning, let text = (try? JSONValue.parse(message.reasoning))?[reasoning.nodeId]?.string,
+           reasoning.bytes <= text.utf8.count {
+            guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
+                  var value = (try? JSONValue.parse(Data(line.dropFirst(6).utf8)))?.object,
+                  var data = value["data"]?.object, data["is_final"]?.bool == true else { return nil }
+            // Preserve completion of reasoning without appending the same last text a second time.
+            data["reasoning"] = ""; value["data"] = .object(data)
+            return RunExecution.sse(.object(value))
+        }
+        return frame
     }
 
     /// Whether a live frame repeats something the snapshot already carried.
@@ -175,8 +202,18 @@ extension Routes {
                   let value = try? JSONValue.parse(Data(line.dropFirst(6).utf8)) else { projected.append(frame); continue }
             projected.append(RunExecution.sse(await projectRuntimeFiles(value, userId: run.createdBy ?? "")))
         }
+        let chat = try await store.chatMessage(runId: run.id)
+        if let chat {
+            projected = projected.map { frame in
+                guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
+                      var value = (try? JSONValue.parse(Data(line.dropFirst(6).utf8)))?.object else { return frame }
+                value["conversation_id"] = .string(chat.conversationId); value["message_id"] = .string(chat.id)
+                return RunExecution.sse(.object(value))
+            }
+            projected.append(RunExecution.sse(await chatReplaceFrame(chat)))
+        }
         return SnapshotFrames(frames: projected, nodeIds: Set(executions.map(\.id)), formIds: Set(waiting.map(\.id)),
-                              pauseGeneration: pauseGeneration)
+                              pauseGeneration: pauseGeneration, chat: chat)
     }
 
     /// Ends a run that has **no engine** to report it: a paused run the user stopped, a pause whose resume could not be
@@ -189,10 +226,24 @@ extension Routes {
         let terminal: JSONValue
         do { terminal = try await finishedFrame(run) } catch { return false }
         let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
+        try? await store.closeChatTurn(runId: runId)
         await channel.publish(RunExecution.sse(terminal))
+        if let chat = try? await store.chatMessage(runId: runId) {
+            await channel.publish(RunExecution.sse(await chatEndFrame(chat)))
+        }
         await channel.finish()
         await runChannels.remove(runId)
         return true
+    }
+
+    func terminalFrames(_ run: StoredWorkflowRun) async throws -> [String] {
+        var frames: [String] = []
+        if let message = try await store.chatMessage(runId: run.id) {
+            frames.append(RunExecution.sse(await chatReplaceFrame(message)))
+            frames.append(RunExecution.sse(try await finishedFrame(run)))
+            frames.append(RunExecution.sse(await chatEndFrame(message)))
+        } else { frames.append(RunExecution.sse(try await finishedFrame(run))) }
+        return frames
     }
 
     /// The outputs and totals a pause carried, as the live frame reports them (the pause row keeps both).
@@ -204,14 +255,19 @@ extension Routes {
     func finishedFrame(_ run: StoredWorkflowRun) async throws -> JSONValue {
         let account: JSONValue = ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
                                   "email": .string(run.createdByEmail ?? "")]
-        return await projectRuntimeFiles(["event": "workflow_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
+        var terminal: JSONObject = ["event": "workflow_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
                 "data": ["id": .string(run.id), "workflow_id": .string(run.workflowId), "status": .string(run.status),
                          "outputs": (try? JSONValue.parse(run.outputs ?? "{}")) ?? .object([:]),
                          "error": run.error.map(JSONValue.string) ?? .null, "elapsed_time": .double(run.elapsedTime),
                          "total_tokens": .int(run.totalTokens), "total_steps": .int(run.totalSteps),
                          "created_by": account, "created_at": .int(Int(run.createdAt.timeIntervalSince1970)),
                          "finished_at": run.finishedAt.map { .int(Int($0.timeIntervalSince1970)) } ?? .null,
-                         "exceptions_count": .int(run.exceptionsCount), "files": []]], userId: run.createdBy ?? "")
+                         "exceptions_count": .int(run.exceptionsCount), "files": []]]
+        if let chat = try await store.chatMessage(runId: run.id) {
+            terminal["message_id"] = .string(chat.id); terminal["conversation_id"] = .string(chat.conversationId)
+            terminal["created_at"] = .int(Int(chat.createdAt.timeIntervalSince1970))
+        }
+        return await projectRuntimeFiles(.object(terminal), userId: run.createdBy ?? "")
     }
 
     static var eventHeaders: HTTPFields {

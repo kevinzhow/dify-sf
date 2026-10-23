@@ -86,7 +86,13 @@ final class Account {
     'created_at': ?createdAt?.toUtc().toIso8601String(),
   };
 
-  Account copyWith({String? name, String? role, String? email, String? interfaceLanguage, String? timezone}) => Account(
+  Account copyWith({
+    String? name,
+    String? role,
+    String? email,
+    String? interfaceLanguage,
+    String? timezone,
+  }) => Account(
     id: id,
     email: email ?? this.email,
     name: name ?? this.name,
@@ -109,7 +115,15 @@ final class Account {
       other.timezone == timezone;
 
   @override
-  int get hashCode => Object.hash(id, email, name, avatarUrl, role, interfaceLanguage, timezone);
+  int get hashCode => Object.hash(
+    id,
+    email,
+    name,
+    avatarUrl,
+    role,
+    interfaceLanguage,
+    timezone,
+  );
 
   @override
   String toString() => 'Account($email, $role)';
@@ -160,13 +174,19 @@ final class AuthTokens {
 
   factory AuthTokens.fromJson(Object? json) {
     final m = _map(json, 'token pair');
-    return AuthTokens(accessToken: _str(m, 'access_token'), refreshToken: _str(m, 'refresh_token'));
+    return AuthTokens(
+      accessToken: _str(m, 'access_token'),
+      refreshToken: _str(m, 'refresh_token'),
+    );
   }
 
   final String accessToken;
   final String refreshToken;
 
-  Map<String, Object?> toJson() => {'access_token': accessToken, 'refresh_token': refreshToken};
+  Map<String, Object?> toJson() => {
+    'access_token': accessToken,
+    'refresh_token': refreshToken,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -183,8 +203,10 @@ final class AuthTokens {
 final class AuthResult {
   const AuthResult({required this.tokens, required this.account});
 
-  factory AuthResult.fromJson(Object? json) =>
-      AuthResult(tokens: AuthTokens.fromJson(json), account: Account.fromJson(_map(json, 'sign-in')['account']));
+  factory AuthResult.fromJson(Object? json) => AuthResult(
+    tokens: AuthTokens.fromJson(json),
+    account: Account.fromJson(_map(json, 'sign-in')['account']),
+  );
 
   final AuthTokens tokens;
   final Account account;
@@ -200,7 +222,12 @@ abstract final class SetupStatus {
 /// One entry of `POST /v1/workspace/members/invite-email`: [status] is `success` (with the activation [url], relative to the
 /// web app: `/activate?email=...&token=...`), `already_member` or `failed` (with a [message]).
 final class InvitationResult {
-  const InvitationResult({required this.email, required this.status, this.url, this.message});
+  const InvitationResult({
+    required this.email,
+    required this.status,
+    this.url,
+    this.message,
+  });
 
   factory InvitationResult.fromJson(Object? json) {
     final m = _map(json, 'invitation result');
@@ -317,6 +344,7 @@ final class WorkflowRuntimeFeatures {
     this.draftRun = const {},
     this.humanInput = false,
     this.humanInputEmail = false,
+    this.chatflow = false,
   });
 
   /// Null when [json] is not an object (the member is absent).
@@ -336,6 +364,7 @@ final class WorkflowRuntimeFeatures {
       },
       humanInput: json['human_input'] == true,
       humanInputEmail: json['human_input_email'] == true,
+      chatflow: json['chatflow'] == true,
     );
   }
 
@@ -358,16 +387,27 @@ final class WorkflowRuntimeFeatures {
 
   /// Outbound human-input mail is accepted separately from web forms.
   final bool humanInputEmail;
+
+  /// Real Chatflow execution with durable, account-scoped conversations.
+  final bool chatflow;
 }
 
 /// `POST /v1/forgot-password/validity`'s answer to a right code: the token that resets the password. Also the answer of
 /// `POST /v1/account/change-email/validity` (1.12): the token of the next step.
 final class ResetCodeCheck {
-  const ResetCodeCheck({required this.isValid, required this.email, required this.token});
+  const ResetCodeCheck({
+    required this.isValid,
+    required this.email,
+    required this.token,
+  });
 
   factory ResetCodeCheck.fromJson(Object? json) {
     final m = _map(json, 'code check');
-    return ResetCodeCheck(isValid: m['is_valid'] == true, email: _str(m, 'email'), token: _str(m, 'token'));
+    return ResetCodeCheck(
+      isValid: m['is_valid'] == true,
+      email: _str(m, 'email'),
+      token: _str(m, 'token'),
+    );
   }
 
   final bool isValid;
@@ -382,7 +422,10 @@ final class PasswordResetLink {
 
   factory PasswordResetLink.fromJson(Object? json) {
     final m = _map(json, 'reset link');
-    return PasswordResetLink(url: _str(m, 'url'), expiresAt: _time(m['expires_at']));
+    return PasswordResetLink(
+      url: _str(m, 'url'),
+      expiresAt: _time(m['expires_at']),
+    );
   }
 
   final String url;
@@ -394,7 +437,13 @@ final class PasswordResetLink {
 
 /// A mention candidate (`GET /v1/docs/{doc}/comments/mention-users`): a workspace member.
 final class MentionUser {
-  const MentionUser({required this.id, required this.name, required this.email, this.avatarUrl, required this.role});
+  const MentionUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.avatarUrl,
+    required this.role,
+  });
 
   factory MentionUser.fromJson(Object? json) {
     final m = _map(json, 'user');
@@ -417,18 +466,30 @@ final class MentionUser {
 /// The account behind a client id (`GET /v1/docs/{doc}/clients`: `{"<client id>": {"account","name","avatar_url"?}}`).
 /// Several client ids (tabs, devices) of one account are one user.
 final class ClientIdentity {
-  const ClientIdentity({required this.account, required this.name, this.avatarUrl});
+  const ClientIdentity({
+    required this.account,
+    required this.name,
+    this.avatarUrl,
+  });
 
   factory ClientIdentity.fromJson(Object? json) {
     final m = _map(json, 'client identity');
-    return ClientIdentity(account: _str(m, 'account'), name: _str(m, 'name'), avatarUrl: m['avatar_url'] as String?);
+    return ClientIdentity(
+      account: _str(m, 'account'),
+      name: _str(m, 'name'),
+      avatarUrl: m['avatar_url'] as String?,
+    );
   }
 
   final String account;
   final String name;
   final String? avatarUrl;
 
-  Map<String, Object?> toJson() => {'account': account, 'name': name, 'avatar_url': ?avatarUrl};
+  Map<String, Object?> toJson() => {
+    'account': account,
+    'name': name,
+    'avatar_url': ?avatarUrl,
+  };
 
   @override
   bool operator ==(Object other) =>

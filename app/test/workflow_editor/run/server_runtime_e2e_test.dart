@@ -26,6 +26,7 @@ import 'package:dify_sf_app/src/workflow_editor/run/ui/human_input_content.dart'
 import 'package:flutter/material.dart';
 
 import '../../support/app_fonts.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 
 final String? _url = Platform.environment['DIFYSF_RUNTIME_URL'];
@@ -140,10 +141,19 @@ workflow:
 const _humanGraph = StaticRunGraph(
   nodes: [
     RunGraphNode(id: 'start', type: 'start', title: 'Start', data: {'type': 'start', 'title': 'Start'}),
-    RunGraphNode(id: 'human', type: 'human-input', title: 'Approve', x: 300, data: {'type': 'human-input', 'title': 'Approve'}),
+    RunGraphNode(
+      id: 'human',
+      type: 'human-input',
+      title: 'Approve',
+      x: 300,
+      data: {'type': 'human-input', 'title': 'Approve'},
+    ),
     RunGraphNode(id: 'end', type: 'end', title: 'End', x: 600, data: {'type': 'end', 'title': 'End'}),
   ],
-  edges: [RunGraphEdge(id: 'e1', source: 'start', target: 'human'), RunGraphEdge(id: 'e2', source: 'human', target: 'end')],
+  edges: [
+    RunGraphEdge(id: 'e1', source: 'start', target: 'human'),
+    RunGraphEdge(id: 'e2', source: 'human', target: 'end'),
+  ],
 );
 
 const _graph = StaticRunGraph(
@@ -192,7 +202,7 @@ void main() {
       await owner.login(email: _email, password: _password);
     }
     final features = (await owner.api.systemFeatures()).workflowRuntime;
-    expect(features?.protocolVersion, '1.16');
+    expect(features?.protocolVersion, '1.18');
     expect(features?.draftRun, containsAll(['iteration', 'iteration-start', 'loop', 'loop-start', 'assigner']));
     final apps = HttpAppsApi(base, auth: owner);
     final app = (await apps.importDsl(_yaml)).appId!;
@@ -292,7 +302,7 @@ void main() {
       await owner.login(email: _email, password: _password);
     }
     final features = (await owner.api.systemFeatures()).workflowRuntime;
-    expect(features?.protocolVersion, '1.16');
+    expect(features?.protocolVersion, '1.18');
     expect(features?.humanInput, isTrue, reason: 'system-features workflow_runtime.human_input');
     expect(features?.draftRun, contains('human-input'));
     final apps = HttpAppsApi(base, auth: owner);
@@ -338,8 +348,11 @@ void main() {
     for (var i = 0; i < 200 && resultOf(store.workflowRunningData.value ?? const {})['status'] != 'paused'; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
-    expect(resultOf(store.workflowRunningData.value ?? const {})['status'], 'paused',
-        reason: '${store.workflowRunningData.value}');
+    expect(
+      resultOf(store.workflowRunningData.value ?? const {})['status'],
+      'paused',
+      reason: '${store.workflowRunningData.value}',
+    );
     expect((store.workflowRunningData.value ?? const {})['humanInputFormDataList'], hasLength(1));
 
     // The panel's submit (`service.submitHumanInputForm`): the run resumes on the reconnect stream the controller opened
@@ -366,7 +379,6 @@ void main() {
     stdout.writeln('server runtime e2e (client, 1.16): paused for "$token", resumed to ${result['outputs']}');
   });
 
-
   // The page against the live server is split in two: `testWidgets` fakes HTTP (and `dart:io` inside its zone never
   // completes), so the server's own side is driven in an ordinary test, and the page is then given what it produced.
   late String liveFormJson;
@@ -386,7 +398,7 @@ void main() {
       await owner.login(email: _email, password: _password);
     }
     final features = (await owner.api.systemFeatures()).workflowRuntime!;
-    expect(features.protocolVersion, '1.16');
+    expect(features.protocolVersion, '1.18');
     expect(features.humanInput, isTrue, reason: 'system-features workflow_runtime.human_input');
     final apps = HttpAppsApi(base, auth: owner);
     final app = liveApp = (await apps.importDsl(_humanYaml)).appId!;
@@ -416,10 +428,17 @@ void main() {
     await useAppFonts();
     // The sign-in from the test above: the page's own service reuses the session rather than signing in again.
     final owner = AuthSession(api: HttpAuthApi(base));
-    await owner.adopt(AuthResult(
-      tokens: AuthTokens(accessToken: liveOwnerToken, refreshToken: liveOwnerRefresh),
-      account: const Account(id: 'e2e', email: 'deepdesign-e2e@example.test', name: 'DeepDesign E2E', role: AccountRole.owner),
-    ));
+    await owner.adopt(
+      AuthResult(
+        tokens: AuthTokens(accessToken: liveOwnerToken, refreshToken: liveOwnerRefresh),
+        account: const Account(
+          id: 'e2e',
+          email: 'deepdesign-e2e@example.test',
+          name: 'DeepDesign E2E',
+          role: AccountRole.owner,
+        ),
+      ),
+    );
     final service = ServerRunService(
       runtime: ServerWorkflowRuntime(
         api: HttpWorkflowRunApi(base, auth: owner),
@@ -460,7 +479,10 @@ void main() {
     );
     expect(find.byType(HumanInputFormList), findsOneWidget);
     expect(find.text('Approve it'), findsOneWidget, reason: 'the live definition\'s own action');
-    final field = find.descendant(of: find.byKey(const Key('content-item-textarea')), matching: find.byType(EditableText));
+    final field = find.descendant(
+      of: find.byKey(const Key('content-item-textarea')),
+      matching: find.byType(EditableText),
+    );
     expect(field, findsOneWidget, reason: 'the live definition\'s paragraph input');
     await t.enterText(field, 'yes');
     await t.pump();
@@ -471,8 +493,11 @@ void main() {
     for (var i = 0; i < 400 && find.byKey(const Key('human-input-form-error')).evaluate().isEmpty; i++) {
       await t.pump(const Duration(milliseconds: 25));
     }
-    expect(find.byKey(const Key('human-input-form-error')), findsNothing,
-           reason: 'the live server took the answer (a refusal would be shown on the form)');
+    expect(
+      find.byKey(const Key('human-input-form-error')),
+      findsNothing,
+      reason: 'the live server took the answer (a refusal would be shown on the form)',
+    );
     stdout.writeln('server runtime e2e (page): answered $liveToken through the panel form');
   });
 

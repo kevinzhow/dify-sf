@@ -38,5 +38,9 @@ Map<Type, Object> httpAppDetailServices(
       draftRun: runtime.draftRun,
       humanInput: runtime.humanInput,
       humanInputEmail: runtime.humanInputEmail,
+      chatflow: runtime.chatflow,
+      conversationStorageScope: auth is AuthSession && auth.currentAccount != null
+          ? '$server:${auth.currentAccount!.id}'
+          : null,
     ),
 };

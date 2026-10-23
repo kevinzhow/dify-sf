@@ -18,7 +18,10 @@ const _graph = StaticRunGraph(
     RunGraphNode(id: 'human', type: 'human-input', title: 'Approve', data: {'type': 'human-input', 'title': 'Approve'}),
     RunGraphNode(id: 'end', type: 'end', title: 'End', data: {'type': 'end', 'title': 'End'}),
   ],
-  edges: [RunGraphEdge(id: 'e1', source: 'start', target: 'human'), RunGraphEdge(id: 'e2', source: 'human', target: 'end')],
+  edges: [
+    RunGraphEdge(id: 'e1', source: 'start', target: 'human'),
+    RunGraphEdge(id: 'e2', source: 'human', target: 'end'),
+  ],
 );
 
 /// A service whose event stream is scripted: [events] answers the n-th attempt (`attempts` counts them).
@@ -29,7 +32,11 @@ class ScriptedRunService extends MockWorkflowRunService {
   int attempts = 0;
 
   @override
-  Stream<RunEvent> workflowEvents(String workflowRunId, {bool includeStateSnapshot = true, bool continueOnPause = true}) {
+  Stream<RunEvent> workflowEvents(
+    String workflowRunId, {
+    bool includeStateSnapshot = true,
+    bool continueOnPause = true,
+  }) {
     attempts++;
     return events(attempts);
   }
@@ -42,29 +49,44 @@ void main() {
         yield const WorkflowStartedEvent({'event': 'workflow_started', 'data': <String, Object?>{}});
         return; // EOF: the connection died without ending the run
       }
-      yield const WorkflowFinishedEvent({'event': 'workflow_finished', 'data': {'status': 'succeeded'}});
+      yield const WorkflowFinishedEvent({
+        'event': 'workflow_finished',
+        'data': {'status': 'succeeded'},
+      });
     });
     final run = WorkflowRunController(store: WorkflowStore(), service: service, graph: _graph);
     run.retriesLostConnections = true;
-    var failures = 0;
+    var failures = 0, completed = 0;
     final finished = Completer<String>();
     final handle = run.debugFollow(
       'run-1',
       RunCallbacks(
         onWorkflowFinished: (e) => finished.complete('${e.data['status']}'),
         onError: (m, [c]) => failures++,
+        onCompleted: ([hasError = false, message]) => completed++,
       ),
     );
     expect(await finished.future.timeout(const Duration(seconds: 5)), 'succeeded');
     expect(service.attempts, greaterThanOrEqualTo(2), reason: 'the clean end was a lost connection, not the run');
     expect(failures, 0, reason: 'a lost connection is not the run failing');
+    await Future<void>.delayed(Duration.zero);
+    expect(completed, 1, reason: 'a reconnecting turn completes once, after its actual terminal event');
     handle.abort();
   });
 
   test('a stream that throws a connection error is reopened', () async {
     final service = ScriptedRunService((n) {
-      if (n == 1) return Stream<RunEvent>.error(Exception('GET /v1/workflow/run-1/events ended: ClientException: Connection closed'));
-      return Stream<RunEvent>.value(const WorkflowFinishedEvent({'event': 'workflow_finished', 'data': {'status': 'succeeded'}}));
+      if (n == 1) {
+        return Stream<RunEvent>.error(
+          Exception('GET /v1/workflow/run-1/events ended: ClientException: Connection closed'),
+        );
+      }
+      return Stream<RunEvent>.value(
+        const WorkflowFinishedEvent({
+          'event': 'workflow_finished',
+          'data': {'status': 'succeeded'},
+        }),
+      );
     });
     final run = WorkflowRunController(store: WorkflowStore(), service: service, graph: _graph);
     run.retriesLostConnections = true;
@@ -84,11 +106,20 @@ void main() {
   });
 
   test('a run that reports failed ends the follow as failed (no retry)', () async {
-    final service = ScriptedRunService((n) => Stream<RunEvent>.value(
-        const WorkflowFinishedEvent({'event': 'workflow_finished', 'data': {'status': 'failed'}})));
+    final service = ScriptedRunService(
+      (n) => Stream<RunEvent>.value(
+        const WorkflowFinishedEvent({
+          'event': 'workflow_finished',
+          'data': {'status': 'failed'},
+        }),
+      ),
+    );
     final run = WorkflowRunController(store: WorkflowStore(), service: service, graph: _graph);
     final finished = Completer<String>();
-    final handle = run.debugFollow('run-1', RunCallbacks(onWorkflowFinished: (e) => finished.complete('${e.data['status']}')));
+    final handle = run.debugFollow(
+      'run-1',
+      RunCallbacks(onWorkflowFinished: (e) => finished.complete('${e.data['status']}')),
+    );
     expect(await finished.future.timeout(const Duration(seconds: 5)), 'failed');
     await Future<void>.delayed(const Duration(milliseconds: 800));
     expect(service.attempts, 1, reason: 'a finished run is not a lost connection');

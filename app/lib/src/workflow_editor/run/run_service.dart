@@ -135,4 +135,7 @@ abstract class WorkflowRunService {
 
   /// `fetchChatMessages` (`apps/{id}/chat-messages?conversation_id=`): the conversation's messages (oldest first).
   Future<List<DifyJson>> fetchChatMessages(String conversationId);
+
+  Future<String?> recalledChatConversation() async => null;
+  Future<void> rememberChatConversation(String conversationId) async {}
 }

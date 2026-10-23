@@ -1159,7 +1159,7 @@ executions oldest first, in the single node run's shape (1.13).
 
 **Node types** (graphon's semantics; mocked nodes are never used outside tests):
 * `start`, `end`, `answer`: inputs into the pool under the start node; an end node's outputs are the run's outputs; answers
-  concatenate into `outputs.answer` (chatflows: P6).
+  concatenate into `outputs.answer` (durable Chatflow debug runs: 1.18 below).
 * `if-else`: Dify's cases and conditions (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`,
   `not empty`, `in`, `not in`, `all of`, `=`, `≠`, `>`, `<`, `≥`, `≤`, `null`, `not null`, `exists`, `not exists`) with
   Python's comparisons and graphon's errors; the legacy `conditions` shape; `selected_case_id` / handle `false` otherwise.
@@ -1202,10 +1202,11 @@ executions oldest first, in the single node run's shape (1.13).
   `response_format` when offered and Dify's schema system prompt. The answer is parsed into `structured_output`; an answer
   that is not a JSON object fails the node ("Failed to parse structured output: ..."). Deviations: a malformed answer is
   repaired only by stripping code fences and taking the first complete JSON object (Dify uses `json_repair`); no
-  conversation memory or vision files; no token count before the call.
+  vision attachments in classifier/extractor prompts. Conversation memory uses the real model token counter (1.18).
+  The LLM node supports runtime vision files (M2b).
 
-**Deviations from Dify.** Chatflow debug runs (`/advanced-chat/workflows/draft/run`, conversations, messages, memory)
-come with P6. Files are not supported (P5). Values are never offloaded (`*_truncated` false). Dify's `index` of a
+**Deviations from Dify.** Durable console Chatflow debug runs are described in 1.18 below; runtime files are described
+in M2b. Values are never offloaded (`*_truncated` false). Dify's `index` of a
 `node_started` / `node_finished` frame is always 1 (its FIXME); dify-sf sends the same. A run's `task_id` is its run id.
 Node executions are stored when they end (Dify also stores the start). (1.15: retried attempts are kept as Dify keeps
 them; iteration and loop nodes run: "Iterations and loops".)
@@ -2171,3 +2172,56 @@ a committed file cannot be destroyed by compensation.
 PATCH /v1/account/profile accepts avatar as an own-account image UploadFile ID, or an empty string to clear it.
 Another account's upload is refused; the profile update repeats this check atomically. App and site image icons
 may use ready image files within the same workspace. Existing unrelated profile/app operations remain compatible.
+
+## Durable console Chatflow (1.18)
+
+Discovery adds `workflow_runtime.chatflow: true` and `protocol_version: "1.18"`. Clients keep Chatflow unavailable when
+that explicit capability is absent, independently of the workflow/node runtime capabilities. This covers the authenticated
+**console debugger** of `advanced-chat` apps. Published end-user Chat/Web/API execution and their monitoring lists are a
+separate phase; the console's private debug messages are not inserted into published-app log statistics.
+
+| Method | Path under `/v1` | Contract |
+|---|---|---|
+| POST | `/apps/{app}/advanced-chat/workflows/draft/run` | `{query, inputs, files?, conversation_id?, parent_message_id?}`; an SSE stream. |
+| POST | `/apps/{app}/chat-messages/{task}/stop` | Stop a creator-owned turn; a completed turn stays completed. |
+| GET | `/apps/{app}/chat-messages?conversation_id={id}` | `{data, limit, has_more}` with creator-owned messages, oldest first, up to 500. |
+| GET | `/apps/{app}/advanced-chat/workflows/draft/conversation-variables?conversation_id={id}` | `{data}` with current persisted values in the workflow declarations. |
+| GET | `/workflow/{run}/events?include_state_snapshot=true&continue_on_pause=true` | Reuse the existing durable run follow/reconnect endpoint. |
+
+Running requires an editor role. Private conversation/message/history, detail, node traces, last-node run, stop and event
+follow operations additionally require the **creating account**; another workspace editor receives `404`. Unknown/malformed
+inputs are refused before execution; a parent message must belong to that app, account and conversation. A missing/null
+parent starts a new branch, and the UUID nil sentinel follows the previous chronology as in the pinned Dify thread walker.
+Only one running or paused turn may occupy a conversation (`409 conversation_busy`); independent conversations run separately.
+
+Each turn atomically creates its workflow run (`type: chat`), message and conversation ownership. The existing `app_messages`
+identity is extended, keeping feedback/annotation references valid. Answers, reasoning by node, input/output file identities,
+metadata, parent identity and state are persisted. The editor remembers only the selected conversation id, scoped by server,
+account and app; its actual messages and original inputs are fetched from the authenticated server on a fresh page.
+
+The existing `GraphEngine`, model plugin, code sandbox, SSRF HTTP runtime, human-input snapshots and signed-file adapter run
+the graph. Chat frames carry `conversation_id`, `message_id` and `created_at`; answer chunks use `message` (`id`, `answer`),
+reasoning uses `reasoning_chunk`, and a terminal `workflow_finished` is followed by `message_end` with usage and files. A
+reconnect replaces the persisted answer/reasoning/files (`message_replace`) before continuing. Internal per-channel byte
+cursors reconcile committed chunks even if their publication occurs after the snapshot boundary; cursors are not public SSE
+fields. A covered final reasoning frame preserves its final marker while omitting already-replayed text.
+
+Conversation memory follows Dify 1.17.1's parent thread and query-window semantics (the current blank message occupies one
+place in that query window; maximum 500). Historical query/answer text is literal, never re-evaluated as a template. The
+provider's actual `llm/num_tokens` endpoint trims oldest individual prompt messages against its model schema and completion
+budget; there is no approximate token-count fallback. Classifier/extractor history uses their original prompt budgets,
+including the extractor's 1000-token reserve. File-bearing history uses the same scoped file/vision adapter and aggregate
+image-byte bound. Conversation assignment events update the durable conversation; an iteration retains Dify's local pool
+semantics during that turn, while its assignment is available to the next turn.
+
+A running turn has a 30-second durable lease renewed every five seconds. The production maintenance service, after database
+readiness, expires abandoned running leases and retains an error message/partial answer for an explicit retry. It does not
+repeat a model, HTTP or code invocation that may already have had an external effect. A paused turn suspends lease expiry and
+uses the existing human-input claim/snapshot to continue on another service process without replaying completed nodes. Stops,
+terminal writes and lease ownership fence late engines; partial variable writes merge without erasing other persisted values.
+Stopping a paused turn also closes its forms and retains its pause statistics. The browser follows lost connections with the
+existing bounded-backoff run follower; an EOF without a terminal event does not complete the displayed response.
+
+Reference provenance and a database-free parent-thread oracle are in `e2e/chatflow/reference/`. Real signed-plugin/local-model
+boundary checks and formal-Wasm UI checks live in `e2e/chatflow/acceptance.py` and `e2e/chatflow/browser.py`. They require an
+existing isolated fixture account and explicitly refuse the user trial endpoint. They make no paid model calls.

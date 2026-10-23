@@ -12,18 +12,37 @@ import '../workflow_run_api.dart';
 /// variables live in [variables] (id -> Dify's JSON with `node_id` / `name` / `value`).
 class FakeWorkflowRunApi implements WorkflowRunApi {
   FakeWorkflowRunApi({
-    Map<String, Object?> Function(String appId, String nodeId, Map<String, Object?> body)? run,
-    List<Map<String, Object?>> Function(String appId, String runId, Map<String, Object?> body)? draftRunEvents,
+    Map<String, Object?> Function(
+      String appId,
+      String nodeId,
+      Map<String, Object?> body,
+    )?
+    run,
+    List<Map<String, Object?>> Function(
+      String appId,
+      String runId,
+      Map<String, Object?> body,
+    )?
+    draftRunEvents,
   }) : run = run ?? _echo,
        draftRunEvents = draftRunEvents ?? _echoRun;
 
-  Map<String, Object?> Function(String appId, String nodeId, Map<String, Object?> body) run;
+  Map<String, Object?> Function(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  )
+  run;
 
   final calls = <({String op, String appId, String nodeId, Map<String, Object?>? body})>[];
   final _last = <String, Map<String, Object?>>{};
   var _n = 0;
 
-  static Map<String, Object?> _echo(String appId, String nodeId, Map<String, Object?> body) => {
+  static Map<String, Object?> _echo(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  ) => {
     'node_id': nodeId,
     'status': 'succeeded',
     'inputs': body['inputs'],
@@ -34,9 +53,17 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   };
 
   @override
-  Future<Map<String, Object?>> singleNodeRun(String appId, String nodeId, Map<String, Object?> body) async {
+  Future<Map<String, Object?>> singleNodeRun(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  ) async {
     calls.add((op: 'run', appId: appId, nodeId: nodeId, body: body));
-    final result = {'id': 'exec-${++_n}', 'index': 1, ...run(appId, nodeId, body)};
+    final result = {
+      'id': 'exec-${++_n}',
+      'index': 1,
+      ...run(appId, nodeId, body),
+    };
     _last['$appId/$nodeId'] = result;
     return result;
   }
@@ -47,7 +74,12 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
     return _last['$appId/$nodeId'];
   }
 
-  List<Map<String, Object?>> Function(String appId, String runId, Map<String, Object?> body) draftRunEvents;
+  List<Map<String, Object?>> Function(
+    String appId,
+    String runId,
+    Map<String, Object?> body,
+  )
+  draftRunEvents;
   final stopped = <String>[];
   final _runs = <String, List<Map<String, Object?>>>{};
   final _runDetails = <String, Map<String, Object?>>{};
@@ -56,12 +88,22 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   /// plus `node_id` for grouping.
   final variables = <String, Map<String, Object?>>{};
 
-  static List<Map<String, Object?>> _echoRun(String appId, String runId, Map<String, Object?> body) => [
+  static List<Map<String, Object?>> _echoRun(
+    String appId,
+    String runId,
+    Map<String, Object?> body,
+  ) => [
     {
       'event': 'workflow_started',
       'workflow_run_id': runId,
       'task_id': runId,
-      'data': {'id': runId, 'workflow_id': appId, 'inputs': body['inputs'], 'created_at': 0, 'reason': 'initial'},
+      'data': {
+        'id': runId,
+        'workflow_id': appId,
+        'inputs': body['inputs'],
+        'created_at': 0,
+        'reason': 'initial',
+      },
     },
     {
       'event': 'workflow_finished',
@@ -85,16 +127,45 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   ];
 
   @override
-  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body) =>
-      _streamRun(appId, body, op: 'draft-run');
+  Stream<Map<String, Object?>> chatDraftRun(
+    String appId,
+    Map<String, Object?> body,
+  ) => _streamRun(appId, body, op: 'chat-draft-run');
+  @override
+  Future<void> stopChatRun(String appId, String taskId) async {
+    stopped.add(taskId);
+  }
 
   @override
-  Stream<Map<String, Object?>> iterationSingleRun(String appId, String nodeId, Map<String, Object?> body) =>
-      _streamRun(appId, body, op: 'iteration-run', nodeId: nodeId);
+  Future<List<Map<String, Object?>>> chatMessages(
+    String appId,
+    String conversationId,
+  ) async => [];
+  @override
+  Future<List<Map<String, Object?>>> conversationVariables(
+    String appId,
+    String conversationId,
+  ) async => [];
 
   @override
-  Stream<Map<String, Object?>> loopSingleRun(String appId, String nodeId, Map<String, Object?> body) =>
-      _streamRun(appId, body, op: 'loop-run', nodeId: nodeId);
+  Stream<Map<String, Object?>> draftRun(
+    String appId,
+    Map<String, Object?> body,
+  ) => _streamRun(appId, body, op: 'draft-run');
+
+  @override
+  Stream<Map<String, Object?>> iterationSingleRun(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  ) => _streamRun(appId, body, op: 'iteration-run', nodeId: nodeId);
+
+  @override
+  Stream<Map<String, Object?>> loopSingleRun(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  ) => _streamRun(appId, body, op: 'loop-run', nodeId: nodeId);
 
   Stream<Map<String, Object?>> _streamRun(
     String appId,
@@ -105,7 +176,11 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
     final runId = 'run-${++_n}';
     calls.add((op: op, appId: appId, nodeId: nodeId, body: body));
     final events = draftRunEvents(appId, runId, body);
-    _runs.putIfAbsent(appId, () => []).insert(0, {'id': runId, 'version': 'draft', 'status': 'running'});
+    _runs.putIfAbsent(appId, () => []).insert(0, {
+      'id': runId,
+      'version': 'draft',
+      'status': 'running',
+    });
     for (final e in events) {
       if (e['event'] == 'workflow_finished' && e['data'] is Map<String, Object?>) {
         final d = e['data']! as Map<String, Object?>;
@@ -120,11 +195,19 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   Future<void> stopRun(String appId, String taskId) async => stopped.add(taskId);
 
   @override
-  Future<Map<String, Object?>> runHistory(String appId, {String? lastId, int limit = 20}) async {
+  Future<Map<String, Object?>> runHistory(
+    String appId, {
+    String? lastId,
+    int limit = 20,
+  }) async {
     final all = _runs[appId] ?? const [];
     final start = lastId == null ? 0 : all.indexWhere((r) => r['id'] == lastId) + 1;
     final page = all.skip(start).take(limit).toList();
-    return {'limit': limit, 'has_more': start + page.length < all.length, 'data': page};
+    return {
+      'limit': limit,
+      'has_more': start + page.length < all.length,
+      'data': page,
+    };
   }
 
   @override
@@ -132,20 +215,35 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
       _runDetails[runId] ?? refuse('not_found', 'Workflow run not found', status: 404);
 
   @override
-  Future<List<Map<String, Object?>>> runNodeExecutions(String appId, String runId) async => const [];
+  Future<List<Map<String, Object?>>> runNodeExecutions(
+    String appId,
+    String runId,
+  ) async => const [];
 
   @override
-  Future<Map<String, Object?>> draftVariables(String appId, {int page = 1, int limit = 20}) async {
+  Future<Map<String, Object?>> draftVariables(
+    String appId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
     final all = variables.values.toList();
-    return {'items': all.skip((page - 1) * limit).take(limit).toList(), 'total': page == 1 ? all.length : null};
+    return {
+      'items': all.skip((page - 1) * limit).take(limit).toList(),
+      'total': page == 1 ? all.length : null,
+    };
   }
 
   @override
-  Future<List<Map<String, Object?>>> nodeVariables(String appId, String nodeId) async =>
-      variables.values.where((v) => v['node_id'] == nodeId).toList();
+  Future<List<Map<String, Object?>>> nodeVariables(
+    String appId,
+    String nodeId,
+  ) async => variables.values.where((v) => v['node_id'] == nodeId).toList();
 
   @override
-  Future<List<Map<String, Object?>>> draftVariablesOfKind(String appId, String kind) async {
+  Future<List<Map<String, Object?>>> draftVariablesOfKind(
+    String appId,
+    String kind,
+  ) async {
     final type = switch (kind) {
       'conversation' => 'conversation',
       'system' => 'sys',
@@ -155,23 +253,36 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   }
 
   @override
-  Future<Map<String, Object?>> draftVariable(String appId, String variableId) async =>
-      variables[variableId] ?? refuse('not_found', 'variable not found, id=$variableId', status: 404);
+  Future<Map<String, Object?>> draftVariable(
+    String appId,
+    String variableId,
+  ) async => variables[variableId] ?? refuse('not_found', 'variable not found, id=$variableId', status: 404);
 
   @override
-  Future<Map<String, Object?>> updateDraftVariable(String appId, String variableId, Map<String, Object?> patch) async {
+  Future<Map<String, Object?>> updateDraftVariable(
+    String appId,
+    String variableId,
+    Map<String, Object?> patch,
+  ) async {
     final v = variables[variableId] ?? refuse('not_found', 'variable not found, id=$variableId', status: 404);
     return variables[variableId] = {...v, ...patch, 'edited': true};
   }
 
   @override
-  Future<Map<String, Object?>?> resetDraftVariable(String appId, String variableId) async {
+  Future<Map<String, Object?>?> resetDraftVariable(
+    String appId,
+    String variableId,
+  ) async {
     final v = variables[variableId] ?? refuse('not_found', 'variable not found, id=$variableId', status: 404);
     return variables[variableId] = {...v, 'edited': false};
   }
 
   @override
-  Future<void> deleteDraftVariables(String appId, {String? variableId, String? nodeId}) async {
+  Future<void> deleteDraftVariables(
+    String appId, {
+    String? variableId,
+    String? nodeId,
+  }) async {
     if (variableId != null) {
       variables.remove(variableId);
     } else if (nodeId != null) {
@@ -228,13 +339,20 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   }
 
   @override
-  Future<void> submitHumanInputForm(String token, Map<String, Object?> body) async {
+  Future<void> submitHumanInputForm(
+    String token,
+    Map<String, Object?> body,
+  ) async {
     if (humanInputSubmitError case final error?) throw error;
-    if (!humanInputForms.containsKey(token)) refuse('not_found', 'Form not found', status: 404);
+    if (!humanInputForms.containsKey(token)) {
+      refuse('not_found', 'Form not found', status: 404);
+    }
     humanInputAnswers[token] = body;
     // The answer wakes the run: a gated reconnect goes on.
     if (humanInputFormRuns[token] case final run?) {
-      if (humanInputGates[run] case final gate? when !gate.isCompleted) gate.complete();
+      if (humanInputGates[run] case final gate? when !gate.isCompleted) {
+        gate.complete();
+      }
     }
   }
 
@@ -244,33 +362,52 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
     bool includeStateSnapshot = true,
     bool continueOnPause = true,
   }) async* {
-    reconnects.add((runId: runId, includeStateSnapshot: includeStateSnapshot, continueOnPause: continueOnPause));
+    reconnects.add((
+      runId: runId,
+      includeStateSnapshot: includeStateSnapshot,
+      continueOnPause: continueOnPause,
+    ));
     if (humanInputGates[runId] case final gate?) await gate.future;
     yield* Stream.fromIterable(humanInputEvents[runId] ?? const []);
   }
 
   @override
-  Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body) async {
+  Future<Map<String, Object?>> humanInputFormPreview(
+    String url,
+    Map<String, Object?> body,
+  ) async {
     formPreviews[url] = body;
-    return formDefinitions[url] ?? const {
-      'form_id': 'node',
-      'form_content': 'Form content',
-      'inputs': <Object?>[],
-      'actions': <Object?>[],
-      'node_id': 'node',
-      'node_title': 'Human Input',
-      'resolved_default_values': <String, Object?>{},
-    };
+    return formDefinitions[url] ??
+        const {
+          'form_id': 'node',
+          'form_content': 'Form content',
+          'inputs': <Object?>[],
+          'actions': <Object?>[],
+          'node_id': 'node',
+          'node_title': 'Human Input',
+          'resolved_default_values': <String, Object?>{},
+        };
   }
 
   @override
-  Future<void> humanInputDeliveryTest(String appId, String nodeId, Map<String, Object?> body) async {
+  Future<void> humanInputDeliveryTest(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  ) async {
     deliveryTests[nodeId] = body;
   }
 
   @override
-  Future<Map<String, Object?>> humanInputFormRun(String url, Map<String, Object?> body) async {
+  Future<Map<String, Object?>> humanInputFormRun(
+    String url,
+    Map<String, Object?> body,
+  ) async {
     formRuns[url] = body;
-    return {'__action_id': body['action'], '__action_value': body['action'], '__rendered_content': 'Form content'};
+    return {
+      '__action_id': body['action'],
+      '__action_value': body['action'],
+      '__rendered_content': 'Form content',
+    };
   }
 }

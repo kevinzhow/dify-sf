@@ -54,25 +54,55 @@ public struct StoredWorkflowRun: Sendable, Equatable {
 extension PostgresStore {
     public func insertWorkflowRun(_ r: StoredWorkflowRun) async throws {
         try await bounded {
-            _ = try await self.client.query("""
+            _ = try await self.client.query(Self.insertWorkflowRunQuery(r), logger: self.logger)
+        }
+    }
+
+    static func insertWorkflowRunQuery(_ r: StoredWorkflowRun) -> PostgresQuery {
+        """
                 INSERT INTO workflow_runs (id, doc_id, doc_seq, workflow_id, type, triggered_from, version, graph, inputs, status, outputs,
                     error, elapsed_time, total_tokens, total_steps, exceptions_count, created_by, created_at, finished_at)
                 VALUES (\(r.id), \(r.docId), \(r.docSeq), \(r.workflowId), \(r.type), \(r.triggeredFrom), \(r.version), \(r.graph), \(r.inputs),
                     \(r.status), \(r.outputs), \(r.error), \(r.elapsedTime), \(r.totalTokens), \(r.totalSteps), \(r.exceptionsCount),
                     \(r.createdBy), \(r.createdAt), \(r.finishedAt))
-                """, logger: self.logger)
-        }
+                """
     }
 
     /// The end of a run: status, outputs, error and totals.
     public func finishWorkflowRun(id: String, status: String, outputs: String?, error: String?, elapsedTime: Double, totalTokens: Int,
-                                  totalSteps: Int, exceptionsCount: Int, finishedAt: Date) async throws {
+                                  totalSteps: Int, exceptionsCount: Int, finishedAt: Date, chatLease: String? = nil) async throws {
         try await bounded {
-            _ = try await self.client.query("""
-                UPDATE workflow_runs SET status = \(status), outputs = \(outputs), error = \(error), elapsed_time = \(elapsedTime),
-                    total_tokens = \(totalTokens), total_steps = \(totalSteps), exceptions_count = \(exceptionsCount), finished_at = \(finishedAt)
-                WHERE id = \(id)
-                """, logger: self.logger)
+            try await self.client.withTransaction(logger: self.logger) { c in
+                try await self.lockRun(id, c)
+                for try await _ in try await c.query("""
+                    SELECT 1 FROM workflow_runs WHERE id = \(id) AND type = 'chat'
+                        AND status IN ('succeeded', 'partial-succeeded', 'failed', 'stopped')
+                    """, logger: self.logger) {
+                    if chatLease != nil { throw ChatStoreError.leaseLost }
+                    return // e.g. resume preparation failed after a stop already committed: keep the existing terminal.
+                }
+                // Same lock order as turn creation/progress. An obsolete engine cannot overwrite a fenced turn.
+                var owned = chatLease == nil
+                for try await row in try await c.query("""
+                    SELECT lease_id FROM app_chat_conversations WHERE active_run_id = \(id) FOR UPDATE
+                    """, logger: self.logger) {
+                    if let chatLease { owned = try row.decode(String?.self) == chatLease }
+                }
+                guard owned else { throw ChatStoreError.leaseLost }
+                _ = try await c.query("""
+                    UPDATE workflow_runs SET status = \(status), outputs = \(outputs), error = \(error), elapsed_time = \(elapsedTime),
+                        total_tokens = \(totalTokens), total_steps = \(totalSteps), exceptions_count = \(exceptionsCount), finished_at = \(finishedAt)
+                    WHERE id = \(id)
+                    """, logger: self.logger)
+                _ = try await c.query("""
+                    UPDATE app_messages SET status = CASE WHEN \(status)::text IN ('failed', 'stopped') THEN 'error' ELSE 'normal' END,
+                        error = \(error), updated_at = \(finishedAt) WHERE workflow_run_id = \(id)
+                    """, logger: self.logger)
+                _ = try await c.query("""
+                    UPDATE app_chat_conversations SET active_run_id = NULL, lease_id = NULL, lease_until = NULL, updated_at = \(finishedAt)
+                    WHERE active_run_id = \(id)
+                    """, logger: self.logger)
+            }
         }
     }
 
@@ -136,13 +166,14 @@ extension PostgresStore {
 
     /// Dify's `get_paginated_workflow_runs`: newest first, `limit + 1` read to tell `has_more`; `lastId` = the cursor
     /// (nil result when it is not a run of this document and source).
-    public func workflowRuns(doc: String, triggeredFrom: String, status: String?, limit: Int, lastId: String?) async throws
+    public func workflowRuns(doc: String, triggeredFrom: String, status: String?, limit: Int, lastId: String?, viewer: String? = nil) async throws
         -> (runs: [StoredWorkflowRun], hasMore: Bool)? {
         try await bounded {
             var cursor: Date?
             if let lastId {
                 let rows = try await self.client.query("""
                     SELECT created_at FROM workflow_runs WHERE doc_id = \(doc) AND triggered_from = \(triggeredFrom) AND id = \(lastId)
+                        AND (\(viewer)::text IS NULL OR type <> 'chat' OR created_by = \(viewer))
                     """, logger: self.logger)
                 for try await row in rows { cursor = try row.decode(Date.self) }
                 guard cursor != nil else { return nil }
@@ -150,6 +181,7 @@ extension PostgresStore {
             let rows = try await self.client.query("""
                 SELECT \(unescaped: Self.runColumns) FROM workflow_runs r LEFT JOIN accounts a ON a.id = r.created_by
                 WHERE r.doc_id = \(doc) AND r.triggered_from = \(triggeredFrom)
+                  AND (\(viewer)::text IS NULL OR r.type <> 'chat' OR r.created_by = \(viewer))
                   AND (\(status)::text IS NULL OR r.status = \(status))
                   AND (\(cursor)::timestamptz IS NULL OR (r.created_at < \(cursor) AND r.id <> \(lastId)))
                 ORDER BY r.created_at DESC, r.id DESC LIMIT \(limit + 1)

@@ -56,56 +56,111 @@ library;
 ///
 /// The run operations of the workflow runtime (protocols 1.13–1.16).
 abstract class WorkflowRunApi {
+  /// Durable Chatflow debugger. Older servers do not advertise `chatflow`.
+  Stream<Map<String, Object?>> chatDraftRun(
+    String appId,
+    Map<String, Object?> body,
+  );
+  Future<void> stopChatRun(String appId, String taskId);
+  Future<List<Map<String, Object?>>> chatMessages(
+    String appId,
+    String conversationId,
+  );
+  Future<List<Map<String, Object?>>> conversationVariables(
+    String appId,
+    String conversationId,
+  );
+
   /// `POST /v1/apps/{app}/workflows/draft/nodes/{node}/run` with Dify's body (`{"inputs": {...}}`): the execution
   /// (Dify's `WorkflowRunNodeExecutionResponse`).
-  Future<Map<String, Object?>> singleNodeRun(String appId, String nodeId, Map<String, Object?> body);
+  Future<Map<String, Object?>> singleNodeRun(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  );
 
   /// `GET /v1/apps/{app}/workflows/draft/nodes/{node}/last-run`: the node's newest execution, null without one.
   Future<Map<String, Object?>?> nodeLastRun(String appId, String nodeId);
 
   /// 1.14: `POST /v1/apps/{app}/workflows/draft/run` (Dify's body `{"inputs": {...}, "files": []}`): the SSE payloads.
-  Stream<Map<String, Object?>> draftRun(String appId, Map<String, Object?> body);
+  Stream<Map<String, Object?>> draftRun(
+    String appId,
+    Map<String, Object?> body,
+  );
 
   /// 1.15: `POST .../workflows/draft/iteration/nodes/{node}/run`, the same SSE payloads as a draft run.
-  Stream<Map<String, Object?>> iterationSingleRun(String appId, String nodeId, Map<String, Object?> body);
+  Stream<Map<String, Object?>> iterationSingleRun(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  );
 
   /// 1.15: `POST .../workflows/draft/loop/nodes/{node}/run`. Discovery lists `iteration` / `loop` in single_node_run;
   /// these containers use their dedicated endpoints rather than the generic JSON single-node endpoint.
-  Stream<Map<String, Object?>> loopSingleRun(String appId, String nodeId, Map<String, Object?> body);
+  Stream<Map<String, Object?>> loopSingleRun(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  );
 
   /// 1.14: `POST /v1/apps/{app}/workflow-runs/tasks/{task}/stop`.
   Future<void> stopRun(String appId, String taskId);
 
   /// 1.14: `GET /v1/apps/{app}/workflow-runs` (`{limit, has_more, data}`, newest first; `lastId` = the page after it).
-  Future<Map<String, Object?>> runHistory(String appId, {String? lastId, int limit = 20});
+  Future<Map<String, Object?>> runHistory(
+    String appId, {
+    String? lastId,
+    int limit = 20,
+  });
 
   /// 1.14: `GET /v1/apps/{app}/workflow-runs/{run}` (Dify's `WorkflowRunDetailResponse`).
   Future<Map<String, Object?>> runDetail(String appId, String runId);
 
   /// 1.14: `GET /v1/apps/{app}/workflow-runs/{run}/node-executions` (`data`, oldest first).
-  Future<List<Map<String, Object?>>> runNodeExecutions(String appId, String runId);
+  Future<List<Map<String, Object?>>> runNodeExecutions(
+    String appId,
+    String runId,
+  );
 
   /// 1.14: `GET .../workflows/draft/variables?page=&limit=` (`{items, total}`, values omitted).
-  Future<Map<String, Object?>> draftVariables(String appId, {int page = 1, int limit = 20});
+  Future<Map<String, Object?>> draftVariables(
+    String appId, {
+    int page = 1,
+    int limit = 20,
+  });
 
   /// 1.14: `GET .../workflows/draft/nodes/{node}/variables` (`items` with values).
   Future<List<Map<String, Object?>>> nodeVariables(String appId, String nodeId);
 
   /// 1.14: `GET .../workflows/draft/conversation-variables`, `.../system-variables`, `.../environment-variables`
   /// (`kind`: `conversation`, `system`, `environment`): `items`.
-  Future<List<Map<String, Object?>>> draftVariablesOfKind(String appId, String kind);
+  Future<List<Map<String, Object?>>> draftVariablesOfKind(
+    String appId,
+    String kind,
+  );
 
   /// 1.14: `GET .../workflows/draft/variables/{id}`.
   Future<Map<String, Object?>> draftVariable(String appId, String variableId);
 
   /// 1.14: `PATCH .../workflows/draft/variables/{id}` with Dify's body (`name` and / or `value`; marks it `edited`).
-  Future<Map<String, Object?>> updateDraftVariable(String appId, String variableId, Map<String, Object?> patch);
+  Future<Map<String, Object?>> updateDraftVariable(
+    String appId,
+    String variableId,
+    Map<String, Object?> patch,
+  );
 
   /// 1.14: `PUT .../workflows/draft/variables/{id}/reset`: the variable as reset, null when it was removed.
-  Future<Map<String, Object?>?> resetDraftVariable(String appId, String variableId);
+  Future<Map<String, Object?>?> resetDraftVariable(
+    String appId,
+    String variableId,
+  );
 
   /// 1.14: `DELETE .../workflows/draft/variables/{id}`, `.../nodes/{node}/variables` (nodeId), or all (neither).
-  Future<void> deleteDraftVariables(String appId, {String? variableId, String? nodeId});
+  Future<void> deleteDraftVariables(
+    String appId, {
+    String? variableId,
+    String? nodeId,
+  });
 
   // ---- human input (1.16) ----
 
@@ -136,14 +191,24 @@ abstract class WorkflowRunApi {
   /// {node}/form`): the form as the node would show it, its `form_content` rendered with `inputs` (Dify's
   /// `HumanInputRequired`: `form_id`, `form_content`, `inputs`, `actions`, `node_id`, `node_title`,
   /// `resolved_default_values`).
-  Future<Map<String, Object?>> humanInputFormPreview(String url, Map<String, Object?> body);
+  Future<Map<String, Object?>> humanInputFormPreview(
+    String url,
+    Map<String, Object?> body,
+  );
 
   /// 1.16: `POST .../workflows/draft/human-input/nodes/{node}/delivery-test` `{"delivery_method_id": "...",
   /// "inputs": {...}}`: one test message of that delivery method, about a **delivery-test form** (no run: answering it
   /// proves the form and resumes nothing). `{}` on success; `400` when the method cannot send or has no recipients.
-  Future<void> humanInputDeliveryTest(String appId, String nodeId, Map<String, Object?> body);
+  Future<void> humanInputDeliveryTest(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  );
 
   /// 1.16: `POST {url}/run` with `{inputs, form_inputs, action}`: the node's preview form is validated and its outputs
   /// (the filled fields, `__action_id`, `__action_value`, `__rendered_content`) are saved as the node's draft variables.
-  Future<Map<String, Object?>> humanInputFormRun(String url, Map<String, Object?> body);
+  Future<Map<String, Object?>> humanInputFormRun(
+    String url,
+    Map<String, Object?> body,
+  );
 }

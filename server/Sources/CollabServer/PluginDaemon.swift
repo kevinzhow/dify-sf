@@ -112,6 +112,21 @@ struct PluginDaemonModelRuntime: ModelRuntime {
         return nil
     }
 
+    func numTokens(_ instance: ModelInstance, promptMessages: [PromptMessage]) async throws -> Int {
+        let (pluginId, name) = try Self.split(instance.provider)
+        var data = PluginDaemonWire.llmInvokeData(provider: name, model: instance.modelName, credentials: instance.credentials,
+            promptMessages: promptMessages, parameters: [:], tools: [], stop: [], stream: false)
+        data["model_type"] = "llm"
+        for try await result in daemon.dispatch("llm/num_tokens", pluginId: pluginId,
+            body: PluginDaemonWire.dispatchBody(userId: nil, appId: appId, data: data)) {
+            guard let count = result["num_tokens"]?.int, count >= 0 else {
+                throw NodeError("TokenCountError", "The model returned an invalid token count")
+            }
+            return count
+        }
+        throw NodeError("TokenCountError", "The model returned no token count")
+    }
+
     func invokeLLM(_ instance: ModelInstance, promptMessages: [PromptMessage], parameters: JSONObject, stop: [String],
                    user: String?) -> AsyncThrowingStream<LLMResultChunk, any Error> {
         invokeLLM(instance, promptMessages: promptMessages, parameters: parameters, tools: [], stop: stop, stream: true, user: user)

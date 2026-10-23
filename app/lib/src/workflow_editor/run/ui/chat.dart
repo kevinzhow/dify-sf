@@ -1168,6 +1168,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           style: textStyle,
                           placeholder: placeholder,
                           readOnly: widget.readonly,
+                          enabled: !widget.disabled,
                         ),
                       ),
                     ),
@@ -1208,6 +1209,7 @@ class EditableTextHost extends StatelessWidget {
     required this.style,
     required this.placeholder,
     this.readOnly = false,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -1215,38 +1217,16 @@ class EditableTextHost extends StatelessWidget {
   final TextStyle style;
   final String placeholder;
   final bool readOnly;
+  final bool enabled;
 
   @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      if (controller.text.isEmpty)
-        IgnorePointer(
-          child: DifyTextLine(
-            placeholder,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            // The textarea has no placeholder class: preflight.css's `textarea::placeholder` gray-400 (#98a2b3, the
-            // same in both themes).
-            style: style.copyWith(color: DifyTailwind.gray400),
-          ),
-        ),
-      Semantics(
-        label: placeholder,
-        textField: true,
-        child: EditableText(
-          controller: controller,
-          focusNode: focusNode,
-          style: style,
-          cursorColor: DifyColors.textAccent,
-          backgroundCursorColor: DifyColors.textQuaternary,
-          maxLines: null,
-          minLines: 1,
-          readOnly: readOnly,
-          keyboardType: TextInputType.multiline,
-          selectionColor: DifyColors.stateAccentActive,
-        ),
-      ),
-    ],
+  Widget build(BuildContext context) => DifyEditableArea(
+    controller: controller,
+    focusNode: focusNode,
+    style: style,
+    placeholder: placeholder,
+    enabled: enabled,
+    readOnly: readOnly,
   );
 }
 

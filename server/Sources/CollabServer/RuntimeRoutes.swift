@@ -131,7 +131,7 @@ extension Routes {
         let a = try await appOfMode(req, p, Self.workflowModes)
         let nodeId = try nodeId(req)
         let stored: StoredNodeExecution?
-        do { stored = try await store.lastNodeExecution(doc: a.id, nodeId: nodeId) } catch { throw ServerError.unavailable("\(error)") }
+        do { stored = try await store.lastNodeExecution(doc: a.id, nodeId: nodeId, createdBy: a.mode == "advanced-chat" ? p.id : nil) } catch { throw ServerError.unavailable("\(error)") }
         guard let e = stored else { throw ServerError.missing("last run not found") }
         return await fileJSONResponse(Self.executionJSON(e), userId: p.id)
     }

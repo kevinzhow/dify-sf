@@ -43,6 +43,7 @@ extension Routes {
     func runServices(appId: String, runId: String, docId: String, userId: String, pending: PendingHumanInputForms,
                      decisions: [String: StoredHumanInputForm] = [:], resuming: Bool = false) -> RuntimeServices {
         var services = runtimeServices(appId: appId, userId: userId)
+        services.memory = ServerConversationMemory(store: store, runId: runId)
         if config.humanInputWebEnabled || resuming {
             services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
                                                       pending: pending, decisions: decisions,
@@ -123,23 +124,43 @@ extension Routes {
     /// Records the run (`workflow_runs`, `debugging`), starts it in its own task and answers its SSE stream.
     func startRun(appId: String, principal p: Principal, seq: Int, workflow: JSONValue, runId: String, graph: RuntimeGraph, pool: VariablePool,
                   workflowInputs: JSONObject, nodeTriggeredFrom: String,
-                  pendingForms: PendingHumanInputForms = PendingHumanInputForms()) async throws -> Response {
+                  pendingForms: PendingHumanInputForms = PendingHumanInputForms(), chat: ChatTurn? = nil) async throws -> Response {
         // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
         let taskId = runId
         let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
-        var stored = StoredWorkflowRun(id: runId, docId: appId, docSeq: seq, workflowId: appId, type: "workflow", triggeredFrom: "debugging",
+        var stored = StoredWorkflowRun(id: runId, docId: appId, docSeq: seq, workflowId: appId, type: chat == nil ? "workflow" : "chat", triggeredFrom: "debugging",
                                        version: "draft", graph: (workflow["graph"] ?? .null).compactJSON(),
                                        inputs: JSONValue.object(workflowInputs).compactJSON(), status: "running", createdBy: p.id,
                                        createdAt: Date())
         stored.createdByName = p.account.name
-        do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
+        let lease = UUID().uuidString.lowercased()
+        var pool = pool
+        if let chat {
+            do {
+                let conversation = try await store.beginChatTurn(conversation: chat.conversation, message: chat.message,
+                    run: stored, lease: lease, create: chat.create)
+                for (name, value) in (try JSONValue.parse(conversation.variables)).object ?? [:] {
+                    if let existing = pool.get(["conversation", name]) {
+                        try pool.add(["conversation", name], Segment(existing.valueType, value))
+                    }
+                }
+                try pool.add(["sys", "conversation_id"], .string(conversation.id))
+                let count = try await store.chatMessageCount(doc: appId, conversation: conversation.id, account: p.id)
+                try pool.add(["sys", "dialogue_count"], .int(count))
+            } catch ChatStoreError.busy {
+                throw ServerError.http(status: 409, code: "conversation_busy", message: "Wait for the current turn to finish or stop it first")
+            } catch ChatStoreError.notFound { throw ServerError.notFound
+            } catch ChatStoreError.invalidParent { throw Self.invalidParam("parent_message_id does not belong to this conversation") }
+        } else {
+            do { try await store.insertWorkflowRun(stored) } catch { throw ServerError.unavailable("\(error)") }
+        }
 
         let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         let commands = GraphEngineCommands()
-        let lease = UUID().uuidString.lowercased()
         await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
-        let encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
+        var encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
                                        inputs: workflowInputs, startedAt: stored.createdAt)
+        encoder.chat = chat?.message
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
                                                                         maxSteps: config.runtimeMaxSteps,
                                                                         maxTimeSeconds: config.runtimeMaxTimeSeconds),
@@ -242,6 +263,7 @@ extension Routes {
                                        inputs: inputs, startedAt: run.createdAt)
         // `elapsed_time` counts from the round (the resume), while `created_at` stays the run's original creation.
         encoder.roundStartedAt = Date()
+        encoder.chat = try? await store.chatMessage(runId: runId)
         let commands = GraphEngineCommands()
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
                                                                         maxSteps: config.runtimeMaxSteps,
@@ -264,6 +286,9 @@ extension Routes {
         let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         // The resumed round owns the task id from here: `stop` must find this engine, not the one that paused.
         let lease = UUID().uuidString.lowercased()
+        if run.type == "chat" {
+            guard (try? await store.renewChatLease(runId: runId, lease: lease, adopt: true)) == true else { return false }
+        }
         await runs.add(runId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
@@ -361,6 +386,14 @@ extension Routes {
         let p = try await authenticate(req, .edit)
         let a = try await appOfMode(req, p, Self.workflowModes)
         guard let task = req.parameters.get("task"), !task.isEmpty, task.utf8.count <= 255 else { throw ServerError.badRequest("invalid task id") }
+        if let run = try await store.workflowRun(id: task) {
+            guard run.docId == a.id, run.type != "chat" || run.createdBy == p.id else { throw ServerError.notFound }
+            if run.type == "chat" {
+                if let active = await runs.get(task), active.appId == a.id { active.commands.abort(reason: "User requested stop") }
+                if try await store.stopChatTurn(runId: task, error: "User requested stop", at: Date()) { await finishRunWithoutEngine(task) }
+                return rawJSON(["result": "success"])
+            }
+        } else { return rawJSON(["result": "success"]) }
         if let active = await runs.get(task), active.appId == a.id {
             active.commands.abort(reason: "User requested stop")
         } else {
@@ -391,7 +424,7 @@ extension Routes {
         let lastId = q["last_id"]?.last.flatMap { $0.isEmpty ? nil : $0 }
         if let lastId, UUID(uuidString: lastId) == nil { throw Self.invalidParam("last_id must be a UUID") }
         let page: (runs: [StoredWorkflowRun], hasMore: Bool)?
-        do { page = try await store.workflowRuns(doc: a.id, triggeredFrom: triggered, status: status, limit: limit, lastId: lastId) } catch {
+        do { page = try await store.workflowRuns(doc: a.id, triggeredFrom: triggered, status: status, limit: limit, lastId: lastId, viewer: p.id) } catch {
             throw ServerError.unavailable("\(error)")
         }
         guard let page else { throw Self.invalidParam("Last workflow run not exists") }
@@ -413,7 +446,7 @@ extension Routes {
         guard let id = req.parameters.get("run") else { throw ServerError.missing("Workflow run not found") }
         let found: StoredWorkflowRun?
         do { found = try await store.workflowRun(doc: a.id, id: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
-        guard let r = found else { throw ServerError.missing("Workflow run not found") }
+        guard let r = found, r.type != "chat" || r.createdBy == p.id else { throw ServerError.missing("Workflow run not found") }
         func parsed(_ text: String?) -> JSONValue { text.flatMap { try? JSONValue.parse($0) } ?? .null }
         let detail: JSONValue = [
             "id": .string(r.id), "version": .string(r.version), "graph": parsed(r.graph), "inputs": parsed(r.inputs),
@@ -432,6 +465,9 @@ extension Routes {
         let p = try await authenticate(req)
         let a = try await appOfMode(req, p, Self.workflowModes)
         guard let id = req.parameters.get("run") else { return rawJSON(["data": []]) }
+        if let run = try await store.workflowRun(doc: a.id, id: id.lowercased()), run.type == "chat", run.createdBy != p.id {
+            throw ServerError.notFound
+        }
         let list: [StoredNodeExecution]
         do { list = try await store.nodeExecutions(doc: a.id, run: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
         return await fileJSONResponse(["data": .array(list.flatMap(RetryHistory.traces))], userId: p.id)
@@ -580,6 +616,7 @@ final class RunExecution: Sendable {
     let createdBy: String
     let channel: RunChannel
     let encoderBox: Mutex<RunStreamEncoder>
+    let progress: Mutex<ChatProgress?>
     /// The forms the engine asked for during this run; the pause persists them before publishing anything.
     let pendingForms: PendingHumanInputForms
     /// The node executions' `triggered_from` (Dify: `workflow-run`; an iteration or loop single run: `single-step`).
@@ -601,6 +638,7 @@ final class RunExecution: Sendable {
         self.createdBy = createdBy
         self.channel = channel
         encoderBox = Mutex(encoder)
+        progress = Mutex(encoder.chat.map(ChatProgress.init))
         self.triggeredFrom = triggeredFrom
         self.pendingForms = pendingForms
         self.lease = lease
@@ -621,6 +659,26 @@ final class RunExecution: Sendable {
     /// resume took, published as `human_input_form_filled` right after the engine's `workflow_started(reason=resumption)`.
     func run(engine: GraphEngine, pool: VariablePool, snapshot: GraphEngineSnapshot? = nil,
              filled: [StoredHumanInputForm] = []) async {
+        let heartbeat: Task<Void, Never>? = encoderBox.withLock { $0.chat != nil } ? Task {
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                guard !Task.isCancelled else { return }
+                if (try? await routes.store.renewChatLease(runId: runId, lease: lease)) != true {
+                    if let active = await routes.runs.get(taskId), active.lease == lease {
+                        active.commands.abort(reason: "Conversation execution ownership expired")
+                    }
+                    return
+                }
+            }
+        } : nil
+        defer { heartbeat?.cancel() }
+        if let message = encoderBox.withLock({ $0.chat }),
+           let conversation = try? await routes.store.chatConversation(doc: appId, id: message.conversationId, account: createdBy),
+           let values = (try? JSONValue.parse(conversation.variables))?.object {
+            let initial = snapshot?.variablePool() ?? pool
+            let defaults = JSONObject((initial.variables["conversation"] ?? []).map { ($0.name, $0.segment.value) })
+            await saveConversationVariables(defaults.merging(values))
+        }
         let started = ContinuousClock.now
         // The round continues the run's numbering: a resumed round's executions follow the ones already stored, so the
         // history keeps its order and no index repeats. A failure to read it starts at the run's own count (0).
@@ -657,7 +715,7 @@ final class RunExecution: Sendable {
                 frames += encoderBox.withLock { enc in
                     decisions.filter { $0.status == .timedOut }.map { enc.humanInputFormTimeout($0) }
                 }
-                for f in frames { await channel.publish(Self.sse(f)) }
+                for f in frames { await publish(f) }
                 continue
             }
             if case .runPaused(let reasons, let snapshot, let stats) = event {
@@ -679,10 +737,16 @@ final class RunExecution: Sendable {
                                              actionText: r.outputs["__action_value"]?.string ?? "",
                                              submittedData: r.inputs)
                 }
-                await channel.publish(Self.sse(filled))
+                await publish(filled)
             }
             let frames = encoderBox.withLock { $0.encode(event) }
-            for f in frames { await channel.publish(Self.sse(f)) }
+            let isTerminal: Bool
+            switch event {
+            case .runSucceeded, .runPartialSucceeded, .runFailed, .runAborted: isTerminal = true
+            default: isTerminal = false
+            }
+            if !isTerminal { for f in frames { await publish(f) } }
+            var terminalCommitted = true
             switch event {
             case .node(.started(let x, let nodeId, let type, let title, let startAt, let scope)):
                 index += 1
@@ -708,13 +772,18 @@ final class RunExecution: Sendable {
                               finishedAt: finishedAt, retries: retries.removeValue(forKey: x))
             case .runSucceeded(let s), .runPartialSucceeded(let s):
                 let status: String = { if case .runSucceeded = event { return "succeeded" }; return "partial-succeeded" }()
-                await finish(status: status, error: nil, stats: s, started: started, running: running)
+                terminalCommitted = await finish(status: status, error: nil, stats: s, started: started, running: running)
             case .runFailed(let error, let s):
-                await finish(status: "failed", error: error, stats: s, started: started, running: running)
+                terminalCommitted = await finish(status: "failed", error: error, stats: s, started: started, running: running)
             case .runAborted(let reason, let s):
-                await finish(status: "stopped", error: reason, stats: s, started: started, running: running)
+                terminalCommitted = await finish(status: "stopped", error: reason, stats: s, started: started, running: running)
+            case .node(.retrieverResource(_, _, let resources, _)):
+                _ = await saveChatMetadata(resources: resources)
+            case .node(.variableUpdated(_, _, let selector, let value)) where selector.first == "conversation" && selector.count == 2:
+                await saveConversationVariables([selector[1]: value.value])
             default: break
             }
+            if isTerminal && terminalCommitted { for f in frames { await publish(f) } }
         }
         if endedWithoutPause {
             // The run's channel lives as long as the run, not as long as one round: a pause keeps it so a reconnect (or the
@@ -740,6 +809,9 @@ final class RunExecution: Sendable {
         let at = Date()
         var generation = 0
         do {
+            guard await saveChatMetadata(usage: stats.llmUsage) else {
+                throw NodeError("ConversationPersistenceError", "Could not save the conversation at its pause")
+            }
             // TEST ONLY (`testDefect: pauseWriteFails`): a pause that cannot be written must end the run and run the
             // terminal cleanup, never leave a channel or a paused run behind.
             if routes.config.testDefect == "pauseWriteFails" {
@@ -760,14 +832,19 @@ final class RunExecution: Sendable {
             routes.logger.error("run \(runId) could not persist its pause: \(error)")
             // Durable first, then the frame (Dify's public stream has no `workflow_failed`: a failure is
             // `workflow_finished` with `status: failed`).
-            try? await routes.store.finishWorkflowRun(id: runId, status: status, outputs: nil, error: message,
-                                                      elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.roundStartedAt }),
-                                                      totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
-                                                      exceptionsCount: 0, finishedAt: at)
+            do {
+                try await routes.store.finishWorkflowRun(id: runId, status: status, outputs: nil, error: message,
+                    elapsedTime: at.timeIntervalSince(encoderBox.withLock { $0.roundStartedAt }),
+                    totalTokens: stats.totalTokens, totalSteps: stats.totalSteps, exceptionsCount: 0, finishedAt: at,
+                    chatLease: encoderBox.withLock { $0.chat == nil ? nil : lease })
+            } catch {
+                routes.logger.error("run \(runId): the pause failure could not be finalized: \(error)")
+                return false
+            }
             let frames = encoderBox.withLock { enc in
                 [enc.workflowFinished(status, error: message, stats: stats, exceptions: 0)]
             }
-            for f in frames { await channel.publish(Self.sse(f)) }
+            for f in frames { await publish(f) }
             // The run is over: the caller must run its terminal cleanup (channel, registry).
             return false
         }
@@ -779,7 +856,7 @@ final class RunExecution: Sendable {
             forms.enumerated().map { i, form in enc.humanInputRequired(form, inputs: resolvedInputs[i]) }
                 + [enc.workflowPaused(forms, reasons: reasons, stats: stats, at: at, inputs: resolvedInputs)]
         }
-        for f in frames { await channel.publish(Self.sse(f), pauseGeneration: generation) }
+        for f in frames { await publish(f, generation: generation) }
         // The email delivery, after the pause is durable (Dify's mail task runs after the form exists): each recipient gets
         // their own link, and a delivery that already happened is not repeated (a restart, or a later pause adopting the
         // same waiting form). Best effort: a failure is logged and never unwinds a pause.
@@ -877,7 +954,8 @@ final class RunExecution: Sendable {
     }
 
     func finish(status: String, error: String?, stats: GraphRunStats, started: ContinuousClock.Instant,
-                running: [String: Running]) async {
+                running: [String: Running]) async -> Bool {
+        guard await saveChatMetadata(usage: stats.llmUsage) else { return false }
         let now = Date()
         // `_fail_running_node_executions`: nodes still running when the run ends.
         for (x, s) in running {
@@ -892,10 +970,13 @@ final class RunExecution: Sendable {
         do {
             try await routes.store.finishWorkflowRun(id: runId, status: status, outputs: JSONValue.object(stats.outputs).compactJSON(), error: error,
                                                      elapsedTime: elapsed, totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
-                                                     exceptionsCount: status == "stopped" ? 0 : stats.exceptionsCount, finishedAt: now)
+                                                     exceptionsCount: status == "stopped" ? 0 : stats.exceptionsCount, finishedAt: now,
+                                                     chatLease: encoderBox.withLock { $0.chat == nil ? nil : lease })
         } catch {
             routes.logger.error("run \(runId): storing the result failed: \(error)")
+            return false
         }
+        return true
     }
 }
 
@@ -965,6 +1046,7 @@ struct RunStreamEncoder: Sendable {
         var scope: NodeScope
     }
     var snapshots: [String: Snapshot] = [:]
+    var chat: StoredChatMessage?
 
     init(taskId: String, runId: String, workflowId: String, graph: RuntimeGraph, account: JSONValue, inputs: JSONObject, startedAt: Date) {
         self.taskId = taskId
@@ -981,7 +1063,13 @@ struct RunStreamEncoder: Sendable {
 
     /// Dify's frame: `{"event", "workflow_run_id"}` updated with the response's `model_dump` (`event`, `task_id`, ..., `data`).
     func envelope(_ event: String, _ data: JSONValue) -> JSONValue {
-        ["event": .string(event), "workflow_run_id": .string(runId), "task_id": .string(taskId), "data": data]
+        var frame: JSONObject = ["event": .string(event), "workflow_run_id": .string(runId), "task_id": .string(taskId), "data": data]
+        if let chat {
+            frame["conversation_id"] = .string(chat.conversationId)
+            frame["message_id"] = .string(chat.id)
+            frame["created_at"] = Self.ts(chat.createdAt)
+        }
+        return .object(frame)
     }
 
     func nodeType(_ id: String) -> String { graph.nodes[id]?.nodeType ?? "" }
@@ -1151,6 +1239,8 @@ actor RunChannelRegistry {
 actor RunChannel {
     private var frames: [String] = []
     private var pauseGenerations: [Int: Int] = [:]
+    private var chatOffsets: [Int: Int] = [:]
+    private var reasoningOffsets: [Int: ChatReasoningCursor] = [:]
     private var subscribers: [Int: AsyncStream<String>.Continuation] = [:]
     private var next = 0
     private var finished = false
@@ -1159,7 +1249,9 @@ actor RunChannel {
 
     /// `pauseGeneration` tags a frame that belongs to one pause (the database generation): a reconnect deduplicates by that
     /// identity, never by a second-resolution `created_at` (two resumes can re-pause within the same second).
-    func publish(_ frame: String, pauseGeneration: Int? = nil) {
+    func publish(_ frame: String, pauseGeneration: Int? = nil, chatOffset: Int? = nil, reasoning: ChatReasoningCursor? = nil) {
+        if let reasoning { reasoningOffsets[frames.count] = reasoning }
+        if let chatOffset { chatOffsets[frames.count] = chatOffset }
         if let pauseGeneration { pauseGenerations[frames.count] = pauseGeneration }
         frames.append(frame)
         lastSent = .now
@@ -1204,6 +1296,9 @@ actor RunChannel {
     var subscriberCount: Int { subscribers.count }
 
     /// The pause generation a published frame belongs to, when it is a pause frame.
+    func chatOffset(at index: Int) -> Int? { chatOffsets[index] }
+    func chatReasoning(at index: Int) -> ChatReasoningCursor? { reasoningOffsets[index] }
+
     func pauseGeneration(at index: Int) -> Int? { pauseGenerations[index] }
 
     /// `replay` = the frames already published (a fresh subscriber sees the run from its start); false = only what comes

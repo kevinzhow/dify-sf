@@ -386,6 +386,8 @@ public struct ModelInvokeError: Error, CustomStringConvertible, Sendable {
 
 /// Where models come from: credentials of the workspace, schemas and invocations (Dify's model manager + plugin daemon).
 public protocol ModelRuntime: Sendable {
+    func numTokens(_ instance: ModelInstance, promptMessages: [PromptMessage]) async throws -> Int
+
     /// The current credentials of `model` (Dify's `CredentialsProvider.fetch`): the custom model's, else the provider's.
     /// Throws when the provider or model is not configured.
     func credentials(provider: String, model: String, modelType: String) async throws -> JSONObject
@@ -404,6 +406,10 @@ public protocol ModelRuntime: Sendable {
 }
 
 extension ModelRuntime {
+    public func numTokens(_ instance: ModelInstance, promptMessages: [PromptMessage]) async throws -> Int {
+        throw NodeError("TokenCounterNotConfigured", "The model runtime does not provide token counting for conversation memory")
+    }
+
     /// Runtimes without function calling: tools are dropped, the stream flag is ignored.
     public func invokeLLM(_ instance: ModelInstance, promptMessages: [PromptMessage], parameters: JSONObject, tools: [PromptMessageTool],
                           stop: [String], stream: Bool, user: String?) -> AsyncThrowingStream<LLMResultChunk, any Error> {

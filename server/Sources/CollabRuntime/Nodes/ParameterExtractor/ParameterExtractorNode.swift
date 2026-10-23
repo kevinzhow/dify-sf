@@ -2,8 +2,8 @@
 // graphon/nodes/parameter_extractor/parameter_extractor_node.py, entities.py, exc.py, prompts.py,
 // graphon/variables/types.py (SegmentType.is_valid, infer_segment_type). See ../../NOTICE.md.
 //
-// Not ported: conversation memory (workflows and single runs have none), vision files (P5), and the token count of
-// `_calculate_rest_token` (it only sizes the memory window, so no `llm/num_tokens` call is made).
+// Vision attachments in extractor prompts remain outside this port. Conversation memory and its token reserve
+// follow the pinned extractor's `_calculate_rest_token`.
 
 import Foundation
 
@@ -51,6 +51,9 @@ public struct ParameterExtractorNode: RuntimeNode {
     let instance: ModelInstance
     let schema: AIModelEntity
     let models: any ModelRuntime
+    let files: (any RuntimeFiles)?
+    let memory: (any ConversationMemory)?
+    let memoryConfig: LLMNodeData.Memory?
 
     public var nodeType: String { NodeType.parameterExtractor }
 
@@ -59,7 +62,7 @@ public struct ParameterExtractorNode: RuntimeNode {
         "array[object]": .arrayObject, "array[boolean]": .arrayBoolean, "bool": .boolean, "select": .string,
     ]
 
-    public init(id: String, data: JSONObject, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime) throws {
+    public init(id: String, data: JSONObject, instance: ModelInstance, schema: AIModelEntity, models: any ModelRuntime, memory: (any ConversationMemory)? = nil, files: (any RuntimeFiles)? = nil) throws {
         self.id = id
         base = try BaseNodeData(data)
         model = try LLMPrompting.model(data)
@@ -91,6 +94,9 @@ public struct ParameterExtractorNode: RuntimeNode {
         self.instance = instance
         self.schema = schema
         self.models = models
+        self.files = files
+        self.memory = memory
+        self.memoryConfig = ConversationPromptMemory.config(data["memory"])
     }
 
     /// `get_parameter_json_schema`.
@@ -254,12 +260,12 @@ public struct ParameterExtractorNode: RuntimeNode {
     }
 
     /// The prompt messages and the tool (function calling) for one run.
-    func buildPrompt(query: String, instruction: String, pool: VariablePool) throws -> ([PromptMessage], [PromptMessageTool]) {
+    func buildPrompt(query: String, instruction: String, pool: VariablePool, histories: String = "") throws -> ([PromptMessage], [PromptMessageTool]) {
         let structure = LLMPrompting.jsonDumpsASCII(parameterSchema)
         if schema.supportsToolCall && reasoningMode == "function_call" {
             let input = LLMPrompting.pythonFormat(Self.functionCallingUserTemplate, ["content": query, "structure": structure])
             guard model.mode == "chat" else { throw NodeError("InvalidModelModeError", "Model mode \(model.mode) not support.") }
-            let system = LLMPrompting.pythonFormat(Self.functionCallingSystemPrompt, ["histories": "", "instruction": instruction])
+            let system = LLMPrompting.pythonFormat(Self.functionCallingSystemPrompt, ["histories": histories, "instruction": instruction])
             let compiled = try LLMPrompting.filter(try LLMPrompting.listMessages([(.system, system), (.user, input)], pool: pool), schema: schema)
             var examples: [PromptMessage] = []
             for e in Self.functionCallingExamples {
@@ -279,13 +285,13 @@ public struct ParameterExtractorNode: RuntimeNode {
         }
         switch model.mode {
         case "completion":
-            let text = LLMPrompting.pythonFormat(Self.completionGenerateJSONPrompt, ["histories": "", "text": query, "instruction": instruction])
+            let text = LLMPrompting.pythonFormat(Self.completionGenerateJSONPrompt, ["histories": histories, "text": query, "instruction": instruction])
                 .replacingOccurrences(of: "{γγγ", with: "").replacingOccurrences(of: "}γγγ", with: "")
                 .replacingOccurrences(of: "{ structure }", with: structure)
             return (try LLMPrompting.filter(LLMPrompting.completionMessages(text, pool: pool), schema: schema), [])
         case "chat":
             let input = LLMPrompting.pythonFormat(Self.chatGenerateJSONUserMessageTemplate, ["structure": structure, "text": query])
-            let system = LLMPrompting.pythonFormat(Self.chatGenerateJSONPrompt, ["histories": "", "instruction": instruction])
+            let system = LLMPrompting.pythonFormat(Self.chatGenerateJSONPrompt, ["histories": histories, "instruction": instruction])
             let compiled = try LLMPrompting.filter(try LLMPrompting.listMessages([(.system, system), (.user, input)], pool: pool), schema: schema)
             var examples: [PromptMessage] = []
             for e in Self.chatExamples {
@@ -312,7 +318,17 @@ public struct ParameterExtractorNode: RuntimeNode {
         modelInstance.parameters = LLMNode.resolveCompletionParams(modelInstance.parameters, pool)
         guard schema.modelType == "llm" else { throw NodeError("InvalidModelTypeError", "Model is not a Large Language Model") }
         let renderedInstruction = VariableTemplate.convert(pool, instruction ?? "").text
-        let (messages, tools) = try buildPrompt(query: query, instruction: renderedInstruction, pool: pool)
+        var histories = ""
+        if let memory, var config = memoryConfig {
+            if config.windowSize != nil { config.windowEnabled = true }
+            let (baseline, _) = try buildPrompt(query: query, instruction: renderedInstruction, pool: pool)
+            var bytes = 0
+            let history = try await ConversationPromptMemory.messages(memory: memory, config: config, models: models,
+                instance: modelInstance, schema: schema, prompt: baseline, files: files, extraTokenReserve: 1000, imageBytes: &bytes)
+            histories = ConversationPromptMemory.text(history, config: config)
+        }
+        let (raw, tools) = try buildPrompt(query: query, instruction: renderedInstruction, pool: pool, histories: ConversationPromptMemory.placeholder)
+        let messages = ConversationPromptMemory.inserting(histories, into: raw)
         let inputs: JSONObject = [
             "query": .string(query), "files": .array([]), "parameters": .array(parameters.map(\.json)),
             "instruction": instruction.map(JSONValue.string) ?? .null,
@@ -514,6 +530,6 @@ extension BuiltinNodeFactory {
         let models = try services.requireModels()
         let m = try LLMPrompting.model(config.data)
         let (instance, schema) = try await LLMNode.prepareModel(m, models: models)
-        return try ParameterExtractorNode(id: config.id, data: config.data, instance: instance, schema: schema, models: models)
+        return try ParameterExtractorNode(id: config.id, data: config.data, instance: instance, schema: schema, models: models, memory: services.memory, files: services.files)
     }
 }

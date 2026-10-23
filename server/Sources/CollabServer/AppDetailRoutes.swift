@@ -847,9 +847,11 @@ extension Routes {
     /// `GET /v1/apps/{app}/chat-messages?conversation_id` (owner, admin, editor): no conversations yet -> `404`.
     private func chatMessages(_ req: Request) async throws -> Response {
         let p = try await authenticate(req, .edit)
-        _ = try await appOfMode(req, p, Self.chatModes)
-        guard let c = queryAll(req)["conversation_id"]?.last, !c.isEmpty else { throw ServerError.badRequest("conversation_id is required") }
-        throw ServerError.missing("Conversation Not Exists.")
+        let a = try await appOfMode(req, p, Self.chatModes)
+        guard let id = queryAll(req)["conversation_id"]?.last, !id.isEmpty else { throw ServerError.badRequest("conversation_id is required") }
+        guard try await store.chatConversation(doc: a.id, id: id, account: p.id) != nil else { throw ServerError.missing("Conversation Not Exists.") }
+        let messages = try await store.chatMessages(doc: a.id, conversation: id, account: p.id)
+        return await fileJSONResponse(["data": .array(messages.reversed().map(Self.chatMessageJSON)), "has_more": false, "limit": 500], userId: p.id)
     }
 
     /// Python's `uuid.UUID(s)` for the usual spellings (hyphenated or 32 hex digits, any case); nil otherwise.

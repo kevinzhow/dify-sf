@@ -287,6 +287,16 @@ void main() {
       expect(c.isResponding, isFalse);
     });
 
+    test('restart stops the accepted task before clearing its id', () {
+      final r = _Rig();
+      r.run.impl = (_, cb) =>
+          cb.onData!('msg', true, _info(conversationId: 'c1', messageId: 'm1', taskId: 'task-restart'));
+      r.chat({}, null, null, true)
+        ..handleSend({'query': 'test'})
+        ..handleRestart();
+      expect(r.stopped, ['task-restart']);
+    });
+
     test('should reset iter/loop times to defaults', () {
       final r = _Rig();
       r.store

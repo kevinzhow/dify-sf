@@ -131,6 +131,8 @@ TextField difyTextField({
   Iterable<String>? autofillHints,
   int? maxLength,
   TextInputAction? textInputAction,
+  int? minLines,
+  int? maxLines = 1,
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
@@ -155,7 +157,8 @@ TextField difyTextField({
   ),
   cursorColor: const Color(0xFF155EEF), // caret-primary-600
   cursorWidth: 1,
-  maxLines: 1,
+  minLines: minLines,
+  maxLines: maxLines,
   decoration: InputDecoration(
     isCollapsed: true,
     border: InputBorder.none,
@@ -379,4 +382,41 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       ),
     );
   }
+}
+
+/// Decoration-free multi-line input for a custom Dify surface (for example the
+/// chat composer). Reuse the design system's TextField, font metrics and native
+/// editing lifecycle rather than rebuilding EditableText accessibility and IME.
+class DifyEditableArea extends StatelessWidget {
+  const DifyEditableArea({
+    super.key,
+    required this.controller,
+    required this.focusNode,
+    required this.style,
+    required this.placeholder,
+    this.enabled = true,
+    this.readOnly = false,
+  });
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final TextStyle style;
+  final String placeholder;
+  final bool enabled, readOnly;
+  @override
+  Widget build(BuildContext context) => Material(
+    type: MaterialType.transparency,
+    child: difyTextField(
+      context: context,
+      controller: controller,
+      focusNode: focusNode,
+      style: style,
+      padding: EdgeInsets.zero,
+      placeholder: placeholder,
+      disabled: !enabled,
+      readOnly: readOnly,
+      keyboardType: TextInputType.multiline,
+      minLines: 1,
+      maxLines: null,
+    ),
+  );
 }

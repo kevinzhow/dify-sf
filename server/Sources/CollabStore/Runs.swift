@@ -73,7 +73,7 @@ extension PostgresStore {
     }
 
     /// Dify's `get_node_last_run`: the newest execution of `nodeId` in the app (single-step or within a run).
-    public func lastNodeExecution(doc: String, nodeId: String) async throws -> StoredNodeExecution? {
+    public func lastNodeExecution(doc: String, nodeId: String, createdBy: String? = nil) async throws -> StoredNodeExecution? {
         try await bounded {
             let rows = try await self.client.query("""
                 SELECT e.id, e.doc_id, e.workflow_run_id, e.triggered_from, e.doc_seq, e.run_index, e.predecessor_node_id, e.node_id,
@@ -81,6 +81,7 @@ extension PostgresStore {
                        e.created_by, e.created_at, e.finished_at, a.name, a.email
                 FROM workflow_node_executions e LEFT JOIN accounts a ON a.id = e.created_by
                 WHERE e.doc_id = \(doc) AND e.node_id = \(nodeId)
+                  AND (\(createdBy)::text IS NULL OR e.created_by = \(createdBy))
                 ORDER BY e.created_at DESC, e.id DESC LIMIT 1
                 """, logger: self.logger)
             for try await row in rows { return try Self.decodeNodeExecution(row) }

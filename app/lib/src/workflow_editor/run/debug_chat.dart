@@ -46,12 +46,17 @@ String processOpeningStatement(String openingStatement, DifyJson inputs, List<Di
 }
 
 /// `processInputFileFromServer`.
-DifyJson processInputFileFromServer(Map fileItem) => {
-  'type': fileItem['type'],
-  'transfer_method': fileItem['transfer_method'],
-  'url': fileItem['remote_url'],
-  'upload_file_id': fileItem['related_id'],
-};
+DifyJson processInputFileFromServer(Map fileItem) {
+  // Runtime values already identify a frozen record; keep the marker/reference,
+  // including for remote files, so restoring inputs never downloads them again.
+  if (fileItem['dify_model_identity'] == '__dify__file__') return fileItem.cast<String, Object?>();
+  return {
+    'type': fileItem['type'],
+    'transfer_method': fileItem['transfer_method'],
+    'url': fileItem['remote_url'] ?? fileItem['url'],
+    'upload_file_id': fileItem['upload_file_id'] ?? fileItem['related_id'],
+  };
+}
 
 /// `getProcessedInputs`.
 DifyJson getProcessedInputs(DifyJson inputs, List<DifyJson> inputsForm) {
@@ -181,6 +186,7 @@ class DebugChatController extends ChangeNotifier {
        toast = toast ?? difyToast,
        resumeStream = resumeStream ?? ((id, cb) => listenRunEvents(service.workflowEvents(id), cb)) {
     _chatTree = prevChatTree ?? [];
+    if (prevChatTree == null) unawaited(restoreConversation());
   }
 
   static bool _always() => true;
@@ -230,7 +236,83 @@ class DebugChatController extends ChangeNotifier {
   String? _targetMessageId;
   var _disposed = false;
 
-  bool get isResponding => _isResponding;
+  bool _restoring = false;
+  int _conversationEpoch = 0;
+  bool get isResponding => _isResponding || _restoring;
+
+  void _rememberConversation(String id) {
+    if (id == _conversationId) return;
+    _conversationId = id;
+    unawaited(service.rememberChatConversation(id));
+  }
+
+  Future<void> restoreConversation() async {
+    final epoch = ++_conversationEpoch;
+    final id = await service.recalledChatConversation();
+    if (_disposed || epoch != _conversationEpoch || id == null || id.isEmpty) return;
+    _restoring = true;
+    _changed();
+    try {
+      final messages = await service.fetchChatMessages(id);
+      if (_disposed || epoch != _conversationEpoch) return;
+      if (messages.isNotEmpty && messages.first['inputs'] is Map) {
+        final savedInputs = messages.first['inputs'] as Map;
+        store.setInputs({
+          for (final entry in savedInputs.entries)
+            if (entry.key is String && entry.value != null) entry.key as String: entry.value as Object,
+        });
+      }
+      final roots = <DifyJson>[];
+      final answers = <String, DifyJson>{};
+      for (final message in messages) {
+        final mid = message['id'] as String;
+        final parent = message['parent_message_id'] as String?;
+        final answer = <String, Object?>{
+          'id': mid,
+          'content': message['answer'] ?? '',
+          'isAnswer': true,
+          'parentMessageId': 'question-$mid',
+          'children': <DifyJson>[],
+          'workflow_run_id': message['workflow_run_id'],
+          'reasoningContent': message['reasoning'],
+          'allFiles': getProcessedFilesFromResponse(message['files'] as List? ?? const []),
+          'isError': message['status'] == 'error',
+        };
+        final siblings = answers[parent]?['children'] as List<DifyJson>? ?? roots;
+        answer['siblingIndex'] = siblings.length;
+        siblings.add({
+          'id': 'question-$mid',
+          'content': message['query'],
+          'isAnswer': false,
+          'parentMessageId': parent,
+          'message_files': getProcessedFilesFromResponse(message['message_files'] as List? ?? const []),
+          'children': <DifyJson>[answer],
+        });
+        answers[mid] = answer;
+      }
+      _conversationId = id;
+      _setTree(roots);
+      if (messages.isNotEmpty) {
+        final latest = messages.last;
+        final runId = latest['workflow_run_id'] as String?;
+        if (runId != null && runId.isNotEmpty) {
+          final detail = await service.fetchRunDetail(runId);
+          if (_disposed || epoch != _conversationEpoch) return;
+          if (detail['status'] == 'running' || detail['status'] == 'paused') {
+            handleResume(latest['id'] as String, runId);
+          }
+        }
+      }
+    } on Object catch (error) {
+      if (!_disposed && epoch == _conversationEpoch) toast(DifyToastType.error, '$error');
+    } finally {
+      if (!_disposed && epoch == _conversationEpoch) {
+        _restoring = false;
+        _changed();
+      }
+    }
+  }
+
   String get conversationId => _conversationId;
   List<String> get suggestedQuestions => _suggestedQuestions;
   List<DifyJson> get chatTree => _chatTree;
@@ -360,9 +442,12 @@ class DebugChatController extends ChangeNotifier {
 
   /// `handleRestart`: a new conversation.
   void handleRestart() {
+    _conversationEpoch++;
+    _restoring = false;
+    handleStop(); // Keep the accepted task id until its stop request has been sent.
     _conversationId = '';
+    unawaited(service.rememberChatConversation(''));
     _taskId = '';
-    handleStop();
     _chatTree = [];
     _suggestedQuestions = const [];
     _changed();
@@ -442,10 +527,11 @@ class DebugChatController extends ChangeNotifier {
   /// responding).
   bool handleSend(DifyJson params, {SuggestedQuestionsFetcher? onGetSuggestedQuestions}) {
     if (!canRun()) return false;
-    if (_isResponding) {
+    if (isResponding) {
       toast(DifyToastType.info, DifyI18n.tr('app-debug', 'errorMessage.waitForResponse'));
       return false;
     }
+    _conversationEpoch++; // An older asynchronous history read must not replace this newly started turn.
     _workflowEventsAbort?.abort();
     final thread = threadMessages;
     final parentMessageId = params['parent_message_id'] as String?;
@@ -525,7 +611,9 @@ class DebugChatController extends ChangeNotifier {
             responseItem['content'] = '${responseItem['content']}$message';
             final messageId = info.messageId;
             if (messageId != null && messageId.isNotEmpty && !hasSetResponseId) setResponseId(messageId);
-            if (isFirstMessage && (info.conversationId?.isNotEmpty ?? false)) _conversationId = info.conversationId!;
+            if (isFirstMessage && (info.conversationId?.isNotEmpty ?? false)) {
+              _rememberConversation(info.conversationId!);
+            }
             _taskId = info.taskId ?? '';
             if (messageId != null && messageId.isNotEmpty) responseItem['id'] = messageId;
             update();
@@ -565,10 +653,17 @@ class DebugChatController extends ChangeNotifier {
             ];
             update();
           },
-          onMessageReplace: (e) => responseItem['content'] = e.answer,
+          onMessageReplace: (e) {
+            responseItem['content'] = e.answer;
+            if (e.json['reasoning'] is Map) responseItem['reasoningContent'] = e.json['reasoning'];
+            if (e.json['files'] is List) {
+              responseItem['allFiles'] = getProcessedFilesFromResponse(e.json['files'] as List);
+            }
+            update();
+          },
           onError: (_, [_]) => _setResponding(false),
           onWorkflowStarted: (e) {
-            if (e.conversationId?.isNotEmpty ?? false) _conversationId = e.conversationId!;
+            if (e.conversationId?.isNotEmpty ?? false) _rememberConversation(e.conversationId!);
             if ((e.messageId?.isNotEmpty ?? false) && !hasSetResponseId) setResponseId(e.messageId!);
             final process = responseItem['workflowProcess'];
             if (process is Map && (process['tracing'] as List?)?.isNotEmpty == true) {
@@ -765,7 +860,7 @@ class DebugChatController extends ChangeNotifier {
           item['content'] = '${item['content'] ?? ''}$message';
           if (info.messageId?.isNotEmpty ?? false) item['id'] = info.messageId;
         });
-        if (info.conversationId?.isNotEmpty ?? false) _conversationId = info.conversationId!;
+        if (info.conversationId?.isNotEmpty ?? false) _rememberConversation(info.conversationId!);
         if (info.taskId?.isNotEmpty ?? false) _taskId = info.taskId!;
       },
       onReasoning: (e) {
@@ -796,7 +891,11 @@ class DebugChatController extends ChangeNotifier {
             if (seen.add(f['id'])) f,
         ];
       }),
-      onMessageReplace: (e) => upd((item) => item['content'] = e.answer),
+      onMessageReplace: (e) => upd((item) {
+        item['content'] = e.answer;
+        if (e.json['reasoning'] is Map) item['reasoningContent'] = e.json['reasoning'];
+        if (e.json['files'] is List) item['allFiles'] = getProcessedFilesFromResponse(e.json['files'] as List);
+      }),
       onError: (_, [_]) => _setResponding(false),
       onWorkflowStarted: (e) {
         _setResponding(true);

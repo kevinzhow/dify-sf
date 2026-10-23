@@ -365,7 +365,8 @@ class WorkflowRunController {
   /// For a test with a service whose stream ends for its own reasons (a stand-in that stops at a pause).
   set retriesLostConnections(bool value) => _retriesLostConnections = value;
 
-  RunStreamHandle _followWithResume(String runId, RunCallbacks cb) {
+  RunStreamHandle _followWithResume(String? runId, RunCallbacks cb, {Stream<RunEvent>? initialStream}) {
+    var first = initialStream;
     final follower = RunStreamHandle();
     var delay = const Duration(milliseconds: 500);
     var finished = false, ended = false;
@@ -384,6 +385,11 @@ class WorkflowRunController {
     void retry() {
       if (!_retriesLostConnections) return;
       if (follow.done || follower.aborted || finished || ended) return;
+      if (runId == null) {
+        ended = true;
+        cb.onError?.call('The connection ended before a run was accepted. Check history before retrying.');
+        return;
+      }
       final wait = delay;
       delay = delay * 2 > const Duration(seconds: 5) ? const Duration(seconds: 5) : delay * 2;
       follow.waiting = wait;
@@ -396,11 +402,29 @@ class WorkflowRunController {
     attempt = () {
       if (follow.done || follower.aborted || finished || ended) return;
       follow.inner = _listen(
-        service.workflowEvents(runId),
+        first ?? service.workflowEvents(runId!),
         cb.merge(
           RunCallbacks(
             // The follow's own ends first, then the caller's handlers (they build the panel's state): `merge` keeps the
             // other object's non-null callbacks, so this one calls both.
+            onCompleted: ([hasError = false, message]) {
+              // EOF is a transport boundary until a terminal event or a pause hands ownership over. Keeping the
+              // response active also prevents a second send while the same turn is reconnecting.
+              if (finished || ended || follow.done) cb.onCompleted?.call(hasError, message);
+            },
+            onWorkflowStarted: (p) {
+              runId = p.workflowRunId ?? runId;
+              cb.onWorkflowStarted?.call(p);
+            },
+            onWorkflowPaused: initialStream == null
+                ? cb.onWorkflowPaused
+                : (p) {
+                    // The initial POST hands over at the pause. Let its response finish naturally; cancelling a local demo's
+                    // generator here would also cancel its engine. The new GET owns reconnects from this point.
+                    follow.done = true;
+                    if (identical(_followOfRun, follower)) _followOfRun = null;
+                    cb.onWorkflowPaused?.call(p);
+                  },
             onWorkflowFinished: (p) {
               finished = true;
               follow.done = true;
@@ -425,6 +449,7 @@ class WorkflowRunController {
           ),
         ),
       );
+      first = null;
       // A stream that ends **without** a terminal event is a connection that died (a clean end counts): open it again.
       follow.listener = follow.inner!.endedStream.listen((_) {
         if (follow.done || follower.aborted || finished || ended) return;
@@ -443,7 +468,10 @@ class WorkflowRunController {
   /// For a test: the follow a pause would open (the same path `resume` takes), so its failure modes can be driven by a
   /// scripted service without a server or a page.
   @visibleForTesting
-  RunStreamHandle debugFollow(String runId, RunCallbacks cb) => _followWithResume(runId, cb);
+  RunStreamHandle debugFollow(String runId, RunCallbacks cb) => followRun(runId, cb);
+
+  /// A chat preview follows the same durable stream and bounded reconnect loop as the workflow panel.
+  RunStreamHandle followRun(String runId, RunCallbacks cb) => _followWithResume(runId, cb);
 
   RunStreamHandle _listen(Stream<RunEvent> stream, RunCallbacks cb) {
     final h = listenRunEvents(stream, cb);
@@ -547,7 +575,11 @@ class WorkflowRunController {
     final stream = chat
         ? service.sendChatMessage(ChatMessageRequest(requestBody))
         : service.runWorkflowDraft(WorkflowDraftRunRequest(body: requestBody));
-    _listen(stream, finalCallbacks);
+    if (chat) {
+      _followWithResume(null, finalCallbacks, initialStream: stream);
+    } else {
+      _listen(stream, finalCallbacks);
+    }
   }
 
   /// `runTriggerDebug`: the trigger debug request waits for the trigger to fire (the service's stream stays silent

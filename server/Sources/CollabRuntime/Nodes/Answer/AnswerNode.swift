@@ -22,8 +22,12 @@ public struct AnswerNode: RuntimeNode {
 
     public func run(_ context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws {
         let segments = VariableTemplate.convert(context.pool, answer)
-        // Files (FileSegment / ArrayFileSegment) come with file storage (P5): none yet.
-        await emit(.completed(NodeRunResult(status: .succeeded, outputs: ["answer": .string(segments.markdown), "files": .array([])])))
+        var files: [JSONValue] = []
+        for segment in segments.value {
+            if segment.valueType == .file { files.append(segment.value) }
+            else if segment.valueType == .arrayFile { files += segment.value.array ?? [] }
+        }
+        await emit(.completed(NodeRunResult(status: .succeeded, outputs: ["answer": .string(segments.markdown), "files": .array(files)])))
     }
 
     public func variableMapping(graph: GraphConfig) -> [(key: String, selector: [String])] {

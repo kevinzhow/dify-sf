@@ -184,6 +184,7 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
     formSettings: formSettings,
     graph: graph,
     stopChat: (taskId) => service.stopChatMessageResponding(taskId),
+    resumeStream: run.followRun,
     fetchInspectVars: widget.fetchInspectVars,
   );
 

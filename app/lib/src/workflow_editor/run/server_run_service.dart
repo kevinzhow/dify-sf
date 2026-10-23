@@ -6,6 +6,8 @@ library;
 
 import 'package:collab_client/collab_client.dart' show TransportException, WorkflowRunApi;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../store/workflow_store.dart' show DifyJson;
 import '../variable_inspect/inspect_vars.dart' show VariableInspectServices;
 import 'run_service.dart';
@@ -20,6 +22,8 @@ class ServerWorkflowRuntime {
     this.draftRun = const {},
     this.humanInput = false,
     this.humanInputEmail = false,
+    this.chatflow = false,
+    this.conversationStorageScope,
   });
 
   final WorkflowRunApi api;
@@ -40,6 +44,8 @@ class ServerWorkflowRuntime {
 
   /// Outbound email has a separate rollout switch from web forms.
   final bool humanInputEmail;
+  final bool chatflow;
+  final String? conversationStorageScope;
 }
 
 /// [WorkflowRunService] over the server's runtime for app [appId], [fallback] for the rest. [nodeTypeOf] answers a
@@ -73,6 +79,23 @@ class ServerRunService extends WorkflowRunService {
 
   /// Runs of this session that went to the server (stop and records follow them).
   final _serverRuns = <String>{};
+
+  String? get _conversationKey =>
+      runtime.conversationStorageScope == null ? null : 'chatflow:${runtime.conversationStorageScope}:$appId';
+
+  @override
+  Future<String?> recalledChatConversation() async {
+    final key = _conversationKey;
+    if (!runtime.chatflow || key == null) return null;
+    return (await SharedPreferences.getInstance()).getString(key);
+  }
+
+  @override
+  Future<void> rememberChatConversation(String conversationId) async {
+    final key = _conversationKey;
+    if (!runtime.chatflow || key == null) return;
+    await (await SharedPreferences.getInstance()).setString(key, conversationId);
+  }
 
   /// The server's refusal as the run UI's error (its message is shown as Dify shows the API's message).
   static RunServiceException _refusal(TransportException e) => RunServiceException(e.message, code: e.code);
@@ -186,7 +209,21 @@ class ServerRunService extends WorkflowRunService {
   // ---- the stand-in's ----
 
   @override
-  Stream<RunEvent> sendChatMessage(ChatMessageRequest request) => fallback.sendChatMessage(request);
+  Stream<RunEvent> sendChatMessage(ChatMessageRequest request) async* {
+    if (!runtime.chatflow || !draftRunsOnServer) {
+      yield* fallback.sendChatMessage(request);
+      return;
+    }
+    try {
+      await for (final payload in runtime.api.chatDraftRun(appId, request.body)) {
+        final event = RunEvent.fromJson(payload);
+        if (event case WorkflowStartedEvent(:final taskId?)) _serverRuns.add(taskId);
+        yield event;
+      }
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 
   /// 1.16: Dify's `handleResume`: re-subscribed when the run pauses, so the form's answer continues the run.
   @override
@@ -195,7 +232,7 @@ class ServerRunService extends WorkflowRunService {
     bool includeStateSnapshot = true,
     bool continueOnPause = true,
   }) async* {
-    if (!runtime.humanInput) {
+    if (!runtime.humanInput && !runtime.chatflow) {
       yield* fallback.workflowEvents(
         workflowRunId,
         includeStateSnapshot: includeStateSnapshot,
@@ -217,7 +254,14 @@ class ServerRunService extends WorkflowRunService {
   }
 
   @override
-  Future<void> stopChatMessageResponding(String taskId) => fallback.stopChatMessageResponding(taskId);
+  Future<void> stopChatMessageResponding(String taskId) async {
+    if (!runtime.chatflow) return fallback.stopChatMessageResponding(taskId);
+    try {
+      await runtime.api.stopChatRun(appId, taskId);
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 
   @override
   Future<List<String>> fetchSuggestedQuestions(String messageId) => fallback.fetchSuggestedQuestions(messageId);
@@ -261,11 +305,24 @@ class ServerRunService extends WorkflowRunService {
   }
 
   @override
-  Future<List<DifyJson>> fetchConversationVariables(String conversationId) =>
-      fallback.fetchConversationVariables(conversationId);
+  Future<List<DifyJson>> fetchConversationVariables(String conversationId) async {
+    if (!runtime.chatflow) return fallback.fetchConversationVariables(conversationId);
+    try {
+      return await runtime.api.conversationVariables(appId, conversationId);
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 
   @override
-  Future<List<DifyJson>> fetchChatMessages(String conversationId) => fallback.fetchChatMessages(conversationId);
+  Future<List<DifyJson>> fetchChatMessages(String conversationId) async {
+    if (!runtime.chatflow) return fallback.fetchChatMessages(conversationId);
+    try {
+      return await runtime.api.chatMessages(appId, conversationId);
+    } on TransportException catch (e) {
+      throw _refusal(e);
+    }
+  }
 }
 
 /// The variable inspect panel over the server's draft variables (protocol 1.14, Dify's `/workflows/draft/variables`

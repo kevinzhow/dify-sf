@@ -29,6 +29,9 @@ struct HumanInputTimeouts: Service {
         } catch {
             logger.warning("answered-run recovery will retry on the next pass: \(error)")
         }
+        do {
+            for run in try await routes.store.expireChatLeases() { await routes.finishRunWithoutEngine(run) }
+        } catch { logger.warning("chat turn recovery will retry: \(error)") }
         let swept = await routes.sweepHumanInputTimeouts(now: now)
         if swept.timedOut > 0 || swept.expired > 0 {
             logger.info("human input timeout scan: \(swept.timedOut) form(s), \(swept.expired) run(s)")

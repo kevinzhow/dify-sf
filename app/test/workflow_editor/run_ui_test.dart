@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate, SemanticsAction;
+
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
@@ -16,6 +18,7 @@ import 'package:dify_sf_app/src/workflow_editor/run/ui/workflow_preview.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_fonts.dart';
@@ -212,6 +215,32 @@ void main() {
     expect(store.inputs.value['query'], 'context');
 
     final input = find.descendant(of: find.byType(ChatInputArea), matching: find.byType(EditableText));
+    final semantics = t.ensureSemantics();
+    final fields = <SemanticsNode>[];
+    void visit(SemanticsNode node) {
+      if (!node.isMergedIntoParent && node.getSemanticsData().flagsCollection.isTextField) fields.add(node);
+      node.visitChildren((child) {
+        visit(child);
+        return true;
+      });
+    }
+
+    visit(t.getSemantics(input));
+    expect(fields, hasLength(1), reason: 'Web must expose one editable field, without a disabled nested textarea');
+    expect(fields.single.getSemanticsData().flagsCollection.isEnabled, Tristate.isTrue);
+    expect(fields.single.getSemanticsData().flagsCollection.isMultiline, isTrue);
+    await t.tap(input);
+    await t.pump();
+    expect(t.widget<EditableText>(input).focusNode.hasFocus, isTrue);
+    // Web can dismiss its editing session while the Flutter focus node stays focused.
+    // Accessibility focus must request the keyboard again rather than only re-requesting node focus.
+    t.testTextInput.hide();
+    expect(t.testTextInput.isVisible, isFalse);
+    final editableSemantics = t.getSemantics(input);
+    editableSemantics.owner!.performAction(editableSemantics.id, SemanticsAction.focus);
+    await t.pump();
+    expect(t.testTextInput.isVisible, isTrue);
+    semantics.dispose();
     await t.enterText(input, 'Hello there');
     await t.pump();
     await t.sendKeyEvent(LogicalKeyboardKey.enter);
