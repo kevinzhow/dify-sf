@@ -1,0 +1,65 @@
+{
+  "commit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+  "files": {
+    "NotoSansSC-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+      "gitBlob": "fc0fda9394367c16c1af7555a2ae4d5e2e6a6f02",
+      "sha256": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9",
+      "bytes": 8331336
+    },
+    "NotoSansSC-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/SC/NotoSansSC-Bold.otf",
+      "gitBlob": "bcc11bc30e65b69b9e5a508c3e2138197c5543cf",
+      "sha256": "c6cb5a93abaa9edc8ee7463b7ebb7f42d618d40e6ed2f7a5371c97b0b64767c0",
+      "bytes": 8543168
+    },
+    "NotoSansTC-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/TC/NotoSansTC-Regular.otf",
+      "gitBlob": "63c3422382411b4d132644794fd432c53faa2882",
+      "sha256": "5bab0cb3c1cf89dde07c4a95a4054b195afbcfe784d69d75c340780712237537",
+      "bytes": 5683368
+    },
+    "NotoSansTC-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/TC/NotoSansTC-Bold.otf",
+      "gitBlob": "3a3f5ed878b786e5cea68d2c2b1c3496a22ab2c1",
+      "sha256": "55420b259eb119bf5f2a0aadba10cf9d736c12d64ab93e78546d69ef5f43558b",
+      "bytes": 5839972
+    },
+    "NotoSansHK-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/HK/NotoSansHK-Regular.otf",
+      "gitBlob": "622c6533f8086d126e5508ae8cd5c45c16470edd",
+      "sha256": "8a43afea92bb58dfd9027bd7ac6f5b0b2662e2ffb3e7c1edc02c62b2b21924f1",
+      "bytes": 5688384
+    },
+    "NotoSansHK-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/HK/NotoSansHK-Bold.otf",
+      "gitBlob": "8c756e1dd3ff7a66f6e4f4f728f3f41ab2b817fd",
+      "sha256": "4bce16fbed09278cbdfb4d57749500038cdda70737925a846e3f6c59327ab46e",
+      "bytes": 5840928
+    },
+    "NotoSansJP-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf",
+      "gitBlob": "4af556abb9cc42e585aab777b01857246a110746",
+      "sha256": "dff723ba59d57d136764a04b9b2d03205544f7cd785a711442d6d2d085ac5073",
+      "bytes": 4533028
+    },
+    "NotoSansJP-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/JP/NotoSansJP-Bold.otf",
+      "gitBlob": "40262777db707145a08795e0e62ab5956eafe4b6",
+      "sha256": "1b0edfb500b73a4fa8a4fcaae1bbbd403994e08e73e3e0da37e70d3853f42c5f",
+      "bytes": 4656448
+    },
+    "NotoSansKR-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf",
+      "gitBlob": "b8c11425a25c74dac1b51b28341ff1ef379f2ffa",
+      "sha256": "69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68",
+      "bytes": 4644748
+    },
+    "NotoSansKR-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/KR/NotoSansKR-Bold.otf",
+      "gitBlob": "497914abec9fcf714fedebb7b893e63657d19124",
+      "sha256": "5a6ceb287ed2fc6cfc6213144ebea68cbd94b20fc9eb873d8486493bf02d9bda",
+      "bytes": 4816044
+    }
+  }
+}

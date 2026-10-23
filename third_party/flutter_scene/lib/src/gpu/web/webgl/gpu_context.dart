@@ -1,0 +1,474 @@
+part of '_webgl.dart';
+
+/// Global graphics context. Lazily creates a shared `OffscreenCanvas` +
+/// `WebGL2RenderingContext` the first time it's accessed; all resources
+/// (buffers, textures, pipelines) live in this context.
+///
+/// Mirrors `package:flutter_gpu`'s `GpuContext`. The shim's web GpuContext
+/// is `base class`-shaped for API parity but doesn't extend any
+/// platform-specific native wrapper.
+final class WebGlContext extends GpuContext {
+  WebGlContext._createDefault() {
+    _canvas = web.OffscreenCanvas(1, 1);
+    // antialias:false makes the default framebuffer single-sampled, so we
+    // can blitFramebuffer single-sample render targets onto it for present.
+    // preserveDrawingBuffer:true keeps the rendered contents available for
+    // createImageFromTextureSource after the GL calls return.
+    final attrs = web.WebGLContextAttributes(
+      antialias: false,
+      alpha: true,
+      depth: false,
+      stencil: false,
+      preserveDrawingBuffer: true,
+    );
+    final gl =
+        _canvas.getContext('webgl2', attrs) as web.WebGL2RenderingContext?;
+    if (gl == null) {
+      throw StateError(
+        'WebGL2 is not available. Cannot initialize flutter_gpu_shim.',
+      );
+    }
+    _gl = gl;
+    // Cache extensions we rely on for later phases.
+    _gl.getExtension('EXT_color_buffer_float');
+    _gl.getExtension('OES_texture_float_linear');
+    // Anisotropic filtering. MAX_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FF.
+    if (_gl.getExtension('EXT_texture_filter_anisotropic') != null) {
+      _maxSupportedAnisotropy = _integerParameter(0x84FF) ?? 1;
+    }
+    // Clip-space depth in [0, 1], as Metal and Vulkan rasterize it. The
+    // bundles' GLES shaders end by remapping z to [-1, 1] for core GL, which
+    // the loader strips while this is on (see stripClipSpaceDepthRemap); with
+    // both, a float depth buffer stores clip depth directly, so reversed
+    // depth keeps its precision. Without the extension the remap stays and
+    // depth is 24-bit, which renders the same with standard precision.
+    final clipControl =
+        _gl.getExtension('EXT_clip_control') as _ExtClipControl?;
+    if (clipControl != null) {
+      // LOWER_LEFT_EXT keeps the default origin, ZERO_TO_ONE_EXT the range.
+      clipControl.clipControlEXT(0x8CA1, 0x935F);
+      _clipDepthZeroToOne = true;
+    }
+  }
+
+  bool _clipDepthZeroToOne = false;
+
+  /// Whether clip-space depth spans `[0, 1]` (EXT_clip_control), so GLES
+  /// shaders run without their `[-1, 1]` depth remap.
+  bool get clipDepthZeroToOne => _clipDepthZeroToOne;
+
+  late final web.OffscreenCanvas _canvas;
+  late final web.WebGL2RenderingContext _gl;
+
+  /// Cached vertex-array objects keyed by (pipeline, vertex streams, index
+  /// buffer), in least-recently-used order; see WebGlRenderPass._applyVertexState.
+  static const int _kMaxCachedVaos = 512;
+  final Map<String, web.WebGLVertexArrayObject> _vaoCache =
+      <String, web.WebGLVertexArrayObject>{};
+
+  int _maxSupportedAnisotropy = 1;
+
+  /// The device's maximum supported anisotropy (1 when the extension is
+  /// unavailable, which disables anisotropic filtering).
+  int get maxSupportedAnisotropy => _maxSupportedAnisotropy;
+
+  /// The underlying `OffscreenCanvas`. Resized on demand by `snapshot`.
+  web.OffscreenCanvas get canvas => _canvas;
+
+  /// The underlying WebGL2 context. Exposed for advanced consumers and the
+  /// shim's own internal tests.
+  web.WebGL2RenderingContext get gl => _gl;
+
+  @override
+  PixelFormat get defaultColorFormat => PixelFormat.r8g8b8a8UNormInt;
+
+  @override
+  PixelFormat get defaultStencilFormat => PixelFormat.s8UInt;
+
+  // Forward depth (shadow maps, masks) gains nothing from float, so only
+  // _reversedDepthStencilFormat pays for it.
+  @override
+  PixelFormat get defaultDepthStencilFormat => PixelFormat.d24UnormS8Uint;
+
+  @override
+  int get minimumUniformByteAlignment => 256;
+
+  @override
+  bool get doesSupportOffscreenMSAA => true;
+
+  // WebGL2 framebufferTexture2D accepts any allocated mip level.
+  @override
+  bool get doesSupportFramebufferRenderMipmap => true;
+
+  // texStorage2D allocates complete mip chains; per-level overwrite plus
+  // mipmap min filters sample correctly.
+  @override
+  bool get doesSupportManuallyMippedTextures => true;
+
+  final Map<TextureCompressionFamily, bool> _compressionSupport = {};
+
+  /// Reports block-compression support by probing (and enabling) the matching
+  /// WebGL2 compressed-texture extension. Enabling it here makes the compressed
+  /// internal formats valid for the `createTexture` / `overwrite` upload path.
+  @override
+  bool supportsTextureCompression(TextureCompressionFamily family) {
+    return _compressionSupport.putIfAbsent(family, () {
+      final name = switch (family) {
+        TextureCompressionFamily.bc => 'WEBGL_compressed_texture_s3tc',
+        TextureCompressionFamily.etc2 => 'WEBGL_compressed_texture_etc',
+        TextureCompressionFamily.astc => 'WEBGL_compressed_texture_astc',
+        // No WebGL extension exposes the ASTC HDR profile.
+        TextureCompressionFamily.astcHdr => null,
+      };
+      return name != null && _gl.getExtension(name) != null;
+    });
+  }
+
+  /// Texture unit reserved for creation and upload binds, above any unit
+  /// [RenderPass.bindTexture] assigns. GL texture bindings are global per
+  /// unit, so a texture created or uploaded between a pass's binds and its
+  /// draw (a lazily built placeholder, say) would otherwise replace the
+  /// texture the pass bound on the active unit, a hazard Impeller's
+  /// per-draw binding model does not have.
+  late final int _setupTextureUnit =
+      (_integerParameter(
+            web.WebGL2RenderingContext.MAX_COMBINED_TEXTURE_IMAGE_UNITS,
+          ) ??
+          32) -
+      1;
+
+  /// The largest texture side the context allocates, or null when the query
+  /// yields no number.
+  late final int? _maxTextureSize = _integerParameter(
+    web.WebGL2RenderingContext.MAX_TEXTURE_SIZE,
+  );
+
+  /// An integer `getParameter` result, or null when it is not a number. Read
+  /// as a JS value: under dart2wasm the result is not a Dart `num`, so an
+  /// `is num` check silently takes the fallback.
+  int? _integerParameter(int pname) {
+    final JSAny? value = _gl.getParameter(pname);
+    return value.isA<JSNumber>() ? (value as JSNumber).toDartInt : null;
+  }
+
+  late final _MipGenerator _mipGenerator = _MipGenerator(this);
+
+  /// Binds [texture] on the reserved setup unit for creation or upload work.
+  void _bindTextureForSetup(int target, web.WebGLTexture? texture) {
+    _gl.activeTexture(web.WebGL2RenderingContext.TEXTURE0 + _setupTextureUnit);
+    _gl.bindTexture(target, texture);
+  }
+
+  @override
+  DeviceBuffer createDeviceBuffer(StorageMode storageMode, int sizeInBytes) {
+    if (storageMode == StorageMode.deviceTransient) {
+      throw Exception(
+        'DeviceBuffers cannot be set to StorageMode.deviceTransient',
+      );
+    }
+    return WebGlDeviceBuffer._initialize(this, storageMode, sizeInBytes);
+  }
+
+  /// Web-only. A host-visible buffer committed to ONE GL role: vertex
+  /// (`index: false`) or index (`index: true`) data. Skips the staging mirror
+  /// and the lazy first-bind upload a generic buffer needs; see
+  /// [WebGlDeviceBuffer._initializeTyped]. [_createGeometryBuffers] is built from
+  /// it, and so can a caller that manages its own [BufferView]s.
+  ///
+  /// The GL store is hinted STATIC_DRAW, which suits geometry written once at
+  /// creation. A geometry uploaded repeatedly (CPU morph blending re-uploads
+  /// on every weight change) allocates fresh buffers per upload rather than
+  /// rewriting these, so each one is still written once.
+  // TODO(web-buffers): Reuse a geometry's buffers when it re-uploads at the
+  // same size, instead of allocating a new pair and dropping the old one.
+  DeviceBuffer createTypedDeviceBuffer(int sizeInBytes, {required bool index}) {
+    return WebGlDeviceBuffer._initializeTyped(
+      this,
+      sizeInBytes,
+      index
+          ? web.WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
+          : web.WebGL2RenderingContext.ARRAY_BUFFER,
+    );
+  }
+
+  @override
+  DeviceBuffer createDeviceBufferWithCopy(ByteData data) {
+    final buffer = WebGlDeviceBuffer._initialize(
+      this,
+      StorageMode.hostVisible,
+      data.lengthInBytes,
+    );
+    buffer.overwrite(data);
+    return buffer;
+  }
+
+  @override
+  HostBuffer createHostBuffer({
+    int blockLengthInBytes = HostBuffer.kDefaultBlockLengthInBytes,
+  }) {
+    return WebGlHostBuffer._initialize(
+      this,
+      blockLengthInBytes: blockLengthInBytes,
+    );
+  }
+
+  @override
+  Texture createTexture(
+    StorageMode storageMode,
+    int width,
+    int height, {
+    PixelFormat format = PixelFormat.r8g8b8a8UNormInt,
+    int sampleCount = 1,
+    TextureType? textureType,
+    bool enableRenderTargetUsage = true,
+    bool enableShaderReadUsage = true,
+    bool enableShaderWriteUsage = false,
+    int mipLevelCount = 1,
+  }) {
+    final resolvedType =
+        textureType ??
+        (sampleCount == 1
+            ? TextureType.texture2D
+            : TextureType.texture2DMultisample);
+    return WebGlTexture._initialize(
+      this,
+      storageMode,
+      format,
+      width,
+      height,
+      sampleCount,
+      resolvedType,
+      enableRenderTargetUsage,
+      enableShaderReadUsage,
+      enableShaderWriteUsage,
+      mipLevelCount,
+    );
+  }
+
+  @override
+  CommandBuffer createCommandBuffer() => WebGlCommandBuffer._(this);
+
+  // Linked-program cache. Program linking is expensive and some callers
+  // create a pipeline per draw per frame; native flutter_gpu absorbs that,
+  // so the shim must too. Keyed by shader identity plus compile generation,
+  // so a hot-reloaded shader relinks while untouched pairs stay cached.
+  final Map<(WebGlShader, WebGlShader, int, int), WebGlRenderPipeline>
+  _pipelineCache = {};
+
+  @override
+  RenderPipeline createRenderPipeline(
+    Shader vertexShader,
+    Shader fragmentShader, {
+    VertexLayout? vertexLayout,
+  }) {
+    final vertex = vertexShader.webGl;
+    final fragment = fragmentShader.webGl;
+    if (vertexLayout != null) {
+      // Custom layouts are rare (inline smoke pipelines); don't cache.
+      return WebGlRenderPipeline._(
+        this,
+        vertex,
+        fragment,
+        vertexLayout: vertexLayout,
+      );
+    }
+    final key = (vertex, fragment, vertex._generation, fragment._generation);
+    final cached = _pipelineCache[key];
+    if (cached != null) return cached;
+    if (_pipelineCache.length >= 512) {
+      // Far above any realistic working set; clearing keeps stale
+      // hot-reload generations from accumulating without bookkeeping.
+      for (final pipeline in _pipelineCache.values) {
+        _gl.deleteProgram(pipeline._program);
+      }
+      _pipelineCache.clear();
+    }
+    return _pipelineCache[key] = WebGlRenderPipeline._(this, vertex, fragment);
+  }
+
+  // Framebuffer cache, keyed by the attachment textures. A pass previously
+  // created (and leaked) a framebuffer and ran the synchronous
+  // checkFramebufferStatus round trip every time; render targets recur every
+  // frame, so both now happen once per attachment combination.
+  final Map<(Texture, int, int, Texture?), web.WebGLFramebuffer>
+  _framebufferCache = {};
+
+  web.WebGLFramebuffer _framebufferFor(
+    Texture color,
+    int mipLevel,
+    int slice,
+    Texture? depth,
+    web.WebGLFramebuffer Function() create,
+  ) {
+    final key = (color, mipLevel, slice, depth);
+    final cached = _framebufferCache[key];
+    if (cached != null) return cached;
+    if (_framebufferCache.length >= 64) {
+      for (final fbo in _framebufferCache.values) {
+        _gl.deleteFramebuffer(fbo);
+      }
+      _framebufferCache.clear();
+    }
+    return _framebufferCache[key] = create();
+  }
+
+  /// Snapshot the underlying `OffscreenCanvas` into a `ui.Image` for display
+  /// in a Flutter widget. The canvas is resized if [width] / [height] differ
+  /// from its current dimensions. Web-specific addition; not in flutter_gpu.
+  Future<ui.Image> snapshot({
+    required int width,
+    required int height,
+    bool transferOwnership = false,
+  }) async {
+    if (_canvas.width != width) _canvas.width = width;
+    if (_canvas.height != height) _canvas.height = height;
+    return await ui_web.createImageFromTextureSource(
+      _canvas as JSAny,
+      width: width,
+      height: height,
+      transferOwnership: transferOwnership,
+    );
+  }
+
+  /// Blit a single-sample [texture]'s contents onto the underlying
+  /// `OffscreenCanvas`, resizing it to match. Shared by the present paths.
+  void _blitTextureToCanvas(Texture texture) {
+    if (texture.sampleCount != 1) {
+      throw UnimplementedError(
+        'Cannot present an MSAA texture directly; use its resolve texture.',
+      );
+    }
+    if (_canvas.width != texture.width) _canvas.width = texture.width;
+    if (_canvas.height != texture.height) _canvas.height = texture.height;
+
+    final readFbo = _gl.createFramebuffer();
+    if (readFbo == null) {
+      throw StateError('Failed to create framebuffer for present blit');
+    }
+    _gl.bindFramebuffer(web.WebGL2RenderingContext.READ_FRAMEBUFFER, readFbo);
+    _gl.framebufferTexture2D(
+      web.WebGL2RenderingContext.READ_FRAMEBUFFER,
+      web.WebGL2RenderingContext.COLOR_ATTACHMENT0,
+      web.WebGL2RenderingContext.TEXTURE_2D,
+      texture.webGl.glTexture,
+      0,
+    );
+    _gl.bindFramebuffer(web.WebGL2RenderingContext.DRAW_FRAMEBUFFER, null);
+    // Flip vertically during the blit (dst Y runs height -> 0). WebGL2
+    // rasterizes into FBO textures bottom-up, so the swapchain texture is
+    // stored bottom-up; this flip presents it upright on the canvas. (The
+    // engine's own backends store render-to-texture top-down, so flutter_scene
+    // applies no Y compensation; this present-time flip is the shim absorbing
+    // WebGL2's bottom-up FBO convention, equivalent to what Impeller's GLES
+    // backend does in-engine.)
+    _gl.blitFramebuffer(
+      0,
+      0,
+      texture.width,
+      texture.height,
+      0,
+      texture.height,
+      texture.width,
+      0,
+      web.WebGL2RenderingContext.COLOR_BUFFER_BIT,
+      web.WebGL2RenderingContext.NEAREST,
+    );
+    _gl.bindFramebuffer(web.WebGL2RenderingContext.FRAMEBUFFER, null);
+    _gl.deleteFramebuffer(readFbo);
+  }
+
+  /// Synchronously snapshot [texture] into a `ui.Image`. Blits to the
+  /// OffscreenCanvas, transfers the canvas content out as an ImageBitmap,
+  /// and wraps it. `transferToImageBitmap` and `createImageFromImageBitmap`
+  /// are both synchronous on CanvasKit and Skwasm, so this works inside a
+  /// synchronous paint callback - which is what flutter_scene's
+  /// `Texture.asImage()` -> `canvas.drawImageRect` path needs.
+  ui.Image snapshotTextureSync(Texture texture) {
+    _blitTextureToCanvas(texture);
+    final bitmap = _canvas.transferToImageBitmap();
+    final result = ui_web.createImageFromImageBitmap(bitmap as JSAny);
+    if (result is ui.Image) return result;
+    throw StateError(
+      'createImageFromImageBitmap returned a Future; expected a synchronous '
+      'ui.Image on this renderer.',
+    );
+  }
+
+  /// Blit [texture] onto the OffscreenCanvas and return it as a `ui.Image`
+  /// via `createImageFromTextureSource` (async copy path).
+  Future<ui.Image> _presentTextureAsImage(
+    Texture texture, {
+    bool transferOwnership = false,
+  }) async {
+    _blitTextureToCanvas(texture);
+    return ui_web.createImageFromTextureSource(
+      _canvas as JSAny,
+      width: texture.width,
+      height: texture.height,
+      transferOwnership: transferOwnership,
+    );
+  }
+}
+
+/// The default graphics context. Lazily initialized.
+final WebGlContext webGlContext = WebGlContext._createDefault();
+
+/// Blit [texture]'s contents onto the GpuContext's `OffscreenCanvas` and
+/// return it as a `ui.Image` for display in a Flutter widget. Web-only;
+/// throws on native backends.
+///
+/// Bridge helper between offscreen-rendered Textures and Flutter widgets
+/// until the swapchain / on-screen presentation story lands in Phase 5.
+Future<ui.Image> _presentTextureAsImage(
+  Texture texture, {
+  bool transferOwnership = false,
+}) => webGlContext._presentTextureAsImage(
+  texture,
+  transferOwnership: transferOwnership,
+);
+
+/// Writes mesh data into a buffer from [_createGeometryBuffers] (or an arena's).
+/// [source] keeps its element type so the web backend can hand it to GL as-is;
+/// see [DeviceBuffer.overwriteTypedData].
+bool _writeGeometryData(
+  DeviceBuffer buffer,
+  TypedData source, {
+  required int destinationOffsetInBytes,
+}) => buffer.webGl.overwriteTypedData(
+  source,
+  destinationOffsetInBytes: destinationOffsetInBytes,
+);
+
+/// The depth-stencil format for passes that rasterize reversed depth (near
+/// at 1, far at 0): float while EXT_clip_control puts clip depth in [0, 1],
+/// else the context default, since under the `[-1, 1]` remap a float buffer
+/// holds no more than 24 bits would.
+PixelFormat get _reversedDepthStencilFormat => webGlContext.clipDepthZeroToOne
+    ? PixelFormat.d32FloatS8UInt
+    : webGlContext.defaultDepthStencilFormat;
+
+/// The buffers one mesh upload needs: [vertexBytes] of vertex streams and
+/// [indexBytes] of indices. On web they are two role-typed buffers, because
+/// WebGL2 cannot share one buffer between the two roles and sharing one
+/// [DeviceBuffer] costs a staging mirror and a second full upload.
+/// [indexBaseOffset] is where the indices start inside [index].
+({DeviceBuffer vertex, DeviceBuffer index, int indexBaseOffset})
+_createGeometryBuffers(int vertexBytes, int indexBytes) {
+  final vertex = webGlContext.createTypedDeviceBuffer(
+    vertexBytes,
+    index: false,
+  );
+  return (
+    vertex: vertex,
+    // Non-indexed geometry never binds an index buffer; do not allocate one.
+    index: indexBytes == 0
+        ? vertex
+        : webGlContext.createTypedDeviceBuffer(indexBytes, index: true),
+    indexBaseOffset: 0,
+  );
+}
+
+/// `EXT_clip_control`, which sets the clip-space origin and depth range.
+extension type _ExtClipControl._(JSObject _) implements JSObject {
+  external void clipControlEXT(int origin, int depth);
+}

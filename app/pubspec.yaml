@@ -1,0 +1,194 @@
+name: dify_sf_app
+description: Collaborative workflow editor client for dify-sf (step 1).
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  collab_client:
+    path: ../packages/collab_client
+  elk_layered:
+    path: ../packages/elk_layered
+  yaml: ^3.1.4
+  path_provider: ^2.1.0
+  shared_preferences: ^2.3.0
+  web: ^1.1.1
+  flutter_scene: ^0.24.3
+  vector_math: ^2.4.3
+  flutter_svg: ^2.3.0
+  # Dify's Markdown (chat answers, run results): maintained successor of flutter_markdown, styled to markdown.css.
+  flutter_markdown_plus: ^1.0.12
+  markdown: ^7.3.1
+  file_selector: ^1.1.0
+  # Dropping a DSL file on the Studio page (Dify's use-dsl-drag-drop) on desktop and the web.
+  desktop_drop: ^0.8.4
+  # Import DSL from a URL: the client fetches the file (the server takes file content only).
+  http: ^1.2.0
+  image: ^4.12.0
+  # The Access Point's Web App QR code (base/qrcode: qrcode.react's QRCodeCanvas, level L, no margin), downloadable as PNG.
+  qr_flutter: ^4.1.0
+  # Gzip for the embed snippet's hidden inputs on every platform (app-card-utils compressAndEncodeBase64); already
+  # pulled in by `image`.
+  archive: ^4.5.2
+  hooks: ^2.0.2
+
+dev_dependencies:
+  file_selector_platform_interface: ^2.7.0
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_driver:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  meta: ^1.19.0
+
+flutter:
+  # Noto Sans is the primary Latin face on Linux and Web (400/700, as on the Linux reference).
+  # Web CJK faces are lazy-loaded by DifyFonts from assets/fonts/cjk, not eagerly through this font manifest.
+  # Other native platforms retain their platform font choice.
+  fonts:
+    - family: Noto Sans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
+    # Monaco's Linux font stack ('Droid Sans Mono', monospace) resolves to DejaVu Sans Mono; bundled for the code
+    # editor on Linux and the web build (assets/fonts/LICENSE-DejaVu.txt).
+    - family: DejaVu Sans Mono
+      fonts:
+        - asset: assets/fonts/DejaVuSansMono.ttf
+  assets:
+    - assets/emoji/
+    - assets/i18n/languages.json
+    - assets/i18n/ar-TN/
+    - assets/i18n/de-DE/
+    - assets/i18n/en-US/
+    - assets/i18n/es-ES/
+    - assets/i18n/fa-IR/
+    - assets/i18n/fr-FR/
+    - assets/i18n/hi-IN/
+    - assets/i18n/id-ID/
+    - assets/i18n/it-IT/
+    - assets/i18n/ja-JP/
+    - assets/i18n/ko-KR/
+    - assets/i18n/lo-LA/
+    - assets/i18n/nl-NL/
+    - assets/i18n/pl-PL/
+    - assets/i18n/pt-BR/
+    - assets/i18n/ro-RO/
+    - assets/i18n/ru-RU/
+    - assets/i18n/sl-SI/
+    - assets/i18n/th-TH/
+    - assets/i18n/tr-TR/
+    - assets/i18n/uk-UA/
+    - assets/i18n/vi-VN/
+    - assets/i18n/zh-Hans/
+    - assets/i18n/zh-Hant/
+    - assets/fonts/cjk/
+    - assets/fonts/OFL.txt
+    - assets/fonts/LICENSE-DejaVu.txt
+    # Dify's logo (web/public/logo/logo.svg) and the Heroicons Dify uses (@iconify-json/heroicons 1.2.3, MIT).
+    - assets/brand/
+    - assets/heroicons/
+    # The members page's copy icons (members-page/invited-modal/assets).
+    - assets/members/
+    # The Access Point's embed option tiles and the Customize dialog's GitHub mark (app/overview/assets).
+    - assets/embedded/
+    # The create-app dialog's previews (web/public/screenshots, 1x with 2.0x / 3.0x variants).
+    - assets/screenshots/light/
+    - assets/screenshots/dark/
+    # Remix Icon as Dify uses it (tool/gen_remix_icons.py, Apache-2.0).
+    - assets/remix_icons/
+    # Dify's icons (tool/gen_dify_icons.py), one entry per directory.
+    - assets/dify_icons/public/agent/
+    - assets/dify_icons/public/avatar/
+    - assets/dify_icons/public/billing/
+    - assets/dify_icons/public/common/
+    - assets/dify_icons/public/education/
+    - assets/dify_icons/public/files/
+    - assets/dify_icons/public/knowledge/
+    - assets/dify_icons/public/knowledge/dataset-card/
+    - assets/dify_icons/public/knowledge/online-drive/
+    - assets/dify_icons/public/llm/
+    - assets/dify_icons/public/model/
+    - assets/dify_icons/public/other/
+    - assets/dify_icons/public/plugins/
+    - assets/dify_icons/public/thought/
+    - assets/dify_icons/public/tracing/
+    - assets/dify_icons/vender/agent-v2/
+    - assets/dify_icons/vender/app-publisher/
+    - assets/dify_icons/vender/deploy/
+    - assets/dify_icons/vender/features/
+    - assets/dify_icons/vender/integrations/
+    - assets/dify_icons/vender/knowledge/
+    - assets/dify_icons/vender/line/alertsAndFeedback/
+    - assets/dify_icons/vender/line/arrows/
+    - assets/dify_icons/vender/line/communication/
+    - assets/dify_icons/vender/line/development/
+    - assets/dify_icons/vender/line/editor/
+    - assets/dify_icons/vender/line/education/
+    - assets/dify_icons/vender/line/files/
+    - assets/dify_icons/vender/line/financeAndECommerce/
+    - assets/dify_icons/vender/line/general/
+    - assets/dify_icons/vender/line/images/
+    - assets/dify_icons/vender/line/layout/
+    - assets/dify_icons/vender/line/mediaAndDevices/
+    - assets/dify_icons/vender/line/others/
+    - assets/dify_icons/vender/line/shapes/
+    - assets/dify_icons/vender/line/time/
+    - assets/dify_icons/vender/line/users/
+    - assets/dify_icons/vender/line/weather/
+    - assets/dify_icons/vender/main-nav/
+    - assets/dify_icons/vender/other/
+    - assets/dify_icons/vender/pipeline/
+    - assets/dify_icons/vender/plugin/
+    - assets/dify_icons/vender/solid/FinanceAndECommerce/
+    - assets/dify_icons/vender/solid/alertsAndFeedback/
+    - assets/dify_icons/vender/solid/arrows/
+    - assets/dify_icons/vender/solid/communication/
+    - assets/dify_icons/vender/solid/development/
+    - assets/dify_icons/vender/solid/editor/
+    - assets/dify_icons/vender/solid/education/
+    - assets/dify_icons/vender/solid/files/
+    - assets/dify_icons/vender/solid/general/
+    - assets/dify_icons/vender/solid/layout/
+    - assets/dify_icons/vender/solid/mediaAndDevices/
+    - assets/dify_icons/vender/solid/security/
+    - assets/dify_icons/vender/solid/shapes/
+    - assets/dify_icons/vender/solid/users/
+    - assets/dify_icons/vender/system/
+    - assets/dify_icons/vender/workflow/
+    - flutter_scene_generated/
+    - path: flutter_scene_generated/metal_ios/
+      platforms:
+        - ios
+    - path: flutter_scene_generated/metal_desktop/
+      platforms:
+        - macos
+    - path: flutter_scene_generated/opengl_es_vulkan/
+      platforms:
+        - android
+        - linux
+        - windows
+    - path: flutter_scene_generated/opengl_es/
+      platforms:
+        - web
+  uses-material-design: true
+
+# Pinned upstream filter pipeline plus the local SVG extensions; see third_party/flutter_vector_graphics/PATCHES.md.
+dependency_overrides:
+  # Pinned 0.24.3 with the skwasm widget-capture workaround; see its PATCHES.md.
+  flutter_scene:
+    path: ../third_party/flutter_scene
+  vector_graphics:
+    path: ../third_party/flutter_vector_graphics/packages/vector_graphics
+  vector_graphics_codec:
+    path: ../third_party/flutter_vector_graphics/packages/vector_graphics_codec
+  vector_graphics_compiler:
+    path: ../third_party/flutter_vector_graphics/packages/vector_graphics_compiler

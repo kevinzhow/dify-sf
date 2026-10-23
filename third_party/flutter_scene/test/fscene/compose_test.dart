@@ -1,0 +1,621 @@
+// Covers the prefab composer: expanding instance nodes against referenced
+// prefab documents, id remapping, override/add/remove deltas, nested prefabs,
+// and cycle handling. All GPU-free (document-to-document).
+
+import 'dart:typed_data';
+
+import 'package:scene/scene.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:vector_math/vector_math.dart';
+
+// A single-root prefab: 'body' (mesh referencing a material) with a 'wheel'
+// child.
+SceneDocument _prefab() {
+  final doc = SceneDocument();
+  final material = doc.addResource(
+    MaterialResource(doc.newId(), type: 'physicallyBased'),
+  );
+  final body = doc.createNode(
+    name: 'body',
+    root: true,
+    components: [
+      ComponentSpec(
+        'mesh',
+        properties: {'material': ResourceRefValue(material.id)},
+      ),
+    ],
+  );
+  final wheel = doc.createNode(name: 'wheel');
+  body.children.add(wheel.id);
+  return doc;
+}
+
+PrefabResolver _resolveTo(SceneDocument prefab) =>
+    (_) => prefab;
+
+void main() {
+  test('returns a document without instances unchanged', () {
+    final doc = SceneDocument();
+    doc.createNode(name: 'plain', root: true);
+    expect(
+      composeScene(doc, resolve: (_) => throw StateError('no resolve')),
+      same(doc),
+    );
+  });
+
+  test('instantiates a single-root prefab, merging the root into the '
+      'instance', () {
+    final host = SceneDocument();
+    host.createNode(name: 'enemy0', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('enemy.fscene'),
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(_prefab()));
+    final node = composed.rootNodes.single;
+
+    expect(node.name, 'enemy0');
+    expect(node.instance, isNull);
+    expect(node.components.map((c) => c.type), contains('mesh'));
+    expect(node.children, hasLength(1));
+    expect(composed.node(node.children.single)!.name, 'wheel');
+    // The prefab's material was copied into the composed document.
+    expect(
+      composed.resources.values.whereType<MaterialResource>(),
+      hasLength(1),
+    );
+    // The merged mesh references that copied material.
+    final mesh = node.components.firstWhere((c) => c.type == 'mesh');
+    final materialId = (mesh.properties['material'] as ResourceRefValue).id;
+    expect(composed.resource(materialId), isA<MaterialResource>());
+  });
+
+  test('composes a single-root prefab transform after instance placement', () {
+    final prefab = _prefab();
+    prefab.rootNodes.single.transform = TrsTransform(
+      translation: Vector3(1, 2, 3),
+      rotation: Quaternion.axisAngle(Vector3(1, 0, 0), 0.5),
+      scale: Vector3.all(0.016),
+    );
+    final host = SceneDocument();
+    final instance = host.createNode(
+      name: 'placed',
+      root: true,
+      transform: TrsTransform(translation: Vector3(5, 0, 0)),
+    )..instance = PrefabInstanceSpec(source: const AssetRef('p'));
+    final expected =
+        instance.transform.toMatrix4() *
+        prefab.rootNodes.single.transform.toMatrix4();
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+
+    expect(
+      composed.rootNodes.single.transform.toMatrix4().storage,
+      expected.storage,
+    );
+  });
+
+  test(
+    'root TRS override preserves transformed instance rotation and scale',
+    () {
+      final prefab = _prefab();
+      final prefabRoot = prefab.rootNodes.single;
+      final host = SceneDocument();
+      final instance =
+          host.createNode(
+              name: 'placed',
+              root: true,
+              transform: TrsTransform(
+                translation: Vector3(5, 6, 7),
+                rotation: Quaternion.axisAngle(Vector3(0, 1, 0), 1.0),
+                scale: Vector3.all(2),
+              ),
+            )
+            ..instance = PrefabInstanceSpec(
+              source: const AssetRef('p'),
+              overrides: [
+                PropertyOverride(
+                  target: prefabRoot.id,
+                  path: 'transform.trs.t',
+                  value: Vec3Value(Vector3.all(9)),
+                ),
+              ],
+            );
+
+      final composed = composeScene(host, resolve: _resolveTo(prefab));
+      final transform = composed.rootNodes.single.transform as TrsTransform;
+
+      expect(transform.translation, Vector3.all(9));
+      expect(transform.rotation, (instance.transform as TrsTransform).rotation);
+      expect(transform.scale, Vector3.all(2));
+    },
+  );
+
+  test('two instances of one prefab get distinct node ids', () {
+    final host = SceneDocument();
+    host.createNode(name: 'a', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+    );
+    host.createNode(name: 'b', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(_prefab()));
+    final wheels = composed.nodes.values
+        .where((n) => n.name == 'wheel')
+        .toList();
+    expect(wheels, hasLength(2));
+    expect(wheels[0].id, isNot(wheels[1].id));
+  });
+
+  test('applies transform, name, and component overrides', () {
+    final prefab = _prefab();
+    final bodyId = prefab.rootNodes.single.id;
+    final wheelId = prefab.rootNodes.single.children.single;
+
+    final host = SceneDocument();
+    final newMaterial = host.addResource(
+      MaterialResource(host.newId(), type: 'unlit'),
+    );
+    host.createNode(name: 'enemy', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+      overrides: [
+        PropertyOverride(
+          target: bodyId,
+          path: 'components.mesh.material',
+          value: ResourceRefValue(newMaterial.id),
+        ),
+        PropertyOverride(
+          target: wheelId,
+          path: 'transform.trs.t',
+          value: Vec3Value(Vector3(5, 0, 0)),
+        ),
+        PropertyOverride(
+          target: wheelId,
+          path: 'name',
+          value: const StringValue('renamed'),
+        ),
+      ],
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    final node = composed.rootNodes.single;
+    final mesh = node.components.firstWhere((c) => c.type == 'mesh');
+    expect(
+      (mesh.properties['material'] as ResourceRefValue).id,
+      newMaterial.id,
+    );
+
+    final wheel = composed.node(node.children.single)!;
+    expect(wheel.name, 'renamed');
+    expect((wheel.transform as TrsTransform).translation, Vector3(5, 0, 0));
+  });
+
+  test('applies an override inside a component list and map', () {
+    final prefab = SceneDocument();
+    final original = prefab.addResource(
+      MaterialResource(prefab.newId(), type: 'physicallyBased'),
+    );
+    final geometry = prefab.addResource(
+      GeometryResource(
+        prefab.newId(),
+        procedural: CuboidGeometrySpec(extents: Vector3.all(1)),
+      ),
+    );
+    final meshNode = prefab.createNode(
+      name: 'mesh',
+      root: true,
+      components: [
+        ComponentSpec(
+          'mesh',
+          properties: {
+            'primitives': ListValue([
+              MapValue({
+                'geometry': ResourceRefValue(geometry.id),
+                'material': ResourceRefValue(original.id),
+              }),
+            ]),
+          },
+        ),
+      ],
+    );
+    final host = SceneDocument();
+    final replacement = host.addResource(
+      MaterialResource(host.newId(), type: 'unlit'),
+    );
+    host.createNode(root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('mesh.fscene'),
+      overrides: [
+        PropertyOverride(
+          target: meshNode.id,
+          path: 'components.mesh.primitives.0.material',
+          value: ResourceRefValue(replacement.id),
+        ),
+      ],
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    final mesh = composed.rootNodes.single.components.single;
+    final primitives = mesh.properties['primitives'] as ListValue;
+    final primitive = primitives.values.single as MapValue;
+    expect(
+      (primitive.values['material'] as ResourceRefValue).id,
+      replacement.id,
+    );
+    final geometryId = (primitive.values['geometry'] as ResourceRefValue).id;
+    expect(composed.resource(geometryId), isA<GeometryResource>());
+  });
+
+  test('removes a prefab node', () {
+    final prefab = _prefab();
+    final wheelId = prefab.rootNodes.single.children.single;
+    final host = SceneDocument();
+    host.createNode(root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+      removedNodes: [wheelId],
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    expect(composed.nodes.values.where((n) => n.name == 'wheel'), isEmpty);
+    expect(composed.rootNodes.single.children, isEmpty);
+  });
+
+  test('attaches host nodes and adds/removes components', () {
+    final host = SceneDocument();
+    final extra = host.createNode(name: 'extra'); // a real host node
+    final instance = host.createNode(root: true);
+    instance.children.add(extra.id); // associated with the instance in the host
+    instance.instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+      attachments: [Attachment(extra.id)], // graft under the instance root
+      addedComponents: [ComponentSpec('camera')],
+      removedComponentTypes: ['mesh'],
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(_prefab()));
+    final node = composed.node(instance.id)!;
+    expect(node.components.map((c) => c.type), contains('camera'));
+    expect(node.components.map((c) => c.type), isNot(contains('mesh')));
+    expect(node.children.map((c) => composed.node(c)!.name), contains('extra'));
+  });
+
+  test('adds member components before overrides so overrides address them', () {
+    final host = SceneDocument();
+    final prefab = _prefab();
+    final bodyId = prefab.rootNodes.single.id;
+    final wheelId = prefab.rootNodes.single.children.single;
+    final instance = host.createNode(root: true)
+      ..instance = PrefabInstanceSpec(
+        source: const AssetRef('p'),
+        memberComponents: [
+          MemberComponent(
+            member: wheelId,
+            component: ComponentSpec(
+              'turntable',
+              properties: {'speed': const DoubleValue(0.5)},
+            ),
+          ),
+          // A same-type add replaces the prefab's own component.
+          MemberComponent(member: bodyId, component: ComponentSpec('mesh')),
+        ],
+        overrides: [
+          PropertyOverride(
+            target: wheelId,
+            path: 'components.turntable.speed',
+            value: const DoubleValue(2.0),
+          ),
+        ],
+      );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    final wheel = composed.nodes.values.firstWhere((n) => n.name == 'wheel');
+    final turntable = wheel.components.singleWhere(
+      (c) => c.type == 'turntable',
+    );
+    expect(turntable.properties['speed'], const DoubleValue(2.0));
+    final root = composed.node(instance.id)!;
+    final mesh = root.components.singleWhere((c) => c.type == 'mesh');
+    expect(mesh.properties, isEmpty);
+  });
+
+  test('member and added components enter the composed doc as copies', () {
+    final host = SceneDocument();
+    final prefab = _prefab();
+    final wheelId = prefab.rootNodes.single.children.single;
+    final memberSpec = ComponentSpec(
+      'turntable',
+      properties: {'speed': const DoubleValue(0.5)},
+    );
+    final addedSpec = ComponentSpec(
+      'audioSource',
+      properties: {'volume': const DoubleValue(1.0)},
+    );
+    host.createNode(root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+      memberComponents: [
+        MemberComponent(member: wheelId, component: memberSpec),
+      ],
+      addedComponents: [addedSpec],
+      overrides: [
+        PropertyOverride(
+          target: wheelId,
+          path: 'components.turntable.speed',
+          value: const DoubleValue(2.0),
+        ),
+      ],
+    );
+
+    composeScene(host, resolve: _resolveTo(prefab));
+    // The override applied to the composed copy, never back into the host
+    // document's own delta spec; an aliased spec would double-apply the
+    // value and break undo.
+    expect(memberSpec.properties['speed'], const DoubleValue(0.5));
+    expect(addedSpec.properties['volume'], const DoubleValue(1.0));
+  });
+
+  test('overrideAspect classifies the grammar applyPrefabOverride owns', () {
+    expect(prefabOverrideAspect('name'), PrefabOverrideAspect.name);
+    expect(prefabOverrideAspect('visible'), PrefabOverrideAspect.visible);
+    expect(prefabOverrideAspect('layers'), PrefabOverrideAspect.layers);
+    expect(
+      prefabOverrideAspect('transform.matrix'),
+      PrefabOverrideAspect.transform,
+    );
+    expect(
+      prefabOverrideAspect('transform.trs.translation'),
+      PrefabOverrideAspect.transform,
+    );
+    expect(
+      prefabOverrideAspect('components.turntable.speed'),
+      PrefabOverrideAspect.components,
+    );
+    expect(
+      prefabOverrideAspect('components.collider.shape.radius'),
+      PrefabOverrideAspect.components,
+    );
+    expect(
+      prefabOverrideAspect('components.x'),
+      PrefabOverrideAspect.unsupported,
+    );
+    expect(prefabOverrideAspect('nonsense'), PrefabOverrideAspect.unsupported);
+  });
+
+  test('records member origins for composed prefab nodes', () {
+    final host = SceneDocument();
+    final prefab = _prefab();
+    final bodyId = prefab.rootNodes.single.id;
+    final wheelId = prefab.rootNodes.single.children.single;
+    final instance = host.createNode(root: true)
+      ..instance = PrefabInstanceSpec(source: const AssetRef('p'));
+
+    final origins = <LocalId, PrefabMemberOrigin>{};
+    final composed = composeScene(
+      host,
+      resolve: _resolveTo(prefab),
+      memberOrigins: origins,
+    );
+    // The merged root maps to the instance node and carries the prefab root id.
+    expect(origins[instance.id]?.prefabLocalId, bodyId);
+    final composedWheel = composed
+        .node(instance.id)!
+        .children
+        .firstWhere((c) => composed.node(c)!.name == 'wheel');
+    expect(origins[composedWheel]?.instanceId, instance.id);
+    expect(origins[composedWheel]?.prefabLocalId, wheelId);
+  });
+
+  test('attaches a host node under an internal prefab node', () {
+    final host = SceneDocument();
+    final prefab = _prefab();
+    final wheelId = prefab.rootNodes.single.children.single; // prefab-local
+    final prop = host.createNode(name: 'prop');
+    final instance = host.createNode(root: true);
+    instance.children.add(prop.id);
+    instance.instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+      attachments: [Attachment(prop.id, parent: wheelId)],
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    final composedWheel = composed
+        .node(instance.id)!
+        .children
+        .firstWhere((c) => composed.node(c)!.name == 'wheel');
+    expect(
+      composed.node(composedWheel)!.children.map((c) => composed.node(c)!.name),
+      contains('prop'),
+    );
+    expect(composed.node(instance.id)!.children, isNot(contains(prop.id)));
+  });
+
+  test('applies a visible override to an internal prefab node', () {
+    final host = SceneDocument();
+    final prefab = _prefab();
+    final wheelId = prefab.rootNodes.single.children.single;
+    final instance = host.createNode(root: true);
+    instance.instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+      overrides: [
+        PropertyOverride(
+          target: wheelId,
+          path: 'visible',
+          value: const BoolValue(false),
+        ),
+      ],
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    final wheel = composed
+        .node(instance.id)!
+        .children
+        .firstWhere((c) => composed.node(c)!.name == 'wheel');
+    expect(composed.node(wheel)!.visible, isFalse);
+  });
+
+  test('composes nested prefabs', () {
+    final inner = SceneDocument();
+    inner.createNode(name: 'gear', root: true);
+
+    final outer = SceneDocument();
+    final machine = outer.createNode(name: 'machine', root: true);
+    final innerInstance = outer.createNode(name: 'innerInstance');
+    innerInstance.instance = PrefabInstanceSpec(
+      source: const AssetRef('inner'),
+    );
+    machine.children.add(innerInstance.id);
+
+    final host = SceneDocument();
+    host.createNode(name: 'top', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('outer'),
+    );
+
+    final composed = composeScene(
+      host,
+      resolve: (ref) => ref.key == 'inner' ? inner : outer,
+    );
+    final top = composed.rootNodes.single;
+    expect(top.name, 'top');
+    expect(composed.node(top.children.single)!.name, 'innerInstance');
+    expect(composed.nodes.values.where((n) => n.instance != null), isEmpty);
+  });
+
+  test('breaks a cyclic prefab reference without recursing forever', () {
+    final cyclic = SceneDocument();
+    final root = cyclic.createNode(name: 'root', root: true);
+    final self = cyclic.createNode(name: 'self');
+    self.instance = PrefabInstanceSpec(source: const AssetRef('cyclic'));
+    root.children.add(self.id);
+
+    final host = SceneDocument();
+    host.createNode(root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('cyclic'),
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(cyclic));
+    expect(composed.nodes.values.where((n) => n.instance != null), isEmpty);
+  });
+
+  test('composeSceneAsync loads referenced prefabs transitively, once '
+      'each', () async {
+    final inner = SceneDocument()..createNode(name: 'gear', root: true);
+    final outer = SceneDocument();
+    final machine = outer.createNode(name: 'machine', root: true);
+    final innerInstance = outer.createNode(name: 'innerInstance');
+    innerInstance.instance = PrefabInstanceSpec(
+      source: const AssetRef('inner'),
+    );
+    machine.children.add(innerInstance.id);
+
+    final host = SceneDocument();
+    host.createNode(name: 'top', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('outer'),
+    );
+
+    final docs = {'inner': inner, 'outer': outer};
+    final loads = <String>[];
+    final composed = await composeSceneAsync(
+      host,
+      load: (ref) async {
+        loads.add(ref.key);
+        return docs[ref.key]!;
+      },
+    );
+
+    expect(composed.nodes.values.where((n) => n.instance != null), isEmpty);
+    expect(composed.rootNodes.single.name, 'top');
+    expect(loads, unorderedEquals(['outer', 'inner']));
+  });
+
+  test('composeSceneAsync loads a shared prefab source only once', () async {
+    final prefab = SceneDocument()..createNode(name: 'p', root: true);
+    final host = SceneDocument();
+    host.createNode(name: 'a', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+    );
+    host.createNode(name: 'b', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+    );
+
+    var loads = 0;
+    await composeSceneAsync(
+      host,
+      load: (_) async {
+        loads++;
+        return prefab;
+      },
+    );
+    expect(loads, 1);
+  });
+
+  group('deterministic remapping', () {
+    test('recomposing yields identical ids', () {
+      final prefab = _prefab();
+      SceneDocument host() {
+        final doc = SceneDocument(documentId: DocumentId(Uint8List(16)));
+        doc.addNode(
+          NodeSpec(
+            id: const LocalId(5, 1),
+            name: 'a',
+            instance: PrefabInstanceSpec(source: const AssetRef('p')),
+          ),
+          root: true,
+        );
+        return doc;
+      }
+
+      final first = composeScene(host(), resolve: _resolveTo(prefab));
+      final second = composeScene(host(), resolve: _resolveTo(prefab));
+      expect(first.nodes.keys.toSet(), second.nodes.keys.toSet());
+      expect(first.resources.keys.toSet(), second.resources.keys.toSet());
+      expect(first.payloads.keys.toSet(), second.payloads.keys.toSet());
+    });
+
+    test('two instances of one prefab share resources but not nodes', () {
+      final host = SceneDocument();
+      host.createNode(name: 'a', root: true).instance = PrefabInstanceSpec(
+        source: const AssetRef('p'),
+      );
+      host.createNode(name: 'b', root: true).instance = PrefabInstanceSpec(
+        source: const AssetRef('p'),
+      );
+
+      final composed = composeScene(host, resolve: _resolveTo(_prefab()));
+      // One shared material resource, not one per instance.
+      expect(composed.resources, hasLength(1));
+      final materialId = composed.resources.keys.single;
+      for (final root in composed.rootNodes) {
+        final mesh = root.components.singleWhere((c) => c.type == 'mesh');
+        expect(
+          (mesh.properties['material'] as ResourceRefValue).id,
+          materialId,
+        );
+      }
+      // The wheels stay distinct per instance.
+      final wheels = composed.nodes.values.where((n) => n.name == 'wheel');
+      expect(wheels.map((n) => n.id).toSet(), hasLength(2));
+    });
+  });
+
+  test('keeps a nested lazy instance as a placeholder', () {
+    final prefab = SceneDocument();
+    final root = prefab.createNode(name: 'prefabRoot', root: true);
+    final lazy = prefab.createNode(name: 'lazyChild');
+    lazy.instance = PrefabInstanceSpec(
+      source: const AssetRef('streamed'),
+      load: LoadPolicy.lazy,
+    );
+    root.children.add(lazy.id);
+
+    final host = SceneDocument();
+    host.createNode(name: 'inst', root: true).instance = PrefabInstanceSpec(
+      source: const AssetRef('p'),
+    );
+
+    final composed = composeScene(host, resolve: _resolveTo(prefab));
+    final placeholder = composed.nodes.values.singleWhere(
+      (n) => n.name == 'lazyChild',
+    );
+    expect(placeholder.instance, isNotNull);
+    expect(placeholder.instance!.load, LoadPolicy.lazy);
+    expect(placeholder.instance!.source.key, 'streamed');
+  });
+}

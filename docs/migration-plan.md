@@ -2,7 +2,7 @@
 
 更新：2026-10-23。执行、验收与集成负责人：Winnie。参照固定版本 Dify 1.17.1、graphon 0.7.0；每项先核对原版与已有实现，优先复用。
 
-目标是完成既定范围内的真实用户流程：编辑 → 调试 → 文件／人工输入／工具 → 多轮对话 → 发布 → 端用户运行 → 日志统计。功能事实以客户端 [`features.yaml`](https://github.com/kevinzhow/dify-sf/blob/client/step1/tool/features/features.yaml) 及其生成文档为准；本文规定推进顺序和验收，不另算一套完成率。
+目标是完成既定范围内的真实用户流程：编辑 → 调试 → 文件／人工输入／工具 → 多轮对话 → 发布 → 端用户运行 → 日志统计。功能事实以客户端 [`features.yaml`](../tool/features/features.yaml) 及其生成文档为准；本文规定推进顺序和验收，不另算一套完成率。
 
 ## 起点与范围
 

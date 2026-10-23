@@ -1,0 +1,17 @@
+This package adapts the Eclipse Layout Kernel (ELK) 0.11 layered algorithm and
+the node-coordinate-relevant parts of its supporting processors to Dart.
+
+Upstream: https://github.com/eclipse-elk/elk/tree/v0.11.0
+Copyright Kiel University and other Eclipse Layout Kernel contributors.
+Distributed under the Eclipse Public License 2.0; see LICENSE.
+
+The port retains ELK's model-order property alias and the arithmetic/order
+semantics used by elkjs 0.11.1. It omits unused rendering geometry and features
+outside Dify's flat root/child layout contract. Files under lib/src correspond
+to org.eclipse.elk.alg.layered and org.eclipse.elk.alg.common.networksimplex.
+
+The GWT-compatible random arithmetic and stable sorting behavior are reproduced
+for interoperable results, rather than depending on a JavaScript runtime.
+
+The separate research harness depends on the published MIT-licensed Dart elk
+package; its implementation is not vendored or used by this package's runtime.

@@ -1,0 +1,14 @@
+// Internal flutter_gpu shim. Selects a backend by Dart library: native
+// re-exports package:flutter_gpu verbatim (zero cost); web is a facade over
+// a browser backend (WebGL2); the analyzer fallback is a throwing stub.
+// flutter_scene
+// imports this internally; the curated public surface lives in
+// `package:flutter_scene/gpu.dart`.
+export 'stub/_gpu.dart'
+    if (dart.library.io) 'impeller/_gpu.dart'
+    if (dart.library.js_interop) 'web/_gpu.dart';
+
+// Platform-independent helpers.
+export 'shared/encoded_image_types.dart';
+export 'shared/glsl_transpile.dart';
+export 'shared/gpu_capabilities.dart';

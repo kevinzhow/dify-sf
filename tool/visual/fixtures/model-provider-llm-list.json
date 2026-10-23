@@ -1,0 +1,68 @@
+{
+  "data": [
+    {
+      "provider": "langgenius/openai/openai",
+      "label": {
+        "en_US": "OpenAI"
+      },
+      "description": {
+        "en_US": "OpenAI models"
+      },
+      "icon_small": {
+        "en_US": "/visual-provider-icon.svg"
+      },
+      "icon_small_dark": {
+        "en_US": "/visual-provider-icon.svg"
+      },
+      "allow_custom_token": true,
+      "supported_model_types": [
+        "llm"
+      ],
+      "configurate_methods": [
+        "predefined-model"
+      ],
+      "provider_credential_schema": {
+        "credential_form_schemas": []
+      },
+      "preferred_provider_type": "custom",
+      "system_configuration": {
+        "enabled": false
+      },
+      "custom_configuration": {
+        "status": "active",
+        "current_credential_id": "visual-primary",
+        "current_credential_name": "Primary key",
+        "current_credential_usable": true,
+        "available_credentials": [
+          {
+            "credential_id": "visual-primary",
+            "credential_name": "Primary key",
+            "not_allowed_to_use": false
+          },
+          {
+            "credential_id": "visual-backup",
+            "credential_name": "Backup key",
+            "not_allowed_to_use": false
+          }
+        ]
+      },
+      "status": "active",
+      "models": [
+        {
+          "model": "gpt-3.5-turbo",
+          "label": {
+            "en_US": "GPT-3.5 Turbo"
+          },
+          "model_type": "llm",
+          "features": [],
+          "model_properties": {
+            "mode": "chat",
+            "context_size": 4096
+          },
+          "status": "active",
+          "fetch_from": "predefined-model"
+        }
+      ]
+    }
+  ]
+}

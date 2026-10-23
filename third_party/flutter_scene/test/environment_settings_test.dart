@@ -1,0 +1,133 @@
+// Covers EnvironmentSettings.lerp: continuous fields interpolate, discrete
+// fields switch at the halfway point, and the endpoints reproduce the inputs.
+
+import 'package:flutter_scene/scene.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:vector_math/vector_math.dart';
+
+void main() {
+  test('continuous fields interpolate, discrete switch at 0.5', () {
+    final a = EnvironmentSettings(
+      exposure: 1.0,
+      environmentIntensity: 0.0,
+      brightness: 1.0,
+      bloomIntensity: 0.0,
+      toneMapping: ToneMappingMode.linear,
+      agxWhite: 6.0,
+      agxContrast: 1.0,
+      ambientOcclusionMethod: AmbientOcclusionMethod.obscurance,
+      ambientOcclusionPower: 1.0,
+      ambientOcclusionDetail: 0.0,
+      ambientOcclusionHorizonAngle: 0.02,
+      ambientOcclusionDirectLightAffect: 0.0,
+      ambientOcclusionMultiBounce: 0.0,
+      ambientOcclusionSampleCount: 8,
+      ambientOcclusionSliceCount: 2,
+      ambientOcclusionStepsPerSlice: 2,
+      ambientOcclusionVisibilityBitmask: false,
+      ambientOcclusionThickness: 0.2,
+      ambientOcclusionThicknessHeuristic: 0.0,
+      ambientOcclusionHalfResolution: false,
+      ambientOcclusionDepthMipChain: false,
+      ambientOcclusionSpecularMode: SpecularAmbientOcclusionMode.none,
+      screenSpaceReflectionsIntensity: 0.0,
+      fogDensity: 0.0,
+      godRaysIntensity: 0.0,
+      depthOfFieldFocusDistance: 2.0,
+      autoExposureCompensation: -1.0,
+    );
+    final b = EnvironmentSettings(
+      exposure: 3.0,
+      environmentIntensity: 2.0,
+      brightness: 2.0,
+      bloomIntensity: 1.0,
+      toneMapping: ToneMappingMode.aces,
+      agxWhite: 16.0,
+      agxContrast: 1.5,
+      ambientOcclusionMethod: AmbientOcclusionMethod.groundTruth,
+      ambientOcclusionPower: 2.0,
+      ambientOcclusionDetail: 1.0,
+      ambientOcclusionHorizonAngle: 0.1,
+      ambientOcclusionDirectLightAffect: 0.8,
+      ambientOcclusionMultiBounce: 1.0,
+      ambientOcclusionSampleCount: 32,
+      ambientOcclusionSliceCount: 4,
+      ambientOcclusionStepsPerSlice: 4,
+      ambientOcclusionVisibilityBitmask: true,
+      ambientOcclusionThickness: 0.6,
+      ambientOcclusionThicknessHeuristic: 0.5,
+      ambientOcclusionBentNormals: true,
+      ambientOcclusionHalfResolution: true,
+      ambientOcclusionDepthMipChain: true,
+      ambientOcclusionSpecularMode: SpecularAmbientOcclusionMode.simple,
+      screenSpaceReflectionsEnabled: true,
+      screenSpaceReflectionsIntensity: 2.0,
+      fogEnabled: true,
+      fogDensity: 0.2,
+      godRaysEnabled: true,
+      godRaysIntensity: 2.0,
+      depthOfFieldEnabled: true,
+      depthOfFieldFocusDistance: 10.0,
+      autoExposureEnabled: true,
+      autoExposureCompensation: 1.0,
+    );
+
+    final mid = EnvironmentSettings.lerp(a, b, 0.5);
+    expect(mid.exposure, 2.0);
+    expect(mid.environmentIntensity, 1.0);
+    expect(mid.brightness, 1.5);
+    expect(mid.bloomIntensity, 0.5);
+    expect(mid.agxWhite, 11.0);
+    expect(mid.agxContrast, 1.25);
+    expect(mid.ambientOcclusionPower, 1.5);
+    expect(mid.ambientOcclusionDetail, 0.5);
+    expect(mid.ambientOcclusionHorizonAngle, closeTo(0.06, 1e-9));
+    expect(mid.ambientOcclusionDirectLightAffect, 0.4);
+    expect(mid.ambientOcclusionMultiBounce, 0.5);
+    expect(mid.ambientOcclusionThickness, closeTo(0.4, 1e-9));
+    expect(mid.ambientOcclusionThicknessHeuristic, 0.25);
+    expect(mid.ambientOcclusionSampleCount, 32);
+    expect(mid.ambientOcclusionMethod, AmbientOcclusionMethod.groundTruth);
+    expect(mid.ambientOcclusionSliceCount, 4);
+    expect(mid.ambientOcclusionStepsPerSlice, 4);
+    expect(mid.ambientOcclusionVisibilityBitmask, isTrue);
+    expect(mid.ambientOcclusionBentNormals, isTrue);
+    expect(mid.ambientOcclusionHalfResolution, isTrue);
+    expect(mid.ambientOcclusionDepthMipChain, isTrue);
+    expect(mid.screenSpaceReflectionsEnabled, isTrue);
+    expect(mid.screenSpaceReflectionsIntensity, 1.0);
+    expect(mid.fogEnabled, isTrue);
+    expect(mid.fogDensity, 0.1);
+    expect(mid.godRaysEnabled, isTrue);
+    expect(mid.godRaysIntensity, 1.0);
+    expect(mid.depthOfFieldEnabled, isTrue);
+    expect(mid.depthOfFieldFocusDistance, 6.0);
+    expect(mid.autoExposureEnabled, isTrue);
+    expect(mid.autoExposureCompensation, 0.0);
+    expect(
+      mid.ambientOcclusionSpecularMode,
+      SpecularAmbientOcclusionMode.simple,
+    );
+    // Discrete fields switch to b at t >= 0.5.
+    expect(mid.toneMapping, ToneMappingMode.aces);
+
+    final quarter = EnvironmentSettings.lerp(a, b, 0.25);
+    expect(quarter.exposure, closeTo(1.5, 1e-9));
+    expect(quarter.toneMapping, ToneMappingMode.linear); // still a
+
+    // Endpoints reproduce the inputs.
+    final start = EnvironmentSettings.lerp(a, b, 0.0);
+    expect(start.exposure, 1.0);
+    expect(start.toneMapping, ToneMappingMode.linear);
+    final end = EnvironmentSettings.lerp(a, b, 1.0);
+    expect(end.exposure, 3.0);
+    expect(end.toneMapping, ToneMappingMode.aces);
+  });
+
+  test('vector grading fields interpolate per component', () {
+    final a = EnvironmentSettings(gain: Vector3(0, 0, 0));
+    final b = EnvironmentSettings(gain: Vector3(2, 4, 6));
+    final mid = EnvironmentSettings.lerp(a, b, 0.5);
+    expect(mid.gain, Vector3(1, 2, 3));
+  });
+}

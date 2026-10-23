@@ -1,0 +1,117 @@
+# rule	path (under app/lib/src)	max_count	reason    -- see tool/design/README.md
+box-shadow	app_detail/annotations/annotation_list.dart	1	todo:step3
+box-shadow	app_detail/app_detail_page.dart	1	todo:step3
+box-shadow	app_detail/overview/app_chart_canvas.dart	1	legit:echarts tooltip shadow
+box-shadow	workflow_editor/code_editor/code_editor.dart	2	todo:step3
+box-shadow	workflow_editor/comments/comment_icon.dart	2	legit:panel-bg ring around avatars
+box-shadow	workflow_editor/features/conversation_opener.dart	2	todo:step3
+box-shadow	workflow_editor/header/online_users.dart	2	legit:panel-bg ring around avatars
+box-shadow	workflow_editor/prompt_editor/prompt_editor_panel.dart	2	todo:step3
+color-literal	editor/config_editor.dart	2	dev-shell
+color-literal	editor/editor_page.dart	2	dev-shell
+color-literal	editor/notice_overlay.dart	2	dev-shell
+color-literal	editor/status_bar.dart	6	dev-shell
+color-literal	home_page.dart	2	dev-shell
+color-literal	workflow_editor/block_selector/blocks_panel.dart	1	legit:runtime API icon-background integer converted to opaque ARGB; not a fixed UI colour
+color-literal	workflow_editor/block_selector/start_panel.dart	1	legit:transparent
+color-literal	workflow_editor/code_editor/editor_view.dart	5	third-party:monaco indent guides, transparent cursor
+color-literal	workflow_editor/code_editor/monarch/vs_theme.dart	43	third-party:monaco vs theme
+color-literal	workflow_editor/node_panel/bodies/data/http/edit_body.dart	3	third-party:chrome native checkbox
+color-literal	workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart	1	legit:runtime agent API icon-background integer converted to opaque ARGB; not a fixed UI colour
+color-literal	workflow_editor/operator/mini_map.dart	1	third-party:reactflow minimap
+color-literal	workflow_editor/prompt_editor/component_picker.dart	1	dify-hardcoded:web/app/components/base/prompt-editor/plugins
+color-literal	workflow_editor/prompt_editor/prompt_editor.dart	1	third-party:browser text selection
+color-literal	workflow_editor/run/ui/markdown.dart	1	third-party:github-markdown-css
+component-token	account/account_page.dart	2	todo:step3
+component-token	app_detail/access/access_point_card.dart	1	todo:step3
+component-token	app_detail/access/site_settings_modal.dart	4	todo:step3
+component-token	app_detail/access/workflow_launch_dialog.dart	1	todo:step3
+component-token	app_detail/logs/log_widgets.dart	1	todo:step3
+component-token	app_detail/overview/time_range.dart	1	todo:step3
+component-token	cards/bodies/note_body.dart	1	todo:step3
+component-token	cards/dify_cards.dart	1	todo:step3
+component-token	cards/model_chip.dart	6	todo:step3
+component-token	settings/members/assign_roles_modal.dart	1	todo:step3
+component-token	settings/members/email_recipients_field.dart	12	todo:step3
+component-token	settings/members/invited_modal.dart	2	todo:step3
+component-token	settings/members/role_selector.dart	6	todo:step3
+component-token	settings/model_provider/model_auth.dart	3	todo:step3
+component-token	studio/filters.dart	4	todo:step3
+component-token	workflow_editor/block_selector/selector_widgets.dart	6	todo:step3
+component-token	workflow_editor/block_selector/snippets_panel.dart	1	todo:step3
+component-token	workflow_editor/block_selector/tools_panel.dart	2	todo:step3
+component-token	workflow_editor/code_editor/code_editor.dart	4	todo:step3
+component-token	workflow_editor/context_menu/node_control.dart	1	todo:step3
+component-token	workflow_editor/features/conversation_opener.dart	7	todo:step3
+component-token	workflow_editor/features/follow_up.dart	2	todo:step3
+component-token	workflow_editor/features/moderation.dart	1	todo:step3
+component-token	workflow_editor/header/publisher/summary_section.dart	3	todo:step3
+component-token	workflow_editor/header/publisher/version_info_modal.dart	9	todo:step3
+component-token	workflow_editor/node_panel/bodies/core/assigner_panel.dart	5	todo:step3
+component-token	workflow_editor/node_panel/bodies/core/code_panel.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/core/core_kit.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/core/if_else_panel.dart	6	todo:step3
+component-token	workflow_editor/node_panel/bodies/core/start_panel.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/core/start_var_modal.dart	2	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/data_common.dart	4	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/http/http_dialogs.dart	5	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/http/key_value.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/human_input/email_config.dart	15	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/human_input/form_content.dart	11	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/human_input/form_preview.dart	2	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/list_operator/list_operator_widgets.dart	7	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/loop/loop_conditions.dart	5	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/loop/loop_variables.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/tool/tool_date_pickers.dart	6	todo:step3
+component-token	workflow_editor/node_panel/bodies/data/tool/tool_form.dart	10	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/data_source/data_source_panel.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/knowledge_base/kb_widgets.dart	8	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/start_placeholder/start_placeholder_panel.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/trigger_plugin/plugin_form.dart	9	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/trigger_schedule/schedule_components.dart	6	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/trigger_schedule/time_picker.dart	4	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/trigger_webhook/trigger_webhook_panel.dart	2	todo:step3
+component-token	workflow_editor/node_panel/bodies/entry/trigger_webhook/webhook_tables.dart	2	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/agent_panel.dart	9	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/agent_v2_outputs.dart	3	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart	3	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart	4	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/kr_metadata.dart	5	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/kr_retrieval_config.dart	2	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/llm_json_schema.dart	6	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/llm_panel.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/model_selector.dart	6	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/parameter_item.dart	7	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/pe_params.dart	1	todo:step3
+component-token	workflow_editor/node_panel/bodies/llm/qc_class_list.dart	2	todo:step3
+component-token	workflow_editor/node_panel/title_description_input.dart	1	todo:step3
+component-token	workflow_editor/node_panel/workflow_node_panel.dart	1	todo:step3
+component-token	workflow_editor/note_node/note_editor.dart	2	todo:step3
+component-token	workflow_editor/panel_fields/form_controls.dart	9	todo:step1
+component-token	workflow_editor/panel_fields/var_reference_picker.dart	8	todo:step3
+component-token	workflow_editor/panel_fields/var_reference_vars.dart	1	todo:step3
+component-token	workflow_editor/prompt_editor/prompt_editor.dart	1	todo:step3
+component-token	workflow_editor/prompt_editor/prompt_editor_panel.dart	3	todo:step3
+component-token	workflow_editor/run/ui/before_run_form.dart	2	todo:step3
+component-token	workflow_editor/run/ui/debug_and_preview.dart	3	todo:step3
+component-token	workflow_editor/run/ui/markdown.dart	1	todo:step3
+component-token	workflow_editor/variable_inspect/panel.dart	2	todo:step3
+component-token	workflow_editor/variable_inspect/value_content.dart	12	todo:step3
+component-token	workflow_editor/variable_panels/chat_variable_modal.dart	1	todo:step3
+component-token	workflow_editor/variable_panels/chat_variable_values.dart	2	todo:step3
+component-token	workflow_editor/variable_panels/panel_kit.dart	7	todo:step3
+dify-class	workflow_editor/header/publisher/version_info_modal.dart	1	todo:step2
+raw-text-style	app_detail/overview/app_chart_canvas.dart	2	third-party:echarts axis/tooltip metrics, including dynamically measured number text sizes and account font family
+raw-text-style	cards/bodies/note_text.dart	1	legit:user-authored Lexical rich text font size and formatting; not fixed application typography
+raw-text-style	editor/config_editor.dart	2	dev-shell
+raw-text-style	editor/editor_page.dart	1	dev-shell
+raw-text-style	editor/notice_overlay.dart	3	dev-shell
+raw-text-style	editor/synced_text_field.dart	1	dev-shell
+raw-text-style	editor/variable_picker.dart	1	dev-shell
+raw-text-style	home_page.dart	2	dev-shell
+raw-text-style	workflow_editor/code_editor/editor_view.dart	2	third-party:monaco editor settings and syntax theme token font weights/styles
+raw-text-style	workflow_editor/comments/comment_icon.dart	1	legit:avatar initials use a font size derived from the avatar box, matching base/user-avatar-list
+raw-text-style	workflow_editor/note_node/note_toolbar.dart	1	legit:font-size picker previews the user-selected Lexical note sizes
+raw-text-style	workflow_editor/prompt_editor/prompt_editor.dart	1	legit:controlled editor font and CSS line-box metrics are derived from its supplied size/line-height/mode
+raw-text-style	workflow_editor/prompt_editor/prompt_editor_controller.dart	3	legit:inline chip edge spacing and copying arbitrary editor styles while removing height to avoid doubled leading
+raw-text-style	workflow_editor/run/ui/markdown.dart	3	third-party:github-markdown-css stylesheet

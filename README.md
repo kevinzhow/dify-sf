@@ -4,8 +4,8 @@ A Swift + Flutter reimplementation of Dify's workflow studio. Its core promise: 
 stale clients never silently overwrite newer data, and all clients converge.**
 
 The server provides collaborative editing, accounts and workspace settings, application drafts and history, model
-provider configuration, a Swift workflow runtime, and local file uploads with signed previews. The Flutter studio
-lives on the `client/step1` branch. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
+provider configuration, a Swift workflow runtime, and local file uploads with signed previews. The Flutter studio (`app/`) and pure-Dart libraries (`packages/`) live alongside the Swift server
+on `main`. The former `client/step1` branch is retained for historical compatibility; new delivery integrates on `main`. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
 use the configured sandbox and SSRF proxy. Human-input web forms and email delivery have separate, default-off
 rollout flags. Runtime files/vision, tools, published end-user runs and the remaining conversation features are not
 yet complete. The sections below describe configuration and the supported boundaries.
@@ -20,7 +20,7 @@ yet complete. The sections below describe configuration and the supported bounda
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-293 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md) (generated from `tool/features/features.yaml` on the client branch):
+293 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
@@ -30,10 +30,28 @@ yet complete. The sections below describe configuration and the supported bounda
 | n/a | 17 |
 | dify-sf only | 14 |
 
-Per area, with the reason for everything not ported: [docs/features.md](https://github.com/kevinzhow/dify-sf/blob/client/step1/docs/features.md).
+Per area, with the reason for everything not ported: [docs/features.md](docs/features.md).
 <!-- features:end -->
 
-## Requirements
+## Build and test the Flutter client
+
+Use Flutter 3.47.6 (pinned in `.fvmrc`). From this checkout:
+
+```sh
+cd app
+flutter pub get
+cd ..
+tool/build_web.sh                         # full Dart Wasm + self-hosted skwasm
+tool/test_control_typography.sh           # font/control checks and complete client suite
+```
+
+The app is in `app/`, collaboration/layout libraries in `packages/`, and vendored
+client dependencies in `third_party/`. See the [client guide](docs/client.md),
+[control typography regression](docs/control-typography-testing.md),
+[design rules](tool/design/README.md) and [Android Web support](docs/mobile-support.md).
+Run resource-intensive commands inside the host's normal build/test limits.
+
+## Server requirements
 
 Docker. Everything builds and runs in containers (Swift 6.4.1, PostgreSQL 15, Toxiproxy 2.12.0); nothing is installed on the host.
 

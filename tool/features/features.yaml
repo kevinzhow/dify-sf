@@ -1,0 +1,2383 @@
+# Feature parity of dify-sf's Flutter port with Dify 1.17.1 (the source of truth for docs/features.md).
+#
+# One entry per user-visible feature or distinct behaviour. Fields:
+#   id        unique, `<area>.<slug>`
+#   area      one of the areas below
+#   title     English, what a Dify user would call it
+#   dify      paths (relative to the Dify source root) of the components / hooks implementing it in Dify
+#   status    ported | partial | not_ported | not_applicable | dify_sf_only
+#   reason    required unless ported: what is missing / why it is not ported / why it does not apply
+#   deviation optional: ported, but intentionally different from Dify, and why
+#   evidence  spec:<Dify spec dir or spec file> (from tool/dify_spec/cases.txt, the ledger's case list; the Dart port
+#             lives under app/test/dify_spec/), visual:<case id> (tool/visual/cases.json), or a path in this repo
+#   ours      main Dart paths in this repo
+#
+# Regenerate docs/features.md and the README blocks: python3 tool/features/gen.py
+# Check (CI / before merging):                      python3 tool/features/gen.py --check
+# Every Dify spec directory the ledger knows must be named by some feature's evidence.
+
+areas:
+  - {id: canvas, title: 'Canvas & interactions'}
+  - {id: node-chrome, title: 'Node cards (shared chrome)'}
+  - {id: edges, title: 'Edges & connections'}
+  - {id: block-selector, title: 'Block selector & node insertion'}
+  - {id: context-menus, title: 'Context menus & node actions'}
+  - {id: shortcuts, title: 'Keyboard shortcuts & clipboard'}
+  - {id: operator, title: 'Control bar & operator bar'}
+  - {id: header, title: 'Header, checklist & publish'}
+  - {id: node-panel, title: 'Node panel shell & shared fields'}
+  - {id: editors, title: 'Prompt editor & code editor'}
+  - {id: node-start, title: 'Node: User Input (start)'}
+  - {id: node-end, title: 'Node: Output (end)'}
+  - {id: node-answer, title: 'Node: Answer'}
+  - {id: node-llm, title: 'Node: LLM'}
+  - {id: node-knowledge-retrieval, title: 'Node: Knowledge Retrieval'}
+  - {id: node-question-classifier, title: 'Node: Question Classifier'}
+  - {id: node-parameter-extractor, title: 'Node: Parameter Extractor'}
+  - {id: node-if-else, title: 'Node: IF/ELSE'}
+  - {id: node-code, title: 'Node: Code'}
+  - {id: node-template, title: 'Node: Template'}
+  - {id: node-http, title: 'Node: HTTP Request'}
+  - {id: node-aggregator, title: 'Node: Variable Aggregator'}
+  - {id: node-assigner, title: 'Node: Variable Assigner'}
+  - {id: node-tool, title: 'Node: Tool'}
+  - {id: node-iteration, title: 'Node: Iteration'}
+  - {id: node-loop, title: 'Node: Loop & Exit Loop'}
+  - {id: node-doc-extractor, title: 'Node: Doc Extractor'}
+  - {id: node-list-operator, title: 'Node: List Operator'}
+  - {id: node-agent, title: 'Node: Agent (v1 and v2)'}
+  - {id: node-human-input, title: 'Node: Human Input'}
+  - {id: node-triggers, title: 'Nodes: triggers & workflow start'}
+  - {id: node-pipeline, title: 'Nodes: knowledge pipeline (data source, knowledge base)'}
+  - {id: variables, title: 'Variables (environment, conversation, system) & variable picker'}
+  - {id: features, title: 'Features panel'}
+  - {id: variable-inspect, title: 'Variable inspect'}
+  - {id: run, title: 'Run & debug'}
+  - {id: chat-preview, title: 'Chatflow Debug & Preview'}
+  - {id: comments, title: 'Comments'}
+  - {id: notes, title: 'Note node'}
+  - {id: organize, title: 'Organize (auto layout)'}
+  - {id: history, title: 'Undo / redo & change history'}
+  - {id: versions, title: 'Version history'}
+  - {id: accounts, title: 'Accounts, sign-in & members'}
+  - {id: settings, title: 'Settings tabs & workspace'}
+  - {id: app-pages, title: 'App-level pages outside the editor'}
+  - {id: collaboration, title: 'Collaboration (dify-sf''s own)'}
+  - {id: dsl, title: 'DSL import / export'}
+  - {id: design, title: 'i18n, design tokens & UI primitives'}
+
+features:
+
+# ---------------------------------------------------------------- canvas
+- id: canvas.render
+  area: canvas
+  title: 'Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%)'
+  dify: [web/app/components/workflow/index.tsx]
+  status: ported
+  deviation: Web uses Flutter's retained widget canvas with culling and repaint boundaries, compiled to Dart Wasm/skwasm; geometry and numbers follow React Flow 11. Native GPU builds use Flutter Scene. Scene is an explicit Web diagnostic option (canvas=scene), as detached card captures can produce blank compositor frames during hover.
+  evidence: ['spec:web/app/components/workflow', visual:canvas-basic-llm, visual:canvas-if-else, app/test/dify_spec/workflow/base]
+  ours: [app/lib/src/canvas/workflow_canvas.dart, app/lib/src/canvas/scene_renderer.dart, app/lib/src/canvas/canvas_controller.dart, tool/build_web.sh, third_party/flutter_scene/PATCHES.md]
+- id: canvas.background
+  area: canvas
+  title: 'Canvas: dotted background'
+  dify: [web/app/components/workflow/index.tsx]
+  status: ported
+  evidence: [visual:canvas-basic-llm]
+  ours: [app/lib/src/canvas/canvas_background.dart]
+- id: canvas.initial-viewport
+  area: canvas
+  title: 'Canvas: open at the saved viewport, else fit view'
+  dify: [web/app/components/workflow/index.tsx, web/app/components/workflow/utils/workflow-init.ts]
+  status: partial
+  reason: The canvas always fits the graph when a document opens; the viewport is per-user view state and is not stored in the shared document (Dify saves it with the draft). A start viewport can be passed with ?view= / --view.
+  evidence: ['spec:web/app/components/workflow/utils', visual:editor-basic-llm]
+  ours: [app/lib/src/canvas/workflow_canvas.dart, app/lib/src/launch_options.dart]
+- id: canvas.pointer-mode
+  area: canvas
+  title: 'Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans)'
+  dify: [web/app/components/workflow/index.tsx]
+  status: ported
+  evidence: [app/test/workflow_editor_test.dart, app/test/workflow_editor/canvas_touch_test.dart]
+  ours: [app/lib/src/canvas/canvas_input.dart, app/lib/src/canvas/canvas_touch_region.dart]
+- id: canvas.hand-mode
+  area: canvas
+  title: 'Canvas: hand mode (drag pans, wheel zooms)'
+  dify: [web/app/components/workflow/index.tsx, web/app/components/workflow/operator/control.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/operator']
+  ours: [app/lib/src/canvas/canvas_input.dart, app/lib/src/workflow_editor/operator/control.dart]
+- id: canvas.double-click-zoom
+  area: canvas
+  title: 'Canvas: double-click zooms in'
+  dify: [web/app/components/workflow/index.tsx]
+  status: ported
+  evidence: [app/test/workflow_editor/double_click_zoom_test.dart]
+  ours: [app/lib/src/canvas/canvas_input.dart]
+- id: canvas.select-node
+  area: canvas
+  title: 'Canvas: click selects one node (no modifier multi-select) and highlights its edges'
+  dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts']
+  ours: [app/lib/src/canvas/canvas_selection.dart, app/lib/src/canvas/canvas_input.dart]
+- id: canvas.box-select
+  area: canvas
+  title: 'Canvas: box selection (partial overlap) and dragging the selection'
+  dify: [web/app/components/workflow/hooks/use-selection-interactions.ts, web/app/components/workflow/style.css]
+  status: ported
+  deviation: The selection lives in CanvasSelection; React Flow's _isBundled flags are not stored on nodes.
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-selection-interactions.spec.ts']
+  ours: [app/lib/src/canvas/canvas_selection.dart]
+- id: canvas.drag-nodes
+  area: canvas
+  title: 'Canvas: drag nodes (container children clamped inside the container)'
+  dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts, web/app/components/workflow/constants.ts]
+  status: ported
+  deviation: A drag is a moveNode op; concurrent moves of the same node are last-writer-wins (dify-sf's conflict policy for layout).
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions-without-sync.spec.ts']
+  ours: [app/lib/src/canvas/canvas_input.dart, app/lib/src/workflow_editor/workflow_editor.dart]
+- id: canvas.help-lines
+  area: canvas
+  title: 'Canvas: alignment help lines with magnetic snap while dragging'
+  dify: [web/app/components/workflow/help-line/index.tsx, web/app/components/workflow/hooks/use-helpline.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/help-line', 'spec:web/app/components/workflow/hooks/__tests__/use-helpline.spec.ts']
+  ours: [app/lib/src/workflow_editor/hooks/use_helpline.dart, app/lib/src/workflow_editor/workflow_editor.dart]
+- id: canvas.keyboard-move
+  area: canvas
+  title: 'Canvas: arrow keys move the focused node / selection (5 px, 20 px with Shift); Enter/Space select, Escape deselects'
+  dify: [web/app/components/workflow/utils/keyboard-movement.ts, web/app/components/workflow/hooks/use-node-keyboard-interactions.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-node-keyboard-interactions.spec.tsx', 'spec:web/app/components/workflow/__tests__/keyboard-node-movement.browser.spec.tsx']
+  ours: [app/lib/src/canvas/canvas_input.dart, app/lib/src/canvas/canvas_a11y.dart]
+- id: canvas.shift-dim
+  area: canvas
+  title: 'Canvas: hold Shift to dim unrelated nodes and show dashed dependency edges'
+  dify: [web/app/components/workflow/shortcuts/use-workflow-hotkeys.ts, web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-shortcuts.spec.ts', app/test/dify_spec/workflow/editor/shift_dim_test.dart]
+  ours: [app/lib/src/canvas/run_view.dart, app/lib/src/workflow_editor/context_menu/workflow_actions.dart, app/lib/src/workflow_editor/context_menu/workflow_shortcuts.dart]
+- id: canvas.a11y
+  area: canvas
+  title: 'Canvas: accessibility (focusable nodes, semantics)'
+  dify: [web/app/components/workflow/style.css, web/app/components/workflow/nodes/_base/node.tsx]
+  status: ported
+  deviation: Semantics per on-screen card while the view rests, a summary otherwise (a GPU canvas has no DOM).
+  evidence: []
+  ours: [app/lib/src/canvas/canvas_a11y.dart]
+- id: canvas.locate-node
+  area: canvas
+  title: 'Canvas: open the editor at a node (?node_id=)'
+  dify: [web/app/components/workflow/hooks/use-locate-node.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-locate-node.spec.tsx']
+  ours: [app/lib/src/workflow_editor/hooks/use_locate_node.dart]
+- id: canvas.confirm-dialog
+  area: canvas
+  title: 'Canvas: confirm dialogs (delete container with children, remove used variable)'
+  dify: [web/app/components/workflow/index.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/index.spec.tsx']
+  ours: [app/lib/src/workflow_editor/workflow_confirm.dart]
+- id: canvas.syncing-modal
+  area: canvas
+  title: 'Canvas: syncing-data overlay while the draft is re-fetched'
+  dify: [web/app/components/workflow/syncing-data-modal.tsx]
+  status: not_applicable
+  reason: dify-sf never re-fetches a draft over the canvas; the document is live (edits are collaboration ops).
+  evidence: ['spec:web/app/components/workflow/__tests__/syncing-data-modal.spec.tsx']
+  ours: []
+- id: canvas.draft-sync
+  area: canvas
+  title: 'Canvas: draft auto-save (sync the whole graph to the console API)'
+  dify: [web/app/components/workflow/hooks/use-nodes-sync-draft.ts, web/app/components/workflow/hooks/use-serial-async-callback.ts]
+  status: not_applicable
+  reason: dify-sf has no draft sync; every edit is a journaled collaboration op confirmed by the server (see Collaboration).
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-sync-draft.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-serial-async-callback.spec.ts', 'spec:web/app/components/workflow/store/__tests__/workflow-draft-slice.spec.ts']
+  ours: []
+- id: canvas.store
+  area: canvas
+  title: 'Editor state: workflow store, persisted preferences, panel widths'
+  dify: [web/app/components/workflow/store, web/app/components/workflow/persistence]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/store', 'spec:web/app/components/workflow/store/workflow/debug', 'spec:web/app/components/workflow/persistence']
+  ours: [app/lib/src/workflow_editor/store/workflow_store.dart, app/lib/src/workflow_editor/store/local_storage.dart, app/lib/src/workflow_editor/store/panel_width.dart]
+- id: canvas.hooks-store
+  area: canvas
+  title: 'Editor plumbing: hooks store and datasets detail store providers'
+  dify: [web/app/components/workflow/hooks-store, web/app/components/workflow/datasets-detail-store]
+  status: partial
+  reason: The datasets detail store is ported as a plain store (app/lib/src/workflow_editor/store/datasets_detail_store.dart); the React provider/context wiring has no counterpart and nothing fetches dataset details (no knowledge base service). The provider specs are still to do in the ledger.
+  evidence: ['spec:web/app/components/workflow/hooks-store', 'spec:web/app/components/workflow/datasets-detail-store']
+  ours: [app/lib/src/workflow_editor/store/datasets_detail_store.dart]
+- id: canvas.init-graph
+  area: canvas
+  title: 'Loading a draft: preprocess nodes and edges (initialNodes / initialEdges)'
+  dify: [web/app/components/workflow/utils/workflow-init.ts]
+  status: not_applicable
+  reason: dify-sf never builds a graph from Dify JSON in the client; documents come from the server's DSL import (CollabDSL) and arrive as collaboration snapshots.
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/workflow-init.spec.ts']
+  ours: []
+- id: canvas.preview
+  area: canvas
+  title: 'Read-only workflow preview canvas (templates, Explore, generator)'
+  dify: [web/app/components/workflow/workflow-preview/index.tsx]
+  status: partial
+  reason: The preview's components are ported for the parts the editor reuses; the pages that show a standalone read-only preview (template details, Explore try-app, workflow generator) do not exist in dify-sf.
+  evidence: ['spec:web/app/components/workflow/workflow-preview', 'spec:web/app/components/workflow/workflow-preview/components', 'spec:web/app/components/workflow/workflow-preview/components/nodes', 'spec:web/app/components/workflow/workflow-preview/components/nodes/loop']
+  ours: [app/lib/src/workflow_editor/run/ui/workflow_preview.dart]
+- id: canvas.goto-anything
+  area: canvas
+  title: 'Go to anything: command palette node search'
+  dify: [web/app/components/goto-anything, web/app/components/workflow/goto-anything-search.ts, web/app/components/workflow/hooks/use-workflow-search.tsx]
+  status: not_ported
+  reason: outside current scope (owner to decide); dify-sf has no goto-anything palette.
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-workflow-search.spec.tsx']
+  ours: []
+- id: canvas.workflow-generator
+  area: canvas
+  title: 'Workflow generator (generate a graph from a prompt)'
+  dify: [web/app/components/workflow/workflow-generator]
+  status: not_ported
+  reason: "LLM invocation is available to workflow nodes, but the prompt-to-workflow generation service is not implemented."
+  evidence: ['spec:web/app/components/workflow/workflow-generator']
+  ours: []
+- id: canvas.performance
+  area: canvas
+  title: 'Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier)'
+  dify: [web/app/components/workflow/index.tsx]
+  status: dify_sf_only
+  reason: The native/opt-in Scene renderer has culling, overview captures and a skeleton tier; Dify renders every node as DOM. This benchmark does not describe the default Web widget canvas.
+  evidence: [docs/results]
+  ours: [app/lib/src/canvas/scene_renderer.dart, app/lib/src/canvas/spatial_grid.dart]
+
+- id: canvas.mobile-web
+  area: canvas
+  title: 'Android Web: touch gestures and compact editor / Studio navigation'
+  dify: [web/app/components/workflow/index.tsx]
+  status: dify_sf_only
+  reason: Android Web adds single-finger empty-canvas pan, coordinated pinch/drag/cancel, compact action rows and viewport-bounded panels/navigation; it preserves desktop preferences. Verified with Chromium touch emulation and widget keyboard/rotation tests, not a physical Android/TalkBack or every vendor browser.
+  evidence: [app/test/workflow_editor/canvas_touch_test.dart, app/test/workflow_editor/mobile_layout_test.dart, docs/mobile-support.md]
+  ours: [app/lib/src/canvas/canvas_touch_region.dart, app/lib/src/design/widgets/adaptive.dart, app/lib/src/workflow_editor/workflow_editor.dart]
+
+# ---------------------------------------------------------------- node chrome
+- id: node-chrome.card
+  area: node-chrome
+  title: 'Node card: 240 px card, header icon and title, description, hover shadow'
+  dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/nodes/_base/node-sections.tsx, web/app/components/workflow/block-icon.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base', 'spec:web/app/components/workflow/__tests__/block-icon.spec.tsx', visual:canvas-basic-llm, visual:canvas-classify-extract]
+  ours: [app/lib/src/cards/card_chrome.dart, app/lib/src/cards/dify_cards.dart, app/lib/src/cards/card_kit.dart]
+- id: node-chrome.selected
+  area: node-chrome
+  title: 'Node card: selected / box-selected / context-menu frame'
+  dify: [web/app/components/workflow/nodes/_base/node.tsx]
+  status: ported
+  evidence: [visual:panel-llm]
+  ours: [app/lib/src/cards/card_chrome.dart, app/lib/src/canvas/scene_renderer.dart]
+- id: node-chrome.handles
+  area: node-chrome
+  title: 'Node card: target / source handles and markers'
+  dify: [web/app/components/workflow/nodes/_base/components/node-handle.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components', visual:canvas-if-else]
+  ours: [app/lib/src/cards/card_kit.dart, app/lib/src/canvas/canvas_graph.dart]
+- id: node-chrome.run-status
+  area: node-chrome
+  title: 'Node card: run status rings, status icons, waiting dim, running loader'
+  dify: [web/app/components/workflow/nodes/_base/node.helpers.tsx, web/app/components/workflow/nodes/_base/node-sections.tsx, web/app/components/workflow/nodes/_base/components/node-status-icon.tsx]
+  status: ported
+  evidence: [app/test/workflow_editor/run/run_visuals_test.dart, visual:run-result]
+  ours: [app/lib/src/canvas/run_view.dart, app/lib/src/cards/card_spinner.dart]
+- id: node-chrome.retry-error-rows
+  area: node-chrome
+  title: 'Node card: retry row and error-handling row (On Failure, fail branch handle)'
+  dify: [web/app/components/workflow/nodes/_base/components/retry/retry-on-node.tsx, web/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/retry', 'spec:web/app/components/workflow/nodes/_base/components/error-handle']
+  ours: [app/lib/src/cards/node_extras.dart]
+- id: node-chrome.entry-container
+  area: node-chrome
+  title: 'Node card: entry-node wrapper (START / TRIGGER label)'
+  dify: [web/app/components/workflow/nodes/_base/components/entry-node-container.tsx]
+  status: ported
+  evidence: [visual:canvas-triggers]
+  ours: [app/lib/src/cards/bodies/entry_bodies.dart]
+- id: node-chrome.container
+  area: node-chrome
+  title: 'Node card: iteration / loop container (sized, dotted body, children inside)'
+  dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/nodes/iteration/node.tsx, web/app/components/workflow/nodes/loop/node.tsx]
+  status: ported
+  evidence: [visual:canvas-iteration, visual:canvas-loop, visual:canvas-loop-answer]
+  ours: [app/lib/src/cards/bodies/container_bodies.dart]
+- id: node-chrome.resizer
+  area: node-chrome
+  title: 'Node card: container and note resizer (bottom-right corner)'
+  dify: [web/app/components/workflow/nodes/_base/components/node-resizer.tsx]
+  status: ported
+  deviation: Container size writes from two users can conflict (stale write rejected and notified), unlike Dify's silent overwrite.
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components']
+  ours: [app/lib/src/workflow_editor/canvas_plus/node_resizers.dart, app/lib/src/workflow_editor/canvas_plus/container_child_size.dart]
+- id: node-chrome.node-control
+  area: node-chrome
+  title: 'Node card: hover action bar (run this step / stop, more menu)'
+  dify: [web/app/components/workflow/nodes/_base/components/node-control.tsx]
+  status: ported
+  deviation: 'Dify bug kept intentionally inverted: Dify 1.17.1 never shows the run button (!nodesReadOnly on an object); dify-sf shows it (owner chose B, 2026-10-18). Masked in the visual panel cases.'
+  evidence: [visual:panel-start, visual:panel-code]
+  ours: [app/lib/src/workflow_editor/context_menu/node_control.dart]
+- id: node-chrome.viewer-avatars
+  area: node-chrome
+  title: 'Node card: avatars of collaborators viewing the node'
+  dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/collaboration/hooks/use-collaboration.ts]
+  status: not_ported
+  reason: dify-sf has no presence of other users yet (no presence channel in the protocol).
+  evidence: []
+  ours: []
+- id: node-chrome.plugin-missing
+  area: node-chrome
+  title: 'Node card: plugin not installed (lock overlay, Install button, version switch)'
+  dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/hooks/use-node-plugin-installation.ts, web/app/components/workflow/nodes/_base/components/install-plugin-button.tsx]
+  status: not_ported
+  reason: Needs Dify's plugin APIs and marketplace (no plugin service in dify-sf).
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-node-plugin-installation.spec.ts', 'spec:web/app/components/workflow/utils/__tests__/plugin-install-check.spec.ts', 'spec:web/app/components/workflow/utils/__tests__/plugin.spec.ts']
+  ours: []
+- id: node-chrome.simple-node
+  area: node-chrome
+  title: 'Simple node variant (2 px frame, used by snippet / preview canvases)'
+  dify: [web/app/components/workflow/simple-node/index.tsx]
+  status: not_ported
+  reason: Only used by canvases dify-sf does not have (snippets, previews); spec cases still to do.
+  evidence: ['spec:web/app/components/workflow/simple-node']
+  ours: []
+- id: node-chrome.node-meta
+  area: node-chrome
+  title: 'Block metadata: titles, icons, colours, classification per node type'
+  dify: [web/app/components/workflow/utils/gen-node-meta-data.ts, web/app/components/workflow/block-icon.tsx, web/app/components/workflow-app/hooks/use-available-nodes-meta-data.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-meta-data.spec.tsx', 'spec:web/app/components/workflow/utils/__tests__/gen-node-meta-data.spec.ts', 'spec:web/app/components/workflow/nodes']
+  ours: [app/lib/src/workflow_editor/context_menu/node_meta.dart, app/lib/src/workflow_editor/hooks/use_nodes_meta_data.dart, app/lib/src/design/dify_icon.dart]
+- id: node-chrome.variable-label
+  area: node-chrome
+  title: 'Variable labels and read-only variable text on cards'
+  dify: [web/app/components/workflow/nodes/_base/components/variable/variable-label]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/variable/variable-label']
+  ours: [app/lib/src/cards/variable_label.dart]
+
+# ---------------------------------------------------------------- edges
+- id: edges.render
+  area: edges
+  title: 'Edges: React Flow bezier, default / selected / hovered colours'
+  dify: [web/app/components/workflow/custom-edge.tsx, web/app/components/workflow/utils/edge.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/custom-edge.spec.tsx', 'spec:web/app/components/workflow/utils/__tests__/edge.spec.ts', visual:canvas-if-else]
+  ours: [app/lib/src/canvas/edge_curve.dart, app/lib/src/canvas/edge_segments.dart]
+- id: edges.run-colours
+  area: edges
+  title: 'Edges: run gradients and status colours, waiting opacity'
+  dify: [web/app/components/workflow/custom-edge-linear-gradient-render.tsx, web/app/components/workflow/utils/edge.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/custom-edge-linear-gradient-render.spec.tsx', visual:run-result]
+  ours: [app/lib/src/canvas/run_view.dart]
+- id: edges.connect
+  area: edges
+  title: 'Edges: drag from a source handle to connect (connection line, validity rules, no cycles)'
+  dify: [web/app/components/workflow/custom-connection-line.tsx, web/app/components/workflow/hooks/use-workflow.ts, web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/custom-connection-line.spec.tsx', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow.spec.ts']
+  ours: [app/lib/src/canvas/canvas_input.dart, app/lib/src/workflow_editor/hooks/use_workflow.dart]
+- id: edges.select-delete
+  area: edges
+  title: 'Edges: click selects, Delete / Backspace and edge menu delete'
+  dify: [web/app/components/workflow/hooks/use-edges-interactions.ts, web/app/components/workflow/edge-contextmenu.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-edges-interactions.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-edges-interactions.helpers.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-edges-interactions-without-sync.spec.ts', 'spec:web/app/components/workflow/__tests__/workflow-edge-events.spec.tsx']
+  ours: [app/lib/src/workflow_editor/context_menu/workflow_actions.dart]
+- id: edges.insert-plus
+  area: edges
+  title: 'Edges: midpoint "+" inserts a node between the two ends'
+  dify: [web/app/components/workflow/custom-edge.tsx]
+  status: ported
+  evidence: [app/test/dify_spec/workflow/base/custom_edge_test.dart]
+  ours: [app/lib/src/workflow_editor/canvas_plus/canvas_plus_buttons.dart]
+- id: edges.assigner-entering
+  area: edges
+  title: 'Edges: connecting onto a variable aggregator highlights it and offers the add-variable popup'
+  dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts, web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-nodes-interactions.spec.ts', app/test/dify_spec/workflow/editor/aggregator_canvas_test.dart]
+  ours: [app/lib/src/workflow_editor/workflow_editor.dart, app/lib/src/workflow_editor/store/workflow_store.dart]
+- id: edges.dangling-refs
+  area: edges
+  title: 'Reference integrity: no dangling references to deleted nodes or removed outputs'
+  dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: dify_sf_only
+  reason: Enforced by dify-sf's protocol (1.4 declared outputs, brokenRef rejections); Dify can leave dangling references after concurrent edits.
+  evidence: [docs/protocol.md, app/test/notices_test.dart]
+  ours: [packages/collab_client/lib/src/model/document.dart, app/lib/src/editor/notices.dart]
+
+# ---------------------------------------------------------------- block selector & insertion
+- id: block-selector.nodes-tab
+  area: block-selector
+  title: 'Block selector: Nodes tab (groups, search, hover preview, keyboard)'
+  dify: [web/app/components/workflow/block-selector/index.tsx, web/app/components/workflow/block-selector/blocks.tsx, web/app/components/workflow/block-selector/tabs.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/block-selector', app/test/block_selector_test.dart]
+  ours: [app/lib/src/workflow_editor/block_selector/block_selector.dart, app/lib/src/workflow_editor/block_selector/blocks_panel.dart]
+- id: block-selector.available-blocks
+  area: block-selector
+  title: 'Block selector: available blocks per app type and position (containers, singletons, entry nodes)'
+  dify: [web/app/components/workflow/hooks/use-available-blocks.ts, web/app/components/workflow-app/hooks/use-available-nodes-meta-data.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-available-blocks.spec.ts']
+  ours: [app/lib/src/workflow_editor/block_selector/block_selector_data.dart]
+- id: block-selector.block-defaults
+  area: block-selector
+  title: 'New node defaults (each node default.ts) and auto titles (LLM 2)'
+  dify: [web/app/components/workflow/utils/node.ts, web/app/components/workflow/nodes]
+  status: ported
+  deviation: The defaults are dify-sf's local table; Dify also merges server block defaults (nodesDefaultConfigs), which dify-sf has no service for.
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/node.spec.ts']
+  ours: [app/lib/src/workflow_editor/block_selector/block_defaults.dart]
+- id: block-selector.tools-tab
+  area: block-selector
+  title: 'Block selector: Tools tab (providers, list / tree, A-Z index, featured tools)'
+  dify: [web/app/components/workflow/block-selector/tool-panel.tsx, web/app/components/workflow/block-selector/tool-browser.tsx, web/app/components/workflow/block-selector/tool]
+  status: partial
+  reason: The UI is ported, but dify-sf has no tool provider / plugin service, so the app's tool list is empty (only tools already in an imported workflow exist).
+  evidence: ['spec:web/app/components/workflow/block-selector/tool', 'spec:web/app/components/workflow/block-selector/tool/tool-list-flat-view', 'spec:web/app/components/workflow/block-selector/tool/tool-list-tree-view']
+  ours: [app/lib/src/workflow_editor/block_selector/tools_panel.dart]
+- id: block-selector.start-tab
+  area: block-selector
+  title: 'Block selector: Start tab (User Input, Schedule, Webhook, trigger plugins, conflict banner)'
+  dify: [web/app/components/workflow/block-selector/start-blocks.tsx, web/app/components/workflow/block-selector/all-start-blocks.tsx, web/app/components/workflow/block-selector/trigger-plugin]
+  status: partial
+  reason: User Input, Schedule and Webhook work; trigger plugins need a plugin service (none installed in dify-sf).
+  evidence: ['spec:web/app/components/workflow/block-selector/trigger-plugin']
+  ours: [app/lib/src/workflow_editor/block_selector/start_panel.dart]
+- id: block-selector.marketplace
+  area: block-selector
+  title: 'Block selector: marketplace results and Find more in Marketplace'
+  dify: [web/app/components/workflow/block-selector/marketplace-plugin]
+  status: not_ported
+  reason: dify-sf has no plugin marketplace service.
+  evidence: ['spec:web/app/components/workflow/block-selector/marketplace-plugin']
+  ours: []
+- id: block-selector.rag-recommendations
+  area: block-selector
+  title: 'Block selector: RAG pipeline tool recommendations'
+  dify: [web/app/components/workflow/block-selector/rag-tool-recommendations]
+  status: not_applicable
+  reason: dify-sf edits workflows and chatflows, not knowledge pipelines.
+  evidence: ['spec:web/app/components/workflow/block-selector/rag-tool-recommendations']
+  ours: []
+- id: block-selector.snippets
+  area: block-selector
+  title: 'Block selector: Snippets tab (list, tag filter, insert a snippet)'
+  dify: [web/app/components/workflow/block-selector/snippets]
+  status: partial
+  reason: The tab's UI is ported, but dify-sf has no snippet service (no snippets to list, no tag API); inserting is the host's callback.
+  evidence: ['spec:web/app/components/workflow/block-selector/snippets']
+  ours: [app/lib/src/workflow_editor/block_selector/snippets_panel.dart]
+- id: block-selector.candidate
+  area: block-selector
+  title: 'Add Node from the toolbar / pane menu: candidate node follows the pointer, click places, right-click cancels'
+  dify: [web/app/components/workflow/candidate-node.tsx, web/app/components/workflow/candidate-node-main.tsx, web/app/components/workflow/operator/add-block.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/candidate-node-main.spec.tsx', 'spec:web/app/components/workflow/__tests__/candidate-node.spec.tsx']
+  ours: [app/lib/src/workflow_editor/block_selector/candidate_node.dart]
+- id: block-selector.handle-plus
+  area: block-selector
+  title: 'Handle "+" buttons: insert after (source) or before (target), auto-open on a new start node'
+  dify: [web/app/components/workflow/nodes/_base/components/node-handle.tsx]
+  status: ported
+  evidence: [app/test/dify_spec/workflow/base/custom_edge_test.dart]
+  ours: [app/lib/src/workflow_editor/canvas_plus/canvas_plus_buttons.dart]
+- id: block-selector.insertion
+  area: block-selector
+  title: 'Node insertion and replacement (handleNodeAdd / handleNodeChange), one undo step'
+  dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: ported
+  evidence: [app/test/node_insertion_test.dart, app/test/dify_spec/workflow/node_insertion]
+  ours: [app/lib/src/workflow_editor/node_insertion/node_insertion.dart, app/lib/src/workflow_editor/node_insertion/insert_block.dart]
+- id: block-selector.agent-selector
+  area: block-selector
+  title: 'Block selector: Agent v2 row with nested agent picker'
+  dify: [web/app/components/workflow/block-selector/agent-selector.tsx]
+  status: partial
+  reason: The picker is ported; the agent roster comes from Dify's agent console service, which dify-sf does not have (empty list).
+  evidence: ['spec:web/app/components/workflow/block-selector/__tests__/agent-selector.spec.tsx']
+  ours: [app/lib/src/workflow_editor/block_selector/blocks_panel.dart]
+
+# ---------------------------------------------------------------- context menus
+- id: context-menus.pane
+  area: context-menus
+  title: 'Pane menu: Add Node, Add Note, Add Comment, Test Run / Preview, Paste Here'
+  dify: [web/app/components/workflow/panel-contextmenu.tsx, web/app/components/workflow/hooks/use-panel-interactions.ts, web/app/components/workflow/workflow-contextmenu.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/panel-contextmenu.spec.tsx', 'spec:web/app/components/workflow/hooks/__tests__/use-panel-interactions.spec.ts', app/test/workflow_context_menus_test.dart]
+  ours: [app/lib/src/workflow_editor/context_menu/menus.dart, app/lib/src/workflow_editor/context_menu/workflow_context_menus.dart]
+- id: context-menus.pane-import
+  area: context-menus
+  title: 'Pane menu: Import App (replace the open workflow from a DSL file)'
+  dify: [web/app/components/workflow/panel-contextmenu.tsx, web/app/components/workflow/update-dsl-modal.tsx, web/app/components/workflow/update-dsl-modal.helpers.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/update-dsl-modal.spec.tsx', 'spec:web/app/components/workflow/__tests__/update-dsl-modal.helpers.spec.ts', app/test/workflow_editor/import_backend_test.dart, app/test/dify_spec/workflow/editor/update_dsl_modal_test.dart]
+  ours: [app/lib/src/workflow_editor/context_menu/menus.dart]
+- id: context-menus.node
+  area: context-menus
+  title: 'Node menu / "..." dropdown: run step, Change Block, Copy, Duplicate, Delete, View Docs, About'
+  dify: [web/app/components/workflow/node-contextmenu.tsx, web/app/components/workflow/node-actions-menu]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/node-actions-menu', 'spec:web/app/components/workflow/__tests__/node-contextmenu.spec.tsx']
+  ours: [app/lib/src/workflow_editor/context_menu/menus.dart, app/lib/src/workflow_editor/context_menu/workflow_actions.dart]
+- id: context-menus.node-open-workflow
+  area: context-menus
+  title: 'Node menu: Open Workflow (workflow-as-tool node)'
+  dify: [web/app/components/workflow/node-actions-menu/context-menu-content.tsx]
+  status: partial
+  reason: The item is ported but needs the workspace's workflow tools to know the target app; dify-sf has no workflow-tool service, so it never shows.
+  evidence: ['spec:web/app/components/workflow/node-actions-menu']
+  ours: [app/lib/src/workflow_editor/context_menu/menus.dart]
+- id: context-menus.edge
+  area: context-menus
+  title: 'Edge menu: Delete'
+  dify: [web/app/components/workflow/edge-contextmenu.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/edge-contextmenu.spec.tsx']
+  ours: [app/lib/src/workflow_editor/context_menu/menus.dart]
+- id: context-menus.selection
+  area: context-menus
+  title: 'Selection menu: Copy / Duplicate / Delete, align and distribute'
+  dify: [web/app/components/workflow/selection-contextmenu.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx']
+  ours: [app/lib/src/workflow_editor/context_menu/workflow_actions.dart, app/lib/src/workflow_editor/context_menu/menus.dart]
+- id: context-menus.create-snippet
+  area: context-menus
+  title: 'Selection menu: Create Snippet'
+  dify: [web/app/components/workflow/selection-contextmenu.tsx]
+  status: not_ported
+  reason: dify-sf has no snippet service; the menu item only hands the node ids to the host's onCreateSnippet, which the app does not provide.
+  evidence: ['spec:web/app/components/workflow/__tests__/selection-contextmenu.spec.tsx']
+  ours: [app/lib/src/workflow_editor/context_menu/menus.dart]
+
+# ---------------------------------------------------------------- shortcuts & clipboard
+- id: shortcuts.delete
+  area: shortcuts
+  title: 'Delete / Backspace deletes the selection (container children, confirm for full containers)'
+  dify: [web/app/components/workflow/shortcuts/definitions.ts, web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/shortcuts']
+  ours: [app/lib/src/workflow_editor/context_menu/workflow_shortcuts.dart]
+- id: shortcuts.copy-paste
+  area: shortcuts
+  title: 'Copy (Mod+C), paste at the pointer (Mod+V), duplicate (Mod+D), paste into a selected container'
+  dify: [web/app/components/workflow/utils/clipboard.ts, web/app/components/workflow/hooks/use-nodes-interactions.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/clipboard.spec.ts']
+  ours: [app/lib/src/workflow_editor/context_menu/clipboard.dart, app/lib/src/workflow_editor/context_menu/workflow_actions.dart]
+- id: shortcuts.paste-version
+  area: shortcuts
+  title: 'Cross-version paste sanitisation and toast'
+  dify: [web/app/components/workflow/hooks/use-nodes-interactions.ts, web/app/components/workflow/utils/version.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/version.spec.ts']
+  ours: [app/lib/src/workflow_editor/context_menu/workflow_actions.dart]
+- id: shortcuts.operator-keys
+  area: shortcuts
+  title: 'Mode and zoom shortcuts: V, H, C, Mod+O, Mod+1, Shift+1, Shift+5, Mod+-, Mod+='
+  dify: [web/app/components/workflow/shortcuts/definitions.ts, web/app/components/workflow/shortcuts/use-workflow-hotkeys.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-shortcuts.spec.ts', app/test/workflow_operator_test.dart]
+  ours: [app/lib/src/workflow_editor/operator/shortcuts.dart]
+- id: shortcuts.header-keys
+  area: shortcuts
+  title: 'Header shortcuts: Alt+R test run menu, Mod+Shift+H version history, Mod+Shift+P publish'
+  dify: [web/app/components/workflow/hotkeys.ts, web/app/components/app/app-publisher/hotkeys.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/hotkeys.spec.ts']
+  ours: [app/lib/src/workflow_editor/header/hotkey.dart]
+- id: shortcuts.ignore-inputs
+  area: shortcuts
+  title: 'Shortcuts ignored while typing; browser defaults blocked for Mod+D/Z/Y/S'
+  dify: [web/app/components/workflow/hotkeys.ts, web/app/components/workflow/shortcuts/use-workflow-hotkeys.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/__tests__/hotkeys.spec.ts']
+  ours: [app/lib/src/workflow_editor/context_menu/workflow_shortcuts.dart]
+- id: shortcuts.import-log
+  area: shortcuts
+  title: 'Mod+Shift+L downloads the collaboration import log'
+  dify: [web/app/components/workflow/shortcuts/definitions.ts]
+  status: not_applicable
+  reason: A debugging aid of Dify's Loro collaboration; dify-sf's collaboration has its own journal and live log auditor.
+  evidence: []
+  ours: []
+
+# ---------------------------------------------------------------- operator
+- id: operator.control-bar
+  area: operator
+  title: 'Control bar: Add Node, Add Note, pointer / hand / comment modes, Organize'
+  dify: [web/app/components/workflow/operator/control.tsx, web/app/components/workflow/operator/add-block.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/operator', visual:editor-basic-llm]
+  ours: [app/lib/src/workflow_editor/operator/control.dart]
+- id: operator.export-image
+  area: operator
+  title: 'More Actions: export image (current view / whole workflow; PNG, JPEG, SVG)'
+  dify: [web/app/components/workflow/operator/more-actions.tsx]
+  status: partial
+  reason: 'Current-view and whole-workflow PNG/JPEG export, native save or browser download, and whole-workflow preview are implemented. SVG embeds the raster image rather than Dify’s DOM foreignObject content; it is not editable vector output.'
+  evidence: ['spec:web/app/components/workflow/operator/__tests__/more-actions.spec.tsx', app/test/dify_spec/workflow/editor/image_export_test.dart]
+  ours: [app/lib/src/workflow_editor/operator/control.dart, app/lib/src/workflow_editor/operator/actions.dart]
+- id: operator.zoom
+  area: operator
+  title: 'Zoom pill: zoom in / out, percentage, presets menu, Fit'
+  dify: [web/app/components/workflow/operator/zoom-in-out.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx']
+  ours: [app/lib/src/workflow_editor/operator/zoom_in_out.dart]
+- id: operator.minimap
+  area: operator
+  title: 'Minimap (pannable, zoomable, toggle)'
+  dify: [web/app/components/workflow/operator/index.tsx]
+  status: ported
+  evidence: [visual:editor-basic-llm]
+  ours: [app/lib/src/workflow_editor/operator/mini_map.dart]
+- id: operator.undo-redo
+  area: operator
+  title: 'Undo / redo buttons'
+  dify: [web/app/components/workflow/header/undo-redo.tsx]
+  status: ported
+  deviation: Undo and redo only this user's own edits (owner decision 2026-10-17); see History.
+  evidence: ['spec:web/app/components/workflow/header/__tests__/undo-redo.spec.tsx']
+  ours: [app/lib/src/workflow_editor/operator/undo_redo.dart]
+- id: operator.cursor-toggles
+  area: operator
+  title: 'Zoom menu: show comments / collaborator cursors toggles'
+  dify: [web/app/components/workflow/operator/zoom-in-out.tsx]
+  status: partial
+  reason: Both toggles are ported; the cursors toggle has nothing to show (no presence of other users yet).
+  evidence: ['spec:web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx']
+  ours: [app/lib/src/workflow_editor/operator/zoom_in_out.dart]
+
+# ---------------------------------------------------------------- header
+- id: header.layout
+  area: header
+  title: 'Header: layout, editing title (Auto-Saved / Syncing), scroll to selected node'
+  dify: [web/app/components/workflow/header/index.tsx, web/app/components/workflow/header/editing-title.tsx, web/app/components/workflow/header/scroll-to-selected-node-button.tsx]
+  status: ported
+  deviation: The auto-saved line opens dify-sf's session menu (link state, unsaved edits, seq); 'Syncing' reports sustained unacknowledged edits after 500ms and clears after a 250ms quiet gap; the publishing barrier always uses actual pending operations.
+  evidence: ['spec:web/app/components/workflow/header', visual:editor-basic-llm]
+  ours: [app/lib/src/workflow_editor/header/workflow_header.dart, app/lib/src/workflow_editor/header/titles.dart, app/lib/src/workflow_editor/dify_editor.dart]
+- id: header.online-users
+  area: header
+  title: 'Header: online users (avatars, +N popover, click to jump to their cursor)'
+  dify: [web/app/components/workflow/header/online-users.tsx]
+  status: partial
+  reason: The widget is ported, but dify-sf has no presence of other users yet, so it shows the signed-in user only and there is no cursor to jump to.
+  evidence: [app/test/workflow_header_binding_test.dart, app/test/dify_spec/workflow/header/online_users_geometry_test.dart]
+  ours: [app/lib/src/workflow_editor/header/online_users.dart]
+- id: header.run-mode
+  area: header
+  title: 'Header: Test Run button, Running / Listening state with Stop, test run menu (User Input, triggers, Run all)'
+  dify: [web/app/components/workflow/header/run-mode.tsx, web/app/components/workflow/header/test-run-menu.tsx, web/app/components/workflow/hooks/use-dynamic-test-run-options.tsx]
+  status: ported
+  deviation: "Supported workflows use the real server runtime. Unsupported remote operations report an error; simulated execution is restricted to the explicit local demo."
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-dynamic-test-run-options.spec.tsx', visual:run-input]
+  ours: [app/lib/src/workflow_editor/header/run_and_history.dart, app/lib/src/workflow_editor/header/test_run_menu.dart]
+- id: header.run-history
+  area: header
+  title: 'Header: run history popover'
+  dify: [web/app/components/workflow/header/view-history.tsx]
+  status: ported
+  deviation: "Lists persisted server draft runs. Simulated session runs appear only in the explicit local demo, never mixed into remote history."
+  evidence: [visual:run-history]
+  ours: [app/lib/src/workflow_editor/header/view_history.dart]
+- id: header.variable-buttons
+  area: header
+  title: 'Header: conversation / environment / system variable buttons, Features button'
+  dify: [web/app/components/workflow/header/env-button.tsx, web/app/components/workflow/header/chat-variable-button.tsx, web/app/components/workflow/header/global-variable-button.tsx, web/app/components/workflow-app/components/workflow-header/features-trigger.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow-app/components/workflow-header', visual:var-env]
+  ours: [app/lib/src/workflow_editor/header/header_buttons.dart]
+- id: header.checklist
+  area: header
+  title: 'Checklist: warning count, groups, Go to fix, publish blocked while items remain'
+  dify: [web/app/components/workflow/header/checklist, web/app/components/workflow/hooks/use-checklist.ts]
+  status: ported
+  deviation: "'Configure a model' follows the workspace's model providers (protocol 1.9; empty while loading or without a server, as Dify's query default); Agent v2 inline-agent checks are left out (they need Dify's agent composer service)."
+  evidence: ['spec:web/app/components/workflow/header/checklist', 'spec:web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts', visual:toast-publish]
+  ours: [app/lib/src/workflow_editor/header/checklist/use_checklist.dart, app/lib/src/workflow_editor/header/checklist/checklist.dart]
+- id: header.publish
+  area: header
+  title: 'Publish button and panel (publish / update, version name, Mod+Shift+P)'
+  dify: [web/app/components/app/app-publisher, web/app/components/workflow-app/components/workflow-header/features-trigger.tsx]
+  status: ported
+  deviation: "Publishing snapshots the shared document's head as a version (protocol 1.11 VersionsApi); the published time and version are fetched when the editor opens and refetched after publishing (a collaborator's publish shows on the next fetch, not live)."
+  evidence: ['spec:web/app/components/app/app-publisher', visual:toast-publish, app/test/editor_versions_test.dart]
+  ours: [app/lib/src/workflow_editor/header/publisher/app_publisher.dart, app/lib/src/workflow_editor/header/features_trigger.dart, app/lib/src/editor/editor_versions.dart]
+- id: header.publish-actions
+  area: header
+  title: 'Publish panel actions: Open web app, Access Point, Embed, API, Workflow as Tool, Publish to Marketplace'
+  dify: [web/app/components/app/app-publisher]
+  status: partial
+  reason: Open web app and Access Point work (the Access Point action opens the app's Access Point page); Workflow as Tool and Publish to Marketplace are not part of dify-sf, and the web app has no runtime yet (its URL leads nowhere).
+  evidence: ['spec:web/app/components/app/app-publisher', app/test/editor_versions_test.dart]
+  ours: [app/lib/src/workflow_editor/header/publisher/actions_section.dart, app/lib/src/editor/editor_versions.dart]
+- id: header.multi-env
+  area: header
+  title: 'Publish: enterprise multi-environment deployment tabs'
+  dify: [web/app/components/app/app-publisher/environment-tabs]
+  status: not_ported
+  reason: Enterprise feature (deployment API); dify-sf has the built-in publisher only.
+  evidence: ['spec:web/app/components/app/app-publisher/environment-tabs']
+  ours: []
+- id: header.view-history-mode
+  area: header
+  title: 'Header modes: viewing a past run, restoring a version'
+  dify: [web/app/components/workflow/header/header-in-view-history.tsx, web/app/components/workflow/header/header-in-restoring.tsx]
+  status: partial
+  reason: The headers are ported; restoring needs a version service (see Version history) and a past run's graph is never swapped into the shared canvas.
+  evidence: ['spec:web/app/components/workflow/header/__tests__/header-in-restoring.spec.tsx']
+  ours: [app/lib/src/workflow_editor/header/workflow_header.dart]
+
+# ---------------------------------------------------------------- node panel shell & shared fields
+- id: node-panel.shell
+  area: node-panel
+  title: 'Node panel: Dify BasePanel (resize, title and description, close, docs link)'
+  dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx, web/app/components/workflow/nodes/_base/components/title-description-input.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel', 'spec:web/app/components/workflow/panel/__tests__/panel-width.spec.ts', 'spec:web/app/components/workflow/panel/__tests__/panel-width-integration.spec.tsx', visual:panel-llm]
+  ours: [app/lib/src/workflow_editor/node_panel/node_panel.dart, app/lib/src/workflow_editor/node_panel/title_description_input.dart, app/lib/src/workflow_editor/node_panel/resize_handle.dart]
+- id: node-panel.right-panel-host
+  area: node-panel
+  title: 'Right panel host: node panel, variable panels, run panels, panel exclusivity'
+  dify: [web/app/components/workflow/panel/index.tsx, web/app/components/workflow-app/components/workflow-panel.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/panel', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow-panel-interactions.spec.tsx']
+  ours: [app/lib/src/workflow_editor/node_panel/workflow_panels.dart]
+- id: node-panel.tabs-last-run
+  area: node-panel
+  title: 'Node panel: SETTINGS / LAST RUN tabs, Last Run result'
+  dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/last-run]
+  status: ported
+  deviation: "Remote last-run records come from the server; an unsupported or absent record is never fabricated. The explicit local demo has session-only records."
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel/last-run', visual:run-last-run, app/test/dify_spec/workflow/node_panel/workflow_panel_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/last_run.dart, app/lib/src/workflow_editor/node_panel/workflow_node_panel.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart, app/lib/src/workflow_editor/run/forms/node_panel_run_state.dart]
+- id: node-panel.single-run-form
+  area: node-panel
+  title: 'Node panel: single-run input form (Run this step)'
+  dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
+  status: partial
+  reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms are ported with typed instruction references and inspected-value filtering; supported node types use the server and the others use the mock runtime. The DataSource pipeline custom forms are not wired.'
+  deviation: "Supported remote nodes use the real server, including dedicated iteration/loop streams and human-input form APIs. Unsupported remote nodes report an error. Simulated runs exist only in the explicit local demo; data source custom forms remain unported."
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
+  ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
+- id: node-panel.retry
+  area: node-panel
+  title: 'Node panel: retry on failure settings'
+  dify: [web/app/components/workflow/nodes/_base/components/retry]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/retry']
+  ours: [app/lib/src/workflow_editor/panel_fields/controls.dart]
+- id: node-panel.error-handling
+  area: node-panel
+  title: 'Node panel: error handling (none, default value, fail branch)'
+  dify: [web/app/components/workflow/nodes/_base/components/error-handle]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/error-handle']
+  ours: [app/lib/src/workflow_editor/panel_fields/controls.dart]
+- id: node-panel.next-step
+  area: node-panel
+  title: 'Node panel: Next step section (branches, add / change / delete next node)'
+  dify: [web/app/components/workflow/nodes/_base/components/next-step]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/next-step']
+  ours: [app/lib/src/workflow_editor/panel_fields/next_step.dart]
+- id: node-panel.fields
+  area: node-panel
+  title: 'Panel building blocks: Field, Collapse, Split, OutputVars, VarList, memory, vision, layout'
+  dify: [web/app/components/workflow/nodes/_base/components/field.tsx, web/app/components/workflow/nodes/_base/components/collapse, web/app/components/workflow/nodes/_base/components/layout, web/app/components/workflow/nodes/_base/components/output-vars.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/collapse', 'spec:web/app/components/workflow/nodes/_base/components/layout', 'spec:web/app/components/workflow/hooks/__tests__/use-config-vision.spec.ts', app/test/panel_fields_test.dart]
+  ours: [app/lib/src/workflow_editor/panel_fields/panel_fields.dart, app/lib/src/workflow_editor/panel_fields/field.dart, app/lib/src/workflow_editor/panel_fields/var_list.dart]
+- id: node-panel.write-path
+  area: node-panel
+  title: 'Panel edits: minimal nested writes, keyed lists item by item, typed text as drafts with a base version'
+  dify: [web/app/components/workflow/hooks/use-node-data-update.ts, web/app/components/workflow/nodes/_base/hooks/use-node-crud.ts]
+  status: ported
+  deviation: Dify writes the whole node data; dify-sf writes only the changed members, so concurrent edits of different fields both survive and a stale edit of the same field is refused and notified.
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-node-data-update.spec.ts', app/test/panel_edit_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/panel_edit.dart]
+- id: node-panel.plugin-auth
+  area: node-panel
+  title: 'Node panel: plugin auth / subscription control beside the tabs (tool, data source, trigger)'
+  dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx]
+  status: not_ported
+  reason: Needs Dify's plugin and credential services (none in dify-sf).
+  evidence: []
+  ours: []
+- id: node-panel.generic-editor
+  area: node-panel
+  title: 'Node panel: generic config editor for node types without a Dify panel'
+  dify: []
+  status: dify_sf_only
+  reason: dify-sf's fallback for unknown node types (every config field, keyed lists by item); every Dify node type now has its own panel.
+  evidence: [app/test/editor_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/node_panel_bodies.dart, app/lib/src/editor/config_editor.dart]
+
+# ---------------------------------------------------------------- editors
+- id: editors.prompt-editor
+  area: editors
+  title: 'Prompt editor: inline variable chips, { and / variable picker, Jinja mode, shortcuts popup'
+  dify: [web/app/components/base/prompt-editor]
+  status: ported
+  deviation: A plain-text controller with block characters instead of Lexical nodes (Lexical internals are n/a in the ledger). CSS inline line-box extents retain fractional height for surrounding controls; the native text engine still rounds its internal line advances.
+  evidence: ['spec:web/app/components/base/prompt-editor', 'spec:web/app/components/base/prompt-editor/plugins', 'spec:web/app/components/base/prompt-editor/plugins/component-picker-block', 'spec:web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin', 'spec:web/app/components/base/prompt-editor/plugins/draggable-plugin', 'spec:web/app/components/base/prompt-editor/plugins/custom-text', app/test/prompt_editor_test.dart, app/test/prompt_inline_extent_test.dart]
+  ours: [app/lib/src/workflow_editor/prompt_editor/prompt_editor.dart, app/lib/src/workflow_editor/prompt_editor/component_picker.dart, app/lib/src/workflow_editor/prompt_editor/shortcuts_popup.dart]
+- id: editors.prompt-blocks
+  area: editors
+  title: 'Prompt editor blocks: context, query, history, current, error message, last run, request URL, variable value'
+  dify: [web/app/components/base/prompt-editor/plugins]
+  status: ported
+  evidence: ['spec:web/app/components/base/prompt-editor/plugins/context-block', 'spec:web/app/components/base/prompt-editor/plugins/query-block', 'spec:web/app/components/base/prompt-editor/plugins/history-block', 'spec:web/app/components/base/prompt-editor/plugins/current-block', 'spec:web/app/components/base/prompt-editor/plugins/error-message-block', 'spec:web/app/components/base/prompt-editor/plugins/last-run-block', 'spec:web/app/components/base/prompt-editor/plugins/request-url-block', 'spec:web/app/components/base/prompt-editor/plugins/variable-block', 'spec:web/app/components/base/prompt-editor/plugins/variable-value-block', 'spec:web/app/components/base/prompt-editor/plugins/workflow-variable-block']
+  ours: [app/lib/src/workflow_editor/prompt_editor/prompt_blocks.dart, app/lib/src/workflow_editor/prompt_editor/prompt_chips.dart]
+- id: editors.hitl-agent-blocks
+  area: editors
+  title: 'Prompt editor blocks: human input field, agent output'
+  dify: [web/app/components/base/prompt-editor/plugins/hitl-input-block, web/app/components/base/prompt-editor/plugins/agent-output-block]
+  status: ported
+  evidence: ['spec:web/app/components/base/prompt-editor/plugins/hitl-input-block', 'spec:web/app/components/base/prompt-editor/plugins/agent-output-block']
+  ours: [app/lib/src/workflow_editor/prompt_editor/hitl_input_block.dart, app/lib/src/workflow_editor/prompt_editor/agent_output_block.dart]
+- id: editors.roster-blocks
+  area: editors
+  title: 'Prompt editor: roster references (skills, files, tools) of the agent console'
+  dify: [web/app/components/base/prompt-editor/plugins/roster-reference-block]
+  status: not_ported
+  reason: Only used by Dify's Agent v2 console (orchestrate prompt), which dify-sf does not have (taken from the host).
+  evidence: ['spec:web/app/components/base/prompt-editor/plugins/roster-reference-block']
+  ours: []
+- id: editors.prompt-generator
+  area: editors
+  title: 'Prompt / code / JSON schema generator (AI generate)'
+  dify: [web/app/components/workflow/nodes/llm/components/prompt-generator-btn.tsx, web/app/components/workflow/nodes/_base/components/code-generator-button.tsx]
+  status: not_ported
+  reason: "LLM invocation is available to workflow nodes, but the prompt/code/schema generation service is not implemented. The generator buttons are drawn but disabled because no generator service is passed."
+  evidence: []
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart]
+- id: editors.code-editor
+  area: editors
+  title: 'Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome'
+  dify: [web/app/components/workflow/nodes/_base/components/editor/code-editor]
+  status: ported
+  deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs / vs-dark themes (identical token colours), not an embedded Monaco.
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/editor', 'spec:web/app/components/workflow/nodes/_base/components/editor/code-editor', app/test/code_editor]
+  ours: [app/lib/src/workflow_editor/code_editor/code_editor.dart, app/lib/src/workflow_editor/code_editor/monarch/monarch.dart]
+
+# ---------------------------------------------------------------- nodes
+- id: node-start.card
+  area: node-start
+  title: 'User Input card: variables with required flag and type icons'
+  dify: [web/app/components/workflow/nodes/start/node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/start', visual:canvas-basic-llm]
+  ours: [app/lib/src/cards/bodies/basic_bodies.dart]
+- id: node-start.panel
+  area: node-start
+  title: 'User Input panel: input fields list (reorder, edit, delete), sys.query / sys.files rows'
+  dify: [web/app/components/workflow/nodes/start/panel.tsx, web/app/components/workflow/nodes/start/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/start/components', visual:panel-start]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/start_panel.dart]
+- id: node-start.var-modal
+  area: node-start
+  title: 'User Input: Add / Edit Input Field modal (all field types, options, file settings, JSON schema, validation)'
+  dify: [web/app/components/app/configuration/config-var/config-modal/index.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/start']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/start_var_modal.dart, app/lib/src/workflow_editor/node_panel/bodies/core/start_config.dart]
+- id: node-start.rename-remove
+  area: node-start
+  title: 'User Input: renaming a variable rewrites references; removing a used one asks first'
+  dify: [web/app/components/workflow/nodes/start/use-config.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/start']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/start_config.dart]
+
+- id: node-end.card-panel
+  area: node-end
+  title: 'Output card and panel: output variables (name + variable reference)'
+  dify: [web/app/components/workflow/nodes/end]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/end', visual:panel-end]
+  ours: [app/lib/src/cards/bodies/basic_bodies.dart, app/lib/src/workflow_editor/node_panel/bodies/core/end_panel.dart]
+- id: node-end.missing-node-fallback
+  area: node-end
+  title: 'Output card: a reference to a missing node falls back to the Start node'
+  dify: [web/app/components/workflow/nodes/end/node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/end']
+  ours: [app/lib/src/cards/bodies/basic_bodies.dart]
+
+- id: node-answer.card-panel
+  area: node-answer
+  title: 'Answer card and panel: reply text with variables'
+  dify: [web/app/components/workflow/nodes/answer]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/answer', visual:canvas-answer, visual:panel-answer]
+  ours: [app/lib/src/cards/bodies/answer_body.dart, app/lib/src/workflow_editor/node_panel/bodies/core/answer_panel.dart]
+
+- id: node-llm.card
+  area: node-llm
+  title: 'LLM card: model chip'
+  dify: [web/app/components/workflow/nodes/llm/node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/llm', visual:canvas-basic-llm]
+  ours: [app/lib/src/cards/bodies/llm_bodies.dart, app/lib/src/cards/model_chip.dart]
+- id: node-llm.model-selector
+  area: node-llm
+  title: 'LLM panel: model selector and model parameters'
+  dify: [web/app/components/header/account-setting/model-provider-page/model-selector, web/app/components/header/account-setting/model-provider-page/model-parameter-modal]
+  status: partial
+  reason: "The workspace's models, default models and parameter rules come from the server (protocol 1.9) and the popup's Model Provider Settings opens the Integrations settings; the marketplace section (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)) and the AI-credit sections (Dify Cloud only; dify-sf is self-hosted) are not ported. Per-provider credentials reuse the settings service: lazy detail loading, permission checks, switching, and add/edit actions from the nested menu."
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/model-selector', 'spec:web/app/components/header/account-setting/model-provider-page/model-parameter-modal', 'spec:web/app/components/header/account-setting/model-provider-page/model-name', visual:panel-llm, visual:model-selector-credentials, app/test/dify_spec/workflow/nodes_panel/llm/model_selector_credentials_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/model_selector.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart, app/lib/src/workflow/model_catalog.dart, app/lib/src/workflow/workspace_models.dart, app/lib/src/workflow_editor/dify_editor.dart]
+- id: node-llm.prompt
+  area: node-llm
+  title: 'LLM panel: context, prompt messages (system / user / assistant), Jinja, vision, memory'
+  dify: [web/app/components/workflow/nodes/llm/panel.tsx, web/app/components/workflow/nodes/llm/components, web/app/components/workflow/nodes/_base/components/memory-config.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/llm/components', 'spec:web/app/components/workflow/nodes/llm/hooks', visual:panel-llm]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart, app/lib/src/workflow_editor/prompt_editor/config_prompt.dart]
+- id: node-llm.structured-output
+  area: node-llm
+  title: 'LLM panel: structured output (JSON schema visual / code editor), reasoning format'
+  dify: [web/app/components/workflow/nodes/llm/components/json-schema-config-modal, web/app/components/workflow/nodes/llm/components/structure-output.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/llm/components/json-schema-config-modal', 'spec:web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/llm_json_schema.dart]
+- id: node-llm.model-status
+  area: node-llm
+  title: 'Model status: credential / quota / incompatible warnings, trial credits'
+  dify: [web/app/components/header/account-setting/model-provider-page/hooks.ts, web/app/components/header/account-setting/model-provider-page/utils.ts]
+  status: ported
+  deviation: "Statuses come from the workspace's providers (protocol 1.9); the trial-credit states never show (Dify Cloud only; dify-sf is self-hosted)."
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page', 'spec:web/app/components/workflow/__tests__/model-provider-fixtures.spec.ts']
+  ours: [app/lib/src/workflow/model_catalog.dart]
+
+- id: node-knowledge-retrieval.card
+  area: node-knowledge-retrieval
+  title: 'Knowledge Retrieval card: selected knowledge bases'
+  dify: [web/app/components/workflow/nodes/knowledge-retrieval/node.tsx]
+  status: partial
+  reason: Lists only datasets whose details are known; dify-sf has no knowledge base service, so the card shows none.
+  evidence: ['spec:web/app/components/workflow/nodes/knowledge-retrieval', visual:canvas-retrieval-human]
+  ours: [app/lib/src/cards/bodies/llm_bodies.dart]
+- id: node-knowledge-retrieval.panel
+  area: node-knowledge-retrieval
+  title: 'Knowledge Retrieval panel: query variable, knowledge list, retrieval settings, metadata filtering'
+  dify: [web/app/components/workflow/nodes/knowledge-retrieval/panel.tsx, web/app/components/workflow/nodes/knowledge-retrieval/hooks]
+  status: partial
+  reason: The panel is ported, but the Select Knowledge dialog has nothing to list (no knowledge base / dataset service in dify-sf).
+  evidence: ['spec:web/app/components/workflow/nodes/knowledge-retrieval/hooks', visual:panel-knowledge-retrieval]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/knowledge_retrieval_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/kr_datasets.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/kr_metadata.dart]
+
+- id: node-question-classifier.card
+  area: node-question-classifier
+  title: 'Question Classifier card: model and classes with branch handles'
+  dify: [web/app/components/workflow/nodes/question-classifier/node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/question-classifier', visual:canvas-classify-extract, app/test/workflow_editor/class_name_canvas_test.dart]
+  ours: [app/lib/src/cards/bodies/llm_bodies.dart]
+- id: node-question-classifier.panel
+  area: node-question-classifier
+  title: 'Question Classifier panel: input, model, classes (add / rename / reorder / remove), instructions, memory'
+  dify: [web/app/components/workflow/nodes/question-classifier/panel.tsx, web/app/components/workflow/nodes/question-classifier/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/question-classifier/components', visual:panel-question-classifier]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/question_classifier_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/qc_class_list.dart]
+
+- id: node-parameter-extractor.card-panel
+  area: node-parameter-extractor
+  title: 'Parameter Extractor card and panel: input, model, parameters, instructions, reasoning mode'
+  dify: [web/app/components/workflow/nodes/parameter-extractor]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/parameter-extractor', 'spec:web/app/components/workflow/nodes/parameter-extractor/components', 'spec:web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter', visual:panel-parameter-extractor]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/parameter_extractor_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/pe_params.dart]
+
+- id: node-if-else.card
+  area: node-if-else
+  title: 'IF/ELSE card: cases and conditions with branch handles'
+  dify: [web/app/components/workflow/nodes/if-else/node.tsx]
+  status: partial
+  reason: Sub-condition rows of array[file] conditions are not drawn on the card yet.
+  evidence: ['spec:web/app/components/workflow/nodes/if-else', visual:canvas-if-else]
+  ours: [app/lib/src/cards/bodies/basic_bodies.dart]
+- id: node-if-else.panel
+  area: node-if-else
+  title: 'IF/ELSE panel: cases, AND/OR, comparison operators per type, file sub-variables, drag reorder'
+  dify: [web/app/components/workflow/nodes/if-else/panel.tsx, web/app/components/workflow/nodes/if-else/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/if-else', visual:panel-if-else]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/if_else_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/core/if_else_utils.dart]
+
+- id: node-code.card-panel
+  area: node-code
+  title: 'Code card and panel: input variables, Python / JavaScript code, output variables'
+  dify: [web/app/components/workflow/nodes/code]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/code', visual:panel-code]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/code_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/core/code_parser.dart]
+
+- id: node-template.card-panel
+  area: node-template
+  title: 'Template card and panel: input variables, Jinja2 template'
+  dify: [web/app/components/workflow/nodes/template-transform]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/template-transform', visual:panel-template-transform, visual:canvas-tool-template]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/template_panel.dart]
+
+- id: node-http.card
+  area: node-http
+  title: 'HTTP Request card: method and URL'
+  dify: [web/app/components/workflow/nodes/http/node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/http', visual:canvas-http]
+  ours: [app/lib/src/cards/bodies/data_bodies.dart]
+- id: node-http.panel
+  area: node-http
+  title: 'HTTP Request panel: method, URL, headers, params, body types, authorization, timeout, SSL verify, cURL import'
+  dify: [web/app/components/workflow/nodes/http/panel.tsx, web/app/components/workflow/nodes/http/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/http/components', 'spec:web/app/components/workflow/nodes/http/components/edit-body', 'spec:web/app/components/workflow/nodes/http/components/timeout', visual:panel-http-request, app/test/prompt_inline_extent_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/http/http_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/http/http_dialogs.dart]
+
+- id: node-aggregator.card
+  area: node-aggregator
+  title: 'Variable Aggregator card: groups and variables, drop-target states, add-variable popup'
+  dify: [web/app/components/workflow/nodes/variable-assigner/node.tsx, web/app/components/workflow/nodes/variable-assigner/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/variable-assigner/components/add-variable', app/test/dify_spec/workflow/editor/aggregator_canvas_test.dart, visual:canvas-aggregator]
+  ours: [app/lib/src/cards/bodies/data_bodies.dart]
+- id: node-aggregator.panel
+  area: node-aggregator
+  title: 'Variable Aggregator panel: output type, variables, group mode'
+  dify: [web/app/components/workflow/nodes/variable-assigner/panel.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/variable-assigner', 'spec:web/app/components/workflow/nodes/variable-assigner/components', 'spec:web/app/components/workflow/nodes/variable-assigner/components/var-list', visual:panel-variable-aggregator]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/variable_aggregator_panel.dart]
+
+- id: node-assigner.card-panel
+  area: node-assigner
+  title: 'Variable Assigner card and panel: assignments with operations per type'
+  dify: [web/app/components/workflow/nodes/assigner]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/assigner', 'spec:web/app/components/workflow/nodes/assigner/components', 'spec:web/app/components/workflow/nodes/assigner/components/var-list', visual:canvas-assigner, visual:panel-assigner]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/core/assigner_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/core/assigner_utils.dart]
+
+- id: node-tool.card
+  area: node-tool
+  title: 'Tool card: provider icon and configured parameters'
+  dify: [web/app/components/workflow/nodes/tool/node.tsx]
+  status: partial
+  reason: The card has no tool collections, so it cannot tell that a provider needs authorization (no tool service).
+  evidence: ['spec:web/app/components/workflow/nodes/tool', visual:canvas-tool-template]
+  ours: [app/lib/src/cards/bodies/data_bodies.dart]
+- id: node-tool.panel
+  area: node-tool
+  title: 'Tool panel: input form from the tool schema (mixed variable text, constants), settings, output schema'
+  dify: [web/app/components/workflow/nodes/tool/panel.tsx, web/app/components/workflow/nodes/tool/components]
+  status: partial
+  reason: The form is ported and works from the node's own data, but tool definitions, dynamic options and authorization come from Dify's tool / plugin services, which dify-sf does not have.
+  evidence: ['spec:web/app/components/workflow/nodes/tool/components', 'spec:web/app/components/workflow/nodes/tool/components/mixed-variable-text-input', 'spec:web/app/components/workflow/nodes/tool/components/tool-form', 'spec:web/app/components/workflow/nodes/tool/hooks', 'spec:web/app/components/workflow/hooks/__tests__/use-tool-icon.spec.ts', 'spec:web/app/components/workflow/utils/__tests__/tool.spec.ts', visual:panel-tool]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/tool/tool_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/tool/tool_form.dart]
+- id: node-tool.mcp-copy-id
+  area: node-tool
+  title: 'Tool: MCP tool Copy ID row under the card description'
+  dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/nodes/tool/components/copy-id.tsx]
+  status: ported
+  evidence: [app/test/workflow_editor/mcp_card_copy_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/tool/copy_id.dart]
+
+- id: node-iteration.card
+  area: node-iteration
+  title: 'Iteration container card: children, start node, progress, parallel badge'
+  dify: [web/app/components/workflow/nodes/iteration/node.tsx, web/app/components/workflow/nodes/iteration-start]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/iteration', 'spec:web/app/components/workflow/nodes/iteration-start', app/test/dify_spec/workflow/editor/iteration_card_controls_test.dart, visual:canvas-iteration]
+  ours: [app/lib/src/cards/bodies/container_bodies.dart]
+- id: node-iteration.panel
+  area: node-iteration
+  title: 'Iteration panel: input / output variables, parallel mode, error handling, flatten output'
+  dify: [web/app/components/workflow/nodes/iteration/panel.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/iteration', visual:panel-iteration]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/iteration/iteration_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/iteration/container_interactions.dart]
+
+- id: node-loop.card
+  area: node-loop
+  title: 'Loop container card, loop start, Exit Loop card'
+  dify: [web/app/components/workflow/nodes/loop/node.tsx, web/app/components/workflow/nodes/loop-start, web/app/components/workflow/nodes/loop-end]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/loop-start', visual:canvas-loop, visual:canvas-loop-answer]
+  ours: [app/lib/src/cards/bodies/container_bodies.dart]
+- id: node-loop.panel
+  area: node-loop
+  title: 'Loop panel: loop variables, break conditions, maximum count'
+  dify: [web/app/components/workflow/nodes/loop/panel.tsx, web/app/components/workflow/nodes/loop/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/loop', 'spec:web/app/components/workflow/nodes/loop/components/loop-variables']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/loop/loop_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/loop/loop_variables.dart]
+
+- id: node-doc-extractor.card-panel
+  area: node-doc-extractor
+  title: 'Doc Extractor card and panel: input file variable, supported types'
+  dify: [web/app/components/workflow/nodes/document-extractor]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/document-extractor', visual:panel-document-extractor]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/document_extractor/document_extractor_panel.dart]
+
+- id: node-list-operator.card-panel
+  area: node-list-operator
+  title: 'List Operator card and panel: filter, extract, order, limit'
+  dify: [web/app/components/workflow/nodes/list-operator]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/list-operator', 'spec:web/app/components/workflow/nodes/list-operator/components', visual:panel-list-operator]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/list_operator/list_operator_panel.dart]
+
+- id: node-agent.card
+  area: node-agent
+  title: 'Agent card: strategy, model and tools'
+  dify: [web/app/components/workflow/nodes/agent/node.tsx, web/app/components/workflow/nodes/agent-v2/node.tsx]
+  status: partial
+  reason: Model and tool parameters are recognised by their values and tools get placeholder icons (no tool lists); the Agent v2 card has no roster detail (no agent console service).
+  evidence: ['spec:web/app/components/workflow/nodes/agent']
+  ours: [app/lib/src/cards/bodies/llm_bodies.dart]
+- id: node-agent.panel-v1
+  area: node-agent
+  title: 'Agent (v1) panel: agent strategy selector and its parameters, memory, output'
+  dify: [web/app/components/workflow/nodes/agent/panel.tsx, web/app/components/workflow/nodes/_base/components/agent-strategy-selector.tsx]
+  status: partial
+  reason: 'The panel is ported, but agent strategies are plugins: with no plugin service there are no strategies to pick.'
+  evidence: ['spec:web/app/components/workflow/nodes/agent', 'spec:web/app/components/workflow/nodes/agent/components', 'spec:web/app/components/workflow/block-selector/__tests__/tool-picker.spec.tsx']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/tool_picker.dart]
+- id: node-agent.panel-v2
+  area: node-agent
+  title: 'Agent v2 panel: roster binding, inline agent, output variables'
+  dify: [web/app/components/workflow/nodes/agent-v2, web/app/components/base/emoji-picker/Inner.tsx, web/utils/emoji.ts]
+  status: partial
+  reason: 'The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image uploads exist in M2a, but this agent dialog still needs the agent console host to persist roster icons; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service.'
+  evidence: ['spec:web/app/components/workflow/nodes/agent-v2', 'spec:web/app/components/workflow/nodes/agent-v2/components', 'spec:web/app/components/workflow/nodes/agent-v2/components/agent-output-variables', app/test/design/emoji_search_test.dart, app/test/design/app_icon_picker_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart, app/lib/src/design/widgets/emoji_search.dart]
+
+- id: node-agent.image-icon
+  area: node-agent
+  title: 'Agent icon picker: image selection, square crop and upload'
+  dify: [web/app/components/base/app-icon-picker/index.tsx, web/app/components/base/app-icon-picker/ImageInput.tsx]
+  status: partial
+  reason: 'File selection and square cropping are implemented with an injectable upload callback. M2a supplies authenticated file upload for app/site icons and avatars. The agent roster host is still absent, so its upload callback is not connected and no fake file ID is generated.'
+  evidence: [app/test/design/app_icon_picker_test.dart, app/test/dify_spec/workflow/nodes_panel/llm/agent_v2_misc_test.dart]
+  ours: [app/lib/src/design/widgets/app_icon_picker.dart, app/lib/src/design/widgets/emoji_catalog.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart]
+
+- id: node-human-input.card
+  area: node-human-input
+  title: 'Human Input card: delivery methods and user action branches'
+  dify: [web/app/components/workflow/nodes/human-input/node.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/human-input', visual:canvas-retrieval-human]
+  ours: [app/lib/src/cards/bodies/data_bodies.dart]
+- id: node-human-input.panel
+  area: node-human-input
+  title: 'Human Input panel: delivery methods (web app, email recipients), form content, user actions, timeout, preview'
+  dify: [web/app/components/workflow/nodes/human-input/panel.tsx, web/app/components/workflow/nodes/human-input/components]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/human-input/components', 'spec:web/app/components/workflow/nodes/human-input/components/delivery-method', 'spec:web/app/components/workflow/nodes/human-input/components/delivery-method/recipient', 'spec:web/app/components/workflow/nodes/human-input/hooks', visual:panel-human-input, app/test/dify_spec/workflow/nodes_panel/data/human_input_user_action_test.dart]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/human_input/human_input_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/human_input/delivery_method.dart]
+- id: node-human-input.test-email
+  area: node-human-input
+  title: 'Human Input: send a test email'
+  dify: [web/app/components/workflow/nodes/human-input/components/delivery-method]
+  status: partial
+  reason: 'The client callback and server delivery-test candidate exist, but mail acceptance is separate from web forms. The email capability defaults off; durable message content, closed-form filtering, Markdown parity and runless test-form expiry remain in the mail workstream.'
+  evidence: ['spec:web/app/components/workflow/nodes/human-input/components/delivery-method']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/data/human_input/test_email_sender.dart]
+
+- id: node-triggers.schedule
+  area: node-triggers
+  title: 'Schedule Trigger card and panel: frequency / cron, time picker, timezone, next executions'
+  dify: [web/app/components/workflow/nodes/trigger-schedule]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/trigger-schedule', 'spec:web/app/components/workflow/nodes/trigger-schedule/components', 'spec:web/app/components/workflow/nodes/trigger-schedule/utils', visual:panel-trigger-schedule, visual:canvas-triggers]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/trigger_schedule/trigger_schedule_panel.dart]
+- id: node-triggers.webhook
+  area: node-triggers
+  title: 'Webhook Trigger card and panel: method, content type, headers / params / body, response'
+  dify: [web/app/components/workflow/nodes/trigger-webhook]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/trigger-webhook', 'spec:web/app/components/workflow/nodes/trigger-webhook/components', visual:panel-trigger-webhook]
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/trigger_webhook/trigger_webhook_panel.dart]
+- id: node-triggers.webhook-url
+  area: node-triggers
+  title: 'Webhook Trigger: generated webhook URL (auto-generated when the node is added)'
+  dify: [web/app/components/workflow/hooks/use-auto-generate-webhook-url.ts]
+  status: not_ported
+  reason: Webhook URLs are issued by Dify's console API for an app id; dify-sf has no webhook endpoint or trigger runtime.
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-auto-generate-webhook-url.spec.ts']
+  ours: []
+- id: node-triggers.plugin
+  area: node-triggers
+  title: 'Integration (plugin) Trigger card and panel: event parameters, subscription'
+  dify: [web/app/components/workflow/nodes/trigger-plugin]
+  status: partial
+  reason: The panel form is ported, but trigger plugins and their subscriptions need Dify's plugin service (none in dify-sf).
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/trigger.spec.ts']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/trigger_plugin/trigger_plugin_panel.dart]
+- id: node-triggers.status
+  area: node-triggers
+  title: 'Trigger status (enabled / disabled triggers synced with the app)'
+  dify: [web/app/components/workflow/store/trigger-status.ts]
+  status: partial
+  reason: The trigger status store is ported; there is no trigger service to sync it with (dify-sf has no trigger runtime).
+  evidence: ['spec:web/app/components/workflow/__tests__/trigger-status-sync.spec.tsx']
+  ours: [app/lib/src/workflow_editor/store/trigger_status.dart]
+- id: node-triggers.start-placeholder
+  area: node-triggers
+  title: 'Workflow start placeholder card and panel (choose how the workflow starts)'
+  dify: [web/app/components/workflow/nodes/start-placeholder]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/start-placeholder', 'spec:web/app/components/workflow/utils/__tests__/workflow-entry.spec.ts']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/start_placeholder/start_placeholder_panel.dart]
+
+- id: node-pipeline.knowledge-pipelines
+  area: node-pipeline
+  title: 'Knowledge pipeline (RAG pipeline) apps'
+  dify: [web/app/components/rag-pipeline]
+  status: not_ported
+  reason: outside current scope (owner to decide); dify-sf edits workflows and chatflows only (no knowledge bases, data source plugins or indexing).
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/data-source.spec.ts']
+  ours: []
+- id: node-pipeline.datasource
+  area: node-pipeline
+  title: 'Data Source node card and panel; empty data source placeholder'
+  dify: [web/app/components/workflow/nodes/data-source, web/app/components/workflow/nodes/data-source-empty]
+  status: partial
+  reason: Card and panel are ported (they render if a document contains the node), but data sources are plugins with credentials (no plugin service) and dify-sf has no knowledge pipelines, so the block selector never offers them.
+  evidence: ['spec:web/app/components/workflow/nodes/data-source', 'spec:web/app/components/workflow/nodes/data-source/hooks', 'spec:web/app/components/workflow/nodes/data-source-empty', 'spec:web/app/components/workflow/block-selector/__tests__/data-sources.spec.tsx']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/data_source/data_source_panel.dart]
+- id: node-pipeline.knowledge-base
+  area: node-pipeline
+  title: 'Knowledge Base (index) node card and panel: chunk structure, embedding, retrieval settings'
+  dify: [web/app/components/workflow/nodes/knowledge-base]
+  status: partial
+  reason: Panel ported; only reachable in knowledge pipelines (not in dify-sf), and the card shows English labels and treats a configured embedding model as available.
+  evidence: ['spec:web/app/components/workflow/nodes/knowledge-base', 'spec:web/app/components/workflow/nodes/knowledge-base/components', 'spec:web/app/components/workflow/nodes/knowledge-base/components/chunk-structure', 'spec:web/app/components/workflow/nodes/knowledge-base/components/chunk-structure/instruction', 'spec:web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting', 'spec:web/app/components/workflow/nodes/knowledge-base/hooks']
+  ours: [app/lib/src/workflow_editor/node_panel/bodies/entry/knowledge_base/knowledge_base_panel.dart]
+
+# ---------------------------------------------------------------- variables
+- id: variables.picker
+  area: variables
+  title: 'Variable reference picker: upstream node outputs, system / environment / conversation variables, object sub-fields'
+  dify: [web/app/components/workflow/nodes/_base/components/variable, web/app/components/workflow/hooks/use-nodes-available-var-list.ts, web/app/components/workflow/hooks/use-workflow-variables.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/variable', 'spec:web/app/components/workflow/hooks/__tests__/use-nodes-available-var-list.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow-variables.spec.ts', 'spec:web/app/components/workflow/utils/__tests__/variable.spec.ts', app/test/var_types_test.dart]
+  ours: [app/lib/src/workflow_editor/panel_fields/var_reference_picker.dart, app/lib/src/workflow_editor/panel_fields/var_reference_vars.dart, app/lib/src/workflow/var_types.dart, app/lib/src/workflow/output_vars.dart]
+- id: variables.env-panel
+  area: variables
+  title: 'Environment variables panel: list, add / edit modal (string, number, secret), delete, rename propagates to nodes'
+  dify: [web/app/components/workflow/panel/env-panel]
+  status: ported
+  deviation: Variables live in the collaborative document (protocol 1.7 $app registers, item by item); secret values are stored server-side through POST /secrets and the document holds only a mask and a reference.
+  evidence: ['spec:web/app/components/workflow/panel/env-panel', visual:var-env, app/test/variable_panels_test.dart]
+  ours: [app/lib/src/workflow_editor/variable_panels/env_panel.dart, app/lib/src/workflow_editor/variable_panels/env_variable_modal.dart]
+- id: variables.conversation-panel
+  area: variables
+  title: 'Conversation variables panel (chatflow): list, add / edit modal (8 types, JSON or form values)'
+  dify: [web/app/components/workflow/panel/chat-variable-panel]
+  status: ported
+  deviation: Stored in the collaborative document ($app registers).
+  evidence: ['spec:web/app/components/workflow/panel/chat-variable-panel', 'spec:web/app/components/workflow/panel/chat-variable-panel/components', visual:var-conversation]
+  ours: [app/lib/src/workflow_editor/variable_panels/chat_variable_panel.dart, app/lib/src/workflow_editor/variable_panels/chat_variable_modal.dart]
+- id: variables.system-panel
+  area: variables
+  title: 'System variables panel (read-only)'
+  dify: [web/app/components/workflow/panel/global-variable-panel]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/panel/global-variable-panel', visual:var-system]
+  ours: [app/lib/src/workflow_editor/variable_panels/global_variable_panel.dart]
+- id: variables.llm-env
+  area: variables
+  title: 'LLM model environment variables (an environment variable holding a model; LLM nodes may use it)'
+  dify: [web/app/components/workflow/llm-environment-variable.ts, web/app/components/workflow/llm-environment-variable-value-field.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/panel/env-panel']
+  ours: [app/lib/src/workflow_editor/variable_panels/env_variable_modal.dart, app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart]
+
+# ---------------------------------------------------------------- features panel
+- id: features.panel
+  area: features
+  title: 'Features drawer: feature cards per app type (chatflow / workflow)'
+  dify: [web/app/components/base/features/new-feature-panel/index.tsx, web/app/components/workflow/features.tsx]
+  status: ported
+  deviation: Features live in the document under $app with minimal nested writes, not undoable (as Dify).
+  evidence: ['spec:web/app/components/base/features', 'spec:web/app/components/base/features/new-feature-panel', 'spec:web/app/components/workflow/__tests__/features.spec.tsx', visual:features, app/test/workflow_features_test.dart]
+  ours: [app/lib/src/workflow_editor/features/new_feature_panel.dart, app/lib/src/workflow_editor/features/workflow_features.dart, app/lib/src/workflow_editor/features/features_store.dart]
+- id: features.summary-bar
+  area: features
+  title: 'Debug chat feature summary: enabled icons, empty state and Manage'
+  dify: [web/app/components/base/features/new-feature-panel/feature-bar.tsx]
+  status: partial
+  reason: Visibility flags, feature badges and Manage/empty callbacks are implemented; the text-to-speech badge does not yet open voice settings.
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/__tests__/feature-bar.spec.tsx']
+  ours: [app/lib/src/workflow_editor/run/ui/chat.dart]
+- id: features.opener
+  area: features
+  title: 'Conversation opener: opening statement and suggested questions'
+  dify: [web/app/components/base/features/new-feature-panel/conversation-opener]
+  status: ported
+  deviation: The opener modal writes to the document once on Save (as Dify), not on every keystroke.
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/conversation-opener']
+  ours: [app/lib/src/workflow_editor/features/conversation_opener.dart]
+- id: features.follow-up
+  area: features
+  title: 'Follow-up (suggested questions after answer), citations, speech to text'
+  dify: [web/app/components/base/features/new-feature-panel/follow-up.tsx, web/app/components/base/features/new-feature-panel/citation.tsx, web/app/components/base/features/new-feature-panel/speech-to-text.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/base/features/new-feature-panel']
+  ours: [app/lib/src/workflow_editor/features/follow_up.dart, app/lib/src/workflow_editor/features/simple_features.dart]
+- id: features.file-upload
+  area: features
+  title: 'File upload / image upload settings'
+  dify: [web/app/components/base/features/new-feature-panel/file-upload, web/app/components/base/features/new-feature-panel/image-upload]
+  status: ported
+  deviation: The workflow settings still use fallback limits until M2b connects runtime file variables; M2a upload limits apply to stored files and app/account images only.
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/file-upload', 'spec:web/app/components/base/features/new-feature-panel/image-upload']
+  ours: [app/lib/src/workflow_editor/features/file_upload.dart]
+- id: features.tts
+  area: features
+  title: 'Text to speech: language, voice, autoplay, audition'
+  dify: [web/app/components/base/features/new-feature-panel/text-to-speech]
+  status: partial
+  reason: "Settings are ported; the voices and the audition call the app's TTS model (TTS invocation is not implemented; LLM invocation is separate): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/text-to-speech']
+  ours: [app/lib/src/workflow_editor/features/text_to_speech.dart]
+- id: features.moderation
+  area: features
+  title: 'Content moderation: keywords, OpenAI moderation, API extension'
+  dify: [web/app/components/base/features/new-feature-panel/moderation]
+  status: partial
+  reason: Keywords and OpenAI moderation (with OpenAI configured in the workspace's model providers) work; API-based extensions need the extension service (Add extension dialog not ported).
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/moderation']
+  ours: [app/lib/src/workflow_editor/features/moderation.dart]
+- id: features.annotation-reply
+  area: features
+  title: 'Annotation reply'
+  dify: [web/app/components/base/features/new-feature-panel/annotation-reply]
+  status: not_applicable
+  reason: Only offered outside workflows (chat / agent apps); the workflow editor's Features panel never shows it (and it needs Dify's annotation backend).
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/annotation-reply', 'spec:web/app/components/base/features/new-feature-panel/annotation-reply/score-slider']
+  ours: []
+
+# ---------------------------------------------------------------- variable inspect
+- id: variable-inspect.panel
+  area: variable-inspect
+  title: 'Variable inspect: trigger chip, resizable bottom panel, groups, empty / listening states'
+  dify: [web/app/components/workflow/variable-inspect]
+  status: ported
+  deviation: "Remote values are persisted server draft variables. Mock values are restricted to the explicit local demo; a missing remote capability does not create simulated values."
+  evidence: ['spec:web/app/components/workflow/variable-inspect', visual:inspect, visual:inspect-run, app/test/variable_inspect_test.dart]
+  ours: [app/lib/src/workflow_editor/variable_inspect/panel.dart, app/lib/src/workflow_editor/variable_inspect/trigger.dart]
+- id: variable-inspect.values
+  area: variable-inspect
+  title: 'Variable inspect: value editors (text, number, markdown, JSON, boolean, file), edited markers, reset, large data alert'
+  dify: [web/app/components/workflow/variable-inspect/value-content.tsx, web/app/components/workflow/variable-inspect/right.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/variable-inspect', 'spec:web/app/components/workflow/hooks/__tests__/use-inspect-vars-crud.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-inspect-vars-crud-common.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-fetch-workflow-inspect-vars.spec.ts']
+  ours: [app/lib/src/workflow_editor/variable_inspect/value_content.dart, app/lib/src/workflow_editor/variable_inspect/inspect_vars.dart]
+
+# ---------------------------------------------------------------- run & debug
+- id: run.runtime
+  area: run
+  title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
+  dify: [api/core/workflow, web/service/workflow.ts]
+  status: partial
+  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13–1.16): whole draft runs (Dify''s SSE events, stop, run history and records), human input (a run pauses at a human-input node, the form is answered through the console form API, and a reconnect rebuilds the paused run''s state from its records — the panel and chat follow the resumed run on the same stream) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor, question classifier, iteration (sequential/parallel, flattening and error modes) and loop (variables and break conditions) run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 23 supported workflow cases equal, with nested iteration and container single-run outcomes also compared). Iteration/loop single runs use their dedicated SSE endpoints; Dify''s existing nested-container filtering and nested-selector restrictions are preserved. Not yet: files (P5), chatflow debug runs, tools and published runs (P6); knowledge retrieval is deferred separately. Graphs with unsupported node types, and chat, are served by the deterministic MockWorkflowRunService.'
+  deviation: "A graph runs on the real server when all node types are advertised. Unsupported remote graphs and absent capabilities report an error, never local simulated success. Only the explicit local demo uses MockWorkflowRunService."
+  evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, app/test/workflow_editor/run/server_runtime_e2e_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
+  ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
+- id: run.test-run-panel
+  area: run
+  title: 'Test Run panel: INPUT / RESULT / DETAIL / TRACING tabs, input form, Start Run'
+  dify: [web/app/components/workflow/panel/workflow-preview.tsx, web/app/components/workflow/panel/inputs-panel.tsx]
+  status: ported
+  deviation: "Driven by persisted server draft runs for supported graphs; unsupported remote execution reports an error. Only the explicit local demo simulates runs."
+  evidence: ['spec:web/app/components/workflow/panel/__tests__/workflow-preview.spec.tsx', 'spec:web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx', visual:run-input, visual:run-result, visual:run-detail, visual:run-tracing]
+  ours: [app/lib/src/workflow_editor/run/ui/run_panel.dart, app/lib/src/workflow_editor/run/ui/run_panels.dart]
+- id: run.run-hooks
+  area: run
+  title: 'Run control: start, stop, run events (started, node started / finished, text chunks, paused, failed)'
+  dify: [web/app/components/workflow-app/hooks/use-workflow-run.ts, web/app/components/workflow/hooks/use-workflow-run-event]
+  status: ported
+  evidence: ['spec:web/app/components/workflow-app/hooks', 'spec:web/app/components/workflow/hooks/use-workflow-run-event']
+  ours: [app/lib/src/workflow_editor/run/workflow_run.dart, app/lib/src/workflow_editor/run/workflow_run_events.dart, app/lib/src/workflow_editor/run/run_events.dart]
+- id: run.status-result
+  area: run
+  title: 'Run result: status panel, metadata, output panel (markdown, files, JSON), result text'
+  dify: [web/app/components/workflow/run/status.tsx, web/app/components/workflow/run/result-panel.tsx, web/app/components/workflow/run/output-panel.tsx, web/app/components/workflow/run/meta.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/run', visual:run-result, visual:run-detail]
+  ours: [app/lib/src/workflow_editor/run/ui/status.dart, app/lib/src/workflow_editor/run/ui/result_panel.dart, app/lib/src/workflow_editor/run/ui/markdown.dart]
+- id: run.tracing
+  area: run
+  title: 'Tracing: node items, parallel / branch grouping'
+  dify: [web/app/components/workflow/run/tracing-panel.tsx, web/app/components/workflow/run/node.tsx, web/app/components/workflow/run/utils/format-log]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/run/utils/format-log', 'spec:web/app/components/workflow/run/utils/format-log/parallel', visual:run-tracing]
+  ours: [app/lib/src/workflow_editor/run/ui/tracing_panel.dart, app/lib/src/workflow_editor/run/ui/tracing_node.dart, app/lib/src/workflow_editor/run/ui/format_log.dart]
+- id: run.iteration-loop-logs
+  area: run
+  title: 'Run: iteration log and loop log sub-views'
+  dify: [web/app/components/workflow/run/iteration-log, web/app/components/workflow/run/loop-log]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/run/iteration-log', 'spec:web/app/components/workflow/run/loop-log', 'spec:web/app/components/workflow/run/utils/format-log/iteration', 'spec:web/app/components/workflow/run/utils/format-log/loop']
+  ours: [app/lib/src/workflow_editor/run/ui/run_logs.dart]
+- id: run.retry-agent-logs
+  area: run
+  title: 'Run: retry log and agent log sub-views'
+  dify: [web/app/components/workflow/run/retry-log, web/app/components/workflow/run/agent-log]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/run/retry-log', 'spec:web/app/components/workflow/run/agent-log', 'spec:web/app/components/workflow/run/utils/format-log/retry', 'spec:web/app/components/workflow/run/utils/format-log/agent']
+  ours: [app/lib/src/workflow_editor/run/ui/run_logs.dart, app/lib/src/workflow_editor/run/ui/log_widgets.dart]
+- id: run.human-input-forms
+  area: run
+  title: 'Run: human input forms (pause, fill, submit, timeout) in the run panel and chat'
+  dify: [web/app/components/base/chat/chat/answer/human-input-content, web/app/components/workflow/panel/human-input-form-list.tsx, web/app/components/workflow/panel/debug-and-preview/hooks.ts]
+  status: ported
+  deviation: 'Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. Lost connections re-subscribe with backoff without failing the run; a rejected form submission preserves its input and can be retried. Server recovery retries accepted answers after transient claim failures. Only the explicit local demo answers simulated forms locally; unsupported remote forms report an error.'
+  evidence: ['spec:web/app/components/base/chat/chat/answer/human-input-content', 'spec:web/app/components/base/chat/chat/answer', 'spec:web/app/components/workflow/run/utils/format-log/human-input', 'app/test/workflow_editor/run/server_run_service_test.dart', app/test/human_input/m1_follow_review_test.dart, app/test/human_input/m1_second_review_test.dart, app/integration_test/human_input_flow_test.dart]
+  ours: [app/lib/src/workflow_editor/run/ui/human_input_content.dart, app/lib/src/workflow_editor/run/server_run_service.dart, packages/collab_client/lib/src/workflow_run_api.dart]
+- id: run.history-record
+  area: run
+  title: 'Run history: view a past run (record panels)'
+  dify: [web/app/components/workflow/panel/record.tsx, web/app/components/workflow/panel/chat-record]
+  status: ported
+  deviation: "The record shows persisted server run details without replacing the shared graph. Simulated session records exist only in the explicit local demo."
+  evidence: ['spec:web/app/components/workflow/panel/chat-record', 'spec:web/app/components/workflow/panel/__tests__/record.spec.tsx', visual:run-history]
+  ours: [app/lib/src/workflow_editor/run/ui/run_panels.dart]
+- id: run.single-run
+  area: run
+  title: 'Single node run (Run this step) and its result'
+  dify: [web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
+  status: ported
+  deviation: "Supported remote nodes use the server runtime, including dedicated iteration and loop streams. Unsupported remote nodes and trigger execution report an error; simulation is restricted to the explicit local demo."
+  evidence: [visual:run-single, visual:run-last-run]
+  ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart]
+- id: run.trigger-debug
+  area: run
+  title: 'Run: listen for a trigger (webhook / schedule / plugin debug polling)'
+  dify: [web/app/components/workflow-app/hooks/use-workflow-start-run.tsx]
+  status: partial
+  reason: "The Listening UI is ported, but the remote trigger runtime is not implemented and reports an error. Only the explicit local demo can simulate trigger execution."
+  evidence: ['spec:web/app/components/workflow-app/hooks']
+  ours: [app/lib/src/workflow_editor/run/workflow_run.dart]
+- id: run.logs-pages
+  area: run
+  title: 'Run logs special result panel (logs page)'
+  dify: [web/app/components/workflow/run/special-result-panel.tsx]
+  status: partial
+  reason: 'SpecialResultPanel and RunLogs are wired into the node and tracing panels. Draft workflow runs and node executions are persisted on the server (protocols 1.13–1.16). Real Agent/tool-specific traces still depend on the unported runtime; app-level published logs await public Web/API execution. This row does not describe missing draft-run storage.'
+  evidence: ['spec:web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx', app/test/dify_spec/workflow/run/panels_test.dart, app/test/dify_spec/workflow/run/tracing_test.dart]
+  ours: [app/lib/src/workflow_editor/run/ui/run_logs.dart, app/lib/src/workflow_editor/run/ui/log_widgets.dart]
+
+# ---------------------------------------------------------------- chat preview
+- id: chat-preview.panel
+  area: chat-preview
+  title: 'Chatflow Debug & Preview: panel, chat, restart, conversation variables viewer, input form'
+  dify: [web/app/components/workflow/panel/debug-and-preview]
+  status: ported
+  deviation: "The panel is ported; persistent remote Chatflow execution is a later phase and currently reports an error. Only the explicit local demo shows simulated answers."
+  evidence: ['spec:web/app/components/workflow/panel/debug-and-preview', visual:preview, visual:preview-chat, app/test/workflow_editor/run/chat_canvas_inspect_test.dart]
+  ours: [app/lib/src/workflow_editor/run/ui/debug_and_preview.dart, app/lib/src/workflow_editor/run/ui/chat.dart]
+- id: chat-preview.chat-logic
+  area: chat-preview
+  title: 'Chat: send, stop, restart, resume a paused run, sibling messages, suggested questions, opening statement'
+  dify: [web/app/components/workflow/panel/debug-and-preview/hooks.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/panel/debug-and-preview/__tests__/hooks']
+  ours: [app/lib/src/workflow_editor/run/debug_chat.dart]
+
+# ---------------------------------------------------------------- comments
+- id: comments.mode
+  area: comments
+  title: 'Comments: comment mode (C), custom cursor, click to place a comment'
+  dify: [web/app/components/workflow/comment-manager.tsx, web/app/components/workflow/comment/cursor.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/comment', visual:comment-mode]
+  ours: [app/lib/src/workflow_editor/comments/comment_layer.dart, app/lib/src/workflow_editor/comments/workflow_comment.dart]
+- id: comments.pins
+  area: comments
+  title: 'Comments: pins with avatars, hover preview'
+  dify: [web/app/components/workflow/comment/comment-icon.tsx, web/app/components/workflow/comment/comment-preview.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/comment']
+  ours: [app/lib/src/workflow_editor/comments/comment_icon.dart]
+- id: comments.drag-pin
+  area: comments
+  title: 'Comments: drag a pin / move it with arrow keys (author only)'
+  dify: [web/app/components/workflow/comment/comment-icon.tsx]
+  status: ported
+  deviation: The move is optimistic and rolled back if the server refuses it (not_author).
+  evidence: ['spec:web/app/components/workflow/comment']
+  ours: [app/lib/src/workflow_editor/comments/comment_icon.dart, app/lib/src/workflow_editor/comments/comments_store.dart]
+- id: comments.input-mentions
+  area: comments
+  title: 'Comments: new comment input with @mentions'
+  dify: [web/app/components/workflow/comment/comment-input.tsx, web/app/components/workflow/comment/mention-input.tsx]
+  status: ported
+  deviation: 'Owner decided: no CJK characters after @ in mentions (2026-10-18), as in Dify. Mention candidates are the server''s /clients directory (accounts).'
+  evidence: ['spec:web/app/components/workflow/comment']
+  ours: [app/lib/src/workflow_editor/comments/comment_input.dart]
+- id: comments.thread
+  area: comments
+  title: 'Comments: thread (reply, edit / delete own messages, resolve, previous / next, close)'
+  dify: [web/app/components/workflow/comment/thread.tsx]
+  status: ported
+  deviation: Deleting someone else's thread shows 'Only the author can delete this thread' (Dify is silent).
+  evidence: ['spec:web/app/components/workflow/comment', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow-comment.spec.ts', visual:comment-thread]
+  ours: [app/lib/src/workflow_editor/comments/comment_thread.dart]
+- id: comments.panel
+  area: comments
+  title: 'Comments panel: list, filter, empty state'
+  dify: [web/app/components/workflow/panel/comments-panel/index.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/panel/comments-panel']
+  ours: [app/lib/src/workflow_editor/comments/comments_panel.dart]
+- id: comments.sync
+  area: comments
+  title: 'Comments: shared with collaborators live'
+  dify: [web/app/components/workflow/hooks/use-workflow-comment.ts]
+  status: ported
+  deviation: Comments are a server REST resource (protocol 1.8, by account); the event stream's 'comments' event makes every client refetch (Dify broadcasts comments_update over its websocket). Not part of the DSL.
+  evidence: [app/test/dify_spec/workflow/comment]
+  ours: [app/lib/src/workflow_editor/comments/comments_store.dart, packages/collab_client/lib/src/model/comments.dart]
+
+# ---------------------------------------------------------------- notes
+- id: notes.node
+  area: notes
+  title: 'Note node: add from control bar / pane menu, six themes, resize, author line, under edges'
+  dify: [web/app/components/workflow/note-node, web/app/components/workflow/operator/hooks.ts]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/note-node', visual:note-selected, app/test/note_node_test.dart]
+  ours: [app/lib/src/workflow_editor/note_node/note_node.dart, app/lib/src/cards/bodies/note_body.dart]
+- id: notes.editor
+  area: notes
+  title: 'Note editor: rich text (bold, italic, strikethrough, links, bullet list), font size, toolbar'
+  dify: [web/app/components/workflow/note-node/note-editor]
+  status: ported
+  deviation: Rich text is stored as Lexical JSON like Dify's DSL, edited by a Flutter controller (not Lexical). Bullets have no hanging indent yet.
+  evidence: ['spec:web/app/components/workflow/note-node/note-editor', 'spec:web/app/components/workflow/note-node/note-editor/toolbar', 'spec:web/app/components/workflow/note-node/note-editor/plugins/format-detector-plugin', 'spec:web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin', app/test/note_node_editor_test.dart]
+  ours: [app/lib/src/workflow_editor/note_node/note_editor.dart, app/lib/src/workflow_editor/note_node/note_toolbar.dart]
+- id: notes.menu
+  area: notes
+  title: 'Note menu: copy, duplicate, show author, delete'
+  dify: [web/app/components/workflow/note-node/note-editor/toolbar/operator.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/note-node/note-editor/toolbar']
+  ours: [app/lib/src/workflow_editor/note_node/note_toolbar.dart]
+
+# ---------------------------------------------------------------- organize
+- id: organize.layout
+  area: organize
+  title: 'Organize blocks (Mod+O): ELK layered layout, containers first, one undo step'
+  dify: [web/app/components/workflow/utils/elk-layout.ts, web/app/components/workflow/hooks/use-workflow-organize.ts, web/app/components/workflow/hooks/use-workflow-organize.helpers.ts]
+  status: ported
+  deviation: A pure-Dart port of elkjs's layered algorithm (exact coordinates on 126 graphs); only changed nodes get moveNode ops; a self-loop makes it a no-op.
+  evidence: ['spec:web/app/components/workflow/utils/__tests__/elk-layout.spec.ts', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow-organize.spec.tsx', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow-organize.helpers.spec.ts', app/test/organize]
+  ours: [app/lib/src/workflow_editor/organize/workflow_organize.dart, app/lib/src/workflow_editor/organize/elk_layout.dart, packages/elk_layered]
+- id: organize.animation
+  area: organize
+  title: 'Organize: 0.2 s node animation and viewport reset to zoom 0.7'
+  dify: [web/app/components/workflow/hooks/use-workflow-organize.ts, web/app/components/workflow/style.css]
+  status: ported
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-workflow-organize.spec.tsx', app/test/organize/position_animation_test.dart]
+  ours: [app/lib/src/workflow_editor/organize/workflow_organize.dart]
+
+# ---------------------------------------------------------------- history
+- id: history.undo-redo
+  area: history
+  title: 'Undo / redo (Mod+Z, Mod+Y, Mod+Shift+Z)'
+  dify: [web/app/components/workflow/hooks/use-workflow-history.ts, web/app/components/workflow/workflow-history-store.ts]
+  status: ported
+  deviation: 'Owner decided (2026-10-17): undo only reverts this user''s own edits (inverse ops), never someone else''s; a deleted node is restored with restoreNode, only by the deleter (protocol 1.6). Dify writes its whole snapshot back and clobbers collaborators. $app edits (variables, features) are not undoable, as in Dify.'
+  evidence: ['spec:web/app/components/workflow/__tests__/workflow-history-store.spec.tsx', 'spec:web/app/components/workflow/hooks/__tests__/use-workflow-history.spec.tsx', app/test/undo_manager_test.dart]
+  ours: [app/lib/src/editor/undo_manager.dart, app/lib/src/workflow_editor/store/workflow_history.dart]
+- id: history.change-history
+  area: history
+  title: 'Change history popover: steps with labels, jump to a step, clear history'
+  dify: [web/app/components/workflow/header/view-workflow-history.tsx]
+  status: ported
+  evidence: [app/test/workflow_operator_test.dart]
+  ours: [app/lib/src/workflow_editor/operator/view_workflow_history.dart]
+- id: history.peer-toast
+  area: history
+  title: 'Toast to collaborators when someone undoes / redoes'
+  dify: [web/app/components/workflow/hooks/use-workflow-history.ts]
+  status: not_ported
+  reason: Not implemented yet; peers see the undo's ops like any other edit (there is no protocol signal for 'this was an undo').
+  evidence: []
+  ours: []
+
+# ---------------------------------------------------------------- version history
+- id: versions.panel
+  area: versions
+  title: 'Version history panel: list, filter (all / only yours), name / edit version, copy id, export, delete, restore'
+  dify: [web/app/components/workflow/panel/version-history-panel, web/app/components/workflow/header/version-history-button.tsx]
+  status: ported
+  deviation: "The panel runs on the server's versions (protocol 1.11 VersionsApi); a clicked version is fetched (`GET .../workflows/{id}`) and shown read-only on the canvas while the collaboration session keeps syncing underneath."
+  evidence: ['spec:web/app/components/workflow/panel/version-history-panel', 'spec:web/app/components/workflow/panel/version-history-panel/action-menu', 'spec:web/app/components/workflow/panel/version-history-panel/filter', 'spec:web/app/components/workflow/store/__tests__/version-slice.spec.ts', app/test/editor_versions_test.dart]
+  ours: [app/lib/src/workflow_editor/version_history/version_history_panel.dart, app/lib/src/editor/editor_versions.dart]
+- id: versions.restore
+  area: versions
+  title: 'Restore a published version over the draft'
+  dify: [web/app/components/workflow/header/header-in-restoring.tsx, web/app/components/workflow/hooks/use-workflow-update.ts]
+  status: ported
+  deviation: "Restoring replaces the shared document with the version through the editor's replacement path (the server renders the version and commits ordinary ops from this client): collaborators see the change as edits, the undo history is cleared, secret values stay on the server."
+  evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-workflow-update.spec.tsx', app/test/editor_versions_test.dart]
+  ours: [app/lib/src/editor/editor_versions.dart, app/lib/src/workflow_editor/header/workflow_header.dart]
+
+# ---------------------------------------------------------------- accounts
+- id: accounts.install
+  area: accounts
+  title: 'Install page: create the owner account on first start'
+  dify: [web/app/install]
+  status: ported
+  evidence: ['spec:web/app/install', visual:page-install]
+  ours: [app/lib/src/auth/install_page.dart]
+- id: accounts.signin-password
+  area: accounts
+  title: 'Sign in with email and password'
+  dify: [web/app/signin/normal-form.tsx, web/app/signin/components]
+  status: ported
+  deviation: Accounts live on dify-sf's server (protocol 1.8, bearer tokens, PBKDF2 like Dify).
+  evidence: ['spec:web/app/signin', visual:page-signin, app/test/auth_test.dart]
+  ours: [app/lib/src/auth/signin_page.dart, app/lib/src/auth/auth_controller.dart]
+- id: accounts.email-code
+  area: accounts
+  title: 'Sign in with an email code (and Turnstile)'
+  dify: [web/app/signin/check-code, web/app/signin/components/mail-and-code-auth.tsx]
+  status: not_ported
+  reason: 'Owner decided: email + password only for now, third-party later (2026-10-18); dify-sf has no mail server.'
+  evidence: ['spec:web/app/signin/check-code', 'spec:web/app/signin/components']
+  ours: []
+- id: accounts.sso-oauth
+  area: accounts
+  title: 'Social (GitHub / Google) and SSO sign-in, OAuth redirects'
+  dify: [web/app/signin/components/social-auth.tsx, web/app/signin/components/sso-auth.tsx, web/app/signin/utils]
+  status: not_ported
+  reason: 'Owner decided: email + password only for now, third-party later (2026-10-18).'
+  evidence: ['spec:web/app/signin/utils']
+  ours: []
+- id: accounts.forgot-password
+  area: accounts
+  title: 'Forgot / reset password: email code, check code, set a new password (the sign-in link enabled when mail is set up)'
+  dify: [web/app/reset-password, web/app/forgot-password, web/app/signin/components/mail-and-password-auth.tsx]
+  status: ported
+  deviation: "Mail is the dify-sf server's own SMTP configuration (GET /v1/system-features is_email_setup); without it the link is disabled as in Dify, and owners and admins hand out reset links instead (accounts.reset-link). Dify's legacy /forgot-password page (a reset link by mail) is not ported: the sign-in leads to /reset-password."
+  evidence: ['spec:web/app/reset-password', 'spec:web/app/reset-password/check-code', 'spec:web/app/reset-password/set-password', 'spec:web/app/forgot-password', app/test/forgot_password_test.dart]
+  ours: [app/lib/src/auth/reset_password_page.dart, app/lib/src/auth/signin_page.dart, app/lib/src/auth/auth_controller.dart]
+- id: accounts.reset-link
+  area: accounts
+  title: "Members page: an owner's or admin's one-time password reset link for a member (servers without mail)"
+  dify: [web/app/components/header/account-setting/members-page/member-menu.tsx, api/commands/account.py]
+  status: dify_sf_only
+  reason: "Dify's community edition resets passwords from its command line (flask reset-password); dify-sf hands out a one-time link instead, like its invitation links (nobody sets or sees another member's password; the owner's only by the owner)."
+  evidence: [app/test/members_reset_link_test.dart]
+  ours: [app/lib/src/settings/members/member_menu.dart, app/lib/src/settings/members/reset_link_modal.dart]
+- id: accounts.signup
+  area: accounts
+  title: 'Sign up'
+  dify: [web/app/signup]
+  status: not_ported
+  reason: Accounts come from the install page and invitations (Dify's is_allow_register off).
+  evidence: []
+  ours: []
+- id: accounts.invite-activate
+  area: accounts
+  title: 'Invitation links: activate, invite sign-in, invite settings (name, password, language)'
+  dify: [web/app/activate, web/app/signin/invite-settings]
+  status: ported
+  deviation: Invitations are links shown to the inviter (no mail server); only new accounts are invited.
+  evidence: ['spec:web/app/signin/invite-settings', visual:page-activate-expired, visual:page-signin-invite, visual:page-invite-settings]
+  ours: [app/lib/src/auth/activate_page.dart, app/lib/src/auth/invite_settings_page.dart]
+- id: accounts.dropdown
+  area: accounts
+  title: 'Account menu: account card, Account page link, Preferences, Appearance (light / dark / system), log out'
+  dify: [web/app/components/header/account-dropdown, web/app/components/main-nav/components/account-section.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/header/account-dropdown', visual:nav-main]
+  ours: [app/lib/src/auth/account_dropdown.dart]
+- id: accounts.compliance
+  area: accounts
+  title: 'Account menu: compliance downloads (SOC2 / ISO / GDPR)'
+  dify: [web/app/components/header/account-dropdown/compliance.tsx]
+  status: not_applicable
+  reason: Dify Cloud only.
+  evidence: ['spec:web/app/components/header/account-dropdown']
+  ours: []
+- id: accounts.members
+  area: accounts
+  title: 'Members page: list, invite (activation links), change role, remove, member details'
+  dify: [web/app/components/header/account-setting/members-page]
+  status: ported
+  evidence: ['spec:web/app/components/header/account-setting/members-page', 'spec:web/app/components/header/account-setting/members-page/invite-modal', 'spec:web/app/components/header/account-setting/members-page/invited-modal', 'spec:web/app/components/header/account-setting/members-page/member-details-modal', 'spec:web/app/components/header/account-setting/members-page/assign-roles-modal', visual:members, visual:members-invite, app/test/members_settings_test.dart]
+  ours: [app/lib/src/settings/members/members_page.dart, app/lib/src/settings/members/invite_modal.dart]
+- id: accounts.roles
+  area: accounts
+  title: 'Roles: owner, admin, editor, normal, dataset operator (read-only editor for normal / dataset operator)'
+  dify: [web/app/components/header/account-setting/members-page, web/app/components/workflow/hooks-store/store.ts]
+  status: ported
+  deviation: A role downgrade while editing makes the server refuse further ops with 403; the editor turns read-only with one notice (no retry loop).
+  evidence: [app/test/read_only_editor_test.dart, app/test/role_downgrade_test.dart]
+  ours: [app/lib/src/workflow_editor/dify_editor.dart, app/lib/src/editor/notices.dart]
+- id: accounts.transfer-ownership
+  area: accounts
+  title: 'Transfer workspace ownership'
+  dify: [web/app/components/header/account-setting/members-page/transfer-ownership-modal]
+  status: not_ported
+  reason: No ownership transfer on dify-sf's server (no endpoint, no mail for the verification code), as Dify with is_allow_transfer_workspace off.
+  evidence: ['spec:web/app/components/header/account-setting/members-page/transfer-ownership-modal']
+  ours: []
+- id: accounts.edit-workspace
+  area: accounts
+  title: 'Rename the workspace'
+  dify: [web/app/components/header/account-setting/members-page/edit-workspace-modal]
+  status: not_ported
+  reason: dify-sf's server cannot rename the workspace (its name is the owner's).
+  evidence: ['spec:web/app/components/header/account-setting/members-page/edit-workspace-modal']
+  ours: []
+- id: accounts.rbac
+  area: accounts
+  title: 'Custom roles, Roles & Permissions, permission sets (enterprise RBAC)'
+  dify: [web/app/components/header/account-setting]
+  status: not_ported
+  reason: Enterprise feature; dify-sf has one built-in role per member (community edition).
+  evidence: ['spec:web/app/components/header/account-setting/__tests__/permission-group-list.spec.tsx', 'spec:web/app/components/header/account-setting/__tests__/workspace-role-checkbox-list.spec.tsx']
+  ours: []
+- id: accounts.account-page
+  area: accounts
+  title: "Account page: header (Home, avatar menu), profile card, rename, reset password, the account's apps"
+  dify: ['web/app/account/(commonLayout)/page.tsx', 'web/app/account/(commonLayout)/header.tsx', 'web/app/account/(commonLayout)/avatar.tsx', 'web/app/account/(commonLayout)/account-page/index.tsx', web/app/components/header/account-setting/collapse]
+  status: ported
+  deviation: "Protocol 1.8 / 1.12 (PUT /v1/account/name, PUT /v1/account/password, GET /v1/apps). Every dify-sf account that can sign in has a password, so the page always offers Reset password (Dify's is_password_set). Dify Cloud's education badge is not shown."
+  evidence: ['spec:web/app/components/header/account-setting/collapse', app/test/account_page_test.dart]
+  ours: [app/lib/src/account/account_page.dart, app/lib/src/account/account_dialogs.dart, app/lib/src/design/widgets/collapse.dart]
+- id: accounts.change-email
+  area: accounts
+  title: 'Account page: change the email with codes to the current and the new address'
+  dify: ['web/app/account/(commonLayout)/account-page/email-change-modal.tsx', api/controllers/console/workspace/account.py]
+  status: ported
+  deviation: "Protocol 1.12 (/v1/account/change-email...), Dify's tokens, expiry and limits. Offered only when the server sends mail (enable_change_email = mail configured; Dify CE shows it whenever ENABLE_CHANGE_EMAIL, default on). check-email-unique needs a signed-in member (Dify's is public)."
+  evidence: [app/test/account_page_test.dart, packages/collab_client/test/support/account_settings_scenario.dart]
+  ours: [app/lib/src/account/email_change_modal.dart]
+- id: accounts.avatar-upload
+  area: accounts
+  title: 'Account page: upload, crop and remove the avatar'
+  dify: ['web/app/account/(commonLayout)/account-page/AvatarWithEdit.tsx', 'web/app/account/(commonLayout)/account-page/avatar-image.ts']
+  status: ported
+  deviation: 'Enabled only when the server advertises configured file storage. The account persists an own-upload image ID and receives a fresh signed URL. The avatar reuses the app icon crop control in image-only mode; delete requires confirmation.'
+  evidence: ['spec:web/app/account/(commonLayout)/account-page', app/test/design/app_icon_picker_test.dart, packages/collab_client/test/files_test.dart, app/integration_test/files_flow_test.dart]
+  ours: [app/lib/src/account/account_page.dart, app/lib/src/files/upload_service.dart, app/lib/src/design/widgets/app_icon_picker.dart, packages/collab_client/lib/src/files_api.dart]
+- id: accounts.delete-account
+  area: accounts
+  title: 'Account page: delete the account (email code, feedback)'
+  dify: ['web/app/account/(commonLayout)/delete-account']
+  status: not_applicable
+  reason: Dify Cloud only (shown when deployment_edition is CLOUD); dify-sf mirrors the community edition.
+  evidence: ['spec:web/app/account/(commonLayout)/delete-account/components']
+  ours: []
+
+# ---------------------------------------------------------------- settings
+- id: settings.dialog
+  area: settings
+  title: 'Settings dialog (sidebar of tabs)'
+  dify: [web/app/components/header/account-setting/index.tsx, web/app/components/header/account-setting/constants.ts]
+  status: partial
+  reason: Members and Preferences exist; the other tabs need server features dify-sf does not have (see below). Model providers live in the Integrations settings modal, as in Dify 1.17.1.
+  evidence: ['spec:web/app/components/header/account-setting']
+  ours: [app/lib/src/settings/account_setting.dart]
+- id: settings.workspace-card
+  area: settings
+  title: 'Main nav workspace card and menu (workspace settings, invite members, switcher)'
+  dify: [web/app/components/main-nav/components/workspace-card.tsx]
+  status: ported
+  deviation: One workspace per server; no plan badge, credits or upgrade action.
+  evidence: ['spec:web/app/components/main-nav/components', visual:nav-workspace-menu]
+  ours: [app/lib/src/settings/workspace_card.dart]
+- id: settings.model-providers
+  area: settings
+  title: 'Model Provider page: provider cards, API keys (several per provider, switching, the hidden-secret round trip), custom models and their credentials, model list with enable / disable, default system models'
+  dify: [web/app/components/header/account-setting/model-provider-page/index.tsx, web/app/components/header/account-setting/model-provider-page/model-provider-page-body.tsx, web/app/components/header/account-setting/model-provider-page/provider-added-card, web/app/components/header/account-setting/model-provider-page/model-auth, web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx, web/app/components/header/account-setting/model-provider-page/system-model-selector]
+  status: ported
+  deviation: "dify-sf's catalog is a curated set of Dify's official provider plugins (protocol 1.9); the encrypted-key note names the server's AES-256-GCM instead of PKCS1_OAEP. Members without plugin.plugin_preferences / credential.manage see the cards only, as in Dify. Plugin metadata, auto-update settings and the marketplace section need plugins (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon))."
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page', 'spec:web/app/components/header/account-setting/model-provider-page/provider-added-card', 'spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/authorized', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/hooks', 'spec:web/app/components/header/account-setting/model-provider-page/model-modal', 'spec:web/app/components/header/account-setting/model-provider-page/system-model-selector']
+  ours: [app/lib/src/settings/model_provider/model_provider_page.dart, app/lib/src/settings/model_provider/provider_added_card.dart, app/lib/src/settings/model_provider/model_list.dart, app/lib/src/settings/model_provider/model_auth.dart, app/lib/src/settings/model_provider/model_modal.dart, app/lib/src/settings/model_provider/system_model_selector.dart, app/lib/src/workflow/workspace_models.dart]
+- id: settings.model-providers-legacy-form
+  area: settings
+  title: "Legacy model-modal Form (the credential form of agent strategies, tool settings and plugin endpoints)"
+  dify: [web/app/components/header/account-setting/model-provider-page/model-modal/Form.tsx, web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx]
+  status: not_ported
+  reason: Not used by the model provider credential modal (which renders base/form's AuthForm); to port with the agent strategy and tool forms.
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/model-modal/__tests__/Form.spec.tsx', 'spec:web/app/components/header/account-setting/model-provider-page/model-modal/__tests__/Input.spec.tsx']
+  ours: []
+- id: settings.model-providers-load-balancing
+  area: settings
+  title: 'Model load balancing (credential pools, cooldowns, the model Config dialog)'
+  dify: [web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.tsx, web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx]
+  status: not_ported
+  reason: "later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)"
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/model-load-balancing-modal.spec.tsx', 'spec:web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/switch-credential-in-load-balancing.spec.tsx']
+  ours: []
+- id: settings.model-providers-credits
+  area: settings
+  title: 'AI credits, quota panel and provider usage priority'
+  dify: [web/app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx, web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/usage-priority-section.tsx]
+  status: not_applicable
+  reason: "Dify Cloud only; dify-sf is self-hosted"
+  evidence: ['spec:web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/quota-panel.spec.tsx']
+  ours: []
+- id: settings.credential-forms
+  area: settings
+  title: 'Credential forms (base/form: BaseForm, BaseField, the auth scenario, untouched secrets sent as [__HIDDEN__])'
+  dify: [web/app/components/base/form]
+  status: partial
+  reason: "Text, secret, number, select, radio, checkbox and boolean fields are ported; dynamic selects need trigger plugins (later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)), and useAppForm's field components and the input-field scenario serve Dify's knowledge pipeline forms (no knowledge base service in dify-sf)."
+  evidence: ['spec:web/app/components/base/form', 'spec:web/app/components/base/form/components', 'spec:web/app/components/base/form/components/base', 'spec:web/app/components/base/form/components/field', 'spec:web/app/components/base/form/components/field/input-type-select', 'spec:web/app/components/base/form/components/form', 'spec:web/app/components/base/form/form-scenarios/auth', 'spec:web/app/components/base/form/form-scenarios/base', 'spec:web/app/components/base/form/form-scenarios/input-field', 'spec:web/app/components/base/form/hooks', 'spec:web/app/components/base/form/utils/secret-input']
+  ours: [app/lib/src/settings/form/base_form.dart]
+- id: settings.plugins
+  area: settings
+  title: 'Plugins (install, update, permissions) and marketplace'
+  dify: [web/app/components/plugins, web/app/(commonLayout)/plugins, web/app/(commonLayout)/marketplace]
+  status: not_ported
+  reason: "later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)"
+  evidence: ['spec:web/app/components/workflow/plugin-dependency', 'spec:web/app/components/workflow/store/__tests__/plugin-dependency-store.spec.ts']
+  ours: []
+- id: settings.integrations-modal
+  area: settings
+  title: 'Integrations settings modal and page (sidebar, section header with docs link), opened by the main nav and the model selector'
+  dify: [web/app/components/integrations/index.tsx, web/app/components/integrations/modal.tsx, web/app/components/integrations/section-renderer.tsx]
+  status: partial
+  reason: Only the Model Provider section exists; the other sections and the plugin actions are listed under the next entry. dify-sf opens it as the settings modal (no /integrations route), also from the main nav.
+  evidence: ['spec:web/app/components/integrations']
+  ours: [app/lib/src/settings/integrations_page.dart, app/lib/src/home_page.dart]
+- id: settings.integrations
+  area: settings
+  title: 'Integrations: tools (built-in, MCP, custom, workflow tools), data sources, triggers, agent strategies, API extensions, custom endpoints'
+  dify: [web/app/components/integrations, web/app/components/tools]
+  status: not_ported
+  reason: outside current scope (owner to decide); tools, triggers, agent strategies and extensions are plugins.
+  evidence: []
+  ours: []
+- id: settings.billing
+  area: settings
+  title: 'Billing, plans, credits, education'
+  dify: [web/app/components/billing]
+  status: not_applicable
+  reason: dify-sf has no billing plans, seats, credits or licenses (Dify Cloud / enterprise).
+  evidence: []
+  ours: []
+- id: settings.preferences
+  area: settings
+  title: 'Preferences tab: appearance, display language, time zone'
+  dify: [web/app/components/header/account-setting/preference-page]
+  status: ported
+  deviation: "Protocol 1.12 (PATCH /v1/account/profile: interface_language, timezone). The appearance stays the app's own setting, as next-themes keeps it in the browser."
+  evidence: ['spec:web/app/components/header/account-setting/preference-page', 'spec:web/app/components/header/account-setting/__tests__/index.spec.tsx']
+  ours: [app/lib/src/settings/preference_page.dart, app/lib/src/settings/account_setting.dart]
+- id: settings.account-timezone
+  area: settings
+  title: "Times in the account's time zone (useTimestamp: logs, annotations, keys; the schedule trigger's zone)"
+  dify: [web/hooks/use-timestamp.ts]
+  status: partial
+  reason: "AccountTime (account zone, else the system's; exact offsets in browsers, Dify's standard offsets with the common DST rules on desktop) and the schedule trigger read it; the app detail pages (logs, annotations, API keys) still format in the system's zone until they call AccountTime."
+  evidence: [app/test/account_page_test.dart]
+  ours: [app/lib/src/auth/account_time.dart, app/lib/src/timezone_offset.dart]
+- id: settings.update-setting-dialog
+  area: settings
+  title: 'Plugin update settings dialog (auto-update strategy, time zone link to Preferences)'
+  dify: [web/app/components/header/account-setting/update-setting-dialog.tsx]
+  status: not_ported
+  reason: Plugin auto-update settings need plugins (no plugin service in dify-sf).
+  evidence: ['spec:web/app/components/header/account-setting/__tests__/update-setting-dialog-form.spec.tsx']
+  ours: []
+- id: settings.custom-archives
+  area: settings
+  title: 'Customization (branding) and workflow log archives tabs'
+  dify: [web/app/components/custom]
+  status: not_applicable
+  reason: Enterprise / cloud features; dify-sf has no branding and no run logs.
+  evidence: []
+  ours: []
+
+# ---------------------------------------------------------------- app-level pages
+- id: app-pages.studio-list
+  area: app-pages
+  title: 'Studio app list: card grid, starred row, infinite scroll, skeletons, empty states'
+  dify: [web/app/components/apps/list.tsx, web/app/components/apps/app-list-catalog.tsx, web/app/components/apps/app-card, web/app/components/apps/starred-app-list.tsx, web/app/components/apps/first-empty-state, web/app/components/apps/empty.tsx, web/app/components/base/infinite-scroll-sentinel]
+  status: partial
+  reason: 'Ported (30 per page, next page while has_more, starred row of 100, "All Apps", first empty state and "No apps here", the 10 s refetch of Dify''s collaboration mode). Not part of dify-sf, by owner decision or because dify-sf has no such service: tags (filter, card strip, management), templates (Create from Template, the template empty-state card, Learn Dify, marketplace template import), the online editors'' avatars on cards (Dify polls an endpoint dify-sf does not have), the step-by-step tour and the Snippets link.'
+  deviation: '"Edited <time>" (sort Last modified) also moves on every committed graph edit (the server bumps updated_at; Dify only on app-row changes).'
+  evidence: ['spec:web/app/components/apps', 'spec:web/app/components/base/infinite-scroll-sentinel', app/test/studio_test.dart]
+  ours: [app/lib/src/studio/studio_page.dart, app/lib/src/studio/app_list_controller.dart, app/lib/src/studio/app_card.dart, app/lib/src/studio/infinite_scroll_sentinel.dart]
+- id: app-pages.studio-filters
+  area: app-pages
+  title: 'Studio filters: types, creators, sort, search'
+  dify: [web/app/components/apps/app-type-filter.tsx, web/app/components/apps/creators-filter.tsx, web/app/components/apps/app-sort-filter.tsx, web/app/components/base/search-input]
+  status: partial
+  reason: Behavior is ported; the new Chinese/English local control captures expose unresolved typography/baseline differences. Whole-Studio visual parity has not been accepted.
+  deviation: The type filter offers All, Workflow and Chatflow only (the modes dify-sf runs; owner decision); other modes stay valid filters and list nothing.
+  evidence: ['spec:web/app/components/apps/__tests__/creators-filter.spec.tsx', 'spec:web/app/components/base/search-input', 'spec:web/app/components/apps/__tests__/list.spec.tsx']
+  ours: [app/lib/src/studio/filters.dart, app/lib/src/studio/search_input.dart, app/lib/src/design/widgets/search_input.dart]
+- id: app-pages.studio-create
+  area: app-pages
+  title: 'Create from Blank (Workflow / Chatflow) and the app type icons'
+  dify: [web/app/components/app/create-app-modal, web/app/components/app/create-app-dropdown.tsx, web/app/components/app/create-app-dialog-shell.tsx, web/app/components/app/type-selector]
+  status: ported
+  deviation: Only Workflow and Chatflow are offered (owner decision); the "for beginners" types (Chatbot, Agent, Text generator) and the "browse templates" link are left out. Configured M2a storage enables image selection, crop and authenticated upload; emoji remains available.
+  evidence: ['spec:web/app/components/app/create-app-modal', 'spec:web/app/components/app/type-selector', visual:studio-create-blank-types, visual:studio-create-blank-types-light, visual:studio-create-blank-preview, visual:studio-create-blank-preview-dark, app/test/studio_test.dart]
+  ours: [app/lib/src/studio/create_app_modal.dart, app/lib/src/studio/app_icons.dart, app/lib/src/design/widgets/app_icon.dart, app/lib/src/studio/filters.dart]
+- id: app-pages.studio-import
+  area: app-pages
+  title: 'Import DSL: file or URL, drag and drop onto the page, DSL version confirmation'
+  dify: [web/app/components/app/create-from-dsl-modal, web/app/components/apps/hooks/use-dsl-drag-drop.ts]
+  status: ported
+  deviation: A URL is fetched by the client (dify-sf's import takes file content), so on the web it is subject to the site's CORS rules.
+  evidence: ['spec:web/app/components/app/create-from-dsl-modal', 'spec:web/app/components/apps/hooks', visual:studio-import-dsl, visual:studio-import-dsl-dark, visual:studio-import-dsl-dialog, visual:studio-import-dsl-dialog-dark, app/test/studio_test.dart]
+  ours: [app/lib/src/studio/create_from_dsl_modal.dart, app/lib/src/studio/dsl_drop.dart]
+- id: app-pages.studio-card-actions
+  area: app-pages
+  title: 'App card actions: star, Edit info, Duplicate, Export DSL (secrets confirmation), Delete (type the name)'
+  dify: [web/app/components/apps/app-card/interactions.tsx, web/app/components/explore/create-app-modal, web/app/components/app/duplicate-modal, web/app/components/app/use-export-app-dsl.ts]
+  status: ported
+  deviation: Open in Explore, Access config and Switch are left out (no Explore, no web-app access control, and dify-sf holds no chat / completion apps).
+  evidence: ['spec:web/app/components/explore/create-app-modal', 'spec:web/app/components/app/duplicate-modal', 'spec:web/app/components/app', 'spec:web/app/components/apps/__tests__/app-card.spec.tsx']
+  ours: [app/lib/src/studio/app_card.dart, app/lib/src/studio/app_modals.dart]
+- id: app-pages.studio-roles
+  area: app-pages
+  title: 'Studio rights: who creates, manages and opens apps'
+  dify: [web/utils/permission.ts, web/utils/app-redirection.ts, api/services/enterprise/rbac_service.py]
+  status: ported
+  deviation: 'Normal members and dataset operators see every card and star, but have no Create and no More menu; their card opens the app where Dify sends them (normal members: Monitoring; dataset operators: Access Point).'
+  evidence: [app/test/studio_test.dart, app/test/app_detail_test.dart]
+  ours: [app/lib/src/studio/studio_scope.dart, app/lib/src/home_page.dart]
+- id: app-pages.studio-tags
+  area: app-pages
+  title: 'App tags: tag filter, tags on cards, tag management'
+  dify: [web/features/tag-management, web/app/components/apps/app-list-tag-management-modal.tsx]
+  status: not_ported
+  reason: Left out by owner decision (2026-10-19); dify-sf's apps have no tags (`tags` is always empty).
+  evidence: []
+  ours: []
+- id: app-pages.studio-templates
+  area: app-pages
+  title: 'Create from Template, Learn Dify, marketplace template import'
+  dify: [web/app/components/app/create-app-dialog, web/app/components/explore/learn-dify, web/app/components/apps/import-from-marketplace-template-modal.tsx]
+  status: not_ported
+  reason: Left out by owner decision (2026-10-19); dify-sf has no template gallery or marketplace.
+  evidence: []
+  ours: []
+- id: app-pages.deleted-app
+  area: app-pages
+  title: 'An open editor of a deleted app returns to the Studio'
+  dify: []
+  status: dify_sf_only
+  reason: 'Collaboration: someone else deletes the app while it is open; the editor shows "App deleted" and the app closes (back to the Studio) instead of reconnecting forever.'
+  evidence: [app/test/studio_test.dart, app/test/app_detail_test.dart]
+  ours: [app/lib/src/editor/editor_page.dart, app/lib/src/app_detail/app_detail_page.dart]
+- id: app-pages.documents
+  area: app-pages
+  title: 'Developer start form: open or create a document by id, the demo'
+  dify: []
+  status: dify_sf_only
+  reason: Shown when the server has no apps API (and for the in-memory demo); `--doc` opens a document directly.
+  evidence: [app/test/home_test.dart]
+  ours: [app/lib/src/home_page.dart]
+- id: app-pages.main-nav
+  area: app-pages
+  title: 'Main navigation: logo, workspace card, account section'
+  dify: [web/app/components/main-nav]
+  status: partial
+  reason: Logo, workspace card and account section are ported; Dify's search, navigation links, web apps and help menu are not part of dify-sf.
+  evidence: [visual:nav-main]
+  ours: [app/lib/src/home_page.dart]
+- id: app-pages.app-sidebar
+  area: app-pages
+  title: 'App detail sidebar: home and Studio links, collapse (button, Mod+B, remembered), hover preview, page navigation by role and mode, account section'
+  dify: [web/app/components/app-sidebar, web/app/components/detail-sidebar]
+  status: ported
+  deviation: "Dify's Goto Anything button and help menu are not part of dify-sf (as in the main navigation); Deploy and Resource Access never show (enterprise / RBAC)."
+  evidence: ['spec:web/app/components/app-sidebar/__tests__/app-detail-section.spec.tsx', 'spec:web/app/components/app-sidebar/__tests__/app-detail-top.spec.tsx', 'spec:web/app/components/app-sidebar/nav-link', 'spec:web/app/components/detail-sidebar', app/test/app_detail_test.dart]
+  ours: [app/lib/src/app_detail/detail_sidebar.dart, app/lib/src/app_detail/app_sidebar.dart]
+- id: app-pages.app-detail-routing
+  area: app-pages
+  title: 'Opening an app: the page each role lands on, route guards, window title, pages kept alive (the editor keeps its session), a deleted app returns to the Studio'
+  dify: ['web/app/(commonLayout)/app/(appDetailLayout)', web/utils/permission.ts, web/utils/app-redirection.ts]
+  status: ported
+  deviation: "Pages switch in place (no URLs yet); a page that is not shown keeps its state but gets no ticks, focus or page-wide keys. Owners, admins and editors land on the editor, normal members on Monitoring, dataset operators on the Access Point (as Dify); `--doc` and the demo keep the bare editor."
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/__tests__/layout-main.spec.tsx', 'spec:web/utils/permission.spec.ts', 'spec:web/utils/app-redirection.spec.ts', app/test/app_detail_test.dart, app/test/studio_test.dart, app/integration_test/app_detail_flow_test.dart]
+  ours: [app/lib/src/app_detail/app_detail_page.dart, app/lib/src/app_detail/app_permission.dart, app/lib/src/app_detail/detail_page_slot.dart, app/lib/src/home_page.dart]
+- id: app-pages.app-info-menu
+  area: app-pages
+  title: 'App info in the sidebar: icon, name, mode; menu with Edit info, Duplicate, Export DSL (saved-version warning, secrets), Import DSL over the app, Delete'
+  dify: [web/app/components/app-sidebar/app-info]
+  status: ported
+  deviation: "Live updates come from the server, not from peers: Dify's editors emit app_meta_update to each other after Edit Info; dify-sf's server sends event: app on the document's stream after any change to the app (protocol 1.11 amendment), and the open editor refetches the app, so the sidebar, window title and editor header follow (as in Dify, only while the app's editor has been opened). Switch to Workflow Orchestrate applies to chat / completion apps, which dify-sf does not have."
+  evidence: ['spec:web/app/components/app-sidebar/app-info', app/test/app_detail_test.dart, packages/collab_client/test/app_events_test.dart]
+  ours: [app/lib/src/app_detail/app_info_actions.dart, app/lib/src/app_detail/app_sidebar.dart]
+- id: app-pages.overview-charts
+  area: app-pages
+  title: 'Monitoring (overview) page: time range, the workflow and chatflow statistics charts'
+  dify: ['web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview', web/app/components/app/overview/app-chart.tsx, web/app/components/app/overview/app-chart-utils.ts]
+  status: partial
+  reason: "The charts are complete, but published web-app and service-API execution is not implemented: editor draft debug runs do not produce these statistics, so the charts stay empty until published traffic exists; demos and tests use mock data. Dify's Cloud custom date range is not part of the community edition."
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/view.spec.tsx', 'spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/__tests__/chart-view.spec.tsx', 'spec:web/app/components/app/overview/__tests__/app-chart-utils.spec.ts', 'spec:web/app/components/app/overview/__tests__/app-chart.spec.tsx', app/test/app_detail_overview_test.dart, visual:app-overview]
+  ours: [app/lib/src/app_detail/overview/overview_page.dart, app/lib/src/app_detail/overview/app_chart.dart, app/lib/src/app_detail/overview/app_chart_canvas.dart, app/lib/src/app_detail/overview/app_chart_utils.dart, app/lib/src/app_detail/overview/time_range.dart]
+- id: app-pages.overview-apikey-panel
+  area: app-pages
+  title: "Monitoring: the 'set up a model provider' banner until an LLM provider is active"
+  dify: [web/app/components/app/overview/apikey-info-panel]
+  status: ported
+  evidence: ['spec:web/app/components/app/overview/apikey-info-panel']
+  ours: [app/lib/src/app_detail/overview/apikey_info_panel.dart]
+- id: app-pages.tracing-config
+  area: app-pages
+  title: 'Monitoring: tracing configuration (Langfuse, LangSmith, Opik and other providers)'
+  dify: ['web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing']
+  status: not_ported
+  reason: Later phase by owner decision (2026-10-19); the Monitoring header leaves the tracing button out until per-app trace configuration exists on the server.
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing']
+  ours: []
+- id: app-pages.workflow-logs
+  area: app-pages
+  title: 'Workflow app logs: filters, table, pagination, run detail drawer (result, detail, tracing)'
+  dify: [web/app/components/app/workflow-log, web/app/components/app/log-annotation]
+  status: partial
+  reason: "The page is complete, but published web-app and service-API execution is not implemented: editor debug runs are excluded from this log (as in Dify), so the list stays empty (Dify's empty state) until web-app or API traffic exists; demos and tests use mock runs."
+  evidence: ['spec:web/app/components/app/workflow-log', 'spec:web/app/components/app/log-annotation', app/test/app_detail_logs_test.dart, visual:app-logs-workflow]
+  ours: [app/lib/src/app_detail/logs/logs_page.dart, app/lib/src/app_detail/logs/workflow_log.dart, app/lib/src/app_detail/logs/log_widgets.dart]
+- id: app-pages.chat-logs
+  area: app-pages
+  title: 'Chatflow logs: filters, conversation table, pagination, conversation drawer (transcript, variables, feedback)'
+  dify: [web/app/components/app/log]
+  status: partial
+  reason: "Published web-app and service-API execution is not implemented: no conversations exist until that traffic does, so the list shows Dify's empty state (demos and tests use mock conversations); admin feedback is real (POST /feedbacks, a dislike asks for a comment first, as Dify) but has no messages to rate until a runtime exists; the transcript has no add / edit annotation buttons."
+  evidence: ['spec:web/app/components/app/log', app/test/app_detail_logs_test.dart, visual:app-logs-empty]
+  ours: [app/lib/src/app_detail/logs/chat_log.dart, app/lib/src/app_detail/logs/list_utils.dart, app/lib/src/app_detail/logs/logs_data.dart, app/lib/src/app_detail/logs/log_widgets.dart]
+- id: app-pages.deploy
+  area: app-pages
+  title: 'Deploy page (deployment environments)'
+  dify: [web/app/components/app/deploy]
+  status: not_applicable
+  reason: Enterprise only (app.acl.deploy, which no community-edition role holds).
+  evidence: []
+  ours: []
+- id: app-pages.resource-access
+  area: app-pages
+  title: 'Resource Access page (per-app access configuration)'
+  dify: [web/app/components/app/access-config]
+  status: not_applicable
+  reason: Needs RBAC, an enterprise feature; the community edition never shows it.
+  evidence: ['spec:web/app/(commonLayout)/app/(appDetailLayout)/[appId]/access-config']
+  ours: []
+- id: app-pages.webapp-access-control
+  area: app-pages
+  title: 'Web app access control (who may use the web app)'
+  dify: [web/app/components/app/app-access-control]
+  status: not_applicable
+  reason: Enterprise web-app authentication (webapp_auth); the community edition's web apps are public.
+  evidence: []
+  ours: []
+- id: app-pages.log-retention
+  area: app-pages
+  title: 'Log retention and archive notices'
+  dify: [web/app/components/app/log/archived-logs-notice.tsx, web/app/components/app/log/retention-upgrade-notice.tsx]
+  status: not_applicable
+  reason: Dify Cloud plans only.
+  evidence: []
+  ours: []
+- id: app-pages.access-point
+  area: app-pages
+  title: 'Access Point page: Web App and Service API cards (switches, URL, copy, QR code with download, regenerate, open), the unpublished banner'
+  dify: [web/app/components/app/access-point, web/app/components/base/access-point, web/app/components/base/qrcode]
+  status: ported
+  deviation: "The built-in environment only (deployment environments are enterprise); the Web App URL and the service API lead nowhere until dify-sf implements published web-app and service-API execution. Dify's community-edition role quirks are kept: an editor sees the API switch and Regenerate enabled, the server refuses them (403) and Dify's error toast shows."
+  evidence: ['spec:web/app/components/app/access-point', 'spec:web/app/components/base/qrcode', app/test/access_point_page_test.dart, app/test/access_point_app_test.dart, visual:app-access-point]
+  ours: [app/lib/src/app_detail/access/access_point_page.dart, app/lib/src/app_detail/access/web_app_card.dart, app/lib/src/app_detail/access/service_api_card.dart, app/lib/src/app_detail/access/access_point_card.dart]
+- id: app-pages.web-app-settings
+  area: app-pages
+  title: 'Web App settings (Branding): name, icon, description, answer icon, language, chat colour, workflow details, placeholder, copyright, privacy policy, disclaimer'
+  dify: [web/app/components/app/overview/settings]
+  status: ported
+  deviation: Community edition rules (as Dify self-hosted) - copyright locked, the input placeholder editable; image icons use the configured M2a upload service and freshly signed URLs.
+  evidence: ['spec:web/app/components/app/overview/settings', app/test/access_point_page_test.dart]
+  ours: [app/lib/src/app_detail/access/site_settings_modal.dart]
+- id: app-pages.embed-customize
+  area: app-pages
+  title: 'Embed on website (iframe, script, Chrome extension, hidden inputs), Customize, Launch with hidden inputs'
+  dify: [web/app/components/app/overview/embedded, web/app/components/app/overview/customize, web/app/components/app/overview/workflow-launch-dialog, web/app/components/app/overview/app-card-utils.ts]
+  status: ported
+  deviation: Hidden inputs are gzipped with package:archive on every platform (Dify falls back to plain base64 without CompressionStream); the snippets point at published web-app execution that dify-sf does not implement yet.
+  evidence: ['spec:web/app/components/app/overview/embedded', 'spec:web/app/components/app/overview/__tests__/app-card-utils.spec.ts', 'spec:web/app/components/app/overview/__tests__/workflow-launch-dialog.spec.tsx', 'spec:web/app/components/app/overview/__tests__/workflow-hidden-input-fields.spec.tsx']
+  ours: [app/lib/src/app_detail/access/embedded_modal.dart, app/lib/src/app_detail/access/customize_modal.dart, app/lib/src/app_detail/access/workflow_launch_dialog.dart, app/lib/src/app_detail/access/access_point_utils.dart]
+- id: app-pages.api-keys
+  area: app-pages
+  title: 'Service API secret keys: list (masked), copy, create (shown once), delete, the count badge'
+  dify: [web/app/components/api-key, web/app/components/app/access-point/shared/api-secret-key-button.tsx]
+  status: ported
+  deviation: Keys are stored encrypted with the server's secrets key plus a lookup hash (Dify stores them in plaintext); app keys only (no dataset or environment keys).
+  evidence: ['spec:web/app/components/api-key', app/test/access_point_page_test.dart, visual:app-api-keys]
+  ours: [app/lib/src/app_detail/access/api_key_modal.dart, app/lib/src/app_detail/access/service_api_card.dart]
+- id: app-pages.api-reference
+  area: app-pages
+  title: 'API Reference (the service API documentation of the app mode)'
+  dify: [web/app/components/app/access-point/shared/utils.ts, web/context/i18n.ts]
+  status: ported
+  deviation: Dify 1.17.1 has no in-app reference either; the button opens docs.dify.ai's reference for the app mode (useDocLink), as Dify does.
+  evidence: ['spec:web/app/components/app/access-point/__tests__/service-api-card.spec.tsx']
+  ours: [app/lib/src/app_detail/access/access_point_utils.dart]
+- id: app-pages.mcp-trigger-access-points
+  area: app-pages
+  title: 'MCP server and Trigger access points'
+  dify: [web/app/components/app/access-point/built-in-access-points/mcp-card.tsx, web/app/components/app/access-point/built-in-access-points/trigger-card.tsx]
+  status: partial
+  reason: dify-sf has no MCP server or trigger runtime - the MCP card is shown unavailable and the Trigger card with Dify's empty content (no triggers to switch).
+  evidence: ['spec:web/app/components/app/access-point/__tests__/mcp-card.spec.tsx', 'spec:web/app/components/app/access-point/__tests__/trigger-card.spec.tsx']
+  ours: [app/lib/src/app_detail/access/mcp_trigger_cards.dart]
+- id: app-pages.annotations
+  area: app-pages
+  title: 'Annotations page (chatflows): list, search, batch delete, add (create next), edit, view, remove, clear all, CSV import with template, CSV / JSONL export'
+  dify: [web/app/components/app/annotation]
+  status: ported
+  deviation: CSV import runs at once on the server (Dify runs a job; the job is polled the same way and is complete at the first poll).
+  evidence: ['spec:web/app/components/app/annotation', 'spec:web/app/components/app/annotation/add-annotation-modal', 'spec:web/app/components/app/annotation/add-annotation-modal/edit-item', 'spec:web/app/components/app/annotation/edit-annotation-modal', 'spec:web/app/components/app/annotation/edit-annotation-modal/edit-item', 'spec:web/app/components/app/annotation/view-annotation-modal', 'spec:web/app/components/app/annotation/remove-annotation-confirm-modal', 'spec:web/app/components/app/annotation/clear-all-annotations-confirm-modal', 'spec:web/app/components/app/annotation/header-opts', 'spec:web/app/components/app/annotation/batch-add-annotation-modal', app/test/annotations_page_test.dart, visual:app-annotations]
+  ours: [app/lib/src/app_detail/annotations/annotations_page.dart, app/lib/src/app_detail/annotations/annotation_list.dart, app/lib/src/app_detail/annotations/annotation_modals.dart, app/lib/src/app_detail/annotations/batch_add_modal.dart, app/lib/src/app_detail/annotations/header_opts.dart]
+- id: app-pages.annotation-reply-settings
+  area: app-pages
+  title: 'Annotation Reply: switch and settings (embedding model, score threshold)'
+  dify: [web/app/components/app/annotation/index.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/score-slider]
+  status: partial
+  reason: The setting is stored (the enable / disable jobs complete at once), but annotation embedding, matching and automatic replies are not implemented.
+  evidence: ['spec:web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/config-param-modal.spec.tsx', 'spec:web/app/components/base/features/new-feature-panel/annotation-reply/score-slider', app/test/annotations_page_test.dart]
+  ours: [app/lib/src/app_detail/annotations/config_param_modal.dart, app/lib/src/app_detail/annotations/annotations_page.dart]
+- id: app-pages.annotation-hit-history
+  area: app-pages
+  title: 'Annotation hit history (the view dialog''s second tab)'
+  dify: [web/app/components/app/annotation/view-annotation-modal]
+  status: partial
+  reason: Annotation reply matching is not implemented, so hit history stays empty; the tab, table and paging are ported.
+  evidence: ['spec:web/app/components/app/annotation/view-annotation-modal']
+  ours: [app/lib/src/app_detail/annotations/annotation_modals.dart]
+- id: app-pages.knowledge
+  area: app-pages
+  title: 'Knowledge (datasets) pages'
+  dify: [web/app/components/datasets]
+  status: not_ported
+  reason: outside current scope (owner to decide).
+  evidence: []
+  ours: []
+- id: app-pages.explore-templates
+  area: app-pages
+  title: 'Explore, templates, snippets, agents and skills pages'
+  dify: [web/app/components/explore, web/app/components/snippets, web/app/(commonLayout)/templates, web/app/(commonLayout)/agents]
+  status: not_ported
+  reason: outside current scope (owner to decide).
+  evidence: []
+  ours: []
+- id: app-pages.web-app
+  area: app-pages
+  title: 'Published web app (share pages, chat / workflow runner, human input form pages)'
+  dify: [web/app/(shareLayout), web/app/(humanInputLayout), web/app/components/share]
+  status: not_ported
+  reason: Planned in runtime P6; public web-app execution and end-user sessions are not implemented.
+  evidence: []
+  ours: []
+
+# ---------------------------------------------------------------- collaboration (dify-sf's own)
+- id: collaboration.live-sync
+  area: collaboration
+  title: 'Live multi-user editing: every edit is an op (HTTP POST) confirmed by the server, updates over SSE'
+  dify: [web/app/components/workflow/collaboration]
+  status: dify_sf_only
+  reason: dify-sf's collaboration protocol (docs/protocol.md, 1.8) replaces Dify's Loro CRDT over websocket; its promise is that an acknowledged edit is never lost.
+  evidence: [docs/protocol.md, app/test/editor_test.dart]
+  ours: [packages/collab_client/lib/collab_client.dart, app/lib/src/editor/editor_controller.dart]
+- id: collaboration.dify-loro
+  area: collaboration
+  title: 'Dify collaboration manager (Loro CRDT, socket subscriptions, leader election, cursor service)'
+  dify: [web/app/components/workflow/collaboration/core, web/app/components/workflow/collaboration/hooks, web/app/components/workflow/collaboration/services, web/app/components/workflow/hooks/use-collaborative-workflow.ts]
+  status: not_applicable
+  reason: Replaced by dify-sf's own protocol (see live sync); the Loro bridge's specs test Dify's transport, which dify-sf does not use.
+  evidence: ['spec:web/app/components/workflow/collaboration/core', 'spec:web/app/components/workflow/collaboration/hooks', 'spec:web/app/components/workflow/collaboration/services', 'spec:web/app/components/workflow/hooks/__tests__/use-collaborative-workflow.spec.ts']
+  ours: []
+- id: collaboration.conflicts
+  area: collaboration
+  title: 'Conflict policy: layout last-writer-wins; stale config / prompt / edge writes refused and the user notified with the lost value'
+  dify: []
+  status: dify_sf_only
+  reason: Dify silently overwrites (33 of 88 catalog cases lose an edit in Dify, 0 in dify-sf).
+  evidence: [app/test/notices_test.dart]
+  ours: [app/lib/src/editor/notices.dart, app/lib/src/editor/notice_overlay.dart]
+- id: collaboration.offline
+  area: collaboration
+  title: 'Offline journal and reconnect: unsent edits survive a closed tab / crash and are re-sent idempotently'
+  dify: []
+  status: dify_sf_only
+  reason: dify-sf client journal (per account) and the protocol's clientId + seq idempotency.
+  evidence: [app/test/identity_test.dart]
+  ours: [packages/collab_client/lib/collab_client.dart, app/lib/src/session_factory.dart]
+- id: collaboration.session-menu
+  area: collaboration
+  title: 'Session menu and offline pill: link state, unsaved edits, last seq, Reconnect now'
+  dify: []
+  status: dify_sf_only
+  reason: dify-sf's own status UI on Dify's auto-saved line.
+  evidence: [app/test/home_test.dart]
+  ours: [app/lib/src/workflow_editor/dify_editor.dart]
+- id: collaboration.forbidden
+  area: collaboration
+  title: 'Refused submissions: a 403 on ops is final, one notice, editor read-only until the role allows editing'
+  dify: []
+  status: dify_sf_only
+  reason: dify-sf protocol 1.8 behaviour (Dify has no equivalent).
+  evidence: [app/test/role_downgrade_test.dart]
+  ours: [app/lib/src/editor/notices.dart, app/lib/src/editor/editor_controller.dart]
+- id: collaboration.presence
+  area: collaboration
+  title: 'Presence: collaborators'' cursors on the canvas, who is viewing a node'
+  dify: [web/app/components/workflow/collaboration/components/user-cursors.tsx, web/app/components/workflow/collaboration/utils/user-color.ts]
+  status: not_ported
+  reason: dify-sf's protocol has no presence channel yet (online users show only the signed-in user).
+  evidence: []
+  ours: [app/lib/src/workflow_editor/header/online_users.dart]
+- id: collaboration.demo
+  area: collaboration
+  title: 'Demo mode and launch options (?server=, ?doc=, ?demo=1, ?view=, --name)'
+  dify: []
+  status: dify_sf_only
+  reason: dify-sf's own developer / test entry points.
+  evidence: [app/test/home_test.dart]
+  ours: [app/lib/src/launch_options.dart, app/lib/src/demo/demo_backend.dart]
+
+# ---------------------------------------------------------------- DSL
+- id: dsl.import
+  area: dsl
+  title: 'Import a Dify DSL (YAML) as a new workflow'
+  dify: [web/app/components/app/create-from-dsl-modal, web/app/components/workflow/update-dsl-modal.tsx]
+  status: partial
+  reason: 'The editor imports a YAML file into its current collaborative document, including version confirmation and metadata refresh. Home-page import remains paste-only; URL import and plugin dependency installation are unavailable.'
+  evidence: [app/test/dsl_test.dart]
+  ours: [app/lib/src/home_page.dart]
+- id: dsl.export
+  area: dsl
+  title: 'Export DSL (with the secret environment variables confirm)'
+  dify: [web/app/components/workflow/dsl-export-confirm-modal.tsx, web/app/components/workflow/hooks/use-DSL.ts]
+  status: ported
+  deviation: The YAML is shown in a dialog with Copy (no file download). Including secret values is allowed to owners / admins only (Dify lets anyone who can export).
+  evidence: ['spec:web/app/components/workflow/__tests__/dsl-export-confirm-modal.spec.tsx', app/test/dsl_test.dart]
+  ours: [app/lib/src/workflow_editor/dsl/dsl_export_confirm_modal.dart, app/lib/src/editor/editor_page.dart]
+- id: dsl.dify-compat
+  area: dsl
+  title: 'Dify reads dify-sf''s export like the original (acceptance on 24 samples)'
+  dify: [api/services/app_dsl_service.py]
+  status: dify_sf_only
+  reason: dify-sf's own acceptance test against a real Dify 1.17.1.
+  evidence: [docs/protocol.md]
+  ours: []
+
+# ---------------------------------------------------------------- design, i18n
+- id: design.i18n
+  area: design
+  title: 'UI in Dify''s 24 languages (Dify''s own translation files), language chosen at sign-in or with ?lang= / --lang'
+  dify: [web/i18n, web/i18n-config]
+  status: ported
+  evidence: [app/test/i18n_test.dart]
+  ours: [app/lib/src/i18n/dify_i18n.dart, app/lib/src/i18n/app_locale.dart, tool/gen_dify_i18n.py]
+- id: design.tokens
+  area: design
+  title: 'Design tokens: colours, typography, shadows, radii, gradients; Dify icons'
+  dify: [packages/dify-ui/src/themes/light.css, packages/dify-ui/src/styles/styles.css, packages/dify-ui/src/styles/utilities.css]
+  status: ported
+  evidence: [visual:canvas-basic-llm]
+  ours: [app/lib/src/design/dify_tokens.g.dart, app/lib/src/design/dify_palette.dart, app/lib/src/design/dify_type_tw.dart, app/lib/src/design/dify_run_status.dart, app/lib/src/design/dify_icon.dart, tool/gen_dify_tokens.py, tool/gen_dify_icons.py]
+- id: design.svg-effects
+  area: design
+  title: 'Original SVG icons: bitmap patterns, Gaussian blur, drop shadows and inner shadows'
+  dify: [web/public, web/app/components/base/icons]
+  status: partial
+  reason: 'The pinned Flutter vector stack renders bitmap patterns and the blur/blend/composite graphs used by common icons, including alpha masks. Five icons retain their unfiltered appearance because morphology, turbulence, displacement and component transfer are deferred. Text pattern bounds and pattern viewBox are unsupported; existing nonsquare preserveAspectRatio=none icons still differ from Chromium when contained in a square. CanvasKit antialiasing differs from Chromium; the pinned compiler also corrects opacity quantization, with minor per-icon threshold changes recorded in the full comparison artifacts.'
+  evidence: [app/test/provider_icon_render_test.dart, third_party/flutter_vector_graphics/packages/vector_graphics/test/filters/dify_extensions_test.dart, tool/visual/svg_inventory.py]
+  ours: [third_party/flutter_vector_graphics/PATCHES.md, third_party/flutter_vector_graphics/packages, app/pubspec.yaml, tool/visual/render_svg_inventory.dart, tool/visual/svg_gallery.dart]
+- id: design.dark-theme
+  area: design
+  title: 'Dark theme: light / dark / system (remembered, system follows the OS), Appearance submenu in the account menu, theme selector on the sign-in pages, ?theme= / --theme'
+  dify: [packages/dify-ui/src/themes/dark.css, web/themes/manual-dark.css, web/app/layout.tsx, web/app/components/base/theme-selector.tsx, web/app/components/header/account-dropdown/main-nav-menu-content.tsx, web/app/components/workflow/run/status-container.tsx, web/app/components/base/logo/dify-logo.tsx]
+  status: ported
+  evidence: ['spec:web/app/components/base/__tests__/theme-selector.spec.tsx', 'spec:web/app/components/header/account-dropdown', app/test/dark_theme_test.dart]
+  ours: [app/lib/src/design/dify_theme_mode.dart, app/lib/src/design/dify_tokens.g.dart, tool/gen_dify_tokens.py, app/lib/src/auth/account_dropdown.dart, app/lib/src/auth/widgets/auth_widgets.dart]
+- id: design.toast
+  area: design
+  title: 'Toasts'
+  dify: [packages/dify-ui/src/toast]
+  status: ported
+  evidence: ['spec:packages/dify-ui/src/toast', visual:toast-publish, app/test/toast_wiring_test.dart]
+  ours: [app/lib/src/design/widgets/toast.dart]
+- id: design.primitives-ported
+  area: design
+  title: 'dify-ui primitives with ported specs: button, icon button, kbd, tooltip, popover, context menu, dropdown menu'
+  dify: [packages/dify-ui/src/button, packages/dify-ui/src/icon-button, packages/dify-ui/src/kbd, packages/dify-ui/src/tooltip, packages/dify-ui/src/popover, packages/dify-ui/src/context-menu, packages/dify-ui/src/dropdown-menu]
+  status: ported
+  evidence: ['spec:packages/dify-ui/src/button', 'spec:packages/dify-ui/src/icon-button', 'spec:packages/dify-ui/src/kbd', 'spec:packages/dify-ui/src/tooltip', 'spec:packages/dify-ui/src/popover', 'spec:packages/dify-ui/src/context-menu', 'spec:packages/dify-ui/src/dropdown-menu', app/test/design_widgets_test.dart]
+  ours: [app/lib/src/design/widgets/button.dart, app/lib/src/design/widgets/menu.dart, app/lib/src/design/widgets/tooltip.dart, app/lib/src/design/widgets/popover.dart]
+- id: design.primitives-unspecced
+  area: design
+  title: 'dify-ui form and layout primitives: select, number field, switch, slider, textarea, checkbox, input, segmented control, dialog, avatar, ...'
+  dify: [packages/dify-ui/src/select, packages/dify-ui/src/number-field, packages/dify-ui/src/switch, packages/dify-ui/src/slider, packages/dify-ui/src/textarea, packages/dify-ui/src/checkbox, packages/dify-ui/src/input, packages/dify-ui/src/segmented-control, packages/dify-ui/src/dialog, packages/dify-ui/src/avatar]
+  status: partial
+  reason: Flutter counterparts exist where ported features use them (DifySelect, DifyNumberField, DifySwitch, DifySlider, DifyTextarea, DifyCheckbox, DifyInput, DifySegmentedControl, DifyDialogSurface, DifyAvatar), but their own dify-ui spec cases are still to do in the ledger.
+  deviation: Some feature pages still construct controls directly from component tokens; the remaining reuse work is tracked by tool/design/allowlist.tsv.
+  evidence: ['spec:packages/dify-ui/src/select', 'spec:packages/dify-ui/src/number-field', 'spec:packages/dify-ui/src/switch', 'spec:packages/dify-ui/src/slider', 'spec:packages/dify-ui/src/textarea', 'spec:packages/dify-ui/src/checkbox', 'spec:packages/dify-ui/src/input', 'spec:packages/dify-ui/src/input-group', 'spec:packages/dify-ui/src/segmented-control', 'spec:packages/dify-ui/src/dialog', 'spec:packages/dify-ui/src/alert-dialog', 'spec:packages/dify-ui/src/drawer', 'spec:packages/dify-ui/src/avatar', 'spec:packages/dify-ui/src/radio-group', 'spec:packages/dify-ui/src/field', 'spec:packages/dify-ui/src/fieldset', 'spec:packages/dify-ui/src/form', 'spec:packages/dify-ui/src/scroll-area', 'spec:packages/dify-ui/src/collapsible', 'spec:packages/dify-ui/src/tabs', 'spec:packages/dify-ui/src/toggle', 'spec:packages/dify-ui/src/status-dot', 'spec:packages/dify-ui/src/progress', 'spec:packages/dify-ui/src/preview-card', 'spec:packages/dify-ui/src/combobox', 'spec:packages/dify-ui/src/file-tree']
+  ours: [app/lib/src/design/widgets/select.dart, app/lib/src/design/widgets/number_field.dart, app/lib/src/design/widgets/switch.dart, app/lib/src/design/widgets/slider.dart, app/lib/src/design/widgets/textarea.dart, app/lib/src/design/widgets/checkbox.dart, app/lib/src/design/widgets/input.dart, app/lib/src/design/widgets/segmented_control.dart, app/lib/src/design/widgets/dialog.dart, app/lib/src/design/widgets/avatar.dart]
+- id: design.primitives-unused
+  area: design
+  title: 'dify-ui primitives no ported feature uses yet: pagination, autocomplete, checkbox group, meter'
+  dify: [packages/dify-ui/src/pagination, packages/dify-ui/src/autocomplete, packages/dify-ui/src/checkbox-group, packages/dify-ui/src/meter]
+  status: not_ported
+  reason: 'Decided (2026-10-18): not built until a ported feature uses them; their specs stay to do.'
+  evidence: ['spec:packages/dify-ui/src/pagination', 'spec:packages/dify-ui/src/autocomplete', 'spec:packages/dify-ui/src/checkbox-group', 'spec:packages/dify-ui/src/meter']
+  ours: []
+- id: design.test-harness
+  area: design
+  title: 'Dify test harness and fixtures (workflow-test-env, model provider fixtures)'
+  dify: [web/app/components/workflow/__tests__/workflow-test-env.tsx]
+  status: not_applicable
+  reason: Tests of Dify's own test helpers, not product code; dify-sf's harnesses are Dart helpers.
+  evidence: ['spec:web/app/components/workflow/__tests__/workflow-test-env.spec.tsx']
+  ours: []
+
+- id: app-pages.file-storage
+  area: app-pages
+  title: 'M2a files: authenticated multipart upload, signed original delivery and app/site image icons'
+  dify: [api/controllers/console/files.py, api/core/app/workflow/file_runtime.py, web/app/components/base/app-icon-picker]
+  status: ported
+  deviation: 'Local persistent directory plus Postgres metadata; configuration-only signing secret, default 300-second Dify signatures, ranges and safe attachment delivery. UTF-8 text preview is limited to plain formats; PDF/Office extraction and the document-extractor runtime remain unported and explicitly return unsupported. M2b runtime file values and vision are not advertised by this milestone.'
+  evidence: [packages/collab_client/test/files_test.dart, app/test/design/app_icon_picker_test.dart, app/integration_test/files_flow_test.dart]
+  ours: [packages/collab_client/lib/src/files_api.dart, packages/collab_client/lib/src/transport/http_app_detail_api.dart, app/lib/src/files/upload_service.dart, app/lib/src/home_page.dart, app/lib/src/app_detail/access/site_settings_modal.dart]
+
+- id: design.text-selection
+  area: design
+  title: 'Page text selection and copy with a shared Dify context menu'
+  dify: [web/app/components/base/markdown/index.tsx]
+  status: partial
+  reason: Pages, dialogs and drawers use a shared selection region for plain/rich text and Markdown, preserving block separators and local input editing. Canvas drag targets and buttons exclude passive text selection. Full virtualized-list, table-copy and browser/input-method parity is not yet accepted.
+  evidence: [app/test/design/page_selection_test.dart, app/test/workflow_editor/page_selection_canvas_test.dart, app/test/workflow_editor/canvas_connect_and_drag_test.dart]
+  ours: [app/lib/src/design/widgets/selection.dart, app/lib/src/design/widgets/page.dart, app/lib/src/design/widgets/page_route.dart, app/lib/src/design/widgets/dialog.dart, app/lib/src/design/widgets/drawer.dart, app/lib/src/design/platform_input.dart]

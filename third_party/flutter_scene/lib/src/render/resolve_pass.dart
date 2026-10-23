@@ -1,0 +1,183 @@
+import 'dart:typed_data';
+
+import 'package:flutter_scene/src/gpu/gpu.dart' as gpu;
+import 'package:flutter_scene/src/gpu/render_pass_compat.dart';
+
+import 'package:flutter_scene/src/material/material.dart';
+import 'package:flutter_scene/src/post_process/post_process.dart';
+import 'package:flutter_scene/src/render/auto_exposure_pass.dart';
+import 'package:flutter_scene/src/render/bloom_pass.dart';
+import 'package:flutter_scene/src/render/render_graph.dart';
+import 'package:flutter_scene/src/render/resolve_info.dart';
+import 'package:flutter_scene/src/render/scene_pass.dart';
+import 'package:flutter_scene/src/shaders.dart';
+import 'package:flutter_scene/src/tone_mapping.dart';
+import 'package:flutter_scene/src/render/frame_transients.dart';
+import 'package:flutter_scene/src/scene_encoder.dart' show resolvePipeline;
+import 'package:flutter_scene/src/render/uniform_slots.dart';
+
+/// Render-graph blackboard key for the display-referred color the resolve
+/// pass produces. After-tone-mapping custom effects read it and republish
+/// their own output.
+const String kDisplayColorBlackboardKey = 'display_color';
+
+/// Resolves the linear HDR scene color (a floating-point render target
+/// produced by [ScenePass], read from the blackboard) into the
+/// display-referred image: applies exposure, optional color grading, the
+/// tone mapping operator, and display encoding as a single full-screen
+/// pass. Writes into [outputColor] and publishes it on the blackboard.
+class ResolvePass extends RenderGraphPass {
+  ResolvePass({
+    required gpu.Texture outputColor,
+    required double exposure,
+    required ToneMappingMode toneMappingMode,
+    required double agxWhite,
+    required double agxContrast,
+    required PostProcessSettings postProcess,
+    bool debugViewActive = false,
+    double debugViewSplit = -1.0,
+    bool debugSkipsPost = false,
+  }) : _outputColor = outputColor,
+       _exposure = exposure,
+       _toneMappingMode = toneMappingMode,
+       _agxWhite = agxWhite,
+       _agxContrast = agxContrast,
+       _postProcess = postProcess,
+       _debugViewActive = debugViewActive,
+       _debugViewSplit = debugViewSplit,
+       _debugSkipsPost = debugSkipsPost;
+
+  final gpu.Texture _outputColor;
+  final double _exposure;
+  final ToneMappingMode _toneMappingMode;
+  final double _agxWhite;
+  final double _agxContrast;
+  final PostProcessSettings _postProcess;
+  // A surface debug view is active: its pixels copy through the resolve
+  // untouched, right of the split (a width fraction, negative for all).
+  final bool _debugViewActive;
+  final double _debugViewSplit;
+  // The frame skipped bloom for a debug view, so the resolve must not add
+  // it back whatever the settings say.
+  final bool _debugSkipsPost;
+
+  static final gpu.Shader _vertexShader =
+      baseShaderLibrary['FullscreenVertex']!;
+  static final gpu.Shader _fragmentShader =
+      baseShaderLibrary['ResolveFragment']!;
+
+  // Two triangles of NDC positions covering the screen (6 vec2s).
+  static final gpu.DeviceBuffer _quadBuffer = gpu.gpuContext
+      .createDeviceBufferWithCopy(
+        ByteData.sublistView(
+          Float32List.fromList(<double>[
+            -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, //
+            -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, //
+          ]),
+        ),
+      );
+  static final gpu.BufferView _quadView = gpu.BufferView(
+    _quadBuffer,
+    offsetInBytes: 0,
+    lengthInBytes: 6 * 2 * 4,
+  );
+
+  @override
+  String get name => 'ResolvePass';
+
+  @override
+  void execute(RenderGraphContext context) {
+    final hdrColor = context.blackboard.require<gpu.Texture>(
+      kSceneColorBlackboardKey,
+    );
+
+    final commandBuffer = gpu.gpuContext.createCommandBuffer();
+    final renderPass = commandBuffer.createRenderPass(
+      gpu.RenderTarget.singleColor(gpu.ColorAttachment(texture: _outputColor)),
+    );
+    final pipeline = resolvePipeline(_vertexShader, _fragmentShader);
+    renderPass.bindPipeline(pipeline);
+    bindVertexBufferCompat(renderPass, _quadView, 6);
+
+    // Wall-clock seconds (wrapped to keep float precision) drive the
+    // animated film grain.
+    final timeSeconds =
+        DateTime.now().millisecondsSinceEpoch.remainder(100000) / 1000.0;
+    // Render-to-texture content is stored top-down on every backend, so the
+    // resolve samples without a fragment-stage V-flip (flipY is always false).
+    final info = packResolveInfo(
+      exposure: _exposure,
+      toneMappingMode: _toneMappingMode,
+      agxWhite: _agxWhite,
+      agxContrast: _agxContrast,
+      flipY: false,
+      time: timeSeconds,
+      settings: _postProcess,
+      debugViewActive: _debugViewActive,
+      debugViewSplit: _debugViewSplit,
+      bloomEnabled: _postProcess.bloom.enabled && !_debugSkipsPost,
+    );
+    renderPass.bindUniform(
+      _fragmentShader.cachedUniformSlot('ResolveInfo'),
+      context.transientsBuffer.emplace(ByteData.sublistView(info)),
+    );
+    renderPass.bindTexture(
+      _fragmentShader.cachedUniformSlot('scene_color'),
+      hdrColor,
+      sampler: gpu.SamplerOptions(
+        minFilter: gpu.MinMagFilter.linear,
+        magFilter: gpu.MinMagFilter.linear,
+        widthAddressMode: gpu.SamplerAddressMode.clampToEdge,
+        heightAddressMode: gpu.SamplerAddressMode.clampToEdge,
+      ),
+    );
+    // Bloom is present only when BloomPass ran this frame; otherwise a
+    // placeholder fills the slot and the resolve skips it (flag off).
+    final bloomTexture =
+        context.blackboard.get<gpu.Texture>(kBloomTextureBlackboardKey) ??
+        Material.getWhitePlaceholderTexture();
+    renderPass.bindTexture(
+      _fragmentShader.cachedUniformSlot('bloom_color'),
+      bloomTexture,
+      sampler: gpu.SamplerOptions(
+        minFilter: gpu.MinMagFilter.linear,
+        magFilter: gpu.MinMagFilter.linear,
+        widthAddressMode: gpu.SamplerAddressMode.clampToEdge,
+        heightAddressMode: gpu.SamplerAddressMode.clampToEdge,
+      ),
+    );
+    // The adapted auto exposure factor is present only when
+    // AutoExposurePass ran this frame; otherwise the white placeholder
+    // supplies a neutral 1.0.
+    final exposureFactor =
+        context.blackboard.get<gpu.Texture>(kAutoExposureFactorBlackboardKey) ??
+        Material.getWhitePlaceholderTexture();
+    renderPass.bindTexture(
+      _fragmentShader.cachedUniformSlot('exposure_factor'),
+      exposureFactor,
+      sampler: gpu.SamplerOptions(
+        minFilter: gpu.MinMagFilter.nearest,
+        magFilter: gpu.MinMagFilter.nearest,
+        widthAddressMode: gpu.SamplerAddressMode.clampToEdge,
+        heightAddressMode: gpu.SamplerAddressMode.clampToEdge,
+      ),
+    );
+    // The film-look grading LUT, or a neutral placeholder when no look is
+    // set (lut_params.x stays 0 and the sample is skipped).
+    renderPass.bindTexture(
+      _fragmentShader.cachedUniformSlot('grading_lut'),
+      _postProcess.colorGrading.lut?.texture ??
+          Material.getWhitePlaceholderTexture(),
+      sampler: gpu.SamplerOptions(
+        minFilter: gpu.MinMagFilter.linear,
+        magFilter: gpu.MinMagFilter.linear,
+        widthAddressMode: gpu.SamplerAddressMode.clampToEdge,
+        heightAddressMode: gpu.SamplerAddressMode.clampToEdge,
+      ),
+    );
+    drawCompat(renderPass, 6);
+    rendererSubmissions.submit(commandBuffer);
+
+    context.blackboard.set(kDisplayColorBlackboardKey, _outputColor);
+  }
+}

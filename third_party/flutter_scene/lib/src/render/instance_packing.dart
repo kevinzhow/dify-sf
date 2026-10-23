@@ -1,0 +1,1004 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_scene/src/gpu/gpu.dart' as gpu;
+import 'package:flutter_scene/src/render/frame_transients.dart';
+import 'package:vector_math/vector_math.dart';
+
+/// Reusable storage for instance data copied into transient GPU buffers.
+class InstancePackingScratch {
+  Float32List _ccw = Float32List(0);
+  Float32List _cw = Float32List(0);
+  Uint8List _flipped = Uint8List(0);
+  Uint8List _batchWinding = Uint8List(0);
+  final Matrix4 world = Matrix4.zero();
+
+  Float32List ccw(int length) {
+    _ccw = _growFloat(_ccw, length);
+    return Float32List.sublistView(_ccw, 0, length);
+  }
+
+  Float32List cw(int length) {
+    _cw = _growFloat(_cw, length);
+    return Float32List.sublistView(_cw, 0, length);
+  }
+
+  Uint8List flipped(int length) {
+    _flipped = _growBytes(_flipped, length);
+    final result = Uint8List.sublistView(_flipped, 0, length);
+    result.fillRange(0, length, 0);
+    return result;
+  }
+
+  Uint8List batchWinding(int length) {
+    _batchWinding = _growBytes(_batchWinding, length);
+    return Uint8List.sublistView(_batchWinding, 0, length);
+  }
+
+  // A one-element batch list, for the callers that pack a single group rather
+  // than a batched run. Like the buffers above it is refilled and consumed
+  // within one pack call, so one instance serves every synchronous encoder.
+  late final List<InstanceDataBatch> _singleBatch = [
+    InstanceDataBatch.pooled(),
+  ];
+
+  /// A one-element batch list filled from world data a mesh already packed.
+  /// Valid until the next call to either single-batch method.
+  List<InstanceDataBatch> singleCachedBatch({
+    required Float32List packedWorldData,
+    required Uint8List packedWindingFlipped,
+    List<int>? indices,
+    int attributeFloats = 0,
+  }) {
+    _singleBatch[0].setCached(
+      packedWorldData: packedWorldData,
+      packedWindingFlipped: packedWindingFlipped,
+      indices: indices,
+      attributeFloats: attributeFloats,
+    );
+    return _singleBatch;
+  }
+
+  /// A one-element batch list filled from a mesh's own transform and color
+  /// lists. Valid until the next call to either single-batch method.
+  List<InstanceDataBatch> singleInstanceBatch({
+    required Matrix4 nodeTransform,
+    required List<Matrix4> instances,
+    required List<Vector4> colors,
+    required bool nodeWindingFlipped,
+    List<bool>? instanceWindingFlipped,
+    List<int>? indices,
+    Float32List? attributeData,
+    int attributeFloats = 0,
+  }) {
+    _singleBatch[0].setInstances(
+      nodeTransform: nodeTransform,
+      instances: instances,
+      colors: colors,
+      nodeWindingFlipped: nodeWindingFlipped,
+      instanceWindingFlipped: instanceWindingFlipped,
+      indices: indices,
+      attributeData: attributeData,
+      attributeFloats: attributeFloats,
+    );
+    return _singleBatch;
+  }
+
+  /// Drops the references the last single-batch call left behind.
+  ///
+  /// This scratch is a process-wide singleton, so without it the last group
+  /// packed stays reachable for as long as nothing else packs a single group.
+  /// Call it once the pack that consumed the batch has returned.
+  void releaseSingleBatch() => _singleBatch[0].clearPayload();
+
+  static Float32List _growFloat(Float32List current, int length) =>
+      current.length >= length ? current : Float32List(_capacity(length));
+
+  static Uint8List _growBytes(Uint8List current, int length) =>
+      current.length >= length ? current : Uint8List(_capacity(length));
+
+  static int _capacity(int length) {
+    var capacity = 1;
+    while (capacity < length) {
+      capacity <<= 1;
+    }
+    return capacity;
+  }
+}
+
+/// Shared by synchronous render encoders. Each bind copies the packed bytes
+/// before another call can overwrite this storage.
+final InstancePackingScratch transientInstancePackingScratch =
+    InstancePackingScratch();
+
+/// Floats in the model transform alone, the record a depth-style pass consumes.
+const int kInstanceTransformFloats = 16;
+
+/// Floats in the engine's fixed instance record, the model transform plus the
+/// color multiplier. A material declaring `instance_attributes` appends its
+/// packed attribute floats after these.
+const int kInstanceRecordFloats = 20;
+
+/// Per-instance world transforms packed for the instance-rate vertex buffer
+/// (slot 1), split by winding parity.
+///
+/// Hardware instancing draws a whole group with one fixed winding order, but
+/// a mirrored (negative-determinant) instance reverses triangle winding, so
+/// instances are partitioned into the counter-clockwise group ([ccw], the
+/// default front-face winding) and the clockwise group ([cw], mirrored).
+/// Each list is the instances' world transforms (node transform times
+/// instance transform) as consecutive column-major mat4s, 16 floats per
+/// instance, exactly the byte layout the `model_transform_0..3` instance
+/// attributes consume.
+abstract interface class PackedInstances {
+  Float32List get ccw;
+  Float32List get cw;
+  int get ccwCount;
+  int get cwCount;
+}
+
+class PackedInstanceTransforms implements PackedInstances {
+  PackedInstanceTransforms(this.ccw, this.cw);
+
+  @override
+  final Float32List ccw;
+  @override
+  final Float32List cw;
+
+  @override
+  int get ccwCount => ccw.length ~/ 16;
+  @override
+  int get cwCount => cw.length ~/ 16;
+}
+
+/// Per-instance world transforms and color multipliers for a color pass,
+/// followed by the material's declared per-instance attributes.
+class PackedInstanceData implements PackedInstances {
+  PackedInstanceData(this.ccw, this.cw, {this.attributeFloats = 0});
+
+  @override
+  final Float32List ccw;
+  @override
+  final Float32List cw;
+
+  /// Attribute floats appended to each record, past the transform and color.
+  final int attributeFloats;
+
+  /// Floats one record occupies.
+  int get recordFloats => kInstanceRecordFloats + attributeFloats;
+
+  @override
+  int get ccwCount => ccw.length ~/ recordFloats;
+  @override
+  int get cwCount => cw.length ~/ recordFloats;
+}
+
+/// One retained instance group consumed by [packInstanceDataBatches].
+///
+/// A batch is a short-lived description of where one group's instance data
+/// lives; it owns none of that data and is read, never retained, by the pack
+/// call it is handed to. That lifetime is what lets the encoders recycle
+/// batches through an `InstanceDataBatchPool` instead of allocating one per
+/// group per frame, so the fields are mutable and each `set` method below
+/// rewrites *every* one of them. A `set` that left a field alone would leak
+/// the previous occupant's state into the next group.
+class InstanceDataBatch {
+  /// An empty batch, for a pool to fill through one of the `set` methods.
+  ///
+  /// The named constructors below are the allocating spellings, for callers
+  /// that pack a group once rather than every frame.
+  InstanceDataBatch.pooled();
+
+  factory InstanceDataBatch({
+    required Matrix4 nodeTransform,
+    required List<Matrix4> instances,
+    required List<Vector4> colors,
+    required bool nodeWindingFlipped,
+    List<bool>? instanceWindingFlipped,
+    List<int>? indices,
+    Float32List? attributeData,
+    int attributeFloats = 0,
+  }) => InstanceDataBatch.pooled()
+    ..setInstances(
+      nodeTransform: nodeTransform,
+      instances: instances,
+      colors: colors,
+      nodeWindingFlipped: nodeWindingFlipped,
+      instanceWindingFlipped: instanceWindingFlipped,
+      indices: indices,
+      attributeData: attributeData,
+      attributeFloats: attributeFloats,
+    );
+
+  factory InstanceDataBatch.single({
+    required Matrix4 nodeTransform,
+    required bool nodeWindingFlipped,
+  }) => InstanceDataBatch.pooled()
+    ..setSingle(
+      nodeTransform: nodeTransform,
+      nodeWindingFlipped: nodeWindingFlipped,
+    );
+
+  factory InstanceDataBatch.cached({
+    required Float32List packedWorldData,
+    required Uint8List packedWindingFlipped,
+    List<int>? indices,
+    int attributeFloats = 0,
+  }) => InstanceDataBatch.pooled()
+    ..setCached(
+      packedWorldData: packedWorldData,
+      packedWindingFlipped: packedWindingFlipped,
+      indices: indices,
+      attributeFloats: attributeFloats,
+    );
+
+  static final Matrix4 _identity = Matrix4.identity();
+
+  Matrix4 nodeTransform = _identity;
+  List<Matrix4>? instances;
+  List<Vector4>? colors;
+  Float32List? packedWorldData;
+  Uint8List? packedWindingFlipped;
+  bool nodeWindingFlipped = false;
+  List<bool>? instanceWindingFlipped;
+  List<int>? indices;
+
+  /// Per-instance custom attribute floats for the unpacked path,
+  /// [attributeFloats] per instance in declaration order. Null when the batch
+  /// carries none.
+  Float32List? attributeData;
+
+  /// Custom attribute floats this batch's source records carry.
+  int attributeFloats = 0;
+
+  /// Fills this batch with one node-transform instance.
+  void setSingle({
+    required Matrix4 nodeTransform,
+    required bool nodeWindingFlipped,
+  }) {
+    this.nodeTransform = nodeTransform;
+    this.nodeWindingFlipped = nodeWindingFlipped;
+    instances = null;
+    colors = null;
+    packedWorldData = null;
+    packedWindingFlipped = null;
+    instanceWindingFlipped = null;
+    indices = null;
+    attributeData = null;
+    attributeFloats = 0;
+  }
+
+  /// Fills this batch from a mesh's own transform and color lists, which the
+  /// pack call composes with [nodeTransform] as it copies.
+  void setInstances({
+    required Matrix4 nodeTransform,
+    required List<Matrix4> instances,
+    required List<Vector4> colors,
+    required bool nodeWindingFlipped,
+    List<bool>? instanceWindingFlipped,
+    List<int>? indices,
+    Float32List? attributeData,
+    int attributeFloats = 0,
+  }) {
+    assert(instances.length == colors.length);
+    assert(
+      instanceWindingFlipped == null ||
+          instanceWindingFlipped.length == instances.length,
+    );
+    assert(indices == null || indices.length <= instances.length);
+    assert(attributeFloats == 0 || attributeData != null);
+    this.nodeTransform = nodeTransform;
+    this.instances = instances;
+    this.colors = colors;
+    this.nodeWindingFlipped = nodeWindingFlipped;
+    this.instanceWindingFlipped = instanceWindingFlipped;
+    this.indices = indices;
+    this.attributeData = attributeData;
+    this.attributeFloats = attributeFloats;
+    packedWorldData = null;
+    packedWindingFlipped = null;
+  }
+
+  /// Fills this batch from world data a mesh already packed, the path that
+  /// skips recomposing transforms every frame.
+  void setCached({
+    required Float32List packedWorldData,
+    required Uint8List packedWindingFlipped,
+    List<int>? indices,
+    int attributeFloats = 0,
+  }) {
+    assert(
+      packedWorldData.length % (kInstanceRecordFloats + attributeFloats) == 0,
+    );
+    assert(
+      packedWindingFlipped.length ==
+          packedWorldData.length ~/ (kInstanceRecordFloats + attributeFloats),
+    );
+    assert(
+      indices == null ||
+          indices.length <=
+              packedWorldData.length ~/
+                  (kInstanceRecordFloats + attributeFloats),
+    );
+    this.packedWorldData = packedWorldData;
+    this.packedWindingFlipped = packedWindingFlipped;
+    this.indices = indices;
+    this.attributeFloats = attributeFloats;
+    nodeTransform = _identity;
+    nodeWindingFlipped = false;
+    instances = null;
+    colors = null;
+    instanceWindingFlipped = null;
+    attributeData = null;
+  }
+
+  /// Drops every reference this batch holds, so a recycled or idle batch keeps
+  /// no instance data alive. Leaves it in the same state as [pooled].
+  void clearPayload() {
+    nodeTransform = _identity;
+    nodeWindingFlipped = false;
+    instances = null;
+    colors = null;
+    packedWorldData = null;
+    packedWindingFlipped = null;
+    instanceWindingFlipped = null;
+    indices = null;
+    attributeData = null;
+    attributeFloats = 0;
+  }
+
+  /// Floats one source record occupies in [packedWorldData].
+  int get sourceRecordFloats => kInstanceRecordFloats + attributeFloats;
+
+  int get length => packedWorldData == null
+      ? (instances == null ? 1 : (indices?.length ?? instances!.length))
+      : (indices?.length ?? packedWorldData!.length ~/ sourceRecordFloats);
+}
+
+/// Packs several retained groups without building a flattened matrix list.
+///
+/// [attributeFloats] is the material's custom per-instance attribute width;
+/// records are that much wider and a batch that carries no matching attribute
+/// data contributes zeros, never stale scratch bytes.
+PackedInstanceData packInstanceDataBatches(
+  List<InstanceDataBatch> batches, {
+  int attributeFloats = 0,
+  InstancePackingScratch? scratch,
+}) {
+  final recordFloats = kInstanceRecordFloats + attributeFloats;
+  var count = 0;
+  for (final batch in batches) {
+    count += batch.length;
+  }
+  final flipped = scratch?.flipped(count) ?? Uint8List(count);
+  final batchWinding =
+      scratch?.batchWinding(batches.length) ?? Uint8List(batches.length);
+  var cwCount = 0;
+  var flatIndex = 0;
+  for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    final batch = batches[batchIndex];
+    final batchCwStart = cwCount;
+    final packedWinding = batch.packedWindingFlipped;
+    if (packedWinding != null) {
+      final indices = batch.indices;
+      for (var slot = 0; slot < batch.length; slot++) {
+        final i = indices?[slot] ?? slot;
+        if (packedWinding[i] != 0) {
+          flipped[flatIndex] = 1;
+          cwCount++;
+        }
+        flatIndex++;
+      }
+      final batchCwCount = cwCount - batchCwStart;
+      batchWinding[batchIndex] = batchCwCount == 0
+          ? 0
+          : (batchCwCount == batch.length ? 1 : 2);
+      continue;
+    }
+    final instances = batch.instances;
+    if (instances == null) {
+      if (batch.nodeWindingFlipped) {
+        flipped[flatIndex] = 1;
+        cwCount++;
+      }
+      flatIndex++;
+      batchWinding[batchIndex] = batch.nodeWindingFlipped ? 1 : 0;
+      continue;
+    }
+    final retainedParity = batch.instanceWindingFlipped;
+    final indices = batch.indices;
+    for (var slot = 0; slot < batch.length; slot++) {
+      final i = indices?[slot] ?? slot;
+      final instanceFlipped =
+          retainedParity?[i] ?? (instances[i].determinant() < 0);
+      if (batch.nodeWindingFlipped != instanceFlipped) {
+        flipped[flatIndex] = 1;
+        cwCount++;
+      }
+      flatIndex++;
+    }
+    final batchCwCount = cwCount - batchCwStart;
+    batchWinding[batchIndex] = batchCwCount == 0
+        ? 0
+        : (batchCwCount == batch.length ? 1 : 2);
+  }
+
+  final ccwLength = (count - cwCount) * recordFloats;
+  final cwLength = cwCount * recordFloats;
+  final ccw = scratch?.ccw(ccwLength) ?? Float32List(ccwLength);
+  final cw = scratch?.cw(cwLength) ?? Float32List(cwLength);
+  final world = scratch?.world ?? Matrix4.zero();
+  var ccwIndex = 0, cwIndex = 0;
+  flatIndex = 0;
+  for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    final batch = batches[batchIndex];
+    // A batch whose source does not carry this material's attributes (a
+    // synthesized single-node record) contributes zeros rather than whatever
+    // the reused scratch last held.
+    final carriesAttributes =
+        attributeFloats > 0 && batch.attributeFloats == attributeFloats;
+    final packedData = batch.packedWorldData;
+    if (packedData != null) {
+      final indices = batch.indices;
+      if (indices == null && (attributeFloats == 0 || carriesAttributes)) {
+        final winding = batchWinding[batchIndex];
+        if (winding != 2) {
+          final target = winding == 0 ? ccw : cw;
+          final targetIndex = winding == 0 ? ccwIndex : cwIndex;
+          final offset = targetIndex * recordFloats;
+          target.setRange(offset, offset + packedData.length, packedData);
+          if (winding == 0) {
+            ccwIndex += batch.length;
+          } else {
+            cwIndex += batch.length;
+          }
+          flatIndex += batch.length;
+          continue;
+        }
+      }
+      final sourceFloats = batch.sourceRecordFloats;
+      for (var slot = 0; slot < batch.length; slot++) {
+        final source = indices?[slot] ?? slot;
+        final isFlipped = flipped[flatIndex++] != 0;
+        final target = isFlipped ? cw : ccw;
+        final targetIndex = isFlipped ? cwIndex++ : ccwIndex++;
+        final offset = targetIndex * recordFloats;
+        final copied = carriesAttributes ? recordFloats : kInstanceRecordFloats;
+        target.setRange(
+          offset,
+          offset + copied,
+          packedData,
+          source * sourceFloats,
+        );
+        if (copied < recordFloats) {
+          target.fillRange(offset + copied, offset + recordFloats, 0);
+        }
+      }
+      continue;
+    }
+    final instances = batch.instances;
+    if (instances == null) {
+      final isFlipped = flipped[flatIndex++] != 0;
+      final target = isFlipped ? cw : ccw;
+      final targetIndex = isFlipped ? cwIndex++ : ccwIndex++;
+      final offset = targetIndex * recordFloats;
+      target.setAll(offset, batch.nodeTransform.storage);
+      target.setRange(offset + 16, offset + kInstanceRecordFloats, _whiteColor);
+      if (attributeFloats > 0) {
+        target.fillRange(
+          offset + kInstanceRecordFloats,
+          offset + recordFloats,
+          0,
+        );
+      }
+      continue;
+    }
+    final colors = batch.colors!;
+    final indices = batch.indices;
+    final attributes = carriesAttributes ? batch.attributeData! : null;
+    for (var slot = 0; slot < batch.length; slot++) {
+      final i = indices?[slot] ?? slot;
+      world.setFrom(batch.nodeTransform);
+      world.multiply(instances[i]);
+      final isFlipped = flipped[flatIndex++] != 0;
+      final target = isFlipped ? cw : ccw;
+      final targetIndex = isFlipped ? cwIndex++ : ccwIndex++;
+      final offset = targetIndex * recordFloats;
+      target.setAll(offset, world.storage);
+      target.setAll(offset + 16, colors[i].storage);
+      if (attributes != null) {
+        target.setRange(
+          offset + kInstanceRecordFloats,
+          offset + recordFloats,
+          attributes,
+          i * attributeFloats,
+        );
+      } else if (attributeFloats > 0) {
+        target.fillRange(
+          offset + kInstanceRecordFloats,
+          offset + recordFloats,
+          0,
+        );
+      }
+    }
+  }
+  return PackedInstanceData(ccw, cw, attributeFloats: attributeFloats);
+}
+
+/// Packs retained groups as transform-only records for depth-style passes.
+PackedInstanceTransforms packInstanceTransformBatches(
+  List<InstanceDataBatch> batches, {
+  InstancePackingScratch? scratch,
+}) {
+  var count = 0;
+  for (final batch in batches) {
+    count += batch.length;
+  }
+  final flipped = scratch?.flipped(count) ?? Uint8List(count);
+  var cwCount = 0;
+  var flatIndex = 0;
+  for (final batch in batches) {
+    final packedWinding = batch.packedWindingFlipped;
+    if (packedWinding != null) {
+      final indices = batch.indices;
+      for (var slot = 0; slot < batch.length; slot++) {
+        final i = indices?[slot] ?? slot;
+        if (packedWinding[i] != 0) {
+          flipped[flatIndex] = 1;
+          cwCount++;
+        }
+        flatIndex++;
+      }
+      continue;
+    }
+    final instances = batch.instances;
+    if (instances == null) {
+      if (batch.nodeWindingFlipped) {
+        flipped[flatIndex] = 1;
+        cwCount++;
+      }
+      flatIndex++;
+      continue;
+    }
+    final retainedParity = batch.instanceWindingFlipped;
+    final indices = batch.indices;
+    for (var slot = 0; slot < batch.length; slot++) {
+      final i = indices?[slot] ?? slot;
+      final instanceFlipped =
+          retainedParity?[i] ?? (instances[i].determinant() < 0);
+      if (batch.nodeWindingFlipped != instanceFlipped) {
+        flipped[flatIndex] = 1;
+        cwCount++;
+      }
+      flatIndex++;
+    }
+  }
+
+  final ccwLength = (count - cwCount) * 16;
+  final cwLength = cwCount * 16;
+  final ccw = scratch?.ccw(ccwLength) ?? Float32List(ccwLength);
+  final cw = scratch?.cw(cwLength) ?? Float32List(cwLength);
+  final world = scratch?.world ?? Matrix4.zero();
+  var ccwIndex = 0, cwIndex = 0;
+  flatIndex = 0;
+  for (final batch in batches) {
+    final packedData = batch.packedWorldData;
+    if (packedData != null) {
+      final indices = batch.indices;
+      final sourceFloats = batch.sourceRecordFloats;
+      for (var slot = 0; slot < batch.length; slot++) {
+        final source = indices?[slot] ?? slot;
+        final isFlipped = flipped[flatIndex++] != 0;
+        final target = isFlipped ? cw : ccw;
+        final targetIndex = isFlipped ? cwIndex++ : ccwIndex++;
+        final offset = targetIndex * kInstanceTransformFloats;
+        target.setRange(
+          offset,
+          offset + kInstanceTransformFloats,
+          packedData,
+          source * sourceFloats,
+        );
+      }
+      continue;
+    }
+    final instances = batch.instances;
+    if (instances == null) {
+      final isFlipped = flipped[flatIndex++] != 0;
+      final target = isFlipped ? cw : ccw;
+      final targetIndex = isFlipped ? cwIndex++ : ccwIndex++;
+      target.setAll(targetIndex * 16, batch.nodeTransform.storage);
+      continue;
+    }
+    final indices = batch.indices;
+    for (var slot = 0; slot < batch.length; slot++) {
+      final i = indices?[slot] ?? slot;
+      world
+        ..setFrom(batch.nodeTransform)
+        ..multiply(instances[i]);
+      final isFlipped = flipped[flatIndex++] != 0;
+      final target = isFlipped ? cw : ccw;
+      final targetIndex = isFlipped ? cwIndex++ : ccwIndex++;
+      target.setAll(targetIndex * 16, world.storage);
+    }
+  }
+  return PackedInstanceTransforms(ccw, cw);
+}
+
+const List<double> _whiteColor = [1, 1, 1, 1];
+
+/// Packs world transforms followed by linear RGBA color multipliers, then the
+/// material's declared per-instance attributes.
+PackedInstanceData packInstanceData(
+  Matrix4 nodeTransform,
+  List<Matrix4> instances,
+  List<Vector4> colors, {
+  bool nodeWindingFlipped = false,
+  List<bool>? instanceWindingFlipped,
+  List<int>? indices,
+  Vector3? sortBackToFrontFrom,
+  Float32List? attributeData,
+  int attributeFloats = 0,
+  InstancePackingScratch? scratch,
+}) {
+  assert(instances.length == colors.length);
+  if (sortBackToFrontFrom == null) {
+    return packInstanceDataBatches(
+      scratch?.singleInstanceBatch(
+            nodeTransform: nodeTransform,
+            instances: instances,
+            colors: colors,
+            nodeWindingFlipped: nodeWindingFlipped,
+            instanceWindingFlipped: instanceWindingFlipped,
+            indices: indices,
+            attributeData: attributeData,
+            attributeFloats: attributeData == null ? 0 : attributeFloats,
+          ) ??
+          [
+            InstanceDataBatch(
+              nodeTransform: nodeTransform,
+              instances: instances,
+              colors: colors,
+              nodeWindingFlipped: nodeWindingFlipped,
+              instanceWindingFlipped: instanceWindingFlipped,
+              indices: indices,
+              attributeData: attributeData,
+              attributeFloats: attributeData == null ? 0 : attributeFloats,
+            ),
+          ],
+      attributeFloats: attributeFloats,
+      scratch: scratch,
+    );
+  }
+
+  final sorted = _sortInstances(
+    nodeTransform,
+    instances,
+    nodeWindingFlipped,
+    sortBackToFrontFrom,
+    instanceWindingFlipped,
+    indices,
+  );
+
+  final recordFloats = kInstanceRecordFloats + attributeFloats;
+  Float32List pack(List<int> order) {
+    final result = Float32List(order.length * recordFloats);
+    for (var i = 0; i < order.length; i++) {
+      final source = order[i];
+      final offset = i * recordFloats;
+      result.setRange(offset, offset + 16, sorted.worldTransforms, source * 16);
+      result.setAll(offset + 16, colors[source].storage);
+      if (attributeData != null && attributeFloats > 0) {
+        result.setRange(
+          offset + kInstanceRecordFloats,
+          offset + recordFloats,
+          attributeData,
+          source * attributeFloats,
+        );
+      }
+    }
+    return result;
+  }
+
+  return PackedInstanceData(
+    pack(sorted.ccw),
+    pack(sorted.cw),
+    attributeFloats: attributeFloats,
+  );
+}
+
+/// Packs `nodeTransform * instances[i]` into per-parity instance buffers.
+///
+/// [nodeWindingFlipped] is the parity of the node's own world transform;
+/// each instance's own determinant combines with it, matching the
+/// per-instance winding flip the looping path applied.
+PackedInstanceTransforms packInstanceTransforms(
+  Matrix4 nodeTransform,
+  List<Matrix4> instances, {
+  bool nodeWindingFlipped = false,
+  List<bool>? instanceWindingFlipped,
+  List<int>? indices,
+  Vector3? sortBackToFrontFrom,
+  InstancePackingScratch? scratch,
+}) {
+  if (sortBackToFrontFrom != null) {
+    return _packSortedInstanceTransforms(
+      nodeTransform,
+      instances,
+      nodeWindingFlipped,
+      sortBackToFrontFrom,
+      instanceWindingFlipped,
+      indices,
+    );
+  }
+  final count = indices?.length ?? instances.length;
+  var cwCount = 0;
+  final flipped = scratch?.flipped(count) ?? Uint8List(count);
+  for (var slot = 0; slot < count; slot++) {
+    final i = indices?[slot] ?? slot;
+    final flip =
+        nodeWindingFlipped !=
+        (instanceWindingFlipped?[i] ?? (instances[i].determinant() < 0));
+    if (flip) {
+      flipped[slot] = 1;
+      cwCount++;
+    }
+  }
+  final ccwLength = (count - cwCount) * 16;
+  final cwLength = cwCount * 16;
+  final ccw = scratch?.ccw(ccwLength) ?? Float32List(ccwLength);
+  final cw = scratch?.cw(cwLength) ?? Float32List(cwLength);
+  var ccwIndex = 0, cwIndex = 0;
+  final world = scratch?.world ?? Matrix4.zero();
+  for (var slot = 0; slot < count; slot++) {
+    final i = indices?[slot] ?? slot;
+    world.setFrom(nodeTransform);
+    world.multiply(instances[i]);
+    if (flipped[slot] != 0) {
+      cw.setAll(cwIndex * 16, world.storage);
+      cwIndex++;
+    } else {
+      ccw.setAll(ccwIndex * 16, world.storage);
+      ccwIndex++;
+    }
+  }
+  return PackedInstanceTransforms(ccw, cw);
+}
+
+PackedInstanceTransforms _packSortedInstanceTransforms(
+  Matrix4 nodeTransform,
+  List<Matrix4> instances,
+  bool nodeWindingFlipped,
+  Vector3 cameraPosition,
+  List<bool>? instanceWindingFlipped,
+  List<int>? indices,
+) {
+  final sorted = _sortInstances(
+    nodeTransform,
+    instances,
+    nodeWindingFlipped,
+    cameraPosition,
+    instanceWindingFlipped,
+    indices,
+  );
+
+  Float32List pack(List<int> order) {
+    final result = Float32List(order.length * 16);
+    for (var i = 0; i < order.length; i++) {
+      result.setRange(
+        i * 16,
+        i * 16 + 16,
+        sorted.worldTransforms,
+        order[i] * 16,
+      );
+    }
+    return result;
+  }
+
+  return PackedInstanceTransforms(pack(sorted.ccw), pack(sorted.cw));
+}
+
+({Float32List worldTransforms, List<int> ccw, List<int> cw}) _sortInstances(
+  Matrix4 nodeTransform,
+  List<Matrix4> instances,
+  bool nodeWindingFlipped,
+  Vector3 cameraPosition,
+  List<bool>? instanceWindingFlipped,
+  List<int>? indices,
+) {
+  final worldTransforms = Float32List(instances.length * 16);
+  final distances = Float64List(instances.length);
+  final ccw = <int>[];
+  final cw = <int>[];
+  final world = Matrix4.zero();
+  final count = indices?.length ?? instances.length;
+  for (var slot = 0; slot < count; slot++) {
+    final i = indices?[slot] ?? slot;
+    final instance = instances[i];
+    world
+      ..setFrom(nodeTransform)
+      ..multiply(instance);
+    worldTransforms.setAll(i * 16, world.storage);
+    final storage = world.storage;
+    final dx = storage[12] - cameraPosition.x;
+    final dy = storage[13] - cameraPosition.y;
+    final dz = storage[14] - cameraPosition.z;
+    distances[i] = dx * dx + dy * dy + dz * dz;
+    final flipped =
+        nodeWindingFlipped !=
+        (instanceWindingFlipped?[i] ?? (instance.determinant() < 0));
+    (flipped ? cw : ccw).add(i);
+  }
+  int farthestFirst(int a, int b) => distances[b].compareTo(distances[a]);
+  ccw.sort(farthestFirst);
+  cw.sort(farthestFirst);
+  return (worldTransforms: worldTransforms, ccw: ccw, cw: cw);
+}
+
+/// Uploads a single world transform as a one-element instance buffer and
+/// binds it to the instance-rate vertex buffer slot.
+///
+/// Every draw through the unskinned vertex shader needs this: the model
+/// matrix arrives via instance attributes whether or not the draw is
+/// instanced.
+// Reused across every call (one per non-instanced draw); the arena emplace
+// copies the bytes out immediately, so a shared scratch is safe.
+final Float32List _singleTransformScratch = Float32List(16);
+final Float32List _singleInstanceDataScratch = Float32List(20)
+  ..setRange(16, 20, const [1, 1, 1, 1]);
+
+void bindSingleInstanceTransform(
+  gpu.RenderPass pass,
+  Matrix4 worldTransform, {
+  int slot = 1,
+}) {
+  bindInstanceTransforms(
+    pass,
+    _singleTransformScratch..setAll(0, worldTransform.storage),
+    slot: slot,
+  );
+}
+
+/// Uploads one world transform with a white instance-color multiplier.
+///
+/// [attributeFloats] widens the record to match a material declaring
+/// `instance_attributes`; a non-instanced draw has nowhere to take those
+/// values from, so they read zero (documented in MATERIALS.md).
+void bindSingleInstanceData(
+  gpu.RenderPass pass,
+  Matrix4 worldTransform, {
+  int slot = 1,
+  int attributeFloats = 0,
+}) {
+  bindInstanceData(
+    pass,
+    packSingleInstanceData(worldTransform, attributeFloats: attributeFloats),
+    slot: slot,
+  );
+}
+
+/// The one-element record [bindSingleInstanceData] uploads: [worldTransform], a
+/// white color multiplier, then [attributeFloats] zeros.
+///
+/// The returned list is shared scratch; the caller copies it out before the
+/// next call.
+Float32List packSingleInstanceData(
+  Matrix4 worldTransform, {
+  int attributeFloats = 0,
+}) {
+  if (attributeFloats == 0) {
+    return _singleInstanceDataScratch..setAll(0, worldTransform.storage);
+  }
+  final floats = kInstanceRecordFloats + attributeFloats;
+  var scratch = _singleWideInstanceDataScratch;
+  if (scratch == null || scratch.length != floats) {
+    scratch = _singleWideInstanceDataScratch = Float32List(floats)
+      ..setRange(16, kInstanceRecordFloats, const [1, 1, 1, 1]);
+  }
+  return scratch
+    ..setAll(0, worldTransform.storage)
+    ..fillRange(kInstanceRecordFloats, floats, 0);
+}
+
+// Reused like the fixed-width scratch above, rebuilt when a draw needs a
+// different attribute width (a scene mixes few such materials).
+Float32List? _singleWideInstanceDataScratch;
+
+/// Uploads [packed] transforms and binds them to the instance-rate slot.
+///
+/// The transforms are emplaced into [instanceTransients], the arena
+/// dedicated to instance-rate vertex data. It stays separate from the
+/// uniform arena because the two need different alignments (vertex fetch
+/// needs element alignment; uniforms need the context's minimum uniform
+/// alignment), and separate blocks keep either stream from padding the
+/// other.
+void bindInstanceTransforms(
+  gpu.RenderPass pass,
+  Float32List packed, {
+  int slot = 1,
+}) {
+  if (packed.isEmpty) return;
+  pass.bindVertexBuffer(
+    instanceTransients.emplace(_bytesOf(packed)),
+    slot: slot,
+  );
+}
+
+/// Uploads packed transform and color data to an instance-rate slot.
+void bindInstanceData(gpu.RenderPass pass, Float32List packed, {int slot = 1}) {
+  if (packed.isEmpty) return;
+  pass.bindVertexBuffer(
+    instanceTransients.emplace(_bytesOf(packed)),
+    slot: slot,
+  );
+}
+
+// A byte view of [packed], memoized for the last list. Non-instanced draws
+// pack into one reused scratch list, so consecutive draws share the view.
+ByteData _bytesOf(Float32List packed) {
+  if (identical(packed, _lastPacked)) return _lastPackedBytes!;
+  _lastPacked = packed;
+  return _lastPackedBytes = ByteData.sublistView(packed);
+}
+
+Float32List? _lastPacked;
+ByteData? _lastPackedBytes;
+
+// Device-resident copies of cached instance records, keyed by the cached
+// list. An entry uploads only once the data has gone a frame unrefreshed, so
+// instancing refreshed every frame keeps using the transient arena.
+final Expando<_RetainedInstances> _retainedInstances = Expando();
+int _retainedInstanceFrame = 0;
+
+class _RetainedInstances {
+  _RetainedInstances(this.seenFrame);
+  final int seenFrame;
+  gpu.BufferView? view;
+  bool flipped = false;
+  bool mixed = false;
+}
+
+/// Advances the frame that decides when cached instance data counts as static.
+void beginRetainedInstanceFrame() => _retainedInstanceFrame++;
+
+/// Drops the device copy of [packedWorldData] after its records change.
+void invalidateRetainedInstanceData(Float32List packedWorldData) {
+  _retainedInstances[packedWorldData] = null;
+}
+
+/// Binds every record of [packedWorldData] from a retained device buffer.
+///
+/// Returns the winding the records share (true when flipped), or null when
+/// the data is not retained yet or mixes windings, in which case the caller
+/// packs into transients as usual.
+bool? bindRetainedInstanceData(
+  gpu.RenderPass pass,
+  Float32List packedWorldData,
+  Uint8List packedWindingFlipped, {
+  required int slot,
+}) {
+  if (packedWorldData.isEmpty) return null;
+  final entry = _retainedInstances[packedWorldData];
+  if (entry == null) {
+    _retainedInstances[packedWorldData] = _RetainedInstances(
+      _retainedInstanceFrame,
+    );
+    return null;
+  }
+  var view = entry.view;
+  if (view == null) {
+    if (entry.mixed || entry.seenFrame == _retainedInstanceFrame) return null;
+    final first = packedWindingFlipped.isEmpty ? 0 : packedWindingFlipped[0];
+    for (final flipped in packedWindingFlipped) {
+      if (flipped == first) continue;
+      entry.mixed = true;
+      return null;
+    }
+    final bytes = ByteData.sublistView(packedWorldData);
+    view = entry.view = gpu.BufferView(
+      gpu.gpuContext.createDeviceBufferWithCopy(bytes),
+      offsetInBytes: 0,
+      lengthInBytes: bytes.lengthInBytes,
+    );
+    entry.flipped = first != 0;
+  }
+  pass.bindVertexBuffer(view, slot: slot);
+  return entry.flipped;
+}

@@ -1,0 +1,140 @@
+{
+  "upstreamCommit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+  "version": "2.004",
+  "deployment": "upstream regional subsets; no further glyph subsetting",
+  "compression": "lossless WOFF2, Brotli quality 6",
+  "sources": {
+    "NotoSansSC-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+      "gitBlob": "fc0fda9394367c16c1af7555a2ae4d5e2e6a6f02",
+      "sha256": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9",
+      "bytes": 8331336
+    },
+    "NotoSansSC-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/SC/NotoSansSC-Bold.otf",
+      "gitBlob": "bcc11bc30e65b69b9e5a508c3e2138197c5543cf",
+      "sha256": "c6cb5a93abaa9edc8ee7463b7ebb7f42d618d40e6ed2f7a5371c97b0b64767c0",
+      "bytes": 8543168
+    },
+    "NotoSansTC-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/TC/NotoSansTC-Regular.otf",
+      "gitBlob": "63c3422382411b4d132644794fd432c53faa2882",
+      "sha256": "5bab0cb3c1cf89dde07c4a95a4054b195afbcfe784d69d75c340780712237537",
+      "bytes": 5683368
+    },
+    "NotoSansTC-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/TC/NotoSansTC-Bold.otf",
+      "gitBlob": "3a3f5ed878b786e5cea68d2c2b1c3496a22ab2c1",
+      "sha256": "55420b259eb119bf5f2a0aadba10cf9d736c12d64ab93e78546d69ef5f43558b",
+      "bytes": 5839972
+    },
+    "NotoSansHK-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/HK/NotoSansHK-Regular.otf",
+      "gitBlob": "622c6533f8086d126e5508ae8cd5c45c16470edd",
+      "sha256": "8a43afea92bb58dfd9027bd7ac6f5b0b2662e2ffb3e7c1edc02c62b2b21924f1",
+      "bytes": 5688384
+    },
+    "NotoSansHK-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/HK/NotoSansHK-Bold.otf",
+      "gitBlob": "8c756e1dd3ff7a66f6e4f4f728f3f41ab2b817fd",
+      "sha256": "4bce16fbed09278cbdfb4d57749500038cdda70737925a846e3f6c59327ab46e",
+      "bytes": 5840928
+    },
+    "NotoSansJP-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf",
+      "gitBlob": "4af556abb9cc42e585aab777b01857246a110746",
+      "sha256": "dff723ba59d57d136764a04b9b2d03205544f7cd785a711442d6d2d085ac5073",
+      "bytes": 4533028
+    },
+    "NotoSansJP-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/JP/NotoSansJP-Bold.otf",
+      "gitBlob": "40262777db707145a08795e0e62ab5956eafe4b6",
+      "sha256": "1b0edfb500b73a4fa8a4fcaae1bbbd403994e08e73e3e0da37e70d3853f42c5f",
+      "bytes": 4656448
+    },
+    "NotoSansKR-Regular.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf",
+      "gitBlob": "b8c11425a25c74dac1b51b28341ff1ef379f2ffa",
+      "sha256": "69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68",
+      "bytes": 4644748
+    },
+    "NotoSansKR-Bold.otf": {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/SubsetOTF/KR/NotoSansKR-Bold.otf",
+      "gitBlob": "497914abec9fcf714fedebb7b893e63657d19124",
+      "sha256": "5a6ceb287ed2fc6cfc6213144ebea68cbd94b20fc9eb873d8486493bf02d9bda",
+      "bytes": 4816044
+    }
+  },
+  "files": {
+    "NotoSansCJKSC-Regular.woff2": {
+      "sha256": "0ac485db1de8318cd7d9c89bbee7e7bad6a0df27f81d0a6b820538c9e43bb0f2",
+      "bytes": 7057136,
+      "family": "Noto Sans SC",
+      "weight": 400,
+      "glyphs": 31036
+    },
+    "NotoSansCJKSC-Bold.woff2": {
+      "sha256": "dfa673802a9d59a83cd166c1da7b44c3435f244e911e9977cfe301f18e7de59a",
+      "bytes": 7368560,
+      "family": "Noto Sans SC",
+      "weight": 700,
+      "glyphs": 31036
+    },
+    "NotoSansCJKTC-Regular.woff2": {
+      "sha256": "c82b95519b51e0251a5d0ab8d74510c87e6cddeac0302ea3e836132be9d7bf8a",
+      "bytes": 4793584,
+      "family": "Noto Sans TC",
+      "weight": 400,
+      "glyphs": 20950
+    },
+    "NotoSansCJKTC-Bold.woff2": {
+      "sha256": "beea46f07f721ef1b96142d6606a5e52b7dd93a521c17810d34c6c3913f8795e",
+      "bytes": 5009176,
+      "family": "Noto Sans TC",
+      "weight": 700,
+      "glyphs": 20950
+    },
+    "NotoSansCJKHK-Regular.woff2": {
+      "sha256": "d0c5e2ec457ddcaf56f5921980b008ae242ee2849480097999792c45a96848a9",
+      "bytes": 4806316,
+      "family": "Noto Sans HK",
+      "weight": 400,
+      "glyphs": 20940
+    },
+    "NotoSansCJKHK-Bold.woff2": {
+      "sha256": "70ba356c60a55d9550d44d134b31e3b2e1c2cc8b9c4d1bcbecc9f73cc0084068",
+      "bytes": 5017988,
+      "family": "Noto Sans HK",
+      "weight": 700,
+      "glyphs": 20940
+    },
+    "NotoSansCJKJP-Regular.woff2": {
+      "sha256": "bc1b047ada23a8459be23e0869ef98c28e1c88a7531a0143d5632a4eb5d94458",
+      "bytes": 3841928,
+      "family": "Noto Sans JP",
+      "weight": 400,
+      "glyphs": 17936
+    },
+    "NotoSansCJKJP-Bold.woff2": {
+      "sha256": "deddb704822184c5097557f444059768161fa17973cb4ed34f436a7e267fb903",
+      "bytes": 3978788,
+      "family": "Noto Sans JP",
+      "weight": 700,
+      "glyphs": 17936
+    },
+    "NotoSansCJKKR-Regular.woff2": {
+      "sha256": "15b2a986ba3fef30cd7268456cccfb8806bcfb6d93042e0e0ac3396ffc76622d",
+      "bytes": 3625940,
+      "family": "Noto Sans KR",
+      "weight": 400,
+      "glyphs": 24964
+    },
+    "NotoSansCJKKR-Bold.woff2": {
+      "sha256": "b96e56401f7c2a0dc4b741d1c7869a96d06e15822a6474f77286206b48b0b9da",
+      "bytes": 3778652,
+      "family": "Noto Sans KR",
+      "weight": 700,
+      "glyphs": 24964
+    }
+  }
+}

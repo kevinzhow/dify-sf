@@ -7,3 +7,13 @@
 /e2e/.cache/
 /e2e/.out/
 __pycache__/
+
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.fvm/
+.packages
+/packages/*/pubspec.lock
+tool/visual/.venv/
+/build/

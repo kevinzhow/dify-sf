@@ -1,0 +1,231 @@
+// Covers GeometryBuilder accumulation: vertex indexing, deduplication,
+// triangle validation, sticky attributes, and interleaved packing.
+// GeometryBuilder.build() and MeshGeometry.fromArrays() upload to the
+// GPU and are exercised by the example app, not here.
+
+import 'dart:typed_data';
+
+import 'package:flutter_scene/src/geometry/geometry.dart';
+import 'package:flutter_scene/src/geometry/mesh_geometry.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:vector_math/vector_math.dart';
+
+void main() {
+  group('GeometryBufferArena', () {
+    test('validates its block size without allocating', () {
+      expect(
+        () => GeometryBufferArena(blockSizeInBytes: 0),
+        throwsArgumentError,
+      );
+      final arena = GeometryBufferArena(blockSizeInBytes: 1024);
+      expect(arena.bufferCount, 0);
+      expect(arena.capacityInBytes, 0);
+      expect(arena.usedInBytes, 0);
+    });
+
+    test('rejects arena allocation for updatable geometry', () {
+      expect(
+        () => MeshGeometry.fromArrays(
+          positions: Float32List(0),
+          storage: GeometryStorage.updatable,
+          bufferArena: GeometryBufferArena(),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('requires updatable geometry to retain CPU data', () {
+      expect(
+        () => MeshGeometry.fromArrays(
+          positions: Float32List(0),
+          storage: GeometryStorage.updatable,
+          retainCpuData: false,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('GeometryBuilder', () {
+    test('addVertex returns sequential indices', () {
+      final builder = GeometryBuilder(deduplicate: false);
+      expect(builder.addVertex(Vector3(0, 0, 0)), 0);
+      expect(builder.addVertex(Vector3(1, 0, 0)), 1);
+      expect(builder.addVertex(Vector3(2, 0, 0)), 2);
+      expect(builder.vertexCount, 3);
+    });
+
+    test('deduplicate merges a vertex equal to one already added', () {
+      final builder = GeometryBuilder();
+      final first = builder.addVertex(Vector3(1, 2, 3));
+      final second = builder.addVertex(Vector3(1, 2, 3));
+      expect(second, first);
+      expect(builder.vertexCount, 1);
+    });
+
+    test('deduplicate distinguishes vertices by sticky attributes', () {
+      final builder = GeometryBuilder();
+      builder.color(Vector4(1, 0, 0, 1));
+      builder.addVertex(Vector3(1, 2, 3));
+      builder.color(Vector4(0, 1, 0, 1));
+      builder.addVertex(Vector3(1, 2, 3));
+      // Same position, different color: not merged.
+      expect(builder.vertexCount, 2);
+    });
+
+    test('deduplicate: false keeps identical vertices', () {
+      final builder = GeometryBuilder(deduplicate: false);
+      builder.addVertex(Vector3(1, 2, 3));
+      builder.addVertex(Vector3(1, 2, 3));
+      expect(builder.vertexCount, 2);
+    });
+
+    test('addTriangle records indices and reports triangle count', () {
+      final builder = GeometryBuilder(deduplicate: false)
+        ..addVertex(Vector3(0, 0, 0))
+        ..addVertex(Vector3(1, 0, 0))
+        ..addVertex(Vector3(0, 1, 0))
+        ..addTriangle(0, 1, 2);
+      expect(builder.triangleCount, 1);
+    });
+
+    test('addTriangle rejects an out-of-range vertex index', () {
+      final builder = GeometryBuilder()..addVertex(Vector3(0, 0, 0));
+      expect(() => builder.addTriangle(0, 1, 2), throwsRangeError);
+    });
+
+    test('sticky attributes apply to subsequently added vertices', () {
+      final builder = GeometryBuilder(deduplicate: false)
+        ..color(Vector4(1, 0, 0, 1))
+        ..addVertex(Vector3(0, 0, 0))
+        ..color(Vector4(0, 1, 0, 1))
+        ..texCoord(Vector2(0.5, 0.5))
+        ..texCoord1(Vector2(0.25, 0.75))
+        ..tangent(Vector4(1, 0, 0, -1))
+        ..addVertex(Vector3(1, 0, 0));
+
+      final floats = Float32List.sublistView(builder.packVertices());
+      // Vertex 0 color is the first sticky color.
+      expect(floats.sublist(10, 14), [1, 0, 0, 1]);
+      // Vertex 1 carries the later UVs and color.
+      expect(floats.sublist(18 + 6, 18 + 8), [0.5, 0.5]);
+      expect(floats.sublist(18 + 8, 18 + 10), [0.25, 0.75]);
+      expect(floats.sublist(18 + 10, 18 + 14), [0, 1, 0, 1]);
+      expect(floats.sublist(14, 18), [0, 0, 0, 0]);
+      expect(floats.sublist(18 + 14, 18 + 18), [1, 0, 0, -1]);
+    });
+
+    test('packVertices generates normals for an authored triangle', () {
+      // Wound per the engine front-face convention (CCW in model
+      // space), so the generated face normal points at the front viewer.
+      final builder = GeometryBuilder(deduplicate: false)
+        ..addVertex(Vector3(0, 0, 0))
+        ..addVertex(Vector3(1, 0, 0))
+        ..addVertex(Vector3(0, 1, 0))
+        ..addTriangle(0, 1, 2);
+      final floats = Float32List.sublistView(builder.packVertices());
+      // Vertex 0 normal (floats 3..5) is the generated face normal +Z.
+      expect(floats[3], closeTo(0, 1e-6));
+      expect(floats[4], closeTo(0, 1e-6));
+      expect(floats[5], closeTo(1, 1e-6));
+    });
+
+    test('authored normals override generation', () {
+      final builder = GeometryBuilder(deduplicate: false)
+        ..normal(Vector3(0, 1, 0))
+        ..addVertex(Vector3(0, 0, 0))
+        ..addVertex(Vector3(1, 0, 0))
+        ..addVertex(Vector3(0, 1, 0))
+        ..addTriangle(0, 1, 2);
+      final floats = Float32List.sublistView(builder.packVertices());
+      expect(floats.sublist(3, 6), [0, 1, 0]);
+    });
+  });
+
+  group('nextBufferCapacity', () {
+    test('returns the minimum when the need is small', () {
+      expect(nextBufferCapacity(0), 16);
+      expect(nextBufferCapacity(16), 16);
+    });
+
+    test('rounds up to the next power of two', () {
+      expect(nextBufferCapacity(17), 32);
+      expect(nextBufferCapacity(100), 128);
+      expect(nextBufferCapacity(128), 128);
+      expect(nextBufferCapacity(1000), 1024);
+    });
+
+    test('honors a custom minimum', () {
+      expect(nextBufferCapacity(3, minimum: 8), 8);
+      expect(nextBufferCapacity(9, minimum: 8), 16);
+    });
+  });
+
+  group('unionVertexRange', () {
+    test('an empty range contributes nothing', () {
+      expect(unionVertexRange((start: 0, end: 0), (start: 3, end: 7)), (
+        start: 3,
+        end: 7,
+      ));
+      expect(unionVertexRange((start: 3, end: 7), (start: 5, end: 5)), (
+        start: 3,
+        end: 7,
+      ));
+      // Two empty ranges stay empty.
+      final empty = unionVertexRange((start: 0, end: 0), (start: 2, end: 2));
+      expect(empty.end <= empty.start, isTrue);
+    });
+
+    test('overlapping and disjoint ranges return the bounding span', () {
+      expect(unionVertexRange((start: 2, end: 5), (start: 4, end: 9)), (
+        start: 2,
+        end: 9,
+      ));
+      // Disjoint spans are bridged (the buffer must refresh the whole span).
+      expect(unionVertexRange((start: 0, end: 2), (start: 8, end: 10)), (
+        start: 0,
+        end: 10,
+      ));
+    });
+
+    test('unioning a stable dirty span is idempotent', () {
+      // A buffer repeatedly dirtied over the same span converges to exactly
+      // that span, which is what lets a steady partial update stay cheap.
+      const span = (start: 4, end: 6);
+      var stale = (start: 0, end: 0);
+      for (var i = 0; i < 5; i++) {
+        stale = unionVertexRange(stale, span);
+      }
+      expect(stale, span);
+    });
+  });
+
+  group('clampVertexRange', () {
+    test('a range within the snapshot is unchanged', () {
+      expect(clampVertexRange((start: 2, end: 5), 8), (start: 2, end: 5));
+      expect(clampVertexRange((start: 0, end: 8), 8), (start: 0, end: 8));
+    });
+
+    test('a range past the snapshot is pulled back', () {
+      expect(clampVertexRange((start: 0, end: 64), 1), (start: 0, end: 1));
+      // A span that starts past the snapshot clamps to empty.
+      final empty = clampVertexRange((start: 30, end: 64), 1);
+      expect(empty.end <= empty.start, isTrue);
+    });
+
+    test('a shrink leaves no stale span past the current snapshot', () {
+      // Mirrors a ring buffer's stale bookkeeping across 64 -> 1 -> 64.
+      // Unclamped, the shrink kept the 64-vertex span and the upload read
+      // past the 1-vertex CPU array.
+      var stale = (start: 0, end: 64);
+      stale = clampVertexRange(unionVertexRange(stale, (start: 0, end: 1)), 1);
+      expect(stale, (start: 0, end: 1));
+      // Growing back marks the restored vertices stale again.
+      stale = clampVertexRange(
+        unionVertexRange(stale, (start: 0, end: 64)),
+        64,
+      );
+      expect(stale, (start: 0, end: 64));
+    });
+  });
+}

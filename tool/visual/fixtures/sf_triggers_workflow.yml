@@ -1,0 +1,376 @@
+app:
+  description: Workflow started by a cron schedule or a webhook; each trigger posts
+    to an HTTP API.
+  icon: ⏰
+  icon_background: '#DCFCE7'
+  mode: workflow
+  name: sf_triggers
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: Base URL of the report service
+    id: e5f6a7b8-1c2d-4e3f-8a9b-0c1d2e3f4a61
+    name: report_api_base
+    selector:
+    - env
+    - report_api_base
+    value: https://reports.example.com
+    value_type: string
+  - description: Base URL of the CRM API
+    id: e5f6a7b8-1c2d-4e3f-8a9b-0c1d2e3f4a62
+    name: crm_api_base
+    selector:
+    - env
+    - crm_api_base
+    value: https://crm.example.com
+    value_type: string
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: trigger-schedule
+        targetType: http-request
+      id: 1760800000001-source-1760800030001-target
+      source: '1760800000001'
+      sourceHandle: source
+      target: '1760800030001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: trigger-webhook
+        targetType: http-request
+      id: 1760800000002-source-1760800030002-target
+      source: '1760800000002'
+      sourceHandle: source
+      target: '1760800030002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: end
+      id: 1760800030001-source-1760800060001-target
+      source: '1760800030001'
+      sourceHandle: source
+      target: '1760800060001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: end
+      id: 1760800030002-source-1760800060002-target
+      source: '1760800030002'
+      sourceHandle: source
+      target: '1760800060002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        cron_expression: 0 9 * * 1-5
+        desc: Runs at 09:00 Berlin time, Monday to Friday.
+        frequency: daily
+        mode: cron
+        selected: false
+        timezone: Europe/Berlin
+        title: Weekday 9:00
+        type: trigger-schedule
+        visual_config:
+          monthly_days:
+          - 1
+          on_minute: 0
+          time: 12:00 AM
+          weekdays:
+          - sun
+      height: 88
+      id: '1760800000001'
+      position:
+        x: 80
+        y: 140
+      positionAbsolute:
+        x: 80
+        y: 140
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        async_mode: true
+        body:
+        - name: event
+          required: true
+          type: string
+        - name: order
+          required: true
+          type: object
+        content_type: application/json
+        desc: Receives order events from the shop.
+        headers:
+        - name: X-Shop-Event
+          required: true
+        method: POST
+        params:
+        - name: source
+          required: false
+          type: string
+        - name: dry_run
+          required: false
+          type: boolean
+        response_body: ''
+        selected: false
+        status_code: 200
+        title: Order webhook
+        type: trigger-webhook
+        variables:
+        - label: raw
+          required: true
+          value_selector: []
+          value_type: object
+          variable: _webhook_raw
+        - label: header
+          required: true
+          value_selector: []
+          value_type: string
+          variable: X_Shop_Event
+        - label: param
+          required: false
+          value_selector: []
+          value_type: string
+          variable: source
+        - label: param
+          required: false
+          value_selector: []
+          value_type: boolean
+          variable: dry_run
+        - label: body
+          required: true
+          value_selector: []
+          value_type: string
+          variable: event
+        - label: body
+          required: true
+          value_selector: []
+          value_type: object
+          variable: order
+        webhook_debug_url: http://localhost/triggers/webhook-debug/k3VtWc7nLq9xPz2bR8sYd4Fh
+        webhook_url: http://localhost/triggers/webhook/k3VtWc7nLq9xPz2bR8sYd4Fh
+      height: 88
+      id: '1760800000002'
+      position:
+        x: 80
+        y: 420
+      positionAbsolute:
+        x: 80
+        y: 420
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: key-value-1
+            key: ''
+            type: text
+            value: "{\n  \"kind\": \"daily\",\n  \"requested_at\": \"{{#sys.timestamp#}}\"\
+              \n}"
+          type: json
+        desc: Asks the report service to build today's report.
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Post daily report
+        type: http-request
+        url: '{{#env.report_api_base#}}/v1/reports/{{#sys.workflow_run_id#}}'
+        variables: []
+      height: 112
+      id: '1760800030001'
+      position:
+        x: 380
+        y: 140
+      positionAbsolute:
+        x: 380
+        y: 140
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: key-value-1
+            key: ''
+            type: text
+            value: "{\n  \"event\": \"{{#1760800000002.event#}}\",\n  \"source\":\
+              \ \"{{#1760800000002.source#}}\"\n}"
+          type: json
+        desc: Pushes the event to the CRM.
+        headers: 'Content-Type:application/json
+
+          X-Shop-Event:{{#1760800000002.X_Shop_Event#}}'
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Forward order event
+        type: http-request
+        url: '{{#env.crm_api_base#}}/v2/orders/{{#1760800000002.order.id#}}/events'
+        variables: []
+      height: 112
+      id: '1760800030002'
+      position:
+        x: 380
+        y: 420
+      positionAbsolute:
+        x: 380
+        y: 420
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1760800030001'
+          - status_code
+          value_type: number
+          variable: status_code
+        - value_selector:
+          - '1760800030001'
+          - body
+          value_type: string
+          variable: body
+        selected: false
+        title: End (report)
+        type: end
+      height: 116
+      id: '1760800060001'
+      position:
+        x: 680
+        y: 140
+      positionAbsolute:
+        x: 680
+        y: 140
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1760800030002'
+          - status_code
+          value_type: number
+          variable: status_code
+        - value_selector:
+          - '1760800030002'
+          - body
+          value_type: string
+          variable: body
+        selected: false
+        title: End (order)
+        type: end
+      height: 116
+      id: '1760800060002'
+      position:
+        x: 680
+        y: 420
+      positionAbsolute:
+        x: 680
+        y: 420
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "anthropic-light",
+    "dark": false
+  },
+  {
+    "name": "anthropic-dark",
+    "dark": true
+  },
+  {
+    "name": "azure_openai-light",
+    "dark": false
+  },
+  {
+    "name": "azure_openai-dark",
+    "dark": true
+  },
+  {
+    "name": "deepseek-light",
+    "dark": false
+  },
+  {
+    "name": "deepseek-dark",
+    "dark": true
+  },
+  {
+    "name": "gemini-light",
+    "dark": false
+  },
+  {
+    "name": "gemini-dark",
+    "dark": true
+  },
+  {
+    "name": "moonshot-light",
+    "dark": false
+  },
+  {
+    "name": "moonshot-dark",
+    "dark": true
+  },
+  {
+    "name": "ollama-light",
+    "dark": false
+  },
+  {
+    "name": "ollama-dark",
+    "dark": true
+  },
+  {
+    "name": "openai-light",
+    "dark": false
+  },
+  {
+    "name": "openai-dark",
+    "dark": true
+  },
+  {
+    "name": "openai_api_compatible-light",
+    "dark": false
+  },
+  {
+    "name": "openai_api_compatible-dark",
+    "dark": true
+  },
+  {
+    "name": "tongyi-light",
+    "dark": false
+  },
+  {
+    "name": "tongyi-dark",
+    "dark": true
+  },
+  {
+    "name": "zhipuai-light",
+    "dark": false
+  },
+  {
+    "name": "zhipuai-dark",
+    "dark": true
+  }
+]

@@ -1,0 +1,532 @@
+[
+  {
+    "id": "studio-toolbar-light",
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1440,
+      220
+    ],
+    "page": {
+      "dify": "/apps",
+      "ours": ""
+    },
+    "controls": {
+      "types": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        }
+      },
+      "creators": {
+        "dify": {
+          "role": "combobox",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        }
+      },
+      "sort": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        }
+      },
+      "search": {
+        "dify": {
+          "css": "input[placeholder]",
+          "ancestor": 1
+        },
+        "ours": {
+          "css": "[data-semantics-role=\"text-field\"]:enabled",
+          "ancestor": 2
+        }
+      }
+    },
+    "dark": false,
+    "note": "Whole Studio header plus tight unmasked controls. Tags are not implemented and remain visible in the full difference; no resizing of control crops."
+  },
+  {
+    "id": "studio-toolbar-dark",
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1440,
+      220
+    ],
+    "page": {
+      "dify": "/apps",
+      "ours": ""
+    },
+    "controls": {
+      "types": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        }
+      },
+      "creators": {
+        "dify": {
+          "role": "combobox",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        }
+      },
+      "sort": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        }
+      },
+      "search": {
+        "dify": {
+          "css": "input[placeholder]",
+          "ancestor": 1
+        },
+        "ours": {
+          "css": "[data-semantics-role=\"text-field\"]:enabled",
+          "ancestor": 2
+        }
+      }
+    },
+    "dark": true,
+    "note": "Whole Studio header plus tight unmasked controls. Tags are not implemented and remain visible in the full difference; no resizing of control crops."
+  },
+  {
+    "id": "studio-toolbar-focus-light",
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1440,
+      220
+    ],
+    "page": {
+      "dify": "/apps",
+      "ours": ""
+    },
+    "controls": {
+      "types": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        }
+      },
+      "creators": {
+        "dify": {
+          "role": "combobox",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        }
+      },
+      "sort": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        }
+      },
+      "search": {
+        "dify": {
+          "css": "input[placeholder]",
+          "ancestor": 1
+        },
+        "ours": {
+          "css": "[data-semantics-role=\"text-field\"]:enabled",
+          "ancestor": 2
+        }
+      }
+    },
+    "dark": false,
+    "note": "Whole Studio header plus tight unmasked controls. Tags are not implemented and remain visible in the full difference; no resizing of control crops. Sort focus state.",
+    "control_focus": "sort"
+  },
+  {
+    "id": "studio-toolbar-open-light",
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1440,
+      420
+    ],
+    "page": {
+      "dify": "/apps",
+      "ours": ""
+    },
+    "controls": {
+      "types": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        }
+      },
+      "creators": {
+        "dify": {
+          "role": "combobox",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        }
+      },
+      "sort": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        }
+      },
+      "search": {
+        "dify": {
+          "css": "input[placeholder]",
+          "ancestor": 1
+        },
+        "ours": {
+          "css": "[data-semantics-role=\"text-field\"]:enabled",
+          "ancestor": 2
+        }
+      },
+      "sort-menu": {
+        "dify": {
+          "role": "menu"
+        },
+        "ours": {
+          "role": "menu"
+        }
+      }
+    },
+    "dark": false,
+    "note": "Whole Studio header plus tight unmasked controls. Tags are not implemented and remain visible in the full difference; no resizing of control crops. Sort open state.",
+    "control_open": "sort"
+  },
+  {
+    "id": "studio-toolbar-focus-dark",
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1440,
+      220
+    ],
+    "page": {
+      "dify": "/apps",
+      "ours": ""
+    },
+    "controls": {
+      "types": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        }
+      },
+      "creators": {
+        "dify": {
+          "role": "combobox",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        }
+      },
+      "sort": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        }
+      },
+      "search": {
+        "dify": {
+          "css": "input[placeholder]",
+          "ancestor": 1
+        },
+        "ours": {
+          "css": "[data-semantics-role=\"text-field\"]:enabled",
+          "ancestor": 2
+        }
+      }
+    },
+    "dark": true,
+    "note": "Whole Studio header plus tight unmasked controls. Tags are not implemented and remain visible in the full difference; no resizing of control crops. Sort focus state.",
+    "control_focus": "sort"
+  },
+  {
+    "id": "studio-toolbar-open-dark",
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1440,
+      420
+    ],
+    "page": {
+      "dify": "/apps",
+      "ours": ""
+    },
+    "controls": {
+      "types": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Types",
+            "zh-Hans": "类型"
+          },
+          "exact": false
+        }
+      },
+      "creators": {
+        "dify": {
+          "role": "combobox",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Creators",
+            "zh-Hans": "创建者"
+          },
+          "exact": false
+        }
+      },
+      "sort": {
+        "dify": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        },
+        "ours": {
+          "role": "button",
+          "name": {
+            "en-US": "Sort by",
+            "zh-Hans": "排序方式"
+          },
+          "exact": false
+        }
+      },
+      "search": {
+        "dify": {
+          "css": "input[placeholder]",
+          "ancestor": 1
+        },
+        "ours": {
+          "css": "[data-semantics-role=\"text-field\"]:enabled",
+          "ancestor": 2
+        }
+      },
+      "sort-menu": {
+        "dify": {
+          "role": "menu"
+        },
+        "ours": {
+          "role": "menu"
+        }
+      }
+    },
+    "dark": true,
+    "note": "Whole Studio header plus tight unmasked controls. Tags are not implemented and remain visible in the full difference; no resizing of control crops. Sort open state.",
+    "control_open": "sort"
+  }
+]

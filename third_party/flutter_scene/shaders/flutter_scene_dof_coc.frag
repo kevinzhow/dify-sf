@@ -1,0 +1,60 @@
+// Depth-of-field setup pass, run into a half-resolution target: downsamples
+// the linear HDR scene color and computes the signed circle-of-confusion
+// radius (in half-res pixels) from the camera's linear depth. Negative CoC is
+// the near field (in front of focus), positive the far field; |coc| < 1 px is
+// snapped to exactly 0 so in-focus pixels can be skipped downstream.
+
+precision highp float;
+
+uniform sampler2D scene_color;
+uniform sampler2D linear_depth;
+
+uniform CocInfo {
+  // x: CoC scale K, half-res pixels per unit of (1 - S/d)
+  // y: focus distance S (world units)
+  // z: max foreground CoC radius (px)   w: max background CoC radius (px)
+  vec4 params0;
+  // xy: full-res texel size   z: 1 for an orthographic camera   w: unused
+  vec4 params1;
+}
+coc_info;
+
+in vec2 v_uv;
+
+out vec4 frag_color;
+
+float CocAt(float depth) {
+  float focus = coc_info.params0.y;
+  // An orthographic camera has no eye to divide by, so it takes the thin-lens
+  // term's first-order form around the focus plane, (d - S) / S.
+  float coc = coc_info.params1.z > 0.5
+      ? coc_info.params0.x * (depth - focus) / max(focus, 1e-4)
+      : coc_info.params0.x * (1.0 - focus / max(depth, 1e-4));
+  coc = clamp(coc, -coc_info.params0.z, coc_info.params0.w);
+  return abs(coc) < 1.0 ? 0.0 : coc;
+}
+
+void main() {
+  vec2 t = coc_info.params1.xy * 0.5;
+  // 2x2 box. The color is Karis-weighted (1 / (1 + maxRGB)) so a single hot
+  // pixel cannot flicker into a huge bokeh; the CoC takes the most-foreground
+  // sample of the quad so near blur wins ties at silhouettes.
+  vec3 color = vec3(0.0);
+  float weight = 0.0;
+  float coc = 1e9;
+  for (int i = 0; i < 4; i++) {
+    vec2 o = vec2((i == 1 || i == 3) ? t.x : -t.x, (i < 2) ? -t.y : t.y);
+    // Clamp to a finite HDR ceiling: an infinite radiance sample makes the
+    // Karis weight 1/(1+Inf) collapse to 0 and c*w = Inf*0 = NaN, which the
+    // gather then spreads into a black bokeh disc. Half-float max is well above
+    // any legitimate bloom source, so this only bounds pathological pixels.
+    // Floor first, so a NaN maps to 0 rather than to the ceiling.
+    vec3 c = min(max(texture(scene_color, v_uv + o).rgb, vec3(0.0)),
+                 vec3(65504.0));
+    float w = 1.0 / (1.0 + max(c.r, max(c.g, c.b)));
+    color += c * w;
+    weight += w;
+    coc = min(coc, CocAt(texture(linear_depth, v_uv + o).r));
+  }
+  frag_color = vec4(color / weight, coc);
+}

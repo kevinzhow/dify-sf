@@ -1,0 +1,6 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    # A separate package (its own pubspec) that evaluates the published `elk` package.
+    - research/**

@@ -1,0 +1,266 @@
+/// The visible background drawn behind a scene, and the sources that
+/// describe what it looks like.
+library;
+
+import 'dart:typed_data';
+
+import 'package:vector_math/vector_math.dart';
+
+import 'package:flutter_scene/src/gpu/gpu.dart' as gpu;
+import 'package:flutter_scene/src/material/engine_lighting.dart';
+import 'package:flutter_scene/src/material/environment.dart';
+import 'package:flutter_scene/src/material/material.dart';
+import 'package:flutter_scene/src/shaders.dart';
+import 'package:flutter_scene/src/render/frame_transients.dart';
+import 'package:flutter_scene/src/render/uniform_slots.dart';
+import 'package:flutter_scene/src/shader_uniform_bindings.dart'
+    show PackedFloatBlocks, defaultSamplerOptions, linearClampSamplerOptions;
+
+/// A sky that exposes a directional sun, so the engine can drive a matching
+/// shadow-casting directional light from it.
+///
+/// The built-in [ShaderSkySource]s with a sun ([GradientSkySource],
+/// [PhysicalSkySource]) implement this; assign one (or any sky that does) to a
+/// `SunLight` to cast hard shadows that track the sky's sun. A custom
+/// [ShaderSkySource] participates by implementing these getters.
+/// {@category Lighting and environment}
+abstract interface class SunSky {
+  /// Direction toward the sun in world space (need not be unit length). The
+  /// derived light travels the opposite way.
+  Vector3 get sunDirection;
+
+  /// Linear-RGB color the sun contributes as a directional light. Combined
+  /// with [sunLightIntensity].
+  Vector3 get sunLightColor;
+
+  /// Scalar intensity for the derived directional light.
+  double get sunLightIntensity;
+}
+
+/// A source of skybox color as a function of world-space view direction.
+///
+/// A [Skybox] wraps a source and the engine draws it behind all scene
+/// geometry. Built-in sources are [EnvironmentSkySource] (show the scene's
+/// environment) and [ShaderSkySource] (a custom fragment shader).
+/// {@category Lighting and environment}
+abstract class SkySource {
+  const SkySource();
+}
+
+/// Shows the scene's image-based-lighting environment as the background,
+/// optionally blurred.
+///
+/// Samples `Scene.environment`'s prefiltered-radiance atlas along each view
+/// ray. [blurriness] selects how rough (and so how blurred) the sampled band
+/// is: `0.0` shows the sharp environment, `1.0` shows the fully-blurred band.
+/// The same atlas drives specular reflections, so a blurred background stays
+/// consistent with what reflective surfaces show.
+/// {@category Lighting and environment}
+class EnvironmentSkySource extends SkySource {
+  EnvironmentSkySource({this.blurriness = 0.0});
+
+  /// How blurred the background is, from `0.0` (sharp) to `1.0` (fully
+  /// blurred). Clamped to that range when sampled.
+  double blurriness;
+}
+
+/// Draws a custom sky from a fragment shader.
+///
+/// The [fragmentShader] runs full-screen behind the scene. The engine supplies
+/// the world-space view direction as the `v_ray` vertex input and owns the
+/// full-screen draw, depth, and draw order, so you place no geometry; the
+/// shader writes linear HDR radiance with premultiplied alpha (exposure and
+/// tone mapping are applied later). Bind custom uniform blocks and textures by
+/// name with [setUniformBlock] / [setTexture]; set [useEnvironment] to have
+/// the engine bind the scene environment's IBL textures (`prefiltered_radiance`
+/// and `brdf_lut`) when the shader declares them.
+///
+/// Unlike [EnvironmentSkySource], `Skybox.intensity` is not applied for you;
+/// the shader controls its own output brightness.
+/// {@category Lighting and environment}
+class ShaderSkySource extends SkySource {
+  /// Creates a sky source from a fragment shader.
+  ///
+  /// Provide exactly one of [fragmentShader] (an already-loaded shader, for
+  /// custom skies) or [fragmentShaderName] (a shader from the base library,
+  /// resolved lazily so the source can be constructed before
+  /// [Scene.initializeStaticResources] completes).
+  ShaderSkySource({
+    gpu.Shader? fragmentShader,
+    String? fragmentShaderName,
+    this.radianceCubeFragmentShader,
+    this.useEnvironment = false,
+  }) : assert(
+         (fragmentShader == null) != (fragmentShaderName == null),
+         'Provide exactly one of fragmentShader or fragmentShaderName.',
+       ),
+       _fragmentShader = fragmentShader,
+       _fragmentShaderName = fragmentShaderName;
+
+  gpu.Shader? _fragmentShader;
+  final String? _fragmentShaderName;
+
+  /// The variant of [fragmentShader] built with `FLUTTER_SCENE_RADIANCE_CUBE`,
+  /// used when the active environment's radiance is a cubemap.
+  ///
+  /// Required only for a [useEnvironment] sky, whose `prefiltered_radiance`
+  /// sampler is a `sampler2D` or a `samplerCube` depending on the layout the
+  /// backend builds. Without it such a sky samples nothing on a cube backend.
+  gpu.Shader? radianceCubeFragmentShader;
+
+  /// The shader to draw with against [environment], picking the variant whose
+  /// radiance sampler matches the layout of the environment actually sampled
+  /// ([sampledEnvironment] when set). The encoder builds the pipeline from
+  /// this, and [bind] fills that pipeline's slots, so both must agree.
+  gpu.Shader shaderForEnvironment(EnvironmentMap environment) =>
+      usesRadianceCubeVariant(environment)
+      ? radianceCubeFragmentShader!
+      : fragmentShader;
+
+  /// Whether [shaderForEnvironment] picks the cube variant, which is also what
+  /// decides the radiance texture bound to it. False without a cube variant,
+  /// so a sky built with only the 2D entry is never handed a cubemap.
+  bool usesRadianceCubeVariant(EnvironmentMap environment) =>
+      (sampledEnvironment ?? environment).usesCubeRadianceLayout &&
+      radianceCubeFragmentShader != null;
+
+  /// The full-screen sky fragment shader, typically loaded from a
+  /// `.shaderbundle`. When the source was constructed by name, the shader is
+  /// resolved from the base library on first access and then cached.
+  gpu.Shader get fragmentShader =>
+      _fragmentShader ??= baseShaderLibrary[_fragmentShaderName!]!;
+  set fragmentShader(gpu.Shader shader) => _fragmentShader = shader;
+
+  /// Whether the engine binds the active environment's IBL textures
+  /// (`prefiltered_radiance`, `brdf_lut`) when the shader declares them.
+  bool useEnvironment;
+
+  /// The environment a [useEnvironment] shader samples, overriding the
+  /// scene's.
+  ///
+  /// Null (the default) samples the scene's active environment. Set a fixed
+  /// map when this same sky drives the scene's lighting through a
+  /// `SkyEnvironment`: the scene's environment then holds the sky's own
+  /// bake, and without an override the bake pass substitutes an empty
+  /// environment (a sky cannot sample the environment it is producing). A
+  /// fixed override is safe there, so both the background draw and the bake
+  /// sample it.
+  EnvironmentMap? sampledEnvironment;
+
+  final Map<String, ByteData> _uniformBlocks = {};
+  final Map<String, _SkyTexture> _textures = {};
+  final PackedFloatBlocks _packed = PackedFloatBlocks();
+
+  /// Assigns the byte contents of a uniform block by name. [bytes] must match
+  /// the block's std140 layout; pass `null` to clear the binding.
+  void setUniformBlock(String name, ByteData? bytes) {
+    _packed.release(name);
+    if (bytes == null) {
+      _uniformBlocks.remove(name);
+    } else {
+      _uniformBlocks[name] = bytes;
+    }
+  }
+
+  /// Convenience wrapper around [setUniformBlock] that packs a list of floats.
+  /// The caller is still responsible for std140 padding.
+  void setUniformBlockFromFloats(String name, List<double> floats) {
+    _uniformBlocks[name] = _packed.pack(name, _uniformBlocks[name], floats);
+  }
+
+  /// Reads back a previously-set uniform block, or `null` when none is set.
+  ByteData? getUniformBlock(String name) {
+    _packed.release(name);
+    return _uniformBlocks[name];
+  }
+
+  /// All currently-bound uniform block names, in insertion order.
+  Iterable<String> get uniformBlockNames => _uniformBlocks.keys;
+
+  /// Assigns a texture to a sampler uniform by name. Pass `null` to clear it.
+  void setTexture(
+    String name,
+    gpu.Texture? texture, {
+    gpu.SamplerOptions? sampler,
+  }) {
+    if (texture == null) {
+      _textures.remove(name);
+    } else {
+      _textures[name] = _SkyTexture(texture, sampler);
+    }
+  }
+
+  /// Reads back a previously-set texture binding, or `null` when none is set.
+  gpu.Texture? getTexture(String name) => _textures[name]?.texture;
+
+  /// All currently-bound sampler names, in insertion order.
+  Iterable<String> get textureNames => _textures.keys;
+
+  /// Binds the fragment's uniform blocks, textures, and (when
+  /// [useEnvironment]) the environment IBL samplers. Called by the engine
+  /// during the background draw; not part of the app-facing API.
+  void bind(
+    gpu.RenderPass pass,
+    TransientWriter transientsBuffer,
+    EnvironmentMap environment,
+  ) {
+    // The variant the sky is drawn with, matching the pipeline the encoder
+    // built for this environment's radiance layout.
+    final shader = shaderForEnvironment(environment);
+    // Keys and a lookup, since iterating `entries` allocates a MapEntry each.
+    for (final name in _uniformBlocks.keys) {
+      pass.bindUniform(
+        shader.cachedUniformSlot(name),
+        transientsBuffer.emplace(_uniformBlocks[name]!),
+      );
+    }
+    for (final name in _textures.keys) {
+      final bound = _textures[name]!;
+      pass.bindTexture(
+        shader.cachedUniformSlot(name),
+        bound.texture,
+        sampler: bound.sampler ?? defaultSamplerOptions,
+      );
+    }
+    if (useEnvironment) {
+      EngineLightingUniforms.bindPrefilteredRadiance(
+        pass,
+        shader,
+        sampledEnvironment ?? environment,
+        cubeShader: usesRadianceCubeVariant(environment),
+      );
+      pass.bindTexture(
+        shader.cachedUniformSlot('brdf_lut'),
+        Material.getBrdfLutTexture(),
+        sampler: linearClampSamplerOptions,
+      );
+    }
+  }
+}
+
+class _SkyTexture {
+  _SkyTexture(this.texture, this.sampler);
+  final gpu.Texture texture;
+  final gpu.SamplerOptions? sampler;
+}
+
+/// The visible background drawn behind a [Scene].
+///
+/// Assign one to `Scene.skybox`. The skybox is decoupled from the scene's
+/// image-based lighting (`Scene.environment`): the default
+/// [EnvironmentSkySource] shows that same environment, but the two can be set
+/// independently. The engine draws the skybox behind all scene geometry at
+/// the far plane; you never place or order any geometry yourself.
+/// {@category Lighting and environment}
+class Skybox {
+  Skybox(this.source, {this.intensity = 1.0});
+
+  /// What the sky looks like.
+  SkySource source;
+
+  /// Scales the sampled radiance for [EnvironmentSkySource]. It is combined
+  /// with `Scene.environmentIntensity`, so a default skybox showing the
+  /// environment matches the brightness of image-based reflections. A
+  /// [ShaderSkySource] controls its own brightness and ignores this.
+  double intensity;
+}

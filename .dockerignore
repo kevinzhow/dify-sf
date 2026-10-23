@@ -4,3 +4,9 @@
 bench
 server/.build
 server/.swiftpm
+
+# Generated client caches must not enter a server build context.
+**/.dart_tool
+**/build
+.fvm
+tool/visual/.venv

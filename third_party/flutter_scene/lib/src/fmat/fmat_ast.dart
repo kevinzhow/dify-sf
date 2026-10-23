@@ -1,0 +1,441 @@
+// Abstract syntax tree for the `.fmat` custom-material format and the error
+// type the parser, validator, and emitter throw.
+
+/// A depth-pass fragment a cutout material supplies itself, so the depth
+/// prepass and shadow maps cut it by its own surface alpha.
+enum DepthSurfaceKind {
+  /// The camera depth prepass (planar view depth).
+  linearDepth('DepthSurface', 'linear_depth'),
+
+  /// The camera depth prepass that also writes the view normal and roughness.
+  linearDepthNormal('DepthNormalSurface', 'linear_depth_normal'),
+
+  /// A shadow map.
+  shadow('ShadowSurface', 'shadow');
+
+  const DepthSurfaceKind(this.suffix, this.sidecarKey);
+
+  /// Appended to the material name for the bundle entry.
+  final String suffix;
+
+  /// The key in the sidecar's `depth_surface` map.
+  final String sidecarKey;
+}
+
+/// Which rendering contract a `.fmat` targets.
+enum FmatDomain {
+  /// A surface material: the author writes `void Surface(inout MaterialInputs)`
+  /// run on scene geometry through the standard vertex shader.
+  surface,
+
+  /// A sky: the author writes `vec3 Sky(vec3 direction)` drawn full-screen as
+  /// the background. The engine supplies the world view direction and owns the
+  /// draw; `shading_model`, `blending`, and `culling` do not apply.
+  sky,
+}
+
+/// The lighting contract a material opts into.
+enum FmatShadingModel {
+  /// The engine runs its physically based lighting (image-based lighting plus
+  /// the analytic directional light). The material's `Surface()` fills the
+  /// surface description; the framework produces the lit color.
+  lit,
+
+  /// Advanced layered physical lighting. Uses the lit engine bindings and
+  /// enables the physical fields on `MaterialInputs`.
+  physical,
+
+  /// A shadow-receiving overlay. Uses the lit engine bindings (shadow atlas,
+  /// occlusion chain, punctual lights) so `Surface()` can sample them, but
+  /// the framework outputs `base_color` directly (premultiplied) instead of
+  /// running the lighting. Backs the engine's bundled shadow catcher.
+  shadowCatcher,
+
+  /// No lighting. The material's `Surface()` writes the final color into
+  /// `base_color`; the framework outputs it premultiplied. Use for stylized
+  /// or self-lit effects.
+  unlit,
+}
+
+/// How the material's alpha is composited.
+enum FmatBlending {
+  /// Drawn in the opaque pass with no blending.
+  opaque,
+
+  /// Drawn in the depth-sorted translucent pass with premultiplied
+  /// source-over blending.
+  alpha,
+
+  /// Drawn in the depth-sorted translucent pass with additive blending
+  /// (the output alpha is forced to zero, so the destination is never
+  /// darkened). Allowed on `lit` and `unlit` alike.
+  additive,
+}
+
+/// Which triangle faces are culled.
+enum FmatCulling { back, front, none }
+
+/// The depth test a translucent material's geometry uses.
+enum FmatDepthTest {
+  /// Occludes against the opaque scene.
+  lessEqual('less_equal'),
+
+  /// Draws regardless of the depth buffer, for a projection volume whose own
+  /// faces sit behind the surface it shades (see `DecalNode`).
+  always('always');
+
+  const FmatDepthTest(this.token);
+
+  /// The spelling used in a `.fmat` and in the generated sidecar.
+  final String token;
+
+  static FmatDepthTest? fromToken(String token) {
+    for (final value in values) {
+      if (value.token == token) return value;
+    }
+    return null;
+  }
+}
+
+/// The type of a material parameter. Scalar and vector types are packed into
+/// the generated `MaterialParams` uniform block; sampler types are declared as
+/// top-level uniforms.
+enum FmatType {
+  float_('float', 4),
+  int_('int', 4),
+  vec2('vec2', 8),
+  vec3('vec3', 12),
+  vec4('vec4', 16),
+  mat4('mat4', 64),
+  sampler2d('sampler2D', 0),
+  samplerCube('samplerCube', 0);
+
+  const FmatType(this.glslType, this.componentBytes);
+
+  /// The GLSL type name emitted for this parameter.
+  final String glslType;
+
+  /// The tightly packed (non-std140) size in bytes, or 0 for samplers. The
+  /// runtime resolves real std140 offsets from shader reflection, so this is
+  /// informational only.
+  final int componentBytes;
+
+  bool get isSampler => this == sampler2d || this == samplerCube;
+
+  /// The number of scalar components, or 0 for samplers (mat4 counts as 16).
+  int get componentCount => switch (this) {
+    float_ || int_ => 1,
+    vec2 => 2,
+    vec3 => 3,
+    vec4 => 4,
+    mat4 => 16,
+    sampler2d || samplerCube => 0,
+  };
+
+  static FmatType? fromToken(String token) {
+    for (final t in FmatType.values) {
+      // Accept the GLSL spelling (vec4, sampler2D) and a lowercase alias
+      // (sampler2d) for the author's convenience.
+      if (token == t.glslType || token == t.glslType.toLowerCase()) {
+        return t;
+      }
+    }
+    if (token == 'int') return FmatType.int_;
+    if (token == 'float') return FmatType.float_;
+    return null;
+  }
+}
+
+/// What kind of authoring hint annotates a parameter. Hints carry editor and
+/// runtime semantics (sRGB decode, value ranges, sampler placeholders).
+enum FmatHintKind {
+  /// An sRGB-authored color: decoded to linear when set. Valid on vec3/vec4.
+  sourceColor,
+
+  /// A bounded numeric range with a step. Valid on float/int.
+  range,
+
+  /// Sampler placeholder defaults, used when the texture is unset.
+  defaultWhite,
+  defaultBlack,
+  defaultNormal,
+  defaultTransparent,
+}
+
+/// An authoring hint on a parameter.
+class FmatHint {
+  const FmatHint(this.kind, {this.rangeMin, this.rangeMax, this.rangeStep});
+
+  final FmatHintKind kind;
+
+  /// Set only when [kind] is [FmatHintKind.range].
+  final double? rangeMin;
+  final double? rangeMax;
+  final double? rangeStep;
+}
+
+/// A single declared material parameter.
+class FmatParameter {
+  FmatParameter({
+    required this.type,
+    required this.name,
+    this.hint,
+    this.defaultValue,
+  });
+
+  final FmatType type;
+  final String name;
+  final FmatHint? hint;
+
+  /// The default value: a `num` for scalars, a `List<num>` for vectors and
+  /// matrices, or `null`. Samplers carry their default via [hint].
+  final Object? defaultValue;
+
+  bool get isSampler => type.isSampler;
+}
+
+/// A custom interpolant the vertex stage writes and the fragment stage reads,
+/// declared in the material's `varyings` list. The emitter generates the
+/// matching `out` (vertex) and `in` (fragment) declarations under [name], so
+/// the author writes `name = ...` in `Vertex()` and reads `name` in
+/// `Surface()`. Only interpolatable float and vector types are allowed.
+class FmatVarying {
+  const FmatVarying({required this.type, required this.name});
+
+  final FmatType type;
+  final String name;
+}
+
+/// A custom per-vertex attribute the mesh supplies and the vertex stage reads,
+/// declared in the material's `attributes` list. The emitter declares it as a
+/// vertex `in <name>` (matched to the geometry's attribute by name), so the
+/// author reads `name` in `Vertex()`. The geometry must provide a matching
+/// stream (see `MeshGeometry.setCustomAttribute`). Only float and vector types
+/// are supported.
+class FmatAttribute {
+  const FmatAttribute({required this.type, required this.name});
+
+  final FmatType type;
+  final String name;
+
+  /// Number of float components (1..4), used for the vertex format and the
+  /// zero fallback in the depth variant.
+  int get components => type.componentCount;
+}
+
+/// Bytes the engine's fixed instance record occupies (the model transform's
+/// four columns plus the instance color multiplier). Declared per-instance
+/// attributes append after it, so this is the first custom attribute's offset.
+const int kInstanceRecordBaseBytes = 80;
+
+/// A custom per-instance attribute the instance-rate vertex buffer supplies,
+/// declared in the material's `instance_attributes` list.
+///
+/// The emitter declares it as a vertex `in instance_<name>` in the trailing
+/// instance-rate slot, and forwards `v_instance_<name>` to the fragment stage
+/// when `Surface()` calls its accessor. Only float and vector types are
+/// supported; a `vec3` is padded to 16 bytes in the packed record.
+class FmatInstanceAttribute {
+  const FmatInstanceAttribute({
+    required this.type,
+    required this.name,
+    required this.byteOffset,
+  });
+
+  final FmatType type;
+  final String name;
+
+  /// Byte offset within the instance record, counted from the record start
+  /// (so never below [kInstanceRecordBaseBytes]).
+  final int byteOffset;
+
+  /// The instance-rate vertex input the emitter declares and the geometry
+  /// layout binds by name.
+  String get inputName => 'instance_$name';
+
+  /// The interpolant carrying this attribute to the fragment stage.
+  String get varyingName => 'v_instance_$name';
+
+  /// The accessor `Surface()` reads this attribute through.
+  String get accessorName => 'GetInstance${_pascalCase(name)}';
+
+  /// Floats this attribute consumes in the packed record, including the pad a
+  /// `vec3` carries so the next attribute starts 16 bytes on.
+  int get packedFloats => type == FmatType.vec3 ? 4 : type.componentCount;
+
+  /// Floats a caller supplies for this attribute (the pad is not one of them).
+  int get components => type.componentCount;
+}
+
+String _pascalCase(String name) => name
+    .split('_')
+    .where((part) => part.isNotEmpty)
+    .map((part) => part[0].toUpperCase() + part.substring(1))
+    .join();
+
+/// A fully parsed and validated `.fmat` material.
+class FmatMaterial {
+  FmatMaterial({
+    required this.name,
+    this.domain = FmatDomain.surface,
+    this.useEnvironment = false,
+    required this.shadingModel,
+    required this.blending,
+    required this.culling,
+    this.depthWrite = false,
+    this.effectsDepth = false,
+    this.depthTest = FmatDepthTest.lessEqual,
+    this.depthLayer = 0,
+    required this.parameters,
+    required this.fragmentSource,
+    required this.fragmentSourceLine,
+    this.vertexSource,
+    this.vertexSourceLine = 0,
+    this.varyings = const [],
+    this.attributes = const [],
+    this.instanceAttributes = const [],
+    this.engineInputs = const [],
+    this.sceneColorReach,
+    this.environmentLighting = true,
+    this.directionalLight = true,
+    this.alphaToCoverage = false,
+  });
+
+  final String name;
+
+  /// Whether a lit material receives the engine's image-based lighting
+  /// (`environment_lighting:`, default true). False compiles out the
+  /// environment, BRDF LUT, SH, and SSAO samplers; the material then supplies
+  /// its indirect light itself through `Composite()`.
+  final bool environmentLighting;
+
+  /// Whether a lit material receives the scene's directional light
+  /// (`directional_light:`, default true). False compiles out the light, its
+  /// cascaded shadows, and its contact shadow, so the material shades as if
+  /// the scene had none. Worth it for a material that never sees one, since
+  /// the light's term inlines a second copy of `Light()` that some drivers
+  /// take many times longer to compile.
+  final bool directionalLight;
+
+  /// Whether an opaque material turns its surface alpha into MSAA coverage
+  /// (`alpha_to_coverage:`, default false), for crisp, sort-free cutouts
+  /// such as foliage cards.
+  final bool alphaToCoverage;
+
+  /// The rendering contract this `.fmat` targets (surface material or sky).
+  final FmatDomain domain;
+
+  /// Whether the engine binds the scene environment's prefiltered-radiance
+  /// atlas (`requires: [environment]`; sky materials only).
+  final bool useEnvironment;
+
+  final FmatShadingModel shadingModel;
+  final FmatBlending blending;
+  final FmatCulling culling;
+  final bool depthWrite;
+
+  /// Whether a translucent material counts as the visible surface for
+  /// depth-reading effects (`effects_depth:`, default false): depth of field
+  /// and custom passes that read depth see it, cut where `Surface()` alpha
+  /// is below one half, while the color pass still writes no depth. For
+  /// soft cutouts such as fins, which must blur and fog with what they are
+  /// attached to without hiding what is behind them.
+  final bool effectsDepth;
+
+  /// The depth test used in the translucent pass (`depth_test:`).
+  final FmatDepthTest depthTest;
+
+  /// The initial `Material.depthLayer` of materials built from this file
+  /// (`depth_layer:`, default 0): which surface wins where it and another lie
+  /// in one plane.
+  final int depthLayer;
+  final List<FmatParameter> parameters;
+
+  /// The verbatim contents of the code block (`fragment { }` for a surface
+  /// material, `sky { }` for a sky).
+  final String fragmentSource;
+
+  /// The 1-based line in the source where [fragmentSource] begins, used to
+  /// emit a `#line` directive so compiler errors map back to the `.fmat`.
+  final int fragmentSourceLine;
+
+  /// The verbatim contents of the optional `vertex { }` block (the author's
+  /// `void Vertex(inout VertexInputs vertex)` hook and any helpers), or `null`
+  /// when the material does not customize the vertex stage. Only surface
+  /// materials may declare a vertex stage.
+  final String? vertexSource;
+
+  /// The 1-based line where [vertexSource] begins, for the `#line` directive.
+  /// Zero when there is no vertex stage.
+  final int vertexSourceLine;
+
+  /// Whether this material customizes the vertex stage.
+  bool get hasVertexStage => vertexSource != null;
+
+  /// Custom interpolants forwarded from `Vertex()` to `Surface()`, in declared
+  /// order. Empty unless the material declares a `varyings` list.
+  final List<FmatVarying> varyings;
+
+  /// Custom per-vertex attributes the mesh supplies to `Vertex()`, in declared
+  /// order. Empty unless the material declares an `attributes` list.
+  final List<FmatAttribute> attributes;
+
+  /// Custom per-instance attributes the instance-rate buffer supplies, in
+  /// declared order. Empty unless the material declares an
+  /// `instance_attributes` list.
+  final List<FmatInstanceAttribute> instanceAttributes;
+
+  /// Bytes one packed instance record occupies, the fixed transform and color
+  /// block plus every declared attribute.
+  int get instanceRecordBytes => instanceAttributes.isEmpty
+      ? kInstanceRecordBaseBytes
+      : instanceAttributes.last.byteOffset +
+            instanceAttributes.last.packedFloats * 4;
+
+  /// Per-frame engine inputs the shader samples (`engine_inputs:` in the
+  /// material block): `scene_color` (the composed color behind the draw),
+  /// `filtered_scene_color` (its roughness-filtered atlas), and `scene_depth`
+  /// (the opaque linear depth). Filtered color requires `scene_color`. The
+  /// emitter declares matching samplers and accessors only when listed, and
+  /// the engine produces textures only when a visible material asks. Surface
+  /// materials only.
+  final List<String> engineInputs;
+
+  /// How far beyond its own surface the shader samples the scene color, in
+  /// local units (`scene_color_reach:`). Null means it may sample anywhere on
+  /// screen, so it can never share a capture with another reader. A declared
+  /// reach lets readers whose inflated screen rects are disjoint share one.
+  final double? sceneColorReach;
+
+  /// Parameters packed into the `MaterialParams` uniform block, in declared
+  /// order.
+  Iterable<FmatParameter> get uniformParameters =>
+      parameters.where((p) => !p.isSampler);
+
+  /// Parameters declared as top-level sampler uniforms.
+  Iterable<FmatParameter> get samplerParameters =>
+      parameters.where((p) => p.isSampler);
+}
+
+/// Thrown when a `.fmat` source is malformed or fails validation. Carries a
+/// 1-based source location when one is known.
+class FmatException implements Exception {
+  FmatException(this.message, {this.fileName, this.line, this.column});
+
+  final String message;
+  final String? fileName;
+  final int? line;
+  final int? column;
+
+  @override
+  String toString() {
+    final location = StringBuffer();
+    if (fileName != null) location.write(fileName);
+    if (line != null) {
+      location.write('${fileName != null ? ':' : ''}$line');
+      if (column != null) location.write(':$column');
+    }
+    final prefix = location.isEmpty ? '' : '$location: ';
+    return 'FmatException: $prefix$message';
+  }
+}

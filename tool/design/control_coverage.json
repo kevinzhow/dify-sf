@@ -1,0 +1,568 @@
+{
+  "schema": 1,
+  "scope": "Exported design widgets. Inventory completeness is a review gate, not proof of visual correctness.",
+  "files": {
+    "adaptive.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/workflow_editor/mobile_layout_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "alert_dialog.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/studio/app_card_test.dart",
+        "app/test/dify_spec/dify_ui/alert_dialog_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "app_icon.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/studio/app_card_test.dart",
+        "app/test/dify_spec/app_detail/app_info_trigger_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "app_icon_picker.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design/app_icon_picker_test.dart",
+        "app/test/dify_spec/studio/edit_app_modal_test.dart",
+        "app/test/dify_spec/studio/duplicate_modal_test.dart",
+        "app/test/dify_spec/workflow/nodes_panel/llm/agent_v2_misc_test.dart"
+      ],
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
+    },
+    "avatar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/avatar_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "badge.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "button.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/control_optical_alignment_test.dart",
+        "app/test/design/page_selection_test.dart",
+        "app/test/human_input/m1_second_review_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "button_style.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/editor_test.dart",
+        "app/test/design/focus_ring_paint_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "checkbox.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "checkbox_list.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "chip.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "collapse.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "compositions.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "copy_feedback.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
+    },
+    "dashed_border.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "date_and_time_picker.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "dialog.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design/page_selection_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "divider.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/dify_spec/base_chat/human_input_content_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "drawer.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/drawer_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "emoji_catalog.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive. No dedicated direct construction test is claimed by this row."
+    },
+    "emoji_search.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive. No dedicated direct construction test is claimed by this row."
+    },
+    "floating.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
+        "app/test/dify_spec/dify_ui/popover_test.dart",
+        "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "form_control_shared.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "icon_button.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/editor_test.dart",
+        "app/test/dify_spec/dify_ui/alert_dialog_test.dart",
+        "app/test/dify_spec/dify_ui/icon_button_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "infotip.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/base_form/base_field_test.dart",
+        "app/test/dify_spec/workflow/nodes_panel/data/tool_form_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "inline_delete_confirm.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
+    },
+    "inline_extent.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "input.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "input_mode.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/studio/uploader_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "kbd.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "loading.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/switch_test.dart",
+        "app/test/dify_spec/workflow/header/view_history_test.dart",
+        "app/test/dify_spec/workflow/run/panels_test.dart",
+        "app/test/dify_spec/workflow/nodes/last_run_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "menu.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "menu_items.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/workflow_editor/canvas_touch_test.dart",
+        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart"
+      ],
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
+    },
+    "menu_submenu.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
+        "app/test/dify_spec/dify_ui/context_menu_test.dart"
+      ],
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
+    },
+    "number_field.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "page.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design/page_selection_test.dart",
+        "app/test/workflow_editor/mobile_start_list_test.dart",
+        "app/test/workflow_editor/page_selection_canvas_test.dart",
+        "app/test/workflow_editor/mobile_layout_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "page_route.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "pagination.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "placement.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "popover.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/dify_spec/dify_ui/input_group_more_test.dart",
+        "app/test/dify_spec/dify_ui/popover_test.dart",
+        "app/test/dify_spec/workflow/nodes_panel/entry/trigger_schedule/panel_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "qrcode.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "radio_group.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "reorderable_list.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "scrollbar.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "search_input.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "segmented_control.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "select.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "selection.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design/page_selection_test.dart",
+        "app/test/workflow_editor/canvas_connect_and_drag_test.dart",
+        "app/test/workflow_editor/canvas_touch_test.dart",
+        "app/test/dify_spec/access_point/embedded_settings_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "shortcut_kbd.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/design_widgets_test.dart",
+        "app/test/dify_spec/dify_ui/shortcut_kbd_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "skeleton.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/workflow/run/status_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "slider.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "status_dot.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/model_chip_test.dart",
+        "app/test/dify_spec/dify_ui/status_dot_test.dart",
+        "app/test/dify_spec/model_provider/agent_model_bar_test.dart",
+        "app/test/dify_spec/workflow/nodes_panel/llm/model_selector_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "surface.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/variable_inspect_test.dart",
+        "app/test/dify_spec/dify_ui/toast_test.dart",
+        "app/test/dify_spec/workflow/header/online_users_geometry_test.dart"
+      ],
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "switch.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "tab_slider_plain.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "table.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/app_detail_logs_test.dart",
+        "app/test/design/table_test.dart",
+        "app/test/dify_spec/app_log/workflow_log_list_test.dart",
+        "app/test/dify_spec/app_log/workflow_log_index_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "tabs.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "tag_input.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "text.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/base_chat/human_input_content_test.dart",
+        "app/test/dify_spec/workflow/panel/chat_variable_panel/object_value_list_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "text_field.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "text_line.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/identity_test.dart",
+        "app/test/app_detail_test.dart",
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/editor_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "textarea.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "toast.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart",
+        "app/test/editor_export_toast_test.dart",
+        "app/test/toast_wiring_test.dart",
+        "app/test/account_page_test.dart",
+        "app/test/design/app_icon_picker_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+    },
+    "tooltip.dart": {
+      "kind": "gallery",
+      "evidence": [
+        "app/tool/control_gallery.dart",
+        "app/test/control_gallery_typography_test.dart"
+      ],
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "workspace_avatar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/design_typography_test.dart"
+      ],
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
+    }
+  }
+}

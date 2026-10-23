@@ -1,0 +1,257 @@
+// Resolve pass: reads the linear HDR scene color (with premultiplied
+// alpha) and produces the display-referred swapchain image. In order it
+// applies chromatic aberration (at sample time), exposure, color grading,
+// a tone mapping operator, display encoding, then vignette and film grain.
+// Each effect is gated by a flag, so a disabled effect costs only a
+// branch and leaves the image unchanged.
+uniform ResolveInfo {
+  float exposure;
+  // 0 = PBR Neutral, 1 = ACES, 2 = Reinhard, 3 = linear, 4 = AgX.
+  float tone_mapping_mode;
+  // 1.0 -> flip V when sampling scene_color. The scene color is a
+  // render-to-texture target, and its sampled Y orientation differs by
+  // backend (the OpenGL ES backend's FBO is bottom-up); the Dart side
+  // sets this so the resolved image is upright everywhere. Flutter GPU
+  // exposes no way to do this in the shader (no backend macro).
+  float flip_y;
+  // 1.0 -> apply the color grading controls below.
+  float grading_enabled;
+
+  float brightness;
+  float contrast;
+  float saturation;
+  float temperature;
+
+  float tint;
+  float _pad0;
+  float _pad1;
+  float _pad2;
+
+  // Only the xyz channels are used; w is padding.
+  vec4 lift;
+  vec4 gamma;
+  vec4 gain;
+
+  float chromatic_aberration_enabled;
+  float chromatic_aberration_intensity;
+  float time;
+  float _pad3;
+
+  float vignette_enabled;
+  float vignette_intensity;
+  float vignette_radius;
+  float vignette_smoothness;
+
+  float grain_enabled;
+  float grain_intensity;
+  float _pad4;
+  float _pad5;
+
+  float bloom_enabled;
+  float bloom_intensity;
+  // Surface debug view. x: 1 when a view is active, so its display-referred
+  // pixels copy through untouched (no exposure, tone mapping, or display
+  // encoding). y: the split as a fraction of the width, negative for the
+  // whole viewport; pixels at or right of it are the view.
+  float debug_view_active;
+  float debug_view_split;
+
+  vec4 agx_params;
+
+  // x: grading-LUT blend, 0 disables. y: the cube edge length (the strip
+  // texture is y*y wide and y tall). zw: reserved.
+  vec4 lut_params;
+}
+resolve_info;
+
+uniform sampler2D scene_color;
+uniform sampler2D bloom_color;
+// 1x1 auto exposure correction factor in r, produced by the adaptation
+// pass. A white placeholder (factor 1.0) fills the slot when auto exposure
+// is disabled.
+uniform sampler2D exposure_factor;
+
+// The grading LUT strip: the cube's blue slices side by side, red along x
+// inside a slice, green along y.
+uniform sampler2D grading_lut;
+
+in vec2 v_uv;
+
+out vec4 frag_color;
+
+// Magnifies the coarse bloom texture with a cubic B-spline built from four
+// bilinear taps. Plain bilinear shows each bloom texel as a square blob.
+vec3 SampleBloom(vec2 uv) {
+  vec2 size = vec2(textureSize(bloom_color, 0));
+  vec2 p = uv * size - 0.5;
+  vec2 i = floor(p);
+  vec2 f = p - i;
+  vec2 f2 = f * f;
+  vec2 f3 = f2 * f;
+  vec2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+  vec2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+  vec2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+  vec2 w3 = f3 / 6.0;
+  vec2 g0 = w0 + w1;
+  vec2 g1 = w2 + w3;
+  vec2 c0 = (i - 0.5 + w1 / g0) / size;
+  vec2 c1 = (i + 1.5 + w3 / g1) / size;
+  return g0.y * (g0.x * texture(bloom_color, vec2(c0.x, c0.y)).rgb +
+                 g1.x * texture(bloom_color, vec2(c1.x, c0.y)).rgb) +
+         g1.y * (g0.x * texture(bloom_color, vec2(c0.x, c1.y)).rgb +
+                 g1.x * texture(bloom_color, vec2(c1.x, c1.y)).rgb);
+}
+
+#include <tone_mapping.glsl>
+
+// Samples the grading cube stored as a strip, lerping the two blue slices
+// spanning the input's blue coordinate.
+vec3 ApplyGradingLut(vec3 c, float size) {
+  vec3 scaled = clamp(c, 0.0, 1.0) * (size - 1.0);
+  float slice0 = floor(scaled.z);
+  float slice1 = min(slice0 + 1.0, size - 1.0);
+  vec2 texel = vec2(1.0 / (size * size), 1.0 / size);
+  vec2 base = vec2(scaled.x + 0.5, scaled.y + 0.5);
+  vec3 tap0 =
+      texture(grading_lut, (base + vec2(slice0 * size, 0.0)) * texel).rgb;
+  vec3 tap1 =
+      texture(grading_lut, (base + vec2(slice1 * size, 0.0)) * texel).rgb;
+  return mix(tap0, tap1, scaled.z - slice0);
+}
+
+vec3 LinearToSRGB(vec3 color) {
+  return mix(color * 12.92,
+             1.055 * pow(max(color, vec3(0.0031308)), vec3(1.0 / 2.4)) - 0.055,
+             step(0.0031308, color));
+}
+
+// Color grading on the exposed linear HDR color, before tone mapping.
+// Neutral defaults leave the color unchanged.
+vec3 ApplyColorGrading(vec3 color) {
+  // White balance: warm or cool on temperature, green or magenta on tint.
+  vec3 white_balance = vec3(1.0 + resolve_info.temperature * 0.2,
+                            1.0 + resolve_info.tint * 0.2,
+                            1.0 - resolve_info.temperature * 0.2);
+  color *= white_balance;
+
+  // Brightness.
+  color *= resolve_info.brightness;
+
+  // Lift, gamma, gain (shadows, midtones, highlights).
+  color = resolve_info.gain.rgb *
+          (color + resolve_info.lift.rgb * (1.0 - color));
+  color = pow(max(color, vec3(0.0)),
+              1.0 / max(resolve_info.gamma.rgb, vec3(1e-4)));
+
+  // Contrast around linear mid-gray.
+  const float kMidGray = 0.18;
+  color = (color - kMidGray) * resolve_info.contrast + kMidGray;
+  color = max(color, vec3(0.0));
+
+  // Saturation.
+  float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  color = mix(vec3(luma), color, resolve_info.saturation);
+
+  return color;
+}
+
+// Un-premultiplies a sampled premultiplied-alpha color.
+vec3 Unpremultiply(vec4 c) { return c.a > 0.0 ? c.rgb / c.a : vec3(0.0); }
+
+// Value noise for film grain. Mixing time in as a third coordinate
+// re-randomizes every pixel each frame, rather than sliding one fixed
+// noise field across the screen.
+float GrainNoise(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+void main() {
+  vec2 uv = resolve_info.flip_y > 0.5 ? vec2(v_uv.x, 1.0 - v_uv.y) : v_uv;
+
+  // A surface debug view wrote display-referred pixels; hand them through so
+  // the value on screen is the value the material saw. Left of a split the
+  // lit half still resolves normally.
+  bool debug_pixel = resolve_info.debug_view_active > 0.5 &&
+                     (resolve_info.debug_view_split < 0.0 ||
+                      v_uv.x >= resolve_info.debug_view_split);
+  if (debug_pixel) {
+    // Debug surfaces wrote opaque display-referred color; where nothing drew
+    // the target is still clear, and that transparency must survive so the
+    // widget behind the scene shows through as it does for the lit image.
+    frag_color = texture(scene_color, uv);
+    return;
+  }
+
+  // Sample the scene color. Chromatic aberration pulls the red and blue
+  // channels from offset positions that grow toward the edges.
+  vec3 color;
+  float alpha;
+  if (resolve_info.chromatic_aberration_enabled > 0.5) {
+    vec2 offset =
+        (uv - 0.5) * resolve_info.chromatic_aberration_intensity * 0.04;
+    vec4 center = texture(scene_color, uv);
+    color = vec3(Unpremultiply(texture(scene_color, uv + offset)).r,
+                 Unpremultiply(center).g,
+                 Unpremultiply(texture(scene_color, uv - offset)).b);
+    alpha = center.a;
+  } else {
+    vec4 hdr = texture(scene_color, uv);
+    color = Unpremultiply(hdr);
+    alpha = hdr.a;
+  }
+
+  // Bloom is computed in HDR by BloomPass and added back here.
+  if (resolve_info.bloom_enabled > 0.5) {
+    color += SampleBloom(uv) * resolve_info.bloom_intensity;
+  }
+
+  color *= resolve_info.exposure * texture(exposure_factor, vec2(0.5, 0.5)).r;
+  if (resolve_info.grading_enabled > 0.5) {
+    color = ApplyColorGrading(color);
+  }
+
+  vec3 mapped;
+  if (resolve_info.tone_mapping_mode < 0.5) {
+    mapped = PBRNeutralToneMapping(color);
+  } else if (resolve_info.tone_mapping_mode < 1.5) {
+    mapped = ACESFilmicToneMapping(color, 1.0);
+  } else if (resolve_info.tone_mapping_mode < 2.5) {
+    mapped = ReinhardToneMapping(color);
+  } else if (resolve_info.tone_mapping_mode < 3.5) {
+    mapped = clamp(color, 0.0, 1.0);
+  } else {
+    mapped = AgXToneMapping(color, resolve_info.agx_params);
+  }
+
+  // Vignette: darken toward the edges of the screen.
+  if (resolve_info.vignette_enabled > 0.5) {
+    float dist = length((v_uv - 0.5) * 2.0);
+    float falloff = smoothstep(
+        resolve_info.vignette_radius,
+        resolve_info.vignette_radius + resolve_info.vignette_smoothness,
+        dist);
+    mapped *= 1.0 - falloff * resolve_info.vignette_intensity;
+  }
+
+  // Film grain: animated per-pixel noise.
+  if (resolve_info.grain_enabled > 0.5) {
+    float n =
+        GrainNoise(vec3(gl_FragCoord.xy, resolve_info.time * 60.0)) - 0.5;
+    mapped = max(mapped + n * resolve_info.grain_intensity, vec3(0.0));
+  }
+
+  // The swapchain texture is a plain UNorm render target, so encode the
+  // resolved linear color before handing it to Texture.asImage().
+  mapped = LinearToSRGB(mapped);
+
+  // Film-look LUT on the display-encoded color, matching how grading tools
+  // author display-referred .cube looks.
+  if (resolve_info.lut_params.x > 0.0) {
+    vec3 graded = ApplyGradingLut(mapped, resolve_info.lut_params.y);
+    mapped = mix(mapped, graded, resolve_info.lut_params.x);
+  }
+
+  frag_color = vec4(mapped * alpha, alpha);
+}

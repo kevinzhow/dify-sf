@@ -1,0 +1,448 @@
+app:
+  description: Classifies a request and routes it to a parameter extractor, a document
+    extractor or a list operator.
+  icon: 🧭
+  icon_background: '#E0F2FE'
+  mode: workflow
+  name: sf_classify_extract
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: question-classifier
+      id: 1760600000001-source-1760600030001-target
+      source: '1760600000001'
+      sourceHandle: source
+      target: '1760600030001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: parameter-extractor
+      id: 1760600030001-1-1760600060001-target
+      source: '1760600030001'
+      sourceHandle: '1'
+      target: '1760600060001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: document-extractor
+      id: 1760600030001-2-1760600060002-target
+      source: '1760600030001'
+      sourceHandle: '2'
+      target: '1760600060002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: list-operator
+      id: 1760600030001-1760600123456-1760600060003-target
+      source: '1760600030001'
+      sourceHandle: '1760600123456'
+      target: '1760600060003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: parameter-extractor
+        targetType: end
+      id: 1760600060001-source-1760600090001-target
+      source: '1760600060001'
+      sourceHandle: source
+      target: '1760600090001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: end
+      id: 1760600060002-source-1760600090002-target
+      source: '1760600060002'
+      sourceHandle: source
+      target: '1760600090002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: list-operator
+        targetType: end
+      id: 1760600060003-source-1760600090003-target
+      source: '1760600060003'
+      sourceHandle: source
+      target: '1760600090003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Request
+          max_length: 256
+          options: []
+          required: true
+          type: text-input
+          variable: query
+        - label: Details
+          max_length: 4000
+          options: []
+          required: false
+          type: paragraph
+          variable: details
+        - label: Max items
+          max_length: null
+          options: []
+          required: false
+          type: number
+          variable: max_items
+        - label: Language
+          max_length: null
+          options:
+          - English
+          - 中文
+          - 日本語
+          required: true
+          type: select
+          variable: language
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: Documents
+          max_length: 5
+          options: []
+          required: false
+          type: file-list
+          variable: documents
+      height: 194
+      id: '1760600000001'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        classes:
+        - id: '1'
+          label: CLASS 1
+          name: Pull structured fields out of {{#1760600000001.details#}}
+        - id: '2'
+          label: CLASS 2
+          name: Summarize the attached documents
+        - id: '1760600123456'
+          label: CLASS 3
+          name: Shortlist, filter or sort the uploaded files by type and size before
+            a human review
+        desc: 'Sends the request to one of three branches.
+
+          Class 3 has a long name  so the card  has to wrap it.'
+        instruction: Requests can be written in {{#1760600000001.language#}}. Treat
+          them the same as English.
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        query_variable_selector:
+        - '1760600000001'
+        - query
+        selected: false
+        title: Route request
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 236
+      id: '1760600030001'
+      position:
+        x: 380
+        y: 282
+      positionAbsolute:
+        x: 380
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: Reads the details text and returns typed fields.
+        instruction: Return at most {{#1760600000001.max_items#}} line items.
+        model:
+          completion_params:
+            temperature: 0.1
+          mode: chat
+          name: gpt-4o-mini
+          provider: langgenius/openai/openai
+        parameters:
+        - description: Full name of the customer
+          name: customer_name
+          required: true
+          type: string
+        - description: Order total in the stated currency
+          name: total_amount
+          required: false
+          type: number
+        - description: One entry per product line
+          name: line_items
+          required: false
+          type: array[string]
+        query:
+        - '1760600000001'
+        - details
+        reasoning_mode: prompt
+        selected: false
+        title: Extract order fields
+        type: parameter-extractor
+        vision:
+          enabled: false
+      height: 98
+      id: '1760600060001'
+      position:
+        x: 680
+        y: 80
+      positionAbsolute:
+        x: 680
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: Converts each uploaded document to text.
+        is_array_file: true
+        selected: false
+        title: Read documents
+        type: document-extractor
+        variable_selector:
+        - '1760600000001'
+        - documents
+      height: 92
+      id: '1760600060002'
+      position:
+        x: 680
+        y: 330
+      positionAbsolute:
+        x: 680
+        y: 330
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: Keeps documents, largest first, top 3.
+        extract_by:
+          enabled: false
+          serial: '1'
+        filter_by:
+          conditions:
+          - comparison_operator: in
+            key: type
+            value:
+            - document
+          enabled: true
+        item_var_type: file
+        limit:
+          enabled: true
+          size: 3
+        order_by:
+          enabled: true
+          key: size
+          value: desc
+        selected: false
+        title: Shortlist files
+        type: list-operator
+        var_type: array[file]
+        variable:
+        - '1760600000001'
+        - documents
+      height: 92
+      id: '1760600060003'
+      position:
+        x: 680
+        y: 580
+      positionAbsolute:
+        x: 680
+        y: 580
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1760600060001'
+          - customer_name
+          value_type: string
+          variable: customer_name
+        - value_selector:
+          - '1760600060001'
+          - total_amount
+          value_type: number
+          variable: total_amount
+        - value_selector:
+          - '1760600060001'
+          - line_items
+          value_type: array[string]
+          variable: line_items
+        - value_selector:
+          - '1760600060001'
+          - __is_success
+          value_type: number
+          variable: is_success
+        selected: false
+        title: End (fields)
+        type: end
+      height: 168
+      id: '1760600090001'
+      position:
+        x: 980
+        y: 80
+      positionAbsolute:
+        x: 980
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1760600060002'
+          - text
+          value_type: array[string]
+          variable: document_text
+        selected: false
+        title: End (text)
+        type: end
+      height: 90
+      id: '1760600090002'
+      position:
+        x: 980
+        y: 330
+      positionAbsolute:
+        x: 980
+        y: 330
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1760600060003'
+          - result
+          value_type: array[file]
+          variable: shortlist
+        - value_selector:
+          - '1760600060003'
+          - first_record
+          value_type: file
+          variable: largest_file
+        selected: false
+        title: End (shortlist)
+        type: end
+      height: 116
+      id: '1760600090003'
+      position:
+        x: 980
+        y: 580
+      positionAbsolute:
+        x: 980
+        y: 580
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

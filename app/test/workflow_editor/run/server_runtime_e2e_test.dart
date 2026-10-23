@@ -1,0 +1,535 @@
+/// Protocol 1.15 against a real server (stack P of the dify-sf repository's e2e harness): a draft run with an iteration
+/// and a loop goes to the server through [ServerRunService] (the server announces both node types in `draft_run`), and
+/// the editor's own run handlers ([WorkflowRunController]) build the run state from the server's events as they do from
+/// the stand-in's. Runs only when `DIFYSF_RUNTIME_URL` is set, e.g.
+///
+///     DIFYSF_RUNTIME_URL=http://127.0.0.1:18080 flutter test test/workflow_editor/run/server_runtime_e2e_test.dart
+///
+/// Needs the server's code sandbox (template nodes). Signs in as `DIFYSF_EMAIL` / `DIFYSF_PASSWORD` (default the e2e
+/// harness's owner).
+library;
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:collab_client/collab_client.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/mock_run_service.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/run_events.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/run_graph.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/run_stream.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/run_types.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/server_run_service.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/workflow_run.dart';
+import 'package:dify_sf_app/src/workflow_editor/store/workflow_store.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/human_input_content.dart';
+import 'package:flutter/material.dart';
+
+import '../../support/app_fonts.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+final String? _url = Platform.environment['DIFYSF_RUNTIME_URL'];
+final String _email = Platform.environment['DIFYSF_EMAIL'] ?? 'e2e-owner@example.test';
+final String _password = Platform.environment['DIFYSF_PASSWORD'] ?? 'E2e-throwaway-1';
+
+const _yaml = '''
+app:
+  mode: workflow
+  name: client-e2e-containers
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: it, targetHandle: target}
+    - {id: e2, source: itstart, sourceHandle: source, target: tpl, targetHandle: target, data: {isInIteration: true, iteration_id: it}}
+    - {id: e3, source: it, sourceHandle: source, target: lp, targetHandle: target}
+    - {id: e4, source: lpstart, sourceHandle: source, target: inc, targetHandle: target, data: {isInLoop: true, loop_id: lp}}
+    - {id: e5, source: lp, sourceHandle: source, target: end, targetHandle: target}
+    nodes:
+    - id: start
+      data:
+        title: Start
+        type: start
+        variables:
+        - {label: payload, required: true, type: json_object, variable: payload}
+    - id: it
+      data: {title: Each, type: iteration, start_node_id: itstart, iterator_selector: [start, payload, items],
+             output_selector: [tpl, output], is_parallel: true, parallel_nums: 2}
+    - id: itstart
+      type: custom-iteration-start
+      parentId: it
+      data: {title: '', type: iteration-start, isInIteration: true}
+    - id: tpl
+      parentId: it
+      data:
+        title: Shout
+        type: template-transform
+        isInIteration: true
+        iteration_id: it
+        template: '{{ i }}:{{ x | upper }}'
+        variables:
+        - {variable: x, value_selector: [it, item]}
+        - {variable: i, value_selector: [it, index]}
+    - id: lp
+      data: {title: Count, type: loop, start_node_id: lpstart, loop_count: 3, break_conditions: [], logical_operator: and,
+             loop_variables: [{label: n, var_type: number, value_type: constant, value: '0'}]}
+    - id: lpstart
+      type: custom-loop-start
+      parentId: lp
+      data: {title: '', type: loop-start, isInLoop: true}
+    - id: inc
+      parentId: lp
+      data:
+        title: Add
+        type: assigner
+        version: '2'
+        isInLoop: true
+        loop_id: lp
+        items:
+        - {input_type: constant, operation: +=, value: 1, variable_selector: [lp, n], write_mode: over-write}
+    - id: end
+      data:
+        title: End
+        type: end
+        outputs:
+        - {variable: shouted, value_selector: [it, output]}
+        - {variable: n, value_selector: [lp, n]}
+''';
+
+/// Protocol 1.16: a run that stops at a human input node and waits for the answer.
+const _humanYaml = '''
+app:
+  mode: workflow
+  name: client-e2e-human
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - {id: e1, source: start, sourceHandle: source, target: human, targetHandle: target}
+    - {id: e2, source: human, sourceHandle: approve, target: end, targetHandle: target}
+    nodes:
+    - id: start
+      data: {title: Start, type: start, variables: []}
+    - id: human
+      data:
+        title: Approve
+        type: human-input
+        form_content: 'Approve {{#\$output.reply#}}?'
+        inputs:
+        - {type: paragraph, output_variable_name: reply}
+        user_actions:
+        - {id: approve, title: Approve it, button_style: primary}
+        delivery_methods:
+        - {type: webapp, enabled: true}
+    - id: end
+      data:
+        title: End
+        type: end
+        outputs:
+        - {variable: reply, value_selector: [human, reply]}
+''';
+
+const _humanGraph = StaticRunGraph(
+  nodes: [
+    RunGraphNode(id: 'start', type: 'start', title: 'Start', data: {'type': 'start', 'title': 'Start'}),
+    RunGraphNode(id: 'human', type: 'human-input', title: 'Approve', x: 300, data: {'type': 'human-input', 'title': 'Approve'}),
+    RunGraphNode(id: 'end', type: 'end', title: 'End', x: 600, data: {'type': 'end', 'title': 'End'}),
+  ],
+  edges: [RunGraphEdge(id: 'e1', source: 'start', target: 'human'), RunGraphEdge(id: 'e2', source: 'human', target: 'end')],
+);
+
+const _graph = StaticRunGraph(
+  nodes: [
+    RunGraphNode(id: 'start', type: 'start', title: 'Start', data: {'type': 'start', 'title': 'Start'}),
+    RunGraphNode(id: 'it', type: 'iteration', title: 'Each', x: 300, data: {'type': 'iteration', 'title': 'Each'}),
+    RunGraphNode(id: 'itstart', type: 'iteration-start', parentId: 'it', data: {'type': 'iteration-start'}),
+    RunGraphNode(
+      id: 'tpl',
+      type: 'template-transform',
+      title: 'Shout',
+      parentId: 'it',
+      data: {'type': 'template-transform'},
+    ),
+    RunGraphNode(id: 'lp', type: 'loop', title: 'Count', x: 600, data: {'type': 'loop', 'title': 'Count'}),
+    RunGraphNode(id: 'lpstart', type: 'loop-start', parentId: 'lp', data: {'type': 'loop-start'}),
+    RunGraphNode(id: 'inc', type: 'assigner', title: 'Add', parentId: 'lp', data: {'type': 'assigner'}),
+    RunGraphNode(id: 'end', type: 'end', title: 'End', x: 900, data: {'type': 'end', 'title': 'End'}),
+  ],
+  edges: [
+    RunGraphEdge(id: 'e1', source: 'start', target: 'it'),
+    RunGraphEdge(id: 'e2', source: 'itstart', target: 'tpl'),
+    RunGraphEdge(id: 'e3', source: 'it', target: 'lp'),
+    RunGraphEdge(id: 'e4', source: 'lpstart', target: 'inc'),
+    RunGraphEdge(id: 'e5', source: 'lp', target: 'end'),
+  ],
+);
+
+void main() {
+  if (_url == null) {
+    test('server runtime e2e (set DIFYSF_RUNTIME_URL to run)', () {}, skip: 'DIFYSF_RUNTIME_URL is not set');
+    return;
+  }
+  final base = Uri.parse(_url!);
+  // The whole suite talks to a real server: start the widget binding here (it would otherwise stub HTTP before the first
+  // page test) and take its stub off once.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = null;
+  setUp(() => runStreamToast = (_) {});
+
+  test('1.15: a draft run with an iteration and a loop runs on the server; the editor builds its run state', () async {
+    final owner = AuthSession(api: HttpAuthApi(base));
+    if (await owner.api.setupStatus() == SetupStatus.notStarted) {
+      await owner.setup(email: _email, name: 'Client E2E', password: _password);
+    } else {
+      await owner.login(email: _email, password: _password);
+    }
+    final features = (await owner.api.systemFeatures()).workflowRuntime;
+    expect(features?.protocolVersion, '1.16');
+    expect(features?.draftRun, containsAll(['iteration', 'iteration-start', 'loop', 'loop-start', 'assigner']));
+    final apps = HttpAppsApi(base, auth: owner);
+    final app = (await apps.importDsl(_yaml)).appId!;
+    addTearDown(() => apps.delete(app));
+
+    final store = WorkflowStore();
+    final fallback = MockWorkflowRunService(graph: () => _graph);
+    final service = ServerRunService(
+      runtime: ServerWorkflowRuntime(
+        api: HttpWorkflowRunApi(base, auth: owner),
+        singleNodeRun: features!.singleNodeRun,
+        draftRun: features.draftRun,
+      ),
+      appId: app,
+      fallback: fallback,
+      nodeTypeOf: (id) => _graph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => _graph.nodes.map((n) => n.type),
+    );
+    expect(service.draftRunsOnServer, isTrue);
+    final run = WorkflowRunController(
+      store: store,
+      service: service,
+      graph: _graph,
+      toast: (_, m) => fail('toast: $m'),
+    );
+    final seen = <String>[];
+    await run.handleRun(
+      {
+        'inputs': {
+          'payload': {
+            'items': ['a', 'b', 'c'],
+          },
+        },
+      },
+      callback: RunCallbacks(
+        onIterationStart: (e) => seen.add('iteration_started ${e.data['node_id']}'),
+        onIterationNext: (e) => seen.add('iteration_next ${e.data['index']}'),
+        onIterationFinish: (e) => seen.add('iteration_completed ${e.data['status']}'),
+        onLoopStart: (e) => seen.add('loop_started ${e.data['node_id']}'),
+        onLoopNext: (e) => seen.add('loop_next ${e.data['index']}'),
+        onLoopFinish: (e) => seen.add('loop_completed ${e.data['status']}'),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 600 && resultOf(store.workflowRunningData.value ?? const {})['status'] == NodeRunningStatus.running;
+      i++
+    ) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    final data = store.workflowRunningData.value!;
+    final result = resultOf(data);
+    expect(result['status'], 'succeeded', reason: '$result');
+    expect(result['outputs'], {
+      'shouted': ['0:A', '1:B', '2:C'],
+      'n': 3,
+    });
+    expect(seen, [
+      'iteration_started it',
+      'iteration_next 0',
+      'iteration_next 1',
+      'iteration_next 2',
+      'iteration_completed succeeded',
+      'loop_started lp',
+      'loop_next 1',
+      'loop_next 2',
+      'loop_completed succeeded',
+    ]);
+    final tracing = tracingOf(data);
+    final it = tracing.firstWhere((t) => t['node_id'] == 'it');
+    expect(it['status'], 'succeeded');
+    expect((it['execution_metadata'] as Map)['iteration_duration_map'], hasLength(3));
+    // Dify's web keeps one tracing entry per node (a node started again replaces its entry): the last round's.
+    expect(tracing.where((t) => t['node_id'] == 'tpl').map((t) => t['iteration_id']), ['it']);
+    expect(tracing.where((t) => t['node_id'] == 'inc').map((t) => t['loop_id']), ['lp']);
+    expect(store.nodeRunDataOf('it')['_runningStatus'], 'succeeded');
+    expect(store.nodeRunDataOf('lp')['_loopLength'], 3);
+    // Dify's web reads `metadata.iterator_length`, the backend sends `iteration_length` (Dify 1.17.1 as is).
+    expect(store.nodeRunDataOf('it')['_iterationLength'], isNull);
+
+    // The run is in the server's history with its node executions (the tracing panel's list).
+    final history = await service.fetchWorkflowRunHistory();
+    final runId = result['id'] as String;
+    expect(history.map((h) => h['id']), contains(runId));
+    final executions = await service.fetchTracingList(runId);
+    expect(executions.map((e) => e['node_id']).where((n) => n == 'tpl'), hasLength(3));
+    stdout.writeln(
+      'server runtime e2e (client): ${result['outputs']} in ${result['elapsed_time']} s, ${tracing.length} traces',
+    );
+  });
+
+  test('1.16: a human input pause on the server is answered, and the editor follows the run to its end', () async {
+    final owner = AuthSession(api: HttpAuthApi(base));
+    if (await owner.api.setupStatus() == SetupStatus.notStarted) {
+      await owner.setup(email: _email, name: 'Client E2E', password: _password);
+    } else {
+      await owner.login(email: _email, password: _password);
+    }
+    final features = (await owner.api.systemFeatures()).workflowRuntime;
+    expect(features?.protocolVersion, '1.16');
+    expect(features?.humanInput, isTrue, reason: 'system-features workflow_runtime.human_input');
+    expect(features?.draftRun, contains('human-input'));
+    final apps = HttpAppsApi(base, auth: owner);
+    final app = (await apps.importDsl(_humanYaml)).appId!;
+    addTearDown(() => apps.delete(app));
+
+    final store = WorkflowStore();
+    final service = ServerRunService(
+      runtime: ServerWorkflowRuntime(
+        api: HttpWorkflowRunApi(base, auth: owner),
+        singleNodeRun: features!.singleNodeRun,
+        draftRun: features.draftRun,
+        humanInput: features.humanInput,
+      ),
+      appId: app,
+      fallback: MockWorkflowRunService(graph: () => _humanGraph),
+      nodeTypeOf: (id) => _humanGraph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => _humanGraph.nodes.map((n) => n.type),
+    );
+    expect(service.draftRunsOnServer, isTrue);
+    final run = WorkflowRunController(
+      store: store,
+      service: service,
+      graph: _humanGraph,
+      toast: (_, m) => fail('toast: $m'),
+    );
+    final required = Completer<HumanInputRequiredEvent>();
+    final filled = <String>[];
+    await run.handleRun(
+      <String, Object?>{'inputs': <String, Object?>{}},
+      callback: RunCallbacks(
+        onHumanInputRequired: (e) {
+          if (!required.isCompleted) required.complete(e);
+        },
+        onHumanInputFormFilled: (e) => filled.add('${e.data['form_token'] ?? e.data['form_id']}'),
+      ),
+    );
+    final event = await required.future.timeout(const Duration(seconds: 30));
+    final token = event.data['form_token'] as String? ?? '';
+    expect(token, isNotEmpty, reason: '$event');
+    // The run waits: its status becomes paused (the `workflow_paused` frame follows the form) and the form is in the
+    // run panel's list.
+    for (var i = 0; i < 200 && resultOf(store.workflowRunningData.value ?? const {})['status'] != 'paused'; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(resultOf(store.workflowRunningData.value ?? const {})['status'], 'paused',
+        reason: '${store.workflowRunningData.value}');
+    expect((store.workflowRunningData.value ?? const {})['humanInputFormDataList'], hasLength(1));
+
+    // The panel's submit (`service.submitHumanInputForm`): the run resumes on the reconnect stream the controller opened
+    // when it saw `workflow_paused`.
+    await service.submitHumanInputForm(token, {
+      'inputs': {'reply': 'yes'},
+      'action': 'approve',
+    });
+    for (
+      var i = 0;
+      i < 600 && ['running', 'paused'].contains(resultOf(store.workflowRunningData.value ?? const {})['status']);
+      i++
+    ) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    final result = resultOf(store.workflowRunningData.value ?? const {});
+    expect(result['status'], 'succeeded', reason: '$result');
+    expect(result['outputs'], {'reply': 'yes'});
+    expect(filled, isNotEmpty, reason: 'human_input_form_filled arrived');
+    // The filled form is shown as answered, and the run is in the server's history.
+    expect((store.workflowRunningData.value ?? const {})['humanInputFilledFormDataList'], hasLength(1));
+    final history = await service.fetchWorkflowRunHistory();
+    expect(history.map((h) => h['id']), contains(result['id']));
+    stdout.writeln('server runtime e2e (client, 1.16): paused for "$token", resumed to ${result['outputs']}');
+  });
+
+
+  // The page against the live server is split in two: `testWidgets` fakes HTTP (and `dart:io` inside its zone never
+  // completes), so the server's own side is driven in an ordinary test, and the page is then given what it produced.
+  late String liveFormJson;
+  late String liveToken;
+  late String liveApp;
+  late String liveOwnerToken;
+  late String liveOwnerRefresh;
+  test('1.16 on the real server: a run pauses at a human input node, and its form is stored', () async {
+    // The page test below starts the widget binding, which stubs every HTTP client of the suite; the server is real
+    // here, so the stub is removed (the binding does not put it back once it exists).
+    TestWidgetsFlutterBinding.ensureInitialized();
+    HttpOverrides.global = null;
+    final owner = AuthSession(api: HttpAuthApi(base));
+    if (await owner.api.setupStatus() == SetupStatus.notStarted) {
+      await owner.setup(email: _email, name: 'Client E2E', password: _password);
+    } else {
+      await owner.login(email: _email, password: _password);
+    }
+    final features = (await owner.api.systemFeatures()).workflowRuntime!;
+    expect(features.protocolVersion, '1.16');
+    expect(features.humanInput, isTrue, reason: 'system-features workflow_runtime.human_input');
+    final apps = HttpAppsApi(base, auth: owner);
+    final app = liveApp = (await apps.importDsl(_humanYaml)).appId!;
+    addTearDown(() => apps.delete(app));
+    final api = HttpWorkflowRunApi(base, auth: owner);
+    var runId = '';
+    var token = '';
+    await for (final frame in api.draftRun(app, {'inputs': <String, Object?>{}})) {
+      runId = '${frame['workflow_run_id'] ?? runId}';
+      final data = frame['data'];
+      if (frame['event'] == 'human_input_required' && data is Map && data['form_token'] is String) {
+        token = data['form_token'] as String;
+      }
+      if (frame['event'] == 'workflow_paused') break;
+    }
+    expect(token, isNotEmpty, reason: 'the run paused at the human input node');
+    expect(runId, isNotEmpty);
+    // The form the paused run serves: what the page renders for a person.
+    liveFormJson = jsonEncode(await api.humanInputForm(token));
+    liveToken = token;
+    liveOwnerToken = owner.tokens!.accessToken;
+    liveOwnerRefresh = owner.tokens!.refreshToken;
+    stdout.writeln('server runtime e2e (page): paused at $token on run $runId');
+  });
+
+  testWidgets('1.16 in the page: the paused run\'s form renders, and its action answers the server', (t) async {
+    await useAppFonts();
+    // The sign-in from the test above: the page's own service reuses the session rather than signing in again.
+    final owner = AuthSession(api: HttpAuthApi(base));
+    await owner.adopt(AuthResult(
+      tokens: AuthTokens(accessToken: liveOwnerToken, refreshToken: liveOwnerRefresh),
+      account: const Account(id: 'e2e', email: 'deepdesign-e2e@example.test', name: 'DeepDesign E2E', role: AccountRole.owner),
+    ));
+    final service = ServerRunService(
+      runtime: ServerWorkflowRuntime(
+        api: HttpWorkflowRunApi(base, auth: owner),
+        singleNodeRun: const {},
+        draftRun: const {'human-input'},
+        humanInput: true,
+      ),
+      appId: liveApp,
+      fallback: MockWorkflowRunService(graph: () => _humanGraph),
+      nodeTypeOf: (id) => _humanGraph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => _humanGraph.nodes.map((n) => n.type),
+    );
+    // The page's form, as `WorkflowPreview` builds it from the run's `human_input_required` payload (with the token the
+    // panel's submit needs), rendering the definition the server stored for this pause.
+    final definition = jsonDecode(liveFormJson) as Map<String, Object?>;
+    final form = <String, Object?>{
+      ...definition,
+      'form_id': '${definition['form_id'] ?? 'form'}',
+      'node_id': 'human',
+      'node_title': 'Approve',
+      'form_content': definition['rendered_content'] ?? definition['form_content'],
+      'actions': definition['user_actions'] ?? const [],
+      'form_token': liveToken,
+      'display_in_ui': true,
+    };
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: HumanInputFormList(
+              inPanel: true,
+              humanInputFormDataList: [form],
+              onHumanInputFormSubmit: service.submitHumanInputForm,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(HumanInputFormList), findsOneWidget);
+    expect(find.text('Approve it'), findsOneWidget, reason: 'the live definition\'s own action');
+    final field = find.descendant(of: find.byKey(const Key('content-item-textarea')), matching: find.byType(EditableText));
+    expect(field, findsOneWidget, reason: 'the live definition\'s paragraph input');
+    await t.enterText(field, 'yes');
+    await t.pump();
+    // The tap starts a real request: it runs on the real clock, outside the fake one the page is pumped on.
+    await t.runAsync(() => t.tap(find.text('Approve it')));
+    // The page's own submit path: `ServerRunService.submitHumanInputForm` → the real form API (the real network works in
+    // this zone; what does not is leaving the zone).
+    for (var i = 0; i < 400 && find.byKey(const Key('human-input-form-error')).evaluate().isEmpty; i++) {
+      await t.pump(const Duration(milliseconds: 25));
+    }
+    expect(find.byKey(const Key('human-input-form-error')), findsNothing,
+           reason: 'the live server took the answer (a refusal would be shown on the form)');
+    stdout.writeln('server runtime e2e (page): answered $liveToken through the panel form');
+  });
+
+  test('1.15: editor container single runs use the real server, with server history and failures', () async {
+    final owner = AuthSession(api: HttpAuthApi(base));
+    await owner.login(email: _email, password: _password);
+    final features = (await owner.api.systemFeatures()).workflowRuntime!;
+    expect(features.singleNodeRun, containsAll(['iteration', 'loop']));
+    final apps = HttpAppsApi(base, auth: owner);
+    // Dify's single-run mapper writes two-element selectors (nested object paths are rejected by Dify too).
+    // Keep a two-element iterator selector here to exercise a successful dedicated container endpoint.
+    final app = (await apps.importDsl(
+      _yaml.replaceFirst('iterator_selector: [start, payload, items]', 'iterator_selector: [start, items]'),
+    )).appId!;
+    addTearDown(() => apps.delete(app));
+    final service = ServerRunService(
+      runtime: ServerWorkflowRuntime(
+        api: HttpWorkflowRunApi(base, auth: owner),
+        singleNodeRun: features.singleNodeRun,
+        draftRun: features.draftRun,
+      ),
+      appId: app,
+      fallback: MockWorkflowRunService(graph: () => _graph),
+      nodeTypeOf: (id) => _graph.nodes.where((n) => n.id == id).firstOrNull?.type,
+      graphNodeTypes: () => _graph.nodes.map((n) => n.type),
+    );
+    final iteration = await service.iterationSingleNodeRun('it', {
+      'inputs': {
+        'it.input_selector': ['x', 'y'],
+      },
+    }).toList();
+    expect(iteration.whereType<IterationStartedEvent>(), hasLength(1));
+    final iterFinish = iteration.whereType<WorkflowFinishedEvent>().single;
+    expect(iterFinish.status, 'succeeded');
+    // As in Dify, the container result belongs to iteration_completed / loop_completed; the filtered single-run
+    // graph has no End/Answer node, so its workflow_finished outputs are empty.
+    expect(iterFinish.data['outputs'], isEmpty);
+    expect(iteration.whereType<IterationCompletedEvent>().single.data['outputs'], {
+      'output': ['0:X', '1:Y'],
+    });
+    final loop = await service.loopSingleNodeRun('lp', {'inputs': <String, Object?>{}}).toList();
+    expect(loop.whereType<LoopStartedEvent>(), hasLength(1));
+    final loopFinish = loop.whereType<WorkflowFinishedEvent>().single;
+    expect(loopFinish.status, 'succeeded');
+    expect(loopFinish.data['outputs'], isEmpty);
+    expect(loop.whereType<LoopCompletedEvent>().single.data['outputs'], {'n': 3, 'loop_round': 3});
+    // These UUID runs and records must exist in the real server, not just the local stand-in's history.
+    final ids = (await service.fetchWorkflowRunHistory()).map((r) => r['id']).toSet();
+    for (final events in [iteration, loop]) {
+      final runId = events.first.workflowRunId!;
+      expect(ids, contains(runId));
+      expect((await service.fetchRunDetail(runId))['status'], 'succeeded');
+      expect(await service.fetchTracingList(runId), isNotEmpty);
+    }
+    await expectLater(
+      service.iterationSingleNodeRun('it', {'inputs': <String, Object?>{}}).toList(),
+      throwsA(isA<RunServiceException>().having((e) => e.code, 'code', 'invalid_param')),
+    );
+  });
+}

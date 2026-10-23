@@ -1,0 +1,527 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:flutter_scene/src/gpu/gpu.dart' as gpu;
+import 'package:flutter_scene/src/gpu/render_pass_compat.dart';
+import 'package:vector_math/vector_math.dart';
+
+import 'package:flutter_scene/src/camera.dart';
+import 'package:flutter_scene/src/light.dart';
+import 'package:flutter_scene/src/render/depth_prepass.dart';
+import 'package:flutter_scene/src/render/object_filter.dart';
+import 'package:flutter_scene/src/render/projection_params.dart';
+import 'package:flutter_scene/src/render/render_graph.dart';
+import 'package:flutter_scene/src/render/render_graph_capture.dart'
+    show RenderGraphDebug;
+import 'package:flutter_scene/src/render/render_scene.dart';
+import 'package:flutter_scene/src/render/resolve_pass.dart';
+import 'package:flutter_scene/src/render/scene_pass.dart';
+import 'package:flutter_scene/src/render/shadow_pass.dart';
+import 'package:flutter_scene/src/shader_uniform_bindings.dart';
+import 'package:flutter_scene/src/shaders.dart';
+import 'package:flutter_scene/src/render/frame_transients.dart';
+import 'package:flutter_scene/src/scene_encoder.dart' show resolvePipeline;
+import 'package:flutter_scene/src/render/uniform_slots.dart';
+
+/// Packs the `PostShadowInfo` std140 block a depth-aware custom pass reads
+/// (exposed as [RenderPassContext.shadowInfo]) from the frame's [cascades],
+/// the light's world-space travel [direction], and its [color] premultiplied by
+/// intensity. Layout: `mat4 light_space_matrix[4]` (world -> cascade clip),
+/// `vec4 cascade_splits` (view-space split distance per cascade), `vec4
+/// light_direction` (xyz direction, w = cascade count), `vec4 light_color`.
+ByteData packPostShadowInfo(
+  List<ShadowCascade> cascades,
+  Vector3 direction,
+  Vector3 color,
+) {
+  final f = Float32List(76); // 4 mat4 + 3 vec4
+  final count = cascades.length < 4 ? cascades.length : 4;
+  for (var i = 0; i < count; i++) {
+    f.setRange(i * 16, i * 16 + 16, cascades[i].lightSpaceMatrix.storage);
+    f[64 + i] = cascades[i].splitDistance;
+  }
+  f[68] = direction.x;
+  f[69] = direction.y;
+  f[70] = direction.z;
+  f[71] = count.toDouble();
+  f[72] = color.x;
+  f[73] = color.y;
+  f[74] = color.z;
+  return ByteData.sublistView(f);
+}
+
+/// A named anchor point in the built-in render pipeline where a
+/// [CustomRenderPass] runs. Ordering within one stage follows the order the
+/// passes were added.
+///
+/// The stages are coarse and stable, so a custom pass keeps working as the
+/// internal pipeline evolves. The first two stages operate on the linear
+/// HDR scene color (before tone mapping); the last two operate on the
+/// display-referred image (after the resolve/tone-mapping pass).
+/// {@category Rendering}
+enum RenderStage {
+  /// Right after the scene is drawn (opaque and transparent), on the linear
+  /// HDR scene color, before bloom and any HDR custom effects.
+  afterScene,
+
+  /// On the linear HDR scene color just before tone mapping, after bloom
+  /// and HDR custom effects.
+  beforeToneMapping,
+
+  /// On the display-referred image right after tone mapping, before
+  /// anti-aliasing.
+  afterToneMapping,
+
+  /// At the very end, after anti-aliasing and display-referred custom
+  /// effects (the overlay slot the built-in selection outline uses).
+  afterAntiAliasing,
+}
+
+/// An engine geometry buffer a [CustomRenderPass] can request through
+/// [CustomRenderPass.inputs]. Declaring one makes the engine produce it this
+/// frame and exposes it on the [RenderPassContext], so a pass can read the
+/// scene's geometry (depth, normals, shadows), not just its color. Together
+/// they turn the custom-pass API into a general depth/shadow-aware
+/// post-process system (contact shadows, custom occlusion, volumetrics, and so
+/// on).
+/// {@category Rendering}
+enum RenderInput {
+  /// The linear (view-space) depth buffer, on
+  /// [RenderPassContext.sceneDepthLinear]. Reconstruct positions with
+  /// [RenderPassContext.cameraInfo]. It holds the nearest visible surface,
+  /// including translucent materials that write depth.
+  depth,
+
+  /// View-space normals, octahedral-packed into the green/blue channels of the
+  /// same buffer as [depth] (which this implies).
+  normals,
+
+  /// The directional light's cascaded shadow map, on
+  /// [RenderPassContext.shadowMap], with [RenderPassContext.shadowInfo] for its
+  /// cascade transforms. Null unless the scene has a shadow-casting directional
+  /// light.
+  shadowMap,
+
+  /// The accumulated scene color behind the current material draw. Declared by
+  /// materials (see `Material.sceneInputs`) so a translucent surface can
+  /// sample what is behind it (refraction, absorption). Requesting it splits
+  /// the scene pass around each screen-reading layer, so it costs nothing when
+  /// unused.
+  /// Custom render passes read the finished scene color from their pass
+  /// texture instead and should not request this.
+  opaqueSceneColor,
+
+  /// A roughness-filtered atlas of the accumulated scene color behind the
+  /// current material draw. Materials use it for rough refraction. This
+  /// implies [opaqueSceneColor] capture and is produced only when requested.
+  filteredSceneColor,
+}
+
+/// A user-supplied render pass inserted into the built-in pipeline at a
+/// named [stage]. Add one with `Scene.addRenderPass`.
+///
+/// A pass composes two engine-driven primitives on the [RenderPassContext]:
+/// [RenderPassContext.drawObjects] (render a filtered set of nodes flat into
+/// a mask texture) and [RenderPassContext.applyShader] (run a full-screen
+/// fragment shader that reads the current color and writes the next). The
+/// built-in selection outline is exactly a [drawObjects] mask composited by
+/// an [applyShader] outline shader, so anything it does, a custom pass can.
+///
+/// ```dart
+/// class TintPass extends CustomRenderPass {
+///   TintPass(this.shader);
+///   final gpu.Shader shader;
+///   @override
+///   String get name => 'tint';
+///   @override
+///   RenderStage get stage => RenderStage.afterToneMapping;
+///   @override
+///   void execute(RenderPassContext context) {
+///     context.applyShader(shader); // reads input_color, writes the chain
+///   }
+/// }
+/// ```
+/// {@category Rendering}
+abstract class CustomRenderPass {
+  /// A short human-readable name, used for debugging.
+  String get name;
+
+  /// Where in the pipeline this pass runs.
+  RenderStage get stage;
+
+  /// The engine geometry buffers this pass reads, beyond the always-available
+  /// scene color. Declaring one makes the engine produce it this frame and
+  /// exposes it on the [RenderPassContext]. Empty by default (color only).
+  Set<RenderInput> get inputs => const {};
+
+  /// Whether this pass runs. A disabled pass is skipped entirely (it never
+  /// consumes a buffer), so toggling it does not disturb the rest of the
+  /// chain.
+  bool enabled = true;
+
+  /// Records this pass's work for one frame using [context].
+  void execute(RenderPassContext context);
+}
+
+/// The frame context handed to [CustomRenderPass.execute].
+///
+/// A friendlier facade over the internal render graph. It exposes the
+/// standard pipeline buffers as read-only [gpu.Texture] handles, an
+/// object-filtered draw ([drawObjects]), and a full-screen shader step
+/// ([applyShader]) that advances this stage's color chain. The engine owns
+/// all GPU orchestration; a pass never creates command buffers or pipelines
+/// itself. It is created by the engine; do not construct one.
+/// {@category Rendering}
+class RenderPassContext {
+  RenderPassContext._(
+    this._context,
+    this.stage,
+    this.camera,
+    this.dimensions,
+    this._destination,
+    this._renderScene,
+    this._viewLayerMask,
+    this._passKey,
+    this._time,
+  );
+
+  final RenderGraphContext _context;
+
+  /// The stage this pass was registered for.
+  final RenderStage stage;
+
+  /// The camera the current view is rendered with.
+  final Camera camera;
+
+  /// The render-target size in physical pixels.
+  final ui.Size dimensions;
+
+  final gpu.Texture _destination;
+  final RenderScene _renderScene;
+  final int _viewLayerMask;
+  final String _passKey;
+  final double _time;
+  bool _wrote = false;
+  int _drawCounter = 0;
+
+  static final gpu.Shader _vertexShader =
+      baseShaderLibrary['FullscreenVertex']!;
+
+  static final gpu.DeviceBuffer _quadBuffer = gpu.gpuContext
+      .createDeviceBufferWithCopy(
+        ByteData.sublistView(
+          Float32List.fromList(<double>[
+            -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, //
+            -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, //
+          ]),
+        ),
+      );
+  static final gpu.BufferView _quadView = gpu.BufferView(
+    _quadBuffer,
+    offsetInBytes: 0,
+    lengthInBytes: 6 * 2 * 4,
+  );
+
+  static final gpu.SamplerOptions _linearClamp = gpu.SamplerOptions(
+    minFilter: gpu.MinMagFilter.linear,
+    magFilter: gpu.MinMagFilter.linear,
+    widthAddressMode: gpu.SamplerAddressMode.clampToEdge,
+    heightAddressMode: gpu.SamplerAddressMode.clampToEdge,
+  );
+
+  /// The linear HDR scene color. Available at every stage (at the
+  /// display-referred stages it is the pre-tone-mapped color), so a custom
+  /// pass can reach back to the HDR image.
+  gpu.Texture get sceneColorHdr =>
+      _context.blackboard.require<gpu.Texture>(kSceneColorBlackboardKey);
+
+  /// The current display-referred image (after tone mapping). Throws if read
+  /// at the [RenderStage.afterScene] / [RenderStage.beforeToneMapping]
+  /// stages (it does not exist yet); use [sceneColorHdr] there.
+  gpu.Texture get displayColor =>
+      _context.blackboard.require<gpu.Texture>(kDisplayColorBlackboardKey);
+
+  /// The linear (view-space) depth buffer: planar view-space depth (world
+  /// units) in the red channel, with the octahedral-packed view-space normal in
+  /// green/blue when [RenderInput.normals] was requested. Non-null when the pass
+  /// declared [RenderInput.depth] (or [RenderInput.normals]); also present when
+  /// ambient occlusion or reflections ran.
+  gpu.Texture? get sceneDepthLinear =>
+      _context.blackboard.get<gpu.Texture>(kLinearDepthBlackboardKey);
+
+  /// The shared shadow atlas (a horizontal strip of tiles, window-space depth
+  /// in the red channel): the directional cascades first, then one tile per
+  /// casting spot (see [spotShadows]). Non-null when the pass declared
+  /// [RenderInput.shadowMap] and a light cast this frame. Pair with
+  /// [shadowInfo] for the cascades.
+  gpu.Texture? get shadowMap =>
+      _context.blackboard.get<gpu.Texture>(kShadowMapBlackboardKey);
+
+  /// The spot shadows' place in [shadowMap] (their matrices and tiles), or
+  /// null when no spot cast this frame. Spot tiles share the atlas with the
+  /// directional cascades, so a pass that samples spot shadows declares
+  /// [RenderInput.shadowMap] and reads the atlas from [shadowMap].
+  SpotShadowInfo? get spotShadows =>
+      _context.blackboard.get<SpotShadowInfo>(kSpotShadowInfoBlackboardKey);
+
+  /// The packed `PostShadowInfo` std140 uniform block matching [shadowMap]:
+  /// four `mat4` world->cascade-clip matrices, a `vec4` of the cascades'
+  /// view-space split distances, a `vec4` light direction (xyz world travel
+  /// direction, w = cascade count), and a `vec4` light color (rgb, premultiplied
+  /// by intensity). Bind it under a `PostShadowInfo` block via
+  /// [applyShader]'s `uniforms`. Null when [shadowMap] is null.
+  ByteData? get shadowInfo =>
+      _context.blackboard.get<ByteData>(kShadowUniformBlackboardKey);
+
+  /// A packed `PostCameraInfo` std140 uniform block for reconstructing world
+  /// positions from [sceneDepthLinear], for any camera projection. Layout:
+  ///
+  /// * `vec4 projection`: xy the view-space extent per unit of NDC (the half-fov
+  ///   tangents for perspective, the half width and height for orthographic),
+  ///   z near, w far.
+  /// * `vec4 camera_right`, `vec4 camera_up`, `vec4 camera_forward`: the camera
+  ///   basis in xyz, matching the depth prepass's view space (the eye at the
+  ///   origin looking down +forward). `camera_right.w` and `camera_up.w` are the
+  ///   NDC position of the view axis (zero unless off-center), and
+  ///   `camera_forward.w` is 1 for an orthographic camera and 0 for perspective.
+  /// * `vec4 camera_position`: the eye in xyz.
+  ///
+  /// `#include <view_projection.glsl>` and reconstruct with
+  /// `ViewPositionFromUv(uv, depth, projection.xy, offset)`, where `offset` is
+  /// `vec3(camera_right.w, camera_up.w, camera_forward.w)`, then
+  /// `world = position + right * view.x + up * view.y + forward * view.z`. Bind
+  /// it under a `PostCameraInfo` block via [applyShader]'s `uniforms`.
+  ByteData get cameraInfo {
+    final f = Float32List(20); // 5 vec4
+    if (dimensions.height > 0) {
+      final projection = ProjectionParams.of(camera.projection, dimensions);
+      f[0] = projection.scaleX;
+      f[1] = projection.scaleY;
+      f[2] = projection.near;
+      f[3] = projection.far;
+      f[7] = projection.offsetX;
+      f[11] = projection.offsetY;
+      f[15] = projection.orthographicFlag;
+    }
+    // The same view basis the depth prepass encodes against (eye at origin
+    // looking down +forward), so a reconstructed view point maps to world.
+    final forward = camera.forward.normalized();
+    final right = camera.up.cross(forward)..normalize();
+    final up = forward.cross(right)..normalize();
+    f[4] = right.x;
+    f[5] = right.y;
+    f[6] = right.z;
+    f[8] = up.x;
+    f[9] = up.y;
+    f[10] = up.z;
+    f[12] = forward.x;
+    f[13] = forward.y;
+    f[14] = forward.z;
+    f[16] = camera.position.x;
+    f[17] = camera.position.y;
+    f[18] = camera.position.z;
+    return ByteData.sublistView(f);
+  }
+
+  // Whether this stage operates on the HDR scene color or the display image.
+  Object get _chainKey =>
+      stage == RenderStage.afterScene || stage == RenderStage.beforeToneMapping
+      ? kSceneColorBlackboardKey
+      : kDisplayColorBlackboardKey;
+
+  /// The current color for this stage's chain (HDR at the HDR stages, the
+  /// display image at the display stages). [applyShader] binds this as
+  /// `input_color` automatically; this getter is for sampling it explicitly.
+  gpu.Texture get currentColor =>
+      _context.blackboard.require<gpu.Texture>(_chainKey);
+
+  /// A raw pipeline texture by blackboard [key] (`ssao_texture`,
+  /// `bloom_texture`, `selection_mask`, ...), for debug visualization
+  /// overlays. Null when the frame did not produce it, or unless the host
+  /// opted into render-graph debugging (`Scene.debugAllowRenderGraphCapture`);
+  /// the named getters above remain the supported surface for real effects.
+  gpu.Texture? debugBlackboardTexture(String key) {
+    if (!RenderGraphDebug.enabled) return null;
+    return _context.blackboard.get<gpu.Texture>(key);
+  }
+
+  /// Draws a filtered set of the scene's geometry flat into a returned mask
+  /// texture, each object filled with a color (coverage in alpha), with its
+  /// own cleared depth so the objects self-occlude but are not occluded by
+  /// the rest of the scene (an x-ray silhouette). The building block for
+  /// masks, outlines, and highlights; sample the result in [applyShader].
+  ///
+  /// [filter] selects which nodes draw. [colorOf] gives a per-node color
+  /// (linear RGBA); when null every object uses [color] (default opaque
+  /// white). The mask is view-sized and valid for the rest of the frame.
+  gpu.Texture drawObjects({
+    NodeFilter filter = const NodeFilter.all(),
+    Vector4? color,
+    Vector4 Function(Object node)? colorOf,
+    Vector4? clearColor,
+  }) {
+    final width = dimensions.width.toInt();
+    final height = dimensions.height.toInt();
+    final index = _drawCounter++;
+    final mask = _context.texturePool.acquire(
+      TransientTextureDescriptor.color(
+        width: width,
+        height: height,
+        format: _destination.format,
+        debugName: 'custom_mask_${_passKey}_$index',
+      ),
+    );
+    final depth = _context.texturePool.acquire(
+      TransientTextureDescriptor.depth(
+        width: width,
+        height: height,
+        format: gpu.gpuContext.defaultDepthStencilFormat,
+        debugName: 'custom_mask_depth_${_passKey}_$index',
+      ),
+    );
+    final fill = color ?? Vector4(1, 1, 1, 1);
+    renderObjectMask(
+      target: mask,
+      depth: depth,
+      clearColor: clearColor ?? Vector4.zero(),
+      cameraTransform: camera.getViewTransform(dimensions),
+      cameraPosition: camera.position,
+      renderScene: _renderScene,
+      transientsBuffer: _context.transientsBuffer,
+      layerMask: _viewLayerMask,
+      filter: filter,
+      colorOf: colorOf == null
+          ? (_) => fill
+          : (item) {
+              final node = item.sourceNode;
+              return node == null ? fill : colorOf(node);
+            },
+    );
+    return mask;
+  }
+
+  /// Runs [fragmentShader] as a full-screen pass that advances this stage's
+  /// color chain: the engine binds the current color as `sampler2D
+  /// input_color` (sampled at the `v_uv` varying), renders into the next
+  /// buffer, and makes it the current color for downstream passes.
+  ///
+  /// Bind extra inputs with [textures] (each a `sampler2D` by name, sampled
+  /// with [samplers] or a default linear-clamp sampler) and [uniforms] (each
+  /// a std140 uniform block by name). Set [frameInfo] when the shader
+  /// declares a `PostFrameInfo` block (resolution / texel_size / time), the
+  /// same contract as a `PostEffect`.
+  ///
+  /// Call at most once per pass; for multiple chained effects use multiple
+  /// [CustomRenderPass]es. At an HDR stage the shader must output linear HDR
+  /// premultiplied by alpha (the material-shader contract).
+  void applyShader(
+    gpu.Shader fragmentShader, {
+    Map<String, gpu.Texture> textures = const {},
+    Map<String, gpu.SamplerOptions> samplers = const {},
+    Map<String, ByteData> uniforms = const {},
+    bool frameInfo = false,
+  }) {
+    final input = _context.blackboard.require<gpu.Texture>(_chainKey);
+
+    final commandBuffer = gpu.gpuContext.createCommandBuffer();
+    final renderPass = commandBuffer.createRenderPass(
+      gpu.RenderTarget.singleColor(gpu.ColorAttachment(texture: _destination)),
+    );
+    renderPass.bindPipeline(resolvePipeline(_vertexShader, fragmentShader));
+    bindVertexBufferCompat(renderPass, _quadView, 6);
+
+    renderPass.bindTexture(
+      fragmentShader.cachedUniformSlot('input_color'),
+      input,
+      sampler: _linearClamp,
+    );
+
+    if (frameInfo) {
+      final w = dimensions.width;
+      final h = dimensions.height;
+      final info = Float32List(8)
+        ..[0] = w
+        ..[1] = h
+        ..[2] = w == 0 ? 0.0 : 1.0 / w
+        ..[3] = h == 0 ? 0.0 : 1.0 / h
+        ..[4] = _time;
+      renderPass.bindUniform(
+        fragmentShader.cachedUniformSlot('PostFrameInfo'),
+        _context.transientsBuffer.emplace(ByteData.sublistView(info)),
+      );
+    }
+
+    if (textures.isNotEmpty || uniforms.isNotEmpty) {
+      final bindings = ShaderUniformBindings();
+      for (final entry in uniforms.entries) {
+        bindings.setUniformBlock(entry.key, entry.value);
+      }
+      for (final entry in textures.entries) {
+        bindings.setTexture(
+          entry.key,
+          entry.value,
+          sampler: samplers[entry.key] ?? _linearClamp,
+        );
+      }
+      bindings.bind(renderPass, fragmentShader, _context.transientsBuffer);
+    }
+
+    drawCompat(renderPass, 6);
+    rendererSubmissions.submit(commandBuffer);
+
+    _wrote = true;
+  }
+}
+
+/// Wraps a user [CustomRenderPass] as a render-graph pass, building the
+/// facade context and publishing the color chain when the pass wrote it.
+class UserRenderGraphPass extends RenderGraphPass {
+  UserRenderGraphPass({
+    required CustomRenderPass pass,
+    required Camera camera,
+    required ui.Size dimensions,
+    required gpu.Texture destination,
+    required RenderScene renderScene,
+    required int viewLayerMask,
+    required int passIndex,
+    required double time,
+  }) : _pass = pass,
+       _camera = camera,
+       _dimensions = dimensions,
+       _destination = destination,
+       _renderScene = renderScene,
+       _viewLayerMask = viewLayerMask,
+       _passIndex = passIndex,
+       _time = time;
+
+  final CustomRenderPass _pass;
+  final Camera _camera;
+  final ui.Size _dimensions;
+  final gpu.Texture _destination;
+  final RenderScene _renderScene;
+  final int _viewLayerMask;
+  final int _passIndex;
+  final double _time;
+
+  @override
+  String get name => _pass.name;
+
+  @override
+  void execute(RenderGraphContext context) {
+    final passContext = RenderPassContext._(
+      context,
+      _pass.stage,
+      _camera,
+      _dimensions,
+      _destination,
+      _renderScene,
+      _viewLayerMask,
+      '${_pass.stage.name}_$_passIndex',
+      _time,
+    );
+    _pass.execute(passContext);
+    if (passContext._wrote) {
+      context.blackboard.set(passContext._chainKey, _destination);
+    }
+  }
+}
