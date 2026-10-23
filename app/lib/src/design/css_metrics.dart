@@ -79,7 +79,7 @@ abstract final class Css {
   /// CSS Backgrounds and Borders: outer box shadows are clipped to the
   /// outside of the border box. Flutter BoxDecoration otherwise paints them
   /// beneath translucent backgrounds, tinting the interior of glass surfaces.
-  static Decoration boxDecoration(BoxDecoration source) => _CssBoxDecoration(source);
+  static BoxDecoration boxDecoration(BoxDecoration source) => _CssBoxDecoration(source);
 
   /// Flutter BoxShadow uses sigma = radius*0.57735+0.5; CSS blur uses
   /// sigma = blur/2 (the same conversion as gen_dify_tokens.py).
@@ -243,21 +243,21 @@ class _CssDashedPainter extends BoxPainter {
 /// Preserve the source layout/gradient/border while applying CSS's outer-shadow
 /// knockout. Paint-only: the decoration's padding and content coordinates stay
 /// those of its underlying border box.
-class _CssBoxDecoration extends Decoration {
-  const _CssBoxDecoration(this.source);
-  final BoxDecoration source;
+class _CssBoxDecoration extends BoxDecoration {
+  _CssBoxDecoration(BoxDecoration source)
+    : super(
+        color: source.color,
+        image: source.image,
+        border: source.border,
+        borderRadius: source.borderRadius,
+        boxShadow: source.boxShadow,
+        gradient: source.gradient,
+        backgroundBlendMode: source.backgroundBlendMode,
+        shape: source.shape,
+      );
 
   @override
-  EdgeInsetsGeometry get padding => source.padding;
-
-  @override
-  bool get isComplex => source.isComplex;
-
-  @override
-  Path getClipPath(Rect rect, TextDirection textDirection) => source.getClipPath(rect, textDirection);
-
-  @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _CssBoxPainter(source, onChanged);
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _CssBoxPainter(this, onChanged);
 }
 
 class _CssBoxPainter extends BoxPainter {
