@@ -17,7 +17,7 @@ import '../session_factory.dart';
 /// With [auth] (and a server with accounts, protocol 1.8) the user's requests carry that session's token and Bo signs
 /// in as [boAuth]: names, comment authors and roles are the accounts'. Without, the server checks nothing (as before
 /// 1.8).
-class DemoBackend implements Backend {
+class DemoBackend implements DemoRunBackend {
   DemoBackend({FakeServer? server, bool withBo = true, this.auth, this.boAuth})
     : server = server ?? FakeServer(),
       net = FakeNetwork(random: Random(3)) {

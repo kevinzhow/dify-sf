@@ -1,14 +1,7 @@
-/// The server's workflow runtime in the editor (protocols 1.13–1.15): [ServerRunService] runs on the server what it
-/// runs and leaves the rest to the editor's local stand-in, [MockWorkflowRunService]:
-///
-/// * **single runs and last runs** of the node types in `system-features`' `workflow_runtime.single_node_run`;
-/// * **whole draft runs** (1.14, `workflow_runtime.draft_run`): a workflow whose node types the server all runs is run
-///   there (Dify's SSE stream, stop, run history, run detail, tracing list); a graph with another node type (tool, knowledge, ... before their phases) stays on the stand-in, as do chatflow messages (P6), human input forms;
-/// * **iteration / loop single runs** (1.15): containers listed in single_node_run use their dedicated SSE endpoints;
-/// * the **variable inspect panel** (1.14): [ServerInspectServices], the server's draft variables (what the runs and
-///   single runs saved).
-///
-/// Without a runtime on the server the editor keeps the stand-in alone, as before.
+/// Server execution and records for supported operations. Unsupported remote
+/// operations use UnavailableWorkflowRunService; only an explicit local demo
+/// may inject MockWorkflowRunService as the fallback. Runtime capabilities never
+/// imply support for persistent chat, triggers, tools or other unported nodes.
 library;
 
 import 'package:collab_client/collab_client.dart' show TransportException, WorkflowRunApi;
@@ -148,7 +141,7 @@ class ServerRunService extends WorkflowRunService {
         for (final r in page['data'] as List? ?? const [])
           if (r is Map<String, Object?>) r,
       ];
-      // The stand-in's runs of this session (graphs the server does not run yet) still show.
+      // An explicitly injected demo may contribute local records; remote fallback has none.
       final local = await fallback.fetchWorkflowRunHistory();
       final all = [...server, ...local]..sort((a, b) => _num(b['created_at']).compareTo(_num(a['created_at'])));
       return all;

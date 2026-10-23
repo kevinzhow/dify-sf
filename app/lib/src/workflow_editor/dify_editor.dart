@@ -41,6 +41,7 @@ import 'run/run_graph.dart';
 import 'run/run_scope.dart';
 import 'run/run_service.dart';
 import 'run/server_run_service.dart';
+import 'run/unavailable_run_service.dart';
 import 'run/ui/run_panels.dart';
 import 'store/app_registers_sync.dart';
 import 'store/store.dart';
@@ -130,6 +131,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.variableInspectServices = VariableInspectServices.none,
     this.runService,
     this.serverRuntime,
+    this.allowMockRuns = false,
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
     this.user,
@@ -190,13 +192,16 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// The variable inspect panel's draft variables (no runs without a runtime: none by default).
   final VariableInspectServices variableInspectServices;
 
-  /// The run/debug backend; null: the mock runtime over the document (dify-sf has no runtime yet).
+  /// An explicitly injected run/debug backend; otherwise use the server and the demo policy below.
   final WorkflowRunService? runService;
+
+  /// Explicit local demo only. A missing remote capability is an error, never a simulated success.
+  final bool allowMockRuns;
 
   /// The server's workflow runtime (protocols 1.13, 1.14); null: none (older servers, the demo, tests). With
   /// [runService] null, single runs (and last runs) of the node types it runs go to the server for the app
   /// [EditorController.docId]; with 1.14 also whole draft runs of graphs it runs, the run history and records, and the
-  /// variable inspect panel (its draft variables). The mock runtime keeps everything else (ServerRunService).
+  /// variable inspect panel (its draft variables). Unsupported operations are refused outside the explicit local demo (ServerRunService).
   final ServerWorkflowRuntime? serverRuntime;
 
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
@@ -238,14 +243,17 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
 
   WorkflowRunService _runService(BuildContext context, CanvasController canvas) {
     if (widget.runService case final s?) return s;
-    final mock = _mockService(context, canvas);
+    final fallback = widget.allowMockRuns ? _mockService(context, canvas) : const UnavailableWorkflowRunService();
     final runtime = widget.serverRuntime;
-    if (runtime == null) return mock;
-    if (_serverRuns case final s? when identical(s.runtime, runtime) && s.appId == controller.docId) return s;
+    if (runtime == null) return fallback;
+    if (_serverRuns case final s?
+        when identical(s.runtime, runtime) && identical(s.fallback, fallback) && s.appId == controller.docId) {
+      return s;
+    }
     return _serverRuns = ServerRunService(
       runtime: runtime,
       appId: controller.docId,
-      fallback: mock,
+      fallback: fallback,
       nodeTypeOf: (id) => controller.doc.nodes[id]?.type,
       graphNodeTypes: () => [
         for (final n in controller.doc.nodes.values)
@@ -277,7 +285,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       if (_serverInspect case final s? when identical(s.api, runtime.api) && s.appId == controller.docId) return s;
       return _serverInspect = ServerInspectServices(api: runtime.api, appId: controller.docId);
     }
-    return _mockService(context, canvas).inspectServices;
+    return widget.allowMockRuns ? _mockService(context, canvas).inspectServices : VariableInspectServices.none;
   }
 
   /// The human-input node's own form (protocol 1.16): the server renders it from the node's config and the values its
@@ -578,8 +586,22 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                           widget.serverRuntime?.humanInput == true && widget.serverRuntime?.humanInputEmail == true
                           ? _sendTestEmail
                           : null,
-                      fetchGeneratedForm: widget.serverRuntime?.humanInput == true ? _fetchGeneratedForm : null,
-                      submitGeneratedForm: widget.serverRuntime?.humanInput == true ? _submitGeneratedForm : null,
+                      fetchGeneratedForm: widget.serverRuntime?.humanInput == true
+                          ? _fetchGeneratedForm
+                          : widget.allowMockRuns
+                          ? null
+                          : (_, _) async => throw const RunServiceException(
+                              'Human input is not available on this server yet.',
+                              code: 'runtime_not_supported',
+                            ),
+                      submitGeneratedForm: widget.serverRuntime?.humanInput == true
+                          ? _submitGeneratedForm
+                          : widget.allowMockRuns
+                          ? null
+                          : (_, _) async => throw const RunServiceException(
+                              'Human input is not available on this server yet.',
+                              code: 'runtime_not_supported',
+                            ),
                       child: VariableInspectHost(
                         services: _inspectServices(context, canvas),
                         nodes: () => controller.doc.nodes.values,

@@ -64,7 +64,7 @@ class EditorPage extends StatefulWidget {
 
   /// The server's workflow runtime (protocol 1.13): single runs of the node types it runs go to the server; null: the
   /// app detail page's `ServerWorkflowRuntime` service when the editor is one of its pages (present when the server has a
-  /// runtime), else none (the mock runtime alone).
+  /// runtime), else none (remote execution is unavailable; only the local demo simulates it).
   final ServerWorkflowRuntime? serverRuntime;
 
   /// Protocol 1.10: whether the app (= this document) was deleted (`GET /v1/apps/{id}` answers 404). Asked when the
@@ -467,6 +467,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     return DifyWorkflowEditor(
       controller: c,
       serverLabel: widget.backend.label,
+      allowMockRuns: widget.backend is DemoRunBackend,
       actions: _actions(context, c),
       meta: switch (widget.appName) {
         final name? when name != _meta.appName => DocMeta(
@@ -493,7 +494,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
         null => null,
       },
       versions: widget.versions ?? AppDetailContext.maybeOf(context)?.service<VersionsApi>(),
-      // Protocol 1.13: the server's runtime (when it has one) runs the node types it can; the mock the rest.
+      // Unsupported remote execution reports an error; only the explicit demo uses simulated runs.
       serverRuntime: widget.serverRuntime ?? AppDetailContext.maybeOf(context)?.service<ServerWorkflowRuntime>(),
       publisher: _publisherHost(context),
     );

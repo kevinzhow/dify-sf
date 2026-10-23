@@ -51,6 +51,10 @@ abstract interface class Backend {
   Future<ReplaceResult> replaceDifyDsl(String docId, String yaml, CollabSession session, {bool confirm = false});
 }
 
+/// Explicit opt-in for the local demo and its test fixtures. Remote backends never
+/// inherit simulated execution merely because their runtime is unavailable.
+abstract interface class DemoRunBackend implements Backend {}
+
 class HttpBackend implements Backend {
   HttpBackend(this.baseUrl, {this.auth});
 

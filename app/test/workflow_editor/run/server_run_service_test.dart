@@ -5,6 +5,7 @@ import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/app_detail/detail_pages.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
+import 'package:dify_sf_app/src/session_factory.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/mock_run_service.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_graph.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
@@ -39,6 +40,33 @@ class _Backend extends DemoBackend {
   _Backend({super.server}) : super(withBo: false);
   @override
   Future<DocMeta> docMeta(String docId) async => const DocMeta(appMode: 'workflow', appName: 'App');
+}
+
+// A remote product session with an in-memory transport, without the explicit demo marker.
+class _RemoteBackend implements Backend {
+  _RemoteBackend(this.inner);
+  final _Backend inner;
+  @override
+  String get label => 'remote fixture';
+  @override
+  bool get supportsDifyDsl => inner.supportsDifyDsl;
+  @override
+  Future<String> prepare(String id, {required bool create}) => inner.prepare(id, create: create);
+  @override
+  Future<String> createDocument() => inner.createDocument();
+  @override
+  Future<String> importDifyDsl(String yaml) => inner.importDifyDsl(yaml);
+  @override
+  Future<String> exportDifyDsl(String id, {bool includeSecret = false}) =>
+      inner.exportDifyDsl(id, includeSecret: includeSecret);
+  @override
+  Future<DocMeta> docMeta(String id) => inner.docMeta(id);
+  @override
+  Future<ReplaceResult> replaceDifyDsl(String id, String yaml, CollabSession session, {bool confirm = false}) =>
+      inner.replaceDifyDsl(id, yaml, session, confirm: confirm);
+  @override
+  Future<OpenedSession> openSession(String id, {String? clientId, required bool journaled, String? displayName}) =>
+      inner.openSession(id, clientId: clientId, journaled: journaled, displayName: displayName);
 }
 
 class _ContainerFallback extends MockWorkflowRunService {
@@ -169,7 +197,10 @@ void main() {
           'data': {'status': 'succeeded'},
         },
       ];
-      mock = MockWorkflowRunService(graph: () => _graph, scenario: const MockRunScenario(stepDelay: Duration.zero));
+      mock = MockWorkflowRunService(
+        graph: () => _graph,
+        scenario: const MockRunScenario(stepDelay: Duration.zero),
+      );
     });
 
     test('with the capability the answer goes to the server and the reconnect streams its frames', () async {
@@ -384,7 +415,11 @@ void main() {
     expect(runtime.api, isA<HttpWorkflowRunApi>());
   });
 
-  Future<(_Backend, WorkflowRunScope)> open(WidgetTester t, {ServerWorkflowRuntime? runtime}) async {
+  Future<(_Backend, WorkflowRunScope)> open(
+    WidgetTester t, {
+    ServerWorkflowRuntime? runtime,
+    bool remote = false,
+  }) async {
     await useAppFonts();
     t.view.physicalSize = const Size(1600, 1000);
     t.view.devicePixelRatio = 1;
@@ -393,7 +428,7 @@ void main() {
     await t.pumpWidget(
       MaterialApp(
         home: EditorPage(
-          backend: backend,
+          backend: remote ? _RemoteBackend(backend) : backend,
           docId: 'app-1',
           clientId: 'me-abc123',
           journaled: false,
@@ -451,5 +486,54 @@ void main() {
     final (backend, scope) = await open(t);
     expect(scope.service, isA<MockWorkflowRunService>());
     await close(t, backend);
+  });
+  testWidgets('remote sessions without runtime capability refuse execution instead of simulating success', (t) async {
+    final (backend, scope) = await open(t, remote: true);
+    try {
+      expect(scope.service, isNot(isA<MockWorkflowRunService>()));
+      await expectLater(
+        scope.service.singleNodeRun('llm', {'inputs': <String, Object?>{}}),
+        throwsA(isA<RunServiceException>()),
+      );
+      await expectLater(
+        scope.service.runWorkflowDraft(const WorkflowDraftRunRequest()),
+        emitsError(isA<RunServiceException>()),
+      );
+      expect(await scope.service.fetchWorkflowRunHistory(), isEmpty);
+      expect(backend.server.head, 0);
+    } finally {
+      await close(t, backend);
+    }
+  });
+
+  testWidgets('remote unsupported nodes, mixed graphs and chat never fall back to mock records', (t) async {
+    final api = FakeWorkflowRunApi();
+    final (backend, scope) = await open(
+      t,
+      remote: true,
+      runtime: ServerWorkflowRuntime(api: api, singleNodeRun: const {'llm'}, draftRun: const {'start', 'llm', 'end'}),
+    );
+    try {
+      final service = scope.service as ServerRunService;
+      expect(service.fallback, isNot(isA<MockWorkflowRunService>()));
+      await expectLater(
+        service.singleNodeRun('code', {'inputs': <String, Object?>{}}),
+        throwsA(isA<RunServiceException>()),
+      );
+      await expectLater(
+        service.runWorkflowDraft(const WorkflowDraftRunRequest()),
+        emitsError(isA<RunServiceException>()),
+      );
+      await expectLater(
+        service.sendChatMessage(const ChatMessageRequest({'query': 'hello'})),
+        emitsError(isA<RunServiceException>()),
+      );
+      expect(api.calls, isEmpty);
+      expect(await service.fetchNodeLastRun('code'), isNull);
+      expect(await service.fetchWorkflowRunHistory(), isEmpty);
+      expect(backend.server.head, 0);
+    } finally {
+      await close(t, backend);
+    }
   });
 }

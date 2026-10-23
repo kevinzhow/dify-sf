@@ -2,8 +2,8 @@
 /// (service/workflow.ts, service/base.ts `ssePost`/`sseGet`, service/use-workflow.ts, service/log.ts,
 /// service/debug.ts), as one injectable [WorkflowRunService]. With a server runtime (protocols 1.13–1.15) it is
 /// `ServerRunService` (server_run_service.dart: whole draft runs, single runs, history and records of what the server
-/// runs); everything else, and servers without a runtime, use [MockWorkflowRunService] (mock_run_service.dart), which
-/// replays plausible event streams built from the current graph, so every run UI works the same either way.
+/// runs). Unsupported remote operations use UnavailableWorkflowRunService and report an error.
+/// Only the explicit local demo uses MockWorkflowRunService (mock_run_service.dart).
 ///
 /// ## API (for the run UI)
 ///

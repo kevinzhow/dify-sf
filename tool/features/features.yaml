@@ -684,7 +684,7 @@ features:
   title: 'Header: Test Run button, Running / Listening state with Stop, test run menu (User Input, triggers, Run all)'
   dify: [web/app/components/workflow/header/run-mode.tsx, web/app/components/workflow/header/test-run-menu.tsx, web/app/components/workflow/hooks/use-dynamic-test-run-options.tsx]
   status: ported
-  deviation: Runs are served by the mock runtime (see Run & debug).
+  deviation: "Supported workflows use the real server runtime. Unsupported remote operations report an error; simulated execution is restricted to the explicit local demo."
   evidence: ['spec:web/app/components/workflow/hooks/__tests__/use-dynamic-test-run-options.spec.tsx', visual:run-input]
   ours: [app/lib/src/workflow_editor/header/run_and_history.dart, app/lib/src/workflow_editor/header/test_run_menu.dart]
 - id: header.run-history
@@ -692,7 +692,7 @@ features:
   title: 'Header: run history popover'
   dify: [web/app/components/workflow/header/view-history.tsx]
   status: ported
-  deviation: Lists the server's draft runs (protocol 1.14) and the mock runtime's runs of this session (graphs the server does not run yet).
+  deviation: "Lists persisted server draft runs. Simulated session runs appear only in the explicit local demo, never mixed into remote history."
   evidence: [visual:run-history]
   ours: [app/lib/src/workflow_editor/header/view_history.dart]
 - id: header.variable-buttons
@@ -763,7 +763,7 @@ features:
   title: 'Node panel: SETTINGS / LAST RUN tabs, Last Run result'
   dify: [web/app/components/workflow/nodes/_base/components/workflow-panel/last-run]
   status: ported
-  deviation: Last runs come from the server for the node types it runs (single runs and whole runs, protocol 1.14), else from the mock runtime.
+  deviation: "Remote last-run records come from the server; an unsupported or absent record is never fabricated. The explicit local demo has session-only records."
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/workflow-panel/last-run', visual:run-last-run, app/test/dify_spec/workflow/node_panel/workflow_panel_test.dart]
   ours: [app/lib/src/workflow_editor/node_panel/last_run.dart, app/lib/src/workflow_editor/node_panel/workflow_node_panel.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart, app/lib/src/workflow_editor/run/forms/node_panel_run_state.dart]
 - id: node-panel.single-run-form
@@ -772,7 +772,7 @@ features:
   dify: [web/app/components/workflow/nodes/_base/components/before-run-form, web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: partial
   reason: 'Generic and Parameter Extractor / Question Classifier query and vision forms are ported with typed instruction references and inspected-value filtering; supported node types use the server and the others use the mock runtime. The DataSource pipeline custom forms are not wired.'
-  deviation: 'Single runs of the node types the server runs go to it (protocol 1.13 LLM, 1.14 core node types and 1.15 dedicated iteration/loop streams, with missing values read from the draft variables); other node types still go to the mock runtime. A human input node''s "Run this step" is its generated form (1.16): the server renders the node''s form from its config and the values it reads, and the answers become the node''s draft variables without a run, as in Dify. The data source node''s custom run form (online documents, crawl, local files) is not wired.'
+  deviation: "Supported remote nodes use the real server, including dedicated iteration/loop streams and human-input form APIs. Unsupported remote nodes report an error. Simulated runs exist only in the explicit local demo; data source custom forms remain unported."
   evidence: ['spec:web/app/components/workflow/nodes/_base/components/before-run-form', 'spec:web/app/components/workflow/nodes/_base/hooks', visual:run-single]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/before_run_form.dart]
 - id: node-panel.retry
@@ -1385,7 +1385,7 @@ features:
   title: 'Variable inspect: trigger chip, resizable bottom panel, groups, empty / listening states'
   dify: [web/app/components/workflow/variable-inspect]
   status: ported
-  deviation: Values are the server's draft variables (protocol 1.14) when it runs drafts, else the mock runtime's runs.
+  deviation: "Remote values are persisted server draft variables. Mock values are restricted to the explicit local demo; a missing remote capability does not create simulated values."
   evidence: ['spec:web/app/components/workflow/variable-inspect', visual:inspect, visual:inspect-run, app/test/variable_inspect_test.dart]
   ours: [app/lib/src/workflow_editor/variable_inspect/panel.dart, app/lib/src/workflow_editor/variable_inspect/trigger.dart]
 - id: variable-inspect.values
@@ -1403,7 +1403,7 @@ features:
   dify: [api/core/workflow, web/service/workflow.ts]
   status: partial
   reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13–1.16): whole draft runs (Dify''s SSE events, stop, run history and records), human input (a run pauses at a human-input node, the form is answered through the console form API, and a reconnect rebuilds the paused run''s state from its records — the panel and chat follow the resumed run on the same stream) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor, question classifier, iteration (sequential/parallel, flattening and error modes) and loop (variables and break conditions) run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 23 supported workflow cases equal, with nested iteration and container single-run outcomes also compared). Iteration/loop single runs use their dedicated SSE endpoints; Dify''s existing nested-container filtering and nested-selector restrictions are preserved. Not yet: files (P5), chatflow debug runs, tools and published runs (P6); knowledge retrieval is deferred separately. Graphs with unsupported node types, and chat, are served by the deterministic MockWorkflowRunService.'
-  deviation: A graph runs on the server only when the server runs every node type in it (system-features workflow_runtime.draft_run); otherwise the whole run stays on the mock runtime.
+  deviation: "A graph runs on the real server when all node types are advertised. Unsupported remote graphs and absent capabilities report an error, never local simulated success. Only the explicit local demo uses MockWorkflowRunService."
   evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, app/test/workflow_editor/run/server_runtime_e2e_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
   ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
 - id: run.test-run-panel
@@ -1411,7 +1411,7 @@ features:
   title: 'Test Run panel: INPUT / RESULT / DETAIL / TRACING tabs, input form, Start Run'
   dify: [web/app/components/workflow/panel/workflow-preview.tsx, web/app/components/workflow/panel/inputs-panel.tsx]
   status: ported
-  deviation: Driven by the server's draft runs (protocol 1.14) for graphs it runs, else by the mock runtime.
+  deviation: "Driven by persisted server draft runs for supported graphs; unsupported remote execution reports an error. Only the explicit local demo simulates runs."
   evidence: ['spec:web/app/components/workflow/panel/__tests__/workflow-preview.spec.tsx', 'spec:web/app/components/workflow/panel/__tests__/inputs-panel.spec.tsx', visual:run-input, visual:run-result, visual:run-detail, visual:run-tracing]
   ours: [app/lib/src/workflow_editor/run/ui/run_panel.dart, app/lib/src/workflow_editor/run/ui/run_panels.dart]
 - id: run.run-hooks
@@ -1454,7 +1454,7 @@ features:
   title: 'Run: human input forms (pause, fill, submit, timeout) in the run panel and chat'
   dify: [web/app/components/base/chat/chat/answer/human-input-content, web/app/components/workflow/panel/human-input-form-list.tsx, web/app/components/workflow/panel/debug-and-preview/hooks.ts]
   status: ported
-  deviation: 'Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. Lost connections re-subscribe with backoff without failing the run; a rejected form submission preserves its input and can be retried. Server recovery retries accepted answers after transient claim failures. A pause the stand-in serves answers locally, as before.'
+  deviation: 'Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. Lost connections re-subscribe with backoff without failing the run; a rejected form submission preserves its input and can be retried. Server recovery retries accepted answers after transient claim failures. Only the explicit local demo answers simulated forms locally; unsupported remote forms report an error.'
   evidence: ['spec:web/app/components/base/chat/chat/answer/human-input-content', 'spec:web/app/components/base/chat/chat/answer', 'spec:web/app/components/workflow/run/utils/format-log/human-input', 'app/test/workflow_editor/run/server_run_service_test.dart', app/test/human_input/m1_follow_review_test.dart, app/test/human_input/m1_second_review_test.dart, app/integration_test/human_input_flow_test.dart]
   ours: [app/lib/src/workflow_editor/run/ui/human_input_content.dart, app/lib/src/workflow_editor/run/server_run_service.dart, packages/collab_client/lib/src/workflow_run_api.dart]
 - id: run.history-record
@@ -1462,7 +1462,7 @@ features:
   title: 'Run history: view a past run (record panels)'
   dify: [web/app/components/workflow/panel/record.tsx, web/app/components/workflow/panel/chat-record]
   status: ported
-  deviation: A past run's graph is not swapped into the shared canvas (that would be document ops); the record shows the run detail. Server runs (protocol 1.14) are stored; mock runs only exist in the session.
+  deviation: "The record shows persisted server run details without replacing the shared graph. Simulated session records exist only in the explicit local demo."
   evidence: ['spec:web/app/components/workflow/panel/chat-record', 'spec:web/app/components/workflow/panel/__tests__/record.spec.tsx', visual:run-history]
   ours: [app/lib/src/workflow_editor/run/ui/run_panels.dart]
 - id: run.single-run
@@ -1470,7 +1470,7 @@ features:
   title: 'Single node run (Run this step) and its result'
   dify: [web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts]
   status: ported
-  deviation: Served by the server runtime for the node types it runs (protocol 1.15 includes dedicated iteration and loop streams), else by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint.
+  deviation: "Supported remote nodes use the server runtime, including dedicated iteration and loop streams. Unsupported remote nodes and trigger execution report an error; simulation is restricted to the explicit local demo."
   evidence: [visual:run-single, visual:run-last-run]
   ours: [app/lib/src/workflow_editor/run/single_run.dart, app/lib/src/workflow_editor/run/ui/node_run_ui.dart]
 - id: run.trigger-debug
@@ -1478,7 +1478,7 @@ features:
   title: 'Run: listen for a trigger (webhook / schedule / plugin debug polling)'
   dify: [web/app/components/workflow-app/hooks/use-workflow-start-run.tsx]
   status: partial
-  reason: The Listening state is ported; there is no trigger runtime, so a listened trigger fires once from the mock runtime.
+  reason: "The Listening UI is ported, but the remote trigger runtime is not implemented and reports an error. Only the explicit local demo can simulate trigger execution."
   evidence: ['spec:web/app/components/workflow-app/hooks']
   ours: [app/lib/src/workflow_editor/run/workflow_run.dart]
 - id: run.logs-pages
@@ -1496,7 +1496,7 @@ features:
   title: 'Chatflow Debug & Preview: panel, chat, restart, conversation variables viewer, input form'
   dify: [web/app/components/workflow/panel/debug-and-preview]
   status: ported
-  deviation: Answers come from the mock runtime.
+  deviation: "The panel is ported; persistent remote Chatflow execution is a later phase and currently reports an error. Only the explicit local demo shows simulated answers."
   evidence: ['spec:web/app/components/workflow/panel/debug-and-preview', visual:preview, visual:preview-chat, app/test/workflow_editor/run/chat_canvas_inspect_test.dart]
   ours: [app/lib/src/workflow_editor/run/ui/debug_and_preview.dart, app/lib/src/workflow_editor/run/ui/chat.dart]
 - id: chat-preview.chat-logic
