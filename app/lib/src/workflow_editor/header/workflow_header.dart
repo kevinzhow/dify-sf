@@ -41,7 +41,7 @@ class WorkflowHeader extends StatelessWidget {
         listenable: Listenable.merge([store.historyWorkflowData, store.isRestoring]),
         builder: (context, _) {
           final (:normal, :restoring, :viewHistory) = workflowModeOf(store);
-          return Row(
+          final header = Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               if (normal) const Expanded(child: HeaderInNormal()),
@@ -49,6 +49,7 @@ class WorkflowHeader extends StatelessWidget {
               if (restoring) ...const [RestoringTitle(), HeaderInRestoring()],
             ],
           );
+          return !normal && DifyAdaptive.toolbarCompactOf(context) ? DifyToolbarStrip(child: header) : header;
         },
       ),
     );
