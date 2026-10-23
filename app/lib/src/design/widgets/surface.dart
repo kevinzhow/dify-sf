@@ -32,7 +32,10 @@ class DifyBlurredBox extends StatelessWidget {
     // Like Container (and CSS's border-box), the border insets the content.
     final inset = (decoration?.padding ?? EdgeInsets.zero).add(padding ?? EdgeInsets.zero);
     Widget box = inset == EdgeInsets.zero ? child : Padding(padding: inset, child: child);
-    if (decoration != null) box = DecoratedBox(decoration: decoration!, child: box);
+    if (decoration != null) {
+      final paint = decoration is BoxDecoration ? Css.boxDecoration(decoration! as BoxDecoration) : decoration!;
+      box = DecoratedBox(decoration: paint, child: box);
+    }
     if (blur <= 0) return box;
     // The blur does not change the box's size: the content gets the constraints as they are (a `w-full` button
     // stays full width).
@@ -188,11 +191,13 @@ class DifyChatBubbleSurface extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: height,
     padding: padding,
-    decoration: BoxDecoration(
-      gradient: DifyGradients.chatBubbleBg,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: DifyColors.dividerSubtle),
-      boxShadow: DifyShadows.lg,
+    decoration: Css.boxDecoration(
+      BoxDecoration(
+        gradient: DifyGradients.chatBubbleBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DifyColors.dividerSubtle),
+        boxShadow: DifyShadows.lg,
+      ),
     ),
     child: child,
   );

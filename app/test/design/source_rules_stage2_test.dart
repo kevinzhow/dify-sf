@@ -1,6 +1,9 @@
+import 'dart:ui' as ui;
+
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/cards/dify_cards.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
+import 'package:dify_sf_app/src/design/css_metrics.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +14,33 @@ import '../support/app_fonts.dart';
 
 void main() {
   tearDown(() => DifyColors.useDark(false));
+  test('CSS outer shadows never tint a translucent box interior', () async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, 80, 80));
+    canvas.drawColor(const Color(0xFFFFFFFF), BlendMode.src);
+    final painter = Css.boxDecoration(
+      const BoxDecoration(
+        color: Color.from(alpha: .6, red: 1, green: 1, blue: 1),
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+        boxShadow: [BoxShadow(color: Color(0xFF000000), offset: Offset(0, 4), blurRadius: 4)],
+      ),
+    ).createBoxPainter();
+    painter.paint(
+      canvas,
+      const Offset(20, 20),
+      const ImageConfiguration(size: Size(40, 40), textDirection: TextDirection.ltr),
+    );
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(80, 80);
+    final bytes = (await image.toByteData())!;
+    int channel(int x, int y) => bytes.getUint8((y * 80 + x) * 4);
+    expect(channel(40, 40), 255, reason: 'CSS clips an outer shadow out of the border box');
+    expect(channel(40, 63), lessThan(255), reason: 'the actual outer shadow must remain visible');
+    painter.dispose();
+    image.dispose();
+    picture.dispose();
+  });
+
   test('CSS decimal alpha survives token generation until compositing', () {
     DifyColors.useDark(true);
     expect(DifyColors.componentsInputBgActive.a, .05);

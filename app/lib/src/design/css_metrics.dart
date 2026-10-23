@@ -76,6 +76,11 @@ abstract final class Css {
     return math.max(0, width);
   }
 
+  /// CSS Backgrounds and Borders: outer box shadows are clipped to the
+  /// outside of the border box. Flutter BoxDecoration otherwise paints them
+  /// beneath translucent backgrounds, tinting the interior of glass surfaces.
+  static Decoration boxDecoration(BoxDecoration source) => _CssBoxDecoration(source);
+
   /// Flutter BoxShadow uses sigma = radius*0.57735+0.5; CSS blur uses
   /// sigma = blur/2 (the same conversion as gen_dify_tokens.py).
   static double shadowBlur(double css) => css <= 0 ? 0 : math.max(.001, (css / 2 - .5) / .57735);
@@ -232,5 +237,68 @@ class _CssDashedPainter extends BoxPainter {
       dashes.addPath(metric.extractPath(t, t + iv.dash), Offset.zero);
     }
     canvas.drawPath(dashes, paint);
+  }
+}
+
+/// Preserve the source layout/gradient/border while applying CSS's outer-shadow
+/// knockout. Paint-only: the decoration's padding and content coordinates stay
+/// those of its underlying border box.
+class _CssBoxDecoration extends Decoration {
+  const _CssBoxDecoration(this.source);
+  final BoxDecoration source;
+
+  @override
+  EdgeInsetsGeometry get padding => source.padding;
+
+  @override
+  bool get isComplex => source.isComplex;
+
+  @override
+  Path getClipPath(Rect rect, TextDirection textDirection) => source.getClipPath(rect, textDirection);
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _CssBoxPainter(source, onChanged);
+}
+
+class _CssBoxPainter extends BoxPainter {
+  _CssBoxPainter(this.source, VoidCallback? onChanged)
+    : shadows = BoxDecoration(
+        borderRadius: source.borderRadius,
+        shape: source.shape,
+        boxShadow: source.boxShadow,
+      ).createBoxPainter(onChanged),
+      foreground = source.copyWith(boxShadow: const []).createBoxPainter(onChanged),
+      super(onChanged);
+
+  final BoxDecoration source;
+  final BoxPainter shadows, foreground;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    if (source.boxShadow?.isNotEmpty ?? false) {
+      final rect = offset & configuration.size!;
+      final shape = Path();
+      if (source.shape == BoxShape.circle) {
+        shape.addOval(rect);
+      } else {
+        shape.addRRect((source.borderRadius ?? BorderRadius.zero).resolve(configuration.textDirection).toRRect(rect));
+      }
+      final outside = Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(canvas.getLocalClipBounds())
+        ..addPath(shape, Offset.zero);
+      canvas.save();
+      canvas.clipPath(outside);
+      shadows.paint(canvas, offset, configuration);
+      canvas.restore();
+    }
+    foreground.paint(canvas, offset, configuration);
+  }
+
+  @override
+  void dispose() {
+    shadows.dispose();
+    foreground.dispose();
+    super.dispose();
   }
 }

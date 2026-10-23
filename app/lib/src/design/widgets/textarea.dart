@@ -87,23 +87,25 @@ class _DifyTextareaState extends State<DifyTextarea> {
         onExit: (_) => setState(() => _hovered = false),
         child: Container(
           constraints: BoxConstraints(minHeight: w.minHeight),
-          decoration: BoxDecoration(
-            color: w.disabled
-                ? DifyColors.componentsInputBgDisabled
-                : focused
-                ? DifyColors.componentsInputBgActive
-                : hovered
-                ? DifyColors.componentsInputBgHover
-                : DifyColors.componentsInputBgNormal,
-            borderRadius: BorderRadius.circular(DifyRadius.lg),
-            border: Border.all(
-              color: focused
-                  ? DifyColors.componentsInputBorderActive
+          decoration: Css.boxDecoration(
+            BoxDecoration(
+              color: w.disabled
+                  ? DifyColors.componentsInputBgDisabled
+                  : focused
+                  ? DifyColors.componentsInputBgActive
                   : hovered
-                  ? DifyColors.componentsInputBorderHover
-                  : const Color(0x00000000),
+                  ? DifyColors.componentsInputBgHover
+                  : DifyColors.componentsInputBgNormal,
+              borderRadius: BorderRadius.circular(DifyRadius.lg),
+              border: Border.all(
+                color: focused
+                    ? DifyColors.componentsInputBorderActive
+                    : hovered
+                    ? DifyColors.componentsInputBorderHover
+                    : const Color(0x00000000),
+              ),
+              boxShadow: focused ? DifyShadows.xs : null,
             ),
-            boxShadow: focused ? DifyShadows.xs : null,
           ),
           child: Material(
             type: MaterialType.transparency,

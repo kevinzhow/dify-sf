@@ -80,11 +80,13 @@ class _DifyInputBoxState extends State<DifyInputBox> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Container(
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: Border.all(color: border),
-          boxShadow: focused ? DifyShadows.xs : null,
+        decoration: Css.boxDecoration(
+          BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(DifyRadius.lg),
+            border: Border.all(color: border),
+            boxShadow: focused ? DifyShadows.xs : null,
+          ),
         ),
         child: w.child,
       ),
