@@ -53,7 +53,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Variables (environment, conversation, system) & variable picker](#variables) | 5 |  |  |  |  | 5 |
 | [Features panel](#features) | 4 | 3 |  | 1 |  | 8 |
 | [Variable inspect](#variable-inspect) | 2 |  |  |  |  | 2 |
-| [Run & debug](#run) | 9 | 2 | 1 |  |  | 12 |
+| [Run & debug](#run) | 9 | 3 |  |  |  | 12 |
 | [Chatflow Debug & Preview](#chat-preview) | 2 |  |  |  |  | 2 |
 | [Comments](#comments) | 7 |  |  |  |  | 7 |
 | [Note node](#notes) | 3 |  |  |  |  | 3 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 |  | 10 |
-| **Total** | **177** | **51** | **34** | **17** | **13** | **292** |
+| **Total** | **177** | **52** | **33** | **17** | **13** | **292** |
 
 <a id="canvas"></a>
 
@@ -500,7 +500,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Run history: view a past run (record panels) | ported | Deviation: A past run's graph is not swapped into the shared canvas (that would be document ops); the record shows the run detail. Server runs (protocol 1.14) are stored; mock runs only exist in the session. | spec `workflow/panel/chat-record`, spec `workflow/panel/record.spec.tsx`, visual `run-history` |
 | Single node run (Run this step) and its result | ported | Deviation: Served by the server runtime for the node types it runs (protocol 1.15 includes dedicated iteration and loop streams), else by the mock runtime; trigger nodes run once instead of polling the trigger debug endpoint. | visual `run-single`, visual `run-last-run` |
 | Run: listen for a trigger (webhook / schedule / plugin debug polling) | partial | The Listening state is ported; there is no trigger runtime, so a listened trigger fires once from the mock runtime. | spec `workflow-app/hooks` |
-| Run logs special result panel (logs page) | not ported | SpecialResultPanel and RunLogs components exist in the editor. There is no separate persistent run-logs page or server log storage; mock run records live only in the current session. | spec `workflow/run/special-result-panel.spec.tsx` |
+| Run logs special result panel (logs page) | partial | SpecialResultPanel and RunLogs are wired into the node and tracing panels. Draft workflow runs and node executions are persisted on the server (protocols 1.13–1.16). Real Agent/tool-specific traces still depend on the unported runtime; app-level published logs await public Web/API execution. This row does not describe missing draft-run storage. | spec `workflow/run/special-result-panel.spec.tsx`, `app/test/dify_spec/workflow/run/panels_test.dart`, `app/test/dify_spec/workflow/run/tracing_test.dart` |
 
 <a id="chat-preview"></a>
 

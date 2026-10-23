@@ -1476,10 +1476,10 @@ features:
   area: run
   title: 'Run logs special result panel (logs page)'
   dify: [web/app/components/workflow/run/special-result-panel.tsx]
-  status: not_ported
-  reason: 'SpecialResultPanel and RunLogs components exist in the editor. There is no separate persistent run-logs page or server log storage; mock run records live only in the current session.'
-  evidence: ['spec:web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx']
-  ours: []
+  status: partial
+  reason: 'SpecialResultPanel and RunLogs are wired into the node and tracing panels. Draft workflow runs and node executions are persisted on the server (protocols 1.13–1.16). Real Agent/tool-specific traces still depend on the unported runtime; app-level published logs await public Web/API execution. This row does not describe missing draft-run storage.'
+  evidence: ['spec:web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx', app/test/dify_spec/workflow/run/panels_test.dart, app/test/dify_spec/workflow/run/tracing_test.dart]
+  ours: [app/lib/src/workflow_editor/run/ui/run_logs.dart, app/lib/src/workflow_editor/run/ui/log_widgets.dart]
 
 # ---------------------------------------------------------------- chat preview
 - id: chat-preview.panel
