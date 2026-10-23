@@ -618,7 +618,7 @@ class _MainNavFrameState extends State<MainNavFrame> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: MainNavLink(
               key: const ValueKey('main-nav-studio'),
-              label: DifyI18n.tr('common', 'mainNav.studio'),
+              label: DifyI18n.tr('common', 'menus.apps'),
               icon: 'vender/main-nav/studio-v2',
               activeIcon: 'vender/main-nav/studio-v2-active',
               active: !widget.integrationsActive,

@@ -1,4 +1,5 @@
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
+import 'package:dify_sf_app/src/i18n/app_locale.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,6 +12,16 @@ void main() {
     expect(en.t('workflow', 'no.such.key'), 'no.such.key');
     final zh = await DifyI18n.load('zh-Hans');
     expect(zh.t('workflow', 'entryNodeStatus.enabled'), isNot('entryNodeStatus.enabled'));
+    DifyI18n.current = KeyEchoTranslator();
+  });
+
+  test('main navigation uses the original keys in every supported locale', () async {
+    for (final locale in AppLocale.supported) {
+      final translator = await DifyI18n.load(locale.value, namespaces: const ['common']);
+      for (final key in ['menus.apps', 'mainNav.integrations']) {
+        expect(translator.t('common', key), isNot(key), reason: '${locale.value}: $key');
+      }
+    }
     DifyI18n.current = KeyEchoTranslator();
   });
 

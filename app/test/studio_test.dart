@@ -7,6 +7,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/auth/auth_controller.dart';
 import 'package:dify_sf_app/src/home_page.dart';
+import 'package:dify_sf_app/src/app_detail/detail_sidebar.dart';
 import 'package:dify_sf_app/src/settings/integrations_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/settings.dart';
@@ -16,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/studio_fakes.dart';
+import 'support/app_fonts.dart';
 
 Future<void> settle(WidgetTester t, [int ms = 1500]) async {
   for (var i = 0; i < ms ~/ 100; i++) {
@@ -45,11 +47,11 @@ Future<({FakeAppsApi api, AuthController auth, FakeAccounts accounts})> _workspa
   return (api: view, auth: auth, accounts: accounts);
 }
 
-Future<void> _pump(WidgetTester t, FakeAppsApi api, AuthController auth) async {
+Future<void> _pump(WidgetTester t, FakeAppsApi api, AuthController auth, {Translator? translations}) async {
   t.view.physicalSize = const Size(1600, 1000);
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
-  DifyI18n.current = KeyEchoTranslator();
+  DifyI18n.current = translations ?? KeyEchoTranslator();
   final settings = await AppSettings.load();
   await t.pumpWidget(
     buildApp(
@@ -79,6 +81,46 @@ Future<void> _leaveEditor(WidgetTester t) async {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  for (final (language, studio, integrations) in [
+    ('en-US', 'Studio', 'Integrations'),
+    ('zh-Hans', '工作室', '集成'),
+  ]) {
+    testWidgets('real translations label desktop and mobile navigation in $language', (t) async {
+      await useAppFonts();
+      final w = await _workspace();
+      final translations = await t.runAsync(() => DifyI18n.load(language));
+      addTearDown(() => DifyI18n.current = KeyEchoTranslator());
+      await _pump(t, w.api, w.auth, translations: translations);
+      void labels() {
+        final studioLink = find.byKey(const ValueKey('main-nav-studio'));
+        final integrationsLink = find.byKey(const ValueKey('main-nav-integrations'));
+        expect(t.widget<MainNavLink>(studioLink).label, studio);
+        expect(t.widget<MainNavLink>(integrationsLink).label, integrations);
+        expect(find.descendant(of: studioLink, matching: find.text(studio)), findsOneWidget);
+        expect(find.text('mainNav.studio'), findsNothing);
+      }
+
+      labels();
+      await t.tap(find.byKey(const ValueKey('main-nav-integrations')));
+      await settle(t);
+      labels();
+      await t.tap(find.byKey(const ValueKey('main-nav-studio')));
+      await settle(t);
+      t.view.physicalSize = const Size(390, 844);
+      await settle(t);
+      await t.tap(find.byType(DetailSidebarToggleButton));
+      await settle(t);
+      labels();
+      await t.tap(find.byKey(const ValueKey('main-nav-studio')));
+      await settle(t);
+      await t.tap(find.byType(DetailSidebarToggleButton));
+      await settle(t);
+      labels();
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(seconds: 20));
+    });
+  }
 
   testWidgets('Integrations is a normal page with persistent navigation and returns to Studio', (t) async {
     final w = await _workspace();
