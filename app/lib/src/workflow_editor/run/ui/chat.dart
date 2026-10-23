@@ -655,6 +655,7 @@ class _ChatAnswerState extends State<ChatAnswer> {
           content: RegExp(r'^\\\\\S').hasMatch(content) && !RegExp(r'^`.*`$').hasMatch(content)
               ? '`$content`'
               : content,
+          isStreaming: responding,
           color: item['isError'] == true ? DifyRunStatusColors.error : null,
         ),
       if (allFiles.isNotEmpty)

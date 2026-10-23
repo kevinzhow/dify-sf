@@ -4,7 +4,6 @@ library;
 
 import 'dart:convert';
 
-import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/widgets.dart';
 
 import '../../../files/file_links.dart';
@@ -15,6 +14,7 @@ import '../../code_editor/code_editor.dart';
 import '../../panel_fields/file_upload_setting.dart' show formatFileSize;
 import '../../store/workflow_store.dart' show DifyJson;
 import 'markdown.dart';
+import 'thinking_details.dart';
 import 'status.dart';
 import '../../../design/widgets/widgets.dart';
 
@@ -63,7 +63,15 @@ class _FileCard extends StatelessWidget {
     final url = runtimeFileLink(file['url']);
     return DifyPressable(
       semanticLabel: name,
-      onPressed: url == null ? null : () { if (onOpen != null) { onOpen!(url); } else { openRuntimeFile(url); } },
+      onPressed: url == null
+          ? null
+          : () {
+              if (onOpen != null) {
+                onOpen!(url);
+              } else {
+                openRuntimeFile(url);
+              }
+            },
       builder: (context, hovered, focused) => Container(
         width: 144,
         height: 68,
@@ -303,104 +311,24 @@ class ResultText extends StatelessWidget {
   }
 }
 
-/// ReasoningPanel (base/chat/chat/answer/reasoning-panel.tsx) in ThinkingDetails: "Thinking…(1.2s)" while [done] is
-/// false (counting every 100 ms), then "Thought(3.4s)" collapsed; the nodes' reasoning joined as Markdown.
-class ReasoningPanel extends StatefulWidget {
+/// A merged structured reasoning stream, using the same shell as inline thinking.
+class ReasoningPanel extends StatelessWidget {
   const ReasoningPanel({super.key, required this.content, required this.done});
-
-  /// LLM node id → reasoning text.
   final Map<Object?, Object?> content;
   final bool done;
-
   static String textOf(Map<Object?, Object?>? content) => [
     for (final v in (content ?? const {}).values)
       if (v is String && v.isNotEmpty) v,
   ].join('\n\n');
-
-  @override
-  State<ReasoningPanel> createState() => _ReasoningPanelState();
-}
-
-class _ReasoningPanelState extends State<ReasoningPanel> {
-  final _start = DateTime.now();
-  double _elapsed = 0;
-  late bool _complete = widget.done;
-  bool _open = false;
-  Ticker? _ticker;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!_complete) {
-      _ticker = Ticker((_) {
-        final e = (DateTime.now().difference(_start).inMilliseconds ~/ 100) / 10;
-        if (e != _elapsed) setState(() => _elapsed = e);
-      })..start();
-    }
-  }
-
-  @override
-  void didUpdateWidget(ReasoningPanel old) {
-    super.didUpdateWidget(old);
-    if (widget.done && !_complete) {
-      setState(() => _complete = true);
-      _ticker?.dispose();
-      _ticker = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _ticker?.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final text = ReasoningPanel.textOf(widget.content);
+    final text = textOf(content);
     if (text.isEmpty) return const SizedBox.shrink();
-    final open = _complete ? _open : true;
-    final label =
-        '${DifyI18n.tr('common', _complete ? 'chat.thought' : 'chat.thinking')}(${_elapsed.toStringAsFixed(1)}s)';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GestureDetector(
-            onTap: _complete ? () => setState(() => _open = !_open) : null,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Row(
-                  children: [
-                    AnimatedRotation(
-                      turns: open ? 0.25 : 0,
-                      duration: const Duration(milliseconds: 500),
-                      child: RemixIcon('arrow-right-s-line', size: 12, color: DifyColors.textSecondary),
-                    ),
-                    const SizedBox(width: 8),
-                    DifyTextLine(
-                      label,
-                      style: difyTextStyle(DifyTw.fontBold, DifyColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          if (open)
-            Container(
-              margin: const EdgeInsets.only(left: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: DifyColors.componentsPanelBgAlt,
-                border: Border(left: BorderSide(color: DifyColors.componentsPanelBorder)),
-              ),
-              child: DifyMarkdown(content: text, color: DifyColors.textSecondary),
-            ),
-        ],
+      child: ThinkingDetails(
+        done: done,
+        child: DifyMarkdown(content: text, color: DifyColors.textSecondary),
       ),
     );
   }

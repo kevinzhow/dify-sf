@@ -12,22 +12,15 @@ import 'package:markdown/markdown.dart' as md;
 import '../../../design/dify_tokens.g.dart';
 import '../../code_editor/editor_view.dart' show codeEditorFontFamily;
 import '../../../design/widgets/widgets.dart';
-
-/// markdown-utils.ts preprocessThinkTag: `<think>…</think>` becomes a quoted block (Dify's ThinkBlock collapses it
-/// under "Thinking…"; the text stays visible here).
-String preprocessThinkTag(String content) {
-  final m = RegExp(r'^\s*<think>([\s\S]*?)(</think>|$)').firstMatch(content);
-  if (m == null) return content;
-  final think = m.group(1)!.trim().split('\n').map((l) => '> $l').join('\n');
-  return '$think\n\n${content.substring(m.end).trimLeft()}';
-}
+import 'thinking_details.dart';
 
 /// `<Markdown content=… />`: `markdown-body text-text-primary` (15 px / 1.6), [color] overriding the text colour
 /// (an error answer's `text-[#F04438]`).
 class DifyMarkdown extends StatelessWidget {
-  const DifyMarkdown({super.key, required this.content, this.color, this.onTapLink});
+  const DifyMarkdown({super.key, required this.content, this.color, this.onTapLink, this.isStreaming = false});
 
   final String content;
+  final bool isStreaming;
   final Color? color;
   final void Function(String href)? onTapLink;
 
@@ -81,13 +74,137 @@ class DifyMarkdown extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => MarkdownBody(
-    data: preprocessThinkTag(content),
-    styleSheet: styleSheet(color ?? DifyColors.textPrimary),
-    extensionSet: md.ExtensionSet.gitHubFlavored,
-    // remark-breaks: a single newline is a line break.
-    softLineBreak: true,
-    selectable: false,
-    onTapLink: onTapLink == null ? null : (text, href, title) => href == null ? null : onTapLink!(href),
+  Widget build(BuildContext context) => _MarkdownStream(
+    active: isStreaming,
+    child: MarkdownBody(
+      data: content,
+      blockSyntaxes: const [_ThinkBlockSyntax(), _CommentBlockSyntax()],
+      inlineSyntaxes: [_CommentSyntax()],
+      builders: {
+        'dify-think': _ThinkBuilder(color: color, onTapLink: onTapLink),
+        'dify-comment-tail': _CommentTailBuilder(color: color, onTapLink: onTapLink),
+      },
+      styleSheet: styleSheet(color ?? DifyColors.textPrimary),
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+      // remark-breaks: a single newline is a line break.
+      softLineBreak: true,
+      selectable: false,
+      onTapLink: onTapLink == null ? null : (text, href, title) => href == null ? null : onTapLink!(href),
+    ),
   );
+}
+
+class _MarkdownStream extends InheritedWidget {
+  const _MarkdownStream({required this.active, required super.child});
+  final bool active;
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_MarkdownStream>()?.active ?? false;
+  @override
+  bool updateShouldNotify(_MarkdownStream oldWidget) => active != oldWidget.active;
+}
+
+// Extension points of the maintained Markdown parser preserve fenced/indented code and code spans. A comment
+// is not answer text; suppress it without a global string replacement that would corrupt literal code examples.
+class _CommentSyntax extends md.InlineSyntax {
+  _CommentSyntax() : super(r'<!--[\s\S]*?(?:-->|$)', startCharacter: 60);
+  @override
+  bool onMatch(md.InlineParser parser, Match match) => true;
+}
+
+class _CommentBlockSyntax extends md.BlockSyntax {
+  const _CommentBlockSyntax();
+  @override
+  RegExp get pattern => RegExp(r'^ {0,3}<!--');
+  @override
+  md.Node? parse(md.BlockParser parser) {
+    final lines = <String>[];
+    do {
+      final line = parser.current.content;
+      parser.advance();
+      final end = line.indexOf('-->');
+      if (end >= 0) {
+        lines.add(line.substring(end + 3));
+        break;
+      }
+    } while (!parser.isDone);
+    final tail = lines.join('\n');
+    if (tail.trim().isEmpty) return null;
+    return md.Element.empty('dify-comment-tail')..attributes['tail'] = tail;
+  }
+}
+
+class _ThinkBlockSyntax extends md.BlockSyntax {
+  const _ThinkBlockSyntax();
+  @override
+  RegExp get pattern => RegExp(r'^ {0,3}<think>');
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final body = StringBuffer();
+    var first = true;
+    var closed = false;
+    var tail = '';
+    do {
+      var line = parser.current.content;
+      if (first) line = line.substring(line.indexOf('<think>') + 7);
+      first = false;
+      parser.advance();
+      final end = line.indexOf('</think>');
+      if (end >= 0) {
+        body.write(line.substring(0, end));
+        tail = line.substring(end + 8);
+        closed = true;
+        break;
+      }
+      body.writeln(line);
+    } while (!parser.isDone);
+    return md.Element.empty('dify-think')
+      ..attributes['body'] = body.toString().trim()
+      ..attributes['tail'] = tail
+      ..attributes['closed'] = closed.toString();
+  }
+}
+
+class _CommentTailBuilder extends MarkdownElementBuilder {
+  _CommentTailBuilder({this.color, this.onTapLink});
+  final Color? color;
+  final void Function(String)? onTapLink;
+  @override
+  bool isBlockElement() => true;
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) => Builder(
+    builder: (context) => DifyMarkdown(
+      content: element.attributes['tail'] ?? '',
+      color: color,
+      onTapLink: onTapLink,
+      isStreaming: _MarkdownStream.of(context),
+    ),
+  );
+}
+
+class _ThinkBuilder extends _CommentTailBuilder {
+  _ThinkBuilder({super.color, super.onTapLink});
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final tail = element.attributes['tail'] ?? '';
+    return Builder(
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ThinkingDetails(
+            done: !_MarkdownStream.of(context) || element.attributes['closed'] == 'true',
+            child: DifyMarkdown(
+              content: element.attributes['body'] ?? '',
+              color: DifyColors.textSecondary,
+              onTapLink: onTapLink,
+            ),
+          ),
+          if (tail.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            DifyMarkdown(content: tail, color: color, onTapLink: onTapLink, isStreaming: _MarkdownStream.of(context)),
+          ],
+        ],
+      ),
+    );
+  }
 }

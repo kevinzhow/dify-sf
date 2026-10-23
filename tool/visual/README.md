@@ -46,3 +46,9 @@ python tool/visual/menu_interactions.py --url http://127.0.0.1:18081 --out /path
 ```
 
 Run builds and browsers under the machine's resource limits. The script covers light/dark at 320, 390, 414, 640 and 1440 CSS pixels, real Chromium touch/long-press or mouse/right-click events, and keyboard dismissal. It reproduces the touch-open/hover-close conflict without assuming that emulation proves the precise event sequence on a physical Android device. Supplement this fixture with actual Studio/editor/settings page checks and reference screenshots; it does not establish whole-application parity.
+
+## Raft Visual Testing reports
+
+For the same comparison/report framework used by raft-flutter, see
+[RAFT_REPORT.md](RAFT_REPORT.md). Its exact-pixel percentages differ from the
+legacy `compare.py` tolerance metric.
