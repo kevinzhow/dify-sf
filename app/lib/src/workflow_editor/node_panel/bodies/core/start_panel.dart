@@ -275,7 +275,7 @@ class _StartVarListState extends State<StartVarList> {
           onChange: (p, m) => _change(index, p, m),
           onRemove: () => _remove(index),
         );
-        if (canDrag) row = ReorderableDragStartListener(index: position, enabled: c == null, child: row);
+        if (canDrag) row = DifyReorderableDragStartListener(index: position, enabled: c == null, child: row);
         return MouseRegion(
           key: ValueKey('start-var-${item['variable']}'),
           onEnter: (_) => setState(() => _hovered = index),
