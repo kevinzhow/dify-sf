@@ -12,6 +12,7 @@ yet complete. The sections below describe configuration and the supported bounda
 
 * `docs/protocol.md` - the wire protocol (HTTP `POST` for ops, SSE for updates). Clients are written from this.
 * `docs/architecture.md` - how the server works and why.
+* [`docs/migration-plan.md`](docs/migration-plan.md) - remaining delivery sequence, dependencies and acceptance criteria.
 * `docs/step1-report.md` - what was built, results, failures found, known limits.
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
