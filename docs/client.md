@@ -173,6 +173,9 @@ For multithreaded rendering, serve over HTTPS (localhost is also a secure contex
 the full Dart Wasm/skwasm build in single-threaded mode. See the
 [Flutter Wasm deployment documentation](https://docs.flutter.dev/platform-integration/web/wasm).
 
+HTTP previews have no Async Clipboard API. `web/clipboard_compat.js` supplies user-initiated text copying through the browser's legacy copy command only when the native API is absent; HTTPS/localhost retain the native API. Clipboard reads are not fabricated or cached, and native keyboard paste remains available in editable inputs. Programmatic clipboard reading still requires a secure origin. This is HTTP preview compatibility, not a replacement for HTTPS hosting; see [MDN's clipboard security requirements](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API). Actual HTTP copy/paste and context-menu copying are verified without granting browser clipboard permissions.
+
+
 The web build talks to the server cross-origin; that relies on the server's CORS support (1.1: default allowed
 origins are `http://localhost:*`, `http://127.0.0.1:*`, `http://[::1]:*`, configurable with
 `COLLAB_CORS_ALLOWED_ORIGINS`). Desktop journals live in the application-support directory
