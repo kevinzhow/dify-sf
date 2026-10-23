@@ -65,8 +65,10 @@ let package = Package(
             "CollabCore",
             .product(name: "PostgresNIO", package: "postgres-nio"),
         ]),
+        // Reuse system libcurl for forward HTTP and CONNECT HTTPS proxy semantics.
+        .target(name: "RuntimeCurl", linkerSettings: [.linkedLibrary("curl")]),
         // The Vapor application: HTTP routes, per-document sequencer actors, SSE hub, configuration.
-        .target(name: "CollabServer", dependencies: ["CollabMarkdown", .product(name: "Markdown", package: "swift-markdown"),
+        .target(name: "CollabServer", dependencies: ["RuntimeCurl", "CollabMarkdown", .product(name: "Markdown", package: "swift-markdown"),
             "CollabCore", "CollabStore", "CollabDSL", "CollabModels", "CollabRuntime",
             .product(name: "AsyncHTTPClient", package: "async-http-client"),
             .product(name: "Vapor", package: "vapor"),

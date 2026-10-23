@@ -9,8 +9,6 @@ import Configuration
 import Foundation
 import NIOCore
 import NIOHTTP1
-import NIOSSL
-import Synchronization
 
 /// Runtime services configuration (protocol 1.14): the code sandbox, the SSRF proxy and Dify's node limits.
 public struct RuntimeServicesConfig: Sendable {
@@ -162,75 +160,8 @@ public struct SSRFProxyHTTPClient: RuntimeHTTPClient {
         self.requestConfig = requestConfig
     }
 
-    struct ClientKey: Hashable {
-        var proxy: String
-        var verify: Bool
-        var connect: Int64
-        var read: Int64
-    }
-
-    /// One long-lived client per (proxy, SSL verification, timeouts): AsyncHTTPClient's timeouts are per client.
-    static let clients = Mutex<[ClientKey: HTTPClient]>([:])
-
-    static func client(_ key: ClientKey) -> HTTPClient {
-        clients.withLock { cache in
-            if let c = cache[key] { return c }
-            var tls = TLSConfiguration.makeClientConfiguration()
-            if !key.verify { tls.certificateVerification = .none }
-            var config = HTTPClient.Configuration(tlsConfiguration: tls, redirectConfiguration: .follow(max: 20, allowCycles: false),
-                                                  timeout: .init(connect: .milliseconds(key.connect), read: .milliseconds(key.read)))
-            if let (host, port) = Self.hostPort(key.proxy) { config.proxy = .server(host: host, port: port) }
-            config.decompression = .enabled(limit: .none)
-            let c = HTTPClient(eventLoopGroupProvider: .singleton, configuration: config)
-            cache[key] = c
-            return c
-        }
-    }
-
-    static func hostPort(_ url: String) -> (String, Int)? {
-        guard !url.isEmpty, let u = URL(string: url), let host = u.host else { return nil }
-        return (host, u.port ?? (u.scheme == "https" ? 443 : 80))
-    }
-
     public func send(_ request: RuntimeHTTPRequest) async throws -> RuntimeHTTPResponse {
-        let key = ClientKey(proxy: proxyURL, verify: request.verifySSL, connect: Int64(request.connectTimeout * 1000),
-                            read: Int64(request.readTimeout * 1000))
-        let client = Self.client(key)
-        var req = HTTPClientRequest(url: request.url)
-        req.method = HTTPMethod(rawValue: request.method)
-        var userHost: String?
-        for (name, value) in request.headers {
-            if name.lowercased() == "host" { userHost = value; continue }
-            req.headers.add(name: name, value: value)
-        }
-        if let userHost { req.headers.add(name: "host", value: userHost) }
-        if let body = request.body { req.body = .bytes(ByteBuffer(bytes: body)) }
-        let limit = max(requestConfig.maxBinarySize, requestConfig.maxTextSize) + 1
-        do {
-            let total = TimeAmount.milliseconds(Int64((request.connectTimeout + request.readTimeout + request.writeTimeout) * 1000))
-            let res = try await client.execute(req, timeout: total)
-            let headers = res.headers.map { ($0.name, $0.value) }
-            if res.status.code == 401 || res.status.code == 403 {
-                let server = (res.headers.first(name: "server") ?? "").lowercased()
-                let via = (res.headers.first(name: "via") ?? "").lowercased()
-                if server.contains("squid") || via.contains("squid") {
-                    throw RuntimeHTTPError.ssrfBlocked(
-                        "Access to '\(request.url)' was blocked by SSRF protection (e.g. SSRF_PROXY_ALLOW_PRIVATE_IPS=172.21.0.0/16 to "
-                            + "allow 172.21.0.0/16). The URL resolves to a private, loopback, link-local, or otherwise non-public network "
-                            + "address. See https://github.com/langgenius/dify/issues/38443.")
-                }
-            }
-            // Read at most one byte past the node's largest limit: the node reports the size error.
-            var body: [UInt8] = []
-            for try await chunk in res.body {
-                body.append(contentsOf: chunk.readableBytesView.prefix(limit - body.count))
-                if body.count >= limit { break }
-            }
-            return RuntimeHTTPResponse(status: Int(res.status.code), headers: headers, body: body)
-        } catch let e as RuntimeHTTPError {
-            throw e
-        } catch {
-            throw RuntimeHTTPError.request(SandboxCodeExecutor.describe(error))
-        }
+        try await CurlRuntimeHTTP.send(request, proxy: proxyURL,
+                                       limit: max(1, max(requestConfig.maxBinarySize, requestConfig.maxTextSize) + 1))
     }
 }

@@ -2,12 +2,13 @@
 #   docker compose up --build
 # With the runtime services (Dify's plugin daemon for models and tools, its Redis, the code sandbox and the SSRF proxy;
 # see docs/runtime-services.md):
-#   COLLAB_PLUGIN_DAEMON_URL=http://plugin_daemon:5002 docker compose --profile runtime up --build
+#   docker compose -f docker-compose.yml -f docker-compose.runtime.yml --profile runtime up --build
 services:
   postgres:
-    image: postgres:15-alpine
-    mem_limit: 1536m
-    cpus: 1
+    image: postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.5
     environment:
       POSTGRES_USER: collab
       POSTGRES_PASSWORD: collab
@@ -24,8 +25,9 @@ services:
 
   server:
     image: dify-sf-server
-    mem_limit: 1536m
-    cpus: 2
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    cpus: 1
     build:
       context: .
       dockerfile: docker/Dockerfile.server
@@ -55,9 +57,9 @@ services:
       # COLLAB_PLUGIN_DAEMON_URL=http://plugin_daemon:5002 (empty = no model runtime; see docs/runtime-services.md).
       COLLAB_PLUGIN_DAEMON_URL: ${COLLAB_PLUGIN_DAEMON_URL:-}
       COLLAB_PLUGIN_DAEMON_KEY: ${COLLAB_PLUGIN_DAEMON_KEY:-dify-sf-local-plugin-daemon-key}
-      COLLAB_SANDBOX_URL: http://sandbox:8194
+      COLLAB_SANDBOX_URL: ${COLLAB_SANDBOX_URL:-}
       COLLAB_SANDBOX_KEY: ${COLLAB_SANDBOX_KEY:-dify-sf-local-sandbox-key}
-      COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
+      COLLAB_SSRF_PROXY_URL: ${COLLAB_SSRF_PROXY_URL:-}
     volumes:
       - file_uploads:/var/lib/collab/uploads
     # Lets the server reach a service on the host (e.g. the client conformance test's stub model provider, served by
@@ -76,7 +78,7 @@ services:
   # (the daemon creates it on first start); installed plugins and their virtual environments live in `plugin_storage`.
   plugin_daemon:
     profiles: [runtime]
-    image: langgenius/dify-plugin-daemon:0.6.10-local
+    image: langgenius/dify-plugin-daemon:0.6.10-local@sha256:34412a22d1e1d1a6c73727fef88cffbcdd9be7a21bf9ad3076b4bf5c1b88fd9b
     mem_limit: 1024m
     memswap_limit: 1024m
     cpus: 1
@@ -85,7 +87,7 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
       DB_TYPE: postgresql
       DB_HOST: postgres
@@ -119,22 +121,35 @@ services:
       - plugin_storage:/app/storage
     ports:
       - "127.0.0.1:${COLLAB_PLUGIN_DAEMON_PORT:-5002}:5002"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5002/health/check"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
 
   # Only for the plugin daemon (the server itself needs no Redis).
   redis:
     profiles: [runtime]
-    image: redis:6-alpine
+    image: redis:6-alpine@sha256:b362b5dff9d14d961dc3352db4776aba6a8c53ca2661d7c74ad2c121f82cdaea
     mem_limit: 64m
     memswap_limit: 64m
     cpus: 0.2
     restart: unless-stopped
+    environment:
+      REDISCLI_AUTH: ${COLLAB_REDIS_PASSWORD:-dify-sf-local-redis}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     command: ["redis-server", "--requirepass", "${COLLAB_REDIS_PASSWORD:-dify-sf-local-redis}", "--maxmemory", "48mb", "--save", ""]
 
   # Python / Node.js / Jinja2 execution for code and template nodes. Only on the internal network; its egress goes
   # through ssrf_proxy.
   sandbox:
     profiles: [runtime]
-    image: langgenius/dify-sandbox:0.2.15
+    image: langgenius/dify-sandbox:0.2.15@sha256:750e1111426ef31a9217b81c98cccfb750f17b182af3221102e420afa9f0928e
     mem_limit: 256m
     memswap_limit: 256m
     cpus: 0.5
@@ -151,19 +166,33 @@ services:
     volumes:
       - ./docker/sandbox/config.yaml:/conf/config.yaml:ro
       - sandbox_dependencies:/dependencies
+    depends_on:
+      ssrf_proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8194/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
     networks:
       - ssrf_proxy_network
 
   # Forward proxy refusing private destinations (SSRF protection) for the sandbox and HTTP request nodes.
   ssrf_proxy:
     profiles: [runtime]
-    image: ubuntu/squid:latest
+    image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
     mem_limit: 128m
     memswap_limit: 128m
     cpus: 0.2
     restart: unless-stopped
     volumes:
       - ./docker/ssrf_proxy/squid.conf:/etc/squid/squid.conf:ro
+    healthcheck:
+      test: ["CMD", "squid", "-k", "check"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     networks:
       - ssrf_proxy_network
       - default
