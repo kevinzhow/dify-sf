@@ -350,8 +350,8 @@ class RenderDifyFloatingLayout extends RenderShiftedBox {
     final old = _config;
     _config = c;
     if (attached && old.animation != c.animation) {
-      old.animation.removeListener(markNeedsPaint);
-      c.animation.addListener(markNeedsPaint);
+      old.animation.removeListener(_animationChanged);
+      c.animation.addListener(_animationChanged);
     }
     markNeedsLayout();
   }
@@ -359,13 +359,27 @@ class RenderDifyFloatingLayout extends RenderShiftedBox {
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    _config.animation.addListener(markNeedsPaint);
+    _config.animation.addListener(_animationChanged);
   }
 
   @override
   void detach() {
-    _config.animation.removeListener(markNeedsPaint);
+    _config.animation.removeListener(_animationChanged);
     super.detach();
+  }
+
+  void _animationChanged() {
+    markNeedsPaint();
+    markNeedsSemanticsUpdate();
+  }
+
+  // The full viewport is only a positioning surface. Exposing it as a leaf
+  // semantics rectangle lets an otherwise empty Web overlay swallow clicks.
+  @override
+  Rect get semanticBounds {
+    final child = this.child;
+    if (child == null || !child.hasSize || _config.animation.value <= 0) return Rect.zero;
+    return (child.parentData! as BoxParentData).offset & child.size;
   }
 
   @override

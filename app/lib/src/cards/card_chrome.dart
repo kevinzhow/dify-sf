@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import '../canvas/canvas_graph.dart';
 import '../canvas/node_card.dart';
 import '../workflow_editor/node_panel/bodies/data/tool/copy_id.dart';
+import '../workflow_editor/node_panel/bodies/llm/group_host.dart';
 import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
@@ -47,11 +48,12 @@ class DifyNodeCard extends StatelessWidget {
         builder: (context, _) {
           if (onPainted != null) SchedulerBinding.instance.addPostFrameCallback((_) => onPainted!());
           final n = node.node.value;
-          final ctx = DifyCards.context(
+          final ctx = BodyContext(
             n,
             (id) => graph[id]?.node.value,
-            graph.startNode,
+            start: graph.startNode,
             viewOrigin: graph.restingOrigin.value,
+            models: LlmGroupScope.of(context).models,
           );
           final layout = node.layout;
           final card = SizedBox.fromSize(

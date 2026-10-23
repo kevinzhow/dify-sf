@@ -8,6 +8,15 @@ import 'harness.dart';
 const _trigger = SizedBox(width: 60, height: 20, child: Text('Trigger'));
 
 void main() {
+  testWidgets('a floating hint exposes only its painted bounds to accessibility', (t) async {
+    final semantics = t.ensureSemantics();
+    await renderWithSafeViewport(t, const DifyTooltip(open: true, content: Text('Tooltip body'), child: _trigger));
+    final layout = positioner(t, find.text('Tooltip body'));
+    final painted = t.getRect(find.byType(DifyTooltipSurface)).shift(-layout.localToGlobal(Offset.zero));
+    expect(layout.semanticBounds, painted);
+    semantics.dispose();
+  });
+
   group('TooltipContent', () {
     group('Placement and offsets', () {
       testWidgets('should use default top placement when placement is not provided', (t) async {

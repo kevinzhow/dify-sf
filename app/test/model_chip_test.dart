@@ -3,6 +3,9 @@ import 'dart:typed_data';
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/cards/bodies/llm_bodies.dart';
 import 'package:dify_sf_app/src/cards/card_kit.dart';
+import 'package:dify_sf_app/src/cards/card_chrome.dart';
+import 'package:dify_sf_app/src/cards/dify_cards.dart';
+import 'package:dify_sf_app/src/canvas/canvas_graph.dart';
 import 'package:dify_sf_app/src/cards/model_chip.dart';
 import 'package:dify_sf_app/src/cards/provider_icon_image.dart';
 import 'package:dify_sf_app/src/cards/node_body.dart';
@@ -10,6 +13,7 @@ import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot, DifyTooltip;
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -107,6 +111,48 @@ VMap _modelCfg(String provider, String name, {String key = 'name'}) =>
     VMap({'provider': VString(provider), key: VString(name), 'mode': const VString('chat')});
 
 void main() {
+  testWidgets('actual canvas cards follow the workspace model catalog without a document edit', (t) async {
+    final graph = CanvasGraph(layoutOf: const DifyCards().layoutOf)
+      ..sync(
+        Document(
+          nodes: [
+            _node('llm', {'model': _modelCfg(_value.provider, _value.model)}),
+          ],
+        ),
+      );
+    final catalog = ValueNotifier(ModelCatalog.empty);
+    final card = DifyNodeCard(node: graph['n']!, graph: graph, live: true);
+    await _pump(
+      t,
+      ValueListenableBuilder(
+        valueListenable: catalog,
+        builder: (context, models, child) => LlmGroupScope(
+          services: LlmGroupServices(models: models),
+          child: child!,
+        ),
+        child: card,
+      ),
+      width: DifyCards.width,
+    );
+    expect(find.text('Incompatible'), findsOneWidget);
+    final original = graph['n']!.node.value;
+
+    catalog.value = _catalog([_gpt]);
+    await t.pump();
+    expect(find.text('Incompatible'), findsNothing);
+    expect(find.text('CHAT'), findsOneWidget);
+    expect(graph['n']!.node.value, same(original));
+
+    catalog.value = _catalog([_with(_gpt, status: ModelStatusEnum.disabled)]);
+    await t.pump();
+    expect(t.widget<ModelSelectorTrigger>(find.byType(ModelSelectorTrigger)).status, DerivedModelStatus.disabled);
+    expect(find.text('CHAT'), findsNothing);
+    expect(graph['n']!.node.value, same(original));
+    await t.pumpWidget(const SizedBox());
+    catalog.dispose();
+    graph.restingOrigin.dispose();
+  });
+
   group('states', () {
     testWidgets('empty workspace: deprecated path, fallback icon, line-through id, Incompatible badge', (t) async {
       await _pump(t, const ModelChip(value: _value, models: []));
