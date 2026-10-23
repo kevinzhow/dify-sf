@@ -3,6 +3,8 @@
 // dify-spec: web/app/components/workflow/run/__tests__/output-panel.spec.tsx
 // dify-spec: web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx
 // dify-spec: web/app/components/workflow/run/__tests__/index.spec.tsx
+import 'dart:convert';
+
 import 'package:dify_sf_app/src/design/widgets/toast.dart';
 import 'package:dify_sf_app/src/design/widgets/loading.dart' show DifyLoadingAnim;
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
@@ -335,7 +337,18 @@ void main() {
       final editor = t.widget<DifyCodeEditor>(find.byType(DifyCodeEditor));
       expect(editor.language, CodeLanguage.json);
       expect(editor.height, 92);
-      expect(editor.value, '{\n  "answer": "hello",\n  "score": 1\n}');
+      // Check the text actually rendered and copied, not just the parent's editor input.
+      final text = t.widget<CodeEditorBase>(find.byType(CodeEditorBase)).value;
+      expect(jsonDecode(text), {'answer': 'hello', 'score': 1});
+      expect(text, '{\n  "answer": "hello",\n  "score": 1\n}');
+    });
+
+    testWidgets('renders stored JSON outputs once and preserves strings inside the object', (t) async {
+      final outputs = {'answer': 'hello\nworld', 'http': '{"body":"hello"}'};
+      await renderRun(t, OutputPanel(height: 200, outputs: jsonEncode(outputs)));
+      final text = t.widget<CodeEditorBase>(find.byType(CodeEditorBase)).value;
+      expect(jsonDecode(text), outputs);
+      expect((jsonDecode(text) as Map)['http'], isA<String>());
     });
 
     testWidgets('keeps the non-interactive output title out of the tab order', (t) async {

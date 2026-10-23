@@ -179,7 +179,8 @@ class OutputPanel extends StatelessWidget {
               readOnly: true,
               titleWidget: const ExcludeFocus(child: DifyTextLine('Output')),
               language: CodeLanguage.json,
-              value: const JsonEncoder.withIndent('  ').convert(map ?? o),
+              // The code editor serializes JSON values; supplying encoded text would quote it twice.
+              value: map ?? o,
               isJSONStringifyBeauty: true,
               height: (height! - 16) / 2,
             ),
