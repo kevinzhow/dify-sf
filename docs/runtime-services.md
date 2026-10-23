@@ -54,6 +54,24 @@ Keep signature verification enabled. `e2e/plugins.lock.json` pins the signed `la
 
 A warm package/virtual-environment volume survives restarts. For offline/restricted-network setups, supply the exact signed package from a trusted cache and verify the lock's digest; do not disable signatures to work around download errors. The first install also needs its Python dependencies, from PyPI or `PIP_MIRROR_URL`. Installing the compatible-provider plugin does not automatically install every provider listed by the settings catalog. Other providers require their own trusted, pinned plugin before invocation.
 
+### Check the selected provider before offering execution
+
+The settings catalog and saved credentials do **not** prove the matching plugin is installed. A missing runtime can fail during model-schema preparation, before a workflow run exists. Check each provider used by the offered application, in the same daemon tenant as the server:
+
+```sh
+# Use the deployment's existing COLLAB_PLUGIN_DAEMON_URL, _KEY and _TENANT environment.
+# Run from a host/container that can reach that URL; never put the key in command arguments.
+python3 -I tool/runtime_provider_plugins.py --plugin langgenius/deepseek
+
+# If missing, explicitly install the exact locked, signed package; use a persistent disk cache.
+python3 -I tool/runtime_provider_plugins.py --plugin langgenius/deepseek \
+  --install --cache-dir /var/tmp/Winnie/provider-packages
+```
+
+The check exits nonzero when the exact locked version is absent. `--plugin` is repeatable. Installation checks the package SHA256, keeps daemon signature verification enabled, and confirms the resulting identity. It never changes provider credentials or invokes a model. Only explicitly selected plugins are installed; adding a catalog entry is not automatic authorization to download every provider.
+
+The lock includes `langgenius/deepseek` **0.0.24**, matching the vendored provider definition and its `deepseek-flash` schema, alongside the compatible-provider plugin. The trial's missing DeepSeek runtime was repaired with this package. Its schema, token counting and streamed invocation were checked through the actual signed plugin against a separate local deterministic model origin, without reading user model credentials or calling a paid provider. Other catalog providers still need their own pinned, verified packages and checks before being offered.
+
 ## HTTP transport and protection
 
 AsyncHTTPClient 1.35.0's proxy API always uses CONNECT, including for clear HTTP. Squid correctly refuses CONNECT on a normal HTTP endpoint. HTTP request nodes therefore reuse system libcurl through a small C binding; model and sandbox clients keep their existing adapters. HTTP uses forward-proxy requests, HTTPS uses CONNECT. The server never shells out, puts request credentials in process arguments or writes request temporary files. [AsyncHTTPClient's proxy contract](https://github.com/swift-server/async-http-client/blob/4603a8036d921ea999fadb742931546c341f4bd7/Sources/AsyncHTTPClient/HTTPClient%2BProxy.swift), [libcurl proxy configuration](https://curl.se/libcurl/c/CURLOPT_PROXY.html).

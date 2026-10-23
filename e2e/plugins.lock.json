@@ -8,6 +8,13 @@
       "file": "langgenius-openai_api_compatible-0.0.68.difypkg",
       "sha256": "3e134cc200b86edb905fc9b43cd5525741005f3004bacfa49c63601f7b271705",
       "runner": "python 3.12, dify-plugin 0.10.2, openai 3.17.0"
+    },
+    {
+      "id": "langgenius/deepseek",
+      "version": "0.0.24",
+      "unique_identifier": "langgenius/deepseek:0.0.24@9e12eef09973667f0eaf4f082af883167e1de88740b22e71e71488d020c3778a",
+      "file": "langgenius-deepseek-0.0.24.difypkg",
+      "sha256": "1a714cf69695054f4f40b0b0af75b16c8abdb646bafdb7a059eb9e3010581bab"
     }
   ]
 }
