@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../design/dify_theme_mode.dart';
 import '../editor/editor_controller.dart';
@@ -10,6 +11,7 @@ import 'canvas_controller.dart';
 import 'card_controls.dart';
 import 'canvas_graph.dart';
 import 'canvas_input.dart';
+import 'canvas_touch_region.dart';
 import 'edge_curve.dart';
 import 'canvas_renderer.dart';
 import 'canvas_selection.dart';
@@ -477,61 +479,83 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
               // gesture arena so an ancestor page SelectionArea cannot take
               // keyboard focus or start text selection on this drag surface.
               // Embedded editors still win as the deeper gesture target.
-              child: GestureDetector(
-                // The ancestor selection recognizer can focus on its tap-down
-                // deadline before losing the arena. Restore focus when our
-                // canvas gesture wins, including a slow press before moving.
-                onTap: () {
-                  if (_gestureBelongsToCanvas && !_focus.hasFocus) _focus.requestFocus();
+              child: CanvasTouchRegion(
+                input: input,
+                onContact: _interacting,
+                onInteraction: () {
+                  _interacting();
+                  if (!_focus.hasFocus) _focus.requestFocus();
                 },
-                onPanStart: (_) {
-                  if (_gestureBelongsToCanvas && !_focus.hasFocus) _focus.requestFocus();
-                },
-                onSecondaryTap: () {},
-                child: Listener(
-                  onPointerDown: (e) {
-                    // Live editors/resize handles claim their pointer before
-                    // this listener. Their winning gesture must keep its focus.
-                    _gestureBelongsToCanvas = !input.claimed(e);
-                    if (!_gestureBelongsToCanvas) return;
-                    _interacting();
-                    _focus.requestFocus();
-                    input.down(e);
+                child: GestureDetector(
+                  supportedDevices: const {
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.stylus,
+                    PointerDeviceKind.invertedStylus,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.unknown,
                   },
-                  onPointerMove: input.move,
-                  onPointerUp: input.up,
-                  onPointerCancel: input.up,
-                  onPointerHover: input.hover,
-                  onPointerSignal: input.signal,
-                  onPointerPanZoomStart: input.panZoomStart,
-                  onPointerPanZoomUpdate: input.panZoomUpdate,
-                  behavior: HitTestBehavior.opaque,
-                  child: ClipRect(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CanvasBackground(key: const Key('canvas-background'), view: view),
-                        renderer.build(context),
-                        IgnorePointer(
-                          child: ValueListenableBuilder<Rect?>(
-                            valueListenable: input.marquee,
-                            builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
+                  // The ancestor selection recognizer can focus on its tap-down
+                  // deadline before losing the arena. Restore focus when our
+                  // canvas gesture wins, including a slow press before moving.
+                  onTap: () {
+                    if (_gestureBelongsToCanvas && !_focus.hasFocus) _focus.requestFocus();
+                  },
+                  onPanStart: (_) {
+                    if (_gestureBelongsToCanvas && !_focus.hasFocus) _focus.requestFocus();
+                  },
+                  onSecondaryTap: () {},
+                  child: Listener(
+                    onPointerDown: (e) {
+                      if (e.kind == PointerDeviceKind.touch) return;
+                      // Live editors/resize handles claim their pointer before
+                      // this listener. Their winning gesture must keep its focus.
+                      _gestureBelongsToCanvas = !input.claimed(e);
+                      if (!_gestureBelongsToCanvas) return;
+                      _interacting();
+                      _focus.requestFocus();
+                      input.down(e);
+                    },
+                    onPointerMove: (e) {
+                      if (e.kind != PointerDeviceKind.touch) input.move(e);
+                    },
+                    onPointerUp: (e) {
+                      if (e.kind != PointerDeviceKind.touch) input.up(e);
+                    },
+                    onPointerCancel: (e) {
+                      if (e.kind != PointerDeviceKind.touch) input.cancel(e);
+                    },
+                    onPointerHover: input.hover,
+                    onPointerSignal: input.signal,
+                    onPointerPanZoomStart: input.panZoomStart,
+                    onPointerPanZoomUpdate: input.panZoomUpdate,
+                    behavior: HitTestBehavior.opaque,
+                    child: ClipRect(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CanvasBackground(key: const Key('canvas-background'), view: view),
+                          renderer.build(context),
+                          IgnorePointer(
+                            child: ValueListenableBuilder<Rect?>(
+                              valueListenable: input.marquee,
+                              builder: (context, r, _) => CustomPaint(painter: _MarqueePainter(r, scheme.primary)),
+                            ),
                           ),
-                        ),
-                        // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
-                        IgnorePointer(
-                          child: ValueListenableBuilder<(Offset, Offset)?>(
-                            valueListenable: input.connectLine,
-                            builder: (context, line, _) => CustomPaint(
-                              painter: ConnectionLineMarkerPainter(
-                                line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                          // custom-connection-line.tsx's marker at the dragged end (the renderers draw the line).
+                          IgnorePointer(
+                            child: ValueListenableBuilder<(Offset, Offset)?>(
+                              valueListenable: input.connectLine,
+                              builder: (context, line, _) => CustomPaint(
+                                painter: ConnectionLineMarkerPainter(
+                                  line == null ? null : view.rectToScreen(connectionLineMarker(line.$2)),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        a11y.build(),
-                        CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
-                      ],
+                          a11y.build(),
+                          CanvasControlLayer(canvas: canvas, cards: widget.cards, input: input, changes: c),
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -467,7 +467,7 @@ void main() {
     expect((done['execution_metadata'] as Map)['completed_reason'], 'loop_completed');
   });
 
-  test('trigger debug runs listen until the trigger fires', () async {
+  testWidgets('trigger debug runs listen until the trigger fires', (t) async {
     const graph = StaticRunGraph(
       nodes: [
         RunGraphNode(id: 'hook', type: 'trigger-webhook'),
@@ -480,12 +480,12 @@ void main() {
       scenario: const MockRunScenario(stepDelay: Duration.zero, triggerDelay: Duration(milliseconds: 20)),
     );
     await r.run.handleWorkflowTriggerWebhookRunInWorkflow('hook');
-    await settle();
+    await t.pump();
     expect(r.store.isListening.value, isTrue);
     expect(r.store.listeningTriggerNodeIds.value, ['hook']);
     expect(r.store.showDebugAndPreviewPanel.value, isTrue);
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-    await settle();
+    await t.pump(const Duration(milliseconds: 40));
+    await t.pump();
     expect(r.store.isListening.value, isFalse);
     expect(r.status, WorkflowRunningStatus.succeeded);
     expect(r.transitions['code']!.last, NodeRunningStatus.succeeded);

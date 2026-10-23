@@ -236,7 +236,7 @@ class RunRecord extends StatelessWidget {
       builder: (context, history, _) {
         if (history == null) return const SizedBox.shrink();
         return Container(
-          width: 400,
+          width: DifyAdaptive.panelWidth(context, 400),
           decoration: BoxDecoration(
             color: DifyColors.componentsPanelBg,
             borderRadius: const BorderRadius.horizontal(left: Radius.circular(DifyRadius.xxl)),

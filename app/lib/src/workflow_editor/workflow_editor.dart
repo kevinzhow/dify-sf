@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart';
 import '../editor/editor_controller.dart';
+import '../design/widgets/adaptive.dart';
 import 'context_menu/context_menu.dart';
 import 'hooks/use_helpline.dart';
 import 'hooks/use_workflow.dart';
@@ -222,7 +223,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 56,
+                  height: DifyAdaptive.toolbarCompactOf(context) ? 104 : 56,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Align(alignment: Alignment.center, child: w.header!(context, canvas)),
@@ -261,7 +262,13 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                     child: w.operator!(context, canvas),
                   ),
                 ),
-              if (w.panels != null) Positioned(top: 56, right: 0, bottom: 4, child: w.panels!(context, canvas)),
+              if (w.panels != null)
+                Positioned(
+                  top: DifyAdaptive.toolbarCompactOf(context) ? 104 : 56,
+                  right: 0,
+                  bottom: 4,
+                  child: w.panels!(context, canvas),
+                ),
               if (w.modal != null) Positioned.fill(child: w.modal!(context, canvas)),
               // The store's showConfirm, over everything.
               const Positioned.fill(child: WorkflowConfirm()),

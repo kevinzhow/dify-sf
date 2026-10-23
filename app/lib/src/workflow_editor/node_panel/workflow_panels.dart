@@ -191,36 +191,71 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     final store = _store!;
     // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
     final panelNode = node != null && reactFlowTypeOf(node) == 'custom' ? node : null;
-    return WorkflowRightPanelScope(
-      panelKey: _panelKey,
-      child: _SizeReporter(
-        key: _panelKey,
-        // The node panel's resize strip (`absolute -left-1 w-1`) lies outside Dify's row: not part of its width.
-        onSize: (size) => store.setRightPanelWidth(size.width - (panelNode != null ? 4 : 0)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (panelNode != null)
-              WorkflowNodePanel(
-                key: ValueKey('${panelNode.id}-${panelNode.type}'),
-                node: panelNode,
-                actions: _actions,
-                bodies: widget.bodies,
-                onSingleRun: widget.onSingleRun,
-                onStopSingleRun: widget.onStopSingleRun,
-              ),
-            _SizeReporter(
-              onSize: (size) => store.setOtherPanelWidth(size.width),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: widget.others,
-              ),
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        store.showEnvPanel,
+        store.showChatVariablePanel,
+        store.showGlobalVariablePanel,
+        store.showDebugAndPreviewPanel,
+        store.showCommentsPanel,
+        store.showWorkflowVersionHistoryPanel,
+        store.historyWorkflowData,
+      ]),
+      builder: (context, _) {
+        final compact = DifyAdaptive.compactOf(context);
+        final otherOpen =
+            store.showEnvPanel.value ||
+            store.showChatVariablePanel.value ||
+            store.showGlobalVariablePanel.value ||
+            store.showDebugAndPreviewPanel.value ||
+            store.showCommentsPanel.value ||
+            store.showWorkflowVersionHistoryPanel.value ||
+            store.historyWorkflowData.value != null;
+        if (compact && panelNode == null && !otherOpen) return const SizedBox.shrink();
+        final row = WorkflowRightPanelScope(
+          panelKey: _panelKey,
+          child: _SizeReporter(
+            key: _panelKey,
+            // The node panel's resize strip (`absolute -left-1 w-1`) lies outside Dify's row: not part of its width.
+            onSize: (size) => store.setRightPanelWidth(size.width - (panelNode != null ? 4 : 0)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (panelNode != null)
+                  WorkflowNodePanel(
+                    key: ValueKey('${panelNode.id}-${panelNode.type}'),
+                    node: panelNode,
+                    actions: _actions,
+                    bodies: widget.bodies,
+                    onSingleRun: widget.onSingleRun,
+                    onStopSingleRun: widget.onStopSingleRun,
+                  ),
+                _SizeReporter(
+                  onSize: (size) => store.setOtherPanelWidth(size.width),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: widget.others,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+        if (!compact) return row;
+        // Desktop can show several side-by-side panels. On a phone keep their
+        // independent state and make the whole rail horizontally reachable.
+        return SizedBox(
+          width: MediaQuery.sizeOf(context).width,
+          child: SingleChildScrollView(
+            key: const ValueKey('compact-panel-rail'),
+            scrollDirection: Axis.horizontal,
+            reverse: true,
+            child: row,
+          ),
+        );
+      },
     );
   }
 

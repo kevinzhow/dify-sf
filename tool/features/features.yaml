@@ -97,8 +97,8 @@ features:
   title: 'Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans)'
   dify: [web/app/components/workflow/index.tsx]
   status: ported
-  evidence: [app/test/workflow_editor_test.dart]
-  ours: [app/lib/src/canvas/canvas_input.dart]
+  evidence: [app/test/workflow_editor_test.dart, app/test/workflow_editor/canvas_touch_test.dart]
+  ours: [app/lib/src/canvas/canvas_input.dart, app/lib/src/canvas/canvas_touch_region.dart]
 - id: canvas.hand-mode
   area: canvas
   title: 'Canvas: hand mode (drag pans, wheel zooms)'
@@ -250,6 +250,15 @@ features:
   reason: The native/opt-in Scene renderer has culling, overview captures and a skeleton tier; Dify renders every node as DOM. This benchmark does not describe the default Web widget canvas.
   evidence: [docs/results]
   ours: [app/lib/src/canvas/scene_renderer.dart, app/lib/src/canvas/spatial_grid.dart]
+
+- id: canvas.mobile-web
+  area: canvas
+  title: 'Android Web: touch gestures and compact editor / Studio navigation'
+  dify: [web/app/components/workflow/index.tsx]
+  status: dify_sf_only
+  reason: Android Web adds single-finger empty-canvas pan, coordinated pinch/drag/cancel, compact action rows and viewport-bounded panels/navigation; it preserves desktop preferences. Verified with Chromium touch emulation and widget keyboard/rotation tests, not a physical Android/TalkBack or every vendor browser.
+  evidence: [app/test/workflow_editor/canvas_touch_test.dart, app/test/workflow_editor/mobile_layout_test.dart, docs/mobile-support.md]
+  ours: [app/lib/src/canvas/canvas_touch_region.dart, app/lib/src/design/widgets/adaptive.dart, app/lib/src/workflow_editor/workflow_editor.dart]
 
 # ---------------------------------------------------------------- node chrome
 - id: node-chrome.card

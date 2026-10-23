@@ -18,7 +18,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 
 | Area | ported | partial | not ported | n/a | dify-sf only | total |
 |---|---|---|---|---|---|---|
-| [Canvas & interactions](#canvas) | 15 | 3 | 2 | 3 | 1 | 24 |
+| [Canvas & interactions](#canvas) | 15 | 3 | 2 | 3 | 2 | 25 |
 | [Node cards (shared chrome)](#node-chrome) | 11 |  | 3 |  |  | 14 |
 | [Edges & connections](#edges) | 6 |  |  |  | 1 | 7 |
 | [Block selector & node insertion](#block-selector) | 6 | 4 | 1 | 1 |  | 12 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 6 | 8 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 |  | 10 |
-| **Total** | **177** | **52** | **33** | **17** | **13** | **292** |
+| **Total** | **177** | **52** | **33** | **17** | **14** | **293** |
 
 <a id="canvas"></a>
 
@@ -77,7 +77,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Canvas: workflow graph on a pannable, zoomable canvas (zoom 25%-200%) | ported | Deviation: Web uses Flutter's retained widget canvas with culling and repaint boundaries, compiled to Dart Wasm/skwasm; geometry and numbers follow React Flow 11. Native GPU builds use Flutter Scene. Scene is an explicit Web diagnostic option (canvas=scene), as detached card captures can produce blank compositor frames during hover. | spec `workflow`, visual `canvas-basic-llm`, visual `canvas-if-else`, `app/test/dify_spec/workflow/base` |
 | Canvas: dotted background | ported |  | visual `canvas-basic-llm` |
 | Canvas: open at the saved viewport, else fit view | partial | The canvas always fits the graph when a document opens; the viewport is per-user view state and is not stored in the shared document (Dify saves it with the draft). A start viewport can be passed with ?view= / --view. | spec `workflow/utils`, visual `editor-basic-llm` |
-| Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans) | ported |  | `app/test/workflow_editor_test.dart` |
+| Canvas: pointer mode (wheel pans, Ctrl/Cmd+wheel and pinch zoom, middle button pans) | ported |  | `app/test/workflow_editor_test.dart`, `app/test/workflow_editor/canvas_touch_test.dart` |
 | Canvas: hand mode (drag pans, wheel zooms) | ported |  | spec `workflow/operator` |
 | Canvas: double-click zooms in | ported |  | `app/test/workflow_editor/double_click_zoom_test.dart` |
 | Canvas: click selects one node (no modifier multi-select) and highlights its edges | ported |  | spec `workflow/hooks/use-nodes-interactions.spec.ts` |
@@ -98,6 +98,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Go to anything: command palette node search | not ported | outside current scope (owner to decide); dify-sf has no goto-anything palette. | spec `workflow/hooks/use-workflow-search.spec.tsx` |
 | Workflow generator (generate a graph from a prompt) | not ported | LLM invocation is available to workflow nodes, but the prompt-to-workflow generation service is not implemented. | spec `workflow/workflow-generator` |
 | Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier) | dify-sf only | The native/opt-in Scene renderer has culling, overview captures and a skeleton tier; Dify renders every node as DOM. This benchmark does not describe the default Web widget canvas. | `docs/results` |
+| Android Web: touch gestures and compact editor / Studio navigation | dify-sf only | Android Web adds single-finger empty-canvas pan, coordinated pinch/drag/cancel, compact action rows and viewport-bounded panels/navigation; it preserves desktop preferences. Verified with Chromium touch emulation and widget keyboard/rotation tests, not a physical Android/TalkBack or every vendor browser. | `app/test/workflow_editor/canvas_touch_test.dart`, `app/test/workflow_editor/mobile_layout_test.dart`, `docs/mobile-support.md` |
 
 <a id="node-chrome"></a>
 

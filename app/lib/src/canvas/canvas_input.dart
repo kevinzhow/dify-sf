@@ -101,6 +101,7 @@ class CanvasInput {
 
   void claim(PointerDownEvent e) => _claimed.add(e.pointer);
   bool claimed(PointerEvent e) => _claimed.contains(e.pointer);
+  void releaseClaim(PointerEvent e) => _claimed.remove(e.pointer);
 
   // React Flow's d3 double-click: double the zoom (Shift halves it), anchored at the pointer.
   // Feed the recognizer without delaying our raw pointer selection/drag handling. Interactive card controls
@@ -171,7 +172,7 @@ class CanvasInput {
 
   // ----- pointer -----
 
-  void down(PointerDownEvent e) {
+  void down(PointerDownEvent e, {bool touchPan = false, bool recognizeDoubleTap = true}) {
     if (claimed(e)) return;
     _downLocal = e.localPosition;
     final c = view.toCanvas(e.localPosition);
@@ -187,7 +188,7 @@ class CanvasInput {
     if (mode == ControlMode.comment) return;
     final locked = readOnly();
     final port = locked ? null : outPortAt(c), hit = _clickTarget(c);
-    if (port == null) _doubleClick.addPointer(e);
+    if (port == null && recognizeDoubleTap) _doubleClick.addPointer(e);
     if (port != null) {
       _gesture = 'connect';
       _connectFrom = port;
@@ -198,6 +199,9 @@ class CanvasInput {
       if (!selection.nodes.contains(hit.slot)) selection.selectNodes([hit.slot]);
       controller.selectNode(hit.id);
       onApplied?.call('select');
+    } else if (touchPan) {
+      _gesture = 'pan';
+      _panCenter = view.center;
     } else if (mode == ControlMode.pointer) {
       _gesture = 'marquee';
     } else if (mode == ControlMode.hand) {
@@ -299,6 +303,22 @@ class CanvasInput {
         }
     }
     _gesture = 'none';
+  }
+
+  /// Cancellation is not a drop. In particular an OS interruption or a second
+  /// finger must never create an edge at the last pointer position.
+  void cancel([PointerEvent? e]) {
+    if (e != null) releaseClaim(e);
+    if (_gesture == 'move' && _moved) _endMove();
+    if (_gesture == 'connect') {
+      renderer().connectPreview(null, null);
+      connectLine.value = null;
+      _connectFrom = null;
+      connectEnd?.call()?.call();
+    }
+    marquee.value = null;
+    _gesture = 'none';
+    _moved = false;
   }
 
   void hover(PointerHoverEvent e) {

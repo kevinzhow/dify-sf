@@ -367,7 +367,7 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
     return ListenableBuilder(
       listenable: Listenable.merge([store.previewPanelWidth, store.workflowCanvasWidth]),
       builder: (context, _) {
-        final width = store.previewPanelWidth.value;
+        final width = DifyAdaptive.panelWidth(context, store.previewPanelWidth.value, inset: 12);
         final max = getPreviewPanelMaxWidth(store.workflowCanvasWidth.value, widget.panel.hasSelectedNode, 720);
         return SizedBox(
           width: width + 4,

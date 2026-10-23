@@ -78,6 +78,7 @@ class DetailSidebarFrame extends StatefulWidget {
 class DetailSidebarFrameState extends State<DetailSidebarFrame> {
   /// The remembered mode (`useDetailSidebarMode`).
   bool _expanded = true;
+  bool _mobileOpen = false;
   bool _previewOpen = false;
   bool _transitionDisabled = false;
   Timer? _closePreview, _transition;
@@ -120,6 +121,10 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
 
   /// `handleToggleDetailNavigation`: from the hover preview it pins the panel open without a transition.
   void toggle() {
+    if (DifyAdaptive.compactOf(context)) {
+      setState(() => _mobileOpen = !_mobileOpen);
+      return;
+    }
     if (previewOpen) {
       _transition?.cancel();
       setState(() {
@@ -153,8 +158,9 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
 
   @override
   Widget build(BuildContext context) {
-    final preview = previewOpen;
-    final visibleExpanded = _expanded || preview;
+    final compact = DifyAdaptive.compactOf(context);
+    final preview = !compact && previewOpen;
+    final visibleExpanded = compact || _expanded || preview;
     final duration = _transitionDisabled ? Duration.zero : const Duration(milliseconds: 150);
     const curve = Cubic(0.4, 0, 0.2, 1);
     final panelRadius = BorderRadius.circular(DifyRadius.lg);
@@ -193,6 +199,31 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
         ),
       ),
     );
+    if (compact) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: DifyIconButton(
+                  label: DetailSidebarToggleButton.labelFor(false),
+                  icon: const RemixIcon('menu-line', size: 20),
+                  onPressed: toggle,
+                ),
+              ),
+              Expanded(child: widget.child),
+            ],
+          ),
+          if (_mobileOpen) ...[
+            Positioned.fill(child: DifyDrawerBackdrop(onTap: toggle)),
+            Positioned(left: 4, top: 4, bottom: 4, width: 240, child: panel),
+          ],
+        ],
+      );
+    }
     return PageHotkey(
       hotkey: detailSidebarToggleHotkey,
       onPressed: toggle,

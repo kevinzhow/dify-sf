@@ -26,7 +26,7 @@ class VariablePanelShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 420,
+    width: DifyAdaptive.panelWidth(context, 420),
     decoration: BoxDecoration(
       color: DifyColors.componentsPanelBgAlt,
       border: Border.all(color: DifyColors.componentsPanelBorder),

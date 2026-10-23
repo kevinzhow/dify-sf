@@ -82,58 +82,83 @@ class HeaderInNormal extends StatelessWidget {
     final store = WorkflowStoreScope.of(context);
     final canvas = WorkflowHeaderScope.canvasOf(context);
     final showContextButtons = data.isChatMode || data.showEnvButton || data.showGlobalVariableButton;
+    final compact = DifyAdaptive.toolbarCompactOf(context);
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8,
+      children: [
+        // The `left` slot and its gap go when it shows nothing.
+        if (data.left case final left?)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const OnlineUsers(),
+              GapBefore(gap: 8, child: left),
+            ],
+          )
+        else
+          const OnlineUsers(),
+        const HeaderDivider(),
+        RunAndHistory(
+          showRunButton: !data.isChatMode,
+          showPreviewButton: data.isChatMode,
+          runButtonText: data.runButtonText,
+        ),
+        if (showContextButtons)
+          ListenableBuilder(
+            listenable: nodesReadOnlyListenable(store),
+            builder: (context, _) {
+              final readOnly = nodesReadOnlyOf(store, canEdit: data.canEdit);
+              final r = BorderRadius.circular(DifyRadius.lg);
+              return DifyBlurredBox(
+                blur: 10,
+                borderRadius: r,
+                decoration: headerPillDecoration(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (data.isChatMode) ChatVariableButton(disabled: readOnly),
+                    if (data.showEnvButton) EnvButton(disabled: readOnly),
+                    if (data.showGlobalVariableButton) GlobalVariableButton(disabled: readOnly),
+                  ],
+                ),
+              );
+            },
+          ),
+        if (!compact) ?data.middle,
+        if (data.canReleaseAndVersion) VersionHistoryButton(onClick: () => startRestoring(store, data, canvas)),
+      ],
+    );
+    if (compact) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 8,
+        children: [
+          Row(
+            children: [
+              Expanded(child: data.title ?? const EditingTitle()),
+              ?data.middle,
+            ],
+          ),
+          DifyToolbarStrip(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                const ScrollToSelectedNodeButton(),
+                actions,
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // In a canvas too narrow for everything the title gives way (in the browser the row would overflow).
         Flexible(child: data.title ?? const EditingTitle()),
         const ScrollToSelectedNodeButton(),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 8,
-          children: [
-            // The `left` slot and its gap go when it shows nothing.
-            if (data.left case final left?)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const OnlineUsers(),
-                  GapBefore(gap: 8, child: left),
-                ],
-              )
-            else
-              const OnlineUsers(),
-            const HeaderDivider(),
-            RunAndHistory(
-              showRunButton: !data.isChatMode,
-              showPreviewButton: data.isChatMode,
-              runButtonText: data.runButtonText,
-            ),
-            if (showContextButtons)
-              ListenableBuilder(
-                listenable: nodesReadOnlyListenable(store),
-                builder: (context, _) {
-                  final readOnly = nodesReadOnlyOf(store, canEdit: data.canEdit);
-                  final r = BorderRadius.circular(DifyRadius.lg);
-                  return DifyBlurredBox(
-                    blur: 10,
-                    borderRadius: r,
-                    decoration: headerPillDecoration(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (data.isChatMode) ChatVariableButton(disabled: readOnly),
-                        if (data.showEnvButton) EnvButton(disabled: readOnly),
-                        if (data.showGlobalVariableButton) GlobalVariableButton(disabled: readOnly),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ?data.middle,
-            if (data.canReleaseAndVersion) VersionHistoryButton(onClick: () => startRestoring(store, data, canvas)),
-          ],
-        ),
+        actions,
       ],
     );
   }

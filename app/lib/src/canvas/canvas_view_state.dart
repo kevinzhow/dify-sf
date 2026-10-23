@@ -60,9 +60,13 @@ class CanvasViewState extends ChangeNotifier {
 
   /// Zooms by [factor] keeping the canvas point under [local] where it is.
   void zoomAt(Offset local, double factor) {
-    final c = toCanvas(local);
-    _scale = (_scale * factor).clamp(minScale, maxScale);
-    _center = c - (local - _mid) / _scale;
+    transformAt(local, toCanvas(local), _scale * factor);
+  }
+
+  /// Simultaneous pinch and pan: keep [anchor] under the moving finger centroid.
+  void transformAt(Offset local, Offset anchor, double scale) {
+    _scale = scale.clamp(minScale, maxScale);
+    _center = anchor - (local - _mid) / _scale;
     notifyListeners();
   }
 

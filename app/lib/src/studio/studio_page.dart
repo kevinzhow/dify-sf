@@ -260,81 +260,86 @@ class StudioPageState extends State<StudioPage> {
   }
 
   /// StudioListHeader: `sticky top-0 flex flex-col gap-3.5 bg-background-body px-8 pt-4 pb-2`.
-  Widget _header(WorkspaceMembers? members) => Container(
-    color: DifyColors.backgroundBody,
-    padding: const EdgeInsets.fromLTRB(32, 16, 32, 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 14,
+  Widget _header(WorkspaceMembers? members) {
+    final compact = DifyAdaptive.compactOf(context);
+    final filters = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        SizedBox(
-          height: 24,
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Semantics(
-              header: true,
-              child: Text(
-                _c('menus.apps'),
-                // `text-[18px]/[21.6px] font-semibold` (= title-2xl-semi-bold)
-                style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-              ),
-            ),
-          ),
+        AppTypeFilter(
+          value: list.category,
+          onChange: (v) {
+            _resetScroll();
+            list.setCategory(v);
+          },
         ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
-          children: [
-            Expanded(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  AppTypeFilter(
-                    value: list.category,
-                    onChange: (v) {
-                      _resetScroll();
-                      list.setCategory(v);
-                    },
-                  ),
-                  CreatorsFilter(
-                    value: list.creatorIds,
-                    members: members?.members ?? const [],
-                    currentUserId: members?.meAsMember?.id ?? widget.currentUserId,
-                    onChange: (v) {
-                      _resetScroll();
-                      list.setCreatorIds(v);
-                    },
-                  ),
-                  AppSortFilter(
-                    value: list.sortBy,
-                    onChange: (v) {
-                      _resetScroll();
-                      list.setSortBy(v);
-                    },
-                  ),
-                  StudioSearchInput(
-                    value: list.keywords,
-                    semanticLabel: _a('gotoAnything.actions.searchApplications'),
-                    onChange: (v) {
-                      _resetScroll();
-                      list.setKeywords(v);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            if (_canCreate)
-              CreateAppDropdown(
-                onCreateBlank: () => unawaited(openCreateBlank()),
-                onImportDSL: () => unawaited(openImportDsl()),
-              ),
-          ],
+        CreatorsFilter(
+          value: list.creatorIds,
+          members: members?.members ?? const [],
+          currentUserId: members?.meAsMember?.id ?? widget.currentUserId,
+          onChange: (v) {
+            _resetScroll();
+            list.setCreatorIds(v);
+          },
+        ),
+        AppSortFilter(
+          value: list.sortBy,
+          onChange: (v) {
+            _resetScroll();
+            list.setSortBy(v);
+          },
+        ),
+        StudioSearchInput(
+          width: DifyAdaptive.compactOf(context) ? MediaQuery.sizeOf(context).width - 24 : 200,
+          value: list.keywords,
+          semanticLabel: _a('gotoAnything.actions.searchApplications'),
+          onChange: (v) {
+            _resetScroll();
+            list.setKeywords(v);
+          },
         ),
       ],
-    ),
-  );
+    );
+    final create = CreateAppDropdown(
+      onCreateBlank: () => unawaited(openCreateBlank()),
+      onImportDSL: () => unawaited(openImportDsl()),
+    );
+    final title = Semantics(
+      header: true,
+      child: Text(_c('menus.apps'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+    );
+    return Container(
+      color: DifyColors.backgroundBody,
+      padding: EdgeInsets.fromLTRB(compact ? 12 : 32, 16, compact ? 12 : 32, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 14,
+        children: [
+          SizedBox(
+            height: compact ? 36 : 24,
+            child: Row(
+              children: [
+                Expanded(child: title),
+                if (compact && _canCreate) create,
+              ],
+            ),
+          ),
+          if (compact)
+            filters
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                Expanded(child: filters),
+                if (_canCreate) create,
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _catalog() {
     if (list.error != null && list.pages.isEmpty) return _errorState();

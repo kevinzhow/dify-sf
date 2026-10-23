@@ -146,7 +146,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
           ),
         );
         return Container(
-          width: 420,
+          width: DifyAdaptive.panelWidth(context, 420),
           decoration: BoxDecoration(
             color: DifyColors.componentsPanelBg,
             border: Border.all(color: DifyColors.componentsPanelBorder),

@@ -276,7 +276,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     return ListenableBuilder(
       listenable: _widthInputs,
       builder: (context, child) {
-        final width = store.nodePanelWidth.value, max = _max;
+        final width = DifyAdaptive.panelWidth(context, store.nodePanelWidth.value, inset: 16), max = _max;
         return Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

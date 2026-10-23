@@ -117,10 +117,12 @@ class DifyDialogSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final available = (screen.height - keyboard - (top ?? 0) - 32).clamp(0.0, double.infinity);
     final box = ConstrainedBox(
       constraints: BoxConstraints(
         maxWidth: width,
-        maxHeight: height ?? maxHeight ?? (screen.height - (top ?? 0)) * 0.8,
+        maxHeight: (height ?? maxHeight ?? (screen.height - (top ?? 0)) * 0.8).clamp(0.0, available),
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -150,11 +152,11 @@ class DifyDialogSurface extends StatelessWidget {
     if (top case final t?) {
       return Align(
         alignment: Alignment.topCenter,
-        child: Padding(padding: EdgeInsets.fromLTRB(16, t, 16, 0), child: box),
+        child: Padding(padding: EdgeInsets.fromLTRB(16, t, 16, keyboard), child: box),
       );
     }
     return Center(
-      child: Padding(padding: const EdgeInsets.all(16), child: box),
+      child: Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + keyboard), child: box),
     );
   }
 }

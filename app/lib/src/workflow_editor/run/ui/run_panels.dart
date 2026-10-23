@@ -203,7 +203,7 @@ class _ChatRecordState extends State<ChatRecord> {
     final store = WorkflowStoreScope.of(context);
     final history = store.historyWorkflowData.value;
     return Container(
-      width: 420,
+      width: DifyAdaptive.panelWidth(context, 420),
       decoration: BoxDecoration(
         gradient: DifyGradients.chatbotBg,
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(DifyRadius.xxl)),

@@ -2,6 +2,7 @@
 library;
 
 export 'alert_dialog.dart';
+export 'adaptive.dart';
 export 'app_icon.dart';
 export 'avatar.dart';
 export 'badge.dart';
@@ -12,7 +13,6 @@ export 'checkbox_list.dart';
 export 'chip.dart';
 export 'collapse.dart';
 export 'compositions.dart';
-export 'command_controls.dart';
 export 'copy_feedback.dart';
 export 'date_and_time_picker.dart';
 export 'dashed_border.dart';

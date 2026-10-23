@@ -1031,7 +1031,7 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
     final store = WorkflowStoreScope.of(context);
     final items = [for (final p in _pages) ...p];
     return Container(
-      width: 268,
+      width: DifyAdaptive.panelWidth(context, 268),
       decoration: BoxDecoration(
         color: DifyColors.componentsPanelBg,
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(DifyRadius.xxl)),

@@ -227,8 +227,10 @@ class _RunButtonFace extends StatelessWidget {
           RemixIcon('play-large-line', size: 16, color: DifyColors.textAccent),
           const SizedBox(width: 8),
           Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
-          const SizedBox(width: 4),
-          const DifyShortcutKbd(hotkey: testRunMenuHotkey, secondaryText: true),
+          if (!DifyAdaptive.compactOf(context)) ...[
+            const SizedBox(width: 4),
+            const DifyShortcutKbd(hotkey: testRunMenuHotkey, secondaryText: true),
+          ],
         ],
       ),
     ),

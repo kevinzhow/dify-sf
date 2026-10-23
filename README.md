@@ -10,7 +10,7 @@ Web release builds use full Dart Wasm + skwasm: run `tool/build_web.sh`. Browser
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-292 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+293 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
@@ -18,7 +18,7 @@ Web release builds use full Dart Wasm + skwasm: run `tool/build_web.sh`. Browser
 | partial | 52 |
 | not ported | 33 |
 | n/a | 17 |
-| dify-sf only | 13 |
+| dify-sf only | 14 |
 
 Per area, with the reason for everything not ported: [docs/features.md](docs/features.md).
 <!-- features:end -->
@@ -26,6 +26,7 @@ Per area, with the reason for everything not ported: [docs/features.md](docs/fea
 ## Documentation
 
 * [`docs/features.md`](docs/features.md) - feature parity with Dify 1.17.1: what is ported, what is not, and why.
+* [`docs/mobile-support.md`](docs/mobile-support.md) - Android Web gestures, compact layout and validation limits.
 * [`docs/client.md`](docs/client.md) - architecture, how to build, run and test, results, known gaps.
 * [`docs/protocol.md`](docs/protocol.md) - the collaboration protocol the client implements.
 * [`docs/replica-plan.md`](docs/replica-plan.md) - how the Dify editor replica is built and verified.

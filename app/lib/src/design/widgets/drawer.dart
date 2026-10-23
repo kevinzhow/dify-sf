@@ -44,7 +44,7 @@ Future<T?> showDifyDrawer<T>(
   ),
   pageBuilder: (dialogContext, _, _) => SafeArea(
     child: Padding(
-      padding: insets,
+      padding: insets + EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(dialogContext).bottom),
       child: Align(
         alignment: Alignment.centerRight,
         child: ConstrainedBox(

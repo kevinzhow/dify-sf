@@ -35,7 +35,7 @@ class DifyPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: backgroundColor ?? DifyColors.backgroundBody,
     resizeToAvoidBottomInset: true,
-    body: body,
+    body: SafeArea(child: body),
   );
 }
 

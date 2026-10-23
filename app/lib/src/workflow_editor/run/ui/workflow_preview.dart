@@ -432,7 +432,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
     builder: (context, _) {
       final data = store.workflowRunningData.value;
       final result = data == null ? null : resultOf(data);
-      final width = store.previewPanelWidth.value;
+      final width = DifyAdaptive.panelWidth(context, store.previewPanelWidth.value);
       final burn = _tab == _Tab.result || _tab == _Tab.tracing;
       return SizedBox(
         width: width,

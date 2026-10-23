@@ -83,6 +83,7 @@ class _HomePageState extends State<HomePage> {
   late bool _journaled = widget.settings.journaled;
   String? _error;
   bool _busy = false;
+  bool _mobileNavOpen = false;
 
   @override
   void initState() {
@@ -347,29 +348,55 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final account = AuthScope.of(context).account;
     final apps = _apps;
+    final nav = account == null ? null : MainNavFrame(account: account, models: _models, members: _members, apps: apps);
+    final content = apps == null || account == null
+        ? _form(context)
+        : StudioPage(
+            key: const ValueKey('studio-page'),
+            api: apps,
+            uploadIcon: appIconUploader(AuthScope.of(context)),
+            members: _members,
+            role: account.role,
+            currentUserId: account.id,
+            pollInterval: widget.studioPollInterval,
+            openApp: _openApp,
+            environmentVariables: _environmentVariables,
+          );
+    final compact = DifyAdaptive.compactOf(context);
     return DifyPage(
       backgroundColor: DifyColors.backgroundBody,
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (account != null) MainNavFrame(account: account, models: _models, members: _members, apps: apps),
-          Expanded(
-            child: apps == null || account == null
-                ? _form(context)
-                : StudioPage(
-                    key: const ValueKey('studio-page'),
-                    api: apps,
-                    uploadIcon: appIconUploader(AuthScope.of(context)),
-                    members: _members,
-                    role: account.role,
-                    currentUserId: account.id,
-                    pollInterval: widget.studioPollInterval,
-                    openApp: _openApp,
-                    environmentVariables: _environmentVariables,
-                  ),
-          ),
-        ],
-      ),
+      body: compact
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (nav != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: DifyIconButton(
+                          label: DifyI18n.tr('layout', 'sidebar.expandSidebar'),
+                          icon: const RemixIcon('menu-line', size: 20),
+                          onPressed: () => setState(() => _mobileNavOpen = !_mobileNavOpen),
+                        ),
+                      ),
+                    Expanded(child: content),
+                  ],
+                ),
+                if (_mobileNavOpen && nav != null) ...[
+                  Positioned.fill(child: DifyDrawerBackdrop(onTap: () => setState(() => _mobileNavOpen = false))),
+                  Align(alignment: Alignment.centerLeft, child: nav),
+                ],
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ?nav,
+                Expanded(child: content),
+              ],
+            ),
     );
   }
 

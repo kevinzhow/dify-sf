@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import '../../canvas/canvas_controller.dart';
 import '../../canvas/canvas_input.dart' show ControlMode;
 import '../../editor/undo_manager.dart';
+import '../../design/widgets/adaptive.dart';
 import '../store/store.dart';
 import 'actions.dart';
 import 'mini_map.dart';
@@ -59,6 +60,25 @@ class _WorkflowOperatorState extends State<WorkflowOperator> {
   Widget build(BuildContext context) {
     final store = WorkflowStoreScope.of(context);
     final a = OperatorActions(widget.canvas, store, history: widget.history, options: widget.options);
+    final compact = DifyAdaptive.compactOf(context);
+    final controls = <Widget>[
+      UndoRedo(history: widget.history, onUndo: a.historyBack, onRedo: a.historyForward),
+      if (widget.variableTrigger != null) SizedBox(height: 36, child: Center(child: widget.variableTrigger)),
+      ListenableBuilder(
+        listenable: Listenable.merge([store.showUserComments, store.showUserCursors, store.controlMode]),
+        builder: (context, _) => ZoomInOut(
+          canvas: widget.canvas,
+          options: widget.options,
+          showMiniMap: _showMiniMap,
+          onToggleMiniMap: () => setState(() => _showMiniMap = !_showMiniMap),
+          showUserComments: store.showUserComments.value,
+          onToggleUserComments: () => store.setShowUserComments(!store.showUserComments.value),
+          showUserCursors: store.showUserCursors.value,
+          onToggleUserCursors: () => store.setShowUserCursors(!store.showUserCursors.value),
+          isCommentMode: store.controlMode.value == ControlMode.comment,
+        ),
+      ),
+    ];
     final bar = _SizeReporter(
       // The editor's px-1 is outside this widget; Dify measures the element with it.
       onSize: (size) => store
@@ -74,28 +94,14 @@ class _WorkflowOperatorState extends State<WorkflowOperator> {
               padding: EdgeInsets.fromLTRB(4, 0, 4, open && widget.variableInspectPanel != null ? 4 : 8),
               child: child,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                UndoRedo(history: widget.history, onUndo: a.historyBack, onRedo: a.historyForward),
-                // VariableTrigger's wrapper is `flex items-center`, stretched to the row (the zoom pill's h-9).
-                if (widget.variableTrigger != null) SizedBox(height: 36, child: Center(child: widget.variableTrigger)),
-                ListenableBuilder(
-                  listenable: Listenable.merge([store.showUserComments, store.showUserCursors, store.controlMode]),
-                  builder: (context, _) => ZoomInOut(
-                    canvas: widget.canvas,
-                    options: widget.options,
-                    showMiniMap: _showMiniMap,
-                    onToggleMiniMap: () => setState(() => _showMiniMap = !_showMiniMap),
-                    showUserComments: store.showUserComments.value,
-                    onToggleUserComments: () => store.setShowUserComments(!store.showUserComments.value),
-                    showUserCursors: store.showUserCursors.value,
-                    onToggleUserCursors: () => store.setShowUserCursors(!store.showUserCursors.value),
-                    isCommentMode: store.controlMode.value == ControlMode.comment,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) => constraints.maxWidth < 480
+                  ? Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 4, children: controls)
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: controls,
+                    ),
             ),
           ),
           ?widget.variableInspectPanel,
@@ -109,7 +115,11 @@ class _WorkflowOperatorState extends State<WorkflowOperator> {
         builder: (context, child) {
           final canvasWidth = store.workflowCanvasWidth.value ?? 0, rightWidth = store.rightPanelWidth.value ?? 0;
           // 'auto' until both are known.
-          final width = canvasWidth == 0 || rightWidth == 0 ? null : max(canvasWidth - rightWidth, 400.0) - 8;
+          final width = compact
+              ? null
+              : canvasWidth == 0 || rightWidth == 0
+              ? null
+              : max(canvasWidth - rightWidth, 400.0) - 8;
           return Align(
             alignment: Alignment.bottomLeft,
             child: SizedBox(width: width, child: child),
