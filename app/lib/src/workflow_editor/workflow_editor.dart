@@ -191,91 +191,104 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    return WorkflowStoreScope(
-      store: store,
-      preferences: preferences,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          _measured(constraints.biggest);
-          final stack = Stack(
-            fit: StackFit.expand,
-            children: [
-              WorkflowShortcuts(
-                controller: w.controller,
-                canvas: canvas,
-                options: w.menuOptions,
-                child: WorkflowContextMenus(
-                  controller: w.controller,
-                  canvas: canvas,
-                  options: w.menuOptions,
-                  child: WorkflowCanvas(controller: w.controller, canvas: canvas),
-                ),
-              ),
-              Positioned.fill(child: HelpLine(canvas: canvas)),
-              Positioned.fill(
-                child: AggregatorPopupHost(controller: w.controller, canvas: canvas),
-              ),
-              if (w.overlay != null) Positioned.fill(child: w.overlay!(context, canvas)),
-              if (w.header != null)
-                // `absolute top-7 h-0 items-center`: centred 28 px from the top. A 56 px band (not a zero-height box,
-                // which hit testing would ignore) lets the controls take clicks; empty parts of it pass them on.
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 56,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Align(alignment: Alignment.center, child: w.header!(context, canvas)),
-                  ),
-                ),
-              if (w.control != null)
-                // index.tsx `controlHeight`: the canvas height above the bottom panel once both are known.
-                ListenableBuilder(
-                  listenable: Listenable.merge([store.workflowCanvasHeight, store.bottomPanelHeight]),
-                  builder: (context, child) => Positioned(
-                    top: 0,
-                    left: 0,
-                    bottom: store.workflowCanvasHeight.value == null ? 0 : store.bottomPanelHeight.value,
-                    width: 48,
-                    child: child!,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
-                    // The bar (38 px: 33 px buttons with their 1 px margins, p-0.5, the border) is wider than the
-                    // 36 px left for it: like the centred flex item, it overflows both sides evenly.
-                    child: OverflowBox(
-                      minWidth: 0,
-                      maxWidth: double.infinity,
-                      minHeight: 0,
-                      child: w.control!(context, canvas),
+    // Tight viewport constraints contain LayoutBuilder's relayout callbacks;
+    // a separate display list contains painting. Together they prevent a pan
+    // from laying out/repainting the surrounding sidebar or application page.
+    return SizedBox.expand(
+      child: RepaintBoundary(
+        child: WorkflowStoreScope(
+          store: store,
+          preferences: preferences,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              _measured(constraints.biggest);
+              // Viewport listeners in overlays can relayout this LayoutBuilder.
+              // Give canvas/chrome regions independent display lists so painting
+              // one region does not repaint the unchanged controls around it.
+              final stack = Stack(
+                fit: StackFit.expand,
+                children: [
+                  WorkflowShortcuts(
+                    controller: w.controller,
+                    canvas: canvas,
+                    options: w.menuOptions,
+                    child: WorkflowContextMenus(
+                      controller: w.controller,
+                      canvas: canvas,
+                      options: w.menuOptions,
+                      child: WorkflowCanvas(controller: w.controller, canvas: canvas),
                     ),
                   ),
-                ),
-              if (w.operator != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: w.operator!(context, canvas),
+                  Positioned.fill(child: HelpLine(canvas: canvas)),
+                  Positioned.fill(
+                    child: AggregatorPopupHost(controller: w.controller, canvas: canvas),
                   ),
-                ),
-              if (w.panels != null)
-                Positioned(
-                  top: 56,
-                  right: 0,
-                  bottom: 4,
-                  child: w.panels!(context, canvas),
-                ),
-              if (w.modal != null) Positioned.fill(child: w.modal!(context, canvas)),
-              // The store's showConfirm, over everything.
-              const Positioned.fill(child: WorkflowConfirm()),
-            ],
-          );
-          return DifyViewport(width: constraints.maxWidth, child: w.scope?.call(context, canvas, stack) ?? stack);
-        },
+                  if (w.overlay != null) Positioned.fill(child: w.overlay!(context, canvas)),
+                  if (w.header != null)
+                    // `absolute top-7 h-0 items-center`: centred 28 px from the top. A 56 px band (not a zero-height box,
+                    // which hit testing would ignore) lets the controls take clicks; empty parts of it pass them on.
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 56,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: RepaintBoundary(child: w.header!(context, canvas)),
+                        ),
+                      ),
+                    ),
+                  if (w.control != null)
+                    // index.tsx `controlHeight`: the canvas height above the bottom panel once both are known.
+                    ListenableBuilder(
+                      listenable: Listenable.merge([store.workflowCanvasHeight, store.bottomPanelHeight]),
+                      builder: (context, child) => Positioned(
+                        top: 0,
+                        left: 0,
+                        bottom: store.workflowCanvasHeight.value == null ? 0 : store.bottomPanelHeight.value,
+                        width: 48,
+                        child: child!,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+                        // The bar (38 px: 33 px buttons with their 1 px margins, p-0.5, the border) is wider than the
+                        // 36 px left for it: like the centred flex item, it overflows both sides evenly.
+                        child: OverflowBox(
+                          minWidth: 0,
+                          maxWidth: double.infinity,
+                          minHeight: 0,
+                          child: RepaintBoundary(child: w.control!(context, canvas)),
+                        ),
+                      ),
+                    ),
+                  if (w.operator != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: RepaintBoundary(child: w.operator!(context, canvas)),
+                      ),
+                    ),
+                  if (w.panels != null)
+                    Positioned(
+                      top: 56,
+                      right: 0,
+                      bottom: 4,
+                      child: RepaintBoundary(child: w.panels!(context, canvas)),
+                    ),
+                  if (w.modal != null) Positioned.fill(child: w.modal!(context, canvas)),
+                  // The store's showConfirm, over everything.
+                  const Positioned.fill(child: WorkflowConfirm()),
+                ],
+              );
+              return DifyViewport(width: constraints.maxWidth, child: w.scope?.call(context, canvas, stack) ?? stack);
+            },
+          ),
+        ),
       ),
     );
   }
