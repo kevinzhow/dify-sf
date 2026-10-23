@@ -37,7 +37,7 @@ class RoleBadges extends StatelessWidget {
         widthFactor: 1,
         child: Semantics(
           tooltip: title,
-          child: Text(
+          child: DifyTextLine(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -117,7 +117,7 @@ class _MemberRowState extends State<MemberRow> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text.rich(
+                      DifyTextLine.rich(
                         TextSpan(
                           children: [
                             TextSpan(text: m.name),
@@ -127,7 +127,7 @@ class _MemberRowState extends State<MemberRow> {
                                 baseline: TextBaseline.alphabetic,
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 4),
-                                  child: Text(
+                                  child: DifyTextLine(
                                     stc(context, 'members.pending'),
                                     style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textWarning),
                                   ),
@@ -142,7 +142,7 @@ class _MemberRowState extends State<MemberRow> {
                         ),
                         style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                       ),
-                      Text(m.email, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                      DifyTextLine(m.email, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
                     ],
                   ),
                 ),
@@ -154,7 +154,7 @@ class _MemberRowState extends State<MemberRow> {
           width: memberLastActiveColumnWidth,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
+            child: DifyTextLine(
               w.lastActive,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

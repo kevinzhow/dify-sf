@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import '../css_metrics.dart';
 import '../dify_tokens.g.dart';
 import 'emoji_catalog.dart';
+import 'text_line.dart';
 
 /// The plain emoji fallback used by AppIcon and API-provided agent/tool icons. Keep its line box independent
 /// of inherited body text; callers that intentionally inherit line height can pass null.
@@ -86,7 +87,7 @@ class DifyAppIcon extends StatelessWidget {
               excludeFromSemantics: true,
               errorBuilder: (_, _, _) => SizedBox(width: size.box, height: size.box),
             )
-          : Text(
+          : DifyTextLine(
               nativeEmoji(icon),
               textScaler: TextScaler.noScaling,
               style: difyEmojiTextStyle(size.fontSize),

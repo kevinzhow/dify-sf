@@ -412,7 +412,7 @@ class _CredentialItemState extends State<CredentialItem> {
                         const SizedBox(width: 6),
                         Flexible(
                           child: ExcludeSemantics(
-                            child: Text(
+                            child: DifyTextLine(
                               name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -428,7 +428,7 @@ class _CredentialItemState extends State<CredentialItem> {
                     Flexible(
                       child: Padding(
                         padding: const EdgeInsets.only(left: 8, right: 4),
-                        child: Text(
+                        child: DifyTextLine(
                           _t('modelProvider.card.unavailable'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -440,7 +440,7 @@ class _CredentialItemState extends State<CredentialItem> {
                     const SizedBox(width: 8),
                     if (!w.disableEdit)
                       DifyTooltip(
-                        content: Text(_t('operation.edit')),
+                        content: DifyTextLine(_t('operation.edit')),
                         child: DifyIconButton(
                           key: ValueKey('credential-edit-${c.credentialId}'),
                           label: _t('operation.edit'),
@@ -451,7 +451,9 @@ class _CredentialItemState extends State<CredentialItem> {
                       ),
                     if (!w.disableDelete)
                       DifyTooltip(
-                        content: Text(disableDeleteWhenSelected ? (w.disableDeleteTip ?? '') : _t('operation.delete')),
+                        content: DifyTextLine(
+                          disableDeleteWhenSelected ? (w.disableDeleteTip ?? '') : _t('operation.delete'),
+                        ),
                         child: _DeleteIconButton(
                           key: ValueKey('credential-delete-${c.credentialId}'),
                           dimmed: disableDeleteWhenSelected,
@@ -470,7 +472,7 @@ class _CredentialItemState extends State<CredentialItem> {
       ),
     );
     if (unavailable) {
-      item = DifyTooltip(content: Text(DifyI18n.tr('plugin', 'auth.customCredentialUnavailable')), child: item);
+      item = DifyTooltip(content: DifyTextLine(DifyI18n.tr('plugin', 'auth.customCredentialUnavailable')), child: item);
     }
     return item;
   }
@@ -573,7 +575,7 @@ class AuthorizedItem extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
+                    child: DifyTextLine(
                       title ?? model?.model ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -755,7 +757,10 @@ class _AuthorizedState extends State<Authorized> {
             if (w.popupTitle != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-                child: Text(w.popupTitle!, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary)),
+                child: DifyTextLine(
+                  w.popupTitle!,
+                  style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
+                ),
               ),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 304),
@@ -804,7 +809,7 @@ class _AuthorizedState extends State<Authorized> {
                       RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
                       const SizedBox(width: 4),
                       Flexible(
-                        child: Text(
+                        child: DifyTextLine(
                           _t('modelProvider.auth.addModelCredential'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -820,7 +825,7 @@ class _AuthorizedState extends State<Authorized> {
                 padding: const EdgeInsets.all(8),
                 child: DifyButton(
                   onPressed: () => handleEdit(null, null),
-                  child: Text(_t('modelProvider.auth.addApiKey')),
+                  child: DifyTextLine(_t('modelProvider.auth.addApiKey')),
                 ),
               ),
           ],
@@ -868,7 +873,7 @@ class AddModelButton extends StatelessWidget {
         semanticLabel: _t('modelProvider.addModel'),
         onPressed: onPressed ?? () {},
         leading: const RemixIcon('add-circle-fill', size: 14),
-        child: Text(_t('modelProvider.addModel'), style: TextStyle(color: DifyColors.textTertiary)),
+        child: DifyTextLine(_t('modelProvider.addModel'), style: TextStyle(color: DifyColors.textTertiary)),
       ),
     );
     if (open) {
@@ -881,7 +886,7 @@ class AddModelButton extends StatelessWidget {
       );
     }
     if (disabled) {
-      button = DifyTooltip(content: Text(DifyI18n.tr('plugin', 'auth.credentialUnavailable')), child: button);
+      button = DifyTooltip(content: DifyTextLine(DifyI18n.tr('plugin', 'auth.credentialUnavailable')), child: button);
     }
     return button;
   }
@@ -1005,7 +1010,7 @@ class _AddCustomModelState extends State<AddCustomModel> {
                                   ),
                                 ),
                                 Expanded(
-                                  child: Text(
+                                  child: DifyTextLine(
                                     m.model,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1039,7 +1044,7 @@ class _AddCustomModelState extends State<AddCustomModel> {
                       RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
                       const SizedBox(width: 4),
                       Flexible(
-                        child: Text(
+                        child: DifyTextLine(
                           _t('modelProvider.auth.addNewModel'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1073,7 +1078,7 @@ class ManageCredentialsButton extends StatelessWidget {
       size: DifyButtonSize.small,
       loading: loading,
       onPressed: onPressed ?? () {},
-      child: Text(_t('modelProvider.auth.manageCredentials'), style: TextStyle(color: DifyColors.textTertiary)),
+      child: DifyTextLine(_t('modelProvider.auth.manageCredentials'), style: TextStyle(color: DifyColors.textTertiary)),
     );
     return Padding(
       padding: const EdgeInsets.only(right: 2),
@@ -1211,7 +1216,7 @@ class _CredentialSelectorState extends State<CredentialSelector> {
                             child: DifyStatusDot(),
                           ),
                         Flexible(
-                          child: Text(
+                          child: DifyTextLine(
                             selected.credential.credentialName ?? '',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1223,7 +1228,7 @@ class _CredentialSelectorState extends State<CredentialSelector> {
                   )
                 else
                   Expanded(
-                    child: Text(
+                    child: DifyTextLine(
                       _t('modelProvider.auth.selectModelCredential'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1293,7 +1298,7 @@ class _CredentialSelectorState extends State<CredentialSelector> {
                         RemixIcon('add-line', size: 16, color: DifyColors.textAccentLightModeOnly),
                         const SizedBox(width: 4),
                         Flexible(
-                          child: Text(
+                          child: DifyTextLine(
                             _t('modelProvider.auth.addNewModelCredential'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

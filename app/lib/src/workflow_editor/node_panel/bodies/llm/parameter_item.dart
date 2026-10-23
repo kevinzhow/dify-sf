@@ -81,14 +81,14 @@ class PresetsParameter extends StatelessWidget {
         semanticLabel: label,
         onPressed: controller.toggle,
         trailing: const RemixIcon('arrow-down-s-line', size: 14),
-        child: Text(label),
+        child: DifyTextLine(label),
       ),
       children: [
         for (final t in tones)
           DifyMenuItem(
             onSelect: () => onSelect(t.id),
             leading: Padding(padding: const EdgeInsets.only(right: 8), child: _icons[t.id]),
-            child: Text(_c('model.tone.${t.name}')),
+            child: DifyTextLine(_c('model.tone.${t.name}')),
           ),
       ],
     );
@@ -270,7 +270,7 @@ class _ParameterItemState extends State<ParameterItem> {
                     if (help.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
-                        child: DifyInfotip(label: help, width: 150, content: Text(help)),
+                        child: DifyInfotip(label: help, width: 150, content: DifyTextLine(help)),
                       ),
                   ],
                 ),

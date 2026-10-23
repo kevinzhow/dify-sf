@@ -204,7 +204,7 @@ class _TriggerWebhookPanelState extends State<TriggerWebhookPanel> {
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 2),
-                                  child: Text(
+                                  child: DifyTextLine(
                                     _tw('nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
                                     style: difyStyle(DifyType.systemXsRegular, DifyColors.textWarning),
                                   ),
@@ -349,7 +349,7 @@ class _InputWithCopyState extends State<_InputWithCopy> {
         child: MouseRegion(
           onExit: (_) => setState(() => _copied = false),
           child: DifyTooltip(
-            content: Text(tip),
+            content: DifyTextLine(tip),
             child: DifyIconButton(
               label: tip,
               size: DifyIconButtonSize.xs,
@@ -406,7 +406,7 @@ class _DebugUrlState extends State<_DebugUrl> {
           borderRadius: BorderRadius.circular(DifyRadius.md),
           boxShadow: DifyShadows.lg,
         ),
-        child: Text(
+        child: DifyTextLine(
           _copied ? _tw('nodes.triggerWebhook.debugUrlCopied') : label,
           style: difyStyle(DifyType.systemXsRegular, DifyColors.textPrimary),
         ),
@@ -440,8 +440,8 @@ class _DebugUrlState extends State<_DebugUrl> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_tw('nodes.triggerWebhook.debugUrlTitle'), style: small, maxLines: 1),
-                      Text(
+                      DifyTextLine(_tw('nodes.triggerWebhook.debugUrlTitle'), style: small, maxLines: 1),
+                      DifyTextLine(
                         widget.url,
                         style: small.copyWith(color: DifyColors.textPrimary),
                         maxLines: 1,

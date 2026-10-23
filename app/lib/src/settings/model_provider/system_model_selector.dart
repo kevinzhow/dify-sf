@@ -117,7 +117,7 @@ class _SystemModelSelectorState extends State<SystemModelSelector> {
       leading: widget.isLoading
           ? DifySpinner(size: 14, color: DifyColors.textTertiary)
           : const RemixIcon('brain-2-line', size: 14),
-      child: Text(
+      child: DifyTextLine(
         _t('modelProvider.systemModelSettings'),
         style: widget.compact
             ? null
@@ -205,13 +205,13 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            DifyTextLine(
                               _t('modelProvider.systemModelSettingsTitle'),
                               style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                             ),
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
-                              child: Text(
+                              child: DifyTextLine(
                                 _t('modelProvider.systemModelSettingsDesc'),
                                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                               ),
@@ -247,7 +247,7 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                                             child: Row(
                                               children: [
                                                 Flexible(
-                                                  child: Text(
+                                                  child: DifyTextLine(
                                                     _t(r.labelKey),
                                                     style: difyTextStyle(
                                                       DifyType.systemSmMedium,
@@ -260,7 +260,7 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                                                   child: DifyInfotip(
                                                     label: _t(r.tipKey),
                                                     width: 261,
-                                                    content: Text(_t(r.tipKey)),
+                                                    content: DifyTextLine(_t(r.tipKey)),
                                                   ),
                                                 ),
                                               ],
@@ -296,7 +296,7 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                               child: DifyButton(
                                 key: const ValueKey('system-model-cancel'),
                                 onPressed: _close,
-                                child: Text(_t('operation.cancel')),
+                                child: DifyTextLine(_t('operation.cancel')),
                               ),
                             ),
                             ConstrainedBox(
@@ -306,7 +306,7 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
                                 variant: DifyButtonVariant.primary,
                                 disabled: !env.canConfigureModels || loading,
                                 onPressed: () => unawaited(_save(env, current)),
-                                child: Text(_t('operation.save')),
+                                child: DifyTextLine(_t('operation.save')),
                               ),
                             ),
                           ],

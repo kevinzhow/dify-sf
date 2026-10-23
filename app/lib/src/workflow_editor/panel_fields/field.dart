@@ -25,7 +25,7 @@ class _FieldTitleText extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = isSubTitle ? DifyType.systemXsMediumUppercase : DifyType.systemSmSemiboldUppercase;
     final color = isSubTitle ? DifyColors.textTertiary : DifyColors.textSecondary;
-    Widget text = Text.rich(
+    Widget text = DifyTextLine.rich(
       TextSpan(
         text: difyTransform(style, title),
         children: [
@@ -118,7 +118,7 @@ class _FieldState extends State<Field> {
             ),
             if (w.tooltip != null && w.tooltip!.isNotEmpty) ...[
               const SizedBox(width: 4),
-              DifyInfotip(label: w.tooltip!, content: Text(w.tooltip!)),
+              DifyInfotip(label: w.tooltip!, content: DifyTextLine(w.tooltip!)),
             ],
           ],
         ),
@@ -492,7 +492,7 @@ class _FieldTitleState extends State<FieldTitle> {
                             ),
                           if (w.tooltip != null) ...[
                             const SizedBox(width: 4),
-                            DifyInfotip(label: w.tooltip!, content: Text(w.tooltip!)),
+                            DifyInfotip(label: w.tooltip!, content: DifyTextLine(w.tooltip!)),
                           ],
                         ],
                       ),
@@ -682,7 +682,7 @@ class VarItem extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          if (description.isNotEmpty) Text(description, style: tertiary),
+          if (description.isNotEmpty) DifyTextLine(description, style: tertiary),
           if (subItems != null)
             Container(
               margin: const EdgeInsets.only(left: 8),
@@ -821,7 +821,8 @@ class _OptionCardState extends State<OptionCard> {
                   mainAxisAlignment: w.align,
                   children: [
                     c.hasBoundedWidth ? Flexible(child: text) : text,
-                    if (w.tooltip != null) DifyInfotip(label: w.tooltip!, width: 240, content: Text(w.tooltip!)),
+                    if (w.tooltip != null)
+                      DifyInfotip(label: w.tooltip!, width: 240, content: DifyTextLine(w.tooltip!)),
                   ],
                 );
               },
@@ -886,7 +887,7 @@ class AddButton extends StatelessWidget {
       variant: DifyButtonVariant.tertiary,
       onPressed: onPressed,
       leading: const RemixIcon('add-line', size: 14),
-      child: Text(text),
+      child: DifyTextLine(text),
     ),
   );
 }
@@ -905,7 +906,7 @@ class HelpLink extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: DifyTooltip(
-        content: Text(label),
+        content: DifyTextLine(label),
         child: DifyIconButton(
           label: label,
           onPressed: () => onOpen(link!),

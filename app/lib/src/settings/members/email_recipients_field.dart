@@ -398,7 +398,7 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
+                child: DifyTextLine(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -412,7 +412,7 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Semantics(
                     liveRegion: true,
-                    child: Text(
+                    child: DifyTextLine(
                       stc(context, 'members.recipientCount', {'count': rs.length}),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -460,7 +460,7 @@ class _EmailRecipientsFieldState extends State<EmailRecipientsField> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Text(
+          child: DifyTextLine(
             error ?? tip,
             key: ValueKey(error != null ? 'emails-error' : 'emails-description'),
             style: difyTextStyle(
@@ -554,7 +554,7 @@ class _RecipientChipState extends State<_RecipientChip> {
                     children: [
                       if (!r.isValid) RemixIcon('error-warning-fill', size: 14, color: fg),
                       Flexible(
-                        child: Text(
+                        child: DifyTextLine(
                           r.value,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

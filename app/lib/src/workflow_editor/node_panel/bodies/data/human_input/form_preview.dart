@@ -24,7 +24,7 @@ class VariablePath extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Text(formatVariablePath(path), style: difyStyle(DifyType.systemSmRegular, DifyColors.textAccent));
+      DifyTextLine(formatVariablePath(path), style: difyStyle(DifyType.systemSmRegular, DifyColors.textAccent));
 }
 
 /// Note: how a form input shows in the preview — a paragraph's default (or its variable path), a select preview of
@@ -48,7 +48,7 @@ class FormInputNote extends StatelessWidget {
       final source = jsGet(input, 'option_source');
       if (jsGet(source, 'type') == 'variable') {
         final path = sourceToVariablePath(strings(jsGet(source, 'selector')), nodeName);
-        return _box(path.isEmpty ? Text(hi('insertInputField.variable')) : VariablePath(path));
+        return _box(path.isEmpty ? DifyTextLine(hi('insertInputField.variable')) : VariablePath(path));
       }
       final options = strings(jsGet(source, 'value'));
       return _SelectPreview(
@@ -63,7 +63,7 @@ class FormInputNote extends StatelessWidget {
     return _box(
       jsGet(def, 'type') == 'variable'
           ? VariablePath(sourceToVariablePath(strings(jsGet(def, 'selector')), nodeName))
-          : Text('${jsGet(def, 'value') ?? ''}'),
+          : DifyTextLine('${jsGet(def, 'value') ?? ''}'),
     );
   }
 }
@@ -208,10 +208,12 @@ class FormContentPreview extends StatelessWidget {
               () {
                 final name = c.properties?['dataName'] ?? '';
                 final input = formInputs.where((i) => inputNameOf(i) == name).firstOrNull;
-                return input == null ? Text("Can't find note:$name") : FormInputNote(input: input, nodeName: nodeName);
+                return input == null
+                    ? DifyTextLine("Can't find note:$name")
+                    : FormInputNote(input: input, nodeName: nodeName);
               }()
             else if ((c.value ?? '').trim().isNotEmpty)
-              Text(c.value!.trim()),
+              DifyTextLine(c.value!.trim()),
         ],
       );
     }
@@ -224,7 +226,7 @@ class FormContentPreview extends StatelessWidget {
     };
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text.rich(
+      child: DifyTextLine.rich(
         TextSpan(
           children: [
             if (n.tagName == 'li') const TextSpan(text: '•  '),
@@ -292,7 +294,7 @@ class FormContentPreview extends StatelessWidget {
                             DifyButton(
                               variant: buttonVariantOf(jsStr(jsGet(a, 'button_style'))),
                               onPressed: () {},
-                              child: Text('${jsGet(a, 'title') ?? ''}'),
+                              child: DifyTextLine('${jsGet(a, 'title') ?? ''}'),
                             ),
                         ],
                       ),

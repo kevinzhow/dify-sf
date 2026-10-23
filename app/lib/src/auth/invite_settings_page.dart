@@ -165,7 +165,7 @@ class _InviteSettingsFormState extends State<InviteSettingsForm> {
           alignment: AlignmentDirectional.centerStart,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(label, style: selectLabel),
+            child: DifyTextLine(label, style: selectLabel),
           ),
         ),
         control,
@@ -244,7 +244,7 @@ class _InviteSettingsFormState extends State<InviteSettingsForm> {
                 variant: DifyButtonVariant.primary,
                 loading: _activating,
                 onPressed: _activate,
-                child: Text(joinTitle),
+                child: DifyTextLine(joinTitle),
               ),
             ],
           ),

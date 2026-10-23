@@ -280,7 +280,7 @@ class _NextStepItemState extends State<NextStepItem> {
                 child: DifyButton(
                   size: DifyButtonSize.small,
                   onPressed: () => w.actions.onSelectNode?.call(w.node.id),
-                  child: Text(_wf('common.jumpToNode')),
+                  child: DifyTextLine(_wf('common.jumpToNode')),
                 ),
               ),
             ],
@@ -333,14 +333,14 @@ class NextStepOperator extends StatelessWidget {
       Builder(
         builder: (anchor) => DifyMenuItem(
           onSelect: () => actions.onChange?.call(anchor, nodeId, sourceHandle),
-          child: Text(_wf('panel.change')),
+          child: DifyTextLine(_wf('panel.change')),
         ),
       ),
-      DifyMenuItem(onSelect: () => actions.onDisconnect?.call(nodeId), child: Text(_wf('common.disconnect'))),
+      DifyMenuItem(onSelect: () => actions.onDisconnect?.call(nodeId), child: DifyTextLine(_wf('common.disconnect'))),
       const SizedBox(height: 8),
       DifyMenuItem(
         onSelect: () => actions.onDelete?.call(nodeId),
-        child: Text(DifyI18n.tr('common', 'operation.delete')),
+        child: DifyTextLine(DifyI18n.tr('common', 'operation.delete')),
       ),
     ],
   );
@@ -392,7 +392,7 @@ class _AddButtonState extends State<_AddButton> {
                 child: Center(child: RemixIcon('add-line', size: 12, color: DifyColors.textPlaceholder)),
               ),
               Flexible(
-                child: Text(
+                child: DifyTextLine(
                   widget.label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

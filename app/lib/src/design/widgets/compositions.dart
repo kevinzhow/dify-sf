@@ -106,7 +106,7 @@ class DifyActionMenu<T> extends StatelessWidget {
       if (open) onOpened?.call();
     },
     builder: (context, controller) => DifyTooltip(
-      content: Text(tooltip),
+      content: DifyTextLine(tooltip),
       child: DifyIconButton(label: tooltip, icon: icon, onPressed: controller.toggle),
     ),
     children: [

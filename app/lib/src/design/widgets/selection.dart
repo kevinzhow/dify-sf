@@ -112,7 +112,7 @@ class DifySelectionMenu extends StatelessWidget {
                 size: DifyButtonSize.small,
                 variant: DifyButtonVariant.ghost,
                 onPressed: item.onPressed,
-                child: Text(
+                child: DifyTextLine(
                   item.label ??
                       switch (item.type) {
                         ContextMenuButtonType.cut => MaterialLocalizations.of(context).cutButtonLabel,

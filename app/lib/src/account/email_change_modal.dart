@@ -201,11 +201,11 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
     padding: const EdgeInsets.only(bottom: 12),
     child: Semantics(
       header: true,
-      child: Text(text, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+      child: DifyTextLine(text, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
     ),
   );
 
-  Widget _withEmail(String key, String email) => Text.rich(
+  Widget _withEmail(String key, String email) => DifyTextLine.rich(
     TextSpan(
       style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textSecondary),
       children: transSpans(_c(key, {'email': email}), {
@@ -223,7 +223,7 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
     height: 24,
     margin: const EdgeInsets.only(bottom: 4),
     alignment: AlignmentDirectional.centerStart,
-    child: Text(text, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+    child: DifyTextLine(text, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
   );
 
   Widget _actions({required String primary, Key? primaryKey, required bool enabled, required VoidCallback onPrimary}) =>
@@ -237,13 +237,13 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
             variant: DifyButtonVariant.primary,
             disabled: !enabled,
             onPressed: onPrimary,
-            child: Text(primary),
+            child: DifyTextLine(primary),
           ),
           DifyButton(
             key: const ValueKey('email-change-cancel'),
             semanticLabel: _c('operation.cancel'),
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(_c('operation.cancel')),
+            child: DifyTextLine(_c('operation.cancel')),
           ),
         ],
       );
@@ -272,12 +272,12 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 4,
       children: [
-        Text(
+        DifyTextLine(
           _c('account.changeEmail.resendTip'),
           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
         ),
         if (_time > 0)
-          Text(
+          DifyTextLine(
             _c('account.changeEmail.resendCount', {'count': _time}),
             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
           )
@@ -286,7 +286,7 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
             key: const ValueKey('email-change-resend'),
             semanticLabel: _c('account.changeEmail.resend'),
             onPressed: resend,
-            builder: (context, hovered, focused) => Text(
+            builder: (context, hovered, focused) => DifyTextLine(
               _c('account.changeEmail.resend'),
               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccentSecondary),
             ),
@@ -301,7 +301,7 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
         return [
           _heading(_c('account.changeEmail.title')),
           _intro([
-            Text(
+            DifyTextLine(
               _c('account.changeEmail.authTip'),
               style: difyTextStyle(DifyType.bodyMdMedium, DifyColors.textWarning),
             ),
@@ -336,7 +336,7 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
         return [
           _heading(_c('account.changeEmail.newEmail')),
           _intro([
-            Text(
+            DifyTextLine(
               _c('account.changeEmail.content3'),
               style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textSecondary),
             ),
@@ -361,7 +361,7 @@ class _EmailChangeModalState extends State<EmailChangeModal> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text(
+                      child: DifyTextLine(
                         _c(_exists ? 'account.changeEmail.existingEmail' : 'account.changeEmail.unAvailableEmail'),
                         style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textDestructive),
                       ),

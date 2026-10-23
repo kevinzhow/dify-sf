@@ -163,7 +163,7 @@ class _WebAppAccessPointCardState extends State<WebAppAccessPointCard> {
               onPressed: () => unawaited(
                 showWorkflowLaunchDialog(context, hiddenVariables: hidden, targetUrl: webAppUrl, openUrl: _open),
               ),
-              child: Text(_t('common', 'operation.config')),
+              child: DifyTextLine(_t('common', 'operation.config')),
             ),
           if (_supportsEmbedded)
             DifyButton(
@@ -180,7 +180,7 @@ class _WebAppAccessPointCardState extends State<WebAppAccessPointCard> {
                   hiddenInputs: hidden,
                 ),
               ),
-              child: Text(_t('deployments', 'studio.accessPoint.embedIntoSite')),
+              child: DifyTextLine(_t('deployments', 'studio.accessPoint.embedIntoSite')),
             ),
           DifyButton(
             key: const ValueKey('web-app-customize'),
@@ -190,7 +190,7 @@ class _WebAppAccessPointCardState extends State<WebAppAccessPointCard> {
             onPressed: () => unawaited(
               showCustomizeModal(context, appId: _app.id, apiBaseUrl: _app.apiBaseUrl, mode: _app.mode),
             ),
-            child: Text(_t('appOverview', 'overview.appInfo.customize.entry')),
+            child: DifyTextLine(_t('appOverview', 'overview.appInfo.customize.entry')),
           ),
           DifyButton(
             key: const ValueKey('web-app-settings'),
@@ -206,7 +206,7 @@ class _WebAppAccessPointCardState extends State<WebAppAccessPointCard> {
                 onSave: (params) async => widget.onSaveSiteConfig?.call(params),
               ),
             ),
-            child: Text(_t('common', 'settings.settings')),
+            child: DifyTextLine(_t('common', 'settings.settings')),
           ),
         ],
         child: AccessPointUrl(

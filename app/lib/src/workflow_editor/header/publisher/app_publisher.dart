@@ -393,7 +393,7 @@ class _AppPublisherState extends State<AppPublisher> {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 4,
                   children: [
-                    Text(label),
+                    DifyTextLine(label),
                     RemixIcon('arrow-down-s-line', color: DifyColors.componentsButtonPrimaryText),
                   ],
                 ),

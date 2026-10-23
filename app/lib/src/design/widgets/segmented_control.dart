@@ -170,7 +170,7 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
                     ),
                   ),
                 );
-                if (tooltip && !checked) item = DifyTooltip(content: Text(s.label), child: item);
+                if (tooltip && !checked) item = DifyTooltip(content: DifyTextLine(s.label), child: item);
                 return item;
               }(),
           ],

@@ -172,7 +172,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
           _emoji = emoji.native;
           _styles = true;
         }),
-        child: Center(child: Text(emoji.native, style: const TextStyle(fontSize: 24, height: 1))),
+        child: Center(child: DifyTextLine(emoji.native, style: const TextStyle(fontSize: 24, height: 1))),
       ),
     ),
   );
@@ -195,7 +195,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
     builder: (context, snapshot) {
       final data = snapshot.data;
       if (data == null) {
-        return Center(child: snapshot.hasError ? Text('${snapshot.error}') : const CircularProgressIndicator());
+        return Center(child: snapshot.hasError ? DifyTextLine('${snapshot.error}') : const CircularProgressIndicator());
       }
       final native = data.emojis[_emoji]?.native ?? _emoji;
       return Column(
@@ -217,7 +217,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                     sliver: SliverToBoxAdapter(
-                      child: Text(
+                      child: DifyTextLine(
                         'Search',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textPrimary),
                       ),
@@ -232,7 +232,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                     sliver: SliverToBoxAdapter(
-                      child: Text(
+                      child: DifyTextLine(
                         category.id.toUpperCase(),
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DifyColors.textPrimary),
                       ),
@@ -247,7 +247,10 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
             onPressed: () => setState(() => _styles = !_styles),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [const Text('Choose Style'), Icon(_styles ? Icons.expand_less : Icons.expand_more, size: 16)],
+              children: [
+                const DifyTextLine('Choose Style'),
+                Icon(_styles ? Icons.expand_less : Icons.expand_more, size: 16),
+              ],
             ),
           ),
           if (_styles)
@@ -280,7 +283,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                                   ? Border.all(color: DifyColors.componentsInputBorderHover)
                                   : null,
                             ),
-                            child: Text(native, style: const TextStyle(fontSize: 20, height: 1)),
+                            child: DifyTextLine(native, style: const TextStyle(fontSize: 20, height: 1)),
                           ),
                         ),
                       ),
@@ -321,7 +324,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
         DifyButton(
           key: const ValueKey('app-icon-pick-image'),
           onPressed: _uploading ? null : _pick,
-          child: Text(DifyI18n.tr('common', 'imageUploader.uploadFromComputer')),
+          child: DifyTextLine(DifyI18n.tr('common', 'imageUploader.uploadFromComputer')),
         ),
       ],
     );
@@ -347,13 +350,13 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                     Expanded(
                       child: TextButton(
                         onPressed: _uploading ? null : () => setState(() => _imageTab = false),
-                        child: Text(_t('emoji')),
+                        child: DifyTextLine(_t('emoji')),
                       ),
                     ),
                     Expanded(
                       child: TextButton(
                         onPressed: _uploading ? null : () => setState(() => _imageTab = true),
-                        child: Text(_t('image')),
+                        child: DifyTextLine(_t('image')),
                       ),
                     ),
                   ],
@@ -381,10 +384,14 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                         );
                         if (removed && context.mounted) widget.onCancel();
                       },
-                      child: Text(DifyI18n.tr('common', 'operation.delete')),
+                      child: DifyTextLine(DifyI18n.tr('common', 'operation.delete')),
                     ),
                   Expanded(
-                    child: DifyButton(disabled: _uploading, onPressed: widget.onCancel, child: Text(_t('cancel'))),
+                    child: DifyButton(
+                      disabled: _uploading,
+                      onPressed: widget.onCancel,
+                      child: DifyTextLine(_t('cancel')),
+                    ),
                   ),
                   Expanded(
                     child: DifyButton(
@@ -392,7 +399,7 @@ class _DifyAppIconPickerState extends State<DifyAppIconPicker> {
                       loading: _uploading,
                       disabled: _imageTab && _decoded == null,
                       onPressed: _select,
-                      child: Text(_t('ok')),
+                      child: DifyTextLine(_t('ok')),
                     ),
                   ),
                 ],

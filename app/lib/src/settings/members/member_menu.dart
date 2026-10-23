@@ -141,13 +141,13 @@ class _MemberMenuState extends State<MemberMenu> {
           DifyMenuItem(
             key: const ValueKey('member-edit-role'),
             onSelect: () => unawaited(_editRole()),
-            child: Text(stc(context, 'members.editRole'), style: itemStyle),
+            child: DifyTextLine(stc(context, 'members.editRole'), style: itemStyle),
           ),
         if (_canAssign && widget.onResetPasswordLink != null)
           DifyMenuItem(
             key: const ValueKey('member-reset-password-link'),
             onSelect: () => unawaited(_resetLink()),
-            child: Text('Reset password link', style: itemStyle),
+            child: DifyTextLine('Reset password link', style: itemStyle),
           ),
         if (_canAssign && _canRemove) const DifyMenuSeparator(),
         if (_canRemove)
@@ -155,7 +155,7 @@ class _MemberMenuState extends State<MemberMenu> {
             key: const ValueKey('member-remove'),
             variant: DifyMenuItemVariant.destructive,
             onSelect: () => unawaited(_remove()),
-            child: Text(
+            child: DifyTextLine(
               stc(context, 'members.removeFromTeam'),
               style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textDestructive),
             ),

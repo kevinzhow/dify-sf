@@ -142,9 +142,9 @@ class _RunNodePanelState extends State<RunNodePanel> {
               ),
               Expanded(
                 child: DifyTooltip(
-                  content: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 320), child: Text(title)),
+                  content: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 320), child: DifyTextLine(title)),
                   child: hideInfo
-                      ? Text(
+                      ? DifyTextLine(
                           title.toUpperCase(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -185,7 +185,7 @@ class _RunNodePanelState extends State<RunNodePanel> {
                 ],
                 'running' => [
                   const SizedBox(width: 8),
-                  Text(
+                  DifyTextLine(
                     'Running',
                     style: difyStyle(
                       DifyType.systemXsRegular,
@@ -230,13 +230,13 @@ class _RunNodePanelState extends State<RunNodePanel> {
             child: switch (status) {
               'stopped' => StatusContainer(
                 status: 'stopped',
-                child: Text(
+                child: DifyTextLine(
                   _tw('tracing.stopBy', {'user': (n['created_by'] as Map?)?['name'] ?? 'N/A'}),
                 ),
               ),
               'exception' => StatusContainer(
                 status: 'stopped',
-                child: Text.rich(
+                child: DifyTextLine.rich(
                   TextSpan(
                     children: [
                       TextSpan(text: error),
@@ -252,7 +252,7 @@ class _RunNodePanelState extends State<RunNodePanel> {
                   ),
                 ),
               ),
-              'failed' || 'retry' => StatusContainer(status: 'failed', child: Text(error)),
+              'failed' || 'retry' => StatusContainer(status: 'failed', child: DifyTextLine(error)),
               'paused' => StatusContainer(
                 status: 'paused',
                 child: DifyText(

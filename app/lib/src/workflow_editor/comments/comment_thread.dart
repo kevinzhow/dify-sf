@@ -75,8 +75,8 @@ class ThreadMessage extends StatelessWidget {
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(authorName, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary)),
-                    Text(
+                    DifyTextLine(authorName, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary)),
+                    DifyTextLine(
                       (formatTimeFromNow ?? fmt.formatTimeFromNow)(createdAt.millisecondsSinceEpoch),
                       style: difyTextStyle(DifyType.system2xsRegular, DifyColors.textTertiary),
                     ),
@@ -84,7 +84,7 @@ class ThreadMessage extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text.rich(TextSpan(style: style, children: spans)),
+                  child: DifyTextLine.rich(TextSpan(style: style, children: spans)),
                 ),
               ],
             ),
@@ -450,7 +450,7 @@ class _CommentThreadState extends State<CommentThread> {
       );
       if (!tooltip) return button;
       return DifyTooltip(
-        content: Text(label),
+        content: DifyTextLine(label),
         child: button,
       );
     }
@@ -464,7 +464,7 @@ class _CommentThreadState extends State<CommentThread> {
       child: Row(
         children: [
           Expanded(
-            child: Text(
+            child: DifyTextLine(
               tw('comments.panelTitle').toUpperCase(),
               style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
             ),
@@ -603,7 +603,7 @@ class _CommentThreadState extends State<CommentThread> {
                       child: ColoredBox(
                         color: DifyColors.componentsPanelBg.withValues(alpha: DifyColors.componentsPanelBg.a * 0.7),
                         child: Center(
-                          child: Text(
+                          child: DifyTextLine(
                             tw('comments.loading'),
                             style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
                           ),
@@ -712,7 +712,7 @@ class _MenuButton extends StatelessWidget {
     builder: (context, hovered, focused) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(color: hovered ? DifyColors.stateBaseHover : null, borderRadius: radius),
-      child: Text(
+      child: DifyTextLine(
         label,
         style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
       ),

@@ -45,7 +45,7 @@ class _CopyIdState extends State<CopyId> {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 2),
         child: DifyTooltip(
-          content: Text(label),
+          content: DifyTextLine(label),
           // The button handles the tap itself: it does not reach the card (event.stopPropagation()).
           child: DifyPressable(
             semanticLabel: label,

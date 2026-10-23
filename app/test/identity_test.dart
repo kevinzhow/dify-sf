@@ -1,6 +1,8 @@
 /// Protocol 1.8 identities in the editor: names, comment authors, mention candidates and online users are accounts.
 library;
 
+import 'package:dify_sf_app/src/design/widgets/text_line.dart';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
@@ -76,7 +78,7 @@ void main() {
     demo.setOffline(false);
     await t.tap(find.byKey(const Key('reconnect-now')));
     await _settle(t, const Duration(seconds: 5));
-    final notice = t.widget<Text>(find.byKey(const Key('notice-message'))).data!;
+    final notice = t.widget<DifyTextLine>(find.byKey(const Key('notice-message'))).data!;
     expect(notice, startsWith('Bo Chen changed code'));
     expect(w.server.clientAccounts.values.toSet(), {
       kim.id,

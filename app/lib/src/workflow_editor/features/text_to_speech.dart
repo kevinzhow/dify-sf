@@ -257,7 +257,9 @@ class _ParamConfigContentState extends State<ParamConfigContent> {
                     width: 180,
                     content: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [for (final l in ad('voice.voiceSettings.resolutionTooltip').split('\n')) Text(l)],
+                      children: [
+                        for (final l in ad('voice.voiceSettings.resolutionTooltip').split('\n')) DifyTextLine(l),
+                      ],
                     ),
                   ),
                 ],

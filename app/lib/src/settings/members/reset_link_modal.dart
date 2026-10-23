@@ -75,14 +75,14 @@ class ResetLinkModal extends StatelessWidget {
               ),
               Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Text(
+                child: DifyTextLine(
                   title,
                   style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary) /* `text-xl font-semibold` */,
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: Text(
+                child: DifyTextLine(
                   'Send this link to $who (${member.email}). It sets a new password once and expires in '
                   '${validity(link, DateTime.now())}; setting the password signs $who out everywhere. Nobody else '
                   'sees the new password.',
@@ -107,7 +107,7 @@ class ResetLinkModal extends StatelessWidget {
                     key: const ValueKey('reset-link-ok'),
                     variant: DifyButtonVariant.primary,
                     onPressed: close,
-                    child: Text(stc(context, 'members.ok')),
+                    child: DifyTextLine(stc(context, 'members.ok')),
                   ),
                 ),
               ),

@@ -99,7 +99,7 @@ class MainNavMenuContent extends StatelessWidget {
 
   Widget _label(BuildContext context, String key) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 4),
-    child: Text(
+    child: DifyTextLine(
       _tc(context, key),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -133,13 +133,13 @@ class MainNavMenuContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: 4,
                   children: [
-                    Text(
+                    DifyTextLine(
                       account.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: difyTextStyle(DifyType.bodyMdMedium, DifyColors.textPrimary),
                     ),
-                    Text(
+                    DifyTextLine(
                       account.email,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -194,7 +194,7 @@ class MainNavMenuContent extends StatelessWidget {
           leading: RemixIcon('shut-down-line', size: 16, color: DifyColors.textTertiary),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
+            child: DifyTextLine(
               _tc(context, 'userProfile.logout'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -219,7 +219,7 @@ class AppearanceSubmenu extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget label(String key) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Text(
+      child: DifyTextLine(
         _tc(context, key),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -349,7 +349,7 @@ class _AccountTriggerState extends State<_AccountTrigger> {
                     children: [
                       avatar,
                       Flexible(
-                        child: Text(
+                        child: DifyTextLine(
                           w.account.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

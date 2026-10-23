@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'dify_fonts.dart';
+
 /// Where Chrome turns CSS lengths into pixels differently from Flutter (Dify is the specification as Chrome shows
 /// it): border widths snap to device pixels, and a line of text puts its baseline on rounded font metrics.
 abstract final class Css {
@@ -38,21 +40,70 @@ abstract final class Css {
     return (above: above, below: lineHeight - above);
   }
 
-  /// A forced strut putting the baseline of text in [style] (its font size and line height) where Chrome does
-  /// ([textLine]): Flutter's lies [_ascent] + half the leading below the line's top, unrounded (0.4 to 0.7 px lower for
-  /// 12 px text in 16 or 18 px lines, 14 px text in 20 or 24 px lines). The strut's own font size moves its baseline
-  /// (half the leading is `(lineHeight - (ascent + descent) * size) / 2`) and keeps the line height. Null for styles
-  /// without a line height.
-  static StrutStyle? lineStrut(TextStyle style) {
+  // Metrics are measured from the selected primary font, never from a fixed
+  // Latin hhea constant. Fallback glyphs share that CSS strut; they do not add
+  // a second line height merely because the string contains Chinese.
+  static final _primaryMetrics = <TextStyle, ({double ascent, double descent})>{};
+
+  static ({double ascent, double descent}) _metrics(TextStyle style) {
+    final key = TextStyle(
+      inherit: false,
+      fontFamily: style.fontFamily,
+      fontFamilyFallback: style.fontFamilyFallback,
+      fontWeight: style.fontWeight,
+      fontStyle: style.fontStyle,
+      fontVariations: style.fontVariations,
+      fontSize: 100,
+      height: kTextHeightNone,
+    );
+    if (_primaryMetrics.length >= 256) _primaryMetrics.clear();
+    return _primaryMetrics.putIfAbsent(key, () {
+      final probe = TextPainter(
+        text: TextSpan(text: 'Hg', style: key),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final m = probe.computeLineMetrics().first;
+      probe.dispose();
+      return (ascent: m.ascent / 100, descent: m.descent / 100);
+    });
+  }
+
+  /// One CSS baseline/line height for all ordinary text and input controls.
+  /// Measures the actual primary face (also for native platform/mono fonts),
+  /// and accounts for accessibility scaling before rounding browser metrics.
+  /// Font size and line height remain independent: no per-string translation.
+  static StrutStyle? lineStrut(TextStyle style, {TextScaler textScaler = TextScaler.noScaling}) {
+    style = DifyFonts.resolveStyle(style);
     final size = style.fontSize, height = style.height;
-    if (size == null || height == null) return null;
-    final lineHeight = size * height;
-    final strutSize = (textLine(size, lineHeight).above - lineHeight / 2) / ((_ascent - _descent) / 2);
-    if (strutSize <= 0) return null;
+    if (size == null || height == null || height <= 0) return null;
+    final m = _metrics(style);
+    final scaledSize = textScaler.scale(size), lineHeight = scaledSize * height;
+    final a = (m.ascent * scaledSize).roundToDouble(), d = (m.descent * scaledSize).roundToDouble();
+    final baseline = a + ((lineHeight - a - d) / 2).floorToDouble();
+    final difference = m.ascent - m.descent;
+    if (difference.abs() < .00001) return null;
+    final scaledStrut = 2 * (baseline - lineHeight / 2) / difference;
+    if (scaledStrut <= 0) return null;
+    var strutSize = scaledStrut;
+    if (textScaler != TextScaler.noScaling) {
+      // TextScaler may be nonlinear; dividing by one scale factor is invalid.
+      var low = 0.0, high = size;
+      while (textScaler.scale(high) < scaledStrut) {
+        high *= 2;
+      }
+      for (var i = 0; i < 40; i++) {
+        final middle = (low + high) / 2;
+        textScaler.scale(middle) < scaledStrut ? low = middle : high = middle;
+      }
+      strutSize = (low + high) / 2;
+    }
     return StrutStyle(
       fontFamily: style.fontFamily,
+      fontFamilyFallback: style.fontFamilyFallback,
+      fontWeight: style.fontWeight,
+      fontStyle: style.fontStyle,
       fontSize: strutSize,
-      height: lineHeight / strutSize,
+      height: lineHeight / scaledStrut,
       leadingDistribution: TextLeadingDistribution.even,
       forceStrutHeight: true,
     );

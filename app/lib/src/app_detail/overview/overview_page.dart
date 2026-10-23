@@ -204,7 +204,7 @@ class _ChartViewState extends State<ChartView> {
                 alignment: Alignment.centerLeft,
                 child: Semantics(
                   header: true,
-                  child: Text(
+                  child: DifyTextLine(
                     DifyI18n.tr('common', 'appMenus.overview'),
                     style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                   ),
@@ -219,7 +219,7 @@ class _ChartViewState extends State<ChartView> {
                 spacing: 2,
                 children: [
                   Flexible(
-                    child: Text(
+                    child: DifyTextLine(
                       DifyI18n.tr('appLog', 'monitoring.description'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -269,7 +269,7 @@ class _LearnMore extends StatelessWidget {
         builder: (context, hovered, focused) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            DifyTextLine(
               label,
               style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent).copyWith(
                 decoration: hovered ? TextDecoration.underline : null,

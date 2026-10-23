@@ -51,7 +51,7 @@ class VariableInspectTrigger extends StatelessWidget {
                 ),
               ),
               DifyTooltip(
-                content: Text(DifyI18n.tr('workflow', 'debug.variableInspect.trigger.stop')),
+                content: DifyTextLine(DifyI18n.tr('workflow', 'debug.variableInspect.trigger.stop')),
                 child: _Chip(
                   height: 24,
                   padding: 4,

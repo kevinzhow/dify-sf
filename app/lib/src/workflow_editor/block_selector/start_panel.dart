@@ -438,7 +438,7 @@ class StartBlocksList extends StatelessWidget {
       ),
     );
     if (userInputDisabled) {
-      return DifyTooltip(content: Text(reason), child: row);
+      return DifyTooltip(content: DifyTextLine(reason), child: row);
     }
     return PreviewCardTrigger(
       preview: (_) => BlockPreviewContent(

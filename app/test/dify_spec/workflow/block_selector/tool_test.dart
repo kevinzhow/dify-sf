@@ -77,7 +77,9 @@ void main() {
 
       await t.sendKeyEvent(LogicalKeyboardKey.tab);
       await settle(t);
-      final addAll = find.byWidgetPredicate((w) => w is DifyButton && (w.child as Text).data == 'workflow.tabs.addAll');
+      final addAll = find.byWidgetPredicate(
+        (w) => w is DifyButton && (w.child as DifyTextLine).data == 'workflow.tabs.addAll',
+      );
       expect(hasFocusOn(t, addAll), isTrue);
 
       await t.sendKeyEvent(LogicalKeyboardKey.enter);

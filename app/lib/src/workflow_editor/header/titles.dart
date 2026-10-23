@@ -25,7 +25,7 @@ class EditingTitle extends StatelessWidget {
     final f = WorkflowHeaderScope.of(context).formatters;
     const dot = Padding(
       padding: EdgeInsets.symmetric(horizontal: 4),
-      child: ExcludeSemantics(child: Text('·')),
+      child: ExcludeSemantics(child: DifyTextLine('·')),
     );
     return Semantics(
       role: SemanticsRole.status,
@@ -50,18 +50,18 @@ class EditingTitle extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (draftUpdatedAt != 0) ...[
-                      Text(_tr('common.autoSaved')),
+                      DifyTextLine(_tr('common.autoSaved')),
                       const SizedBox(width: 4),
-                      Text(f.formatTime(draftUpdatedAt ~/ 1000, 'HH:mm:ss')),
+                      DifyTextLine(f.formatTime(draftUpdatedAt ~/ 1000, 'HH:mm:ss')),
                     ],
                     dot,
                     if (publishedAt != 0) ...[
-                      Text(_tr('common.published')),
+                      DifyTextLine(_tr('common.published')),
                       const SizedBox(width: 4),
-                      Text(f.formatTimeFromNow(publishedAt)),
+                      DifyTextLine(f.formatTimeFromNow(publishedAt)),
                     ] else
-                      Text(_tr('common.unpublished')),
-                    if (store.isSyncingWorkflowDraft.value) ...[dot, Text(_tr('common.syncingData'))],
+                      DifyTextLine(_tr('common.unpublished')),
+                    if (store.isSyncingWorkflowDraft.value) ...[dot, DifyTextLine(_tr('common.syncingData'))],
                   ],
                 ),
               ),
@@ -88,7 +88,7 @@ class _ViewOnlyBadge extends StatelessWidget {
       border: Border.all(color: border),
       borderRadius: BorderRadius.circular(DifyRadius.badge),
     ),
-    child: Text(_tr('common.viewOnly').toUpperCase(), style: style),
+    child: DifyTextLine(_tr('common.viewOnly').toUpperCase(), style: style),
   );
 }
 
@@ -115,8 +115,8 @@ class RunningTitle extends StatelessWidget {
               children: [
                 DifyIcon('vender/line/time/clock-play', size: 12, color: gray500),
                 const SizedBox(width: 4),
-                Text(data.isChatMode ? 'Test Chat$id' : 'Test Run$id'),
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('·')),
+                DifyTextLine(data.isChatMode ? 'Test Chat$id' : 'Test Run$id'),
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: DifyTextLine('·')),
                 const SizedBox(width: 4),
                 // `h-4.5 rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-2xs font-semibold text-indigo-600`
                 _ViewOnlyBadge(
@@ -163,7 +163,7 @@ class RestoringTitle extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               spacing: 4,
               children: [
-                Text(name, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)),
+                DifyTextLine(name, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)),
                 _ViewOnlyBadge(
                   border: DifyColors.textAccentSecondary,
                   background: DifyColors.componentsBadgeBgDimm,
@@ -180,14 +180,14 @@ class RestoringTitle extends StatelessWidget {
                   spacing: 4,
                   children: [
                     if (v != null) ...[
-                      Text(_tr(isDraft ? 'common.unpublished' : 'common.published')),
-                      const Text('·'),
-                      Text(
+                      DifyTextLine(_tr(isDraft ? 'common.unpublished' : 'common.published')),
+                      const DifyTextLine('·'),
+                      DifyTextLine(
                         '${f.formatTimeFromNow(secs(isDraft ? 'updated_at' : 'created_at') * 1000)} '
                         '${f.formatTime(secs('created_at'), 'HH:mm:ss')}',
                       ),
-                      const Text('·'),
-                      Text('$creator'),
+                      const DifyTextLine('·'),
+                      DifyTextLine('$creator'),
                     ],
                   ],
                 ),

@@ -618,7 +618,7 @@ class DataSourceEmptyBody extends NodeBody {
         children: [
           RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonPrimaryText),
           const SizedBox(width: 4),
-          Text(
+          DifyTextLine(
             'Add Data Source',
             // Button `medium`: `text-[13px] leading-4 font-medium`.
             style: difyStyle(DifyTw.text13MediumLeading16, DifyColors.componentsButtonPrimaryText),

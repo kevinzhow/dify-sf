@@ -126,7 +126,7 @@ class NodeControl extends StatelessWidget {
                   child: running
                       ? DifyIcon('vender/line/mediaAndDevices/stop', size: 12, color: DifyColors.textTertiary)
                       : DifyTooltip(
-                          content: Text(runLabel),
+                          content: DifyTextLine(runLabel),
                           child: RemixIcon('play-large-line', size: 12, color: DifyColors.textTertiary),
                         ),
                 ),

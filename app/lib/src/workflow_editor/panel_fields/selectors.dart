@@ -184,7 +184,7 @@ class _DefaultTriggerState extends State<_DefaultTrigger> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            DifyTextLine(
               w.uppercase ? w.label.toUpperCase() : w.label,
               style: difyTextStyle(
                 DifyType.systemMdSemibold,
@@ -236,7 +236,7 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: Text(
+                child: DifyTextLine(
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

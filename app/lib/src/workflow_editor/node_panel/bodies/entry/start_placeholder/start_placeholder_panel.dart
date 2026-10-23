@@ -385,7 +385,7 @@ class AllStartBlocks extends StatelessWidget {
               spacing: 12,
               children: [
                 DifyIcon('vender/line/others/search-menu', size: 32, color: DifyColors.textQuaternary),
-                Text(
+                DifyTextLine(
                   _wf('nodes.startPlaceholder.noTriggersFound'),
                   style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary),
                 ),
@@ -400,7 +400,7 @@ class AllStartBlocks extends StatelessWidget {
                       color: hovered ? DifyColors.stateBaseHover : null,
                       borderRadius: BorderRadius.circular(DifyRadius.md),
                     ),
-                    child: Text(
+                    child: DifyTextLine(
                       _wf('tabs.requestToCommunity'),
                       style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
                     ),
@@ -567,7 +567,7 @@ class _StartBlockRow extends StatelessWidget {
     if (conflict) content = Opacity(opacity: 0.3, child: content);
     final row = _Row(label: conflict ? '$label. $reason' : label, disabled: disabled, onTap: onTap, child: content);
     if (!conflict) return row;
-    return DifyTooltip(content: Text(reason), child: row);
+    return DifyTooltip(content: DifyTextLine(reason), child: row);
   }
 }
 

@@ -68,7 +68,7 @@ class VariableTypeSelector extends StatelessWidget {
           onValueChange: onSelect,
           children: [
             for (final o in options)
-              DifyMenuRadioItem<String>(value: o.value, closeOnClick: true, child: Text(o.label)),
+              DifyMenuRadioItem<String>(value: o.value, closeOnClick: true, child: DifyTextLine(o.label)),
           ],
         ),
       ],
@@ -114,7 +114,7 @@ class _AddValueButton extends StatelessWidget {
       variant: DifyButtonVariant.tertiary,
       onPressed: onPressed,
       leading: const RemixIcon('add-line', size: 16),
-      child: Text(tw('chatVariable.modal.addArrayValue')),
+      child: DifyTextLine(tw('chatVariable.modal.addArrayValue')),
     ),
   );
 }

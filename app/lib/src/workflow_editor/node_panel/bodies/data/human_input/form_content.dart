@@ -246,7 +246,7 @@ class _HotkeyTip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text.rich(
+          child: DifyTextLine.rich(
             TextSpan(
               children: transSpans(hi('formContent.hotkeyTip'), {
                 'Key': (_) => kbd('/'),
@@ -554,7 +554,7 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
 
   Widget _label(String text, {bool required = false}) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
-    child: Text.rich(
+    child: DifyTextLine.rich(
       TextSpan(
         text: text,
         children: [
@@ -783,7 +783,7 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                     mainAxisSize: MainAxisSize.min,
                     spacing: 8,
                     children: [
-                      DifyButton(onPressed: w.onCancel, child: Text(cm('operation.cancel'))),
+                      DifyButton(onPressed: w.onCancel, child: DifyTextLine(cm('operation.cancel'))),
                       DifyButton(
                         variant: DifyButtonVariant.primary,
                         disabled: !_valid,
@@ -798,7 +798,7 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                                   const DifyKbd('↵', color: DifyKbdColor.white),
                                 ],
                               ),
-                        child: Text(w.isEdit ? cm('operation.save') : _t('insert')),
+                        child: DifyTextLine(w.isEdit ? cm('operation.save') : _t('insert')),
                       ),
                     ],
                   ),
@@ -948,7 +948,7 @@ class _PrePopulateState extends State<PrePopulate> {
           color: DifyColors.componentsInputBgNormal,
           borderRadius: BorderRadius.circular(DifyRadius.lg),
         ),
-        child: Text.rich(
+        child: DifyTextLine.rich(
           TextSpan(
             children: transSpans(hi('insertInputField.prePopulateFieldPlaceholder'), {
               'staticContent': (_) => WidgetSpan(

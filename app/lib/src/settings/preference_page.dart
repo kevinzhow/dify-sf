@@ -61,7 +61,7 @@ class _PreferencePageState extends State<PreferencePage> {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
-          child: Text(title, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+          child: DifyTextLine(title, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
         ),
         select,
       ],

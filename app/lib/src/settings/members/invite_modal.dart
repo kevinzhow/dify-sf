@@ -60,11 +60,11 @@ class InviteModal extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: 4,
                   children: [
-                    Text(
+                    DifyTextLine(
                       title,
                       style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary),
                     ),
-                    Text(
+                    DifyTextLine(
                       stc(context, 'members.inviteTeamMemberTip'),
                       style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // `text-sm`
                     ),
@@ -226,7 +226,7 @@ class _InviteFormState extends State<InviteForm> {
                   children: [
                     RemixIcon('error-warning-fill', size: 16, color: DifyColors.textWarning),
                     Expanded(
-                      child: Text(
+                      child: DifyTextLine(
                         stc(context, 'members.emailNotSetup'),
                         style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textPrimary),
                       ),
@@ -262,7 +262,7 @@ class _InviteFormState extends State<InviteForm> {
             if (formError != null)
               Semantics(
                 liveRegion: true,
-                child: Text(
+                child: DifyTextLine(
                   formError,
                   key: const ValueKey('invite-form-error'),
                   style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textDestructive),
@@ -275,7 +275,7 @@ class _InviteFormState extends State<InviteForm> {
                 variant: DifyButtonVariant.primary,
                 loading: _pending,
                 onPressed: () => unawaited(_submit()),
-                child: Text(
+                child: DifyTextLine(
                   valid > 0
                       ? stc(context, 'members.sendInviteCount', {'count': valid})
                       : stc(context, 'members.sendInvite'),

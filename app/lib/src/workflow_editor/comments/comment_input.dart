@@ -373,7 +373,7 @@ class _MentionInputState extends State<MentionInput> {
                         size: DifyButtonSize.small,
                         disabled: widget.loading,
                         onPressed: widget.onCancel,
-                        child: Text(_tc('operation.cancel')),
+                        child: DifyTextLine(_tc('operation.cancel')),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -385,7 +385,7 @@ class _MentionInputState extends State<MentionInput> {
                         loading: widget.loading,
                         onPressed: _submit,
                         trailing: widget.loading ? null : const DifyIcon('public/common/enter-key', size: 16),
-                        child: Text(_tc('operation.save')),
+                        child: DifyTextLine(_tc('operation.save')),
                       ),
                     ),
                   ],
@@ -512,7 +512,7 @@ class _MentionRowState extends State<_MentionRow> {
           children: [
             CommentAvatar(name: widget.user.name),
             Expanded(
-              child: Text(
+              child: DifyTextLine(
                 widget.user.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

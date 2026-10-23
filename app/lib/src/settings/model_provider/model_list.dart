@@ -72,7 +72,7 @@ class ModelList extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(count, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary)),
+                            DifyTextLine(count, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary)),
                             Padding(
                               padding: EdgeInsets.only(right: 2),
                               child: RotatedBox(
@@ -194,7 +194,7 @@ class _ModelListItemState extends State<ModelListItem> {
           ),
           if (m.deprecated)
             DifyTooltip(
-              content: Text(
+              content: DifyTextLine(
                 _t('modelProvider.modelHasBeenDeprecated'),
                 style: difyTextStyle(
                   DifyType.systemXsRegular,

@@ -262,7 +262,7 @@ class _ModelModalState extends State<ModelModal> {
           ),
           Padding(
             padding: const EdgeInsets.only(right: 4),
-            child: Text(
+            child: DifyTextLine(
               renderI18nObject(provider.label, language),
               style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
             ),
@@ -291,7 +291,10 @@ class _ModelModalState extends State<ModelModal> {
           ),
           Padding(
             padding: const EdgeInsets.only(right: 4),
-            child: Text(w.model!.model, style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
+            child: DifyTextLine(
+              w.model!.model,
+              style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
+            ),
           ),
           DifyBadge(w.model!.modelType, uppercase: false),
         ],
@@ -352,11 +355,11 @@ class _ModelModalState extends State<ModelModal> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+                    DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
                     if (_predefined)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
+                        child: DifyTextLine(
                           _t('modelProvider.auth.apiKeyModal.desc'),
                           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                         ),
@@ -391,7 +394,7 @@ class _ModelModalState extends State<ModelModal> {
                           padding: const EdgeInsets.only(top: 24, bottom: 12),
                           child: Row(
                             children: [
-                              Text(
+                              DifyTextLine(
                                 difyTransform(
                                   DifyType.systemXsMediumUppercase,
                                   _t('modelProvider.auth.modelCredential'),
@@ -470,19 +473,19 @@ class _ModelModalState extends State<ModelModal> {
                                 variant: DifyButtonVariant.primary,
                                 tone: DifyButtonTone.destructive,
                                 onPressed: () => unawaited(_remove(context, auth)),
-                                child: Text(_t('operation.remove')),
+                                child: DifyTextLine(_t('operation.remove')),
                               ),
                             DifyButton(
                               key: const ValueKey('model-modal-cancel'),
                               onPressed: w.onCancel,
-                              child: Text(_t('operation.cancel')),
+                              child: DifyTextLine(_t('operation.cancel')),
                             ),
                             DifyButton(
                               key: const ValueKey('model-modal-save'),
                               variant: DifyButtonVariant.primary,
                               disabled: _isLoading || auth.doingAction || !canSave,
                               onPressed: () => unawaited(_save(env, auth)),
-                              child: Text(saveText),
+                              child: DifyTextLine(saveText),
                             ),
                           ],
                         ),
@@ -537,7 +540,7 @@ class _HelpLink extends StatelessWidget {
       onTap: url == null ? null : () => openExternalUrl(url!),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        child: Text.rich(
+        child: DifyTextLine.rich(
           TextSpan(
             text: text,
             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent),
@@ -585,7 +588,7 @@ class _EncryptedNote extends StatelessWidget {
             child: DifyIcon('vender/solid/security/lock-01', size: 12, color: DifyColors.textTertiary),
           ),
           Flexible(
-            child: Text.rich(
+            child: DifyTextLine.rich(
               TextSpan(
                 style: style,
                 children: [

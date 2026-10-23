@@ -168,7 +168,7 @@ class GenericTable extends StatelessWidget {
           border: Border.all(color: DifyColors.dividerRegular),
           borderRadius: BorderRadius.circular(DifyRadius.lg),
         ),
-        child: Text(
+        child: DifyTextLine(
           placeholder ?? '',
           style: difyStyle(DifyType.systemXsRegular, DifyColors.textQuaternary).copyWith(height: 18 / 12),
         ),
@@ -405,7 +405,7 @@ class _SelectCell extends StatelessWidget {
                   spacing: 1,
                   children: [
                     Expanded(
-                      child: Text(
+                      child: DifyTextLine(
                         selected?.name ?? column.placeholder ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -431,7 +431,7 @@ class _SelectCell extends StatelessWidget {
               onValueChange: onChanged,
               children: [
                 for (final o in column.options)
-                  DifyMenuRadioItem<String>(value: o.value, closeOnClick: true, child: Text(o.name)),
+                  DifyMenuRadioItem<String>(value: o.value, closeOnClick: true, child: DifyTextLine(o.name)),
               ],
             ),
           ],
@@ -624,7 +624,7 @@ class _ParagraphInputState extends State<ParagraphInput> {
                 for (var i = 1; i <= count; i++)
                   SizedBox(
                     height: 20,
-                    child: Text('$i'.padLeft(2, '0'), style: text.copyWith(color: DifyColors.textQuaternary)),
+                    child: DifyTextLine('$i'.padLeft(2, '0'), style: text.copyWith(color: DifyColors.textQuaternary)),
                   ),
               ],
             ),

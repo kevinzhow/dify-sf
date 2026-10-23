@@ -216,7 +216,7 @@ class _TestRunMenuState extends State<TestRunMenu> {
           // `mb-1 px-3 pt-2 text-sm font-medium text-text-primary`
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: Text(
+            child: DifyTextLine(
               DifyI18n.tr('workflow', 'common.chooseStartNodeToRun'),
               style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
             ),
@@ -256,7 +256,7 @@ class TestRunOptionRow extends StatelessWidget {
           ),
     child: Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
+      child: DifyTextLine(
         option.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

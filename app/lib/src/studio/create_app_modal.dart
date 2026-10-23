@@ -218,7 +218,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
                             SizedBox(height: top),
                             Padding(
                               padding: const EdgeInsets.only(top: 4, bottom: 24),
-                              child: Text(
+                              child: DifyTextLine(
                                 _a('newApp.startFromBlank'),
                                 // The page's strut is 16/24, so the 18/1.2 span sits in a 24 px line box, not 21.6.
                                 // Dify's own box is `pt-1 pb-6` at 52 px high; this keeps ours the same height.
@@ -235,7 +235,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
                                 height: 24,
                                 child: Align(
                                   alignment: AlignmentDirectional.centerStart,
-                                  child: Text(
+                                  child: DifyTextLine(
                                     _a('newApp.chooseAppType'),
                                     style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                                   ),
@@ -290,7 +290,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
                                             height: 24,
                                             child: Align(
                                               alignment: AlignmentDirectional.centerStart,
-                                              child: Text(
+                                              child: DifyTextLine(
                                                 _a('newApp.captionName'),
                                                 style: difyTextStyle(
                                                   DifyType.systemSmSemibold,
@@ -330,14 +330,14 @@ class _CreateAppModalState extends State<CreateAppModal> {
                                       height: 24,
                                       child: Row(
                                         children: [
-                                          Text(
+                                          DifyTextLine(
                                             _a('newApp.captionDescription'),
                                             style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                                           ),
                                           Flexible(
                                             child: Padding(
                                               padding: const EdgeInsets.only(left: 4),
-                                              child: Text(
+                                              child: DifyTextLine(
                                                 '(${_a('newApp.optional')})',
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -370,7 +370,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
                                     key: const ValueKey('create-app-cancel'),
                                     semanticLabel: _a('newApp.Cancel'),
                                     onPressed: widget.onClose,
-                                    child: Text(_a('newApp.Cancel')),
+                                    child: DifyTextLine(_a('newApp.Cancel')),
                                   ),
                                   DifyButton(
                                     key: const ValueKey('create-app-submit'),
@@ -459,9 +459,12 @@ class _AppTypeCard extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 8, bottom: 2),
-                    child: Text(title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
+                    child: DifyTextLine(
+                      title,
+                      style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
+                    ),
                   ),
-                  Text(
+                  DifyTextLine(
                     description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -546,7 +549,7 @@ class _Preview extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          DifyTextLine(
                             difyTransform(DifyType.systemSmSemiboldUppercase, title),
                             style: difyTextStyle(DifyType.systemSmSemiboldUppercase, DifyColors.textSecondary),
                           ),
@@ -554,7 +557,7 @@ class _Preview extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 4),
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(minHeight: 32, maxWidth: 384),
-                              child: Text(
+                              child: DifyTextLine(
                                 description,
                                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                               ),

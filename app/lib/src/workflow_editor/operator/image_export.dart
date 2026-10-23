@@ -287,7 +287,7 @@ Future<void> showCanvasImagePreview(BuildContext context, CanvasImageExport imag
       children: [
         Row(
           children: [
-            Expanded(child: Text(image.name)),
+            Expanded(child: DifyTextLine(image.name)),
             DifyIconButton(
               label: DifyI18n.tr('common', 'operation.close'),
               icon: const RemixIcon('close-line', size: 18),

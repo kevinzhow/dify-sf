@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'src/design/dify_fonts.dart';
 import 'src/canvas/workflow_canvas.dart';
 import 'src/cards/dify_cards.dart';
 import 'src/design/dify_icon.dart';
@@ -38,6 +39,7 @@ Future<void> main(List<String> args) async {
       options.lang ??
       await AppLocale.remembered() ??
       difyLanguageFor(WidgetsBinding.instance.platformDispatcher.locale);
+  if (kIsWeb) await DifyFonts.loadFor(lang);
   await DifyI18n.load(lang);
   CanvasDefaults.viewport = CanvasDefaults.parseViewport(options.view);
   CanvasDefaults.reportRect = kIsWeb && Uri.base.queryParameters['visual'] == '1';

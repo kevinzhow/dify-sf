@@ -131,7 +131,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
     final w = widget;
     final label = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(w.label, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+      child: DifyTextLine(w.label, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
     );
     return ListenableBuilder(
       listenable: w.field,
@@ -202,7 +202,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
             if (note != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
+                child: DifyTextLine(
                   note,
                   key: f.error != null ? const ValueKey('field-error') : const ValueKey('field-description'),
                   style: difyTextStyle(
@@ -251,7 +251,7 @@ class _AuthLinkState extends State<AuthLink> {
         child: GestureDetector(
           onTap: tap,
           excludeFromSemantics: true,
-          child: Text(
+          child: DifyTextLine(
             w.text,
             style: _hover && w.hoverUnderline ? w.style.copyWith(decoration: TextDecoration.underline) : w.style,
           ),
@@ -270,7 +270,7 @@ class AuthInlineLinks extends StatelessWidget {
   final TextStyle style;
 
   @override
-  Widget build(BuildContext context) => Text.rich(
+  Widget build(BuildContext context) => DifyTextLine.rich(
     TextSpan(
       style: style,
       children: [
@@ -311,7 +311,7 @@ class AuthHeading extends StatelessWidget {
     container: true,
     header: true,
     headingLevel: 1,
-    child: Text(text, style: style),
+    child: DifyTextLine(text, style: style),
   );
 }
 
@@ -388,7 +388,7 @@ class _LocaleMenuState extends State<LocaleMenu> {
                         padding: EdgeInsetsDirectional.only(end: 4),
                         child: HeroIcon('globe-alt', size: 20, color: DifyColors.textPrimary),
                       ),
-                      Text(
+                      DifyTextLine(
                         selected?.name ?? '',
                         // `text-[13px] font-medium` (the row: the size-5 icon's 20 px)
                         style: difyTextStyle(DifyTw.text13MediumLeading20, DifyColors.textPrimary),
@@ -408,7 +408,7 @@ class _LocaleMenuState extends State<LocaleMenu> {
                   DifyMenuRadioItem<String>(
                     value: i.value,
                     closeOnClick: true,
-                    child: Text(i.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: DifyTextLine(i.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
               ],
             ),
@@ -483,7 +483,7 @@ class ThemeSelector extends StatelessWidget {
       leading: RemixIcon(_icon(mode), size: 16, color: DifyColors.textTertiary),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Text(tr(key), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
+        child: DifyTextLine(tr(key), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
       ),
     );
     return DifyDropdownMenu(
@@ -583,7 +583,7 @@ class SignInLayout extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                child: Text(
+                child: DifyTextLine(
                   difyCopyright(),
                   style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                 ),
@@ -619,7 +619,7 @@ class AuthPageFrame extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: Text(
+              child: DifyTextLine(
                 difyCopyright(),
                 style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // `text-sm font-normal`
               ),

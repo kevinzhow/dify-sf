@@ -281,13 +281,13 @@ class VersionHistoryActionMenuItem extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: description == null
-            ? Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis)
+            ? DifyTextLine(item.name, maxLines: 1, overflow: TextOverflow.ellipsis)
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 2,
                 children: [
-                  Text(
+                  DifyTextLine(
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -686,7 +686,7 @@ class VersionHistoryEmpty extends StatelessWidget {
         DifyButton(
           size: DifyButtonSize.small,
           onPressed: onResetFilter,
-          child: Text(_w('versionHistory.filter.reset')),
+          child: DifyTextLine(_w('versionHistory.filter.reset')),
         ),
       ],
     ),

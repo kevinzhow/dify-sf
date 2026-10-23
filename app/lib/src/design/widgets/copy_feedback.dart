@@ -42,7 +42,7 @@ class _DifyCopyFeedbackState extends State<DifyCopyFeedback> {
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('app-overview', 'overview.appInfo.embedded.${_copied ? 'copied' : 'copy'}');
     return DifyTooltip(
-      content: Text(label),
+      content: DifyTextLine(label),
       child: DifyIconButton(
         label: label,
         icon: RemixIcon(_copied ? 'clipboard-fill' : 'clipboard-line', size: 16),

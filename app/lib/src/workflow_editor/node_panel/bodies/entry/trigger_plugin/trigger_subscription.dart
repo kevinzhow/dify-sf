@@ -65,7 +65,7 @@ class TriggerSubscription extends StatelessWidget {
               onPressed: onCreate,
               disabled: onCreate == null,
               leading: const RemixIcon('add-line', size: 16),
-              child: Text(_pt('subscription.empty.button')),
+              child: DifyTextLine(_pt('subscription.empty.button')),
             ),
             child,
           ],
@@ -238,7 +238,7 @@ class SubscriptionSelectorView extends StatelessWidget {
                   color: DifyColors.textSecondary,
                 ),
                 const SizedBox(width: 4),
-                DifyInfotip(label: _pt('subscription.list.tip'), content: Text(_pt('subscription.list.tip'))),
+                DifyInfotip(label: _pt('subscription.list.tip'), content: DifyTextLine(_pt('subscription.list.tip'))),
                 const Spacer(),
                 DifyIconButton(
                   label: _pt('subscription.empty.button'),

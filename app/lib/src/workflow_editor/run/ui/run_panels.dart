@@ -221,7 +221,7 @@ class _ChatRecordState extends State<ChatRecord> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
+                        child: DifyTextLine(
                           'TEST CHAT${fmt.formatWorkflowRunIdentifier((history?['finished_at'] as num?)?.toInt())}',
                           style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                         ),
@@ -300,7 +300,7 @@ class _ChatRecordUserInputState extends State<ChatRecordUserInput> {
                       ),
                     ),
                   ),
-                  Text(
+                  DifyTextLine(
                     DifyI18n.tr('workflow', 'panel.userInputField').toUpperCase(),
                     style: difyTextStyle(
                       DifyTw.text13Semibold,

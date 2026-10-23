@@ -23,7 +23,7 @@ double _textWidth(String text, DifyTextStyle s) {
   final p = TextPainter(
     text: TextSpan(
       text: s.uppercase ? text.toUpperCase() : text,
-      style: s.style.copyWith(fontFamily: cardFontFamily),
+      style: difyStyle(s, DifyColors.textPrimary),
     ),
     textDirection: TextDirection.ltr,
   )..layout();
@@ -311,7 +311,7 @@ class VariableAggregatorBody extends NodeBody {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             title.toUpperCase(),
                             style: header,
                             maxLines: 1,
@@ -319,7 +319,7 @@ class VariableAggregatorBody extends NodeBody {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(type, style: header, maxLines: 1),
+                        DifyTextLine(type, style: header, maxLines: 1),
                         const SizedBox(width: 8),
                         Container(width: 1, height: 10, color: DifyColors.dividerRegular),
                         const SizedBox(width: 4),

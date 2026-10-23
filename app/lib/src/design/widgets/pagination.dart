@@ -154,9 +154,9 @@ class _DifyPaginationState extends State<DifyPagination> {
         mainAxisSize: MainAxisSize.min,
         spacing: 2,
         children: [
-          Text('$page', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
-          Text('/', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textQuaternary)),
-          Text('$total', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+          DifyTextLine('$page', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+          DifyTextLine('/', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textQuaternary)),
+          DifyTextLine('$total', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
         ],
       ),
     );
@@ -230,7 +230,10 @@ class _DifyPaginationState extends State<DifyPagination> {
                     SizedBox.square(
                       dimension: 32,
                       child: Center(
-                        child: Text('…', style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textTertiary)),
+                        child: DifyTextLine(
+                          '…',
+                          style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textTertiary),
+                        ),
                       ),
                     ),
               ],
@@ -249,7 +252,7 @@ class _DifyPaginationState extends State<DifyPagination> {
                             width: 52,
                             child: Opacity(
                               opacity: _sizeHover ? 1 : 0,
-                              child: Text(
+                              child: DifyTextLine(
                                 difyTransform(DifyType.system2xsRegularUppercase, _c('pagination.perPage')),
                                 textAlign: TextAlign.end,
                                 style: difyTextStyle(DifyType.system2xsRegularUppercase, DifyColors.textTertiary),
@@ -267,7 +270,7 @@ class _DifyPaginationState extends State<DifyPagination> {
                                   label: '$o',
                                   child: ConstrainedBox(
                                     constraints: const BoxConstraints(minWidth: 20),
-                                    child: Text('$o', textAlign: TextAlign.center),
+                                    child: DifyTextLine('$o', textAlign: TextAlign.center),
                                   ),
                                 ),
                             ],
@@ -311,7 +314,7 @@ class _PageButton extends StatelessWidget {
             boxShadow: focused ? [difyFocusRingShadow()] : null,
           ),
           child: Center(
-            child: Text(
+            child: DifyTextLine(
               '$page',
               style: difyTextStyle(
                 DifyType.systemSmMedium,

@@ -141,7 +141,7 @@ class ToolFormItem extends StatelessWidget {
                 child: Row(
                   children: [
                     Flexible(
-                      child: Text(
+                      child: DifyTextLine(
                         i18nText(schema['label'], language),
                         style: difyStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                       ),
@@ -154,7 +154,7 @@ class ToolFormItem extends StatelessWidget {
                     if (!showDescription && tooltip.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
+                        child: DifyInfotip(label: tooltip, width: 200, content: DifyTextLine(tooltip)),
                       ),
                     if (showSchemaButton) ...[
                       Padding(
@@ -206,7 +206,7 @@ class _Description extends StatelessWidget {
     final open = DataPanelHost.of(context).openUrl;
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Text.rich(
+      child: DifyTextLine.rich(
         TextSpan(
           children: [
             for (final p in descriptionParts(text))
@@ -700,7 +700,7 @@ class MultiSelectField extends StatelessWidget {
                                   if (v != i.value) v,
                               ],
                       ),
-                      child: Text(i.name),
+                      child: DifyTextLine(i.name),
                     ),
                 ],
               ),
@@ -894,7 +894,7 @@ class MixedInputPlaceholder extends StatelessWidget {
                 child: Row(
                   children: [
                     Flexible(
-                      child: Text(
+                      child: DifyTextLine(
                         DifyI18n.tr('workflow', 'nodes.tool.insertPlaceholder1'),
                         style: style,
                         maxLines: 1,
@@ -911,7 +911,7 @@ class MixedInputPlaceholder extends StatelessWidget {
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
                             onTap: onInsert == null ? null : () => onInsert!('/'),
-                            child: Text(
+                            child: DifyTextLine(
                               DifyI18n.tr('workflow', 'nodes.tool.insertPlaceholder2'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

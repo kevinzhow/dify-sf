@@ -269,7 +269,7 @@ class _VarReferencePickerState extends State<VarReferencePicker> {
                 child: pill,
               ),
               PickerHover.invalidVariable => DifyTooltip(
-                content: Text(DifyI18n.tr('workflow', 'errorMsg.invalidVariable')),
+                content: DifyTextLine(DifyI18n.tr('workflow', 'errorMsg.invalidVariable')),
                 child: pill,
               ),
               null => pill,

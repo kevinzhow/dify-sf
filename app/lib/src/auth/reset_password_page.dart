@@ -121,7 +121,7 @@ class _BackLinkState extends State<_BackLink> {
                   child: RemixIcon('arrow-left-line', size: 12, color: color),
                 ),
                 const SizedBox(width: 8),
-                Text(widget.label, style: difyTextStyle(DifyType.systemXsRegular, color)),
+                DifyTextLine(widget.label, style: difyTextStyle(DifyType.systemXsRegular, color)),
               ],
             ),
           ),
@@ -207,7 +207,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
                   AuthHeading(title, style: difyTextStyle(DifyType.title4xlSemiBold, DifyColors.textPrimary)),
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(
+                    child: DifyTextLine(
                       tLogin(context, 'resetPasswordDesc'),
                       style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textSecondary),
                     ),
@@ -233,7 +233,7 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
                   variant: DifyButtonVariant.primary,
                   loading: _loading,
                   onPressed: _submit,
-                  child: Text(tLogin(context, 'sendVerificationCode')),
+                  child: DifyTextLine(tLogin(context, 'sendVerificationCode')),
                 ),
               ],
             ),
@@ -344,7 +344,7 @@ class _ResetPasswordCheckCodeFormState extends State<ResetPasswordCheckCodeForm>
                   AuthHeading(title, style: difyTextStyle(DifyType.title4xlSemiBold, DifyColors.textPrimary)),
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text.rich(
+                    child: DifyTextLine.rich(
                       TextSpan(
                         style: secondary,
                         children: [
@@ -381,7 +381,7 @@ class _ResetPasswordCheckCodeFormState extends State<ResetPasswordCheckCodeForm>
                     variant: DifyButtonVariant.primary,
                     loading: _loading,
                     onPressed: _verify,
-                    child: Text(tLogin(context, 'checkCode.verify')),
+                    child: DifyTextLine(tLogin(context, 'checkCode.verify')),
                   ),
                 ),
                 ResendCountdown(onResend: () => unawaited(_resend())),
@@ -455,7 +455,7 @@ class _ResendCountdownState extends State<ResendCountdown> {
     final tertiary = difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary);
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Text.rich(
+      child: DifyTextLine.rich(
         TextSpan(
           style: tertiary,
           children: [
@@ -607,7 +607,7 @@ class _SetPasswordFormState extends State<SetPasswordForm> {
             key: const ValueKey('reset-sign-in-now'),
             variant: DifyButtonVariant.primary,
             onPressed: _toSignIn,
-            child: Text('${tLogin(context, 'passwordChanged')} (${(_leftMs / 1000).round()}) '),
+            child: DifyTextLine('${tLogin(context, 'passwordChanged')} (${(_leftMs / 1000).round()}) '),
           ),
         ],
       );
@@ -620,7 +620,7 @@ class _SetPasswordFormState extends State<SetPasswordForm> {
             AuthHeading(title, style: heading),
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
+              child: DifyTextLine(
                 tLogin(context, 'changePasswordTip'),
                 style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textSecondary),
               ),
@@ -652,7 +652,7 @@ class _SetPasswordFormState extends State<SetPasswordForm> {
               variant: DifyButtonVariant.primary,
               loading: _submitting,
               onPressed: _submit,
-              child: Text(tLogin(context, 'changePasswordBtn')),
+              child: DifyTextLine(tLogin(context, 'changePasswordBtn')),
             ),
           ],
         ),

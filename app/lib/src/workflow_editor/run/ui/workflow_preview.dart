@@ -94,7 +94,7 @@ DifyTab runPanelTab({
           ),
           boxShadow: difyFocusRing(focused),
         ),
-        child: Text(
+        child: DifyTextLine(
           uppercaseStyle ? label.toUpperCase() : label,
           style: style.copyWith(color: color),
           strutStyle: Css.lineStrut(style),
@@ -206,7 +206,7 @@ class InputsPanel extends StatelessWidget {
                   variant: DifyButtonVariant.primary,
                   disabled: !canRun || running,
                   onPressed: doRun,
-                  child: Text(DifyI18n.tr('workflow', 'singleRun.startRun')),
+                  child: DifyTextLine(DifyI18n.tr('workflow', 'singleRun.startRun')),
                 ),
               ),
             ),
@@ -397,7 +397,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
                           );
                         },
                         leading: const RemixIcon('clipboard-line', size: 14),
-                        child: Text(DifyI18n.tr('common', 'operation.copy')),
+                        child: DifyTextLine(DifyI18n.tr('common', 'operation.copy')),
                       ),
                     ),
                   ),
@@ -454,7 +454,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             'Test Run${fmt.formatWorkflowRunIdentifier((result?['finished_at'] as num?)?.toInt(), (result?['status'] as String?) ?? 'Running')}',
                             style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                           ),

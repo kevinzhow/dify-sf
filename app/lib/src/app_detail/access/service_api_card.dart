@@ -134,7 +134,7 @@ class _ApiSecretKeyButtonState extends State<ApiSecretKeyButton> {
             borderRadius: BorderRadius.circular(5),
             border: Border.all(color: DifyColors.dividerDeep),
           ),
-          child: Text(
+          child: DifyTextLine(
             '$count',
             textAlign: TextAlign.center,
             style: difyTextStyle(
@@ -143,7 +143,7 @@ class _ApiSecretKeyButtonState extends State<ApiSecretKeyButton> {
             ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
           ),
         ),
-        child: Text(label),
+        child: DifyTextLine(label),
       );
     }
 
@@ -206,7 +206,7 @@ class ServiceApiCardView extends StatelessWidget {
             onOpen: onOpen,
             leading: const RemixIcon('book-open-line', size: 16),
             trailing: const RemixIcon('arrow-right-up-line', size: 14),
-            child: Text(docLabel),
+            child: DifyTextLine(docLabel),
           )
         else
           DifyButton(
@@ -214,7 +214,7 @@ class ServiceApiCardView extends StatelessWidget {
             disabled: true,
             leading: const RemixIcon('book-open-line', size: 16),
             trailing: const RemixIcon('arrow-right-up-line', size: 14),
-            child: Text(docLabel),
+            child: DifyTextLine(docLabel),
           ),
       ],
       child: AccessPointUrl(

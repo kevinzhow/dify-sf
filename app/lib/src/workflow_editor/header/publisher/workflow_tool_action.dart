@@ -81,7 +81,7 @@ class WorkflowToolAction extends StatelessWidget {
                           spacing: 8,
                           children: [
                             Expanded(
-                              child: Text(
+                              child: DifyTextLine(
                                 label,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -96,7 +96,7 @@ class WorkflowToolAction extends StatelessWidget {
                     if (outdated)
                       Padding(
                         padding: const EdgeInsets.only(right: 16, bottom: 4),
-                        child: Text(
+                        child: DifyTextLine(
                           _w('common.workflowAsToolTip'),
                           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textWarning),
                         ),
@@ -113,7 +113,7 @@ class WorkflowToolAction extends StatelessWidget {
                               onPressed: onConfigure,
                               semanticLabel: configureLabel,
                               leading: const RemixIcon('equalizer-2-line', size: 14),
-                              child: Text(configureLabel, overflow: TextOverflow.ellipsis),
+                              child: DifyTextLine(configureLabel, overflow: TextOverflow.ellipsis),
                             ),
                           ),
                           Flexible(
@@ -163,7 +163,7 @@ class _ManageInTools extends StatelessWidget {
           spacing: 4,
           children: [
             Flexible(
-              child: Text(
+              child: DifyTextLine(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -188,7 +188,7 @@ class _DisabledReason extends StatelessWidget {
     opacity: 0.3,
     child: Padding(
       padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-      child: Text(message, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+      child: DifyTextLine(message, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
     ),
   );
 }
@@ -209,7 +209,7 @@ class _SetupStatus extends StatelessWidget {
         border: Border.all(color: DifyColors.dividerDeep),
         borderRadius: BorderRadius.circular(DifyRadius.badge),
       ),
-      child: Text(
+      child: DifyTextLine(
         difyTransform(DifyType.system2xsMediumUppercase, label),
         maxLines: 1,
         softWrap: false,
@@ -237,7 +237,7 @@ class _StateLabel extends StatelessWidget {
           size: DifyStatusDotSize.small,
           status: outdated ? DifyStatusDotStatus.warning : DifyStatusDotStatus.success,
         ),
-        Text(
+        DifyTextLine(
           difyTransform(DifyType.systemXsSemiboldUppercase, label),
           style: difyTextStyle(
             DifyType.systemXsSemiboldUppercase,

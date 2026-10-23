@@ -1,10 +1,12 @@
 import 'package:flutter/widgets.dart';
 
-import '../css_metrics.dart';
+import 'text_line.dart';
+export 'text_line.dart';
 import '../dify_tokens.g.dart';
+import '../dify_fonts.dart';
 
 /// A Dify typography utility in [color], for a [DefaultTextStyle] or a [Text]. The font family is left to the
-/// ambient style (the app theme's), like Dify's `font-sans` stack.
+/// selected app font profile, including its explicit Web CJK fallback.
 TextStyle difyTextStyle(DifyTextStyle s, Color color) => s.style.copyWith(color: color);
 
 /// [text] as Dify's utility renders it (`uppercase` utilities upper-case it; Flutter has no text-transform).
@@ -22,11 +24,13 @@ const difyTransitionDuration = Duration(milliseconds: 150);
 const difyTransitionCurve = Cubic(0.4, 0, 0.2, 1);
 
 /// The font cards render with (the app theme's family); measurement outside the widget tree needs it explicitly.
-String? cardFontFamily;
+String? get cardFontFamily => DifyFonts.primaryFamily;
+set cardFontFamily(String? family) => DifyFonts.primaryFamily = family;
 
 /// [difyTextStyle] with the family pinned to [cardFontFamily], for text that is also measured outside the widget
 /// tree (cards); uppercase styles are applied by [DifyText].
-TextStyle difyStyle(DifyTextStyle s, Color color) => difyTextStyle(s, color).copyWith(fontFamily: cardFontFamily);
+TextStyle difyStyle(DifyTextStyle s, Color color) =>
+    DifyFonts.resolveStyle(difyTextStyle(s, color).copyWith(fontFamily: cardFontFamily));
 
 /// Text in a Dify typography utility (applies `uppercase`).
 class DifyText extends StatelessWidget {
@@ -48,11 +52,9 @@ class DifyText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = difyStyle(style, color);
-    return Text(
+    return DifyTextLine(
       difyTransform(style, text),
       style: s,
-      // The baseline where Chrome puts it.
-      strutStyle: Css.lineStrut(s),
       textAlign: align,
       maxLines: maxLines,
       overflow: maxLines == null ? null : TextOverflow.ellipsis,

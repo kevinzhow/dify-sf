@@ -19,6 +19,7 @@ Outside `design/`:
 |---|---|---|
 | `color-literal` | `Color(0x…)`, `Color.fromARGB/fromRGBO(`, `Colors.*` (not `Colors.transparent`) | `DifyColors.*`, named constants in design/ |
 | `box-shadow` | `BoxShadow(` | `DifyShadows.*`, design helpers (focus ring, status dot) |
+| `text-line` | direct `Text` / `Text.rich`, including aliases and design components | `DifyTextLine` / `DifyText`; only the shared line primitive may construct framework Text |
 | `raw-text-style` | `TextStyle(` that sets `fontSize`, `fontWeight`, `height` or `letterSpacing` (colour-only is fine) | `difyTextStyle(DifyType.…, color)` |
 | `dialog-route` | calls to `showDialog`, `showGeneralDialog`, `showModalBottomSheet`, `showMenu`, `showCupertinoDialog` | `showDifyDialog` and the design dialogs |
 | `material-widget` | `AlertDialog`, `Dialog`, `Switch`, `Checkbox`, `Radio`, `Slider`, `DropdownButton*`, `TabBar`, `Tooltip`, `PopupMenuButton`, Material buttons, progress indicators, `SnackBar`, `Chip`, `InputDecoration` | the `Dify*` widget |

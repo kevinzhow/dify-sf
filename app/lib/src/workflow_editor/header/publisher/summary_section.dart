@@ -155,7 +155,7 @@ class PublisherSummarySection extends StatelessWidget {
       if (publishedTimestamp == null) return null;
       final name = versionInfo?.createdByName;
       final time = formatTimeFromNow(publishedTimestamp);
-      return Text(
+      return DifyTextLine(
         name != null && name.isNotEmpty
             ? _w('common.publishedBy', {'time': time, 'author': name})
             : '${_w('common.publishedAt')} $time',
@@ -167,7 +167,7 @@ class PublisherSummarySection extends StatelessWidget {
 
     final Widget head;
     if (!hasPublishedVersion) {
-      head = Text(_w('common.notPublishedYet'), style: tertiary);
+      head = DifyTextLine(_w('common.notPublishedYet'), style: tertiary);
     } else if (isWorkflowApp) {
       final info = versionInfo;
       final editDisabled = info == null || onEditVersion == null;
@@ -183,7 +183,7 @@ class PublisherSummarySection extends StatelessWidget {
               spacing: 4,
               children: [
                 Flexible(
-                  child: Text(
+                  child: DifyTextLine(
                     getWorkflowVersionName(
                       markedName: info?.markedName,
                       versionNumber: info?.versionNumber,
@@ -194,7 +194,7 @@ class PublisherSummarySection extends StatelessWidget {
                     style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                   ),
                 ),
-                ExcludeSemantics(child: Text('·', style: tertiary)),
+                ExcludeSemantics(child: DifyTextLine('·', style: tertiary)),
                 if (named)
                   PublisherPressable(
                     label: _w('versionHistory.editVersionInfo'),
@@ -235,7 +235,7 @@ class PublisherSummarySection extends StatelessWidget {
                             children: [
                               RemixIcon('edit-line', size: 14, color: color),
                               Flexible(
-                                child: Text(
+                                child: DifyTextLine(
                                   _w('versionHistory.nameIt'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -252,7 +252,7 @@ class PublisherSummarySection extends StatelessWidget {
             ),
           ),
           if (info != null && info.markedComment.isNotEmpty) ...[
-            Text(info.markedComment, maxLines: 3, overflow: TextOverflow.ellipsis, style: tertiary),
+            DifyTextLine(info.markedComment, maxLines: 3, overflow: TextOverflow.ellipsis, style: tertiary),
             Container(
               margin: const EdgeInsets.symmetric(vertical: 4),
               width: 16,
@@ -273,7 +273,7 @@ class PublisherSummarySection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                DifyTextLine(
                   _w('common.latestPublished'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -290,7 +290,7 @@ class PublisherSummarySection extends StatelessWidget {
               onPressed: onRestore,
               semanticLabel: _w('common.restore'),
               leading: const RemixIcon('reset-left-line', size: 14),
-              child: Text(_w('common.restore')),
+              child: DifyTextLine(_w('common.restore')),
             ),
         ],
       );
@@ -318,12 +318,12 @@ class PublisherSummarySection extends StatelessWidget {
                 onPressed: onPublish,
                 semanticLabel: buttonLabel,
                 child: publishDisabled
-                    ? Text(buttonLabel)
+                    ? DifyTextLine(buttonLabel)
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         spacing: 4,
                         children: [
-                          Flexible(child: Text(buttonLabel)),
+                          Flexible(child: DifyTextLine(buttonLabel)),
                           DifyKbdGroup(
                             children: [
                               for (final k in appPublishHotkey.split('+'))
@@ -341,7 +341,7 @@ class PublisherSummarySection extends StatelessWidget {
             child: Semantics(
               container: true,
               role: SemanticsRole.status,
-              child: Text(status, maxLines: 1, overflow: TextOverflow.ellipsis, style: tertiary),
+              child: DifyTextLine(status, maxLines: 1, overflow: TextOverflow.ellipsis, style: tertiary),
             ),
           ),
         ],
@@ -382,14 +382,14 @@ class _StartNodeLimitHint extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_w('publishLimit.startNodeTitlePrefix'), style: title),
-                Text(_w('publishLimit.startNodeTitleSuffix'), style: title),
+                DifyTextLine(_w('publishLimit.startNodeTitlePrefix'), style: title),
+                DifyTextLine(_w('publishLimit.startNodeTitleSuffix'), style: title),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(
+            child: DifyTextLine(
               _w('publishLimit.startNodeDesc'),
               style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary), // text-xs/4
             ),

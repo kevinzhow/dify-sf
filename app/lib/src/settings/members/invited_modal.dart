@@ -83,14 +83,14 @@ class InvitedModal extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
+                child: DifyTextLine(
                   title,
                   style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary), // `text-xl font-semibold`
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: Text(description, style: tertiary),
+                child: DifyTextLine(description, style: tertiary),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 36),
@@ -101,7 +101,7 @@ class InvitedModal extends StatelessWidget {
                     if (success.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(stc(context, 'members.invitationLink'), style: sectionTitle),
+                        child: DifyTextLine(stc(context, 'members.invitationLink'), style: sectionTitle),
                       ),
                       for (final r in success)
                         InvitationLink(key: ValueKey('link-${r.email}'), value: r, origin: origin),
@@ -109,9 +109,9 @@ class InvitedModal extends StatelessWidget {
                     if (already.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(stc(context, 'members.alreadyInTeam'), style: sectionTitle),
+                        child: DifyTextLine(stc(context, 'members.alreadyInTeam'), style: sectionTitle),
                       ),
-                      if (!onlyAlreadyMembers) Text(stc(context, 'members.alreadyInTeamTip'), style: tertiary),
+                      if (!onlyAlreadyMembers) DifyTextLine(stc(context, 'members.alreadyInTeamTip'), style: tertiary),
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
                         runSpacing: 4,
@@ -124,7 +124,7 @@ class InvitedModal extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(DifyRadius.md),
                                 border: Border.all(color: DifyColors.componentsPanelBorder),
                               ),
-                              child: Text(
+                              child: DifyTextLine(
                                 r.email,
                                 style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary), // `text-sm`
                               ),
@@ -135,7 +135,7 @@ class InvitedModal extends StatelessWidget {
                     if (failed.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(stc(context, 'members.failedInvitationEmails'), style: sectionTitle),
+                        child: DifyTextLine(stc(context, 'members.failedInvitationEmails'), style: sectionTitle),
                       ),
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
@@ -150,12 +150,12 @@ class InvitedModal extends StatelessWidget {
                                 border: Border.all(color: DifyTailwind.red300), // `border-red-300`
                               ),
                               child: DifyTooltip(
-                                content: Text(r.message ?? ''),
+                                content: DifyTextLine(r.message ?? ''),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 4,
                                   children: [
-                                    Text(r.email, style: DifyType.systemMdRegular.style), // `text-sm`
+                                    DifyTextLine(r.email, style: DifyType.systemMdRegular.style), // `text-sm`
                                     RemixIcon('question-line', size: 16, color: DifyTailwind.red300), // `text-red-300`
                                   ],
                                 ),
@@ -175,7 +175,7 @@ class InvitedModal extends StatelessWidget {
                     key: const ValueKey('invited-ok'),
                     variant: DifyButtonVariant.primary,
                     onPressed: close,
-                    child: Text(stc(context, 'members.ok')),
+                    child: DifyTextLine(stc(context, 'members.ok')),
                   ),
                 ),
               ),
@@ -236,7 +236,7 @@ class _InvitationLinkState extends State<InvitationLink> {
   @override
   Widget build(BuildContext context) {
     final url = widget.value.url ?? '';
-    final tip = Text(st(context, 'appApi', _copied ? 'copied' : 'copy'));
+    final tip = DifyTextLine(st(context, 'appApi', _copied ? 'copied' : 'copy'));
     final copyLabel = st(context, 'appApi', 'copy');
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -270,7 +270,7 @@ class _InvitationLinkState extends State<InvitationLink> {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
-                            child: Text(
+                            child: DifyTextLine(
                               url,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

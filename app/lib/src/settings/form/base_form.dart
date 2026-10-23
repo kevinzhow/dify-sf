@@ -676,20 +676,20 @@ class BaseField extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => focusNode?.requestFocus(),
-                child: s.label is Widget ? s.label! as Widget : ExcludeSemantics(child: Text(shownLabel)),
+                child: s.label is Widget ? s.label! as Widget : ExcludeSemantics(child: DifyTextLine(shownLabel)),
               ),
             ),
             if (s.required && s.label is! Widget)
               Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: ExcludeSemantics(
-                  child: Text('*', style: TextStyle(color: DifyColors.textDestructiveSecondary)),
+                  child: DifyTextLine('*', style: TextStyle(color: DifyColors.textDestructiveSecondary)),
                 ),
               ),
             if (tooltip.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 2),
-                child: DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
+                child: DifyInfotip(label: tooltip, width: 200, content: DifyTextLine(tooltip)),
               ),
           ],
         ),
@@ -817,7 +817,7 @@ class BaseField extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
+              child: DifyTextLine(
                 messages.join(' '),
                 key: ValueKey('form-message-${s.name}'),
                 semanticsLabel: '',
@@ -856,7 +856,10 @@ class BaseField extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 16),
               child: ExcludeSemantics(
-                child: Text(description, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                child: DifyTextLine(
+                  description,
+                  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                ),
               ),
             ),
           if (s.url != null && s.url!.isNotEmpty)
@@ -925,7 +928,7 @@ class _RadioCard extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
               Flexible(
-                child: Text(
+                child: DifyTextLine(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -962,7 +965,7 @@ class _HelpLink extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(child: Text(text, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent))),
+            Flexible(child: DifyTextLine(text, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent))),
             const SizedBox(width: 4),
             RemixIcon('external-link-line', size: 12, color: DifyColors.textAccent),
           ],

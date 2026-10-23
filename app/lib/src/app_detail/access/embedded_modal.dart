@@ -190,7 +190,7 @@ class EmbeddedModalState extends State<EmbeddedModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+              DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
               Flexible(
                 child: SingleChildScrollView(
                   child: Column(
@@ -198,7 +198,7 @@ class EmbeddedModalState extends State<EmbeddedModal> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(top: 32, bottom: 16),
-                        child: Text(
+                        child: DifyTextLine(
                           _t('explanation'),
                           style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
                         ),
@@ -256,13 +256,13 @@ class EmbeddedModalState extends State<EmbeddedModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      DifyTextLine(
                         _t('hiddenInputs.title'),
                         style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
+                        child: DifyTextLine(
                           _t('hiddenInputs.description'),
                           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                         ),
@@ -329,7 +329,7 @@ class EmbeddedModalState extends State<EmbeddedModal> {
               ),
             ),
             Flexible(
-              child: Text(
+              child: DifyTextLine(
                 _t('chromePlugin'),
                 // `text-sm leading-tight font-medium text-white`
                 style: difyTextStyle(DifyTw.textSmMediumLeadingTight, DifyTailwind.white),
@@ -361,10 +361,13 @@ class EmbeddedModalState extends State<EmbeddedModal> {
             spacing: 8,
             children: [
               Expanded(
-                child: Text(_t(option.name), style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+                child: DifyTextLine(
+                  _t(option.name),
+                  style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+                ),
               ),
               DifyTooltip(
-                content: Text(copyLabel),
+                content: DifyTextLine(copyLabel),
                 child: DifyIconButton(
                   key: const ValueKey('embedded-copy'),
                   label: copyLabel,

@@ -328,7 +328,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       barrierColor: materialDialogBarrierColor,
       transition: DifyDialogTransition.fade,
       builder: (ctx) => DifyContentDialog(
-        title: const Text('Dify workflow file'),
+        title: const DifyTextLine('Dify workflow file'),
         content: SizedBox(
           width: 640,
           height: 420,
@@ -351,9 +351,13 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
                 toast.success('Copied the workflow file');
               }
             },
-            child: const Text('Copy'),
+            child: const DifyTextLine('Copy'),
           ),
-          DifyButton(variant: DifyButtonVariant.ghost, onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          DifyButton(
+            variant: DifyButtonVariant.ghost,
+            onPressed: () => Navigator.pop(ctx),
+            child: const DifyTextLine('Close'),
+          ),
         ],
       ),
     );
@@ -378,7 +382,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
               c.addNode(type, x: 120 + (c.doc.nodes.length % 5) * 40, y: 280 + (c.doc.nodes.length % 4) * 40),
           itemBuilder: (_) => [
             for (final t in const ['start', 'llm', 'code', 'answer'])
-              DifyMenuOption(value: t, child: Text('Add $t node')),
+              DifyMenuOption(value: t, child: DifyTextLine('Add $t node')),
           ],
         ),
       if (widget.backend.supportsDifyDsl && access.canImportExportDsl)
@@ -428,18 +432,18 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
           children: [
             const RemixIcon('cloud-off-line', size: 48, color: Colors.black38),
             const SizedBox(height: 12),
-            Text('Could not open "${widget.docId}"', style: Theme.of(context).textTheme.titleMedium),
+            DifyTextLine('Could not open "${widget.docId}"', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             SizedBox(
               width: 420,
-              child: Text(
+              child: DifyTextLine(
                 '$_error',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.black54),
               ),
             ),
             const SizedBox(height: 16),
-            DifyButton(variant: DifyButtonVariant.primary, onPressed: _open, child: const Text('Retry')),
+            DifyButton(variant: DifyButtonVariant.primary, onPressed: _open, child: const DifyTextLine('Retry')),
           ],
         ),
       );
@@ -452,7 +456,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
           const Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [DifyLoading(), SizedBox(height: 12), Text('Loading the document…')],
+              children: [DifyLoading(), SizedBox(height: 12), DifyTextLine('Loading the document…')],
             ),
           ),
           Positioned(

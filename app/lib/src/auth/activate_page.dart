@@ -105,7 +105,7 @@ class InvalidInvitation extends StatelessWidget {
             boxShadow: DifyShadows.lg,
           ),
           alignment: Alignment.center,
-          child: Text(
+          child: DifyTextLine(
             '🤷‍♂️',
             // `text-[40px] font-bold` / `text-2xl font-bold`
             style: (large ? DifyTw.text40Bold : DifyTw.text2xlBold).style,
@@ -123,7 +123,7 @@ class InvalidInvitation extends StatelessWidget {
         key: const ValueKey('explore-dify'),
         variant: DifyButtonVariant.primary,
         onPressed: onExplore,
-        child: Text(tLogin(context, 'explore'), style: DifyTw.textSm.style), // `text-sm!`
+        child: DifyTextLine(tLogin(context, 'explore'), style: DifyTw.textSm.style), // `text-sm!`
       ),
     ],
   );

@@ -8,6 +8,7 @@ import '../../i18n/dify_i18n.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
 import '../store/store.dart';
+import '../../design/widgets/text_line.dart';
 
 /// iteration/add-block.tsx, rendered as a live control over either canvas renderer.
 class IterationAddBlock extends StatelessWidget {
@@ -56,7 +57,7 @@ class IterationAddBlockVisual extends StatelessWidget {
             disabled: disabled,
             leading: const RemixIcon('add-line', size: 16),
             onPressed: onPressed,
-            child: Text(DifyI18n.tr('workflow', 'common.addBlock')),
+            child: DifyTextLine(DifyI18n.tr('workflow', 'common.addBlock')),
           ),
         ),
       ],

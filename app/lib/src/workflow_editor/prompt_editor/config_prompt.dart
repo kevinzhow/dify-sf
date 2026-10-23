@@ -121,7 +121,7 @@ class PromptRoleTitle extends StatelessWidget {
           if (r == PromptRole.system)
             Transform.translate(
               offset: const Offset(-4, 0),
-              child: Text('SYSTEM', style: style),
+              child: DifyTextLine('SYSTEM', style: style),
             )
           else
             Transform.translate(
@@ -136,7 +136,7 @@ class PromptRoleTitle extends StatelessWidget {
                 trigger: _RoleTrigger(label: r?.name ?? '', style: style),
               ),
             ),
-          if (description != null) DifyInfotip(label: description, width: 180, content: Text(description)),
+          if (description != null) DifyInfotip(label: description, width: 180, content: DifyTextLine(description)),
         ],
       ),
     );
@@ -169,7 +169,7 @@ class _RoleTriggerState extends State<_RoleTrigger> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(widget.label.toUpperCase(), style: widget.style),
+          DifyTextLine(widget.label.toUpperCase(), style: widget.style),
           DifyIcon('vender/line/arrows/chevron-selector-vertical', size: 12, color: DifyColors.textSecondary),
         ],
       ),
@@ -453,7 +453,7 @@ class _ConfigPromptState extends State<ConfigPrompt> {
       final p = w.payload as PromptItem;
       final jinja = !(p.editionType == null || p.editionType == PromptEditionType.basic);
       return _panel(
-        title: Text(
+        title: DifyTextLine(
           cssCapitalize(DifyI18n.tr('workflow', 'nodes.llm.prompt')),
           style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textSecondary),
         ),

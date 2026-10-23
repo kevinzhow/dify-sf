@@ -358,7 +358,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
                     padding: const EdgeInsets.only(right: 4),
                     child: DifyTooltip(
                       disabled: running,
-                      content: Text(_tw('panel.runThisStep')),
+                      content: DifyTextLine(_tw('panel.runThisStep')),
                       child: _HeaderButton(
                         label: runLabel,
                         onPressed: () => a.runStep(node.id),

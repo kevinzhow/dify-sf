@@ -120,7 +120,7 @@ class _InstallFormState extends State<InstallForm> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(
+                  child: DifyTextLine(
                     tLogin(context, 'setAdminAccountDesc'),
                     style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary), // `text-sm`
                   ),
@@ -169,7 +169,7 @@ class _InstallFormState extends State<InstallForm> {
                   variant: DifyButtonVariant.primary,
                   loading: _submitting,
                   onPressed: _submit,
-                  child: Text(tLogin(context, 'installBtn')),
+                  child: DifyTextLine(tLogin(context, 'installBtn')),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

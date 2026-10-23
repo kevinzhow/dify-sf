@@ -33,7 +33,7 @@ class ConfigEditor extends StatelessWidget {
         if (keys.isEmpty)
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
-            child: Text('No configuration yet.', style: TextStyle(color: Colors.black54)),
+            child: DifyTextLine('No configuration yet.', style: TextStyle(color: Colors.black54)),
           ),
         Align(
           alignment: Alignment.centerLeft,
@@ -41,7 +41,7 @@ class ConfigEditor extends StatelessWidget {
             variant: DifyButtonVariant.ghost,
             key: const Key('add-field'),
             leading: const RemixIcon('add-line', size: 18),
-            child: const Text('Add field'),
+            child: const DifyTextLine('Add field'),
             onPressed: () => _addField(context),
           ),
         ),
@@ -82,7 +82,7 @@ class _NameDialogState extends State<_NameDialog> {
 
   @override
   Widget build(BuildContext context) => DifyContentDialog(
-    title: Text(widget.title),
+    title: DifyTextLine(widget.title),
     content: DifyTextField(
       key: const Key('name-dialog-field'),
       controller: _text,
@@ -94,12 +94,12 @@ class _NameDialogState extends State<_NameDialog> {
       DifyButton(
         variant: DifyButtonVariant.ghost,
         onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: const DifyTextLine('Cancel'),
       ),
       DifyButton(
         variant: DifyButtonVariant.primary,
         onPressed: () => Navigator.pop(context, _text.text),
-        child: const Text('Add'),
+        child: const DifyTextLine('Add'),
       ),
     ],
   );
@@ -160,13 +160,13 @@ class _ValueEditor extends StatelessWidget {
       case VBool(:final value):
         return DifyLabeledSwitch(
           key: ValueKey('cfg-${node.id}-${path.join('.')}'),
-          title: Text(label),
+          title: DifyTextLine(label),
           value: value,
           onChanged: (v) => _set(VBool(v)),
         );
       case VNull():
         return _row(
-          Text('$label: null', style: const TextStyle(color: Colors.black54)),
+          DifyTextLine('$label: null', style: const TextStyle(color: Colors.black54)),
           trailing: DifyIconButton(
             size: DifyIconButtonSize.lg,
             label: 'Set to empty text',
@@ -251,7 +251,10 @@ class _ValueEditor extends StatelessWidget {
             labelText: '$label (list, read-only)',
             outlined: true,
           ),
-          child: Text(jsonEncode(value.toJson()), style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+          child: DifyTextLine(
+            jsonEncode(value.toJson()),
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
         );
     }
   }
@@ -278,7 +281,7 @@ class _RefChip extends StatelessWidget {
       children: [
         DifyValueChip(
           avatar: const RemixIcon('braces-line', size: 16),
-          label: Text('${exists ? controller.titleOf(ref.node) : ref.node} › ${ref.output}'),
+          label: DifyTextLine('${exists ? controller.titleOf(ref.node) : ref.node} › ${ref.output}'),
         ),
       ],
     );
@@ -306,7 +309,7 @@ class _BrokenChip extends StatelessWidget {
           RemixIcon('link-unlink', size: 16, color: red),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
+            child: DifyTextLine(
               '${controller.titleOf(ref.node)} › ${ref.output} was deleted',
               style: TextStyle(color: red, fontSize: 13),
             ),
@@ -357,7 +360,7 @@ class _ItemsEditor extends StatelessWidget {
               variant: DifyButtonVariant.ghost,
               key: Key('add-item-${path.join('.')}'),
               leading: const RemixIcon('add-line', size: 18),
-              child: Text('Add ${label.endsWith('s') ? label.substring(0, label.length - 1) : 'item'}'),
+              child: DifyTextLine('Add ${label.endsWith('s') ? label.substring(0, label.length - 1) : 'item'}'),
               onPressed: () => controller.insertItem(
                 node.id,
                 path,
@@ -422,7 +425,7 @@ class _ItemRow extends StatelessWidget {
         ),
       );
     } else {
-      body = Expanded(child: Text(previewValue(v)));
+      body = Expanded(child: DifyTextLine(previewValue(v)));
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

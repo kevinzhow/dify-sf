@@ -100,7 +100,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
+                child: DifyTextLine(
                   tw('comments.panelTitle'),
                   style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
                 ),
@@ -164,7 +164,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
                               ? const SizedBox.shrink()
                               : Padding(
                                   padding: const EdgeInsets.only(top: 24),
-                                  child: Text(
+                                  child: DifyTextLine(
                                     tw('comments.noComments'),
                                     textAlign: TextAlign.center,
                                     style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
@@ -238,7 +238,7 @@ class _FilterMenu extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(child: Text(text, style: label)),
+            Expanded(child: DifyTextLine(text, style: label)),
             if (checked) RemixIcon('check-line', size: 16, color: DifyColors.primary600),
           ],
         ),
@@ -270,7 +270,7 @@ class _FilterMenu extends StatelessWidget {
                 child: Row(
                   spacing: 8,
                   children: [
-                    Expanded(child: Text(tw('comments.filter.showResolved'), style: label)),
+                    Expanded(child: DifyTextLine(tw('comments.filter.showResolved'), style: label)),
                     DifySwitch(
                       checked: showResolved,
                       onCheckedChange: onShowResolved,
@@ -371,19 +371,19 @@ class _CommentCardState extends State<_CommentCard> {
                 spacing: 8,
                 children: [
                   Flexible(
-                    child: Text(
+                    child: DifyTextLine(
                       nameOf(source, c.createdBy, c.createdByName),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
                     ),
                   ),
-                  Text(when, style: difyTextStyle(DifyType.system2xsRegular, DifyColors.textTertiary)),
+                  DifyTextLine(when, style: difyTextStyle(DifyType.system2xsRegular, DifyColors.textTertiary)),
                 ],
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
+                child: DifyTextLine(
                   c.content,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
@@ -393,7 +393,7 @@ class _CommentCardState extends State<_CommentCard> {
               if (c.replyCount > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(
+                  child: DifyTextLine(
                     '${c.replyCount} ${tw('comments.reply')}',
                     style: difyTextStyle(DifyType.system2xsRegular, DifyColors.textTertiary),
                   ),

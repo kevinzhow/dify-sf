@@ -602,7 +602,7 @@ class RunFileInput extends StatelessWidget {
           if (file != null) onChange([...files, file]);
         },
         leading: RemixIcon(icon, size: 16),
-        child: Text(DifyI18n.tr('common', label), overflow: TextOverflow.ellipsis),
+        child: DifyTextLine(DifyI18n.tr('common', label), overflow: TextOverflow.ellipsis),
       ),
     );
     return Column(
@@ -705,7 +705,7 @@ class _RunImageUploaderState extends State<RunImageUploader> {
               child: DifyIcon(icon, size: 16, color: DifyColors.textTertiary),
             ),
             Flexible(
-              child: Text(
+              child: DifyTextLine(
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: difyTextStyle(DifyTw.textXs, DifyColors.textTertiary),
@@ -780,7 +780,7 @@ class _RunImageUploaderState extends State<RunImageUploader> {
                   _link = '';
                 });
               },
-              child: Text(DifyI18n.tr('common', 'operation.ok')),
+              child: DifyTextLine(DifyI18n.tr('common', 'operation.ok')),
             ),
           ],
         ),
@@ -966,7 +966,7 @@ class RunPanelWrap extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: DifyTextLine(
                       '${_tw('singleRun.testRun')} $nodeName',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1104,7 +1104,9 @@ class _BeforeRunFormState extends State<BeforeRunForm> {
                   variant: DifyButtonVariant.primary,
                   disabled: !isFilesLoaded(widget.forms),
                   onPressed: _run,
-                  child: Text(_isHumanInput ? _tw('nodes.humanInput.singleRun.button') : _tw('singleRun.startRun')),
+                  child: DifyTextLine(
+                    _isHumanInput ? _tw('nodes.humanInput.singleRun.button') : _tw('singleRun.startRun'),
+                  ),
                 ),
               ),
             ),

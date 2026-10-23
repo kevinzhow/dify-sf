@@ -58,6 +58,7 @@ export 'tag_input.dart';
 export '../dify_palette.dart';
 export '../dify_type_tw.dart';
 export 'text.dart';
+export 'text_line.dart';
 export 'textarea.dart';
 export 'toast.dart';
 export 'tooltip.dart';

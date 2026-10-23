@@ -106,7 +106,7 @@ class _DifyChipState extends State<DifyChip> {
                       Flexible(
                         fit: widget.minWidth == null ? FlexFit.loose : FlexFit.tight,
                         // `first-line:p-1`: ::first-line takes no padding, so none.
-                        child: Text(
+                        child: DifyTextLine(
                           trigger,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -138,7 +138,7 @@ class _DifyChipState extends State<DifyChip> {
                     key: ValueKey('chip-option-${item.value}'),
                     value: item.value,
                     closeOnClick: true,
-                    child: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: DifyTextLine(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
               ],
             ),

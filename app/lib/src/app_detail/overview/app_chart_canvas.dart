@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../design/dify_palette.dart';
 import 'app_chart_utils.dart';
+import '../../design/widgets/text_line.dart';
 
 /// ECharts' axis label font size and the gap between a label and its axis (`axisLabel.margin`).
 const _labelFontSize = 12.0, _labelMargin = 8.0;
@@ -423,7 +424,7 @@ class _ChartTooltip extends StatelessWidget {
     TextStyle s(double size, Color color) =>
         TextStyle(fontSize: size, height: 21 / size, color: color, fontFamily: font, letterSpacing: 0);
     final price = content.price;
-    final value = Text.rich(
+    final value = DifyTextLine.rich(
       TextSpan(
         style: s(14, DifyChartColors.tooltipValue),
         children: [
@@ -451,7 +452,7 @@ class _ChartTooltip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(content.name, style: s(12, DifyChartColors.tooltipName), maxLines: 1, softWrap: false),
+          DifyTextLine(content.name, style: s(12, DifyChartColors.tooltipName), maxLines: 1, softWrap: false),
           value,
         ],
       ),

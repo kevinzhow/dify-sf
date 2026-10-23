@@ -324,7 +324,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                 child: Row(
                   children: [
                     Flexible(
-                      child: Text(
+                      child: DifyTextLine(
                         ad('openingStatement.openingQuestion'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -335,12 +335,12 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                     DifyInfotip(
                       label: ad('openingStatement.openingQuestionDescription'),
                       width: 220,
-                      content: Text(ad('openingStatement.openingQuestionDescription')),
+                      content: DifyTextLine(ad('openingStatement.openingQuestionDescription')),
                     ),
                   ],
                 ),
               ),
-              Text(
+              DifyTextLine(
                 '${_questions.length}/$_maxQuestionNum',
                 style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textTertiary),
               ),
@@ -411,7 +411,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
+                            child: DifyTextLine(
                               ad('openingStatement.editorTitle'),
                               style: DifyType.systemMdMedium.style,
                             ),
@@ -429,7 +429,7 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                               minHeight: 64,
                               placeholder: Padding(
                                 padding: const EdgeInsets.only(right: 32),
-                                child: Text(
+                                child: DifyTextLine(
                                   '${ad('openingStatement.placeholderLine1')}\n'
                                   '${ad('openingStatement.placeholderLine2')}',
                                   style: placeholderStyle,
@@ -460,12 +460,12 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
                   ),
                   const SizedBox(height: 32),
                   FeatureFooter([
-                    DifyButton(onPressed: widget.onCancel, child: Text(tc('operation.cancel'))),
+                    DifyButton(onPressed: widget.onCancel, child: DifyTextLine(tc('operation.cancel'))),
                     DifyButton(
                       variant: DifyButtonVariant.primary,
                       disabled: _saveDisabled,
                       onPressed: _save,
-                      child: Text(tc('operation.save')),
+                      child: DifyTextLine(tc('operation.save')),
                     ),
                   ]),
                 ],
@@ -708,7 +708,7 @@ class _AddQuestionState extends State<_AddQuestion> {
             spacing: 8,
             children: [
               RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
-              Text(
+              DifyTextLine(
                 ad('variableConfig.addOption'),
                 style: difyTextStyle(
                   DifyType.systemSmMedium,
@@ -781,7 +781,7 @@ class ConfirmAddVar extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    DifyTextLine(
                       ad('autoAddVar'),
                       style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
                     ),
@@ -800,8 +800,12 @@ class ConfirmAddVar extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           FeatureFooter([
-            DifyButton(onPressed: onCancel, child: Text(tc('operation.cancel'))),
-            DifyButton(variant: DifyButtonVariant.primary, onPressed: onConfirm, child: Text(tc('operation.add'))),
+            DifyButton(onPressed: onCancel, child: DifyTextLine(tc('operation.cancel'))),
+            DifyButton(
+              variant: DifyButtonVariant.primary,
+              onPressed: onConfirm,
+              child: DifyTextLine(tc('operation.add')),
+            ),
           ]),
         ],
       ),
@@ -848,7 +852,7 @@ class _VarHighlight extends StatelessWidget {
         color: DifyConfirmAddVarColors.varHighlightBg,
         borderRadius: BorderRadius.circular(DifyRadius.md),
       ),
-      child: Text.rich(
+      child: DifyTextLine.rich(
         TextSpan(
           children: [
             TextSpan(text: '{{', style: dim),

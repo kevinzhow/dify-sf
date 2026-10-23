@@ -168,7 +168,7 @@ class _DocExtractorPanel extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text.rich(
+                      child: DifyTextLine.rich(
                         TextSpan(
                           text: wf('nodes.docExtractor.supportFileTypes', {'types': types}),
                           children: [
@@ -219,7 +219,7 @@ class _Link extends StatelessWidget {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
-        child: Text(text, style: style),
+        child: DifyTextLine(text, style: style),
       ),
     ),
   );

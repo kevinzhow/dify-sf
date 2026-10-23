@@ -24,8 +24,9 @@ List<TextSpan> _spans(WidgetTester t, String title) {
   return (rich.textSpan! as TextSpan).children!.cast<TextSpan>();
 }
 
-Finder _tooltip(String title) =>
-    find.byWidgetPredicate((w) => w is DifyTooltip && w.content is Text && (w.content as Text).data == title);
+Finder _tooltip(String title) => find.byWidgetPredicate(
+  (w) => w is DifyTooltip && w.content is DifyTextLine && (w.content as DifyTextLine).data == title,
+);
 
 void main() {
   group('PickerBlockMenuOption', () {

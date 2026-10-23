@@ -209,7 +209,7 @@ class _FollowUpSettingModalState extends State<FollowUpSettingModal> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(right: 32),
-                child: Text(
+                child: DifyTextLine(
                   ad('${m}title'),
                   style: difyTextStyle(DifyTw.textXlSemibold, DifyColors.textPrimary),
                 ),
@@ -268,12 +268,12 @@ class _FollowUpSettingModalState extends State<FollowUpSettingModal> {
               ),
               const SizedBox(height: 24),
               FeatureFooter([
-                DifyButton(onPressed: widget.onCancel, child: Text(tc('operation.cancel'))),
+                DifyButton(onPressed: widget.onCancel, child: DifyTextLine(tc('operation.cancel'))),
                 DifyButton(
                   variant: DifyButtonVariant.primary,
                   disabled: _custom && _prompt.trim().isEmpty,
                   onPressed: _save,
-                  child: Text(tc('operation.save')),
+                  child: DifyTextLine(tc('operation.save')),
                 ),
               ]),
             ],

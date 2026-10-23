@@ -166,14 +166,14 @@ class DifyAlertDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 8,
               children: [
-                Text(
+                DifyTextLine(
                   title,
                   maxLines: titleMaxLines,
                   overflow: titleMaxLines == null ? null : TextOverflow.ellipsis,
                   style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                 ),
                 if (desc != null && desc.isNotEmpty)
-                  Text(
+                  DifyTextLine(
                     desc,
                     style: difyTextStyle(DifyType.systemMdRegular, descriptionColor ?? DifyColors.textTertiary),
                   ),
@@ -188,7 +188,7 @@ class DifyAlertDialog extends StatelessWidget {
                 disabled: cancelDisabled,
                 semanticLabel: semanticButtonLabels ? cancel : null,
                 onPressed: onCancel,
-                child: Text(cancel),
+                child: DifyTextLine(cancel),
               ),
               DifyButton(
                 key: confirmKey,
@@ -198,7 +198,7 @@ class DifyAlertDialog extends StatelessWidget {
                 loading: confirmLoading,
                 semanticLabel: semanticButtonLabels ? confirm : null,
                 onPressed: onConfirm,
-                child: Text(confirm),
+                child: DifyTextLine(confirm),
               ),
             ],
           ),

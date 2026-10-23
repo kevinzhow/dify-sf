@@ -24,7 +24,7 @@ TextStyle get _label => difyTextStyle(DifyType.systemSmSemibold, DifyColors.text
 
 Widget _title(String text) => Padding(
   padding: const EdgeInsets.only(bottom: 24),
-  child: Text(text, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+  child: DifyTextLine(text, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
 );
 
 /// `w-105 p-6`: "Edit Name", the Name input (the current name), Cancel and Save (`primary`, disabled while saving or
@@ -67,7 +67,7 @@ class _EditNameDialogState extends State<EditNameDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _title(title),
-          Text(label, style: _label),
+          DifyTextLine(label, style: _label),
           const SizedBox(height: 8),
           DifyInput(
             key: const ValueKey('edit-name-input'),
@@ -87,7 +87,7 @@ class _EditNameDialogState extends State<EditNameDialog> {
                 child: DifyButton(
                   semanticLabel: stc(context, 'operation.cancel'),
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(stc(context, 'operation.cancel')),
+                  child: DifyTextLine(stc(context, 'operation.cancel')),
                 ),
               ),
               Flexible(
@@ -97,7 +97,7 @@ class _EditNameDialogState extends State<EditNameDialog> {
                   variant: DifyButtonVariant.primary,
                   disabled: _editing || _name.isEmpty,
                   onPressed: () => unawaited(_save()),
-                  child: Text(stc(context, 'operation.save')),
+                  child: DifyTextLine(stc(context, 'operation.save')),
                 ),
               ),
             ],
@@ -170,7 +170,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(label, style: _label),
+      DifyTextLine(label, style: _label),
       const SizedBox(height: 8),
       DifyInput(
         key: key,
@@ -182,7 +182,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
         trailing: DifyIconButton(
           label: _t('login', shown ? 'hidePassword' : 'showPassword'),
           size: DifyIconButtonSize.lg,
-          icon: Text(shown ? '👀' : '😝'),
+          icon: DifyTextLine(shown ? '👀' : '😝'),
           onPressed: onToggle,
         ),
       ),
@@ -238,7 +238,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
                 child: DifyButton(
                   semanticLabel: stc(context, 'operation.cancel'),
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(stc(context, 'operation.cancel')),
+                  child: DifyTextLine(stc(context, 'operation.cancel')),
                 ),
               ),
               Flexible(
@@ -248,7 +248,7 @@ class _PasswordDialogState extends State<PasswordDialog> {
                   variant: DifyButtonVariant.primary,
                   disabled: _editing,
                   onPressed: () => unawaited(_save()),
-                  child: Text(stc(context, 'operation.reset')),
+                  child: DifyTextLine(stc(context, 'operation.reset')),
                 ),
               ),
             ],

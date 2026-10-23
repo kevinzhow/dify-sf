@@ -521,11 +521,15 @@ class _JsonSchemaConfigState extends State<JsonSchemaConfig> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              DifyButton(onPressed: _reset, child: Text(_w('nodes.llm.jsonSchema.resetDefaults'))),
+              DifyButton(onPressed: _reset, child: DifyTextLine(_w('nodes.llm.jsonSchema.resetDefaults'))),
               Container(width: 1, height: 16, margin: const EdgeInsets.only(left: 4), color: DifyColors.dividerRegular),
               const SizedBox(width: 4),
-              DifyButton(onPressed: widget.onClose, child: Text(_c('operation.cancel'))),
-              DifyButton(variant: DifyButtonVariant.primary, onPressed: _save, child: Text(_c('operation.save'))),
+              DifyButton(onPressed: widget.onClose, child: DifyTextLine(_c('operation.cancel'))),
+              DifyButton(
+                variant: DifyButtonVariant.primary,
+                onPressed: _save,
+                child: DifyTextLine(_c('operation.save')),
+              ),
             ],
           ),
         ),
@@ -557,7 +561,7 @@ class SchemaErrorMessage extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 48),
             child: SingleChildScrollView(
-              child: Text(message, style: difyStyle(DifyType.systemXsMedium, DifyColors.textPrimary)),
+              child: DifyTextLine(message, style: difyStyle(DifyType.systemXsMedium, DifyColors.textPrimary)),
             ),
           ),
         ),
@@ -752,14 +756,14 @@ class _JsonImporterState extends State<JsonImporter> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    DifyButton(onPressed: _popup.close, child: Text(_c('operation.cancel'))),
+                    DifyButton(onPressed: _popup.close, child: DifyTextLine(_c('operation.cancel'))),
                     DifyButton(
                       variant: DifyButtonVariant.primary,
                       onPressed: () {
                         _submit();
                         setLocal(() {});
                       },
-                      child: Text(_c('operation.submit')),
+                      child: DifyTextLine(_c('operation.submit')),
                     ),
                   ],
                 ),
@@ -860,13 +864,13 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
                       variant: DifyButtonVariant.ghost,
                       leading: const RemixIcon('arrow-left-line', size: 16),
                       onPressed: () => setLocal(() => _result = null),
-                      child: Text(_w('nodes.llm.jsonSchema.back')),
+                      child: DifyTextLine(_w('nodes.llm.jsonSchema.back')),
                     ),
                     const Spacer(),
                     DifyButton(
                       leading: const RemixIcon('sparkling-line', size: 16),
                       onPressed: () => _generate(setLocal),
-                      child: Text(_w('nodes.llm.jsonSchema.regenerate')),
+                      child: DifyTextLine(_w('nodes.llm.jsonSchema.regenerate')),
                     ),
                     DifyButton(
                       variant: DifyButtonVariant.primary,
@@ -874,7 +878,7 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
                         widget.onApply(result);
                         _popup.close();
                       },
-                      child: Text(_w('nodes.llm.jsonSchema.apply')),
+                      child: DifyTextLine(_w('nodes.llm.jsonSchema.apply')),
                     ),
                   ],
                 ),
@@ -910,12 +914,12 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 spacing: 8,
                 children: [
-                  DifyButton(onPressed: _popup.close, child: Text(_c('operation.cancel'))),
+                  DifyButton(onPressed: _popup.close, child: DifyTextLine(_c('operation.cancel'))),
                   DifyButton(
                     variant: DifyButtonVariant.primary,
                     leading: const RemixIcon('sparkling-fill', size: 16),
                     onPressed: () => _generate(setLocal),
-                    child: Text(_w('nodes.llm.jsonSchema.generate')),
+                    child: DifyTextLine(_w('nodes.llm.jsonSchema.generate')),
                   ),
                 ],
               ),
@@ -1186,7 +1190,7 @@ class AddField extends StatelessWidget {
           controller.setIsAddingNewField(true);
           Timer(const Duration(milliseconds: 100), () => controller.addField(const []));
         },
-        child: Text(_w('nodes.llm.jsonSchema.addField')),
+        child: DifyTextLine(_w('nodes.llm.jsonSchema.addField')),
       ),
     ),
   );
@@ -1454,7 +1458,7 @@ class _EditCardState extends State<EditCard> {
                       spacing: 2,
                       children: [
                         DifyTooltip(
-                          content: Text(_w('nodes.llm.jsonSchema.addChildField')),
+                          content: DifyTextLine(_w('nodes.llm.jsonSchema.addChildField')),
                           child: DifyIconButton(
                             label: _w('nodes.llm.jsonSchema.addChildField'),
                             disabled: disableAdd,
@@ -1466,7 +1470,7 @@ class _EditCardState extends State<EditCard> {
                           ),
                         ),
                         DifyTooltip(
-                          content: Text(_c('operation.edit')),
+                          content: DifyTextLine(_c('operation.edit')),
                           child: DifyIconButton(
                             label: _c('operation.edit'),
                             icon: const RemixIcon('edit-line', size: 16),
@@ -1477,7 +1481,7 @@ class _EditCardState extends State<EditCard> {
                           ),
                         ),
                         DifyTooltip(
-                          content: Text(_c('operation.remove')),
+                          content: DifyTextLine(_c('operation.remove')),
                           child: DifyIconButton(
                             label: _c('operation.remove'),
                             tone: DifyButtonTone.destructive,
@@ -1578,14 +1582,14 @@ class AdvancedActions extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     spacing: 4,
     children: [
-      DifyButton(size: DifyButtonSize.small, onPressed: onCancel, child: Text(_c('operation.cancel'))),
+      DifyButton(size: DifyButtonSize.small, onPressed: onCancel, child: DifyTextLine(_c('operation.cancel'))),
       DifyButton(
         size: DifyButtonSize.small,
         variant: DifyButtonVariant.primary,
         disabled: confirmDisabled,
         onPressed: onConfirm,
         trailing: const DifyShortcutKbd(hotkey: 'Mod+Enter', color: DifyKbdColor.white),
-        child: Text(_c('operation.confirm')),
+        child: DifyTextLine(_c('operation.confirm')),
       ),
     ],
   );
@@ -1633,7 +1637,7 @@ class _AutoWidthInput extends StatelessWidget {
             children: [
               if (value.text.isEmpty)
                 IgnorePointer(
-                  child: Text(placeholder, style: style.copyWith(color: DifyColors.textPlaceholder)),
+                  child: DifyTextLine(placeholder, style: style.copyWith(color: DifyColors.textPlaceholder)),
                 ),
               EditableText(
                 controller: controller,

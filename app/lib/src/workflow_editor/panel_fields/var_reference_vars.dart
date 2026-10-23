@@ -377,7 +377,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
         else
           Padding(
             padding: const EdgeInsets.only(top: 8, left: 12),
-            child: Text(
+            child: DifyTextLine(
               DifyI18n.tr('workflow', 'common.noVar').toUpperCase(),
               style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.gray500), // text-gray-500
             ),
@@ -624,7 +624,7 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
               const SizedBox(width: 4),
               Expanded(child: DifyText(_name, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
               const SizedBox(width: 4),
-              Text(
+              DifyTextLine(
                 cssCapitalize(type ?? ''),
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
@@ -840,7 +840,7 @@ class _StructFieldState extends State<_StructField> {
         child: row,
       ),
     );
-    if (more) row = DifyTooltip(content: Text(DifyI18n.tr('app', 'structOutput.moreFillTip')), child: row);
+    if (more) row = DifyTooltip(content: DifyTextLine(DifyI18n.tr('app', 'structOutput.moreFillTip')), child: row);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

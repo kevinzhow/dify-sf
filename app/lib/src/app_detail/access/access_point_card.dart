@@ -121,7 +121,7 @@ class AccessPointCard extends StatelessWidget {
       // With a reason the disabled switch stays focusable (`aria-disabled`) and explains itself in a tooltip.
       if (hasReason) {
         switchControl = DifyTooltip(
-          content: Text(switchDisabledReason!),
+          content: DifyTextLine(switchDisabledReason!),
           child: Focus(key: const ValueKey('access-point-switch-focus'), child: switchControl),
         );
       }
@@ -158,14 +158,14 @@ class AccessPointCard extends StatelessWidget {
                         children: [
                           Semantics(
                             header: true,
-                            child: Text(
+                            child: DifyTextLine(
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                             ),
                           ),
-                          Text(
+                          DifyTextLine(
                             description,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -187,7 +187,7 @@ class AccessPointCard extends StatelessWidget {
                               DifyStatusDot(
                                 status: enabled ? DifyStatusDotStatus.success : DifyStatusDotStatus.disabled,
                               ),
-                            Text(
+                            DifyTextLine(
                               difyTransform(DifyType.systemXsSemiboldUppercase, statusLabel),
                               semanticsLabel: statusLabel,
                               style: difyTextStyle(
@@ -273,7 +273,7 @@ class AccessPointEndpoint extends StatelessWidget {
           height: 24,
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+            child: DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
           ),
         ),
         Container(
@@ -297,7 +297,7 @@ class AccessPointEndpoint extends StatelessWidget {
                       borderRadius: BorderRadius.circular(5),
                       border: Border.all(color: DifyColors.dividerDeep),
                     ),
-                    child: Text(
+                    child: DifyTextLine(
                       difyTransform(DifyType.system2xsMediumUppercase, unavailableLabel),
                       semanticsLabel: unavailableLabel,
                       maxLines: 1,
@@ -315,7 +315,7 @@ class AccessPointEndpoint extends StatelessWidget {
                             margin: EdgeInsets.zero,
                             pulse: true,
                           )
-                        : Text(
+                        : DifyTextLine(
                             value,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -441,9 +441,9 @@ class AccessPointUrl extends StatelessWidget {
       disabled: true,
       focusableWhenDisabled: openDisabledReason != null,
       leading: const RemixIcon('external-link-line', size: 14),
-      child: Text(openLabel ?? ''),
+      child: DifyTextLine(openLabel ?? ''),
     );
-    return openDisabledReason == null ? button : DifyTooltip(content: Text(openDisabledReason!), child: button);
+    return openDisabledReason == null ? button : DifyTooltip(content: DifyTextLine(openDisabledReason!), child: button);
   }
 
   @override
@@ -489,7 +489,7 @@ class AccessPointUrl extends StatelessWidget {
                 paddingX: 6,
                 onOpen: onOpen,
                 leading: const RemixIcon('external-link-line', size: 14),
-                child: Text(openLabel ?? ''),
+                child: DifyTextLine(openLabel ?? ''),
               )
             else
               _disabledOpen(),
@@ -600,7 +600,7 @@ class ShareQrCodeState extends State<ShareQrCode> {
       alignOffset: -32,
       focusPopup: false,
       builder: (context, controller) => DifyTooltip(
-        content: Text(label),
+        content: DifyTextLine(label),
         child: DifyIconButton(
           key: const ValueKey('qrcode-trigger'),
           label: label,
@@ -628,13 +628,16 @@ class ShareQrCodeState extends State<ShareQrCode> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (scan != null) ...[Flexible(child: Text(scan, style: small)), Text('·', style: small)],
+                  if (scan != null) ...[
+                    Flexible(child: DifyTextLine(scan, style: small)),
+                    DifyTextLine('·', style: small),
+                  ],
                   Flexible(
                     child: DifyPressable(
                       key: const ValueKey('qrcode-download'),
                       semanticLabel: download,
                       onPressed: () => unawaited(_download()),
-                      builder: (context, hovered, focused) => Text(
+                      builder: (context, hovered, focused) => DifyTextLine(
                         download,
                         style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccentSecondary),
                       ),

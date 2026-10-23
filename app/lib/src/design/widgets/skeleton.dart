@@ -82,7 +82,7 @@ class DifySkeletonPoint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Text('·', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textQuaternary));
+      DifyTextLine('·', style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textQuaternary));
 }
 
 /// Tailwind's `animate-pulse`: opacity 1 -> 0.5 -> 1 every 2 s (`cubic-bezier(0.4, 0, 0.6, 1)`); still when the

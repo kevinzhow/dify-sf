@@ -468,7 +468,7 @@ class KbWeightedScore extends StatelessWidget {
   /// `flex w-22.5 shrink-0 items-center system-xs-semibold-uppercase` with the name (titled, truncated).
   Widget _label(String name, String number, Color color, {required bool leading}) {
     final title = DifyTooltip(
-      content: Text(name),
+      content: DifyTextLine(name),
       child: Semantics(
         label: name,
         excludeSemantics: true,
@@ -537,14 +537,14 @@ class KbTipCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 6,
               children: [
-                Text(
+                DifyTextLine(
                   title,
                   style: difyStyle(
                     DifyType.bodyMdRegular,
                     DifyColors.textPrimary,
                   ).copyWith(fontSize: 15, height: 1.2, fontWeight: FontWeight.w600),
                 ),
-                Text.rich(
+                DifyTextLine.rich(
                   TextSpan(
                     style: body,
                     children: parts.length < 2
@@ -797,7 +797,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
           )
         : deprecated
         ? ModelText(w.value!.model, lineThrough: true)
-        : Text(
+        : DifyTextLine(
             ModelSelectorTrigger.configureModel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -885,7 +885,7 @@ class _KbModelSelectorState extends State<KbModelSelector> {
                           constraints: const BoxConstraints(minHeight: 22),
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           alignment: Alignment.centerLeft,
-                          child: Text(
+                          child: DifyTextLine(
                             renderI18nObject(g.provider.label, w.catalog.language),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

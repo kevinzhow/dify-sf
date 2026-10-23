@@ -259,7 +259,7 @@ class _TertiaryRowButton extends StatelessWidget {
               child: Row(
                 children: [
                   leading,
-                  Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+                  Expanded(child: DifyTextLine(label, overflow: TextOverflow.ellipsis)),
                   RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.componentsButtonTertiaryText),
                 ],
               ),
@@ -707,7 +707,7 @@ class AgentLogNav extends StatelessWidget {
             paddingX: 5,
             onPressed: () => onShowAgentOrToolLog(),
             leading: const RemixIcon('arrow-left-line', size: 14),
-            child: const Text('AGENT'),
+            child: const DifyTextLine('AGENT'),
           ),
           slash(),
           if (stack.length > 1)
@@ -717,7 +717,7 @@ class AgentLogNav extends StatelessWidget {
                 variant: DifyButtonVariant.ghostAccent,
                 paddingX: 5,
                 onPressed: () => onShowAgentOrToolLog(first),
-                child: Text(strategy, overflow: TextOverflow.ellipsis),
+                child: DifyTextLine(strategy, overflow: TextOverflow.ellipsis),
               ),
             )
           else
@@ -753,7 +753,7 @@ class AgentLogNavMore extends StatelessWidget {
     ),
     children: [
       for (final option in options)
-        DifyMenuItem(onSelect: () => onShowAgentOrToolLog(option), child: Text('${option['label'] ?? ''}')),
+        DifyMenuItem(onSelect: () => onShowAgentOrToolLog(option), child: DifyTextLine('${option['label'] ?? ''}')),
     ],
   );
 }

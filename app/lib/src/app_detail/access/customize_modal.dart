@@ -48,7 +48,7 @@ class CustomizeModal extends StatelessWidget {
     margin: const EdgeInsets.only(right: 12),
     alignment: Alignment.center,
     decoration: BoxDecoration(color: DifyColors.utilColorsBlueBlue50, borderRadius: BorderRadius.circular(16)),
-    child: Text(
+    child: DifyTextLine(
       n,
       style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textAccent),
     ),
@@ -61,7 +61,7 @@ class CustomizeModal extends StatelessWidget {
       borderRadius: BorderRadius.circular(5),
       border: Border.all(color: DifyColors.textAccentSecondary),
     ),
-    child: Text(
+    child: DifyTextLine(
       difyTransform(DifyType.system2xsMediumUppercase, text),
       semanticsLabel: text,
       style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textAccentSecondary),
@@ -81,10 +81,10 @@ class CustomizeModal extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: body),
+                DifyTextLine(title, style: body),
                 Padding(
                   padding: const EdgeInsets.only(top: 4, bottom: 8),
-                  child: Text(tip, style: small),
+                  child: DifyTextLine(tip, style: small),
                 ),
                 child,
               ],
@@ -115,10 +115,13 @@ class CustomizeModal extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(_t('title'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+              DifyTextLine(_t('title'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(_t('explanation'), style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textSecondary)),
+                child: DifyTextLine(
+                  _t('explanation'),
+                  style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textSecondary),
+                ),
               ),
               Flexible(
                 child: SingleChildScrollView(
@@ -135,7 +138,7 @@ class CustomizeModal extends StatelessWidget {
                             _badge('${_t('way')} 1'),
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
+                              child: DifyTextLine(
                                 _t('way1.name'),
                                 style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                               ),
@@ -149,7 +152,7 @@ class CustomizeModal extends StatelessWidget {
                                 url: 'https://github.com/langgenius/$repository',
                                 onOpen: onOpen,
                                 leading: SvgPicture.asset('assets/embedded/github.svg', width: 18, height: 18),
-                                child: Text(_t('way1.step1Operation')),
+                                child: DifyTextLine(_t('way1.step1Operation')),
                               ),
                             ),
                             _step(
@@ -164,7 +167,7 @@ class CustomizeModal extends StatelessWidget {
                                   size: const Size(14, 12),
                                   painter: _TrianglePainter(DifyColors.textPrimary),
                                 ),
-                                child: Text(_t('way1.step2Operation')),
+                                child: DifyTextLine(_t('way1.step2Operation')),
                               ),
                             ),
                             _step(
@@ -199,7 +202,7 @@ class CustomizeModal extends StatelessWidget {
                             _badge('${_t('way')} 2'),
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
+                              child: DifyTextLine(
                                 _t('way2.name'),
                                 style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                               ),
@@ -215,7 +218,7 @@ class CustomizeModal extends StatelessWidget {
                                   size: 16,
                                   color: DifyColors.textSecondary,
                                 ),
-                                child: Text(_t('way2.operation')),
+                                child: DifyTextLine(_t('way2.operation')),
                               ),
                             ),
                           ],

@@ -44,7 +44,7 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
         DifyMenuOption<OutputRef>(
           enabled: false,
           height: 28,
-          child: Text(
+          child: DifyTextLine(
             node.title.isEmpty ? node.id : node.title,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
           ),
@@ -61,7 +61,7 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
                 const SizedBox(width: 12),
                 const RemixIcon('corner-down-right-line', size: 14),
                 const SizedBox(width: 6),
-                Text(o),
+                DifyTextLine(o),
               ],
             ),
           ),
@@ -74,7 +74,7 @@ class _VariablePickerButtonState extends State<VariablePickerButton> {
       onOpened: () => _openedAt = widget.controller.seenVersion,
       onSelected: (ref) => widget.onPick(ref, _openedAt),
       itemBuilder: (_) => options.isEmpty
-          ? [const DifyMenuOption<OutputRef>(enabled: false, child: Text('No variables available'))]
+          ? [const DifyMenuOption<OutputRef>(enabled: false, child: DifyTextLine('No variables available'))]
           : options,
     );
   }

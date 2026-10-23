@@ -58,7 +58,7 @@ class PluginAuthInDataSourceNode extends StatelessWidget {
         variant: DifyButtonVariant.primary,
         onPressed: onJumpToDataSourcePage,
         leading: const RemixIcon('add-line', size: 16),
-        child: Text(DifyI18n.tr('common', 'integrations.connect')),
+        child: DifyTextLine(DifyI18n.tr('common', 'integrations.connect')),
       ),
     );
   }
@@ -76,6 +76,6 @@ class AuthorizedInDataSourceNode extends StatelessWidget {
     onPressed: onJumpToDataSourcePage,
     leading: const DifyStatusDot(),
     trailing: RemixIcon('equalizer-2-line', size: 14, color: DifyColors.componentsButtonGhostText),
-    child: Text(DifyI18n.tr('plugin', authorizationsNum > 1 ? 'auth.authorizations' : 'auth.authorization')),
+    child: DifyTextLine(DifyI18n.tr('plugin', authorizationsNum > 1 ? 'auth.authorizations' : 'auth.authorization')),
   );
 }

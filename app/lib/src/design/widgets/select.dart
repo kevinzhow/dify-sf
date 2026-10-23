@@ -89,7 +89,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
       disabled: widget.disabledValues.contains(o.value),
       focusNode: selected ? _selectedNode : null,
       leading: widget.optionLeading?.call(o.value),
-      child: Text(_label(o.label)),
+      child: DifyTextLine(_label(o.label)),
     );
     return selected ? _FocusOnOpen(node: _selectedNode, child: item) : item;
   }
@@ -260,7 +260,7 @@ class _SelectTriggerState extends State<_SelectTrigger> {
                 spacing: 2,
                 children: [
                   Expanded(
-                    child: Text(w.text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: DifyTextLine(w.text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                   if (!w.readonly)
                     RemixIcon(

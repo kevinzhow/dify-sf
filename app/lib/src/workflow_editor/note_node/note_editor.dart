@@ -242,7 +242,7 @@ class _NoteEditorState extends State<NoteEditor> {
                 top: 0,
                 right: 0,
                 child: IgnorePointer(
-                  child: Text(
+                  child: DifyTextLine(
                     widget.placeholder ?? DifyI18n.tr('workflow', 'nodes.note.editor.placeholder'),
                     style: notePlaceholderStyle,
                   ),
@@ -348,7 +348,7 @@ class _LinkEditorState extends State<LinkEditor> {
                           if (_url.text.isEmpty)
                             Padding(
                               padding: const EdgeInsets.all(4),
-                              child: Text(
+                              child: DifyTextLine(
                                 DifyI18n.tr('workflow', 'nodes.note.editor.enterUrl'),
                                 style: _inputStyle.copyWith(color: DifyColors.componentsInputTextPlaceholder),
                               ),
@@ -380,7 +380,7 @@ class _LinkEditorState extends State<LinkEditor> {
                     size: DifyButtonSize.small,
                     disabled: _url.text.isEmpty,
                     onPressed: () => _scope.controller.saveLink(_url.text),
-                    child: Text(DifyI18n.tr('common', 'operation.ok')),
+                    child: DifyTextLine(DifyI18n.tr('common', 'operation.ok')),
                   ),
                 ),
               ],
@@ -405,11 +405,11 @@ class _LinkEditorState extends State<LinkEditor> {
                         children: [
                           RemixIcon('external-link-line', size: 12, color: DifyColors.textTertiary),
                           const SizedBox(width: 4),
-                          Text(DifyI18n.tr('workflow', 'nodes.note.editor.openLink'), style: _small),
+                          DifyTextLine(DifyI18n.tr('workflow', 'nodes.note.editor.openLink'), style: _small),
                           const SizedBox(width: 4),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 140),
-                            child: Text(
+                            child: DifyTextLine(
                               escapeHtml(s.selectedLinkUrl),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -492,7 +492,7 @@ class _LinkEditorState extends State<LinkEditor> {
         spacing: 4,
         children: [
           RemixIcon(icon, size: 12, color: DifyColors.textTertiary),
-          Text(label, style: _small.copyWith(color: DifyColors.textTertiary)),
+          DifyTextLine(label, style: _small.copyWith(color: DifyColors.textTertiary)),
         ],
       ),
     ),

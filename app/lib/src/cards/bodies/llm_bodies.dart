@@ -161,7 +161,7 @@ class KnowledgeRetrievalBody extends NodeBody {
                       borderRadius: BorderRadius.circular(DifyRadius.sm),
                       border: Border.all(color: DifyColors.dividerRegular, width: Css.hairline),
                     ),
-                    child: Text('📙', style: difyEmojiTextStyle(12)),
+                    child: DifyTextLine('📙', style: difyEmojiTextStyle(12)),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
@@ -290,7 +290,7 @@ class QuestionClassifierBody extends NodeBody {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(_label(c, i), style: _labelStyle),
+                  DifyTextLine(_label(c, i), style: _labelStyle),
                   const SizedBox(height: 2),
                   SizedBox(
                     height: _topicHeight(c, ctx),

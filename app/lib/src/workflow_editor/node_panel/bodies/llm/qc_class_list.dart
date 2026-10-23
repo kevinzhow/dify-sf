@@ -186,7 +186,7 @@ class _ClassItemState extends State<ClassItem> {
         ),
       );
     }
-    final text = Text(_display, style: style);
+    final text = DifyTextLine(_display, style: style);
     if (widget.readonly) {
       return Transform.translate(
         offset: const Offset(-4, 0),
@@ -391,7 +391,7 @@ class _ClassListState extends State<ClassList> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Flexible(
-                    child: Text.rich(
+                    child: DifyTextLine.rich(
                       TextSpan(
                         // The button is a flex box: the space after the title ends its anonymous item and goes.
                         text: _w('$_p.class').toUpperCase(),
@@ -438,7 +438,7 @@ class _ClassListState extends State<ClassList> {
                 borderRadius: BorderRadius.circular(DifyRadius.lg),
                 border: Border.all(color: DifyColors.dividerSubtle),
               ),
-              child: Text(
+              child: DifyTextLine(
                 _w('$_p.renameHint'),
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),

@@ -82,7 +82,7 @@ class ProviderIcon extends StatelessWidget {
           ),
         const SizedBox(width: 8),
         Flexible(
-          child: Text(
+          child: DifyTextLine(
             renderI18nObject(provider.label, language),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -259,7 +259,7 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            DifyTextLine(
                               showModelsLabel,
                               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                             ),
@@ -284,7 +284,7 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
                             padding: EdgeInsets.only(right: 4),
                             child: RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
                           ),
-                          Text(
+                          DifyTextLine(
                             _t('modelProvider.configureTip'),
                             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
                           ),
@@ -353,7 +353,7 @@ class CredentialPanel extends StatelessWidget {
           ? Row(
               children: [
                 Flexible(
-                  child: Text(
+                  child: DifyTextLine(
                     _t(_textLabelKeys[variant]!),
                     key: const ValueKey('credential-panel-label'),
                     maxLines: 1,
@@ -377,8 +377,8 @@ class CredentialPanel extends StatelessWidget {
                 const SizedBox(width: 4),
                 Flexible(
                   child: DifyTooltip(
-                    content: Text(state.credentialName ?? ''),
-                    child: Text(
+                    content: DifyTextLine(state.credentialName ?? ''),
+                    child: DifyTextLine(
                       state.credentialName ?? '',
                       key: const ValueKey('credential-panel-label'),
                       maxLines: 1,
@@ -551,7 +551,7 @@ class _ModelAuthDropdownState extends State<ModelAuthDropdown> {
       placement: DifyPlacement.bottomEnd,
       sideOffset: 8,
       builder: (context, controller) => DifyTooltip(
-        content: Text(config.text),
+        content: DifyTextLine(config.text),
         child: DifyButton(
           key: const ValueKey('model-auth-dropdown-trigger'),
           size: DifyButtonSize.small,
@@ -565,7 +565,7 @@ class _ModelAuthDropdownState extends State<ModelAuthDropdown> {
             children: [
               const RemixIcon('equalizer-2-line', size: 14),
               const SizedBox(width: 4),
-              Flexible(child: Text(config.text, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Flexible(child: DifyTextLine(config.text, maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
           ),
         ),
@@ -591,14 +591,14 @@ class _ModelAuthDropdownState extends State<ModelAuthDropdown> {
                           mainAxisSize: MainAxisSize.min,
                           spacing: 12,
                           children: [
-                            Text(
+                            DifyTextLine(
                               _t('api.actionFailed'),
                               style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
                             ),
                             DifyButton(
                               size: DifyButtonSize.small,
                               onPressed: () => unawaited(_loadDetail(env)),
-                              child: Text(_t('operation.retry')),
+                              child: DifyTextLine(_t('operation.retry')),
                             ),
                           ],
                         ),
@@ -616,7 +616,7 @@ class _ModelAuthDropdownState extends State<ModelAuthDropdown> {
                           spacing: 8,
                           children: [
                             DifySpinner(size: 16, color: DifyColors.textTertiary),
-                            Text(
+                            DifyTextLine(
                               _t('loading'),
                               style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
                             ),
@@ -775,7 +775,7 @@ class ApiKeySection extends StatelessWidget {
         ? DifyButton(
             key: const ValueKey('api-key-section-add'),
             onPressed: onAdd,
-            child: Text(_t('modelProvider.auth.addApiKey')),
+            child: DifyTextLine(_t('modelProvider.auth.addApiKey')),
           )
         : null;
     if (credentials.isEmpty) {
@@ -800,11 +800,11 @@ class ApiKeySection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 4,
                 children: [
-                  Text(
+                  DifyTextLine(
                     _t('modelProvider.card.noApiKeysTitle'),
                     style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                   ),
-                  Text(
+                  DifyTextLine(
                     _t('modelProvider.card.noApiKeysDescription'),
                     style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                   ),
@@ -831,7 +831,7 @@ class ApiKeySection extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 12, 8, 4),
-                  child: Text(
+                  child: DifyTextLine(
                     difyTransform(DifyType.systemXsMediumUppercase, _t('modelProvider.auth.apiKeys')),
                     style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
                   ),

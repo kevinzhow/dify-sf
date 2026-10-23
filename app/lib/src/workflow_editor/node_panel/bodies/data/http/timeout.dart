@@ -160,7 +160,7 @@ class _TimeoutFieldState extends State<TimeoutField> {
               children: [
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: (c.maxWidth - 8).clamp(0, double.infinity)),
-                  child: Text(
+                  child: DifyTextLine(
                     w.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -168,7 +168,7 @@ class _TimeoutFieldState extends State<TimeoutField> {
                   ),
                 ),
                 Flexible(
-                  child: Text(
+                  child: DifyTextLine(
                     w.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

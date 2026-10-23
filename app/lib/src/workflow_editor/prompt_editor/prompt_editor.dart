@@ -586,7 +586,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
                     runCommand(command);
                     close();
                   }) ??
-                  const Text(shortcutsEmptyContent),
+                  const DifyTextLine(shortcutsEmptyContent),
             ),
           );
         },
@@ -851,7 +851,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
           onEdit: cfg.onEdit,
         );
       }(),
-      PromptBlockKind.literal => Text(b.text),
+      PromptBlockKind.literal => DifyTextLine(b.text),
     };
   }
 
@@ -1027,7 +1027,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
             child: IgnorePointer(
               child: placeholder is Widget
                   ? placeholder
-                  : Text(
+                  : DifyTextLine(
                       '$placeholder',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

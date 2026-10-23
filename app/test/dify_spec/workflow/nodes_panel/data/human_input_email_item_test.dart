@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'human_input_test_kit.dart';
 
+
 void main() {
   group('human-input/delivery-method/recipient/email-item', () {
     testWidgets('should render the current user label and delete the recipient when enabled', (t) async {
@@ -46,7 +47,15 @@ void main() {
         ),
       );
 
-      expect(find.byWidgetPredicate((w) => w is DifyTooltip && w.content is Text && (w.content as Text).data == 'missing@example.com'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is DifyTooltip &&
+              w.content is DifyTextLine &&
+              (w.content as DifyTextLine).data == 'missing@example.com',
+        ),
+        findsOneWidget,
+      );
       expect(find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'error-warning-fill'), findsOneWidget);
       expect(named('common.operation.remove'), findsNothing);
     });

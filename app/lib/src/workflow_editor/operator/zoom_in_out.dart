@@ -133,7 +133,7 @@ class _ZoomInOutState extends State<ZoomInOut> {
                   ),
             child: Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Text(text, style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
+              child: DifyTextLine(text, style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
             ),
           ),
         );
@@ -170,7 +170,7 @@ class _ZoomInOutState extends State<ZoomInOut> {
               width: 34,
               height: 32,
               child: Center(
-                child: Text('${(zoom * 100).toStringAsFixed(0)}%', style: DifyType.systemSmMedium.style),
+                child: DifyTextLine('${(zoom * 100).toStringAsFixed(0)}%', style: DifyType.systemSmMedium.style),
               ),
             ),
           );

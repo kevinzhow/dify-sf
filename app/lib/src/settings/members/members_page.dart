@@ -138,7 +138,7 @@ class _MembersPageState extends State<MembersPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  DifyTextLine(
                     name,
                     key: const ValueKey('workspace-name'),
                     style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
@@ -148,12 +148,12 @@ class _MembersPageState extends State<MembersPage> {
                     child: Row(
                       spacing: 4,
                       children: [
-                        Text(
+                        DifyTextLine(
                           '${accounts.length}',
                           style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                         ),
                         Flexible(
-                          child: Text(
+                          child: DifyTextLine(
                             '${st(context, 'billing', 'plansCommon.memberAfter')}$plural',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -172,7 +172,7 @@ class _MembersPageState extends State<MembersPage> {
                 variant: DifyButtonVariant.primary,
                 leading: const RemixIcon('user-add-line', size: 16),
                 onPressed: () => unawaited(_invite()),
-                child: Text(stc(context, 'members.invite')),
+                child: DifyTextLine(stc(context, 'members.invite')),
               ),
           ],
         ),
@@ -194,17 +194,17 @@ class _MembersPageState extends State<MembersPage> {
                 width: memberNameColumnWidth,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(up(stc(context, 'members.name')), style: headStyle),
+                  child: DifyTextLine(up(stc(context, 'members.name')), style: headStyle),
                 ),
               ),
               SizedBox(
                 width: memberLastActiveColumnWidth,
-                child: Text(up(stc(context, 'members.lastActive')), style: headStyle),
+                child: DifyTextLine(up(stc(context, 'members.lastActive')), style: headStyle),
               ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(up(stc(context, 'members.role')), style: headStyle),
+                  child: DifyTextLine(up(stc(context, 'members.role')), style: headStyle),
                 ),
               ),
             ],

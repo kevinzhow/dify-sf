@@ -403,7 +403,7 @@ class ModelSelectorButton extends StatelessWidget {
           )
         : isDeprecated
         ? ModelText(defaultModel!.model, lineThrough: true)
-        : Text(
+        : DifyTextLine(
             configureModelLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -484,7 +484,7 @@ class ModelSelectorButton extends StatelessWidget {
       ),
     );
     if (triggerTooltip != null && !disabled) {
-      trigger = DifyTooltip(content: Text(triggerTooltip), child: trigger);
+      trigger = DifyTooltip(content: DifyTextLine(triggerTooltip), child: trigger);
     }
     return trigger;
   }
@@ -590,7 +590,7 @@ class _ModelSelectorPopupState extends State<ModelSelectorPopup> {
                       liveRegion: true,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        child: Text(
+                        child: DifyTextLine(
                           status,
                           textAlign: TextAlign.center,
                           style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
@@ -795,7 +795,7 @@ class ModelSelectorEmptyState extends StatelessWidget {
             semanticLabel: _c('modelProvider.selector.configure'),
             onPressed: onConfigure,
             trailing: const RemixIcon('arrow-right-line', size: 16),
-            child: Text(_c('modelProvider.selector.configure')),
+            child: DifyTextLine(_c('modelProvider.selector.configure')),
           ),
         ),
       ],
@@ -862,7 +862,7 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Flexible(
-                              child: Text(
+                              child: DifyTextLine(
                                 label,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1120,7 +1120,7 @@ class ModelSelectorModelRow extends StatelessWidget {
                           spacing: 2,
                           children: [
                             Flexible(
-                              child: Text(
+                              child: DifyTextLine(
                                 label,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1132,7 +1132,7 @@ class ModelSelectorModelRow extends StatelessWidget {
                             ),
                             if (suggested)
                               DifyTooltip(
-                                content: Text(tip),
+                                content: DifyTextLine(tip),
                                 child: RemixIcon(
                                   'shield-star-line',
                                   size: 14,

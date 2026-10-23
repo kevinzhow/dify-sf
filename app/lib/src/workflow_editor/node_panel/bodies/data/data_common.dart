@@ -227,7 +227,7 @@ class _VarInputState extends State<VarInput> {
             left: w.insertVarTipToLeft ? -12 : null,
             right: w.insertVarTipToLeft ? null : 4,
             child: DifyTooltip(
-              content: Text(wf('common.insertVarTip')),
+              content: DifyTextLine(wf('common.insertVarTip')),
               child: Container(
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(

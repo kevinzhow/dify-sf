@@ -83,7 +83,7 @@ Widget _chevronButton(String label, VoidCallback onPressed, {bool disabled = fal
     disabled: disabled,
     trailing: const RemixIcon('arrow-down-s-line', size: 14),
     onPressed: onPressed,
-    child: Text(label),
+    child: DifyTextLine(label),
   ),
 );
 
@@ -120,7 +120,7 @@ class _OptionRow extends StatelessWidget {
         color: hovered || selected ? DifyColors.stateBaseHover : null,
         borderRadius: BorderRadius.circular(radius),
       ),
-      child: Text(
+      child: DifyTextLine(
         label,
         style: difyTextStyle(DifyTw.text13Medium, DifyColors.textSecondary),
       ),
@@ -178,7 +178,7 @@ class MetadataFilterSelector extends StatelessWidget {
         size: DifyButtonSize.small,
         trailing: const RemixIcon('arrow-down-s-line', size: 14),
         onPressed: c.toggle,
-        child: Text(selected.title),
+        child: DifyTextLine(selected.title),
       ),
       popupBuilder: (context, close) => _listSurface(
         width: 280,
@@ -277,7 +277,7 @@ class _MetadataFilterState extends State<MetadataFilter> {
       indicator: mode == MetadataFilteringMode.automatic,
       collapsed: _collapsed,
       onCollapse: (v) => setState(() => _collapsed = v),
-      afterTrigger: DifyInfotip(label: tip, width: 200, content: Text(tip)),
+      afterTrigger: DifyInfotip(label: tip, width: 200, content: DifyTextLine(tip)),
       actions: Padding(
         padding: const EdgeInsets.only(right: 16),
         child: Row(
@@ -391,7 +391,7 @@ class _MetadataTriggerState extends State<MetadataTrigger> {
           ),
         ),
         onPressed: c.toggle,
-        child: Text(_w('$_p.panel.conditions')),
+        child: DifyTextLine(_w('$_p.panel.conditions')),
       ),
       popupBuilder: (context) => MetadataPanel(shape: s, onCancel: _popup.close),
     );
@@ -479,7 +479,7 @@ class _AddConditionState extends State<AddCondition> {
         size: DifyButtonSize.small,
         leading: const RemixIcon('add-line', size: 14),
         onPressed: c.toggle,
-        child: Text(_w('$_p.panel.add')),
+        child: DifyTextLine(_w('$_p.panel.add')),
       ),
       popupBuilder: (context) => StatefulBuilder(
         builder: (context, setLocal) {
@@ -607,7 +607,7 @@ class ConditionList extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
+                        DifyTextLine(
                           op.toUpperCase(),
                           style: difyTextStyle(DifyTw.text2xsSemibold, DifyColors.textAccentSecondary),
                         ),
@@ -1281,7 +1281,7 @@ class _DateTimePopupState extends State<_DateTimePopup> {
                   onChanged: (h) => setState(() => _selected = _withTime(_selected, hour: (h ?? 0).toInt())),
                 ),
               ),
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text(':')),
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: DifyTextLine(':')),
               SizedBox(
                 width: 64,
                 child: DifyNumberField(
@@ -1301,14 +1301,14 @@ class _DateTimePopupState extends State<_DateTimePopup> {
                 size: DifyButtonSize.small,
                 variant: DifyButtonVariant.ghostAccent,
                 onPressed: () => widget.onDone(DateTime.now()),
-                child: Text(_time('operation.now')),
+                child: DifyTextLine(_time('operation.now')),
               ),
               const Spacer(),
               DifyButton(
                 size: DifyButtonSize.small,
                 variant: DifyButtonVariant.primary,
                 onPressed: () => widget.onDone(_selected),
-                child: Text(_time('operation.ok')),
+                child: DifyTextLine(_time('operation.ok')),
               ),
             ],
           ),

@@ -1006,13 +1006,13 @@ class SessionBadge extends StatelessWidget {
           if (pill && s.link != LinkState.live) ...[
             DifySolidDot(size: 8, color: color),
             const SizedBox(width: 4),
-            Text(label, style: _small),
+            DifyTextLine(label, style: _small),
             DifyButton(
               key: const Key('reconnect-now'),
               variant: DifyButtonVariant.ghostAccent,
               size: DifyButtonSize.small,
               onPressed: controller.reconnectNow,
-              child: const Text('Reconnect now'),
+              child: const DifyTextLine('Reconnect now'),
             ),
           ],
           if (menu)
@@ -1029,9 +1029,9 @@ class SessionBadge extends StatelessWidget {
                           children: [
                             DifySolidDot(size: 8, color: color, key: const Key('link-dot')),
                             const SizedBox(width: 6),
-                            Text(label, key: const Key('link-state'), style: _small),
+                            DifyTextLine(label, key: const Key('link-state'), style: _small),
                             const SizedBox(width: 12),
-                            Text(
+                            DifyTextLine(
                               s.pending == 0
                                   ? 'All edits saved'
                                   : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
@@ -1039,17 +1039,17 @@ class SessionBadge extends StatelessWidget {
                               style: s.pending == 0 ? _small : _small.copyWith(color: DifyColors.textWarning),
                             ),
                             const SizedBox(width: 12),
-                            Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: _small),
+                            DifyTextLine('seq ${s.lastSeq}', key: const Key('last-seq'), style: _small),
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(
+                        DifyTextLine(
                           '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · '
                           '${controller.docId} · $serverLabel',
                           style: _small,
                         ),
                         if (s.lastError != null)
-                          Text(s.lastError!, style: _small.copyWith(color: DifyColors.textDestructive)),
+                          DifyTextLine(s.lastError!, style: _small.copyWith(color: DifyColors.textDestructive)),
                         if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
                         // Back to the document list (Dify leaves this to its app sidebar, which the editor does not have).
                         if (ModalRoute.of(context)?.canPop ?? false)
@@ -1059,7 +1059,7 @@ class SessionBadge extends StatelessWidget {
                             size: DifyButtonSize.small,
                             leading: const RemixIcon('arrow-left-line', size: 16),
                             onPressed: () => Navigator.of(context).maybePop(),
-                            child: const Text('Documents'),
+                            child: const DifyTextLine('Documents'),
                           ),
                       ],
                     ),
@@ -1073,7 +1073,7 @@ class SessionBadge extends StatelessWidget {
                         child: MouseRegion(cursor: SystemMouseCursors.click, child: anchor),
                       )
                     : DifyTooltip(
-                        content: const Text('Collaboration session'),
+                        content: const DifyTextLine('Collaboration session'),
                         child: DifyIconButton(
                           key: const Key('session-menu'),
                           label: 'Collaboration session',

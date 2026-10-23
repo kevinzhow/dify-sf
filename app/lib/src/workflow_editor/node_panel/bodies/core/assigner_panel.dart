@@ -114,7 +114,7 @@ class OperationSelector extends StatelessWidget {
                 Flexible(
                   child: Padding(
                     padding: const EdgeInsets.all(4),
-                    child: Text(
+                    child: DifyTextLine(
                       selected == null ? title : _opLabel(selected.name),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -152,7 +152,7 @@ class OperationSelector extends StatelessWidget {
               trailing: item.value == value ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent) : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
+                child: DifyTextLine(
                   _opLabel(item.name),
                   style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                 ),
@@ -423,7 +423,7 @@ Widget assignerPanelBody(BuildContext context, NodePanelProps props) {
             spacing: 8,
             children: [
               Expanded(
-                child: Text(
+                child: DifyTextLine(
                   tw('nodes.assigner.variables').toUpperCase(),
                   style: difyTextStyle(DifyType.systemSmSemiboldUppercase, DifyColors.textSecondary),
                 ),

@@ -322,7 +322,7 @@ class DifyMenuGroupLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
-    child: Text(
+    child: DifyTextLine(
       difyTransform(DifyType.systemXsMediumUppercase, text),
       style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
     ),

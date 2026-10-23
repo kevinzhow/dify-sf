@@ -49,7 +49,7 @@ class LargeDataAlert extends StatelessWidget {
           const SizedBox(width: 4),
           Expanded(
             child: DifyTooltip(
-              content: Text(text),
+              content: DifyTextLine(text),
               delay: const Duration(milliseconds: 600),
               child: DifyText(text, DifyType.systemXsRegular),
             ),
@@ -313,7 +313,7 @@ class _DisplayContentState extends State<DisplayContent> {
         RemixIcon(icon, size: 16),
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 2, 4, 2),
-          child: Text(label),
+          child: DifyTextLine(label),
         ),
       ],
     );
@@ -566,7 +566,7 @@ class FileEditorSection extends StatelessWidget {
           if (file != null) onChange([...fileValue, file]);
         },
         leading: RemixIcon(icon, size: 16),
-        child: Text(DifyI18n.tr('common', label), overflow: TextOverflow.ellipsis),
+        child: DifyTextLine(DifyI18n.tr('common', label), overflow: TextOverflow.ellipsis),
       ),
     );
     return Align(

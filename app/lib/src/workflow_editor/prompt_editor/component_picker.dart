@@ -79,7 +79,7 @@ class _PromptMenuItemState extends State<PromptMenuItem> {
           const SizedBox(width: 4),
           // No truncate in Dify: a long title runs past the row.
           Flexible(
-            child: Text(
+            child: DifyTextLine(
               w.title,
               softWrap: false,
               overflow: TextOverflow.visible,
@@ -171,9 +171,9 @@ class _VariableMenuItemState extends State<VariableMenuItem> {
               Expanded(
                 // `title={title}`: the full name on hover.
                 child: DifyTooltip(
-                  content: Text(w.title),
+                  content: DifyTextLine(w.title),
                   delay: const Duration(milliseconds: 600),
-                  child: Text.rich(
+                  child: DifyTextLine.rich(
                     TextSpan(
                       children: [
                         TextSpan(text: before),
@@ -329,14 +329,16 @@ class PickerAppIcon extends StatelessWidget {
       height: 14,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(DifyRadius.sm)),
-      child: Text(icon ?? '', style: difyEmojiTextStyle(9)),
+      child: DifyTextLine(icon ?? '', style: difyEmojiTextStyle(9)),
     );
   }
 }
 
 /// The external tool option's trailing variable name.
-Widget pickerExtraText(String text) =>
-    Text(text, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary).copyWith(height: 16 / 12));
+Widget pickerExtraText(String text) => DifyTextLine(
+  text,
+  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary).copyWith(height: 16 / 12),
+);
 
 /// `t('common', key)` shorthand for the picker's labels.
 String pickerLabel(String key) => DifyI18n.tr('common', key);

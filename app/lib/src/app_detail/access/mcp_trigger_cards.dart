@@ -51,7 +51,7 @@ class MCPAccessPointCard extends StatelessWidget {
           paddingX: 12,
           disabled: true,
           leading: const RemixIcon('draft-line', size: 16),
-          child: Text(_t('tools', 'mcp.server.addDescription')),
+          child: DifyTextLine(_t('tools', 'mcp.server.addDescription')),
         ),
       ],
       child: AccessPointUrl(
@@ -123,7 +123,7 @@ class TriggerAccessPointCard extends StatelessWidget {
               ),
             )
           : AccessPointEmptyContent(
-              child: Text.rich(
+              child: DifyTextLine.rich(
                 TextSpan(
                   children: [
                     TextSpan(text: '${_t('appOverview', 'overview.triggerInfo.triggerStatusDescription')} '),

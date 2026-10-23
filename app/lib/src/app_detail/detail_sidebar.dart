@@ -316,7 +316,7 @@ class DetailSidebarToggleButton extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+              child: DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
             ),
             if (!DifyAdaptive.compactOf(context)) const DifyShortcutKbd(hotkey: detailSidebarToggleHotkey),
           ],

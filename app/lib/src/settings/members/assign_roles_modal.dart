@@ -60,8 +60,8 @@ class _AssignRolesModalState extends State<AssignRolesModal> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     spacing: 4,
                     children: [
-                      Text(title, style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary)),
-                      Text(
+                      DifyTextLine(title, style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary)),
+                      DifyTextLine(
                         stc(context, 'members.assignRolesModal.singleDescription'),
                         style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
                       ),
@@ -92,14 +92,14 @@ class _AssignRolesModalState extends State<AssignRolesModal> {
                 DifyButton(
                   key: const ValueKey('assign-cancel'),
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(stc(context, 'operation.cancel')),
+                  child: DifyTextLine(stc(context, 'operation.cancel')),
                 ),
                 DifyButton(
                   key: const ValueKey('assign-confirm'),
                   variant: DifyButtonVariant.primary,
                   disabled: _selected.isEmpty,
                   onPressed: () => Navigator.of(context).pop(_selected),
-                  child: Text(stc(context, 'operation.confirm')),
+                  child: DifyTextLine(stc(context, 'operation.confirm')),
                 ),
               ],
             ),
@@ -172,7 +172,7 @@ class _WorkspaceRoleListState extends State<WorkspaceRoleList> {
           child: roles.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                  child: Text(
+                  child: DifyTextLine(
                     st(context, 'permission', 'role.noMatchingRoles'),
                     textAlign: TextAlign.center,
                     style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
@@ -258,8 +258,8 @@ class _RoleRadioState extends State<_RoleRadio> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 2,
               children: [
-                Text(w.role.name, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
-                Text(w.description, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                DifyTextLine(w.role.name, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
+                DifyTextLine(w.description, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
               ],
             ),
           ),

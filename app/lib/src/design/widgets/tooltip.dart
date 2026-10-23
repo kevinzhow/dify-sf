@@ -253,7 +253,7 @@ class DifyTipPopupBox extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 4,
         children: [
-          Text(title, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+          DifyTextLine(title, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
           if (shortcut != null) DifyShortcutKbd(shortcut: shortcut),
         ],
       ),

@@ -41,7 +41,7 @@ class UserAvatar extends StatelessWidget {
     clipBehavior: Clip.antiAlias,
     alignment: Alignment.center,
     child: url == null || url!.isEmpty
-        ? Text(
+        ? DifyTextLine(
             name.isEmpty ? '' : name[0].toUpperCase(),
             style: difyTextStyle(DifyTw.text10Medium, DifyTailwind.white), // AvatarFallback sm
           )
@@ -106,14 +106,14 @@ class _OnlineUsersState extends State<OnlineUsers> with SingleTickerProviderStat
           spacing: 4,
           children: [
             Flexible(
-              child: Text(
+              child: DifyTextLine(
                 nameOf(u),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
               ),
             ),
-            if (isMe(u)) Text(you, style: difyTextStyle(DifyType.systemXsMedium, suffix)),
+            if (isMe(u)) DifyTextLine(you, style: difyTextStyle(DifyType.systemXsMedium, suffix)),
           ],
         );
         Widget avatar(OnlineUser u, {bool ring = false}) =>
@@ -181,7 +181,7 @@ class _OnlineUsersState extends State<OnlineUsers> with SingleTickerProviderStat
                           boxShadow: [BoxShadow(color: DifyColors.componentsPanelBg, spreadRadius: 1)],
                         ),
                         alignment: Alignment.center,
-                        child: Text(
+                        child: DifyTextLine(
                           '+$remaining',
                           // `text-2xs leading-3 font-semibold text-white uppercase`
                           style: difyTextStyle(DifyType.system2xsSemiboldUppercase, DifyTailwind.white),

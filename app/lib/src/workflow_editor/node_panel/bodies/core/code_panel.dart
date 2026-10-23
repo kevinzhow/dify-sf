@@ -369,7 +369,7 @@ class _CodePanelState extends State<_CodePanel> {
                         spacing: 8,
                         children: [
                           DifyTooltip(
-                            content: Text(sync),
+                            content: DifyTextLine(sync),
                             child: _IconOperation(
                               label: sync,
                               icon: 'refresh-line',

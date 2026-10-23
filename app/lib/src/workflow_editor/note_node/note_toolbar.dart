@@ -252,7 +252,7 @@ class _NoteFontSizeSelectorState extends State<NoteFontSizeSelector> {
                   children: [
                     RemixIcon('font-size', size: 16, color: color),
                     const SizedBox(width: 4),
-                    Text(
+                    DifyTextLine(
                       noteFontSizeLabel(size),
                       // `text-[13px] font-medium` in the button's 16 px line.
                       style: difyStyle(DifyType.systemSmMedium, color),
@@ -294,7 +294,7 @@ class _NoteFontSizeSelectorState extends State<NoteFontSizeSelector> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: Text(
+                                child: DifyTextLine(
                                   noteFontSizeLabel(key),
                                   style: TextStyle(
                                     fontFamily: cardFontFamily,
@@ -359,7 +359,7 @@ class NoteCommand extends StatelessWidget {
         };
         final tip = _tw(type.tip);
         return DifyTooltip(
-          content: Text(tip),
+          content: DifyTextLine(tip),
           child: DifyPressable(
             key: ValueKey('note-command-${type.name}'),
             semanticLabel: tip,
@@ -440,7 +440,7 @@ class _NoteOperatorState extends State<NoteOperator> {
       padding: const EdgeInsets.only(left: 12, right: 4),
       child: DifyShortcutKbd(shortcut: shortcut),
     ),
-    child: Padding(padding: const EdgeInsets.only(left: 4), child: Text(label)),
+    child: Padding(padding: const EdgeInsets.only(left: 4), child: DifyTextLine(label)),
   );
 
   @override
@@ -477,7 +477,7 @@ class _NoteOperatorState extends State<NoteOperator> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
+                child: DifyTextLine(
                   _tw('nodes.note.editor.showAuthor'),
                   style: difyStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
                 ),

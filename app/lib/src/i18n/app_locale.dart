@@ -1,4 +1,8 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+import '../design/dify_fonts.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dify_i18n.dart';
@@ -26,6 +30,7 @@ class AppLocale extends ChangeNotifier {
   }
 
   static Future<void> _load(String language) async {
+    if (kIsWeb) await DifyFonts.loadFor(language);
     await DifyI18n.load(language);
     final p = await SharedPreferences.getInstance();
     await p.setString(prefKey, language);

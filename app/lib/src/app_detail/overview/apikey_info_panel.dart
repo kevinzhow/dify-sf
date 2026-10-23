@@ -86,8 +86,8 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t('apiKeyInfo.selfHost.title.row1'), style: title),
-                      Text(t('apiKeyInfo.selfHost.title.row2'), style: title),
+                      DifyTextLine(t('apiKeyInfo.selfHost.title.row1'), style: title),
+                      DifyTextLine(t('apiKeyInfo.selfHost.title.row2'), style: title),
                     ],
                   ),
                 ),
@@ -97,7 +97,7 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
                     variant: DifyButtonVariant.primary,
                     onPressed: widget.openProviderSettings,
                     trailing: const DifyIcon('vender/line/general/link-external-02', size: 16),
-                    child: Text(
+                    child: DifyTextLine(
                       t('apiKeyInfo.setAPIBtn'),
                       style: DifyType.systemMdMedium.style, // `text-sm font-medium`
                     ),
@@ -120,7 +120,7 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
                           mainAxisSize: MainAxisSize.min,
                           spacing: 4,
                           children: [
-                            Text(t('apiKeyInfo.tryCloud'), style: link),
+                            DifyTextLine(t('apiKeyInfo.tryCloud'), style: link),
                             DifyIcon(
                               'vender/line/general/link-external-02',
                               size: 12,

@@ -21,12 +21,16 @@ class DifyInlineDeleteConfirm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 6,
       children: [
-        Text(title, style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPrimary)),
+        DifyTextLine(title, style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPrimary)),
         Row(
           spacing: 4,
           children: [
             Expanded(
-              child: DifyButton(size: DifyButtonSize.small, onPressed: onCancel, child: Text(_tc('operation.no'))),
+              child: DifyButton(
+                size: DifyButtonSize.small,
+                onPressed: onCancel,
+                child: DifyTextLine(_tc('operation.no')),
+              ),
             ),
             Expanded(
               child: DifyButton(
@@ -34,7 +38,7 @@ class DifyInlineDeleteConfirm extends StatelessWidget {
                 variant: DifyButtonVariant.primary,
                 tone: DifyButtonTone.destructive,
                 onPressed: onConfirm,
-                child: Text(_tc('operation.yes')),
+                child: DifyTextLine(_tc('operation.yes')),
               ),
             ),
           ],

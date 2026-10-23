@@ -89,7 +89,7 @@ class PublisherActionsSection extends StatelessWidget {
           if (!hasTriggerNode)
             DifyTooltip(
               disabled: tooltip == null,
-              content: Text(tooltip ?? ''),
+              content: DifyTextLine(tooltip ?? ''),
               child: SuggestedAction(
                 label: _w('common.openWebApp'),
                 disabled: disabledFunctionButton,

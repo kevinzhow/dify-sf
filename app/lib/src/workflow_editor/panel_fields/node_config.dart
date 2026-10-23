@@ -148,7 +148,7 @@ class MemoryConfig extends StatelessWidget {
                 ),
                 if (canSetRoleName) ...[
                   const SizedBox(height: 16),
-                  Text(
+                  DifyTextLine(
                     _wf('nodes.common.memory.conversationRoleName').toUpperCase(),
                     style: difyTextStyle(DifyTw.textXsMediumLeading24, DifyColors.textTertiary),
                   ),
@@ -197,7 +197,7 @@ class _RoleItemState extends State<_RoleItem> {
     children: [
       GestureDetector(
         onTap: _focus.requestFocus,
-        child: Text(widget.title, style: difyTextStyle(DifyTw.text13, DifyColors.textSecondary)),
+        child: DifyTextLine(widget.title, style: difyTextStyle(DifyTw.text13, DifyColors.textSecondary)),
       ),
       Expanded(
         child: Align(
@@ -233,7 +233,7 @@ class ResolutionPicker extends StatelessWidget {
     children: [
       Padding(
         padding: const EdgeInsets.only(right: 8),
-        child: Text(
+        child: DifyTextLine(
           _wf('nodes.llm.resolution.name').toUpperCase(),
           style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
         ),
@@ -281,7 +281,7 @@ class ConfigVision extends StatelessWidget {
       tooltip: DifyI18n.tr('app-debug', 'vision.description'),
       operations: DifyTooltip(
         disabled: isVisionModel,
-        content: Text(DifyI18n.tr('app-debug', 'vision.onlySupportVisionModelTip')),
+        content: DifyTextLine(DifyI18n.tr('app-debug', 'vision.onlySupportVisionModelTip')),
         child: DifySwitch(
           checked: isVisionModel && enabled,
           disabled: readOnly || !isVisionModel,
@@ -526,7 +526,7 @@ class _ErrorHandleTypeSelectorState extends State<ErrorHandleTypeSelector> {
       size: DifyButtonSize.small,
       onPressed: c.toggle,
       trailing: const RemixIcon('arrow-down-s-line', size: 14),
-      child: Text(_wf('nodes.common.errorHandle.${_key(widget.value)}.title')),
+      child: DifyTextLine(_wf('nodes.common.errorHandle.${_key(widget.value)}.title')),
     ),
     popupBuilder: (context) => DifyBlurredBox(
       blur: 5,
@@ -670,7 +670,7 @@ class FailBranchCard extends StatelessWidget {
               maxLines: null,
             ),
           ),
-          Text.rich(
+          DifyTextLine.rich(
             TextSpan(
               text: '${_wf('nodes.common.errorHandle.failBranch.customizeTip')} ',
               children: [
@@ -681,7 +681,7 @@ class FailBranchCard extends StatelessWidget {
                       onTap: () => onOpenLink(docLink ?? errorTypeDocLink()),
                       child: MouseRegion(
                         cursor: SystemMouseCursors.click,
-                        child: Text(
+                        child: DifyTextLine(
                           _wf('common.learnMore'),
                           style: difyStyle(DifyType.systemXsRegular, DifyColors.textAccent),
                         ),
@@ -727,7 +727,7 @@ class DefaultValue extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
+          child: DifyTextLine(
             '${_wf('nodes.common.errorHandle.defaultValue.desc')} ',
             style: difyStyle(DifyType.bodyXsRegular, DifyColors.textTertiary),
           ),
@@ -905,7 +905,7 @@ class _ErrorHandleOnPanelState extends State<ErrorHandleOnPanel> {
         indicator: strategy != null && strategy.isNotEmpty,
         collapsed: _collapsed,
         onCollapse: (v) => setState(() => _collapsed = v),
-        afterTrigger: DifyInfotip(label: tip, content: Text(tip)),
+        afterTrigger: DifyInfotip(label: tip, content: DifyTextLine(tip)),
         // `pr-4` block around the inline trigger: its text line puts the button 1.5 px down (Chrome at 2x).
         actions: Padding(
           padding: const EdgeInsets.only(right: 16, top: 1.5),

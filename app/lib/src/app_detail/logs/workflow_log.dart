@@ -411,7 +411,7 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
-                child: Text(
+                child: DifyTextLine(
                   difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.startTime')),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -437,24 +437,24 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
         width: 180,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
         width: null,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.runtime'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.runtime'))),
         width: null,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.tokens'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.tokens'))),
         width: null,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.user'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.user'))),
         width: null,
       ),
       if (isWorkflow)
         DifyTableColumn(
-          header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.triggered_from'))),
+          header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.triggered_from'))),
           width: null,
         ),
     ];
@@ -495,14 +495,14 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
         ),
         logCell(_status(run['status'] as String?)),
         logCell(
-          Text(
+          DifyTextLine(
             '${elapsed.toStringAsFixed(3)}s',
             style: elapsed == 0 ? TextStyle(color: DifyColors.textQuaternary) : null,
           ),
         ),
-        logCell(Text('${run['total_tokens'] ?? 0}')),
+        logCell(DifyTextLine('${run['total_tokens'] ?? 0}')),
         logCell(
-          Text(
+          DifyTextLine(
             endUser,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -574,7 +574,7 @@ class WorkflowLogDetailPanel extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Semantics(
                         header: true,
-                        child: Text(
+                        child: DifyTextLine(
                           _l('runDetail.workflowTitle'),
                           style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
                         ),
@@ -582,7 +582,7 @@ class WorkflowLogDetailPanel extends StatelessWidget {
                     ),
                     if (canReplay)
                       DifyTooltip(
-                        content: Text(_l('runDetail.testWithParams')),
+                        content: DifyTextLine(_l('runDetail.testWithParams')),
                         child: DifyPressable(
                           key: const ValueKey('workflow-log-replay'),
                           semanticLabel: _l('runDetail.testWithParams'),
@@ -727,7 +727,7 @@ class TriggerByDisplay extends StatelessWidget {
       _icon(),
       if (showText)
         Flexible(
-          child: Text(
+          child: DifyTextLine(
             displayName(triggeredFrom, triggerMetadata),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

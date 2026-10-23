@@ -288,7 +288,7 @@ class _StyleTile extends StatelessWidget {
       ),
       child: IgnorePointer(
         child: ExcludeSemantics(
-          child: DifyButton(variant: buttonVariantOf(style), onPressed: () {}, child: Text(text)),
+          child: DifyButton(variant: buttonVariantOf(style), onPressed: () {}, child: DifyTextLine(text)),
         ),
       ),
     ),
@@ -338,7 +338,7 @@ class TimeoutInput extends StatelessWidget {
               (
                 value: value,
                 label: hi(key),
-                child: Padding(padding: const EdgeInsets.all(2), child: Text(hi(key))),
+                child: Padding(padding: const EdgeInsets.all(2), child: DifyTextLine(hi(key))),
               ),
           ],
         ),

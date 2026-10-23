@@ -188,7 +188,7 @@ class _ContextChipState extends State<ContextChip> {
                 color: DifyPromptBlockColors.context,
               ),
               const SizedBox(width: 4),
-              Text(title, style: _xsMedium(DifyPromptBlockColors.context)),
+              DifyTextLine(title, style: _xsMedium(DifyPromptBlockColors.context)),
               const SizedBox(width: 4),
               if (!c.canNotAddContext)
                 DifyPopover(
@@ -216,7 +216,7 @@ class _ContextChipState extends State<ContextChip> {
                           borderRadius: BorderRadius.circular(DifyRadius.sm),
                           boxShadow: hovered && !_open ? DifyShadows.xs : null,
                         ),
-                        child: Text(
+                        child: DifyTextLine(
                           '${c.datasets.length}',
                           // `text-[11px] font-semibold`, one line high in the centred 18 px box.
                           style: DifyTw.text11Semibold.style.copyWith(
@@ -273,7 +273,7 @@ class _ContextModal extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
+                  child: DifyTextLine(
                     DifyI18n.tr('common', 'promptEditor.context.modal.title', {'num': datasets.length}),
                     style: _xsMedium(DifyColors.gray500),
                   ),
@@ -299,7 +299,7 @@ class _ContextModal extends StatelessWidget {
                                   border: DifyPromptBlockColors.contextFolderBorder,
                                 ),
                                 Expanded(
-                                  child: Text(
+                                  child: DifyTextLine(
                                     d.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -323,7 +323,7 @@ class _ContextModal extends StatelessWidget {
                       children: [
                         box(RemixIcon('add-line', size: 14, color: DifyColors.primary600)),
                         Flexible(
-                          child: Text(
+                          child: DifyTextLine(
                             DifyI18n.tr('common', 'promptEditor.context.modal.add'),
                             softWrap: false,
                             overflow: TextOverflow.visible,
@@ -346,7 +346,7 @@ class _ContextModal extends StatelessWidget {
               ),
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(DifyRadius.xl)),
             ),
-            child: Text(
+            child: DifyTextLine(
               DifyI18n.tr('common', 'promptEditor.context.modal.footer'),
               style: difyTextStyle(DifyType.systemXsRegular, DifyColors.gray500),
             ),
@@ -383,7 +383,7 @@ class _HistoryChipState extends State<HistoryChip> {
         Container(
           width: 80,
           margin: const EdgeInsets.only(right: 4),
-          child: Text(
+          child: DifyTextLine(
             name,
             softWrap: false,
             overflow: TextOverflow.visible,
@@ -391,7 +391,7 @@ class _HistoryChipState extends State<HistoryChip> {
           ),
         ),
         Flexible(
-          child: Text(
+          child: DifyTextLine(
             DifyI18n.tr('common', key),
             softWrap: false,
             overflow: TextOverflow.visible,
@@ -418,7 +418,7 @@ class _HistoryChipState extends State<HistoryChip> {
             children: [
               DifyIcon('vender/solid/general/message-clock-circle', size: 14, color: _pink),
               const SizedBox(width: 4),
-              Text(DifyI18n.tr('common', 'promptEditor.history.item.title'), style: _xsMedium(_pink)),
+              DifyTextLine(DifyI18n.tr('common', 'promptEditor.history.item.title'), style: _xsMedium(_pink)),
               const SizedBox(width: 4),
               DifyPopover(
                 open: _open,
@@ -463,7 +463,7 @@ class _HistoryChipState extends State<HistoryChip> {
                           children: [
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
+                              child: DifyTextLine(
                                 DifyI18n.tr('common', 'promptEditor.history.modal.title'),
                                 style: _xsMedium(DifyColors.gray500),
                               ),
@@ -480,7 +480,7 @@ class _HistoryChipState extends State<HistoryChip> {
                           decoration: BoxDecoration(
                             border: Border(top: BorderSide(color: DifyTailwind.black.withValues(alpha: 0.05))),
                           ),
-                          child: Text(
+                          child: DifyTextLine(
                             DifyI18n.tr('common', 'promptEditor.history.modal.edit'),
                             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.primary600),
                           ),
@@ -527,9 +527,9 @@ class QueryChip extends StatelessWidget {
             children: [
               DifyIcon('vender/solid/users/user-edit-02', size: 14, color: DifyPromptBlockColors.queryAccent),
               const SizedBox(width: 4),
-              Text('{{', style: faint),
-              Text(DifyI18n.tr('common', 'promptEditor.query.item.title'), style: _xsMedium(_text)),
-              Text('}}', style: faint),
+              DifyTextLine('{{', style: faint),
+              DifyTextLine(DifyI18n.tr('common', 'promptEditor.query.item.title'), style: _xsMedium(_text)),
+              DifyTextLine('}}', style: faint),
             ],
           ),
         ),
@@ -584,7 +584,7 @@ class _BadgeChip extends StatelessWidget {
             children: [
               icon,
               const SizedBox(width: 2),
-              Text(label, style: _xsMedium(color)),
+              DifyTextLine(label, style: _xsMedium(color)),
             ],
           ),
         ),

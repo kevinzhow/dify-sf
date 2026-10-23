@@ -71,7 +71,7 @@ class KeyValueTable extends StatelessWidget {
                 border: Border(right: BorderSide(color: DifyColors.dividerRegular)),
               )
             : null,
-        child: Text(text.toUpperCase(), style: header, maxLines: 1, overflow: TextOverflow.ellipsis),
+        child: DifyTextLine(text.toUpperCase(), style: header, maxLines: 1, overflow: TextOverflow.ellipsis),
       );
       return width == null ? Expanded(child: c) : c;
     }
@@ -283,7 +283,7 @@ class _TypeSelect extends StatelessWidget {
         onValueChange: onChanged,
         children: [
           for (final t in const ['text', 'file'])
-            DifyMenuRadioItem<String>(value: t, closeOnClick: true, child: Text(t)),
+            DifyMenuRadioItem<String>(value: t, closeOnClick: true, child: DifyTextLine(t)),
         ],
       ),
     ],
@@ -361,7 +361,7 @@ class _KeyValueInputState extends State<KeyValueInput> {
       if (w.value.isEmpty) {
         return Padding(
           padding: const EdgeInsets.only(left: 2, top: 1),
-          child: Text(
+          child: DifyTextLine(
             w.placeholder,
             style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textQuaternary),
           ),

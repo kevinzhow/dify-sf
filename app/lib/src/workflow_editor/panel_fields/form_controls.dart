@@ -30,7 +30,7 @@ class ListNoDataPlaceholder extends StatelessWidget {
     constraints: const BoxConstraints(minHeight: 42),
     alignment: Alignment.center,
     decoration: BoxDecoration(color: DifyColors.backgroundSection, borderRadius: BorderRadius.circular(10)),
-    child: Text(
+    child: DifyTextLine(
       text,
       textAlign: TextAlign.center,
       style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
@@ -85,7 +85,7 @@ class ArrayBoolList extends StatelessWidget {
         variant: DifyButtonVariant.tertiary,
         onPressed: () => onChange([...list, false]),
         leading: const RemixIcon('add-line', size: 16),
-        child: Text(DifyI18n.tr('workflow', 'chatVariable.modal.addArrayValue')),
+        child: DifyTextLine(DifyI18n.tr('workflow', 'chatVariable.modal.addArrayValue')),
       ),
     ],
   );
@@ -277,7 +277,7 @@ class ModalField extends StatelessWidget {
         height: 32,
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text.rich(
+          child: DifyTextLine.rich(
             TextSpan(
               text: title,
               children: [
@@ -296,7 +296,10 @@ class ModalField extends StatelessWidget {
       if (errorMessage != null)
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text(errorMessage!, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive)),
+          child: DifyTextLine(
+            errorMessage!,
+            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive),
+          ),
         ),
     ],
   );
@@ -365,7 +368,7 @@ class ModalSelect<T> extends StatelessWidget {
           open: controller.isOpen,
           onTap: controller.toggle,
           label: selected?.label ?? placeholder,
-          content: Text(
+          content: DifyTextLine(
             selected?.label ?? placeholder ?? '',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -380,7 +383,8 @@ class ModalSelect<T> extends StatelessWidget {
             value: value,
             onValueChange: onChanged,
             children: [
-              for (final o in options) DifyMenuRadioItem<T>(value: o.value, closeOnClick: true, child: Text(o.label)),
+              for (final o in options)
+                DifyMenuRadioItem<T>(value: o.value, closeOnClick: true, child: DifyTextLine(o.label)),
             ],
           ),
         ],
@@ -412,7 +416,7 @@ class InputTypeSelect extends StatelessWidget {
       InputVarTypeIcon(type: item.value, size: 16, color: DifyColors.textSecondary),
       SizedBox(width: trigger ? 6 : 8),
       Expanded(
-        child: Text(
+        child: DifyTextLine(
           item.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -568,7 +572,7 @@ class _ConfigSelectState extends State<ConfigSelect> {
             leading: const RemixIcon('add-line', size: 16),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
+              child: DifyTextLine(
                 DifyI18n.tr('app-debug', 'variableConfig.addOption'),
                 style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary).copyWith(fontSize: 13),
               ),

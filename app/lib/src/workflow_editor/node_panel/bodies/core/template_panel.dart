@@ -155,7 +155,7 @@ class _TemplatePanelState extends State<_TemplatePanel> {
                 isInNode: true,
                 readOnly: readOnly,
                 language: CodeLanguage.python3,
-                titleWidget: Text(tw('nodes.templateTransform.code').toUpperCase()),
+                titleWidget: DifyTextLine(tw('nodes.templateTransform.code').toUpperCase()),
                 headerRight: _JinjaTip(onOpen: () => props.actions.options.openUrl?.call(jinjaDocsUrl)),
                 value: jsStr(inputs['template']) ?? '',
                 onChange: c.handleCodeChange,
@@ -205,7 +205,7 @@ class _JinjaTip extends StatelessWidget {
                   children: [
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 200),
-                      child: Text(
+                      child: DifyTextLine(
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

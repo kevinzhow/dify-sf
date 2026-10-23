@@ -307,7 +307,7 @@ class ValueSection extends StatelessWidget {
                       size: 14,
                       color: DifyColors.textTertiary,
                     ),
-                    child: Text(tw(toggleLabelKey!), style: TextStyle(color: DifyColors.textTertiary)),
+                    child: DifyTextLine(tw(toggleLabelKey!), style: TextStyle(color: DifyColors.textTertiary)),
                   ),
           ),
           editor,

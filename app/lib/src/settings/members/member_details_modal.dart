@@ -98,7 +98,7 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
+            child: DifyTextLine(
               difyTransform(DifyType.system2xsMediumUppercase, label),
               style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textTertiary),
             ),
@@ -129,7 +129,10 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
                   children: [
                     Padding(
                       padding: const EdgeInsetsDirectional.only(end: 32),
-                      child: Text(title, style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary)),
+                      child: DifyTextLine(
+                        title,
+                        style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 20),
@@ -141,13 +144,13 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                DifyTextLine(
                                   m.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                                 ),
-                                Text(
+                                DifyTextLine(
                                   m.email,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -180,7 +183,7 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
                         spacing: 6,
                         children: [
                           Flexible(
-                            child: Text(
+                            child: DifyTextLine(
                               stc(
                                 context,
                                 selected.length == 1
@@ -192,7 +195,7 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
                               style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                             ),
                           ),
-                          Text(
+                          DifyTextLine(
                             '${selected.length}',
                             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                           ),
@@ -206,7 +209,7 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
                         size: DifyButtonSize.small,
                         onPressed: _edit,
                         leading: const RemixIcon('edit-line', size: 14),
-                        child: Text(stc(context, 'operation.edit')),
+                        child: DifyTextLine(stc(context, 'operation.edit')),
                       ),
                   ],
                 ),
@@ -226,14 +229,14 @@ class _MemberDetailsModalState extends State<MemberDetailsModal> {
                   DifyButton(
                     key: const ValueKey('details-cancel'),
                     onPressed: _close,
-                    child: Text(stc(context, 'operation.cancel')),
+                    child: DifyTextLine(stc(context, 'operation.cancel')),
                   ),
                   DifyButton(
                     key: const ValueKey('details-save'),
                     variant: DifyButtonVariant.primary,
                     disabled: w.onAssignSubmit == null,
                     onPressed: _save,
-                    child: Text(stc(context, 'operation.save')),
+                    child: DifyTextLine(stc(context, 'operation.save')),
                   ),
                 ],
               ),
@@ -266,7 +269,7 @@ class _PermissionRoleChipState extends State<PermissionRoleChip> {
     final role = widget.role;
     final permissions = [for (final k in role.permissionKeys) st(context, 'permissionKeys', k)].join(', ');
     final summary = permissions.isEmpty
-        ? Text(stc(context, 'members.memberDetails.roleNoPermissionSummary'))
+        ? DifyTextLine(stc(context, 'members.memberDetails.roleNoPermissionSummary'))
         : _permissionSummary(context, role.name, permissions);
     final r = BorderRadius.circular(DifyRadius.lg);
     return DifyTooltip(
@@ -289,7 +292,7 @@ class _PermissionRoleChipState extends State<PermissionRoleChip> {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 4,
             children: [
-              Text(
+              DifyTextLine(
                 role.name,
                 softWrap: false,
                 style: difyTextStyle(DifyType.titleXsSemiBold, DifyColors.textPrimary).copyWith(height: 16 / 12),
@@ -320,7 +323,7 @@ class _PermissionRoleChipState extends State<PermissionRoleChip> {
             ),
             child: Center(
               widthFactor: 1,
-              child: Text(
+              child: DifyTextLine(
                 role.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -355,6 +358,6 @@ class _PermissionRoleChipState extends State<PermissionRoleChip> {
       at = m.end;
     }
     if (at < raw.length) spans.add(TextSpan(text: raw.substring(at)));
-    return Text.rich(TextSpan(children: spans), textHeightBehavior: const ui.TextHeightBehavior());
+    return DifyTextLine.rich(TextSpan(children: spans), textHeightBehavior: const ui.TextHeightBehavior());
   }
 }

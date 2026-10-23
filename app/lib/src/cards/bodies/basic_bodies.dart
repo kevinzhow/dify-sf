@@ -173,9 +173,9 @@ class IfElseBody extends NodeBody {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
                   children: [
-                    Text(cases.length > 1 ? 'CASE ${i + 1}' : '', style: header),
+                    DifyTextLine(cases.length > 1 ? 'CASE ${i + 1}' : '', style: header),
                     const Spacer(),
-                    Text(i == 0 ? 'IF' : 'ELIF', style: keyword),
+                    DifyTextLine(i == 0 ? 'IF' : 'ELIF', style: keyword),
                   ],
                 ),
               ),
@@ -191,7 +191,7 @@ class IfElseBody extends NodeBody {
               padding: EdgeInsets.symmetric(horizontal: 4),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: Text('ELSE', style: keyword),
+                child: DifyTextLine('ELSE', style: keyword),
               ),
             ),
           ),
@@ -231,7 +231,7 @@ class _ConditionLine extends StatelessWidget {
       return ParamRow(
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(
+          child: DifyTextLine(
             'Condition NOT setup',
             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary), // text-xs font-normal
           ),
@@ -264,7 +264,7 @@ class _ConditionLine extends StatelessWidget {
           Flexible(child: VariableLabel.of(ref, variant: VarLabelStyle.inText, bare: true)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
+            child: DifyTextLine(
               _operators[op] ?? op,
               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textPrimary), // text-xs font-medium
             ),
@@ -273,7 +273,7 @@ class _ConditionLine extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Text(
+                child: DifyTextLine(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

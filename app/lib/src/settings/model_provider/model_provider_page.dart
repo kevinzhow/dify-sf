@@ -231,7 +231,7 @@ class _ModelProviderPageState extends State<ModelProviderPage> {
                       height: 20,
                       child: Align(
                         alignment: AlignmentDirectional.centerStart,
-                        child: Text(
+                        child: DifyTextLine(
                           _t('modelProvider.toBeConfigured'),
                           style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary),
                         ),
@@ -320,7 +320,7 @@ class _NoneConfiguredWarning extends StatelessWidget {
                   children: [
                     RemixIcon('alert-fill', size: 16, color: DifyColors.textWarningSecondary),
                     Flexible(
-                      child: Text(
+                      child: DifyTextLine(
                         text,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -369,14 +369,14 @@ class EmptyProviderState extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text(
+          child: DifyTextLine(
             _t('modelProvider.emptyProviderTitle'),
             style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
           ),
         ),
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text(
+          child: DifyTextLine(
             _t('modelProvider.emptyProviderTip'),
             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
           ),

@@ -354,13 +354,13 @@ class DataSourceBeforeRunForm extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     spacing: 8,
                     children: [
-                      DifyButton(onPressed: onCancel, child: Text(DifyI18n.tr('common', 'operation.cancel'))),
+                      DifyButton(onPressed: onCancel, child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel'))),
                       DifyButton(
                         variant: DifyButtonVariant.primary,
                         onPressed: beforeRun.handleRunWithSyncDraft,
                         loading: isPending,
                         disabled: disabled,
-                        child: Text(DifyI18n.tr('workflow', 'singleRun.startRun')),
+                        child: DifyTextLine(DifyI18n.tr('workflow', 'singleRun.startRun')),
                       ),
                     ],
                   ),

@@ -246,6 +246,7 @@ class _HumanInputFormState extends State<HumanInputForm> {
     },
   );
   bool _submitting = false;
+
   /// A refused or lost answer ([HumanInputRejection.message]) shown above the actions until the next attempt. A form that
   /// fails must not look submitted, lose the typed answers, or leave its buttons disabled.
   String? _error;
@@ -293,7 +294,7 @@ class _HumanInputFormState extends State<HumanInputForm> {
           Padding(
             key: const Key('human-input-form-error'),
             padding: const EdgeInsets.only(top: 4),
-            child: Text(message, style: difyStyle(DifyType.bodySmRegular, DifyColors.textWarning)),
+            child: DifyTextLine(message, style: difyStyle(DifyType.bodySmRegular, DifyColors.textWarning)),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -306,7 +307,7 @@ class _HumanInputFormState extends State<HumanInputForm> {
                   variant: buttonVariantOf(jsStr(jsGet(a, 'button_style'))),
                   disabled: disabled,
                   onPressed: () => token.isEmpty ? null : _submit(token, '${jsGet(a, 'id')}'),
-                  child: Text('${jsGet(a, 'title') ?? ''}'),
+                  child: DifyTextLine('${jsGet(a, 'title') ?? ''}'),
                 ),
             ],
           ),
@@ -351,9 +352,9 @@ class HumanInputTips extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             spacing: 4,
             children: [
-              if (showEmailTip && !isEmailDebugMode) Text(_tw('common.humanInputEmailTip'), style: regular),
+              if (showEmailTip && !isEmailDebugMode) DifyTextLine(_tw('common.humanInputEmailTip'), style: regular),
               if (showEmailTip && isEmailDebugMode)
-                Text.rich(
+                DifyTextLine.rich(
                   TextSpan(
                     style: regular,
                     children: transSpans(_tw('common.humanInputEmailTipInDebugMode', {'email': email}), {
@@ -495,7 +496,7 @@ class SubmittedHumanInputContentItem extends StatelessWidget {
     if (field == null || value == null) return const SizedBox.shrink();
     final key = Key('submitted-field-$name');
     if (isParagraphFormInput(field)) {
-      return Text(
+      return DifyTextLine(
         value is String ? value : '',
         key: key,
         style: difyStyle(DifyType.bodyMdRegular, DifyColors.textPrimary),
@@ -553,7 +554,7 @@ class SubmittedHumanInputFieldValues extends StatelessWidget {
     return switch (_kind(field, value)) {
       'file' => value is Map ? _fileList(key, [value]) : null,
       'file-list' => value is List ? _fileList(key, value.whereType<Map>().toList()) : null,
-      _ => Text('$value', key: key, style: difyStyle(DifyType.bodyMdRegular, DifyColors.textPrimary)),
+      _ => DifyTextLine('$value', key: key, style: difyStyle(DifyType.bodyMdRegular, DifyColors.textPrimary)),
     };
   }
 
@@ -586,7 +587,7 @@ class HumanInputExecutedAction extends StatelessWidget {
           children: [
             DifyIcon('vender/workflow/trigger-all', size: 14, color: DifyColors.textTertiary),
             Expanded(
-              child: Text.rich(
+              child: DifyTextLine.rich(
                 TextSpan(
                   style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                   children: transSpans(_tw('nodes.humanInput.userActions.triggered', {'actionName': actionId}), {

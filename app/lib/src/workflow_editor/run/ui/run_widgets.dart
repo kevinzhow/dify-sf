@@ -156,7 +156,7 @@ class OutputPanel extends StatelessWidget {
           if (!isRunning && (error ?? '').isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: StatusContainer(status: 'failed', copyContent: error, child: Text(error!)),
+              child: StatusContainer(status: 'failed', copyContent: error, child: DifyTextLine(error!)),
             ),
           if (!isRunning && empty)
             const Padding(
@@ -177,7 +177,7 @@ class OutputPanel extends StatelessWidget {
           if (!isTextOutput && ((map != null && map.isNotEmpty) || (o is String && o.isNotEmpty)) && (height ?? 0) > 0)
             DifyCodeEditor(
               readOnly: true,
-              titleWidget: const ExcludeFocus(child: Text('Output')),
+              titleWidget: const ExcludeFocus(child: DifyTextLine('Output')),
               language: CodeLanguage.json,
               value: const JsonEncoder.withIndent('  ').convert(map ?? o),
               isJSONStringifyBeauty: true,
@@ -229,7 +229,7 @@ class ResultText extends StatelessWidget {
           if (!isRunning && (error ?? '').isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: StatusContainer(status: 'failed', child: Text(error!)),
+              child: StatusContainer(status: 'failed', child: DifyTextLine(error!)),
             ),
           if (!isPaused && !isRunning && !has && (error ?? '').isEmpty && files.isEmpty)
             Padding(
@@ -239,8 +239,8 @@ class ResultText extends StatelessWidget {
                 child: Column(
                   children: [
                     DifyIcon('vender/line/editor/image-indent-left', size: 24, color: DifyTailwind.gray400),
-                    Padding(padding: const EdgeInsets.only(right: 8), child: Text(tr('resultEmpty.title'))),
-                    Text.rich(
+                    Padding(padding: const EdgeInsets.only(right: 8), child: DifyTextLine(tr('resultEmpty.title'))),
+                    DifyTextLine.rich(
                       TextSpan(
                         children: [
                           TextSpan(text: tr('resultEmpty.tipLeft')),
@@ -251,7 +251,7 @@ class ResultText extends StatelessWidget {
                               onTap: onClick,
                               child: MouseRegion(
                                 cursor: SystemMouseCursors.click,
-                                child: Text(
+                                child: DifyTextLine(
                                   tr('resultEmpty.link'),
                                   style: difyTextStyle(DifyTw.text13Leading18, DifyTailwind.primary600),
                                 ),
@@ -375,7 +375,7 @@ class _ReasoningPanelState extends State<ReasoningPanel> {
                       child: RemixIcon('arrow-right-s-line', size: 12, color: DifyColors.textSecondary),
                     ),
                     const SizedBox(width: 8),
-                    Text(
+                    DifyTextLine(
                       label,
                       style: difyTextStyle(DifyTw.fontBold, DifyColors.textSecondary),
                     ),

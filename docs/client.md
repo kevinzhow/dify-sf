@@ -306,3 +306,11 @@ implemented and tested here. What is left:
    some of its own deletes, so the randomized tests and the storm CLI exercise it. Tests: `restore_test`, two
    conformance cases (restore and notDeleter against the real server; a stream without `proto` never carries a
    restore). The app's notice for `notDeleter` reads "X deleted N — only they can undo that".
+
+### Shared typography and Web CJK fallback
+
+Ordinary product text uses `DifyTextLine` (or the token-based `DifyText`), including labels supplied to buttons and filters. The design check rejects direct framework `Text` constructors outside that primitive. It measures the actual primary face through `TextPainter` and sets one CSS strut per line, keeping Chinese, Latin and mixed text on the same baseline. The same strut and text primitive are used by input content/placeholders; caller-supplied rich editor struts and independently sized inline widgets remain explicit. Text scaling, native editing, selection and accessibility still use Flutter's components.
+
+Web loads a self-hosted Noto CJK regional Regular/Bold pair before first rendering and before completing a UI-locale change. SC/TC/HK/JP/KR are selected by locale; cached style objects resolve the current managed fallback again on rebuild. This fixes uncontrolled CJK fallback and line-box drift, while retaining Dart Wasm/skwasm. It does not read installed macOS/Windows fonts. Font provenance, OFL, exact costs and rebuild instructions are in [tool/fonts](../tool/fonts/README.md).
+
+`tool/typography_alignment_probe.dart` is an independent browser CSS/Flutter comparison using the same font bytes and 12/13/14 px labels; it is not a production HTML text layer. The actual app remains the normal `lib/main.dart` target.

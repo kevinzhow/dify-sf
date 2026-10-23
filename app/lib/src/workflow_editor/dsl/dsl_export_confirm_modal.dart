@@ -142,7 +142,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
-                  child: Text(
+                  child: DifyTextLine(
                     _tw('env.export.title'),
                     style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                   ),
@@ -157,8 +157,13 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                     children: [
                       Row(
                         children: [
-                          _cell(Text(_tw('env.export.name'), style: head), last: false, right: true, width: 220),
-                          Expanded(child: _cell(Text(_tw('env.export.value'), style: head), last: false)),
+                          _cell(
+                            DifyTextLine(_tw('env.export.name'), style: head),
+                            last: false,
+                            right: true,
+                            width: 220,
+                          ),
+                          Expanded(child: _cell(DifyTextLine(_tw('env.export.value'), style: head), last: false)),
                         ],
                       ),
                       for (final (i, env) in envs.indexed)
@@ -177,7 +182,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                                       color: DifyColors.utilColorsVioletViolet600,
                                     ),
                                     Flexible(
-                                      child: Text(
+                                      child: DifyTextLine(
                                         '${env['name']}',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -187,7 +192,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                                     // `shrink-0`; bounded so a long translation cannot push the row over.
                                     ConstrainedBox(
                                       constraints: const BoxConstraints(maxWidth: 80),
-                                      child: Text(
+                                      child: DifyTextLine(
                                         _tw('env.export.secret'),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -204,7 +209,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                             ),
                             Expanded(
                               child: _cell(
-                                Text(
+                                DifyTextLine(
                                   _value(env['value']),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -238,7 +243,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                           Flexible(
                             child: Opacity(
                               opacity: _exporting ? 0.5 : 1,
-                              child: Text(
+                              child: DifyTextLine(
                                 _tw('env.export.checkbox'),
                                 style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
                               ),
@@ -259,7 +264,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                 disabled: _exporting,
                 semanticLabel: _tc('operation.cancel'),
                 onPressed: widget.onClose,
-                child: Text(_tc('operation.cancel')),
+                child: DifyTextLine(_tc('operation.cancel')),
               ),
               DifyButton(
                 key: const ValueKey('dsl-export-confirm-button'),
@@ -267,7 +272,7 @@ class _DslExportConfirmContentState extends State<DslExportConfirmContent> {
                 loading: _exporting,
                 semanticLabel: confirmLabel,
                 onPressed: () => unawaited(_submit()),
-                child: Text(confirmLabel),
+                child: DifyTextLine(confirmLabel),
               ),
             ],
           ),

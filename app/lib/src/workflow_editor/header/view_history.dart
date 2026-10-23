@@ -104,7 +104,7 @@ class _ViewHistoryState extends State<ViewHistory> {
         children: [
           DifyIcon('vender/line/time/clock-play', size: 16, color: DifyColors.componentsButtonSecondaryText),
           const SizedBox(width: 4),
-          Text(
+          DifyTextLine(
             _tr('common.showRunHistory'),
             // `text-[13px] font-medium`, centred in the h-8 button (the 16 px line lays out as the inherited one).
             style: difyTextStyle(DifyTw.text13MediumLeading16, DifyColors.componentsButtonSecondaryText),
@@ -117,7 +117,7 @@ class _ViewHistoryState extends State<ViewHistory> {
   Widget _iconTrigger(DifyFloatingController c, WorkflowHeaderData data) {
     final label = _tr('common.viewRunHistory');
     return DifyTooltip(
-      content: Text(label),
+      content: DifyTextLine(label),
       child: HeaderPressable(
         semanticLabel: label,
         onPressed: () {
@@ -184,7 +184,7 @@ class _HistoryPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: DifyTextLine(
                       _tr('common.runHistory'),
                       style: difyTextStyle(
                         DifyType.systemXlSemibold,
@@ -213,7 +213,7 @@ class _HistoryPanel extends StatelessWidget {
                                 color: DifyColors.textQuaternary,
                               ),
                               const SizedBox(height: 8),
-                              Text(
+                              DifyTextLine(
                                 _tr('common.notRunning'),
                                 textAlign: TextAlign.center,
                                 style: difyTextStyle(DifyTw.text13Leading16, DifyColors.textQuaternary), // text-[13px]
@@ -311,14 +311,14 @@ class _HistoryRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  DifyTextLine(
                     'Test ${chatMode ? 'Chat' : 'Run'}${f.formatWorkflowRunIdentifier(finishedAt, status ?? 'Running')}',
                     style: difyTextStyle(
                       DifyTw.text13MediumLeading18,
                       selected ? DifyColors.textAccent : DifyColors.textPrimary,
                     ),
                   ),
-                  Text(
+                  DifyTextLine(
                     '$author ·${f.formatTimeFromNow(((finishedAt ?? 0) != 0 ? finishedAt! : createdAt) * 1000)}',
                     style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary), // text-xs leading-4.5
                   ),

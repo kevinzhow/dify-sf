@@ -258,7 +258,7 @@ class _ToolPickerPanelState extends State<ToolPickerPanel> {
                 child: visible.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                        child: Text(
+                        child: DifyTextLine(
                           _w('tabs.noResult'),
                           textAlign: TextAlign.center,
                           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
@@ -285,7 +285,7 @@ class _ToolPickerPanelState extends State<ToolPickerPanel> {
                       size: DifyButtonSize.small,
                       disabled: _picked.isEmpty,
                       onPressed: () => widget.onSelectMultiple?.call(_picked.values.toList()),
-                      child: Text(DifyI18n.tr('common', 'operation.add')),
+                      child: DifyTextLine(DifyI18n.tr('common', 'operation.add')),
                     ),
                   ],
                 ),
@@ -378,7 +378,7 @@ class _Row extends StatelessWidget {
                 border: Border.all(color: DifyColors.componentsPanelBorderSubtle, width: 0.5),
               ),
               child: switch (icon) {
-                {'content': final String emoji} => Text(emoji, style: difyEmojiTextStyle(12, lineHeight: null)),
+                {'content': final String emoji} => DifyTextLine(emoji, style: difyEmojiTextStyle(12, lineHeight: null)),
                 _ => RemixIcon('tools-line', size: 12, color: DifyColors.textTertiary),
               },
             ),

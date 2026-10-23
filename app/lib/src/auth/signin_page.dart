@@ -100,7 +100,7 @@ class _NormalFormState extends State<NormalForm> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(
+            child: DifyTextLine(
               route.isInvite
                   ? '${tLogin(context, 'joinTipStart')}$workspace${tLogin(context, 'joinTipEnd')}'
                   : tLogin(context, 'welcome'),
@@ -199,13 +199,13 @@ class _NoLoginMethod extends StatelessWidget {
               alignment: Alignment.center,
               child: RemixIcon('door-lock-line', size: 20, color: DifyColors.textPrimary),
             ),
-            Text(
+            DifyTextLine(
               tLogin(context, 'noLoginMethod'),
               style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(
+              child: DifyTextLine(
                 tLogin(context, 'noLoginMethodTip'),
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
@@ -351,7 +351,7 @@ class _MailAndPasswordAuthState extends State<MailAndPasswordAuth> {
               variant: DifyButtonVariant.primary,
               loading: _loading,
               onPressed: _submit,
-              child: Text(tLogin(context, 'signBtn')),
+              child: DifyTextLine(tLogin(context, 'signBtn')),
             ),
           ),
         ],
@@ -385,7 +385,7 @@ class _ForgetLinkState extends State<_ForgetLink> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
-    final text = Text(tLogin(context, 'forget'), style: widget.style);
+    final text = DifyTextLine(tLogin(context, 'forget'), style: widget.style);
     return FocusableActionDetector(
       key: const ValueKey('signin-forget'),
       focusNode: _focus,

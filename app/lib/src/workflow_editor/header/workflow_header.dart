@@ -184,7 +184,7 @@ class HeaderInHistory extends StatelessWidget {
             store.historyWorkflowData.value = null;
           },
           leading: const DifyIcon('vender/line/arrows/arrow-narrow-left', size: 16),
-          child: Text(_tr('common.goBackToEdit')),
+          child: DifyTextLine(_tr('common.goBackToEdit')),
         ),
       ],
     );
@@ -241,7 +241,7 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
               disabled: !canRestore,
               restyle: difyDarkGlass(),
               onPressed: () => _restore(store, data),
-              child: Text(_tr('common.restore')),
+              child: DifyTextLine(_tr('common.restore')),
             ),
             DifyButton(
               onPressed: () {
@@ -259,7 +259,7 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
                   RemixIcon('history-line', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Text(
+                    child: DifyTextLine(
                       _tr('common.exitVersions'),
                       style: TextStyle(color: DifyColors.componentsButtonSecondaryAccentText),
                     ),

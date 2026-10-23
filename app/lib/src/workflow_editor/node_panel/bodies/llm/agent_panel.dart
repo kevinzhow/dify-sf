@@ -282,7 +282,7 @@ class _ListEmpty extends StatelessWidget {
           child: DifyIcon('vender/workflow/agent', size: 20, color: DifyColors.textAccent),
         ),
         DifyText(title, DifyType.systemMdMedium, color: DifyColors.textSecondary, maxLines: null),
-        Text.rich(
+        DifyTextLine.rich(
           TextSpan(
             text: '$description\n',
             children: [
@@ -290,8 +290,10 @@ class _ListEmpty extends StatelessWidget {
                 child: DifyPressable(
                   semanticLabel: linkText,
                   onPressed: onLink,
-                  builder: (context, hovered, focused) =>
-                      Text(linkText, style: difyStyle(DifyType.systemXsRegular, DifyColors.textAccentSecondary)),
+                  builder: (context, hovered, focused) => DifyTextLine(
+                    linkText,
+                    style: difyStyle(DifyType.systemXsRegular, DifyColors.textAccentSecondary),
+                  ),
                 ),
               ),
             ],
@@ -535,7 +537,7 @@ class _ProviderIcon extends StatelessWidget {
       child = Container(
         color: _hex(jsStr(i['background'])) ?? DifyColors.stateBaseHover,
         alignment: Alignment.center,
-        child: Text('${i['content'] ?? ''}', style: difyEmojiTextStyle(size * 0.6)),
+        child: DifyTextLine('${i['content'] ?? ''}', style: difyEmojiTextStyle(size * 0.6)),
       );
     } else {
       child = ColoredBox(color: DifyColors.stateBaseHover);
@@ -602,12 +604,12 @@ class AgentStrategyForm extends StatelessWidget {
           if (schema['required'] == true)
             Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Text('*', style: difyStyle(DifyType.systemSmSemibold, DifyColors.textDestructive)),
+              child: DifyTextLine('*', style: difyStyle(DifyType.systemSmSemibold, DifyColors.textDestructive)),
             ),
           if (tip.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: DifyInfotip(label: tip, width: 200, content: Text(tip)),
+              child: DifyInfotip(label: tip, width: 200, content: DifyTextLine(tip)),
             ),
         ],
       ),
@@ -634,7 +636,7 @@ class AgentStrategyForm extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: DifyPromptEditorPanel(
             key: ValueKey('agent-param-$name'),
-            title: Text(
+            title: DifyTextLine(
               _i18n(schema['label'], language).toUpperCase(),
               style: difyStyle(DifyType.systemSmSemiboldUppercase, DifyColors.textSecondary).copyWith(fontSize: 13),
             ),
@@ -1207,11 +1209,11 @@ class _ToolItemState extends State<_ToolItem> {
                 DifyButton(
                   size: DifyButtonSize.small,
                   onPressed: widget.onOpen,
-                  child: Text(DifyI18n.tr('tools', 'notAuthorized')),
+                  child: DifyTextLine(DifyI18n.tr('tools', 'notAuthorized')),
                 )
               else if (uninstalled)
                 DifyTooltip(
-                  content: Text(_w('nodes.agent.toolNotInstallTooltip', {'tool': v['tool_label'] ?? ''})),
+                  content: DifyTextLine(_w('nodes.agent.toolNotInstallTooltip', {'tool': v['tool_label'] ?? ''})),
                   child: RemixIcon('error-warning-fill', size: 16, color: DifyColors.textDestructive),
                 ),
               if (widget.supportEnableSwitch && !uninstalled)
@@ -1294,7 +1296,10 @@ class _MultipleToolSelectorState extends State<MultipleToolSelector> {
                                 ),
                               ),
                               if (widget.required)
-                                Text('*', style: difyStyle(DifyType.systemSmSemibold, DifyColors.textDestructive)),
+                                DifyTextLine(
+                                  '*',
+                                  style: difyStyle(DifyType.systemSmSemibold, DifyColors.textDestructive),
+                                ),
                               AnimatedRotation(
                                 turns: _open ? 0 : 0.75,
                                 duration: difyTransitionDuration,
@@ -1309,7 +1314,8 @@ class _MultipleToolSelectorState extends State<MultipleToolSelector> {
                         ),
                       ),
                     ),
-                    if (widget.tooltip.isNotEmpty) DifyInfotip(label: widget.tooltip, content: Text(widget.tooltip)),
+                    if (widget.tooltip.isNotEmpty)
+                      DifyInfotip(label: widget.tooltip, content: DifyTextLine(widget.tooltip)),
                   ],
                 ),
               ),

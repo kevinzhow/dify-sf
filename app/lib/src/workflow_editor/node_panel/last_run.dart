@@ -38,7 +38,7 @@ class LastRun extends StatelessWidget {
             size: DifyButtonSize.small,
             onPressed: onSingleRun,
             leading: const RemixIcon('play-line', size: 14),
-            child: Text(DifyI18n.tr('workflow', 'debug.noData.runThisNode')),
+            child: DifyTextLine(DifyI18n.tr('workflow', 'debug.noData.runThisNode')),
           ),
       ],
     ),

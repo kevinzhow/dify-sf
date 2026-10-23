@@ -325,7 +325,7 @@ class _LlmPanelState extends State<LlmPanel> {
               onChange: (sel, _) => prompt.handleContextVarChange(sel),
             ),
             if (prompt.shouldShowContextTip)
-              Text(
+              DifyTextLine(
                 _w('nodes.llm.notSetContextInPromptTip'),
                 style: difyTextStyle(DifyTw.textXsLeading18, DifyLlmPanelColors.warningTip),
               ),
@@ -585,7 +585,7 @@ class PanelMemorySection extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      DifyInfotip(label: tip, content: Text(tip)),
+                      DifyInfotip(label: tip, content: DifyTextLine(tip)),
                       const Spacer(),
                       Container(
                         constraints: const BoxConstraints(maxWidth: 120),
@@ -613,7 +613,7 @@ class PanelMemorySection extends StatelessWidget {
                     spacing: 4,
                     children: [
                       DifyText('USER', DifyType.systemXsSemibold, color: DifyColors.textSecondary),
-                      DifyInfotip(label: userTip, width: 180, content: Text(userTip)),
+                      DifyInfotip(label: userTip, width: 180, content: DifyTextLine(userTip)),
                     ],
                   ),
                   value: query.isNotEmpty ? query : '${defaultMemory['query_prompt_template']}',
@@ -629,7 +629,7 @@ class PanelMemorySection extends StatelessWidget {
                   isSupportFileVar: true,
                 ),
                 if (!isSnippetFlow && query.isNotEmpty && !query.contains('{{#sys.query#}}'))
-                  Text(
+                  DifyTextLine(
                     _w('nodes.llm.sysQueryInUser'),
                     style: difyTextStyle(DifyTw.textXsLeading18, DifyLlmPanelColors.warningTip),
                   ),
@@ -747,7 +747,7 @@ class PanelOutputSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                DifyInfotip(label: tip, width: 150, content: Text(tip)),
+                DifyInfotip(label: tip, width: 150, content: DifyTextLine(tip)),
                 const SizedBox(width: 8),
                 DifySwitch(
                   checked: structuredOutputEnabled,
@@ -824,7 +824,7 @@ class StructureOutput extends StatelessWidget {
               size: DifyButtonSize.small,
               leading: const RemixIcon('edit-line', size: 14),
               onPressed: () => _open(context),
-              child: Text(_a('structOutput.configure')),
+              child: DifyTextLine(_a('structOutput.configure')),
             ),
           ],
         ),

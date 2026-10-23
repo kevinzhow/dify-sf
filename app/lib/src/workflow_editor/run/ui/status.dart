@@ -256,8 +256,8 @@ class _StatusPanelState extends State<StatusPanel> {
     final raw = _tw('nodes.common.errorHandle.partialSucceeded.tip', {'num': n});
     final m = RegExp(r'<tracingLink>(.*?)</tracingLink>').firstMatch(raw);
     final base = difyStyle(style, color);
-    if (m == null) return Text(raw, style: base);
-    return Text.rich(
+    if (m == null) return DifyTextLine(raw, style: base);
+    return DifyTextLine.rich(
       TextSpan(
         style: base,
         children: [
@@ -347,7 +347,7 @@ class _StatusPanelState extends State<StatusPanel> {
                           alignment: Alignment.centerLeft,
                           child: running
                               ? const DifySkeletonRectangle(width: 64, opacity: 1, margin: EdgeInsets.zero, pulse: true)
-                              : Text(
+                              : DifyTextLine(
                                   (widget.time ?? 0) != 0 ? '${widget.time!.toStringAsFixed(3)}s' : '-',
                                   style: valueStyle,
                                 ),
@@ -368,7 +368,10 @@ class _StatusPanelState extends State<StatusPanel> {
                         alignment: Alignment.centerLeft,
                         child: running
                             ? const DifySkeletonRectangle(width: 80, opacity: 1, margin: EdgeInsets.zero, pulse: true)
-                            : Text('${(widget.tokens ?? 0) == 0 ? 0 : widget.tokens} Tokens', style: valueStyle),
+                            : DifyTextLine(
+                                '${(widget.tokens ?? 0) == 0 ? 0 : widget.tokens} Tokens',
+                                style: valueStyle,
+                              ),
                       ),
                     ),
                   ],
@@ -390,7 +393,7 @@ class _StatusPanelState extends State<StatusPanel> {
           ],
           if (s == 'exception') ...[
             _divider(DifyColors.dividerDeep),
-            Text.rich(
+            DifyTextLine.rich(
               TextSpan(
                 style: difyStyle(DifyType.systemXsMedium, DifyColors.textWarning),
                 children: [
@@ -501,7 +504,7 @@ class RunMetaData extends StatelessWidget {
         ),
       ],
     );
-    Widget text(String s) => Text(s, style: valueStyle, strutStyle: Css.lineStrut(valueStyle));
+    Widget text(String s) => DifyTextLine(s, style: valueStyle, strutStyle: Css.lineStrut(valueStyle));
     Widget bar(double w, {bool pulse = false}) => Align(
       alignment: Alignment.centerLeft,
       child: DifySkeletonRectangle(width: w, opacity: 1, pulse: pulse),

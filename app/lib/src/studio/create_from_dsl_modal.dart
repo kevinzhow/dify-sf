@@ -265,7 +265,7 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: DifyTextLine(
                       _a('importApp'),
                       style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                     ),
@@ -311,7 +311,7 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       spacing: 4,
                       children: [
-                        Text(
+                        DifyTextLine(
                           _a('importFromDSLUrl'),
                           style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                         ),
@@ -341,7 +341,7 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
                     disabled: _importing,
                     semanticLabel: _a('newApp.Cancel'),
                     onPressed: widget.onClose,
-                    child: Text(_a('newApp.Cancel')),
+                    child: DifyTextLine(_a('newApp.Cancel')),
                   ),
                   DifyButton(
                     key: const ValueKey('dsl-create'),
@@ -527,7 +527,7 @@ class DslUploaderState extends State<DslUploader> {
                   spacing: 4,
                   children: [
                     Flexible(
-                      child: Text(
+                      child: DifyTextLine(
                         _a('dslUploader.button'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -554,7 +554,7 @@ class DslUploaderState extends State<DslUploader> {
                                   border: Border.all(color: DifyColors.stateAccentSolid, width: 2),
                                 )
                               : null,
-                          child: Text(
+                          child: DifyTextLine(
                             _a('dslUploader.browse'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -609,7 +609,7 @@ class DslUploaderState extends State<DslUploader> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: 2,
                         children: [
-                          Text(
+                          DifyTextLine(
                             file.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -618,7 +618,7 @@ class DslUploaderState extends State<DslUploader> {
                           ),
                           SizedBox(
                             height: 12,
-                            child: Text.rich(
+                            child: DifyTextLine.rich(
                               TextSpan(
                                 children: [
                                   TextSpan(text: widget.displayName),

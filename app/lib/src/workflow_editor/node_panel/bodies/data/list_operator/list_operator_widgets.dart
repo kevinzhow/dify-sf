@@ -69,7 +69,7 @@ class ConditionOperator extends StatelessWidget {
                 spacing: 4,
                 children: [
                   Flexible(
-                    child: Text(
+                    child: DifyTextLine(
                       selected == null ? wf('nodes.ifElse.select') : labelOf(selected),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -92,7 +92,7 @@ class ConditionOperator extends StatelessWidget {
               DifyMenuRadioItem<String>(
                 value: o,
                 closeOnClick: true,
-                child: Text(
+                child: DifyTextLine(
                   labelOf(o),
                   style: difyTextStyle(DifyTw.text13Medium, DifyColors.textSecondary),
                 ),

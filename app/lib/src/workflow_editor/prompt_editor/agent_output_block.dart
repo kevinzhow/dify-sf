@@ -381,7 +381,7 @@ class AgentOutputBlockComponentState extends State<AgentOutputBlockComponent> {
                     trailing: o.value == w.outputType
                         ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent)
                         : null,
-                    child: Text(o.label),
+                    child: DifyTextLine(o.label),
                   ),
               ],
             ),

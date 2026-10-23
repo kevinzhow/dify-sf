@@ -82,7 +82,7 @@ Future<void> openSession(WidgetTester t) async {
 
 Future<String> text(WidgetTester t, String key) async {
   if (const ['link-state', 'pending-count', 'last-seq'].contains(key)) await openSession(t);
-  return (t.widget(find.byKey(Key(key))) as Text).data!;
+  return (t.widget(find.byKey(Key(key))) as DifyTextLine).data!;
 }
 
 /// Types a node's title in its panel and commits it (Dify's title input commits on blur; Enter blurs it).

@@ -321,7 +321,7 @@ class _Disc extends StatelessWidget {
     child: Padding(
       // Chrome's outside marker is the disc and a gap of about half an em.
       padding: EdgeInsets.only(right: fontSize / 2),
-      child: Text(
+      child: DifyTextLine(
         '•',
         textAlign: TextAlign.right,
         style: noteParagraphStyle.copyWith(fontSize: fontSize),

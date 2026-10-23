@@ -422,6 +422,6 @@ class _Placeholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     key: ValueKey('app-detail-placeholder-${page.segment}'),
-    child: Text(appDetailPageTitle(page), style: TextStyle(color: DifyColors.textTertiary)),
+    child: DifyTextLine(appDetailPageTitle(page), style: TextStyle(color: DifyColors.textTertiary)),
   );
 }

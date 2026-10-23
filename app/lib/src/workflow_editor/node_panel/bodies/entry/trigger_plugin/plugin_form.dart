@@ -186,7 +186,7 @@ class PluginFormItem extends StatelessWidget {
                     if (!showDescription && tooltip.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
+                        child: DifyInfotip(label: tooltip, width: 200, content: DifyTextLine(tooltip)),
                       ),
                     if (showSchemaButton) ...[
                       Padding(
@@ -513,11 +513,13 @@ class _MixedVariableTextInputState extends State<MixedVariableTextInput> {
         Expanded(
           child: Row(
             children: [
-              Flexible(child: Text(DifyI18n.tr('workflow', 'nodes.tool.insertPlaceholder1'), style: placeholderStyle)),
+              Flexible(
+                child: DifyTextLine(DifyI18n.tr('workflow', 'nodes.tool.insertPlaceholder1'), style: placeholderStyle),
+              ),
               if (!w.disableVariableInsertion) ...[
                 const Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: DifyKbd('/')),
                 Flexible(
-                  child: Text(
+                  child: DifyTextLine(
                     DifyI18n.tr('workflow', 'nodes.tool.insertPlaceholder2'),
                     style: placeholderStyle.copyWith(
                       decoration: TextDecoration.underline,
@@ -637,7 +639,7 @@ class _MultiSelect extends StatelessWidget {
             DifyMenuCheckboxItem(
               checked: value.contains(i.value),
               onCheckedChange: (on) => onChange(on ? [...value, i.value] : [...value.where((v) => v != i.value)]),
-              child: Text(i.label),
+              child: DifyTextLine(i.label),
             ),
         ],
       ),

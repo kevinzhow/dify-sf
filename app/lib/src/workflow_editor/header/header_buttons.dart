@@ -139,7 +139,7 @@ class VersionHistoryButton extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+                child: DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
               ),
               const DifyShortcutKbd(hotkey: versionHistoryHotkey, secondaryText: true),
             ],
@@ -241,7 +241,7 @@ class ScrollToSelectedNodeFace extends StatelessWidget {
                 DifyType.systemXsMedium,
                 hovered ? DifyColors.textAccent : DifyColors.textTertiary,
               ),
-              child: Text(_tr('panel.scrollToSelectedNode'), maxLines: 1, softWrap: false),
+              child: DifyTextLine(_tr('panel.scrollToSelectedNode'), maxLines: 1, softWrap: false),
             ),
           ),
         ),

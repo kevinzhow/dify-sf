@@ -42,7 +42,7 @@ class DifyKbd extends StatelessWidget {
         decoration: BoxDecoration(color: color.background, borderRadius: BorderRadius.circular(DifyRadius.sm)),
         child: Center(
           widthFactor: 1,
-          child: Text(
+          child: DifyTextLine(
             cssCapitalize(text),
             maxLines: 1,
             softWrap: false,

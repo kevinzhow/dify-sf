@@ -215,11 +215,11 @@ class NoteCardView extends StatelessWidget {
                             alignment: Alignment.topLeft,
                             maxHeight: double.infinity,
                             child: text.isEmpty
-                                ? Text(
+                                ? DifyTextLine(
                                     DifyI18n.tr('workflow', 'nodes.note.editor.placeholder'),
                                     style: notePlaceholderStyle,
                                   )
-                                : Text.rich(noteTextSpan(text)),
+                                : DifyTextLine.rich(noteTextSpan(text)),
                           ),
                         ),
                   ),
@@ -227,7 +227,7 @@ class NoteCardView extends StatelessWidget {
                 if (data.showAuthor)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: data.author.isEmpty ? null : Text(data.author, style: noteAuthorStyle),
+                    child: data.author.isEmpty ? null : DifyTextLine(data.author, style: noteAuthorStyle),
                   ),
               ],
             ),

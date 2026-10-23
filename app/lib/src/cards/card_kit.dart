@@ -2,6 +2,8 @@ import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
 import '../design/dify_icon.dart';
+import '../design/css_metrics.dart';
+import '../design/dify_fonts.dart';
 import '../design/dify_tokens.g.dart';
 import '../workflow/model_catalog.dart';
 import '../design/widgets/widgets.dart';
@@ -41,11 +43,10 @@ class BodyContext {
 /// The height of [text] in [style] laid out at [width] (description, answer text).
 double textHeight(String text, TextStyle style, double width, {int? maxLines}) {
   if (text.isEmpty) return 0;
+  final effective = DifyFonts.resolveStyle(style.copyWith(fontFamily: cardFontFamily));
   final p = TextPainter(
-    text: TextSpan(
-      text: text,
-      style: style.copyWith(fontFamily: cardFontFamily),
-    ),
+    text: TextSpan(text: text, style: effective),
+    strutStyle: Css.lineStrut(effective),
     textDirection: TextDirection.ltr,
     maxLines: maxLines,
   )..layout(maxWidth: width);

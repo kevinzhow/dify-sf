@@ -138,7 +138,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _card(_share('sorry'), _error),
-          DifyButton(onPressed: _load, child: Text(DifyI18n.tr('common', 'operation.retry'))),
+          DifyButton(onPressed: _load, child: DifyTextLine(DifyI18n.tr('common', 'operation.retry'))),
         ],
       ),
       _State.form => SingleChildScrollView(

@@ -57,7 +57,7 @@ class TimezoneLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final offset = convertTimezoneToOffsetStr(timezone);
     return DifyTooltip(
-      content: Text('Timezone: $timezone ($offset)'),
+      content: DifyTextLine('Timezone: $timezone ($offset)'),
       child: DifyText(
         offset,
         style ?? DifyType.systemSmRegular,
@@ -179,7 +179,7 @@ class _TimePickerState extends State<TimePicker> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(4),
-                    child: Text(
+                    child: DifyTextLine(
                       showText ? displayText : placeholder,
                       style: textStyle,
                       maxLines: 1,
@@ -260,7 +260,7 @@ class _TimePickerState extends State<TimePicker> {
                         variant: DifyButtonVariant.secondaryAccent,
                         size: DifyButtonSize.small,
                         onPressed: _now,
-                        child: Text(DifyI18n.tr('time', 'operation.now')),
+                        child: DifyTextLine(DifyI18n.tr('time', 'operation.now')),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -269,7 +269,7 @@ class _TimePickerState extends State<TimePicker> {
                         variant: DifyButtonVariant.primary,
                         size: DifyButtonSize.small,
                         onPressed: _confirm,
-                        child: Text(DifyI18n.tr('time', 'operation.ok')),
+                        child: DifyTextLine(DifyI18n.tr('time', 'operation.ok')),
                       ),
                     ),
                   ],

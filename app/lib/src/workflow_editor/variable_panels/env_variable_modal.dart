@@ -298,7 +298,7 @@ class _TypeCard extends StatelessWidget {
         card,
         Positioned(
           right: 4,
-          child: DifyInfotip(label: tip!, width: 240, content: Text(tip!)),
+          child: DifyInfotip(label: tip!, width: 240, content: DifyTextLine(tip!)),
         ),
       ],
     );

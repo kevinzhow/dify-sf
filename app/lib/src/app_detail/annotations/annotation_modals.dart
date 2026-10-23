@@ -52,7 +52,7 @@ class AddAnnotationEditItem extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(name, style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPrimary)),
+                child: DifyTextLine(name, style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPrimary)),
               ),
               DifyTextarea(
                 key: ValueKey('add-annotation-${type.name}'),
@@ -125,7 +125,7 @@ class _AddAnnotationModalState extends State<AddAnnotationModal> {
     return AnnotationDrawer(
       label: title,
       onClose: widget.onHide,
-      title: Text(
+      title: DifyTextLine(
         title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -161,7 +161,7 @@ class _AddAnnotationModalState extends State<AddAnnotationModal> {
                 label: _a('addModal.createNext'),
                 onChanged: (v) => setState(() => _isCreateNext = v),
               ),
-              Text(_a('addModal.createNext')),
+              DifyTextLine(_a('addModal.createNext')),
             ],
           ),
         ),
@@ -170,13 +170,17 @@ class _AddAnnotationModalState extends State<AddAnnotationModal> {
           child: Row(
             spacing: 8,
             children: [
-              DifyButton(size: DifyButtonSize.small, onPressed: widget.onHide, child: Text(_c('operation.cancel'))),
+              DifyButton(
+                size: DifyButtonSize.small,
+                onPressed: widget.onHide,
+                child: DifyTextLine(_c('operation.cancel')),
+              ),
               DifyButton(
                 size: DifyButtonSize.small,
                 variant: DifyButtonVariant.primary,
                 loading: _isSaving,
                 onPressed: () => unawaited(_save()),
-                child: Text(_c('operation.add')),
+                child: DifyTextLine(_c('operation.add')),
               ),
             ],
           ),
@@ -201,7 +205,7 @@ class AnnotationEditTitle extends StatelessWidget {
           child: RemixIcon('edit-fill', size: 14, color: DifyColors.textTertiary),
         ),
         Flexible(
-          child: Text(
+          child: DifyTextLine(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -280,7 +284,7 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
         spacing: 4,
         children: [
           RemixIcon(icon, size: 14, color: color),
-          Text(label, style: difyTextStyle(DifyType.systemXsMedium, color)),
+          DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, color)),
         ],
       ),
     );
@@ -294,9 +298,9 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(name, style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPrimary)),
+                child: DifyTextLine(name, style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textPrimary)),
               ),
-              Text(widget.content, style: body),
+              DifyTextLine(widget.content, style: body),
               if (!_isEdit) ...[
                 if (_showNewContent)
                   Padding(
@@ -307,7 +311,7 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
                         AnnotationEditTitle(title: editTitle),
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(_newContent, style: body),
+                          child: DifyTextLine(_newContent, style: body),
                         ),
                       ],
                     ),
@@ -328,7 +332,7 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.only(right: 8),
-                                child: Text(
+                                child: DifyTextLine(
                                   '·',
                                   style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                                 ),
@@ -371,7 +375,7 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
                               size: DifyButtonSize.small,
                               variant: DifyButtonVariant.primary,
                               onPressed: () => unawaited(_save()),
-                              child: Text(_c('operation.save')),
+                              child: DifyTextLine(_c('operation.save')),
                             ),
                             DifyButton(
                               size: DifyButtonSize.small,
@@ -379,7 +383,7 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
                                 _newContent = '';
                                 _isEdit = false;
                               }),
-                              child: Text(_c('operation.cancel')),
+                              child: DifyTextLine(_c('operation.cancel')),
                             ),
                           ],
                         ),
@@ -406,14 +410,14 @@ Widget _removeThisCache(VoidCallback onTap) => DifyPressable(
       spacing: 8,
       children: [
         DifyIcon('vender/line/communication/message-check-remove', size: 16, color: DifyColors.textTertiary),
-        Text(_a('editModal.removeThisCache')),
+        DifyTextLine(_a('editModal.removeThisCache')),
       ],
     ),
   ),
 );
 
 /// "Created At <time>" in the footer.
-Widget _createdAt(String time) => Text('${_a('editModal.createdAt')} $time');
+Widget _createdAt(String time) => DifyTextLine('${_a('editModal.createdAt')} $time');
 
 /// EditAnnotationModal (the logs' annotation editor): "Edit Annotation Reply" with the query (read-only with
 /// [onlyEditResponse]) and the answer; each save sends both through [editAnnotation] (with [messageId]) and toasts
@@ -491,7 +495,7 @@ class _EditAnnotationModalState extends State<EditAnnotationModal> {
     return AnnotationDrawer(
       label: title,
       onClose: w.onHide,
-      title: Text(
+      title: DifyTextLine(
         title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -565,7 +569,7 @@ class HitHistoryNoData extends StatelessWidget {
             ),
             child: DifyIcon('vender/line/time/clock-fast-forward', size: 20, color: DifyColors.textTertiary),
           ),
-          Text(
+          DifyTextLine(
             _a('viewModal.noHitHistory'),
             style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
           ),
@@ -666,7 +670,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
   Widget _hitTable() {
     final dateFormat = _t('appLog', 'dateTimeFormat');
     final head = difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary);
-    Widget h(String key) => Text(
+    Widget h(String key) => DifyTextLine(
       difyTransform(DifyType.systemXsMediumUppercase, _a(key)),
       maxLines: 1,
       softWrap: false,
@@ -674,7 +678,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
     );
     // `max-w-62.5 truncate p-3 pr-2` (query, match, response), `p-3 pr-2` (the rest); no cell wraps.
     Widget c(String text, {bool truncate = false}) {
-      final t = Text(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis);
+      final t = DifyTextLine(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis);
       return Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
         child: truncate ? ConstrainedBox(constraints: const BoxConstraints(maxWidth: 250), child: t) : t,
@@ -745,7 +749,7 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
             itemPaddingBottom: 14,
             onChange: (v) => setState(() => _activeTab = _Tab.values.byName(v)),
             options: [
-              (value: _Tab.annotation.name, text: Text(_a('viewModal.annotatedResponse'))),
+              (value: _Tab.annotation.name, text: DifyTextLine(_a('viewModal.annotatedResponse'))),
               (
                 value: _Tab.hitHistory.name,
                 text: _hits.isNotEmpty
@@ -753,11 +757,11 @@ class _ViewAnnotationModalState extends State<ViewAnnotationModal> {
                         mainAxisSize: MainAxisSize.min,
                         spacing: 4,
                         children: [
-                          Flexible(child: Text(hitLabel)),
+                          Flexible(child: DifyTextLine(hitLabel)),
                           DifyBadge('$_total ${_a(_hits.length > 1 ? 'viewModal.hits' : 'viewModal.hit')}'),
                         ],
                       )
-                    : Text(hitLabel),
+                    : DifyTextLine(hitLabel),
               ),
             ],
           ),

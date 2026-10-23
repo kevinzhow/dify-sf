@@ -59,7 +59,10 @@ class _DifyCollapseState<T> extends State<DifyCollapse<T>> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(widget.title, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
+                  child: DifyTextLine(
+                    widget.title,
+                    style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
+                  ),
                 ),
                 HeroIcon(
                   _open ? 'chevron-down' : 'chevron-right',

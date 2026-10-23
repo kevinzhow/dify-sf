@@ -3,6 +3,8 @@
 /// sidebar (button, Mod+B, hover preview, remembered), the app info menu (edit, delete) and an app that is gone.
 library;
 
+import 'package:dify_sf_app/src/design/widgets/text_line.dart';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/app_detail/app_detail_page.dart';
@@ -102,8 +104,8 @@ void main() {
     expect(_shell(t).page, AppDetailPageId.workflow);
     expect(find.byKey(const ValueKey('node-start')), findsOneWidget);
     expect(find.byKey(const ValueKey('app-info-name')), findsOneWidget);
-    expect(t.widget<Text>(find.byKey(const ValueKey('app-info-name'))).data, 'Support triage');
-    expect(t.widget<Text>(find.byKey(const ValueKey('app-info-mode'))).data, 'TYPES.WORKFLOW');
+    expect(t.widget<DifyTextLine>(find.byKey(const ValueKey('app-info-name'))).data, 'Support triage');
+    expect(t.widget<DifyTextLine>(find.byKey(const ValueKey('app-info-mode'))).data, 'TYPES.WORKFLOW');
     // Workflow apps have no Annotations.
     expect(_nav(), ['workflow', 'access-point', 'logs', 'overview']);
     expect(
@@ -247,7 +249,7 @@ void main() {
       maxActiveRequests: null,
     ));
     await settle(t);
-    expect(t.widget<Text>(find.byKey(const ValueKey('app-info-name'))).data, 'Ticket router');
+    expect(t.widget<DifyTextLine>(find.byKey(const ValueKey('app-info-name'))).data, 'Ticket router');
     expect(t.title, contains('Ticket router'));
     expect((await w.api.get(a.id)).name, 'Ticket router');
     await _done(t);
@@ -263,7 +265,7 @@ void main() {
       expect(find.byType(EditorPage), findsOneWidget);
       await w.owner.asAccount('someone-else', role: AccountRole.admin).update(a.id, name: 'Renamed elsewhere');
       await settle(t, 1500);
-      expect(t.widget<Text>(find.byKey(const ValueKey('app-info-name'))).data, 'Renamed elsewhere');
+      expect(t.widget<DifyTextLine>(find.byKey(const ValueKey('app-info-name'))).data, 'Renamed elsewhere');
       expect(t.title, contains('Renamed elsewhere'));
       expect(t.widget<EditorPage>(find.byType(EditorPage)).appName, 'Renamed elsewhere');
       await _done(t);

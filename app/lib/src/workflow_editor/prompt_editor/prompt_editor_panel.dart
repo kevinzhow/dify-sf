@@ -164,7 +164,10 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
 
   Widget _titleText(Object t) => t is Widget
       ? t
-      : Text('$t'.toUpperCase(), style: difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textSecondary));
+      : DifyTextLine(
+          '$t'.toUpperCase(),
+          style: difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textSecondary),
+        );
 
   Widget _header() {
     final w = widget;
@@ -183,8 +186,8 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
                     children: [
                       Flexible(child: _titleText(w.title)),
                       if (w.required) ...[
-                        Text(' ', style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textSecondary)),
-                        Text('*', style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textDestructive)),
+                        DifyTextLine(' ', style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textSecondary)),
+                        DifyTextLine('*', style: difyTextStyle(DifyType.systemXsSemibold, DifyColors.textDestructive)),
                       ],
                     ],
                   ),
@@ -193,7 +196,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
               ],
             ),
           ),
-          Text(
+          DifyTextLine(
             '${w.value.length}',
             style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textTertiary),
           ),
@@ -215,7 +218,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
               if (w.isSupportJinja) _jinjaSwitch(),
               if (!w.readOnly)
                 DifyTooltip(
-                  content: Text(DifyI18n.tr('workflow', 'common.insertVarTip')),
+                  content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
                   child: DifyIconButton(
                     label: DifyI18n.tr('workflow', 'common.insertVarTip'),
                     onPressed: _insertVariable,
@@ -273,10 +276,10 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label),
+                  DifyTextLine(label),
                   GestureDetector(
                     onTap: () => widget.onOpenUrl?.call('https://jinja.palletsprojects.com/en/2.10.x/'),
-                    child: Text(
+                    child: DifyTextLine(
                       DifyI18n.tr('workflow', 'common.learnMore'),
                       style: TextStyle(color: DifyColors.textAccent),
                     ),
@@ -483,7 +486,7 @@ class _HoverPopover extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: DefaultTextStyle.merge(
           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
-          child: content is Widget ? content as Widget : Text('$content'),
+          child: content is Widget ? content as Widget : DifyTextLine('$content'),
         ),
       ),
     ),

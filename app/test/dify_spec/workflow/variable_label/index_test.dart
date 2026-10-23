@@ -114,7 +114,7 @@ void main() {
         final tooltip = tester.widget<DifyTooltip>(
           find.ancestor(of: find.text('answer'), matching: find.byType(DifyTooltip)),
         );
-        expect((tooltip.content as Text).data, 'answer');
+        expect((tooltip.content as DifyTextLine).data, 'answer');
       });
 
       testWidgets('should show the full name in a tooltip after the delay when hovering', (tester) async {

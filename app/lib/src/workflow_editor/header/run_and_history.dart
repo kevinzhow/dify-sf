@@ -85,7 +85,7 @@ class PreviewMode extends StatelessWidget {
             children: [
               RemixIcon('play-large-line', size: 16, color: DifyColors.componentsButtonSecondaryAccentText),
               const SizedBox(width: 4),
-              Text(
+              DifyTextLine(
                 _tr('common.debugAndPreview'),
                 // `text-[13px] font-medium`, centred in the h-7 button (the 16 px line lays out as the inherited one).
                 style: difyTextStyle(DifyTw.text13MediumLeading16, DifyColors.componentsButtonSecondaryAccentText),
@@ -158,7 +158,7 @@ class _RunModeState extends State<RunMode> {
                   children: [
                     DifySpinner(size: 16, color: DifyColors.textAccent),
                     const SizedBox(width: 8),
-                    Text(
+                    DifyTextLine(
                       _tr(isListening ? 'common.listening' : 'common.running'),
                       style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
                     ),
@@ -226,7 +226,7 @@ class _RunButtonFace extends StatelessWidget {
         children: [
           RemixIcon('play-large-line', size: 16, color: DifyColors.textAccent),
           const SizedBox(width: 8),
-          Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
+          DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
           if (!DifyAdaptive.compactOf(context)) ...[
             const SizedBox(width: 4),
             const DifyShortcutKbd(hotkey: testRunMenuHotkey, secondaryText: true),

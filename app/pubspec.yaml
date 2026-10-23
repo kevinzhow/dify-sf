@@ -48,8 +48,9 @@ dev_dependencies:
   meta: ^1.19.0
 
 flutter:
-  # Dify's font stack resolves to Noto Sans on Linux (Regular and Bold installed: weight 500 renders Regular, 600
-  # Bold); the same two files are bundled for Linux and the web build (macOS, iOS and Windows use system fonts).
+  # Noto Sans is the primary Latin face on Linux and Web (400/700, as on the Linux reference).
+  # Web CJK faces are lazy-loaded by DifyFonts from assets/fonts/cjk, not eagerly through this font manifest.
+  # Other native platforms retain their platform font choice.
   fonts:
     - family: Noto Sans
       fonts:
@@ -89,6 +90,7 @@ flutter:
     - assets/i18n/vi-VN/
     - assets/i18n/zh-Hans/
     - assets/i18n/zh-Hant/
+    - assets/fonts/cjk/
     - assets/fonts/OFL.txt
     - assets/fonts/LICENSE-DejaVu.txt
     # Dify's logo (web/public/logo/logo.svg) and the Heroicons Dify uses (@iconify-json/heroicons 1.2.3, MIT).

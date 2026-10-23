@@ -125,7 +125,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(24, 24, 56, 16),
-                            child: Text(
+                            child: DifyTextLine(
                               heading.isEmpty ? heading : heading[0].toUpperCase() + heading.substring(1),
                               style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                             ),
@@ -149,7 +149,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
                           spacing: 16,
                           children: [
                             _Field(
-                              label: Text(_w('versionHistory.editField.title'), style: label),
+                              label: DifyTextLine(_w('versionHistory.editField.title'), style: label),
                               child: DifyTextControl(
                                 controller: _title,
                                 invalid: _titleError,
@@ -157,7 +157,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
                               ),
                             ),
                             _Field(
-                              label: Text(_w('versionHistory.editField.releaseNotes'), style: label),
+                              label: DifyTextLine(_w('versionHistory.editField.releaseNotes'), style: label),
                               child: DifyTextControl(
                                 controller: _notes,
                                 invalid: _notesError,
@@ -175,11 +175,14 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            DifyButton(onPressed: _close, child: Text(DifyI18n.tr('common', 'operation.cancel'))),
+                            DifyButton(
+                              onPressed: _close,
+                              child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel')),
+                            ),
                             DifyButton(
                               variant: DifyButtonVariant.primary,
                               onPressed: _save,
-                              child: Text(DifyI18n.tr('common', 'operation.save')),
+                              child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
                             ),
                           ],
                         ),

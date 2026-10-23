@@ -63,7 +63,7 @@ class DatasetIcon extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const SizedBox(),
             )
-          : Text(jsStr(info['icon']) ?? '', style: difyEmojiTextStyle(size >= 24 ? 16 : 12)),
+          : DifyTextLine(jsStr(info['icon']) ?? '', style: difyEmojiTextStyle(size >= 24 ? 16 : 12)),
     );
   }
 }
@@ -354,7 +354,7 @@ class _SelectDatasetState extends State<SelectDataset> {
               mainAxisSize: MainAxisSize.min,
               spacing: 4,
               children: [
-                Text(
+                DifyTextLine(
                   _ad('feature.dataSet.noDataSet'),
                   style: difyStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
                 ),
@@ -362,7 +362,7 @@ class _SelectDatasetState extends State<SelectDataset> {
                   DifyPressable(
                     semanticLabel: _ad('feature.dataSet.toCreate'),
                     onPressed: services.openCreateDataset,
-                    builder: (context, hovered, focused) => Text(
+                    builder: (context, hovered, focused) => DifyTextLine(
                       _ad('feature.dataSet.toCreate'),
                       style: difyStyle(DifyType.systemSmRegular, DifyColors.textAccent),
                     ),
@@ -416,7 +416,7 @@ class _SelectDatasetState extends State<SelectDataset> {
                       _selected = [...widget.selectedIds];
                       widget.onClose();
                     },
-                    child: Text(_c('operation.cancel')),
+                    child: DifyTextLine(_c('operation.cancel')),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -427,7 +427,7 @@ class _SelectDatasetState extends State<SelectDataset> {
                     onPressed: () => widget.onSelect([
                       for (final id in _selected) byId[id] ?? {'id': id},
                     ]),
-                    child: Text(_c('operation.add')),
+                    child: DifyTextLine(_c('operation.add')),
                   ),
                 ),
               ],
@@ -500,7 +500,7 @@ class _DatasetOption extends StatelessWidget {
                   constraints: BoxConstraints(maxWidth: available ? 200 : 120),
                   child: Opacity(
                     opacity: available ? 1 : 0.3,
-                    child: Text(
+                    child: DifyTextLine(
                       '${d['name'] ?? ''}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../dify_tokens.g.dart';
+import '../css_metrics.dart';
+import '../dify_fonts.dart';
 import 'input.dart';
 import 'text.dart';
 import 'selection.dart';
@@ -129,8 +131,10 @@ class _DifyTextFieldState extends State<DifyTextField> {
     Widget field = TextField(
       controller: w.controller,
       focusNode: _focus,
-      style: style,
-      strutStyle: w.strutStyle,
+      style: DifyFonts.resolveStyle(style),
+      strutStyle:
+          w.strutStyle ??
+          Css.lineStrut(DefaultTextStyle.of(context).style.merge(style), textScaler: MediaQuery.textScalerOf(context)),
       onChanged: w.onChanged,
       onSubmitted: w.onSubmitted,
       onEditingComplete: w.onEditingComplete,
@@ -165,7 +169,14 @@ class _DifyTextFieldState extends State<DifyTextField> {
         contentPadding:
             d.contentPadding ??
             (d.outlined ? const EdgeInsets.symmetric(horizontal: 12, vertical: 7) : EdgeInsets.zero),
-        hintText: d.hintText,
+        hint: d.hintText == null
+            ? null
+            : DifyTextLine(
+                d.hintText!,
+                style: d.hintStyle ?? style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+                strutStyle: w.strutStyle,
+                maxLines: w.maxLines,
+              ),
         hintStyle: d.hintStyle ?? style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
         counterText: '',
       ),
@@ -187,13 +198,19 @@ class _DifyTextFieldState extends State<DifyTextField> {
           if (d.labelText != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text(d.labelText!, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+              child: DifyTextLine(
+                d.labelText!,
+                style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+              ),
             ),
           field,
           if (d.errorText != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(d.errorText!, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive)),
+              child: DifyTextLine(
+                d.errorText!,
+                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive),
+              ),
             ),
         ],
       );
@@ -217,7 +234,7 @@ class DifyFieldBox extends StatelessWidget {
         if (d.labelText != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(d.labelText!, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+            child: DifyTextLine(d.labelText!, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
           ),
         Container(
           padding: d.contentPadding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -230,7 +247,10 @@ class DifyFieldBox extends StatelessWidget {
         if (d.errorText != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(d.errorText!, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive)),
+            child: DifyTextLine(
+              d.errorText!,
+              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive),
+            ),
           ),
       ],
     );

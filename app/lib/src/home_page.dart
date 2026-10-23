@@ -18,6 +18,7 @@ import 'auth/auth_api.dart';
 import 'auth/auth_controller.dart';
 
 import 'demo/demo_backend.dart';
+import 'design/dify_fonts.dart';
 import 'design/dify_icon.dart';
 import 'design/dify_theme.dart';
 import 'design/dify_theme_mode.dart';
@@ -433,11 +434,11 @@ class _HomePageState extends State<HomePage> {
             shrinkWrap: true,
             padding: const EdgeInsets.all(24),
             children: [
-              Text('dify-sf', style: Theme.of(context).textTheme.headlineMedium),
+              DifyTextLine('dify-sf', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 4),
-              const Text('Collaborative workflow editor', style: TextStyle(color: Colors.black54)),
+              const DifyTextLine('Collaborative workflow editor', style: TextStyle(color: Colors.black54)),
               const SizedBox(height: 4),
-              Text(
+              DifyTextLine(
                 server,
                 key: const Key('server-label'),
                 style: const TextStyle(color: Colors.black45),
@@ -454,8 +455,8 @@ class _HomePageState extends State<HomePage> {
               ),
               DifyLabeledSwitch(
                 key: const Key('journal-switch'),
-                title: const Text('Keep a local journal'),
-                subtitle: Text(
+                title: const DifyTextLine('Keep a local journal'),
+                subtitle: DifyTextLine(
                   _journaled
                       ? 'Unsent edits survive a crash or reload and are resent.'
                       : 'Volatile: unsent edits are lost if the app closes, and you will be told.',
@@ -466,7 +467,7 @@ class _HomePageState extends State<HomePage> {
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  child: DifyTextLine(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 ),
               const SizedBox(height: 8),
               Row(
@@ -476,14 +477,14 @@ class _HomePageState extends State<HomePage> {
                       variant: DifyButtonVariant.primary,
                       key: const Key('open-button'),
                       onPressed: _busy ? null : () => _open(create: true),
-                      child: const Text('Open / create'),
+                      child: const DifyTextLine('Open / create'),
                     ),
                   ),
                   const SizedBox(width: 8),
                   DifyButton(
                     key: const Key('new-button'),
                     onPressed: _busy ? null : _newDocument,
-                    child: const Text('New document'),
+                    child: const DifyTextLine('New document'),
                   ),
                 ],
               ),
@@ -493,13 +494,13 @@ class _HomePageState extends State<HomePage> {
                 key: const Key('import-dsl-button'),
                 onPressed: _busy ? null : _importDifyDsl,
                 leading: const RemixIcon('upload-line'),
-                child: const Text('Import a Dify workflow file…'),
+                child: const DifyTextLine('Import a Dify workflow file…'),
               ),
               DifyButton(
                 variant: DifyButtonVariant.ghost,
                 key: const Key('demo-button'),
                 onPressed: _busy ? null : _demo,
-                child: const Text('Try the demo (in-memory server, simulated collaborator Bo)'),
+                child: const DifyTextLine('Try the demo (in-memory server, simulated collaborator Bo)'),
               ),
             ],
           ),
@@ -639,13 +640,14 @@ Widget buildApp(
   // The session for every page, also those pushed over the home page (AppRoot publishes its controller here).
   final authRelay = ValueNotifier<AuthController?>(session);
   return ListenableBuilder(
-    listenable: appTheme,
+    listenable: Listenable.merge([appTheme, appLocale]),
     builder: (context, _) => DifyApplication(
       title: 'dify-sf',
       navigatorKey: navigatorKey,
       // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
       theme: difyTheme(
         fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,
+        fontFamilyFallback: DifyFonts.fallbackFamilies,
         brightness: appTheme.isDark ? Brightness.dark : Brightness.light,
       ),
       // next-themes' disableTransitionOnChange: the new theme shows at once.
@@ -680,7 +682,13 @@ Widget buildApp(
               children: [
                 child!,
                 DefaultTextStyle(
-                  style: TextStyle(fontFamily: cardFontFamily, fontSize: 14, height: 20 / 14, letterSpacing: 0),
+                  style: TextStyle(
+                    fontFamily: cardFontFamily,
+                    fontFamilyFallback: DifyFonts.fallbackFamilies,
+                    fontSize: 14,
+                    height: 20 / 14,
+                    letterSpacing: 0,
+                  ),
                   child: const DifyToastHost(timeout: Duration(seconds: 5), limit: 3),
                 ),
               ],
@@ -711,7 +719,7 @@ class _ImportDslDialogState extends State<_ImportDslDialog> {
   @override
   Widget build(BuildContext context) {
     return DifyContentDialog(
-      title: const Text('Import a Dify workflow file'),
+      title: const DifyTextLine('Import a Dify workflow file'),
       content: SizedBox(
         width: 560,
         child: DifyTextField(
@@ -730,13 +738,13 @@ class _ImportDslDialogState extends State<_ImportDslDialog> {
         DifyButton(
           variant: DifyButtonVariant.ghost,
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const DifyTextLine('Cancel'),
         ),
         DifyButton(
           variant: DifyButtonVariant.primary,
           key: const Key('import-dsl-confirm'),
           onPressed: () => Navigator.pop(context, _text.text),
-          child: const Text('Import'),
+          child: const DifyTextLine('Import'),
         ),
       ],
     );
@@ -775,7 +783,7 @@ class MainNavLink extends StatelessWidget {
         children: [
           DifyIcon(icon, size: 20, color: DifyColors.componentsMainNavNavButtonText),
           Expanded(
-            child: Text(
+            child: DifyTextLine(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

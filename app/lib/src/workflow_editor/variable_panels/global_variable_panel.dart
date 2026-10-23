@@ -57,7 +57,7 @@ class GlobalVariablePanel extends StatelessWidget {
                     size: 16,
                     color: DifyColors.utilColorsOrangeOrange600,
                   ),
-                  name: Text.rich(
+                  name: DifyTextLine.rich(
                     TextSpan(
                       children: [
                         TextSpan(

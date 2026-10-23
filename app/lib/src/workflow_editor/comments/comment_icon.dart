@@ -30,7 +30,7 @@ class CommentAvatar extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(shape: BoxShape.circle, color: color ?? DifyColors.primary600),
     alignment: Alignment.center,
-    child: Text(
+    child: DifyTextLine(
       name.isEmpty ? '' : name.characters.first.toUpperCase(),
       maxLines: 1,
       style: TextStyle(fontSize: fontSize, height: 1, fontWeight: FontWeight.w500, color: DifyTailwind.white),
@@ -70,7 +70,7 @@ class UserAvatarList extends StatelessWidget {
           child: SizedBox.square(
             dimension: 24,
             child: Center(
-              child: Text(
+              child: DifyTextLine(
                 '+$remaining',
                 style: difyTextStyle(DifyTw.text2xsLeadingNone, DifyTailwind.white),
               ),
@@ -174,18 +174,18 @@ class _CommentPreviewState extends State<CommentPreview> {
                     spacing: 8,
                     children: [
                       Flexible(
-                        child: Text(
+                        child: DifyTextLine(
                           nameOf(widget.source, c.createdBy, c.createdByName),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
                         ),
                       ),
-                      Text(when, style: difyTextStyle(DifyType.system2xsRegular, DifyColors.textTertiary)),
+                      DifyTextLine(when, style: difyTextStyle(DifyType.system2xsRegular, DifyColors.textTertiary)),
                     ],
                   ),
                 ),
-                Text(c.content, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)),
+                DifyTextLine(c.content, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)),
               ],
             ),
           ),

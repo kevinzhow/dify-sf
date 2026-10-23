@@ -38,10 +38,10 @@ class AnnotationConfigItem extends StatelessWidget {
             Flexible(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
+                child: DifyTextLine(title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
               ),
             ),
-            DifyInfotip(label: tooltip, width: 200, content: Text(tooltip)),
+            DifyInfotip(label: tooltip, width: 200, content: DifyTextLine(tooltip)),
           ],
         ),
       ),
@@ -69,7 +69,7 @@ class AnnotationScoreSlider extends StatelessWidget {
     final ends = difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.utilColorsCyanCyan500);
     // `flex space-x-1`: the three parts 4 px apart (a space is about as wide), truncated before overflowing.
     Widget end(String n, String key, Color color) => Flexible(
-      child: Text(
+      child: DifyTextLine(
         '$n · ${difyTransform(DifyType.systemXsSemiboldUppercase, _t('appDebug', key))}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -103,7 +103,10 @@ class AnnotationScoreSlider extends StatelessWidget {
                       child: FractionalTranslation(
                         translation: const Offset(-0.5, 0),
                         child: ExcludeSemantics(
-                          child: Text(score, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)),
+                          child: DifyTextLine(
+                            score,
+                            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary),
+                          ),
                         ),
                       ),
                     ),
@@ -214,7 +217,7 @@ class _AnnotationConfigParamModalState extends State<AnnotationConfigParamModal>
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+            child: DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 24),
@@ -251,12 +254,12 @@ class _AnnotationConfigParamModalState extends State<AnnotationConfigParamModal>
               spacing: 8,
               runSpacing: 8,
               children: [
-                DifyButton(onPressed: _hide, child: Text(_t('common', 'operation.cancel'))),
+                DifyButton(onPressed: _hide, child: DifyTextLine(_t('common', 'operation.cancel'))),
                 DifyButton(
                   variant: DifyButtonVariant.primary,
                   loading: _loading,
                   onPressed: () => unawaited(_save()),
-                  child: Text(
+                  child: DifyTextLine(
                     _t('appAnnotation', widget.isInit ? 'initSetup.confirmBtn' : 'initSetup.configConfirmBtn'),
                   ),
                 ),

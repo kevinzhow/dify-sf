@@ -4,6 +4,7 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
+import 'text_line.dart';
 
 /// base/workspace-avatar sizes: the box, its radius and the initial's font size / line height.
 enum DifyWorkspaceAvatarSize {
@@ -56,7 +57,7 @@ class DifyWorkspaceAvatar extends StatelessWidget {
           alignment: Alignment.center,
           child: Opacity(
             opacity: 0.9,
-            child: Text(
+            child: DifyTextLine(
               initial,
               style: TextStyle(
                 fontSize: size.fontSize,

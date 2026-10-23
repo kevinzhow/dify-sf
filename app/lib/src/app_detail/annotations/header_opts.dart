@@ -170,7 +170,7 @@ class _AnnotationHeaderOptionsState extends State<AnnotationHeaderOptions> {
           variant: DifyButtonVariant.primary,
           leading: RemixIcon('add-line', size: 16, color: DifyColors.componentsButtonPrimaryText),
           onPressed: () => setState(() => _showAdd = true),
-          child: Text(_a('table.header.addAnnotation')),
+          child: DifyTextLine(_a('table.header.addAnnotation')),
         ),
         const SizedBox(width: 8),
         DifyDropdownMenu(
@@ -189,11 +189,11 @@ class _AnnotationHeaderOptionsState extends State<AnnotationHeaderOptions> {
             DifyMenuItem(
               leading: DifyIcon('vender/line/files/file-plus-02', size: 16, color: DifyColors.textTertiary),
               onSelect: () => setState(() => _showBulkImport = true),
-              child: Text(_a('table.header.bulkImport')),
+              child: DifyTextLine(_a('table.header.bulkImport')),
             ),
             DifyMenuSubmenu(
               leading: DifyIcon('vender/line/files/file-download-02', size: 16, color: DifyColors.textTertiary),
-              label: Text(_a('table.header.bulkExport')),
+              label: DifyTextLine(_a('table.header.bulkExport')),
               width: 100,
               children: [
                 DifyMenuItem(
@@ -205,7 +205,7 @@ class _AnnotationHeaderOptionsState extends State<AnnotationHeaderOptions> {
                       'text/csv;charset=utf-8;',
                     ),
                   ),
-                  child: const Text('CSV'),
+                  child: const DifyTextLine('CSV'),
                 ),
                 DifyMenuItem(
                   disabled: unavailable,
@@ -216,7 +216,7 @@ class _AnnotationHeaderOptionsState extends State<AnnotationHeaderOptions> {
                       'application/jsonl',
                     ),
                   ),
-                  child: const Text('JSONL'),
+                  child: const DifyTextLine('JSONL'),
                 ),
               ],
             ),
@@ -224,7 +224,7 @@ class _AnnotationHeaderOptionsState extends State<AnnotationHeaderOptions> {
               variant: DifyMenuItemVariant.destructive,
               leading: RemixIcon('delete-bin-line', size: 16, color: DifyColors.textDestructive),
               onSelect: () => setState(() => _showClearConfirm = true),
-              child: Text(_a('table.header.clearAll')),
+              child: DifyTextLine(_a('table.header.clearAll')),
             ),
           ],
         ),

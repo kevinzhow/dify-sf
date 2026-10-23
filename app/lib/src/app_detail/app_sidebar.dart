@@ -132,7 +132,7 @@ class AppDetailTop extends StatelessWidget {
                     );
                   },
                 ),
-                Text('/', style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textQuaternary)),
+                DifyTextLine('/', style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textQuaternary)),
                 Flexible(
                   child: DifyPressable(
                     key: const ValueKey('app-detail-studio'),
@@ -144,7 +144,7 @@ class AppDetailTop extends StatelessWidget {
                         color: hovered ? DifyColors.backgroundDefaultHover : null,
                         borderRadius: BorderRadius.circular(DifyRadius.lg),
                       ),
-                      child: Text(
+                      child: DifyTextLine(
                         difyTransform(DifyType.systemSmSemiboldUppercase, _t('common', 'menus.apps')),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -244,7 +244,7 @@ class AppDetailNavLink extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Text(
+                    child: DifyTextLine(
                       name,
                       maxLines: 1,
                       softWrap: false,
@@ -261,7 +261,7 @@ class AppDetailNavLink extends StatelessWidget {
       },
     );
     if (!expand) {
-      link = DifyTooltip(placement: DifyPlacement.right, content: Text(name), child: link);
+      link = DifyTooltip(placement: DifyPlacement.right, content: DifyTextLine(name), child: link);
     }
     return Semantics(selected: active, child: link);
   }
@@ -426,7 +426,7 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
                       spacing: 8,
                       children: [
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             app.name,
                             key: const ValueKey('app-info-name'),
                             maxLines: 1,
@@ -438,7 +438,7 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
                       ],
                     ),
                   ),
-                  Text(
+                  DifyTextLine(
                     difyTransform(DifyType.system2xsMediumUppercase, modeLabel),
                     key: const ValueKey('app-info-mode'),
                     maxLines: 1,
@@ -495,7 +495,7 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
                     size: 16,
                     color: op.destructive ? DifyColors.textDestructive : DifyColors.textTertiary,
                   ),
-            child: Text(
+            child: DifyTextLine(
               op.title,
               style: difyTextStyle(
                 DifyType.systemSmRegular,

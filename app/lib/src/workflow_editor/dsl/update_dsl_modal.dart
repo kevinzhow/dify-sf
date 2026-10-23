@@ -190,7 +190,10 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
         Row(
           children: [
             Expanded(
-              child: Text(_a('importApp'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+              child: DifyTextLine(
+                _a('importApp'),
+                style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
+              ),
             ),
             DifyIconButton(
               label: DifyI18n.tr('common', 'operation.close'),
@@ -209,35 +212,42 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_w('common.importDSLTip')),
+              DifyTextLine(_w('common.importDSLTip')),
               const SizedBox(height: 8),
               DifyButton(
                 size: DifyButtonSize.small,
                 leading: const RemixIcon('file-download-line', size: 14),
                 disabled: _busy || widget.onBackup == null,
                 onPressed: _busy ? null : widget.onBackup,
-                child: Text(_w('common.backupCurrentDraft')),
+                child: DifyTextLine(_w('common.backupCurrentDraft')),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        Text(_w('common.chooseDSL'), style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary)),
+        DifyTextLine(_w('common.chooseDSL'), style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textPrimary)),
         const SizedBox(height: 12),
         DifyButton(
           key: const Key('choose-dsl-file'),
           disabled: _busy,
           onPressed: _pick,
           leading: const RemixIcon('upload-cloud-line', size: 20),
-          child: Text(_file?.name ?? _w('common.chooseDSL')),
+          child: DifyTextLine(_file?.name ?? _w('common.chooseDSL')),
         ),
         if (widget.onImport == null)
-          const Padding(padding: EdgeInsets.only(top: 12), child: Text('Import is not available for this document.')),
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: DifyTextLine('Import is not available for this document.'),
+          ),
         const SizedBox(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            DifyButton(disabled: _busy, onPressed: () => Navigator.pop(context), child: Text(_a('newApp.Cancel'))),
+            DifyButton(
+              disabled: _busy,
+              onPressed: () => Navigator.pop(context),
+              child: DifyTextLine(_a('newApp.Cancel')),
+            ),
             const SizedBox(width: 8),
             DifyButton(
               key: const Key('overwrite-import-dsl'),
@@ -246,7 +256,7 @@ class _UpdateDslModalState extends State<UpdateDslModal> {
               variant: DifyButtonVariant.primary,
               tone: DifyButtonTone.destructive,
               onPressed: _import,
-              child: Text(_w('common.overwriteAndImport')),
+              child: DifyTextLine(_w('common.overwriteAndImport')),
             ),
           ],
         ),
@@ -276,17 +286,17 @@ class _DslVersionConfirm extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 8,
             children: [
-              Text(
+              DifyTextLine(
                 _a('newApp.appCreateDSLErrorTitle'),
                 style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_a('newApp.appCreateDSLErrorPart1'), style: body),
-                  Text(_a('newApp.appCreateDSLErrorPart2'), style: body),
+                  DifyTextLine(_a('newApp.appCreateDSLErrorPart1'), style: body),
+                  DifyTextLine(_a('newApp.appCreateDSLErrorPart2'), style: body),
                   const SizedBox(height: 20),
-                  Text.rich(
+                  DifyTextLine.rich(
                     TextSpan(
                       children: [
                         TextSpan(text: _a('newApp.appCreateDSLErrorPart3')),
@@ -295,7 +305,7 @@ class _DslVersionConfirm extends StatelessWidget {
                     ),
                     style: body,
                   ),
-                  Text.rich(
+                  DifyTextLine.rich(
                     TextSpan(
                       children: [
                         TextSpan(text: _a('newApp.appCreateDSLErrorPart4')),
@@ -315,14 +325,14 @@ class _DslVersionConfirm extends StatelessWidget {
             DifyButton(
               key: const Key('cancel-dsl-version'),
               onPressed: () => Navigator.pop(context, false),
-              child: Text(_a('newApp.Cancel')),
+              child: DifyTextLine(_a('newApp.Cancel')),
             ),
             DifyButton(
               key: const Key('confirm-dsl-version'),
               variant: DifyButtonVariant.primary,
               tone: DifyButtonTone.destructive,
               onPressed: () => Navigator.pop(context, true),
-              child: Text(_a('newApp.Confirm')),
+              child: DifyTextLine(_a('newApp.Confirm')),
             ),
           ],
         ),

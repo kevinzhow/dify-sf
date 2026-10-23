@@ -213,7 +213,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
         : null;
     final summary = key == null
         ? null
-        : Text.rich(
+        : DifyTextLine.rich(
             _rich(
               _t(key, {'email': host.userEmail, 'team': team}),
               const {},
@@ -243,7 +243,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
                 child: DifyButton(
                   variant: DifyButtonVariant.primary,
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(cm('operation.ok')),
+                  child: DifyTextLine(cm('operation.ok')),
                 ),
               ),
             ),
@@ -268,7 +268,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
                   spacing: 4,
                   children: [
                     DifyText(_t('title'), DifyType.title2xlSemiBold, maxLines: null),
-                    if (debug) Text(_t('debugModeTip'), style: body),
+                    if (debug) DifyTextLine(_t('debugModeTip'), style: body),
                     ?summary,
                   ],
                 ),
@@ -289,7 +289,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
             list,
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text.rich(
+              child: DifyTextLine.rich(
                 TextSpan(
                   children: transSpans(_t('tip'), {
                     'strong': (inner) => WidgetSpan(
@@ -298,7 +298,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
                       child: DifyPressable(
                         semanticLabel: inner,
                         onPressed: () => Navigator.of(context).pop(true),
-                        builder: (context, _, _) => Text(
+                        builder: (context, _, _) => DifyTextLine(
                           inner,
                           style: difyStyle(DifyType.systemXsRegular, DifyColors.textAccent),
                         ),
@@ -382,7 +382,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
                 width: 72,
                 child: DifyButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(cm('operation.cancel')),
+                  child: DifyTextLine(cm('operation.cancel')),
                 ),
               ),
               DifyButton(
@@ -390,7 +390,7 @@ class _TestEmailSenderState extends State<TestEmailSender> {
                 disabled: !_filled || host.sendTestEmail == null,
                 loading: _sending,
                 onPressed: _send,
-                child: Text(_t('send')),
+                child: DifyTextLine(_t('send')),
               ),
             ],
           ),
@@ -433,7 +433,7 @@ class SenderFormItem extends StatelessWidget {
       'json' => DifyCodeEditor(
         value: value is String ? value as String : '',
         language: CodeLanguage.json,
-        titleWidget: const Text('JSON'),
+        titleWidget: const DifyTextLine('JSON'),
         onChange: onChange,
       ),
       'checkbox' => Align(

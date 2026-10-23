@@ -110,7 +110,7 @@ class FileUploadSetting extends StatelessWidget {
           height: 32,
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text(
+            child: DifyTextLine(
               ad('variableConfig.uploadFileTypes'),
               style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
             ),
@@ -138,7 +138,7 @@ class FileUploadSetting extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
+                  child: DifyTextLine(
                     ad('variableConfig.maxNumberTip', {
                       'imgLimit': formatFileSize(sizeLimits.img),
                       'docLimit': formatFileSize(sizeLimits.doc),

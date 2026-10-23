@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../support/model_fakes.dart';
 import '../_settings_harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/text_line.dart';
+
 /// dify-sf is self-hosted: no AI credits, so the panel shows the API key states (Dify's `apiKeyOnly` priority);
 /// the credit variants are Dify Cloud's.
 Json createProvider({Json? customConfiguration, String preferred = 'custom', bool systemEnabled = false}) => {
@@ -54,7 +56,8 @@ Future<void> render(WidgetTester t, Json provider) => renderSettings(
 );
 
 DifyStatusDotStatus dot(WidgetTester t) => t.widget<DifyStatusDot>(find.byType(DifyStatusDot)).status;
-Color? labelColor(WidgetTester t) => t.widget<Text>(find.byKey(const ValueKey('credential-panel-label'))).style?.color;
+Color? labelColor(WidgetTester t) =>
+    t.widget<DifyTextLine>(find.byKey(const ValueKey('credential-panel-label'))).style?.color;
 CardVariant variant(WidgetTester t) => t.widget<ModelAuthDropdown>(find.byType(ModelAuthDropdown)).state.variant;
 bool destructive(WidgetTester t) => t.widget<SystemQuotaCard>(find.byType(SystemQuotaCard)).destructive;
 Finder get warningIcon => find.byWidgetPredicate((w) => w is DifyIcon && w.name.endsWith('alertsAndFeedback/warning'));

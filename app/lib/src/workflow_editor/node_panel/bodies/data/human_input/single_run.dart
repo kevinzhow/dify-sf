@@ -151,7 +151,8 @@ class HumanInputRunForm extends StatefulWidget {
     ...definition,
     'form_content': definition['rendered_content'] ?? definition['form_content'],
     'actions': definition['actions'] ?? definition['user_actions'] ?? const <Object?>[],
-    'resolved_default_values': definition['resolved_default_values'] ?? definition['default_values'] ?? const <String, Object?>{},
+    'resolved_default_values':
+        definition['resolved_default_values'] ?? definition['default_values'] ?? const <String, Object?>{},
   };
 
   @override
@@ -185,7 +186,7 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
 
   Widget _item(String piece) {
     final m = RegExp(r'\{\{#\$output\.([^#]+)#\}\}').firstMatch(piece);
-    if (m == null) return Text(piece, style: difyStyle(DifyType.bodyMdRegular, DifyColors.textPrimary));
+    if (m == null) return DifyTextLine(piece, style: difyStyle(DifyType.bodyMdRegular, DifyColors.textPrimary));
     final name = m[1]!;
     final field = _fields.where((f) => inputNameOf(f) == name).firstOrNull;
     if (field == null) return const SizedBox.shrink();
@@ -214,13 +215,14 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
         ),
       );
     }
-    return Text(name);
+    return DifyTextLine(name);
   }
 
   @override
   Widget build(BuildContext context) {
     final w = widget;
-    final disabled = _submitting || widget.busy || hasInvalidSelectOrFileInput(renderedFormInputs(_fields, _content), _inputs);
+    final disabled =
+        _submitting || widget.busy || hasInvalidSelectOrFileInput(renderedFormInputs(_fields, _content), _inputs);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -269,7 +271,7 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
                         variant: buttonVariantOf(jsStr(jsGet(a, 'button_style'))),
                         disabled: disabled,
                         onPressed: () => _submit('${jsGet(a, 'id')}'),
-                        child: Text('${jsGet(a, 'title') ?? ''}'),
+                        child: DifyTextLine('${jsGet(a, 'title') ?? ''}'),
                       ),
                   ],
                 ),

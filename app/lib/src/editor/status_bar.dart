@@ -31,12 +31,12 @@ class StatusBar extends StatelessWidget {
         child: Row(
           children: [
             DifyTooltip(
-              content: Text(s.lastError ?? 'connected to $serverLabel'),
+              content: DifyTextLine(s.lastError ?? 'connected to $serverLabel'),
               child: Row(
                 children: [
                   DifySolidDot(size: 10, color: color, key: const Key('link-dot')),
                   const SizedBox(width: 6),
-                  Text(
+                  DifyTextLine(
                     label,
                     key: const Key('link-state'),
                     style: small.copyWith(fontWeight: FontWeight.w600),
@@ -51,10 +51,10 @@ class StatusBar extends StatelessWidget {
                 size: DifyButtonSize.small,
                 paddingX: 8,
                 onPressed: controller.reconnectNow,
-                child: const Text('Reconnect now'),
+                child: const DifyTextLine('Reconnect now'),
               ),
             const SizedBox(width: 20),
-            Text(
+            DifyTextLine(
               s.pending == 0 ? 'All edits saved' : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
               key: const Key('pending-count'),
               style: small.copyWith(
@@ -63,9 +63,9 @@ class StatusBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 20),
-            Text('seq ${s.lastSeq}', key: const Key('last-seq'), style: small),
+            DifyTextLine('seq ${s.lastSeq}', key: const Key('last-seq'), style: small),
             const Spacer(),
-            Text(
+            DifyTextLine(
               '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · ${controller.docId}',
               style: small.copyWith(color: Colors.black54),
             ),

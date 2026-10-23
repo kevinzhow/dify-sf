@@ -95,7 +95,7 @@ class _NoticeCardState extends State<_NoticeCard> {
                 RemixIcon(icon, size: 20, color: fg),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: DifyTextLine(
                     n.message,
                     key: const Key('notice-message'),
                     style: TextStyle(color: fg, fontWeight: FontWeight.w600),
@@ -106,7 +106,7 @@ class _NoticeCardState extends State<_NoticeCard> {
             if (n.detail != null && n.detail!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 28, top: 4),
-                child: Text(n.detail!, style: TextStyle(color: fg.withValues(alpha: 0.85), fontSize: 12)),
+                child: DifyTextLine(n.detail!, style: TextStyle(color: fg.withValues(alpha: 0.85), fontSize: 12)),
               ),
             Padding(
               padding: const EdgeInsets.only(left: 20, top: 4),
@@ -116,7 +116,7 @@ class _NoticeCardState extends State<_NoticeCard> {
                   if (n.awaitingVerdict)
                     Padding(
                       padding: const EdgeInsets.all(8),
-                      child: Text(
+                      child: DifyTextLine(
                         'Waiting for the server to confirm…',
                         style: TextStyle(color: fg, fontSize: 12, fontStyle: FontStyle.italic),
                       ),
@@ -126,14 +126,14 @@ class _NoticeCardState extends State<_NoticeCard> {
                       variant: DifyButtonVariant.ghost,
                       key: const Key('reapply'),
                       onPressed: () => widget.controller.reapply(n),
-                      child: const Text('Re-apply on latest'),
+                      child: const DifyTextLine('Re-apply on latest'),
                     ),
                   if (!n.awaitingVerdict)
                     DifyButton(
                       variant: DifyButtonVariant.ghost,
                       key: const Key('discard'),
                       onPressed: () => widget.controller.removeNotice(n),
-                      child: Text(n.op == null ? 'Dismiss' : 'Discard'),
+                      child: DifyTextLine(n.op == null ? 'Dismiss' : 'Discard'),
                     ),
                 ],
               ),

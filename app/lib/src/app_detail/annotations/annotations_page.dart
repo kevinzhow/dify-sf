@@ -62,7 +62,7 @@ class AnnotationEmptyElement extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text.rich(
+          DifyTextLine.rich(
             TextSpan(
               children: [
                 TextSpan(text: _a('noData.title')),
@@ -78,7 +78,7 @@ class AnnotationEmptyElement extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(
+            child: DifyTextLine(
               _a('noData.description'),
               style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
             ),
@@ -359,7 +359,7 @@ class AnnotationsPageState extends State<AnnotationsPage> {
                 size: 16,
                 color: DifyColors.utilColorsIndigoIndigo600,
               ),
-              Text(_a('name'), style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary)),
+              DifyTextLine(_a('name'), style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary)),
               DifySwitch(
                 key: ValueKey('annotation-reply-switch-$_controlRefreshSwitch'),
                 checked: enabled,

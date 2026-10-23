@@ -110,7 +110,7 @@ class AccountHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Transform.translate(
             offset: const Offset(0, -2),
-            child: Text(
+            child: DifyTextLine(
               stc(context, 'account.account'),
               style: difyTextStyle(DifyType.title3xlSemiBold, DifyColors.textPrimary),
             ),
@@ -123,7 +123,10 @@ class AccountHeader extends StatelessWidget {
             onPressed: onHome,
             leading: DifyIcon('vender/main-nav/home', size: 16, color: DifyColors.componentsButtonSecondaryText),
             trailing: RemixIcon('arrow-right-up-line', size: 16, color: DifyColors.componentsButtonSecondaryText),
-            child: Text(home, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.componentsButtonSecondaryText)),
+            child: DifyTextLine(
+              home,
+              style: difyTextStyle(DifyType.systemSmMedium, DifyColors.componentsButtonSecondaryText),
+            ),
           ),
           const SizedBox(width: 12),
           Container(width: 1, height: 16, color: DifyColors.dividerRegular),
@@ -171,8 +174,11 @@ class AccountAvatarMenu extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(account.name, style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary)),
-                      Text(account.email, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                      DifyTextLine(account.name, style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary)),
+                      DifyTextLine(
+                        account.email,
+                        style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                      ),
                     ],
                   ),
                 ),
@@ -193,7 +199,7 @@ class AccountAvatarMenu extends StatelessWidget {
               padding: const EdgeInsets.only(right: 4),
               child: DifyIcon('vender/line/general/log-out-01', size: 16, color: DifyColors.textTertiary),
             ),
-            child: Text(
+            child: DifyTextLine(
               stc(context, 'userProfile.logout'),
               // `text-[14px] font-normal`.
               style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
@@ -272,7 +278,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label, style: _title),
+        DifyTextLine(label, style: _title),
         const SizedBox(height: 8),
         Row(
           spacing: 8,
@@ -286,7 +292,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 4),
-                  child: Text(
+                  child: DifyTextLine(
                     value,
                     style: difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
                   ),
@@ -302,7 +308,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
                 variant: DifyButtonVariant.tertiary,
                 paddingX: 12,
                 onPressed: onAction,
-                child: Text(action),
+                child: DifyTextLine(action),
               ),
           ],
         ),
@@ -323,7 +329,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
           padding: const EdgeInsets.only(top: 8, bottom: 12),
           child: Semantics(
             header: true,
-            child: Text(
+            child: DifyTextLine(
               stc(context, 'account.myAccount'),
               style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
             ),
@@ -371,8 +377,11 @@ class _AccountPageBodyState extends State<AccountPageBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(account.name, style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary)),
-                    Text(account.email, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                    DifyTextLine(account.name, style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary)),
+                    DifyTextLine(
+                      account.email,
+                      style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                    ),
                   ],
                 ),
               ),
@@ -406,11 +415,11 @@ class _AccountPageBodyState extends State<AccountPageBody> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(stc(context, 'account.password'), style: _title),
+                        child: DifyTextLine(stc(context, 'account.password'), style: _title),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
+                        child: DifyTextLine(
                           stc(context, 'account.passwordTip'),
                           style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textTertiary),
                         ),
@@ -423,7 +432,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
                   semanticLabel: stc(context, 'account.resetPassword'),
                   onPressed: () => unawaited(showPasswordDialog(context, auth)),
                   // Every dify-sf account that can sign in has a password (Dify's `is_password_set`).
-                  child: Text(stc(context, 'account.resetPassword')),
+                  child: DifyTextLine(stc(context, 'account.resetPassword')),
                 ),
               ],
             ),
@@ -439,10 +448,10 @@ class _AccountPageBodyState extends State<AccountPageBody> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(stc(context, 'account.langGeniusAccount'), style: _title),
+              DifyTextLine(stc(context, 'account.langGeniusAccount'), style: _title),
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
+                child: DifyTextLine(
                   stc(context, 'account.langGeniusAccountTip'),
                   style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textTertiary),
                 ),
@@ -470,7 +479,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
                           ),
                           Padding(
                             padding: const EdgeInsets.only(top: 3),
-                            child: Text(
+                            child: DifyTextLine(
                               app.name,
                               style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                             ),

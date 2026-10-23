@@ -56,7 +56,7 @@ class _DifyCheckboxListState extends State<DifyCheckboxList> {
         if (shown.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
-            child: Text(
+            child: DifyTextLine(
               q.isEmpty
                   ? DifyI18n.tr('common', 'noData')
                   : DifyI18n.tr('common', 'operation.noSearchResults', {'content': w.title}),

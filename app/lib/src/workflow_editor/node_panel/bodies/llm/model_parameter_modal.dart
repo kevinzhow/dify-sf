@@ -500,6 +500,6 @@ class ModelSettingsTrigger extends StatelessWidget {
         );
       },
     );
-    return DifyTooltip(disabled: disabled, content: Text(label), child: button);
+    return DifyTooltip(disabled: disabled, content: DifyTextLine(label), child: button);
   }
 }

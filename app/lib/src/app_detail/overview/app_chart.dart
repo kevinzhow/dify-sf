@@ -84,7 +84,7 @@ class AppChart extends StatelessWidget {
                       label: title,
                       tooltip: title,
                       excludeSemantics: true,
-                      child: Text(
+                      child: DifyTextLine(
                         difyTransform(DifyType.systemSmSemiboldUppercase, title),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -97,7 +97,7 @@ class AppChart extends StatelessWidget {
                     DifyInfotip(
                       label: explanation,
                       width: 240,
-                      content: Text(
+                      content: DifyTextLine(
                         explanation,
                         style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                       ),
@@ -116,7 +116,7 @@ class AppChart extends StatelessWidget {
                   textBaseline: TextBaseline.alphabetic,
                   spacing: 4,
                   children: [
-                    Text(
+                    DifyTextLine(
                       summary,
                       key: const ValueKey('chart-summary'),
                       maxLines: 1,
@@ -127,7 +127,7 @@ class AppChart extends StatelessWidget {
                     ),
                     if (showTokenSummary)
                       Flexible(
-                        child: Text.rich(
+                        child: DifyTextLine.rich(
                           TextSpan(
                             children: [
                               TextSpan(text: '${DifyI18n.tr('appOverview', 'analysis.tokenUsage.consumed')} Tokens '),

@@ -124,7 +124,7 @@ class _RoleSelectorState extends State<RoleSelector> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: ExcludeSemantics(
-              child: Text(label, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+              child: DifyTextLine(label, style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
             ),
           ),
         ),
@@ -171,7 +171,7 @@ class _RoleSelectorState extends State<RoleSelector> {
                       spacing: 2,
                       children: [
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             text,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -213,7 +213,7 @@ class _RoleSelectorState extends State<RoleSelector> {
                         child: w.roles.isEmpty
                             ? Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
-                                child: Text(
+                                child: DifyTextLine(
                                   stc(context, 'dynamicSelect.noData'),
                                   textAlign: TextAlign.center,
                                   style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
@@ -245,7 +245,7 @@ class _RoleSelectorState extends State<RoleSelector> {
         if (w.error != null)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
+            child: DifyTextLine(
               w.error!,
               key: const ValueKey('role-error'),
               style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textDestructive),
@@ -324,7 +324,7 @@ class _RoleOptionState extends State<_RoleOption> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: 2,
                         children: [
-                          Text(
+                          DifyTextLine(
                             w.role.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -333,7 +333,7 @@ class _RoleOptionState extends State<_RoleOption> {
                               DifyColors.textSecondary,
                             ), // `text-sm leading-5`
                           ),
-                          Text(
+                          DifyTextLine(
                             w.description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,

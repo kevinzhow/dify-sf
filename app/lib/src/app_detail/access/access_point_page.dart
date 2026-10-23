@@ -234,13 +234,13 @@ class AccessPointPageState extends State<AccessPointPage> {
                         height: 24,
                         child: Semantics(
                           header: true,
-                          child: Text(
+                          child: DifyTextLine(
                             _t('common', 'appMenus.accessPoint'),
                             style: difyTextStyle(DifyType.titleXlSemiBold, DifyColors.textPrimary),
                           ),
                         ),
                       ),
-                      Text(
+                      DifyTextLine(
                         _t('deployments', 'studio.accessPoint.description'),
                         style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                       ),
@@ -359,11 +359,11 @@ class BuiltInAccessPoints extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 2,
           children: [
-            Text(
+            DifyTextLine(
               _t('deployments', 'studio.accessPoint.noPublishedTitle'),
               style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
             ),
-            Text(
+            DifyTextLine(
               _t('deployments', 'studio.accessPoint.noPublishedDescription'),
               style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
             ),
@@ -375,7 +375,7 @@ class BuiltInAccessPoints extends StatelessWidget {
           disabled: !canReleaseAndVersion,
           onPressed: canReleaseAndVersion ? goToPublish : null,
           trailing: const RemixIcon('arrow-right-line', size: 16),
-          child: Text(_t('deployments', 'studio.accessPoint.goToPublish')),
+          child: DifyTextLine(_t('deployments', 'studio.accessPoint.goToPublish')),
         ),
       ],
     ),
@@ -395,7 +395,7 @@ class BuiltInAccessPoints extends StatelessWidget {
       children: [
         RemixIcon('information-line', size: 16, color: DifyColors.textTertiary),
         Expanded(
-          child: Text.rich(
+          child: DifyTextLine.rich(
             TextSpan(
               style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               children: [

@@ -73,7 +73,7 @@ class RetrievalConfig extends StatelessWidget {
         disabled: readonly,
         leading: const RemixIcon('equalizer-2-line', size: 14),
         onPressed: () => onOpenChange(!open),
-        child: Text(_d('retrievalSettings')),
+        child: DifyTextLine(_d('retrievalSettings')),
       ),
       popupBuilder: (context) => LlmGroupScope(
         services: services,
@@ -293,7 +293,7 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                       DifyInfotip(
                         label: _c('modelProvider.rerankModel.tip'),
                         width: 200,
-                        content: Text(_c('modelProvider.rerankModel.tip')),
+                        content: DifyTextLine(_c('modelProvider.rerankModel.tip')),
                       ),
                     ],
                   ),
@@ -351,14 +351,14 @@ class _ConfigRetrievalContentState extends State<ConfigRetrievalContent> {
                   spacing: 2,
                   children: [
                     Flexible(
-                      child: Text(
+                      child: DifyTextLine(
                         _c('modelProvider.systemReasoningModel.key'),
                         style: difyTextStyle(DifyTw.text13MediumLeading32, DifyColors.textPrimary),
                       ),
                     ),
                     DifyInfotip(
                       label: _c('modelProvider.systemReasoningModel.tip'),
-                      content: Text(_c('modelProvider.systemReasoningModel.tip')),
+                      content: DifyTextLine(_c('modelProvider.systemReasoningModel.tip')),
                     ),
                   ],
                 ),
@@ -415,7 +415,7 @@ class _RerankModeCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 2),
-            DifyInfotip(label: tips, width: 200, iconSize: 14, content: Text(tips)),
+            DifyInfotip(label: tips, width: 200, iconSize: 14, content: DifyTextLine(tips)),
           ],
         ),
       ),
@@ -630,7 +630,7 @@ class ParamItem extends StatelessWidget {
                     child: DifyText(name, DifyType.systemSmSemibold, color: DifyColors.textSecondary),
                   ),
                 ),
-                if (tip != null && tip!.isNotEmpty) DifyInfotip(label: tip!, width: 200, content: Text(tip!)),
+                if (tip != null && tip!.isNotEmpty) DifyInfotip(label: tip!, width: 200, content: DifyTextLine(tip!)),
               ],
             ),
           ),

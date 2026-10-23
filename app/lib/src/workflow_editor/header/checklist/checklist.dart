@@ -150,7 +150,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(right: 32),
-                              child: Text(
+                              child: DifyTextLine(
                                 '$label${items.isNotEmpty ? '(${items.length})' : ''}',
                                 // `text-base/6 font-semibold`
                                 style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
@@ -171,7 +171,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                     if (items.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
+                        child: DifyTextLine(
                           _tr('panel.checklistDescription'),
                           style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                         ),
@@ -214,7 +214,7 @@ class _WorkflowChecklistState extends State<WorkflowChecklist> {
                         color: DifyColors.textQuaternary,
                       ),
                       const SizedBox(height: 5),
-                      Text(
+                      DifyTextLine(
                         _tr('panel.checklistResolved'),
                         textAlign: TextAlign.center,
                         style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
@@ -247,7 +247,7 @@ class _CountBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(9),
     ),
     alignment: Alignment.center,
-    child: Text(
+    child: DifyTextLine(
       '$count',
       // Centred in the 18 px badge (one line box of the font size).
       style: difyTextStyle(DifyTw.text11Semibold, DifyTailwind.white).copyWith(height: 1),
@@ -345,7 +345,7 @@ class ChecklistNodeGroup extends StatelessWidget {
               children: [
                 _itemIcon(item),
                 Expanded(
-                  child: Text(
+                  child: DifyTextLine(
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -387,7 +387,7 @@ class _ErrorRow extends StatelessWidget {
       children: [
         const ItemIndicator(),
         Expanded(
-          child: Text(
+          child: DifyTextLine(
             message,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -404,7 +404,7 @@ class _ErrorRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 spacing: 2,
                 children: [
-                  Text(
+                  DifyTextLine(
                     _tr('panel.goToFix'),
                     style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent), // text-xs/4 font-medium
                   ),
@@ -419,7 +419,7 @@ class _ErrorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DifyTooltip(
-    content: Text(message),
+    content: DifyTextLine(message),
     child: goTo
         ? HeaderPressable(onPressed: onTap, semanticLabel: message, builder: (context, hovered) => _row(hovered))
         : _row(false),
@@ -483,7 +483,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                   child: RemixIcon('download-line', size: 14, color: DifyTailwind.white),
                 ),
                 Expanded(
-                  child: Text(
+                  child: DifyTextLine(
                     _tr('nodes.common.pluginsNotInstalled', {'count': items.length}),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -498,7 +498,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                     dependencies?.setDependencies(deps);
                     onClose?.call();
                   },
-                  child: Text(_tr('nodes.agent.pluginInstaller.install')),
+                  child: DifyTextLine(_tr('nodes.agent.pluginInstaller.install')),
                 ),
               ],
             ),
@@ -517,7 +517,7 @@ class ChecklistPluginGroup extends StatelessWidget {
                         const ItemIndicator(),
                         _itemIcon(item, small: true),
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             item.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

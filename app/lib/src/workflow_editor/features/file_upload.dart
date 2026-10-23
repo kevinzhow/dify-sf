@@ -73,7 +73,7 @@ class _FileFeatureState extends State<_FileFeature> with FeatureHover {
             ? Row(
                 children: [
                   Flexible(
-                    child: Text(
+                    child: DifyTextLine(
                       ad('$k.title'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -232,12 +232,12 @@ class _SettingContentState extends State<SettingContent> {
         ),
         const SizedBox(height: 16),
         FeatureFooter([
-          DifyButton(onPressed: widget.onClose, child: Text(tc('operation.cancel'))),
+          DifyButton(onPressed: widget.onClose, child: DifyTextLine(tc('operation.cancel'))),
           DifyButton(
             variant: DifyButtonVariant.primary,
             disabled: types is! List || types.isEmpty,
             onPressed: _save,
-            child: Text(tc('operation.save')),
+            child: DifyTextLine(tc('operation.save')),
           ),
         ]),
       ],

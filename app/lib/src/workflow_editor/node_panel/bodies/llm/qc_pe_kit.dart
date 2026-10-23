@@ -220,14 +220,14 @@ class InstructionEditor extends StatelessWidget {
         spacing: 4,
         children: [
           Flexible(
-            child: Text(
+            child: DifyTextLine(
               _w('$i18nPrefix.instruction').toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textSecondary),
             ),
           ),
-          DifyInfotip(label: tip, width: 120, iconSize: 14, content: Text(tip)),
+          DifyInfotip(label: tip, width: 120, iconSize: 14, content: DifyTextLine(tip)),
         ],
       ),
       value: value,

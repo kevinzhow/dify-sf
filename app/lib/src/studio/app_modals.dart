@@ -59,7 +59,7 @@ Widget labelWithModEnter(String label, {bool disabled = false}) => Row(
   mainAxisSize: MainAxisSize.min,
   spacing: 4,
   children: [
-    Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+    Flexible(child: DifyTextLine(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
     DifyShortcutKbd(hotkey: 'Mod+Enter', color: DifyKbdColor.white),
   ],
 );
@@ -76,7 +76,7 @@ class _ModalFocus extends StatelessWidget {
 /// The modal's field label (`block py-2 text-sm leading-5 font-medium text-text-primary`).
 Widget _label(String text) => Padding(
   padding: const EdgeInsets.symmetric(vertical: 8),
-  child: Text(
+  child: DifyTextLine(
     text,
     style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
   ),
@@ -209,7 +209,7 @@ class _EditAppModalState extends State<EditAppModal> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(right: 40),
-                    child: Text(title, style: _titleStyle),
+                    child: DifyTextLine(title, style: _titleStyle),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 36),
@@ -283,7 +283,7 @@ class _EditAppModalState extends State<EditAppModal> {
                                     ),
                                   ],
                                 ),
-                                Text(
+                                DifyTextLine(
                                   _a('answerIcon.descriptionInExplore'),
                                   style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textTertiary),
                                 ),
@@ -298,7 +298,7 @@ class _EditAppModalState extends State<EditAppModal> {
                               children: [
                                 Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
+                                  child: DifyTextLine(
                                     _a('maxActiveRequests'),
                                     // `py-2 text-sm leading-5 font-medium text-text-primary`
                                     style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
@@ -315,7 +315,7 @@ class _EditAppModalState extends State<EditAppModal> {
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
+                                  child: DifyTextLine(
                                     _a('maxActiveRequestsTip'),
                                     style: difyTextStyle(DifyType.bodyXsRegular, DifyColors.textTertiary),
                                   ),
@@ -336,7 +336,7 @@ class _EditAppModalState extends State<EditAppModal> {
                           key: const ValueKey('app-modal-cancel'),
                           semanticLabel: _c('operation.cancel'),
                           onPressed: widget.onHide,
-                          child: Text(_c('operation.cancel')),
+                          child: DifyTextLine(_c('operation.cancel')),
                         ),
                       ),
                       Flexible(
@@ -457,7 +457,7 @@ class _DuplicateAppModalState extends State<DuplicateAppModal> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 12, bottom: 36, right: 40),
-                    child: Text(title, style: _titleStyle),
+                    child: DifyTextLine(title, style: _titleStyle),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 36),
@@ -465,7 +465,7 @@ class _DuplicateAppModalState extends State<DuplicateAppModal> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       spacing: 8,
                       children: [
-                        Text(
+                        DifyTextLine(
                           _e('appCustomize.subTitle'),
                           style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary),
                         ),
@@ -509,7 +509,7 @@ class _DuplicateAppModalState extends State<DuplicateAppModal> {
                           key: const ValueKey('duplicate-cancel'),
                           semanticLabel: _c('operation.cancel'),
                           onPressed: widget.onHide,
-                          child: Text(_c('operation.cancel')),
+                          child: DifyTextLine(_c('operation.cancel')),
                         ),
                       ),
                       SizedBox(
@@ -519,7 +519,7 @@ class _DuplicateAppModalState extends State<DuplicateAppModal> {
                           variant: DifyButtonVariant.primary,
                           semanticLabel: _a('duplicate'),
                           onPressed: _submit,
-                          child: Text(_a('duplicate')),
+                          child: DifyTextLine(_a('duplicate')),
                         ),
                       ),
                     ],
@@ -591,7 +591,7 @@ class _DeleteAppDialogState extends State<DeleteAppDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 4,
             children: [
-              Text.rich(
+              DifyTextLine.rich(
                 TextSpan(
                   children: [
                     for (final (i, p) in parts.indexed)
@@ -622,7 +622,7 @@ class _DeleteAppDialogState extends State<DeleteAppDialog> {
                     paddingX: 10,
                     semanticLabel: _c('operation.fill'),
                     onPressed: () => setState(() => _input = widget.appName),
-                    child: Text(_c('operation.fill')),
+                    child: DifyTextLine(_c('operation.fill')),
                   ),
                 ),
               ),
@@ -673,10 +673,10 @@ class DSLConfirmModal extends StatelessWidget {
         extra: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_a('newApp.appCreateDSLErrorPart1'), style: body),
-            Text(_a('newApp.appCreateDSLErrorPart2'), style: body),
+            DifyTextLine(_a('newApp.appCreateDSLErrorPart1'), style: body),
+            DifyTextLine(_a('newApp.appCreateDSLErrorPart2'), style: body),
             const SizedBox(height: 20),
-            Text.rich(
+            DifyTextLine.rich(
               TextSpan(
                 children: [
                   TextSpan(text: _a('newApp.appCreateDSLErrorPart3')),
@@ -685,7 +685,7 @@ class DSLConfirmModal extends StatelessWidget {
               ),
               style: body,
             ),
-            Text.rich(
+            DifyTextLine.rich(
               TextSpan(
                 children: [
                   TextSpan(text: _a('newApp.appCreateDSLErrorPart4')),

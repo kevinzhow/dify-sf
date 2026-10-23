@@ -177,7 +177,7 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
                     spacing: 4,
                     children: [
                       DifyText(_t('debugMode'), DifyType.systemSmMedium, color: DifyColors.textSecondary),
-                      Text.rich(
+                      DifyTextLine.rich(
                         TextSpan(
                           children: transSpans(_t('debugModeTip1', {'email': email}), {
                             'email': (inner) => TextSpan(
@@ -188,7 +188,7 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
                         ),
                         style: base,
                       ),
-                      Text(_t('debugModeTip2'), style: base),
+                      DifyTextLine(_t('debugModeTip2'), style: base),
                     ],
                   ),
                 ),
@@ -205,14 +205,17 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
             children: [
               SizedBox(
                 width: 72,
-                child: DifyButton(onPressed: () => Navigator.of(context).pop(), child: Text(cm('operation.cancel'))),
+                child: DifyButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: DifyTextLine(cm('operation.cancel')),
+                ),
               ),
               SizedBox(
                 width: 72,
                 child: DifyButton(
                   variant: DifyButtonVariant.primary,
                   onPressed: _save,
-                  child: Text(cm('operation.save')),
+                  child: DifyTextLine(cm('operation.save')),
                 ),
               ),
             ],
@@ -238,7 +241,7 @@ class _InsertPlaceholder extends StatelessWidget {
       ),
       const DifyKbd('/'),
       Flexible(
-        child: Text(
+        child: DifyTextLine(
           wf('nodes.tool.insertPlaceholder2'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -421,7 +424,7 @@ class Recipient extends StatelessWidget {
                   color: DifyColors.componentsIconBgBlueSolid,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
+                child: DifyTextLine(
                   workspace.isEmpty ? '' : workspace[0].toUpperCase(),
                   style: difyTextStyle(DifyTw.text14Semibold, DifyColors.componentsAvatarShapeFillStop0),
                 ),
@@ -660,7 +663,7 @@ class EmailItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMe = email == address;
     return DifyTooltip(
-      content: Text(address),
+      content: DifyTextLine(address),
       child: Container(
         height: 24,
         padding: const EdgeInsets.all(4),
@@ -682,7 +685,7 @@ class EmailItem extends StatelessWidget {
               DifyAvatar(name: name.isNotEmpty ? name : address, url: avatarUrl, size: DifyAvatarSize.xxs),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500),
-              child: Text.rich(
+              child: DifyTextLine.rich(
                 TextSpan(
                   children: [
                     TextSpan(text: isMe ? name : address),
@@ -831,7 +834,7 @@ class _MemberRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text.rich(
+                    DifyTextLine.rich(
                       TextSpan(
                         children: [
                           TextSpan(text: member.name),
@@ -903,7 +906,7 @@ class _MemberSelectorState extends State<MemberSelector> {
         onPressed: c.toggle,
         semanticLabel: hi('deliveryMethod.emailConfigure.memberSelector.trigger'),
         leading: const RemixIcon('contacts-book-line', size: 16),
-        child: Text(hi('deliveryMethod.emailConfigure.memberSelector.trigger')),
+        child: DifyTextLine(hi('deliveryMethod.emailConfigure.memberSelector.trigger')),
       ),
     ),
     popupBuilder: (context) => StatefulBuilder(

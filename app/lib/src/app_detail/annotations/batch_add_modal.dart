@@ -166,7 +166,7 @@ class _AnnotationCsvUploaderState extends State<AnnotationCsvUploader> {
           children: [
             const DifyIcon('public/files/csv', size: 32),
             Flexible(
-              child: Text.rich(
+              child: DifyTextLine.rich(
                 TextSpan(
                   children: [
                     TextSpan(text: _a('batchModal.csvUploadTitle')),
@@ -176,7 +176,7 @@ class _AnnotationCsvUploaderState extends State<AnnotationCsvUploader> {
                       child: DifyPressable(
                         semanticLabel: _a('batchModal.browse'),
                         onPressed: () => unawaited(_select()),
-                        builder: (context, _, _) => Text(
+                        builder: (context, _, _) => DifyTextLine(
                           _a('batchModal.browse'),
                           style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textAccent),
                         ),
@@ -213,14 +213,14 @@ class _AnnotationCsvUploaderState extends State<AnnotationCsvUploader> {
               child: Row(
                 children: [
                   Flexible(
-                    child: Text(
+                    child: DifyTextLine(
                       file.name.replaceFirst(RegExp(r'.csv$'), ''),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: difyTextStyle(DifyTw.text14, DifyColors.textPrimary), // inherited 14 px
                     ),
                   ),
-                  Text('.csv', style: difyTextStyle(DifyTw.text14, DifyColors.textTertiary)),
+                  DifyTextLine('.csv', style: difyTextStyle(DifyTw.text14, DifyColors.textTertiary)),
                 ],
               ),
             ),
@@ -238,7 +238,7 @@ class _AnnotationCsvUploaderState extends State<AnnotationCsvUploader> {
                   children: [
                     DifyButton(
                       onPressed: () => unawaited(_select()),
-                      child: Text(DifyI18n.tr('datasetCreation', 'stepOne.uploader.change')),
+                      child: DifyTextLine(DifyI18n.tr('datasetCreation', 'stepOne.uploader.change')),
                     ),
                     Container(
                       width: 1,
@@ -288,7 +288,7 @@ class AnnotationCsvDownloader extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 12, right: 8),
-                child: Text(t, style: style),
+                child: DifyTextLine(t, style: style),
               ),
             ),
         ],
@@ -299,7 +299,7 @@ class AnnotationCsvDownloader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          DifyTextLine(
             DifyI18n.tr('share', 'generation.csvStructureTitle'),
             style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textPrimary),
           ),
@@ -339,7 +339,7 @@ class AnnotationCsvDownloader extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 4),
                       child: DifyIcon('vender/solid/general/download-02', size: 12, color: DifyColors.textAccent),
                     ),
-                    Text(
+                    DifyTextLine(
                       _a('batchModal.template'),
                       style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
                     ),
@@ -458,7 +458,7 @@ class _AnnotationBatchModalState extends State<AnnotationBatchModal> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
+                child: DifyTextLine(
                   _a('batchModal.title'),
                   style: difyTextStyle(DifyType.systemXlMedium, DifyColors.textPrimary),
                 ),
@@ -479,7 +479,7 @@ class _AnnotationBatchModalState extends State<AnnotationBatchModal> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: DifyButton(onPressed: widget.onCancel, child: Text(_a('batchModal.cancel'))),
+                      child: DifyButton(onPressed: widget.onCancel, child: DifyTextLine(_a('batchModal.cancel'))),
                     ),
                     DifyButton(
                       variant: DifyButtonVariant.primary,
@@ -489,7 +489,7 @@ class _AnnotationBatchModalState extends State<AnnotationBatchModal> {
                         final csv = _currentCsv;
                         if (csv != null) unawaited(_runBatch(csv));
                       },
-                      child: Text(_a('batchModal.run')),
+                      child: DifyTextLine(_a('batchModal.run')),
                     ),
                   ],
                 ),

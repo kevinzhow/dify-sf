@@ -575,7 +575,7 @@ class _AgentTaskFieldState extends State<AgentTaskField> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 4,
                     children: [
-                      Text(tooltip),
+                      DifyTextLine(tooltip),
                       DifyPressable(
                         semanticLabel: _w('nodes.agent.task.learnMore'),
                         onPressed: () => w.onOpenUrl?.call(w.docLink),
@@ -584,7 +584,7 @@ class _AgentTaskFieldState extends State<AgentTaskField> {
                           spacing: 2,
                           children: [
                             Flexible(
-                              child: Text(
+                              child: DifyTextLine(
                                 _w('nodes.agent.task.learnMore'),
                                 style: TextStyle(
                                   color: DifyColors.textAccent,

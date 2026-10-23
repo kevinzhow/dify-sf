@@ -418,7 +418,7 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                          child: Text(
+                          child: DifyTextLine(
                             _ad(
                               DifyI18n.tr,
                               'variableConfig.${widget.isCreate ? 'addModalTitle' : 'editModalTitle'}',
@@ -441,14 +441,14 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
                               Flexible(
                                 child: DifyButton(
                                   onPressed: widget.onClose,
-                                  child: Text(DifyI18n.tr('common', 'operation.cancel')),
+                                  child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel')),
                                 ),
                               ),
                               Flexible(
                                 child: DifyButton(
                                   variant: DifyButtonVariant.primary,
                                   onPressed: _confirm,
-                                  child: Text(DifyI18n.tr('common', 'operation.save')),
+                                  child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
                                 ),
                               ),
                             ],
@@ -626,7 +626,7 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
                   language: CodeLanguage.json,
                   noWrapper: true,
                   onChange: _onJsonSchema,
-                  placeholderWidget: Text(jsonConfigPlaceHolder),
+                  placeholderWidget: DifyTextLine(jsonConfigPlaceHolder),
                 ),
               ),
             ),
@@ -671,14 +671,14 @@ class _HiddenDescription extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = DifyI18n.tr('app-debug', 'variableConfig.hiddenDescription');
     final m = RegExp(r'<docLink>(.*?)</docLink>').firstMatch(text);
-    if (m == null) return Text(text);
+    if (m == null) return DifyTextLine(text);
     final language = switch (DifyI18n.current) {
       DifyI18n(:final language) => language,
       _ => DifyI18n.fallbackLanguage,
     };
     final docLanguage = const {'zh-Hans': 'zh', 'ja-JP': 'ja'}[language] ?? 'en';
     final url = 'https://docs.dify.ai/$docLanguage/self-host/use-dify/nodes/user-input#hide-and-pre-fill-input-fields';
-    return Text.rich(
+    return DifyTextLine.rich(
       TextSpan(
         children: [
           TextSpan(text: text.substring(0, m.start)),
@@ -687,7 +687,7 @@ class _HiddenDescription extends StatelessWidget {
             baseline: TextBaseline.alphabetic,
             child: GestureDetector(
               onTap: () => onOpenUrl?.call(url),
-              child: Text(m[1]!, style: TextStyle(color: DifyColors.textAccent)),
+              child: DifyTextLine(m[1]!, style: TextStyle(color: DifyColors.textAccent)),
             ),
           ),
           TextSpan(text: text.substring(m.end)),
@@ -753,7 +753,7 @@ class _CheckRow extends StatelessWidget {
           child: GestureDetector(
             onTap: disabled ? null : () => onChanged(!checked),
             child: ExcludeSemantics(
-              child: Text(
+              child: DifyTextLine(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

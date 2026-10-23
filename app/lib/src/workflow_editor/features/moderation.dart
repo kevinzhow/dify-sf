@@ -441,7 +441,7 @@ class _ModerationSettingModalState extends State<ModerationSettingModal> {
                       child: FeatureFooter([
                         ConstrainedBox(
                           constraints: const BoxConstraints(minWidth: 72),
-                          child: DifyButton(onPressed: widget.onCancel, child: Text(tc('operation.cancel'))),
+                          child: DifyButton(onPressed: widget.onCancel, child: DifyTextLine(tc('operation.cancel'))),
                         ),
                         ConstrainedBox(
                           constraints: const BoxConstraints(minWidth: 72),
@@ -449,7 +449,7 @@ class _ModerationSettingModalState extends State<ModerationSettingModal> {
                             variant: DifyButtonVariant.primary,
                             disabled: type == 'openai_moderation' && !openaiOk,
                             onPressed: () => _save(s, providers),
-                            child: Text(tc('operation.save')),
+                            child: DifyTextLine(tc('operation.save')),
                           ),
                         ),
                       ]),
@@ -623,18 +623,18 @@ class _OpenAINotConfigured extends StatelessWidget {
             child: Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(ad('feature.moderation.modal.openaiNotConfig.before'), style: style),
+                DifyTextLine(ad('feature.moderation.modal.openaiNotConfig.before'), style: style),
                 GestureDetector(
                   onTap: onOpen,
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
-                    child: Text(
+                    child: DifyTextLine(
                       ' ${tc('settings.provider')} ',
                       style: style.copyWith(color: DifyColors.primary600),
                     ),
                   ),
                 ),
-                Text(ad('feature.moderation.modal.openaiNotConfig.after'), style: style),
+                DifyTextLine(ad('feature.moderation.modal.openaiNotConfig.after'), style: style),
               ],
             ),
           ),
@@ -688,7 +688,7 @@ class _CountedTextarea extends StatelessWidget {
                 color: DifyColors.backgroundSection,
                 borderRadius: BorderRadius.circular(DifyRadius.md),
               ),
-              child: Text.rich(
+              child: DifyTextLine.rich(
                 TextSpan(
                   children: [
                     TextSpan(text: count),
@@ -823,7 +823,7 @@ class _ModerationContentState extends State<ModerationContent> {
                                 children: [
                                   RemixIcon('markdown-line', size: 12, color: DifyColors.textTertiary),
                                   Flexible(
-                                    child: Text(
+                                    child: DifyTextLine(
                                       ad('feature.moderation.modal.content.supportMarkdown').toUpperCase(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -917,7 +917,7 @@ class FormGeneration extends StatelessWidget {
             height: 36,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
+              child: DifyTextLine(
                 label,
                 style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
               ),
@@ -971,7 +971,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                 ? Row(
                     children: [
                       Expanded(
-                        child: Text(
+                        child: DifyTextLine(
                           tc('apiBasedExtension.selector.placeholder'),
                           style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textQuaternary),
                         ),
@@ -981,14 +981,14 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                   )
                 : Row(
                     children: [
-                      Text(
+                      DifyTextLine(
                         '${current['name']}',
                         style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary),
                       ),
                       const Spacer(),
                       SizedBox(
                         width: 270,
-                        child: Text(
+                        child: DifyTextLine(
                           '${current['api_endpoint']}',
                           textAlign: TextAlign.right,
                           maxLines: 1,
@@ -1025,7 +1025,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             tc('apiBasedExtension.selector.title'),
                             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                           ),
@@ -1037,7 +1037,7 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                           },
                           child: Row(
                             children: [
-                              Text(
+                              DifyTextLine(
                                 tc('apiBasedExtension.selector.manage'),
                                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent),
                               ),
@@ -1074,11 +1074,11 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    DifyTextLine(
                                       '${item['name']}',
                                       style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary),
                                     ),
-                                    Text(
+                                    DifyTextLine(
                                       '${item['api_endpoint']}',
                                       style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                                     ),
@@ -1108,7 +1108,10 @@ class _ApiBasedExtensionSelectorState extends State<ApiBasedExtensionSelector> {
                     children: [
                       RemixIcon('add-line', size: 16, color: DifyColors.textAccent),
                       const SizedBox(width: 8),
-                      Text(tc('operation.add'), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textAccent)),
+                      DifyTextLine(
+                        tc('operation.add'),
+                        style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textAccent),
+                      ),
                     ],
                   ),
                 ),

@@ -70,7 +70,7 @@ class WorkflowHiddenInputFields extends StatelessWidget {
             children: [
               DifyCheckbox(key: key, checked: value == true, label: label, onChanged: (v) => onValueChange(name, v)),
               Expanded(
-                child: Text(label, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)),
+                child: DifyTextLine(label, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)),
               ),
             ],
           ),
@@ -110,7 +110,10 @@ class WorkflowHiddenInputFields extends StatelessWidget {
           children: [
             if (v['type'] != 'checkbox')
               ExcludeSemantics(
-                child: Text(_labelOf(v), style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+                child: DifyTextLine(
+                  _labelOf(v),
+                  style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+                ),
               ),
             _field(v),
           ],
@@ -178,7 +181,7 @@ class _WorkflowLaunchDialogState extends State<WorkflowLaunchDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 8,
               children: [
-                Text(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+                DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
                 _BoldTrans(description, style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary)),
               ],
             ),
@@ -205,13 +208,13 @@ class _WorkflowLaunchDialogState extends State<WorkflowLaunchDialog> {
               children: [
                 DifyButton(
                   onPressed: () => Navigator.of(context).maybePop(),
-                  child: Text(_t('common', 'operation.cancel')),
+                  child: DifyTextLine(_t('common', 'operation.cancel')),
                 ),
                 DifyButton(
                   key: const ValueKey('workflow-launch'),
                   variant: DifyButtonVariant.primary,
                   onPressed: _launch,
-                  child: Text(_t('appOverview', 'overview.appInfo.launch')),
+                  child: DifyTextLine(_t('appOverview', 'overview.appInfo.launch')),
                 ),
               ],
             ),
@@ -244,6 +247,6 @@ class _BoldTrans extends StatelessWidget {
       at = m.end;
     }
     if (at < text.length) spans.add(TextSpan(text: text.substring(at)));
-    return Text.rich(TextSpan(style: style, children: spans));
+    return DifyTextLine.rich(TextSpan(style: style, children: spans));
   }
 }

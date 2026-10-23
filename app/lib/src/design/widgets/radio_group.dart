@@ -304,7 +304,7 @@ class DifyRadio<T> extends StatelessWidget {
           child ??
           (label == null
               ? null
-              : Text(label!, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)));
+              : DifyTextLine(label!, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary)));
       if (text == null) return control;
       return Row(
         mainAxisSize: MainAxisSize.min,

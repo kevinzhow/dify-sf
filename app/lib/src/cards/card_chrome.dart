@@ -108,7 +108,7 @@ class DifyNodeCard extends StatelessWidget {
             if (desc.isNotEmpty && n.type != 'start-placeholder')
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                child: Text(desc, style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                child: DifyTextLine(desc, style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
               ),
             if (DifyCards.hasCopyId(n))
               CanvasCardControls.overlaid(context)
@@ -176,7 +176,7 @@ class _Header extends StatelessWidget {
         // dify-sf: references broken by a delete are shown, never dropped silently.
         if ([for (final v in node.config.values) ...v.brokenRefs].isNotEmpty)
           DifyTooltip(
-            content: const Text('Broken references'),
+            content: const DifyTextLine('Broken references'),
             child: RemixIcon(
               'link-unlink-m',
               size: 14,
@@ -220,7 +220,7 @@ class NodeHeaderMeta extends StatelessWidget {
         badge = DifyTooltip(
           content: SizedBox(
             width: 180,
-            child: Text.rich(
+            child: DifyTextLine.rich(
               TextSpan(
                 children: [
                   TextSpan(

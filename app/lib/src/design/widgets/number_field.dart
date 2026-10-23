@@ -178,6 +178,7 @@ class _DifyNumberFieldState extends State<DifyNumberField> with DifyControlledTe
                 canRequestFocus: false,
                 skipTraversal: true,
                 child: difyTextField(
+                  context: context,
                   controller: controller,
                   focusNode: _focus,
                   style: style,
@@ -195,7 +196,7 @@ class _DifyNumberFieldState extends State<DifyNumberField> with DifyControlledTe
                 // Units are short ("times", "ms"); a long one is cut rather than squeezing the number.
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 56),
-                  child: Text(
+                  child: DifyTextLine(
                     w.unit!,
                     maxLines: 1,
                     softWrap: false,

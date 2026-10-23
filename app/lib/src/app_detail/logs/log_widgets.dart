@@ -97,7 +97,7 @@ class LogPageTitle extends StatelessWidget {
             alignment: AlignmentDirectional.centerStart,
             child: Semantics(
               header: true,
-              child: Text(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+              child: DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
             ),
           ),
         ),
@@ -106,7 +106,7 @@ class LogPageTitle extends StatelessWidget {
           spacing: 2,
           children: [
             Flexible(
-              child: Text(
+              child: DifyTextLine(
                 description,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -121,7 +121,7 @@ class LogPageTitle extends StatelessWidget {
                 builder: (hovered) => Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    DifyTextLine(
                       label,
                       style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent).copyWith(
                         decoration: hovered ? TextDecoration.underline : null,
@@ -192,11 +192,11 @@ class _LogSortState extends State<LogSort> {
                       mainAxisSize: MainAxisSize.min,
                       spacing: 2,
                       children: [
-                        Text(
+                        DifyTextLine(
                           _l('filter.sortBy'),
                           style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
                         ),
-                        Text(
+                        DifyTextLine(
                           trigger,
                           style: difyTextStyle(
                             DifyType.systemSmRegular,
@@ -221,7 +221,7 @@ class _LogSortState extends State<LogSort> {
                     key: ValueKey('sort-option-${item.value}'),
                     value: item.value,
                     closeOnClick: true,
-                    child: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: DifyTextLine(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
               ],
             ),
@@ -268,7 +268,7 @@ class LogStatusLabel extends StatelessWidget {
     children: [
       DifyStatusDot(status: dot),
       Flexible(
-        child: Text(
+        child: DifyTextLine(
           difyTransform(DifyType.systemXsSemiboldUppercase, text),
           style: difyTextStyle(DifyType.systemXsSemiboldUppercase, color),
         ),
@@ -326,7 +326,7 @@ class LogDrawerTrigger extends StatelessWidget {
         borderRadius: BorderRadius.circular(DifyRadius.sm),
         border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
       ),
-      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+      child: DifyTextLine(text, maxLines: 1, overflow: TextOverflow.ellipsis),
     ),
   );
 }
@@ -433,7 +433,7 @@ class LogEmptyElement extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                DifyTextLine(
                   _l('table.empty.element.title'),
                   style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
                 ),
@@ -449,7 +449,7 @@ class LogEmptyElement extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text.rich(
+            DifyTextLine.rich(
               TextSpan(children: hasTags ? spans : [TextSpan(text: raw)]),
               style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
             ),
@@ -477,7 +477,7 @@ class _InlineLink extends StatelessWidget {
     url: url,
     label: text,
     onTap: onTap,
-    builder: (hovered) => Text(text, style: style),
+    builder: (hovered) => DifyTextLine(text, style: style),
   );
 }
 
@@ -577,7 +577,7 @@ class _LogVarPanelState extends State<LogVarPanel> {
               children: [
                 DifyIcon('vender/solid/development/variable-02', size: 16, color: DifyColors.textSecondary),
                 Expanded(
-                  child: Text(
+                  child: DifyTextLine(
                     _l('detail.variables'),
                     style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary),
                   ),
@@ -613,9 +613,9 @@ class _LogVarPanelState extends State<LogVarPanel> {
                               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
                               child: Row(
                                 children: [
-                                  const Opacity(opacity: 0.6, child: Text('{{')),
-                                  Flexible(child: Text(v.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                  const Opacity(opacity: 0.6, child: Text('}}')),
+                                  const Opacity(opacity: 0.6, child: DifyTextLine('{{')),
+                                  Flexible(child: DifyTextLine(v.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  const Opacity(opacity: 0.6, child: DifyTextLine('}}')),
                                 ],
                               ),
                             ),
@@ -623,7 +623,7 @@ class _LogVarPanelState extends State<LogVarPanel> {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(left: 10),
-                              child: Text(
+                              child: DifyTextLine(
                                 v.value,
                                 style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
                               ),
@@ -640,7 +640,7 @@ class _LogVarPanelState extends State<LogVarPanel> {
                         children: [
                           SizedBox(
                             width: 128,
-                            child: Text(
+                            child: DifyTextLine(
                               _l('detail.uploadImages'),
                               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                             ),

@@ -101,7 +101,7 @@ class _AppTypeFilterState extends State<AppTypeFilter> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(label)),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: DifyTextLine(label)),
               RemixIcon('arrow-down-s-line', size: 16, color: DifyColors.textTertiary),
             ],
           ),
@@ -117,7 +117,7 @@ class _AppTypeFilterState extends State<AppTypeFilter> {
                 key: ValueKey('studio-type-option-$c'),
                 value: c,
                 leading: RemixIcon(AppTypeFilter.option(c).$2, size: 16, color: DifyColors.textTertiary),
-                child: Text(AppTypeFilter.option(c).$1),
+                child: DifyTextLine(AppTypeFilter.option(c).$1),
               ),
           ],
         ),
@@ -176,8 +176,8 @@ class _AppSortFilterState extends State<AppSortFilter> {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 4, // app-sort-filter.tsx: gap-1, independent of glyph/locale.
                   children: [
-                    Text(sortByLabel, style: _chipText.copyWith(color: DifyColors.textTertiary)),
-                    Text(
+                    DifyTextLine(sortByLabel, style: _chipText.copyWith(color: DifyColors.textTertiary)),
+                    DifyTextLine(
                       active,
                       style: _chipText.copyWith(
                         color: DifyColors.textSecondary,
@@ -202,7 +202,7 @@ class _AppSortFilterState extends State<AppSortFilter> {
                 key: ValueKey('studio-sort-option-$s'),
                 value: s,
                 closeOnClick: true,
-                child: Text(AppSortFilter.label(s), maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: DifyTextLine(AppSortFilter.label(s), maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
           ],
         ),
@@ -344,7 +344,7 @@ class _CreatorsFilterState extends State<CreatorsFilter> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(label, style: TextStyle(color: textColor)),
+                      child: DifyTextLine(label, style: TextStyle(color: textColor)),
                     ),
                     if (count > 0) ...[
                       Padding(
@@ -366,7 +366,7 @@ class _CreatorsFilterState extends State<CreatorsFilter> {
                           ],
                         ),
                       ),
-                      Text(
+                      DifyTextLine(
                         '+$count',
                         style: difyTextStyle(DifyType.systemXsMedium, textColor), // `text-xs leading-4 font-medium`
                       ),
@@ -511,7 +511,7 @@ class CreatorRow extends StatelessWidget {
                   children: [
                     DifyAvatar(name: option.name, url: option.avatarUrl, size: DifyAvatarSize.xs),
                     Expanded(
-                      child: Text(
+                      child: DifyTextLine(
                         option.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -522,7 +522,7 @@ class CreatorRow extends StatelessWidget {
                       // `shrink-0` ("You" is short; the cap only guards long translations).
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 96),
-                        child: Text(
+                        child: DifyTextLine(
                           _a('studio.filters.you'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -591,7 +591,7 @@ class CreateAppDropdown extends StatelessWidget {
       onPressed: controller.toggle,
       leading: const RemixIcon('add-line', size: 16),
       trailing: const RemixIcon('arrow-down-s-line', size: 16),
-      child: Text(_c('operation.create')),
+      child: DifyTextLine(_c('operation.create')),
     ),
     children: [
       if (onCreateBlank != null)
@@ -601,7 +601,7 @@ class CreateAppDropdown extends StatelessWidget {
           leading: RemixIcon('sticky-note-add-line', size: 16, color: DifyColors.textSecondary),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
+            child: DifyTextLine(
               _a('newApp.startFromBlank'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -622,8 +622,8 @@ class CreateAppDropdown extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 2,
               children: [
-                Text(_a('importDSL'), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
-                Text(
+                DifyTextLine(_a('importDSL'), style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary)),
+                DifyTextLine(
                   _a('newApp.dropDSLToCreateApp'),
                   style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                 ),

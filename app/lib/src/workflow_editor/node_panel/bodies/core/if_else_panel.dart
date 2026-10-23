@@ -160,7 +160,7 @@ class IfElsePanel extends StatelessWidget {
               disabled: env.readOnly,
               onPressed: config.handleAddCase,
               leading: const RemixIcon('add-line', size: 16),
-              child: const Text('ELIF'),
+              child: const DifyTextLine('ELIF'),
             ),
           ),
           const Padding(padding: EdgeInsets.only(left: 4), child: _Divider()),
@@ -168,7 +168,7 @@ class IfElsePanel extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
             child: Field(
               title: tw('$_p.else'),
-              child: Text(
+              child: DifyTextLine(
                 tw('$_p.elseDescription'),
                 style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
               ),
@@ -259,7 +259,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                   disabled: env.readOnly,
                   onPressed: () => env.onRemoveCase?.call(caseId),
                   leading: const RemixIcon('delete-bin-line', size: 14),
-                  child: Text(tc('operation.remove')),
+                  child: DifyTextLine(tc('operation.remove')),
                 ),
               ),
             ),
@@ -305,12 +305,12 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        DifyTextLine(
                           index == 0 ? 'IF' : 'ELIF',
                           style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
                         ),
                         if (n > 1)
-                          Text(
+                          DifyTextLine(
                             'CASE${index + 1}',
                             style: difyTextStyle(DifyType.system2xsMedium, DifyColors.textTertiary),
                           ),
@@ -369,7 +369,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
           disabled: w.env.readOnly,
           onPressed: () => w.env.onAddSubVariableCondition?.call(w.caseId!, w.conditionId!),
           leading: const RemixIcon('add-line', size: 14),
-          child: Text(tw('$_p.addSubVariable')),
+          child: DifyTextLine(tw('$_p.addSubVariable')),
         ),
       );
     }
@@ -407,10 +407,10 @@ class _SubVariableAdd extends StatelessWidget {
       disabled: disabled,
       onPressed: controller.toggle,
       leading: const RemixIcon('add-line', size: 14),
-      child: Text(tw('$_p.addSubVariable')),
+      child: DifyTextLine(tw('$_p.addSubVariable')),
     ),
     children: [
-      for (final k in subVariables) DifyMenuItem(onSelect: () => onSelect(k), child: Text(k)),
+      for (final k in subVariables) DifyMenuItem(onSelect: () => onSelect(k), child: DifyTextLine(k)),
     ],
   );
 }
@@ -443,7 +443,7 @@ class IfElseConditionAdd extends StatelessWidget {
         semanticLabel: label,
         onPressed: toggle,
         leading: const RemixIcon('add-line', size: 14),
-        child: Text(label),
+        child: DifyTextLine(label),
       ),
     );
   }
@@ -616,7 +616,7 @@ class IfElseConditionList extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
+                              DifyTextLine(
                                 op.toUpperCase(),
                                 style: difyTextStyle(
                                   DifyType.system2xsSemiboldUppercase,
@@ -941,7 +941,7 @@ class _SubVarKeySelect extends StatelessWidget {
           child: Align(
             alignment: Alignment.centerLeft,
             child: selected == null
-                ? Text(
+                ? DifyTextLine(
                     tc('placeholder.select'),
                     style: difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextPlaceholder),
                   )
@@ -959,7 +959,7 @@ class _SubVarKeySelect extends StatelessWidget {
                       children: [
                         DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
                         const SizedBox(width: 2),
-                        Text(selected, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
+                        DifyTextLine(selected, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent)),
                       ],
                     ),
                   ),
@@ -976,7 +976,7 @@ class _SubVarKeySelect extends StatelessWidget {
                 value: k,
                 closeOnClick: true,
                 leading: DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
-                child: Text(k),
+                child: DifyTextLine(k),
               ),
           ],
         ),
@@ -1019,7 +1019,7 @@ class IfElseConditionOperator extends StatelessWidget {
           semanticLabel: label,
           onPressed: controller.toggle,
           trailing: const RemixIcon('arrow-down-s-line', size: 14),
-          child: Text(label),
+          child: DifyTextLine(label),
         ),
       ),
       children: [
@@ -1027,7 +1027,8 @@ class IfElseConditionOperator extends StatelessWidget {
           value: selected,
           onValueChange: onSelect,
           children: [
-            for (final o in options) DifyMenuRadioItem<String>(value: o, closeOnClick: true, child: Text(labelOf(o))),
+            for (final o in options)
+              DifyMenuRadioItem<String>(value: o, closeOnClick: true, child: DifyTextLine(labelOf(o))),
           ],
         ),
       ],
@@ -1124,7 +1125,7 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
                         ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             tw('$_p.selectVariable'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1158,7 +1159,7 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: IgnorePointer(
-                child: Text(w.unit!, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
+                child: DifyTextLine(w.unit!, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
               ),
             ),
         ],
@@ -1176,7 +1177,7 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
             semanticLabel: kind,
             onPressed: controller.toggle,
             trailing: const RemixIcon('arrow-down-s-line', size: 14),
-            child: Text(kind),
+            child: DifyTextLine(kind),
           ),
           children: [
             DifyMenuRadioGroup<VarKindType>(
@@ -1184,7 +1185,11 @@ class _IfElseConditionNumberInputState extends State<IfElseConditionNumberInput>
               onValueChange: w.onNumberVarTypeChange,
               children: [
                 for (final o in const [VarKindType.variable, VarKindType.constant])
-                  DifyMenuRadioItem<VarKindType>(value: o, closeOnClick: true, child: Text(_capitalize(o.name))),
+                  DifyMenuRadioItem<VarKindType>(
+                    value: o,
+                    closeOnClick: true,
+                    child: DifyTextLine(_capitalize(o.name)),
+                  ),
               ],
             ),
           ],

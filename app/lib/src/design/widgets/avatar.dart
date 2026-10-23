@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'text_line.dart';
+
 /// AvatarWithEdit.tsx explicitly uses bg-black/50 and text-white in both themes.
 abstract final class DifyAvatarEditColors {
   static const overlay = Color(0x80000000);
@@ -50,7 +52,7 @@ class DifyAvatar extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Center(
-              child: Text(
+              child: DifyTextLine(
                 initial,
                 style: TextStyle(
                   fontSize: size.fontSize,

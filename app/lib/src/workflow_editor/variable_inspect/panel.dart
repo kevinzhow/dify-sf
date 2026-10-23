@@ -427,7 +427,7 @@ class InspectLeft extends StatelessWidget {
                       crud.deleteAllInspectorVars();
                       store.setCurrentFocusNodeId('');
                     },
-                    child: Text(_tw('debug.variableInspect.clearAll')),
+                    child: DifyTextLine(_tw('debug.variableInspect.clearAll')),
                   ),
                 ),
               ],
@@ -654,7 +654,7 @@ class _TipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DifyTooltip(
-    content: Text(label),
+    content: DifyTextLine(label),
     child: DifyIconButton(label: label, icon: RemixIcon(icon, size: 16), onPressed: onPressed),
   );
 }
@@ -756,7 +756,7 @@ class InspectRight extends StatelessWidget {
                       ],
                       Flexible(
                         child: DifyTooltip(
-                          content: Text('${v['name']}'),
+                          content: DifyTextLine('${v['name']}'),
                           delay: const Duration(milliseconds: 600),
                           child: DifyText(
                             '${v['name']}',
@@ -1020,7 +1020,7 @@ class _ListeningState extends State<Listening> {
                   ),
                   Flexible(
                     child: DifyTooltip(
-                      content: Text(copyLabel),
+                      content: DifyTextLine(copyLabel),
                       child: DifyPressable(
                         semanticLabel: _tw('nodes.triggerWebhook.debugUrlCopy'),
                         onPressed: () {
@@ -1040,7 +1040,7 @@ class _ListeningState extends State<Listening> {
                             borderRadius: BorderRadius.circular(DifyRadius.md),
                             border: Border.all(color: DifyColors.dividerRegular),
                           ),
-                          child: Text(
+                          child: DifyTextLine(
                             debugUrl,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1060,7 +1060,7 @@ class _ListeningState extends State<Listening> {
               paddingX: 12,
               onPressed: widget.onStop,
               leading: const DifyIcon('vender/line/mediaAndDevices/stop-circle', size: 16),
-              child: Text(_tw('debug.variableInspect.listening.stopButton')),
+              child: DifyTextLine(_tw('debug.variableInspect.listening.stopButton')),
             ),
           ],
         ),

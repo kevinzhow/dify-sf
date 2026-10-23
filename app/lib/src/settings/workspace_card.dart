@@ -148,7 +148,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
                         constraints: const BoxConstraints(maxWidth: 120),
                         child: Padding(
                           padding: const EdgeInsetsDirectional.only(end: 2),
-                          child: Text(
+                          child: DifyTextLine(
                             name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -296,7 +296,7 @@ class _WorkspaceMenuHeader extends StatelessWidget {
               spacing: 8,
               children: [
                 Expanded(
-                  child: Text(
+                  child: DifyTextLine(
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -371,7 +371,7 @@ class WorkspaceMenuButton extends StatelessWidget {
             child: OverflowBox(maxWidth: 24, maxHeight: 24, child: icon),
           ),
           Expanded(
-            child: Text(
+            child: DifyTextLine(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -458,7 +458,7 @@ class _WorkspaceSwitcherState extends State<WorkspaceSwitcher> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
+                    child: DifyTextLine(
                       difyTransform(DifyType.systemXsMediumUppercase, label),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -488,7 +488,7 @@ class _WorkspaceSwitcherState extends State<WorkspaceSwitcher> {
                           DifyMenuRadioItem<WorkspaceSort>(
                             value: v,
                             closeOnClick: true,
-                            child: Text(
+                            child: DifyTextLine(
                               stc(context, k),
                               style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
                             ),
@@ -534,7 +534,7 @@ class _WorkspaceSwitcherState extends State<WorkspaceSwitcher> {
                       height: 32,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       alignment: AlignmentDirectional.centerStart,
-                      child: Text(
+                      child: DifyTextLine(
                         stc(context, 'mainNav.workspace.noResults'),
                         style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                       ),

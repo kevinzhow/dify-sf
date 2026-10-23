@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// `tracking-*` class says otherwise; Material 3's text theme tracks most styles (bodyLarge 0.5 px, bodyMedium 0.25,
 /// labelLarge 0.1, ...), which text fields (bodyLarge under their style) and Material's default text style pass on to
 /// every style that does not set its own: such lines came out 3-8 % wider than Dify's.
-ThemeData difyTheme({String? fontFamily, Brightness brightness = Brightness.light}) {
+ThemeData difyTheme({String? fontFamily, List<String>? fontFamilyFallback, Brightness brightness = Brightness.light}) {
   final base = ThemeData(
     colorSchemeSeed: const Color(0xFF3F51B5),
     useMaterial3: true,
@@ -15,7 +15,10 @@ ThemeData difyTheme({String? fontFamily, Brightness brightness = Brightness.ligh
     fontFamily: fontFamily,
     brightness: brightness,
   );
-  return base.copyWith(textTheme: _untracked(base.textTheme), primaryTextTheme: _untracked(base.primaryTextTheme));
+  return base.copyWith(
+    textTheme: _untracked(base.textTheme).apply(fontFamilyFallback: fontFamilyFallback),
+    primaryTextTheme: _untracked(base.primaryTextTheme).apply(fontFamilyFallback: fontFamilyFallback),
+  );
 }
 
 TextTheme _untracked(TextTheme t) {

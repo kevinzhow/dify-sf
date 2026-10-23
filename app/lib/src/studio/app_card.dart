@@ -220,14 +220,14 @@ class _AppCardState extends State<AppCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     spacing: 4,
                     children: [
-                      Text(
+                      DifyTextLine(
                         app.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         // `text-sm/5 font-semibold text-text-secondary`
                         style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
                       ),
-                      Text(
+                      DifyTextLine(
                         difyTransform(DifyType.system2xsMediumUppercase, appModeLabel(app.mode)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -244,7 +244,7 @@ class _AppCardState extends State<AppCard> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 32),
-            child: Text(app.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: meta),
+            child: DifyTextLine(app.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: meta),
           ),
         ),
         const SizedBox(height: 26),
@@ -260,7 +260,7 @@ class _AppCardState extends State<AppCard> {
   Widget _metaLine(String edit, TextStyle style) {
     final author = app.authorName ?? '';
     final dot = author.isNotEmpty && (edit.isNotEmpty || !widget.starred);
-    return Text(
+    return DifyTextLine(
       [if (author.isNotEmpty) author, if (dot) '·', if (edit.isNotEmpty) edit].join(' '),
       key: ValueKey('app-card-meta-${app.id}'),
       maxLines: 1,
@@ -283,7 +283,7 @@ class _AppCardState extends State<AppCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 2,
               children: [
-                Text(
+                DifyTextLine(
                   app.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -339,7 +339,7 @@ class _AppCardState extends State<AppCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DifyTooltip(
-                      content: Text(starLabel),
+                      content: DifyTextLine(starLabel),
                       child: MergeSemantics(
                         child: Semantics(
                           toggled: app.isStarred,
@@ -406,7 +406,7 @@ class _AppCardState extends State<AppCard> {
           disabled: disabled,
           variant: destructive ? DifyMenuItemVariant.destructive : DifyMenuItemVariant.normal,
           onSelect: onSelect,
-          child: Text(
+          child: DifyTextLine(
             label,
             style: destructive
                 ? difyTextStyle(DifyType.systemSmRegular, DifyColors.textDestructive)

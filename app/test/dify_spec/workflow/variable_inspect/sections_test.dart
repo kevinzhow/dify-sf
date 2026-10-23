@@ -173,7 +173,7 @@ void main() {
 
       expect(find.text('workflow.debug.variableInspect.largeData'), findsOneWidget);
       expect(
-        (t.widget<DifyTooltip>(find.byType(DifyTooltip)).content as Text).data,
+        (t.widget<DifyTooltip>(find.byType(DifyTooltip)).content as DifyTextLine).data,
         'workflow.debug.variableInspect.largeData',
         reason: 'the message is its own title',
       );
@@ -185,7 +185,7 @@ void main() {
 
       expect(find.text('workflow.debug.variableInspect.largeDataNoExport'), findsOneWidget);
       expect(
-        (t.widget<DifyTooltip>(find.byType(DifyTooltip)).content as Text).data,
+        (t.widget<DifyTooltip>(find.byType(DifyTooltip)).content as DifyTextLine).data,
         'workflow.debug.variableInspect.largeDataNoExport',
       );
       expect(find.text('WORKFLOW.DEBUG.VARIABLEINSPECT.EXPORT'), findsNothing);

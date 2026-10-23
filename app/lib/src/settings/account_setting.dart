@@ -192,7 +192,7 @@ class _AccountSettingState extends State<AccountSetting> {
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: ExcludeSemantics(
-                                    child: Text(
+                                    child: DifyTextLine(
                                       'ESC',
                                       style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textTertiary),
                                     ),
@@ -235,7 +235,7 @@ class _AccountSettingState extends State<AccountSetting> {
             margin: const EdgeInsets.only(top: 24, bottom: 32),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             alignment: AlignmentDirectional.centerStart,
-            child: Text(
+            child: DifyTextLine(
               stc(context, 'settings.settings'),
               softWrap: false,
               overflow: TextOverflow.visible,
@@ -256,7 +256,7 @@ class _AccountSettingState extends State<AccountSetting> {
                         height: 28,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         alignment: AlignmentDirectional.centerStart,
-                        child: Text(
+                        child: DifyTextLine(
                           difyTransform(DifyType.systemXsMediumUppercase, stc(context, 'settings.workspace')),
                           style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
                         ),
@@ -309,7 +309,7 @@ class _AccountSettingState extends State<AccountSetting> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                DifyTextLine(
                   (item.title ?? item.name)(context),
                   key: const ValueKey('account-setting-title'),
                   style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
@@ -317,7 +317,10 @@ class _AccountSettingState extends State<AccountSetting> {
                 if (description != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(description, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
+                    child: DifyTextLine(
+                      description,
+                      style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
+                    ),
                   ),
               ],
             ),
@@ -377,7 +380,7 @@ class _TabButton extends StatelessWidget {
               ),
               if (!mobile)
                 Expanded(
-                  child: Text(
+                  child: DifyTextLine(
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

@@ -35,6 +35,12 @@ class StripTest(unittest.TestCase):
 
 
 class RuleTest(unittest.TestCase):
+    def test_text_labels_share_the_design_line_box(self):
+        for rel in ('studio/a.dart', 'design/widgets/button.dart'):
+            self.assertEqual(rules(rel, 'Text(label); m.Text.rich(span); DifyTextLine(label);'), ['text-line', 'text-line'])
+        self.assertEqual(rules('design/widgets/text_line.dart', 'Text(label); Text.rich(span);'), [])
+        self.assertEqual(rules('studio/a.dart', "// Text(label)\nfinal label = 'Text(label)';"), [])
+
     def test_color_literal(self):
         src = ('final a = Color(0xFF000000); final b = Color.fromARGB(1, 2, 3, 4); final c = Color.fromRGBO(1, 2, 3, 1);'
                ' final d = Colors.red; final e = Colors.transparent; final f = DifyColors.textPrimary;'

@@ -307,7 +307,7 @@ class StudioPageState extends State<StudioPage> {
     );
     final title = Semantics(
       header: true,
-      child: Text(_c('menus.apps'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+      child: DifyTextLine(_c('menus.apps'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
     );
     return Container(
       color: DifyColors.backgroundBody,
@@ -451,7 +451,7 @@ class StudioPageState extends State<StudioPage> {
         alignment: AlignmentDirectional.centerStart,
         child: Semantics(
           header: true,
-          child: Text(
+          child: DifyTextLine(
             difyTransform(DifyType.systemXsMediumUppercase, label),
             style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
           ),
@@ -471,7 +471,10 @@ class StudioPageState extends State<StudioPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: 8,
         children: [
-          Text(_c('errorBoundary.title'), style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+          DifyTextLine(
+            _c('errorBoundary.title'),
+            style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+          ),
           DifyButton(
             key: const ValueKey('studio-next-page-retry'),
             size: DifyButtonSize.small,
@@ -479,7 +482,7 @@ class StudioPageState extends State<StudioPage> {
             loading: list.isFetchingNextPage,
             semanticLabel: _c('operation.retry'),
             onPressed: () => unawaited(list.fetchNextPage()),
-            child: Text(_c('operation.retry')),
+            child: DifyTextLine(_c('operation.retry')),
           ),
         ],
       ),
@@ -491,14 +494,17 @@ class StudioPageState extends State<StudioPage> {
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        Text(_c('errorBoundary.title'), style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
-        Text('${list.error}', style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textQuaternary)),
+        DifyTextLine(
+          _c('errorBoundary.title'),
+          style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
+        ),
+        DifyTextLine('${list.error}', style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textQuaternary)),
         DifyButton(
           key: const ValueKey('studio-retry'),
           size: DifyButtonSize.small,
           semanticLabel: _c('operation.retry'),
           onPressed: () => unawaited(list.refresh()),
-          child: Text(_c('operation.retry')),
+          child: DifyTextLine(_c('operation.retry')),
         ),
       ],
     ),
@@ -515,7 +521,7 @@ class StudioPageState extends State<StudioPage> {
         spacing: 8,
         children: [
           RemixIcon('drag-drop-line', size: 16, color: color),
-          Text(_a('newApp.dropDSLToCreateApp'), style: difyTextStyle(DifyType.systemXsRegular, color)),
+          DifyTextLine(_a('newApp.dropDSLToCreateApp'), style: difyTextStyle(DifyType.systemXsRegular, color)),
         ],
       ),
     );
@@ -599,7 +605,7 @@ class StudioEmpty extends StatelessWidget {
           spacing: 12,
           children: [
             _robotTile(),
-            Text(message, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
+            DifyTextLine(message, style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary)),
           ],
         ),
       ),
@@ -638,7 +644,7 @@ class FirstEmptyState extends StatelessWidget {
                     _robotTile(),
                     Semantics(
                       header: true,
-                      child: Text(
+                      child: DifyTextLine(
                         _a('firstEmpty.title'),
                         style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
                       ),
@@ -669,7 +675,7 @@ class FirstEmptyState extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Text(
+                        DifyTextLine(
                           difyTransform(DifyType.systemXsMediumUppercase, _a('firstEmpty.or')),
                           style: difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary),
                         ),
@@ -748,13 +754,13 @@ class _ActionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 2,
               children: [
-                Text(
+                DifyTextLine(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textSecondary),
                 ),
-                Text(
+                DifyTextLine(
                   description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

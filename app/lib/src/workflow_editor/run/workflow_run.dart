@@ -397,30 +397,33 @@ class WorkflowRunController {
       if (follow.done || follower.aborted || finished || ended) return;
       follow.inner = _listen(
         service.workflowEvents(runId),
-        cb.merge(RunCallbacks(
-          // The follow's own ends first, then the caller's handlers (they build the panel's state): `merge` keeps the
-          // other object's non-null callbacks, so this one calls both.
-          onWorkflowFinished: (p) {
-            finished = true;
-            follow.done = true;
-            cb.onWorkflowFinished?.call(p);
-          },
-          onError: (message, [code]) {
-            // A refusal the run itself reports ends the follow, as it always did. A lost connection arrives as an error
-            // event too (`GET … ended: ClientException…`) and does **not**: the run may be fine, and the next attempt
-            // finds out.
-            final connection = message.contains(' ended: ') || message.contains(' failed: ') || message.contains(' timed out');
-            if (!connection) {
-              ended = true;
+        cb.merge(
+          RunCallbacks(
+            // The follow's own ends first, then the caller's handlers (they build the panel's state): `merge` keeps the
+            // other object's non-null callbacks, so this one calls both.
+            onWorkflowFinished: (p) {
+              finished = true;
               follow.done = true;
-              cb.onError?.call(message, code);
-              return;
-            }
-            // A note of the loss, never the run's state; the retry follows in a moment.
-            cb.onNotifyError?.call(message, code);
-            retry();
-          },
-        )),
+              cb.onWorkflowFinished?.call(p);
+            },
+            onError: (message, [code]) {
+              // A refusal the run itself reports ends the follow, as it always did. A lost connection arrives as an error
+              // event too (`GET … ended: ClientException…`) and does **not**: the run may be fine, and the next attempt
+              // finds out.
+              final connection =
+                  message.contains(' ended: ') || message.contains(' failed: ') || message.contains(' timed out');
+              if (!connection) {
+                ended = true;
+                follow.done = true;
+                cb.onError?.call(message, code);
+                return;
+              }
+              // A note of the loss, never the run's state; the retry follows in a moment.
+              cb.onNotifyError?.call(message, code);
+              retry();
+            },
+          ),
+        ),
       );
       // A stream that ends **without** a terminal event is a connection that died (a clean end counts): open it again.
       follow.listener = follow.inner!.endedStream.listen((_) {

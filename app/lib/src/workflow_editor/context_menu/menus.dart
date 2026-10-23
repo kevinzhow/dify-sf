@@ -34,7 +34,7 @@ Widget _item(
   final pad = px3 ? 4.0 : 0.0;
   Widget text = Padding(
     padding: EdgeInsets.only(left: leading == null ? pad : 0),
-    child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+    child: DifyTextLine(label, maxLines: 1, overflow: TextOverflow.ellipsis),
   );
   Widget? trailing = shortcut == null && hotkey == null
       ? (pad == 0 ? null : SizedBox(width: pad))
@@ -202,16 +202,16 @@ class NodeActionsMenuAbout extends StatelessWidget {
             height: 22,
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: Text(
+              child: DifyTextLine(
                 title.toUpperCase(),
                 style: DifyType.systemXsMedium.style,
               ),
             ),
           ),
           const SizedBox(height: 4),
-          Text(description ?? '', style: TextStyle(color: DifyColors.textSecondary)),
+          DifyTextLine(description ?? '', style: TextStyle(color: DifyColors.textSecondary)),
           const SizedBox(height: 4),
-          Text(author ?? ''),
+          DifyTextLine(author ?? ''),
         ],
       ),
     ),

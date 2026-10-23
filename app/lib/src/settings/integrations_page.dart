@@ -124,7 +124,7 @@ class IntegrationsSettingModal extends StatelessWidget {
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: ExcludeSemantics(
-                                    child: Text(
+                                    child: DifyTextLine(
                                       'ESC',
                                       style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textTertiary),
                                     ),
@@ -196,7 +196,7 @@ class _IntegrationsPageState extends State<IntegrationsPage> {
                           alignment: AlignmentDirectional.centerStart,
                           child: Semantics(
                             header: true,
-                            child: Text(
+                            child: DifyTextLine(
                               _t('settings.integrations'),
                               style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                             ),
@@ -237,7 +237,7 @@ class _IntegrationsPageState extends State<IntegrationsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             spacing: 2,
                             children: [
-                              Text(
+                              DifyTextLine(
                                 sectionTitle,
                                 key: const ValueKey('integrations-section-title'),
                                 style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
@@ -312,7 +312,7 @@ class _SidebarNavItem extends StatelessWidget {
             child: Center(child: RemixIcon(icon, size: 16, color: color)),
           ),
           Expanded(
-            child: Text(
+            child: DifyTextLine(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -337,7 +337,7 @@ class _DescriptionWithLearnMore extends StatelessWidget {
     spacing: 2,
     children: [
       Flexible(
-        child: Text(
+        child: DifyTextLine(
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -356,7 +356,7 @@ class _DescriptionWithLearnMore extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                DifyTextLine(
                   _t('modelProvider.learnMore'),
                   style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textAccent),
                 ),

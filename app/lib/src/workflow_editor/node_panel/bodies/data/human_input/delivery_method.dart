@@ -273,8 +273,8 @@ class _MethodSelectorState extends State<MethodSelector> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(hi('deliveryMethod.contactTip1')),
-                            Text.rich(
+                            DifyTextLine(hi('deliveryMethod.contactTip1')),
+                            DifyTextLine.rich(
                               TextSpan(
                                 children: transSpans(hi('deliveryMethod.contactTip2'), {
                                   'email': (inner) => TextSpan(
@@ -456,7 +456,7 @@ class _MethodItemState extends State<MethodItem> {
         ? hi('deliveryMethod.emailSender.testSendTipInDebugMode', {'email': userEmail})
         : hi('deliveryMethod.emailSender.testSendTip');
     Widget action(String label, String icon, VoidCallback onPressed, {bool destructive = false}) => DifyTooltip(
-      content: Text(label),
+      content: DifyTextLine(label),
       child: MouseRegion(
         onEnter: destructive ? (_) => setState(() => _deleteHovered = true) : null,
         onExit: destructive ? (_) => setState(() => _deleteHovered = false) : null,
@@ -531,7 +531,7 @@ class _MethodItemState extends State<MethodItem> {
                       disabled: w.readonly,
                       onPressed: _configure,
                       trailing: const DifyStatusDot(status: DifyStatusDotStatus.warning),
-                      child: Text(hi('deliveryMethod.notConfigured')),
+                      child: DifyTextLine(hi('deliveryMethod.notConfigured')),
                     ),
                   ),
               ],
@@ -569,7 +569,7 @@ Future<void> showUpgradeModal(BuildContext context) {
           const SizedBox(height: 16),
           DifyText(hi('deliveryMethod.upgradeTip'), DifyType.title2xlSemiBold, maxLines: null),
           const SizedBox(height: 8),
-          Text(
+          DifyTextLine(
             hi('deliveryMethod.upgradeTipContent'),
             style: difyStyle(DifyType.systemMdRegular, DifyColors.textTertiary),
           ),
@@ -580,14 +580,14 @@ Future<void> showUpgradeModal(BuildContext context) {
                 width: 72,
                 child: DifyButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(hi('deliveryMethod.upgradeTipHide')),
+                  child: DifyTextLine(hi('deliveryMethod.upgradeTipHide')),
                 ),
               ),
               if (isCloud)
                 DifyButton(
                   variant: DifyButtonVariant.primary,
                   onPressed: host.onUpgrade,
-                  child: Text(DifyI18n.tr('billing', 'upgradeBtn.encourageShort')),
+                  child: DifyTextLine(DifyI18n.tr('billing', 'upgradeBtn.encourageShort')),
                 ),
             ],
           ),

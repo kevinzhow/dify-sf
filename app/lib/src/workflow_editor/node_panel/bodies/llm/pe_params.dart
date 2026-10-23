@@ -105,7 +105,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                           ),
                           const SizedBox(width: 4),
                           Flexible(
-                            child: Text(
+                            child: DifyTextLine(
                               '${p['name'] ?? ''}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -114,7 +114,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
+                          DifyTextLine(
                             _cap('${p['type'] ?? ''}'),
                             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                           ),
@@ -122,7 +122,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                       ),
                     ),
                     trail: required
-                        ? Text(
+                        ? DifyTextLine(
                             _w('$_p.addExtractParameterContent.required').toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -131,7 +131,7 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
                         : const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 2),
-                  Text(
+                  DifyTextLine(
                     '${p['description'] ?? ''}',
                     style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                   ),
@@ -333,7 +333,7 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
         height: 32,
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
+          child: DifyTextLine(title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary)),
         ),
       ),
       child,
@@ -398,7 +398,7 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
+                      child: DifyTextLine(
                         _w('$_p.addExtractParameterContent.requiredContent'),
                         style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                       ),
@@ -424,7 +424,7 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
                   width: 95,
                   child: DifyButton(
                     onPressed: widget.onCancel,
-                    child: Center(child: Text(_c('operation.cancel'))),
+                    child: Center(child: DifyTextLine(_c('operation.cancel'))),
                   ),
                 ),
                 SizedBox(
@@ -432,7 +432,7 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
                   child: DifyButton(
                     variant: DifyButtonVariant.primary,
                     onPressed: _save,
-                    child: Center(child: Text(_c(widget.isAdd ? 'operation.add' : 'operation.save'))),
+                    child: Center(child: DifyTextLine(_c(widget.isAdd ? 'operation.add' : 'operation.save'))),
                   ),
                 ),
               ],
@@ -464,7 +464,7 @@ class ImportFromTool extends StatelessWidget {
       variant: DifyButtonVariant.ghost,
       size: DifyButtonSize.small,
       onPressed: c.toggle,
-      child: Text(_w('$_p.importFromTool'), style: TextStyle(color: DifyColors.textTertiary)),
+      child: DifyTextLine(_w('$_p.importFromTool'), style: TextStyle(color: DifyColors.textTertiary)),
     ),
   );
 }

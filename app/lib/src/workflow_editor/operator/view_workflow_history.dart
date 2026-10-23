@@ -134,7 +134,7 @@ class _HistoryPanel extends StatelessWidget {
             color: hovered || current ? DifyColors.stateBaseHover : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
           ),
-          child: Text(text, style: rowText),
+          child: DifyTextLine(text, style: rowText),
         ),
       ),
     );
@@ -163,7 +163,7 @@ class _HistoryPanel extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
+                          child: DifyTextLine(
                             tw('changeHistory.title'),
                             style: difyTextStyle(DifyTw.textBase, DifyColors.textSecondary),
                           ),
@@ -191,7 +191,7 @@ class _HistoryPanel extends StatelessWidget {
                                 children: [
                                   RemixIcon('history-line', size: 32, color: DifyColors.textTertiary),
                                   const SizedBox(height: 8),
-                                  Text(
+                                  DifyTextLine(
                                     tw('changeHistory.placeholder'),
                                     textAlign: TextAlign.center,
                                     style: difyTextStyle(DifyTw.text13, DifyColors.textTertiary),
@@ -235,14 +235,14 @@ class _HistoryPanel extends StatelessWidget {
                             height: 22,
                             margin: const EdgeInsets.only(bottom: 4),
                             alignment: Alignment.centerLeft,
-                            child: Text(
+                            child: DifyTextLine(
                               tw('changeHistory.hint').toUpperCase(),
                               style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
                             ),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
+                            child: DifyTextLine(
                               tw('changeHistory.hintText'),
                               style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
                             ),

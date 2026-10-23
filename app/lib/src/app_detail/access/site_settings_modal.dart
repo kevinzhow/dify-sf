@@ -234,7 +234,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
 
   Widget _fieldDescription(String text) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Text(text, style: _desc),
+    child: DifyTextLine(text, style: _desc),
   );
 
   Widget _switchField({required String label, required Widget control, String? description}) => Column(
@@ -244,7 +244,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
       Row(
         spacing: 12,
         children: [
-          Expanded(child: Text(label, style: _label)),
+          Expanded(child: DifyTextLine(label, style: _label)),
           control,
         ],
       ),
@@ -267,7 +267,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
         RemixIcon('sparkling-line', size: 12, color: DifyColors.componentsPremiumBadgeIndigoTextStop0),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
+          child: DifyTextLine(
             _c('billing', 'upgradeBtn.encourageShort'),
             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textPrimaryOnSurface),
           ),
@@ -339,7 +339,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
       ),
     );
     if (_cloud && widget.webappCopyrightEnabled == false) {
-      return DifyTooltip(content: Text(_t('more.inputPlaceholderTooltip')), child: field);
+      return DifyTooltip(content: DifyTextLine(_t('more.inputPlaceholderTooltip')), child: field);
     }
     return field;
   }
@@ -354,15 +354,15 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
       onCheckedChange: (v) => setState(() => copyrightSwitchValue = v),
     );
     if (enabled != false) return control;
-    return DifyTooltip(content: Text(_t('more.copyrightTooltip')), child: control);
+    return DifyTooltip(content: DifyTextLine(_t('more.copyrightTooltip')), child: control);
   }
 
   /// `privacyPolicyTip` with its `<privacyPolicyLink>` part as a link to dify.ai/privacy.
   Widget _privacyTip() {
     final text = _t('more.privacyPolicyTip');
     final m = RegExp('<privacyPolicyLink>(.*?)</privacyPolicyLink>', dotAll: true).firstMatch(text);
-    if (m == null) return Text(text, style: _desc);
-    return Text.rich(
+    if (m == null) return DifyTextLine(text, style: _desc);
+    return DifyTextLine.rich(
       TextSpan(
         style: _desc,
         children: [
@@ -404,7 +404,10 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                   spacing: 4,
                   children: [
                     Expanded(
-                      child: Text(_t('title'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+                      child: DifyTextLine(
+                        _t('title'),
+                        style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
+                      ),
                     ),
                     DifyIconButton(
                       key: const ValueKey('dialog-close'),
@@ -417,7 +420,10 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(_t('modalTip'), style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
+                  child: DifyTextLine(
+                    _t('modalTip'),
+                    style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                  ),
                 ),
               ],
             ),
@@ -448,7 +454,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
+                          child: DifyTextLine(
                             _t('multiEnvironmentNotice'),
                             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textPrimary),
                           ),
@@ -475,7 +481,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           spacing: 4,
                           children: [
-                            Text(_t('webName'), style: _label),
+                            DifyTextLine(_t('webName'), style: _label),
                             DifyInput(
                               key: const ValueKey('settings-title'),
                               value: title,
@@ -505,7 +511,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     spacing: 4,
                     children: [
-                      Text(_t('webDesc'), style: _label),
+                      DifyTextLine(_t('webDesc'), style: _label),
                       DifyTextarea(
                         key: const ValueKey('settings-description'),
                         value: desc,
@@ -533,7 +539,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(_t('language'), style: _sectionTitle),
+                          child: DifyTextLine(_t('language'), style: _sectionTitle),
                         ),
                       ),
                       DifySelect<String>(
@@ -557,11 +563,11 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: Text(_t('chatColorTheme'), style: _sectionTitle),
+                                child: DifyTextLine(_t('chatColorTheme'), style: _sectionTitle),
                               ),
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 2),
-                                child: Text(_t('chatColorThemeDesc'), style: _desc),
+                                child: DifyTextLine(_t('chatColorThemeDesc'), style: _desc),
                               ),
                             ],
                           ),
@@ -584,7 +590,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                               Row(
                                 spacing: 8,
                                 children: [
-                                  Expanded(child: Text(_t('chatColorThemeInverted'), style: _desc)),
+                                  Expanded(child: DifyTextLine(_t('chatColorThemeInverted'), style: _desc)),
                                   DifySwitch(
                                     key: const ValueKey('settings-color-inverted'),
                                     checked: chatColorThemeInverted,
@@ -619,7 +625,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                             Flexible(
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 4, top: 4, bottom: 4),
-                                child: Text(_t('more.inputPlaceholder'), style: _sectionTitle),
+                                child: DifyTextLine(_t('more.inputPlaceholder'), style: _sectionTitle),
                               ),
                             ),
                             if (cloudLocked) _premiumBadge(),
@@ -627,13 +633,13 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 2),
-                          child: Text(_t('more.inputPlaceholderTip'), style: _desc),
+                          child: DifyTextLine(_t('more.inputPlaceholderTip'), style: _desc),
                         ),
                         _placeholderField(),
                         if (canCustomizePlaceholder)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
+                            child: DifyTextLine(
                               '${inputPlaceholder.length} / $inputPlaceholderMaxLength',
                               textAlign: TextAlign.right,
                               style: _desc,
@@ -652,7 +658,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                                 Flexible(
                                   child: Padding(
                                     padding: const EdgeInsets.only(right: 4, top: 4, bottom: 4),
-                                    child: Text(_t('more.copyright'), style: _sectionTitle),
+                                    child: DifyTextLine(_t('more.copyright'), style: _sectionTitle),
                                   ),
                                 ),
                                 if (cloudLocked) _premiumBadge(),
@@ -664,7 +670,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                       ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(_t('more.copyrightTip'), style: _desc),
+                        child: DifyTextLine(_t('more.copyrightTip'), style: _desc),
                       ),
                       if (copyrightSwitchValue)
                         Padding(
@@ -686,7 +692,7 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(_t('more.privacyPolicy'), style: _sectionTitle),
+                        child: DifyTextLine(_t('more.privacyPolicy'), style: _sectionTitle),
                       ),
                       Padding(padding: const EdgeInsets.only(bottom: 2), child: _privacyTip()),
                       Padding(
@@ -706,11 +712,11 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(_t('more.customDisclaimer'), style: _sectionTitle),
+                        child: DifyTextLine(_t('more.customDisclaimer'), style: _sectionTitle),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(_t('more.customDisclaimerTip'), style: _desc),
+                        child: DifyTextLine(_t('more.customDisclaimerTip'), style: _desc),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -735,13 +741,13 @@ class SiteSettingsModalState extends State<SiteSettingsModal> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                DifyButton(onPressed: widget.onClose, child: Text(_c('common', 'operation.cancel'))),
+                DifyButton(onPressed: widget.onClose, child: DifyTextLine(_c('common', 'operation.cancel'))),
                 DifyButton(
                   key: const ValueKey('settings-save'),
                   variant: DifyButtonVariant.primary,
                   loading: _saving,
                   onPressed: () => unawaited(submit()),
-                  child: Text(_c('common', 'operation.save')),
+                  child: DifyTextLine(_c('common', 'operation.save')),
                 ),
               ],
             ),

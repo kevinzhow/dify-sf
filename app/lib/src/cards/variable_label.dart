@@ -137,7 +137,7 @@ class VariableName extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = varName(variables, notShowFullPath: notShowFullPath);
     return DifyTooltip(
-      content: Text(name),
+      content: DifyTextLine(name),
       child: DifyText(name, DifyType.systemXsMedium, color: color ?? DifyColors.textPrimary),
     );
   }
@@ -162,7 +162,7 @@ class VariableNodeLabel extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 60),
             child: DifyTooltip(
-              content: Text(nodeTitle!),
+              content: DifyTextLine(nodeTitle!),
               child: DifyText(nodeTitle!, DifyType.systemXsMedium, color: DifyColors.textSecondary),
             ),
           ),
@@ -342,7 +342,7 @@ class _VariableLabelState extends State<VariableLabel> {
         DifyText(VariableLabel.capitalize(w.variableType!), DifyType.systemXsRegular, color: DifyColors.textTertiary),
       if (w.errorMsg != null)
         DifyTooltip(
-          content: Text(w.errorMsg!),
+          content: DifyTextLine(w.errorMsg!),
           child: DifyIcon('vender/line/alertsAndFeedback/warning', size: 12, color: DifyColors.textWarning),
         ),
     ];
@@ -499,7 +499,7 @@ class InlineVarText {
     // would size a line holding only chips).
     Widget para(TextSpan s) => DefaultTextStyle(
       style: _base,
-      child: Text.rich(
+      child: DifyTextLine.rich(
         s,
         maxLines: truncate ? 1 : null,
         overflow: truncate ? TextOverflow.ellipsis : TextOverflow.clip,

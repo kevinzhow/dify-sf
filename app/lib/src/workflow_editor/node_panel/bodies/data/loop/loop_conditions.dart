@@ -129,14 +129,15 @@ class ConditionWrap extends StatelessWidget {
                   disabled: readOnly,
                   onPressed: c.toggle,
                   leading: const RemixIcon('add-line', size: 14),
-                  child: Text(wf('nodes.ifElse.addSubVariable')),
+                  child: DifyTextLine(wf('nodes.ifElse.addSubVariable')),
                 ),
                 children: [
                   DifyMenuRadioGroup<String>(
                     value: null,
                     onValueChange: (v) => handlers.onAddSub?.call(conditionId!, v),
                     children: [
-                      for (final k in subVariables) DifyMenuRadioItem(value: k, closeOnClick: true, child: Text(k)),
+                      for (final k in subVariables)
+                        DifyMenuRadioItem(value: k, closeOnClick: true, child: DifyTextLine(k)),
                     ],
                   ),
                 ],
@@ -210,7 +211,7 @@ class _ConditionAddState extends State<ConditionAdd> {
       disabled: widget.disabled,
       onPressed: c.toggle,
       leading: const RemixIcon('add-line', size: 14),
-      child: Text(wf('nodes.ifElse.addCondition')),
+      child: DifyTextLine(wf('nodes.ifElse.addCondition')),
     ),
     content: _popupBox(
       child: VarReferenceVars(
@@ -342,7 +343,7 @@ class ConditionList extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
+                              DifyTextLine(
                                 logicalOperator?.toUpperCase() ?? '',
                                 style: difyTextStyle(
                                   DifyType.system2xsSemiboldUppercase,
@@ -658,7 +659,7 @@ class _SubVarSelect extends StatelessWidget {
                 value: k,
                 closeOnClick: true,
                 leading: DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
-                child: Text(k),
+                child: DifyTextLine(k),
               ),
           ],
         ),
@@ -768,7 +769,7 @@ class ConditionOperator extends StatelessWidget {
           disabled: disabled,
           onPressed: c.toggle,
           trailing: const RemixIcon('arrow-down-s-line', size: 14),
-          child: Text(selected == null ? wf('nodes.ifElse.select') : operatorLabel(selected)),
+          child: DifyTextLine(selected == null ? wf('nodes.ifElse.select') : operatorLabel(selected)),
         ),
       ),
       children: [
@@ -776,7 +777,8 @@ class ConditionOperator extends StatelessWidget {
           value: selected,
           onValueChange: onSelect,
           children: [
-            for (final o in options) DifyMenuRadioItem(value: o, closeOnClick: true, child: Text(operatorLabel(o))),
+            for (final o in options)
+              DifyMenuRadioItem(value: o, closeOnClick: true, child: DifyTextLine(operatorLabel(o))),
           ],
         ),
       ],
@@ -882,7 +884,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
             variant: DifyButtonVariant.ghost,
             onPressed: c.toggle,
             trailing: const RemixIcon('arrow-down-s-line', size: 14),
-            child: Text(cap(w.numberVarType)),
+            child: DifyTextLine(cap(w.numberVarType)),
           ),
           children: [
             DifyMenuRadioGroup<String>(
@@ -890,7 +892,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
               onValueChange: w.onNumberVarTypeChange,
               children: [
                 for (final o in const ['variable', 'constant'])
-                  DifyMenuRadioItem(value: o, closeOnClick: true, child: Text(cap(o))),
+                  DifyMenuRadioItem(value: o, closeOnClick: true, child: DifyTextLine(cap(o))),
               ],
             ),
           ],
@@ -940,7 +942,7 @@ class _ConditionNumberInputState extends State<ConditionNumberInput> {
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
-                                    child: Text(
+                                    child: DifyTextLine(
                                       wf('nodes.ifElse.selectVariable'),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,

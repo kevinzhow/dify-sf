@@ -149,7 +149,8 @@ class _DifyCodeEditorState extends State<DifyCodeEditor> {
       onChanged: _handleChange,
       focusNode: _focus,
     );
-    final placeholder = widget.placeholderWidget ?? (widget.placeholder == null ? null : Text(widget.placeholder!));
+    final placeholder =
+        widget.placeholderWidget ?? (widget.placeholder == null ? null : DifyTextLine(widget.placeholder!));
     final main = Stack(
       clipBehavior: Clip.none,
       children: [
@@ -267,7 +268,8 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
 
   Widget _box({required double? bodyHeight, required bool expanded}) {
     final focus = widget.isFocus;
-    final title = widget.titleWidget ?? Text(difyTransform(DifyType.systemXsSemiboldUppercase, widget.title ?? ''));
+    final title =
+        widget.titleWidget ?? DifyTextLine(difyTransform(DifyType.systemXsSemiboldUppercase, widget.title ?? ''));
     // `<div className="ml-1">` around an inline button (the generator's, the expand toggle's): the div's text line
     // ends below the button, and the right-hand group, as tall as such a div, is centred in the h-7 bar (overflowing
     // it): those buttons sit 1.25 px above the copy button.

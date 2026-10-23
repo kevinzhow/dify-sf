@@ -791,7 +791,7 @@ class _ToolProviderRowState extends State<ToolProviderRow> {
                             for (final t in actions)
                               if (!_added(t)) toolDefaultValueOf(p, t)..remove('meta'),
                           ]),
-                          child: Text(wf('tabs.addAll')),
+                          child: DifyTextLine(wf('tabs.addAll')),
                         ),
                       ),
                     ),
@@ -1239,7 +1239,7 @@ class PluginRowActions extends StatelessWidget {
             variant: DifyButtonVariant.ghostAccent,
             size: DifyButtonSize.small,
             onPressed: () => d.onInstallPlugin?.call(plugin),
-            child: Text(_plugin('installAction')),
+            child: DifyTextLine(_plugin('installAction')),
           ),
         MarketplacePluginAction(plugin: plugin, onOpenChange: onMenuChange),
       ],
@@ -1298,14 +1298,14 @@ class _MarketplacePluginActionState extends State<MarketplacePluginAction> {
               _downloading = false;
             }
           },
-          child: Text(common('common', 'operation.download')),
+          child: DifyTextLine(common('common', 'operation.download')),
         ),
         Semantics(
           link: true,
           linkUrl: Uri.tryParse(d.marketplaceUrl('/plugins/${p.org}/${p.name}')),
           child: DifyMenuItem(
             onSelect: () => d.open(d.marketplaceUrl('/plugins/${p.org}/${p.name}')),
-            child: Text(common('common', 'operation.viewDetails')),
+            child: DifyTextLine(common('common', 'operation.viewDetails')),
           ),
         ),
       ],

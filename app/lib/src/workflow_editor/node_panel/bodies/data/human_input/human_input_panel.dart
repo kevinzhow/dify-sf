@@ -130,7 +130,7 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
                           size: 14,
                           color: _isPreview ? DifyColors.textAccent : null,
                         ),
-                        child: Text(
+                        child: DifyTextLine(
                           hi('formContent.preview'),
                           style: _isPreview ? TextStyle(color: DifyColors.textAccent) : null,
                         ),

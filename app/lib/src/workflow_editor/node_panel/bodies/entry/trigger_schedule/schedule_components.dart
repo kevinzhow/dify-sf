@@ -59,7 +59,7 @@ class ModeToggle extends StatelessWidget {
               size: 16,
               color: DifyColors.textSecondary,
             ),
-            Text(
+            DifyTextLine(
               text,
               style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
             ),
@@ -104,7 +104,7 @@ class FrequencySelector extends StatelessWidget {
             onValueChange: onChange,
             children: [
               for (final o in options)
-                DifyMenuRadioItem<String>(value: o.value, closeOnClick: true, child: Text(o.label)),
+                DifyMenuRadioItem<String>(value: o.value, closeOnClick: true, child: DifyTextLine(o.label)),
             ],
           ),
         ],
@@ -210,7 +210,7 @@ class OnMinuteSelector extends StatelessWidget {
             SizedBox(
               width: 48,
               child: Center(
-                child: Text(
+                child: DifyTextLine(
                   '$value',
                   style: difyTextStyle(DifyTw.text13, DifyColors.componentsInputTextFilled),
                 ),
@@ -372,7 +372,7 @@ class MonthlyDaysSelector extends StatelessWidget {
                 child: OverflowBox(
                   maxWidth: 16,
                   maxHeight: 16,
-                  child: DifyInfotip(label: tip, iconSize: 12, content: Text(tip)),
+                  child: DifyInfotip(label: tip, iconSize: 12, content: DifyTextLine(tip)),
                 ),
               ),
             )
@@ -450,7 +450,7 @@ class NextExecutionTimes extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 24,
-                      child: Text(
+                      child: DifyTextLine(
                         '${i + 1}'.padLeft(2, '0'),
                         textAlign: TextAlign.right,
                         style: _mono(DifyColors.textQuaternary),
@@ -459,7 +459,7 @@ class NextExecutionTimes extends StatelessWidget {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.only(left: 8, right: 12),
-                        child: Text(time, style: _mono(DifyColors.textSecondary)),
+                        child: DifyTextLine(time, style: _mono(DifyColors.textSecondary)),
                       ),
                     ),
                   ],

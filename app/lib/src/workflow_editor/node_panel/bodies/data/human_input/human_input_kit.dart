@@ -166,7 +166,7 @@ class HiSectionHeader extends StatelessWidget {
               spacing: 2,
               children: [
                 DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary),
-                if (tooltip != null) DifyInfotip(label: tooltip!, content: Text(tooltip!)),
+                if (tooltip != null) DifyInfotip(label: tooltip!, content: DifyTextLine(tooltip!)),
               ],
             ),
           ),
@@ -191,7 +191,7 @@ class HiEmptyTip extends StatelessWidget {
     padding: const EdgeInsets.all(12),
     alignment: Alignment.center,
     decoration: BoxDecoration(color: DifyColors.backgroundSection, borderRadius: BorderRadius.circular(10)),
-    child: Text(
+    child: DifyTextLine(
       text,
       textAlign: TextAlign.center,
       style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary),

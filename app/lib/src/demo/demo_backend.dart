@@ -162,12 +162,12 @@ class DemoBackend implements DemoRunBackend {
           }
         },
         itemBuilder: (_) => [
-          DifyMenuOption(value: 'offline', child: Text(offline ? 'Go back online' : 'Go offline')),
-          const DifyMenuOption(value: 'bo-prompt', child: Text('Bo rewrites the selected node\'s prompt')),
-          const DifyMenuOption(value: 'bo-title', child: Text('Bo renames the selected node')),
-          const DifyMenuOption(value: 'bo-delete', child: Text('Bo deletes the selected node')),
-          const DifyMenuOption(value: 'bo-random', child: Text('Toggle Bo\'s random edits')),
-          const DifyMenuOption(value: 'crash', child: Text('Crash the app and restart')),
+          DifyMenuOption(value: 'offline', child: DifyTextLine(offline ? 'Go back online' : 'Go offline')),
+          const DifyMenuOption(value: 'bo-prompt', child: DifyTextLine('Bo rewrites the selected node\'s prompt')),
+          const DifyMenuOption(value: 'bo-title', child: DifyTextLine('Bo renames the selected node')),
+          const DifyMenuOption(value: 'bo-delete', child: DifyTextLine('Bo deletes the selected node')),
+          const DifyMenuOption(value: 'bo-random', child: DifyTextLine('Toggle Bo\'s random edits')),
+          const DifyMenuOption(value: 'crash', child: DifyTextLine('Crash the app and restart')),
         ],
       ),
     ];

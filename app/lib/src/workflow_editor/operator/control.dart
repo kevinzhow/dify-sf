@@ -200,7 +200,7 @@ class _MoreActionsState extends State<MoreActions> {
     final heading = difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary);
     Widget group(String key) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Text(tw(key), style: heading),
+      child: DifyTextLine(tw(key), style: heading),
     );
     Widget item(ExportImageFormat format, bool whole) => DifyMenuItem(
       onSelect: () {
@@ -208,7 +208,7 @@ class _MoreActionsState extends State<MoreActions> {
         if (WorkflowStoreScope.of(context).nodesReadOnly) return;
         widget.onExportImage?.call(format, wholeWorkflow: whole);
       },
-      child: Text(
+      child: DifyTextLine(
         tw(switch (format) {
           ExportImageFormat.png => 'common.exportPNG',
           ExportImageFormat.jpeg => 'common.exportJPEG',
@@ -238,7 +238,7 @@ class _MoreActionsState extends State<MoreActions> {
             spacing: 8,
             children: [
               RemixIcon('export-line', size: 12, color: DifyColors.textTertiary),
-              Text(tw('common.exportImage'), style: heading),
+              DifyTextLine(tw('common.exportImage'), style: heading),
             ],
           ),
         ),

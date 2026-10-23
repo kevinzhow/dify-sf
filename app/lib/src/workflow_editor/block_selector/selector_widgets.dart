@@ -163,7 +163,7 @@ Widget _defaultProviderIcon(ProviderIcon icon, double size) {
     return Container(
       color: _hex(icon['background'] as String?) ?? DifyColors.stateBaseHover,
       alignment: Alignment.center,
-      child: Text('${icon['content'] ?? ''}', style: difyEmojiTextStyle(size * 0.6)),
+      child: DifyTextLine('${icon['content'] ?? ''}', style: difyEmojiTextStyle(size * 0.6)),
     );
   }
   if (icon is String && (icon.startsWith('http://') || icon.startsWith('https://'))) {

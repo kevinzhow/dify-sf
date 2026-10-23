@@ -147,7 +147,7 @@ class ContentSwitch extends StatelessWidget {
           arrow(false),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
+            child: DifyTextLine(
               '${currentIndex! + 1} /$count',
               style: difyTextStyle(DifyTw.textXs, DifyColors.textPrimary),
             ),
@@ -230,7 +230,7 @@ class _ChatQuestionState extends State<ChatQuestion> {
                   constraints: const BoxConstraints(minWidth: 96),
                   child: DifyButton(
                     onPressed: () => setState(() => _editing = false),
-                    child: Text(_tc('operation.cancel')),
+                    child: DifyTextLine(_tc('operation.cancel')),
                   ),
                 ),
                 ConstrainedBox(
@@ -238,7 +238,7 @@ class _ChatQuestionState extends State<ChatQuestion> {
                   child: DifyButton(
                     variant: DifyButtonVariant.primary,
                     onPressed: _resend,
-                    child: Text(_tc('operation.save')),
+                    child: DifyTextLine(_tc('operation.save')),
                   ),
                 ),
               ],
@@ -567,7 +567,7 @@ class _ChatAnswerState extends State<ChatAnswer> {
     }
 
     Widget tip(Map? feedback, String label, Widget child) =>
-        DifyTooltip(content: Text(ChatAnswerFeedback.tooltip(feedback, label)), child: child);
+        DifyTooltip(content: DifyTextLine(ChatAnswerFeedback.tooltip(feedback, label)), child: child);
     return _ActionBar(
       children: [
         if (userRating != null) ...[
@@ -802,7 +802,7 @@ class _SuggestedQuestion extends StatelessWidget {
           ),
           boxShadow: DifyShadows.xs,
         ),
-        child: Text(
+        child: DifyTextLine(
           question,
           style: difyStyle(DifyType.systemSmMedium, DifyColors.componentsButtonSecondaryAccentText),
         ),
@@ -860,7 +860,7 @@ class TryToAsk extends StatelessWidget {
                   size: DifyButtonSize.small,
                   variant: DifyButtonVariant.secondaryAccent,
                   onPressed: () => onSend(q),
-                  child: Text(q),
+                  child: DifyTextLine(q),
                 ),
             ],
           ),
@@ -986,7 +986,7 @@ class FeatureBar extends StatelessWidget {
                   children: [
                     for (final f in enabled)
                       DifyTooltip(
-                        content: Text(ta(f.$5)),
+                        content: DifyTextLine(ta(f.$5)),
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -1011,7 +1011,7 @@ class FeatureBar extends StatelessWidget {
                     variant: DifyButtonVariant.ghostAccent,
                     onPressed: onFeatureBarClick,
                     trailing: RemixIcon('arrow-right-line', size: 14, color: DifyColors.textAccent),
-                    child: Text(ta('feature.bar.manage')),
+                    child: DifyTextLine(ta('feature.bar.manage')),
                   ),
               ],
             ),
@@ -1221,7 +1221,7 @@ class EditableTextHost extends StatelessWidget {
     children: [
       if (controller.text.isEmpty)
         IgnorePointer(
-          child: Text(
+          child: DifyTextLine(
             placeholder,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1411,7 +1411,7 @@ class _DebugChatState extends State<DebugChat> {
                               size: 14,
                               color: DifyColors.componentsButtonSecondaryText,
                             ),
-                            child: Text(
+                            child: DifyTextLine(
                               DifyI18n.tr('app-debug', 'operation.stopResponding'),
                               style: DifyTw.textXsNormal.style,
                             ),
@@ -1593,12 +1593,12 @@ class _ChatFeedbackDialogState extends State<ChatFeedbackDialog> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                DifyButton(onPressed: widget.onCancel, child: Text(c('operation.cancel'))),
+                DifyButton(onPressed: widget.onCancel, child: DifyTextLine(c('operation.cancel'))),
                 DifyButton(
                   key: const ValueKey('chat-feedback-submit'),
                   variant: DifyButtonVariant.primary,
                   onPressed: () => widget.onSubmit(_content),
-                  child: Text(c('operation.submit')),
+                  child: DifyTextLine(c('operation.submit')),
                 ),
               ],
             ),

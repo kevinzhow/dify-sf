@@ -116,7 +116,7 @@ class _StartPanelState extends State<_StartPanel> {
     );
   }
 
-  static Widget _sysType(String text) => Text(
+  static Widget _sysType(String text) => DifyTextLine(
     text,
     style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
   );
@@ -241,7 +241,7 @@ class _StartVarListState extends State<StartVarList> {
           color: DifyColors.componentsPanelBg,
           borderRadius: BorderRadius.circular(DifyRadius.md),
         ),
-        child: Text(
+        child: DifyTextLine(
           tw('nodes.start.noVarTip'),
           style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
         ),
@@ -439,7 +439,7 @@ class _StartVarItemState extends State<StartVarItem> {
                   Flexible(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 130),
-                      child: Text(
+                      child: DifyTextLine(
                         variable,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -448,14 +448,14 @@ class _StartVarItemState extends State<StartVarItem> {
                     ),
                   ),
                   if (label.isNotEmpty) ...[
-                    Text(
+                    DifyTextLine(
                       '·',
                       style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textQuaternary),
                     ),
                     Flexible(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 130),
-                        child: Text(
+                        child: DifyTextLine(
                           label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -476,7 +476,7 @@ class _StartVarItemState extends State<StartVarItem> {
                 Container(
                   constraints: const BoxConstraints(maxWidth: 120),
                   padding: const EdgeInsets.only(right: 8),
-                  child: Text(
+                  child: DifyTextLine(
                     tw('nodes.start.required'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -552,7 +552,7 @@ class _LegacyBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(DifyRadius.badge),
       border: Border.all(color: DifyColors.textAccentSecondary),
     ),
-    child: Text(
+    child: DifyTextLine(
       'LEGACY',
       style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textAccentSecondary),
     ),

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../dify_tokens.g.dart';
+import '../css_metrics.dart';
+import '../dify_fonts.dart';
 import 'widgets.dart';
 
 /// dify-ui's Textarea (medium): `min-h-20 rounded-lg px-3 py-2 system-sm-regular` on the input colours (hover and
@@ -118,14 +120,24 @@ class _DifyTextareaState extends State<DifyTextarea> {
               minLines: w.minHeight >= 80 ? 3 : null,
               maxLines: null,
               keyboardType: TextInputType.multiline,
-              style: style,
+              style: DifyFonts.resolveStyle(style),
+              strutStyle: Css.lineStrut(
+                DefaultTextStyle.of(context).style.merge(style),
+                textScaler: MediaQuery.textScalerOf(context),
+              ),
               cursorColor: const Color(0xFF155EEF),
               cursorWidth: 1,
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: w.verticalPadding),
-                hintText: w.placeholder,
+                hint: w.placeholder == null
+                    ? null
+                    : DifyTextLine(
+                        w.placeholder!,
+                        style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+                        maxLines: null,
+                      ),
                 hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
               ),
             ),

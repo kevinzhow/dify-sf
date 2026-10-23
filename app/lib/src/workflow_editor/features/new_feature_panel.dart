@@ -310,7 +310,7 @@ class FeatureCard extends StatelessWidget {
                         if (tooltip != null)
                           Padding(
                             padding: const EdgeInsets.only(left: 2),
-                            child: DifyInfotip(label: tooltip!, content: Text(tooltip!)),
+                            child: DifyInfotip(label: tooltip!, content: DifyTextLine(tooltip!)),
                           ),
                       ],
                     ),
@@ -431,7 +431,7 @@ class FeatureCardButton extends StatelessWidget {
       onPressed: onPressed,
       disabled: disabled,
       leading: RemixIcon(icon, size: 16),
-      child: Text(label),
+      child: DifyTextLine(label),
     ),
   );
 }

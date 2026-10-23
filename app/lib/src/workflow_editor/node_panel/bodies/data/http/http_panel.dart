@@ -262,7 +262,7 @@ class _PillState extends State<_Pill> {
               children: [
                 if (!w.readOnly) DifyIcon(w.icon, size: 12, color: DifyColors.textTertiary),
                 Flexible(
-                  child: Text.rich(
+                  child: DifyTextLine.rich(
                     TextSpan(
                       text: w.text,
                       children: [
@@ -337,7 +337,7 @@ class ApiInput extends StatelessWidget {
               Container(
                 width: 48,
                 padding: const EdgeInsets.only(left: 2),
-                child: Text(
+                child: DifyTextLine(
                   method.toUpperCase(),
                   style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textPrimary),
                 ),

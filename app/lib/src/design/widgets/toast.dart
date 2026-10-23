@@ -662,11 +662,11 @@ class _ToastCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(data.title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)),
+          DifyTextLine(data.title, style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textPrimary)),
           if (data.description != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(
+              child: DifyTextLine(
                 data.description!,
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary),
               ),
@@ -769,7 +769,7 @@ class _ActionButton extends StatelessWidget {
         boxShadow: [for (final s in DifyShadows.xs) s.copyWith(color: DifyColors.shadowShadow3)],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Text(
+      child: DifyTextLine(
         action.label,
         style: difyTextStyle(DifyType.systemSmMedium, DifyColors.componentsButtonSecondaryText),
       ),

@@ -74,7 +74,7 @@ class AgentAvatar extends StatelessWidget {
         color: _hex(agent['icon_background'], DifyAppIconColors.defaultBackground),
         borderRadius: radius,
       ),
-      child: Text(icon ?? '🤖', style: difyEmojiTextStyle(size * 0.56)),
+      child: DifyTextLine(icon ?? '🤖', style: difyEmojiTextStyle(size * 0.56)),
     );
   }
 }
@@ -350,7 +350,7 @@ class _AgentRosterFieldState extends State<AgentRosterField> {
                   size: DifyButtonSize.small,
                   loading: w.isRetrying,
                   onPressed: w.onRetry,
-                  child: Text(_c('operation.retry')),
+                  child: DifyTextLine(_c('operation.retry')),
                 ),
             ],
           ),
@@ -621,7 +621,7 @@ class AgentRosterDrawer extends StatelessWidget {
                                         color: DifyColors.textTertiary,
                                       ),
                                       onSelect: onSaveInlineToRoster,
-                                      child: Text(_a('roster.saveToRoster')),
+                                      child: DifyTextLine(_a('roster.saveToRoster')),
                                     ),
                                   ],
                                 ),
@@ -657,7 +657,10 @@ class AgentRosterDrawer extends StatelessWidget {
                                   loading: isCopyPending,
                                   onPressed: onMakeCopy,
                                   leading: const RemixIcon('file-copy-2-line', size: 16),
-                                  child: Text(_w('nodes.agent.roster.makeCopy'), overflow: TextOverflow.ellipsis),
+                                  child: DifyTextLine(
+                                    _w('nodes.agent.roster.makeCopy'),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ),
                             ],
@@ -704,7 +707,7 @@ class EditInConsoleLink extends StatelessWidget {
         semanticLabel: label,
         onPressed: () => onOpenUrl(href),
         leading: const RemixIcon('external-link-line', size: 16),
-        child: Text(label, overflow: TextOverflow.ellipsis),
+        child: DifyTextLine(label, overflow: TextOverflow.ellipsis),
       ),
     );
   }
@@ -1215,7 +1218,7 @@ class _SaveInlineAgentToRosterFormState extends State<SaveInlineAgentToRosterFor
                               alignment: Alignment.center,
                               color: _hex(_icon['background'], DifyAgentRosterColors.defaultIconBackground),
                               child: _icon['type'] == 'emoji'
-                                  ? Text(jsKey(_icon['icon']), style: difyEmojiTextStyle(32))
+                                  ? DifyTextLine(jsKey(_icon['icon']), style: difyEmojiTextStyle(32))
                                   : Image.network(jsKey(_icon['url']), width: 64, height: 64, fit: BoxFit.cover),
                             ),
                           ),
@@ -1297,7 +1300,7 @@ class _SaveInlineAgentToRosterFormState extends State<SaveInlineAgentToRosterFor
                         child: DifyButton(
                           disabled: _pending,
                           onPressed: () => widget.onDone(null),
-                          child: Text(_c('operation.cancel')),
+                          child: DifyTextLine(_c('operation.cancel')),
                         ),
                       ),
                     ),
@@ -1308,7 +1311,7 @@ class _SaveInlineAgentToRosterFormState extends State<SaveInlineAgentToRosterFor
                           variant: DifyButtonVariant.primary,
                           loading: _pending,
                           onPressed: _submit,
-                          child: Text(_c('operation.save')),
+                          child: DifyTextLine(_c('operation.save')),
                         ),
                       ),
                     ),

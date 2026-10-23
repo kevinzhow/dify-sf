@@ -6,6 +6,8 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../dify_tokens.g.dart';
+import '../css_metrics.dart';
+import '../dify_fonts.dart';
 import 'widgets.dart';
 
 /// The text-field box shared by Input and NumberField: `rounded-lg border border-transparent
@@ -113,6 +115,7 @@ mixin DifyControlledText<T extends StatefulWidget> on State<T> {
 /// [TextField] with Dify's input text: `system-sm-regular text-components-input-text-filled`, placeholder colour,
 /// `caret-primary-600`, no decoration of its own.
 TextField difyTextField({
+  required BuildContext context,
   required TextEditingController controller,
   required FocusNode focusNode,
   required TextStyle style,
@@ -144,7 +147,11 @@ TextField difyTextField({
   onSubmitted: onSubmitted,
   inputFormatters: formatters,
   keyboardType: keyboardType,
-  style: style.copyWith(color: disabled ? DifyColors.componentsInputTextFilledDisabled : null),
+  style: DifyFonts.resolveStyle(style).copyWith(color: disabled ? DifyColors.componentsInputTextFilledDisabled : null),
+  strutStyle: Css.lineStrut(
+    DefaultTextStyle.of(context).style.merge(style),
+    textScaler: MediaQuery.textScalerOf(context),
+  ),
   cursorColor: const Color(0xFF155EEF), // caret-primary-600
   cursorWidth: 1,
   maxLines: 1,
@@ -154,7 +161,14 @@ TextField difyTextField({
     contentPadding: padding,
     // Not the desktop platforms' compact density, which takes 8 px off the box (CSS has no such thing).
     visualDensity: VisualDensity.standard,
-    hintText: placeholder,
+    hint: placeholder == null
+        ? null
+        : DifyTextLine(
+            placeholder,
+            style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
     hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
     // `maxlength` shows no counter in a browser.
     counterText: '',
@@ -292,6 +306,7 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
   Widget build(BuildContext context) {
     final w = widget;
     Widget field = difyTextField(
+      context: context,
       controller: controller,
       focusNode: _focus,
       style: (w.textStyle ?? difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled)).copyWith(

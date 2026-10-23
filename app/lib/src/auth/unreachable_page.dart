@@ -33,12 +33,12 @@ class _UnreachablePageState extends State<UnreachablePage> {
             'Cannot reach the server',
             style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
           ),
-          Text(
+          DifyTextLine(
             e is TransportException ? e.message : '$e',
             style: difyTextStyle(DifyType.bodyMdRegular, DifyColors.textTertiary),
           ),
           const SizedBox(height: 16),
-          Text('Server', style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
+          DifyTextLine('Server', style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
           DifyInput(
             key: const ValueKey('server-field'),
             value: _server,
@@ -52,7 +52,7 @@ class _UnreachablePageState extends State<UnreachablePage> {
             key: const ValueKey('server-retry'),
             variant: DifyButtonVariant.primary,
             onPressed: () => widget.onRetry(_server.trim()),
-            child: const Text('Retry'),
+            child: const DifyTextLine('Retry'),
           ),
         ],
       ),

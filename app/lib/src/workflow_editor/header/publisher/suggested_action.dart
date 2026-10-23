@@ -180,7 +180,7 @@ class SuggestedAction extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                      DifyTextLine(
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -278,7 +278,7 @@ class _Reveal extends StatelessWidget {
           opacity: open ? 1 : 0,
           duration: duration,
           curve: Curves.easeOut,
-          child: Text(
+          child: DifyTextLine(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

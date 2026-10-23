@@ -211,7 +211,7 @@ class ModelText extends StatelessWidget {
   final DifyTextStyle type;
 
   @override
-  Widget build(BuildContext context) => Text(
+  Widget build(BuildContext context) => DifyTextLine(
     text,
     maxLines: 1,
     softWrap: false,
@@ -247,7 +247,7 @@ class ModelStatusBadge extends StatelessWidget {
       children: [
         RemixIcon('alert-fill', size: 12, color: DifyColors.textWarning),
         const SizedBox(width: 3),
-        Text(
+        DifyTextLine(
           label,
           maxLines: 1,
           softWrap: false,
@@ -500,7 +500,7 @@ class ModelSelectorTrigger extends StatelessWidget {
       ),
     );
     if (triggerTooltip != null && !disabled) {
-      trigger = DifyTooltip(content: Text(triggerTooltip), child: trigger);
+      trigger = DifyTooltip(content: DifyTextLine(triggerTooltip), child: trigger);
     }
     return trigger;
   }

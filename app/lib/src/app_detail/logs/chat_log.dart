@@ -423,7 +423,7 @@ class HandThumbIconWithCount extends StatelessWidget {
             ),
           ),
           if (count > 0)
-            Text(
+            DifyTextLine(
               '$count',
               style: difyTextStyle(DifyType.systemXsRegular, fg), // `text-xs`
             ),
@@ -540,7 +540,7 @@ class _ConversationListState extends State<ConversationList> {
 
   Widget _value(Object? value, bool empty, {bool highlight = false}) => Container(
     color: highlight ? DifyColors.utilColorsOrangeOrange100 : null,
-    child: Text(
+    child: DifyTextLine(
       _truthy(value) ? '$value' : '-',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -569,7 +569,7 @@ class _ConversationListState extends State<ConversationList> {
     final columns = <DifyTableColumn>[
       DifyTableColumn(header: null, width: 20),
       DifyTableColumn(
-        header: Text(
+        header: DifyTextLine(
           difyTransform(
             DifyType.systemXsMediumUppercase,
             _l(_isChatMode ? 'table.header.summary' : 'table.header.input'),
@@ -578,16 +578,16 @@ class _ConversationListState extends State<ConversationList> {
         width: 160,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.endUser'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.endUser'))),
         width: null,
       ),
       if (_isChatflow)
         DifyTableColumn(
-          header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
+          header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
           width: 160,
         ),
       DifyTableColumn(
-        header: Text(
+        header: DifyTextLine(
           difyTransform(
             DifyType.systemXsMediumUppercase,
             _l(_isChatMode ? 'table.header.messageCount' : 'table.header.output'),
@@ -596,19 +596,19 @@ class _ConversationListState extends State<ConversationList> {
         width: null,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.userRate'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.userRate'))),
         width: null,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.adminRate'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.adminRate'))),
         width: null,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.updatedTime'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.updatedTime'))),
         width: 160,
       ),
       DifyTableColumn(
-        header: Text(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.time'))),
+        header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.time'))),
         width: 160,
       ),
     ];
@@ -642,7 +642,7 @@ class _ConversationListState extends State<ConversationList> {
                   logCell(_value(row.rightValue, row.isRightEmpty)),
                   logCell(_rating(log['user_feedback_stats'] as Map?)),
                   logCell(_rating(log['admin_feedback_stats'] as Map?)),
-                  logCell(Text(time.formatTime(((log['updated_at'] as num?) ?? 0).toInt(), format))),
+                  logCell(DifyTextLine(time.formatTime(((log['updated_at'] as num?) ?? 0).toInt(), format))),
                   logCell(
                     LogDrawerTrigger(
                       focusNode: trigger,
@@ -915,7 +915,7 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(
+                        child: DifyTextLine(
                           difyTransform(
                             DifyType.systemXsSemiboldUppercase,
                             _l(isChatMode ? 'detail.conversationId' : 'detail.time'),
@@ -928,8 +928,8 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
                           children: [
                             Flexible(
                               child: DifyTooltip(
-                                content: Text(_id),
-                                child: Text(
+                                content: DifyTextLine(_id),
+                                child: DifyTextLine(
                                   difyTransform(DifyType.system2xsRegularUppercase, _id),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -941,7 +941,7 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
                           ],
                         )
                       else
-                        Text(
+                        DifyTextLine(
                           AccountTime.of(context)
                               .formatTime(((widget.detail['created_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
                           style: difyTextStyle(DifyType.system2xsRegularUppercase, DifyColors.textSecondary),
@@ -996,7 +996,7 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
                           if (_hasMore)
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Text(
+                              child: DifyTextLine(
                                 '${_l('detail.loading')}...',
                                 textAlign: TextAlign.center,
                                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),

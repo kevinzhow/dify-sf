@@ -709,7 +709,7 @@ class _OutputEditCardState extends State<OutputEditCard> {
                         child: DifyButton(
                           size: DifyButtonSize.small,
                           onPressed: widget.onCancel,
-                          child: Text(_c('operation.cancel')),
+                          child: DifyTextLine(_c('operation.cancel')),
                         ),
                       ),
                     ),
@@ -723,7 +723,7 @@ class _OutputEditCardState extends State<OutputEditCard> {
                           semanticLabel: _w('nodes.agent.outputVars.confirm'),
                           onPressed: _confirm,
                           trailing: const DifyShortcutKbd(hotkey: 'Mod+Enter', color: DifyKbdColor.white),
-                          child: Text(_w('nodes.agent.outputVars.confirm')),
+                          child: DifyTextLine(_w('nodes.agent.outputVars.confirm')),
                         ),
                       ),
                     ),
@@ -781,7 +781,7 @@ class OutputTypeSelect extends StatelessWidget {
             semanticLabel: o.label,
             onSelect: () => onChange(o.value),
             trailing: o.value == value ? RemixIcon('check-line', size: 16, color: DifyColors.textAccent) : null,
-            child: Text(o.label),
+            child: DifyTextLine(o.label),
           ),
       ],
     );

@@ -249,7 +249,7 @@ class RunRecord extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Text(
+                child: DifyTextLine(
                   'Test Run${fmt.formatWorkflowRunIdentifier((history['finished_at'] as num?)?.toInt())}',
                   style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
                 ),

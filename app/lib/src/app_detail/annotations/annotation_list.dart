@@ -150,7 +150,7 @@ const _checkW = 48.0, _actionsW = 96.0;
 const _headPadding = EdgeInsets.only(left: 12);
 
 /// A header cell's text (`whitespace-nowrap`).
-Widget _headerText(String key) => Text(
+Widget _headerText(String key) => DifyTextLine(
   difyTransform(DifyType.systemXsMediumUppercase, _t('appAnnotation', key)),
   maxLines: 1,
   softWrap: false,
@@ -169,7 +169,7 @@ extension on _AnnotationListState {
       padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 250),
-        child: Text(s, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style),
+        child: DifyTextLine(s, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style),
       ),
     );
     return DifyTableRow(
@@ -316,12 +316,12 @@ class _AnnotationBatchActionState extends State<AnnotationBatchAction> {
                         color: DifyColors.textAccent,
                         borderRadius: BorderRadius.circular(DifyRadius.md),
                       ),
-                      child: Text(
+                      child: DifyTextLine(
                         '${widget.selectedIds.length}',
                         style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textPrimaryOnSurface),
                       ),
                     ),
-                    Text(
+                    DifyTextLine(
                       _t('appAnnotation', 'batchAction.selected'),
                       style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textAccent),
                     ),
@@ -334,13 +334,13 @@ class _AnnotationBatchActionState extends State<AnnotationBatchAction> {
                 tone: DifyButtonTone.destructive,
                 leading: RemixIcon('delete-bin-line', size: 16, color: DifyColors.textDestructive),
                 onPressed: () => setState(() => _showDeleteConfirm = true),
-                child: Text(_t('common', 'operation.delete')),
+                child: DifyTextLine(_t('common', 'operation.delete')),
               ),
               divider(),
               DifyButton(
                 variant: DifyButtonVariant.ghost,
                 onPressed: () => widget.onSelectedIdsChange(const []),
-                child: Text(_t('common', 'operation.cancel')),
+                child: DifyTextLine(_t('common', 'operation.cancel')),
               ),
             ],
           ),

@@ -12,7 +12,7 @@ import '../../../../prompt_editor/prompt_editor.dart';
 import '../data_common.dart';
 import 'http_model.dart';
 
-Widget _title(String text) => Text(text, style: difyStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary));
+Widget _title(String text) => DifyTextLine(text, style: difyStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary));
 
 // ---- Authorization ----------------------------------------------------------------------------------------------
 
@@ -65,7 +65,7 @@ class _AuthorizationModalState extends State<AuthorizationModal> {
         height: 32,
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text.rich(
+          child: DifyTextLine.rich(
             TextSpan(
               text: title,
               children: [
@@ -157,7 +157,7 @@ class _AuthorizationModalState extends State<AuthorizationModal> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              DifyButton(onPressed: () => Navigator.of(context).pop(), child: Text(cm('operation.cancel'))),
+              DifyButton(onPressed: () => Navigator.of(context).pop(), child: DifyTextLine(cm('operation.cancel'))),
               DifyButton(
                 variant: DifyButtonVariant.primary,
                 onPressed: () {
@@ -165,7 +165,7 @@ class _AuthorizationModalState extends State<AuthorizationModal> {
                   widget.onChange(_temp);
                   Navigator.of(context).pop();
                 },
-                child: Text(cm('operation.save')),
+                child: DifyTextLine(cm('operation.save')),
               ),
             ],
           ),
@@ -344,14 +344,17 @@ class _CurlPanelState extends State<CurlPanel> {
             children: [
               SizedBox(
                 width: 95,
-                child: DifyButton(onPressed: () => Navigator.of(context).pop(), child: Text(cm('operation.cancel'))),
+                child: DifyButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: DifyTextLine(cm('operation.cancel')),
+                ),
               ),
               SizedBox(
                 width: 95,
                 child: DifyButton(
                   variant: DifyButtonVariant.primary,
                   onPressed: _save,
-                  child: Text(cm('operation.save')),
+                  child: DifyTextLine(cm('operation.save')),
                 ),
               ),
             ],

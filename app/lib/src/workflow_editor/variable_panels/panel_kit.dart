@@ -91,7 +91,7 @@ class AddVariableButton extends StatelessWidget {
       variant: DifyButtonVariant.primary,
       onPressed: onPressed,
       leading: const RemixIcon('add-line', size: 16),
-      child: Text(label),
+      child: DifyTextLine(label),
     ),
   );
 }
@@ -352,13 +352,13 @@ class VariableModalSurface extends StatelessWidget {
               spacing: 8,
               children: [
                 Flexible(
-                  child: DifyButton(onPressed: onClose, child: Text(tc('operation.cancel'))),
+                  child: DifyButton(onPressed: onClose, child: DifyTextLine(tc('operation.cancel'))),
                 ),
                 Flexible(
                   child: DifyButton(
                     variant: DifyButtonVariant.primary,
                     onPressed: onSave,
-                    child: Text(tc('operation.save')),
+                    child: DifyTextLine(tc('operation.save')),
                   ),
                 ),
               ],

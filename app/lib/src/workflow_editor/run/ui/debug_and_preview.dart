@@ -43,7 +43,7 @@ class DebugEmpty extends StatelessWidget {
         ),
         SizedBox(
           width: 256,
-          child: Text(
+          child: DifyTextLine(
             _tw('common.previewPlaceholder'),
             textAlign: TextAlign.center,
             style: difyTextStyle(DifyTw.text13, DifyTailwind.gray400),
@@ -409,7 +409,7 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
                             Expanded(
                               child: SizedBox(
                                 height: 32,
-                                child: Text(
+                                child: DifyTextLine(
                                   _tw('common.debugAndPreview').toUpperCase(),
                                   style: difyStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
                                 ),
@@ -419,7 +419,7 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
                               spacing: 4,
                               children: [
                                 DifyTooltip(
-                                  content: Text(_tc('operation.refresh')),
+                                  content: DifyTextLine(_tc('operation.refresh')),
                                   child: DifyIconButton(
                                     label: _tc('operation.refresh'),
                                     icon: const DifyIcon('vender/line/arrows/refresh-ccw-01', size: 16),
@@ -431,7 +431,7 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
                                     clipBehavior: Clip.none,
                                     children: [
                                       DifyTooltip(
-                                        content: Text(userInputLabel),
+                                        content: DifyTextLine(userInputLabel),
                                         child: ExpandedSemantics(
                                           expanded: _expanded,
                                           child: DifyPressable(

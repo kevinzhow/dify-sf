@@ -148,11 +148,11 @@ class _ApiKeyModalState extends State<ApiKeyModal> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     spacing: 4,
                     children: [
-                      Text(
+                      DifyTextLine(
                         _t('appApi', 'apiKeyModal.apiSecretKey'),
                         style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                       ),
-                      Text(
+                      DifyTextLine(
                         _t('appApi', 'apiKeyModal.apiSecretKeyTips'),
                         style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
                       ),
@@ -184,7 +184,7 @@ class _ApiKeyModalState extends State<ApiKeyModal> {
                       loading: _creating,
                       onPressed: () => unawaited(_create()),
                       leading: const RemixIcon('add-line', size: 16),
-                      child: Text(_t('appApi', 'apiKeyModal.createNewSecretKey')),
+                      child: DifyTextLine(_t('appApi', 'apiKeyModal.createNewSecretKey')),
                     ),
                   ),
                 ),
@@ -229,8 +229,9 @@ class ApiKeyTable extends StatelessWidget {
     final head = difyTextStyle(DifyType.systemXsSemiboldUppercase, DifyColors.textTertiary);
     final cell = difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary);
     final format = _t('appLog', 'dateTimeFormat');
-    Widget text(String s, TextStyle style) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
-    Widget headText(String s) => Text(
+    Widget text(String s, TextStyle style) =>
+        DifyTextLine(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+    Widget headText(String s) => DifyTextLine(
       difyTransform(DifyType.systemXsSemiboldUppercase, s),
       semanticsLabel: s,
       maxLines: 1,
@@ -335,11 +336,11 @@ class CreatedApiKeyDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 4,
                 children: [
-                  Text(
+                  DifyTextLine(
                     _t('appApi', 'apiKeyModal.apiSecretKey'),
                     style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                   ),
-                  Text(
+                  DifyTextLine(
                     _t('appApi', 'apiKeyModal.generateTips'),
                     style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
                   ),
@@ -367,7 +368,7 @@ class CreatedApiKeyDialog extends StatelessWidget {
                 child: DifyButton(
                   variant: DifyButtonVariant.primary,
                   onPressed: () => Navigator.of(context).maybePop(),
-                  child: Text(_t('appApi', 'actionMsg.ok')),
+                  child: DifyTextLine(_t('appApi', 'actionMsg.ok')),
                 ),
               ),
             ),
