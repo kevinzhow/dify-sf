@@ -208,10 +208,10 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
             children: [
               Align(
                 alignment: Alignment.centerLeft,
-                child: DifyIconButton(
-                  label: DetailSidebarToggleButton.labelFor(false),
-                  icon: const RemixIcon('menu-line', size: 20),
-                  onPressed: toggle,
+                child: DetailSidebarToggleButton(
+                  expand: false,
+                  icon: (color) => svgIcon(sidebarLeftArrowSvg, color: color),
+                  onToggle: toggle,
                 ),
               ),
               Expanded(child: widget.child),
@@ -325,7 +325,7 @@ class DetailSidebarToggleButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Text(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
             ),
-            const DifyShortcutKbd(hotkey: detailSidebarToggleHotkey),
+            if (!DifyAdaptive.compactOf(context)) const DifyShortcutKbd(hotkey: detailSidebarToggleHotkey),
           ],
         ),
       ),

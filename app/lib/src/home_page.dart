@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import 'app_detail/app_detail_page.dart';
 import 'app_detail/detail_page_slot.dart';
+import 'app_detail/detail_sidebar.dart';
 import 'app_detail/detail_pages.dart';
 import 'account/account_page.dart';
 import 'app_root.dart';
@@ -375,10 +376,10 @@ class _HomePageState extends State<HomePage> {
                     if (nav != null)
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: DifyIconButton(
-                          label: DifyI18n.tr('layout', 'sidebar.expandSidebar'),
-                          icon: const RemixIcon('menu-line', size: 20),
-                          onPressed: () => setState(() => _mobileNavOpen = !_mobileNavOpen),
+                        child: DetailSidebarToggleButton(
+                          expand: false,
+                          icon: (color) => svgIcon(sidebarLeftArrowSvg, color: color),
+                          onToggle: () => setState(() => _mobileNavOpen = !_mobileNavOpen),
                         ),
                       ),
                     Expanded(child: content),
